@@ -1,0 +1,4 @@
+{
+  "/api/test-sam/route": "app/api/test-sam/route.js",
+  "/api/sam/conversations/route": "app/api/sam/conversations/route.js"
+}
