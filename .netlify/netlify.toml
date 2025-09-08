@@ -21,12 +21,12 @@ package = "@netlify/plugin-nextjs"
 
 [build]
 publish = "/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/.next"
-publishOrigin = "config"
+publishOrigin = "ui"
 commandOrigin = "config"
 command = "npm run build"
 
 [build.environment]
-NODE_VERSION = "18"
+NODE_VERSION = "20"
 
 [build.processing]
 

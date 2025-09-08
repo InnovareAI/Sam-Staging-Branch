@@ -81,10 +81,11 @@ export default function Page() {
     );
   }
 
-  // Show auth modal for non-authenticated users when they try to interact
+  // Redirect to sign-in for non-authenticated users
   const handleAuthRequired = () => {
     if (!isSignedIn) {
-      setShowAuthModal(true);
+      // Redirect to sign-in page instead of showing modal
+      window.location.href = '/sign-in';
       return true;
     }
     return false;
@@ -284,8 +285,7 @@ export default function Page() {
                 <div className="mt-8">
                   <button
                     onClick={() => {
-                      setAuthMode('sign-in');
-                      setShowAuthModal(true);
+                      window.location.href = '/sign-in';
                     }}
                     className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-8 rounded-lg transition-colors"
                   >
@@ -295,8 +295,7 @@ export default function Page() {
                     New user?{' '}
                     <button 
                       onClick={() => {
-                        setAuthMode('sign-up');
-                        setShowAuthModal(true);
+                        window.location.href = '/sign-up';
                       }}
                       className="text-purple-400 hover:text-purple-300"
                     >
