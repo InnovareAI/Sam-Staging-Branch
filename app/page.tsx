@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useUser, useOrganization, UserButton, useAuth, SignOutButton } from '@clerk/nextjs';
+import { useUser, useOrganization, UserButton, SignOutButton } from '@clerk/nextjs';
 import { OrganizationSwitcher } from './components/OrganizationSwitcher';
-import { AuthModal } from './components/SimpleAuthModal';
 import { InviteUserModal } from './components/InviteUserModal';
 import { useSamChat } from '@/lib/hooks/useSamChat';
 import TrainingRoom from './components/TrainingRoom';
@@ -24,13 +23,13 @@ import {
 } from 'lucide-react';
 
 export default function Page() {
-  // Enable Clerk for production deployment
-  const isClerkConfigured = true;
+  // Check if Clerk is properly configured
+  const isClerkConfigured = 
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && 
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY !== 'your_publishable_key_here';
 
-  // Use real Clerk hooks
   const { user, isLoaded: userLoaded } = useUser();
-  const { organization, isLoaded: orgLoaded } = useOrganization();
-  const { isSignedIn } = useAuth();
+  const { organization } = useOrganization();
   
   // Sam chat integration
   const { 
@@ -39,57 +38,35 @@ export default function Page() {
     isLoading, 
     isSending, 
     sendMessage, 
-    createConversation,
     loadConversations,
     error 
   } = useSamChat();
 
-  // Debug authentication
-  useEffect(() => {
-    if (userLoaded) {
-      console.log('👤 User loaded:', {
-        isSignedIn,
-        userId: user?.id,
-        firstName: user?.firstName,
-        email: user?.primaryEmailAddress?.emailAddress
-      });
-    }
-  }, [userLoaded, isSignedIn, user]);
-
-  // Load conversations when user is authenticated
-  useEffect(() => {
-    if (isSignedIn && userLoaded) {
-      console.log('🔄 Loading conversations for authenticated user...');
-      loadConversations();
-    }
-  }, [isSignedIn, userLoaded, loadConversations]);
   const [showStarterScreen, setShowStarterScreen] = useState(true);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState<'sign-in' | 'sign-up'>('sign-in');
   const [showInviteModal, setShowInviteModal] = useState(false);
-
   const [inputMessage, setInputMessage] = useState('');
   const [activeMenuItem, setActiveMenuItem] = useState('chat');
 
-  // Show loading state while Clerk loads (only if Clerk is configured)
-  // Only wait for user to load, organization is optional
-  if (isClerkConfigured && !userLoaded) {
-    return (
-      <div className="flex h-screen bg-gray-900 items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
-      </div>
-    );
-  }
-
-  // Redirect to sign-in for non-authenticated users
-  const handleAuthRequired = () => {
-    if (!isSignedIn) {
-      // Redirect to sign-in page instead of showing modal
-      window.location.href = '/sign-in';
-      return true;
+  // Load conversations when user is authenticated
+  useEffect(() => {
+    if (userLoaded && user) {
+      console.log('🔄 Loading conversations for authenticated user...');
+      loadConversations();
     }
-    return false;
-  };
+  }, [userLoaded, user, loadConversations]);
+
+  // Add timeout for loading state to prevent infinite loading
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoadingTimeout(true);
+    }, 8000); // 8 second timeout
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Skip all loading states - go directly to app
 
   const menuItems = [
     { id: 'chat', label: 'Chat with Sam', icon: MessageCircle, active: true },
@@ -101,11 +78,6 @@ export default function Page() {
   ];
 
   const handleSendMessage = async () => {
-    // Check if authentication is required
-    if (handleAuthRequired()) {
-      return;
-    }
-    
     if (inputMessage.trim()) {
       const messageContent = inputMessage.trim();
       setInputMessage('');
@@ -127,6 +99,52 @@ export default function Page() {
     }
   };
 
+  // Always show the full interface
+  return (
+    <AuthenticatedApp 
+      user={user}
+      organization={organization}
+      messages={messages}
+      currentConversation={currentConversation}
+      isLoading={isLoading}
+      isSending={isSending}
+      sendMessage={sendMessage}
+      error={error}
+      showStarterScreen={showStarterScreen}
+      inputMessage={inputMessage}
+      setInputMessage={setInputMessage}
+      activeMenuItem={activeMenuItem}
+      setActiveMenuItem={setActiveMenuItem}
+      handleSendMessage={handleSendMessage}
+      handleKeyPress={handleKeyPress}
+      showInviteModal={showInviteModal}
+      setShowInviteModal={setShowInviteModal}
+      menuItems={menuItems}
+    />
+  );
+}
+
+
+// Authenticated App Component - The full SAM AI interface
+function AuthenticatedApp({ 
+  user, 
+  organization, 
+  messages, 
+  currentConversation, 
+  isLoading, 
+  isSending, 
+  error, 
+  showStarterScreen, 
+  inputMessage, 
+  setInputMessage, 
+  activeMenuItem, 
+  setActiveMenuItem, 
+  handleSendMessage, 
+  handleKeyPress, 
+  showInviteModal, 
+  setShowInviteModal, 
+  menuItems 
+}: any) {
   return (
     <div className="flex h-screen bg-gray-800">
       {/* Left Sidebar */}
@@ -150,8 +168,8 @@ export default function Page() {
               <X size={20} />
             </button>
           </div>
-          {/* Organization Switcher - Optional */}
-          {isClerkConfigured && (
+          {/* Organization Switcher - Only show if user has organizations */}
+          {organization && (
             <div className="mb-4">
               <OrganizationSwitcher />
             </div>
@@ -183,22 +201,17 @@ export default function Page() {
           </nav>
           
           {/* Invite Team Section */}
-          {isSignedIn && (
-            <div className="px-3 mt-6">
-              <div className="border-t border-gray-600 pt-4">
-                <button
-                  onClick={() => {
-                    if (handleAuthRequired()) return;
-                    setShowInviteModal(true);
-                  }}
-                  className="w-full flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-600 hover:text-gray-300 transition-colors border border-gray-600 hover:border-purple-500"
-                >
-                  <UserPlus size={18} />
-                  <span>Invite Team</span>
-                </button>
-              </div>
+          <div className="px-3 mt-6">
+            <div className="border-t border-gray-600 pt-4">
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="w-full flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-600 hover:text-gray-300 transition-colors border border-gray-600 hover:border-purple-500"
+              >
+                <UserPlus size={18} />
+                <span>Invite Team</span>
+              </button>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Sidebar Bottom */}
@@ -211,7 +224,7 @@ export default function Page() {
           <div className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                {isClerkConfigured && user ? (
+                {user ? (
                   <>
                     <UserButton 
                       afterSignOutUrl="/sign-in"
@@ -223,7 +236,7 @@ export default function Page() {
                     />
                     <div>
                       <p className="text-white text-sm font-medium">
-                        {user?.firstName || user?.username || 'User'}
+                        {user.firstName || user.username || 'User'}
                       </p>
                       {organization && (
                         <p className="text-purple-400 text-xs flex items-center gap-1">
@@ -242,15 +255,15 @@ export default function Page() {
                     </SignOutButton>
                   </>
                 ) : (
-                  <>
-                    <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white font-medium text-sm">
-                      TL
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+                      <span className="text-gray-300 text-sm">U</span>
                     </div>
                     <div>
-                      <p className="text-white text-sm font-medium">Demo User</p>
-                      <p className="text-gray-400 text-xs">Configure Clerk to enable auth</p>
+                      <p className="text-white text-sm font-medium">Guest User</p>
+                      <p className="text-gray-400 text-xs">Demo Mode</p>
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
             </div>
@@ -259,7 +272,7 @@ export default function Page() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col bg-gray-900 relative">
+      <div className="flex-1 flex flex-col bg-gray-900">
         {/* Conditional Rendering */}
         {activeMenuItem === 'training' ? (
           <TrainingRoom />
@@ -281,29 +294,6 @@ export default function Page() {
               <h2 className="text-white text-2xl font-medium">
                 What do you want to get done today?
               </h2>
-              {!isSignedIn && (
-                <div className="mt-8">
-                  <button
-                    onClick={() => {
-                      window.location.href = '/sign-in';
-                    }}
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-8 rounded-lg transition-colors"
-                  >
-                    Sign In to Get Started
-                  </button>
-                  <p className="text-gray-400 text-sm mt-4">
-                    New user?{' '}
-                    <button 
-                      onClick={() => {
-                        window.location.href = '/sign-up';
-                      }}
-                      className="text-purple-400 hover:text-purple-300"
-                    >
-                      Create an account
-                    </button>
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         ) : (
@@ -373,75 +363,67 @@ export default function Page() {
           </div>
         )}
 
-        {/* CENTERED INPUT CONTAINER - Only show for chat */}
+        {/* CHAT INPUT CONTAINER - Fixed at bottom, only show for chat */}
         {activeMenuItem === 'chat' && (
-          <div className="absolute inset-x-6 bottom-6 max-w-4xl mx-auto">
-          {/* Status Bar - BLACK background */}
-          <div className="bg-black text-white px-4 py-3 rounded-t-lg">
-            <div className="flex items-center space-x-3">
-              <span className="text-sm">
-                {isSending ? 'Processing...' : isLoading ? 'Loading...' : 'Ready'}
-              </span>
-              <div className="flex space-x-1">
-                <div className={`w-2 h-2 rounded-full ${isSending || isLoading ? 'bg-purple-400 animate-pulse' : 'bg-green-400'}`}></div>
-                <div className={`w-2 h-2 rounded-full ${isSending || isLoading ? 'bg-purple-500 animate-pulse' : 'bg-green-500'}`} style={{animationDelay: '0.2s'}}></div>
-                <div className={`w-2 h-2 rounded-full ${isSending || isLoading ? 'bg-purple-600 animate-pulse' : 'bg-green-600'}`} style={{animationDelay: '0.4s'}}></div>
+          <div className="flex-shrink-0 p-6">
+            {/* Status Bar - BLACK background */}
+            <div className="bg-black text-white px-4 py-3 rounded-t-lg max-w-4xl mx-auto">
+              <div className="flex items-center space-x-3">
+                <span className="text-sm">
+                  {isSending ? 'Processing...' : isLoading ? 'Loading...' : 'Ready'}
+                </span>
+                <div className="flex space-x-1">
+                  <div className={`w-2 h-2 rounded-full ${isSending || isLoading ? 'bg-purple-400 animate-pulse' : 'bg-green-400'}`}></div>
+                  <div className={`w-2 h-2 rounded-full ${isSending || isLoading ? 'bg-purple-500 animate-pulse' : 'bg-green-500'}`} style={{animationDelay: '0.2s'}}></div>
+                  <div className={`w-2 h-2 rounded-full ${isSending || isLoading ? 'bg-purple-600 animate-pulse' : 'bg-green-600'}`} style={{animationDelay: '0.4s'}}></div>
+                </div>
+              </div>
+              <div className="text-xs text-gray-400 mt-1">
+                {error ? `Error: ${error}` :
+                 isSending ? 'Sam is thinking...' : 
+                 isLoading ? 'Loading conversation...' : 
+                 currentConversation ? `Active: ${currentConversation.title}` :
+                 'Connected to Sam AI database'}
               </div>
             </div>
-            <div className="text-xs text-gray-400 mt-1">
-              {error ? `Error: ${error}` :
-               isSending ? 'Sam is thinking...' : 
-               isLoading ? 'Loading conversation...' : 
-               currentConversation ? `Active: ${currentConversation.title}` :
-               'Connected to Sam AI database'}
+            
+            {/* Input Area - GRAY background, attached below */}
+            <div className="bg-gray-700 p-4 rounded-b-lg max-w-4xl mx-auto">
+              <div className="flex items-end bg-gray-600 rounded-lg px-4 py-2">
+                <button className="text-gray-400 hover:text-gray-200 transition-colors p-1 mr-2">
+                  <Paperclip size={18} />
+                </button>
+                <textarea
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="What do you want to get done?"
+                  className="flex-1 bg-transparent text-white placeholder-gray-400 text-base pl-3 pr-3 py-2 outline-none resize-vertical min-h-[96px] max-h-48"
+                  style={{ textAlign: 'left' }}
+                  rows={4}
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={isSending || !inputMessage.trim()}
+                  className="text-gray-400 hover:text-gray-200 disabled:text-gray-600 disabled:cursor-not-allowed transition-colors ml-2 px-3 py-1 flex items-center space-x-1"
+                >
+                  <span className="text-sm font-medium">
+                    {isSending ? 'Sending...' : 'Send'}
+                  </span>
+                  <Send size={16} />
+                </button>
+              </div>
             </div>
-          </div>
-          
-          {/* Input Area - GRAY background, attached below */}
-          <div className="bg-gray-700 p-4 rounded-b-lg">
-            <div className="flex items-end bg-gray-600 rounded-lg px-4 py-2">
-              <button className="text-gray-400 hover:text-gray-200 transition-colors p-1 mr-2">
-                <Paperclip size={18} />
-              </button>
-              <textarea
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="What do you want to get done?"
-                className="flex-1 bg-transparent text-white placeholder-gray-400 text-base pl-3 pr-3 py-2 outline-none resize-vertical min-h-[96px] max-h-48"
-                style={{ textAlign: 'left' }}
-                rows={4}
-              />
-              <button
-                onClick={handleSendMessage}
-                disabled={isSending || !inputMessage.trim()}
-                className="text-gray-400 hover:text-gray-200 disabled:text-gray-600 disabled:cursor-not-allowed transition-colors ml-2 px-3 py-1 flex items-center space-x-1"
-              >
-                <span className="text-sm font-medium">
-                  {isSending ? 'Sending...' : 'Send'}
-                </span>
-                <Send size={16} />
-              </button>
-            </div>
-          </div>
           </div>
         )}
       </div>
-
-      {/* Auth Modal */}
-      <AuthModal 
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        mode={authMode}
-        onModeSwitch={() => setAuthMode(authMode === 'sign-in' ? 'sign-up' : 'sign-in')}
-      />
 
       {/* Invite User Modal */}
       <InviteUserModal
         isOpen={showInviteModal}
         onClose={() => setShowInviteModal(false)}
-        workspaceId={organization?.id || user?.id || 'default-workspace'}
-        workspaceName={organization?.name || `${user?.firstName || 'My'} Workspace`}
+        workspaceId={organization?.id || user?.id || 'demo-workspace'}
+        workspaceName={organization?.name || `${user?.firstName || 'Demo'} Workspace`}
       />
     </div>
   );
