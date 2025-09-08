@@ -4,8 +4,8 @@ const nextConfig = {
   images: {
     domains: ['localhost'],
   },
-  // For Netlify deployment - removed standalone as it's handled by plugin
-  outputFileTracingRoot: '/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7',
+  // For Netlify deployment with standalone output
+  output: 'standalone',
   eslint: {
     ignoreDuringBuilds: true,
   },
