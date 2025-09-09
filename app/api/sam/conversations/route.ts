@@ -1,34 +1,27 @@
-import { auth } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
+
+// Demo user configuration for non-authenticated access
+const DEMO_USER = {
+  id: '00000000-0000-4000-8000-000000000001',
+  workspace_id: '00000000-0000-4000-8000-000000000001', 
+  name: 'Demo User'
+};
 
 // GET /api/sam/conversations - List user's conversations
 export async function GET(req: NextRequest) {
   try {
-    console.log('🔍 Sam conversations API called');
-    const { userId } = await auth();
-    console.log('👤 User ID from auth:', userId);
+    console.log('🔍 Sam conversations API called (demo mode)');
     
-    if (!userId) {
-      console.log('❌ No user ID - unauthorized');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    console.log('📊 Creating supabase admin client...');
     const supabase = supabaseAdmin();
     
-    // Get user's workspace/tenant info
-    const { data: userData } = await supabase
-      .from('users')
-      .select('id, current_workspace_id')
-      .eq('clerk_id', userId)
-      .single();
+    // Use demo user for non-authenticated access
+    const userId = DEMO_USER.id;
+    const workspaceId = DEMO_USER.workspace_id;
+    
+    console.log('📊 Using demo user:', userId, 'workspace:', workspaceId);
 
-    if (!userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    // Get conversations for this user's workspace
+    // Get conversations for demo user
     const { data: conversations, error } = await supabase
       .from('sam_conversations')
       .select(`
@@ -43,8 +36,8 @@ export async function GET(req: NextRequest) {
         created_at,
         updated_at
       `)
-      .eq('workspace_id', userData.current_workspace_id)
-      .eq('user_id', userData.id)
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', userId)
       .order('last_active_at', { ascending: false })
       .limit(20);
 
@@ -53,7 +46,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json({ conversations });
+    console.log('📋 Found conversations:', conversations?.length || 0);
+    return NextResponse.json({ conversations: conversations || [] });
 
   } catch (error) {
     console.error('Error in conversations GET:', error);
@@ -67,38 +61,27 @@ export async function GET(req: NextRequest) {
 // POST /api/sam/conversations - Create new conversation
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    console.log('🆕 Creating new conversation (demo mode)');
     
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const body = await req.json();
     const { title } = body;
 
     const supabase = supabaseAdmin();
     
-    // Get user's workspace/tenant info
-    const { data: userData } = await supabase
-      .from('users')
-      .select('id, current_workspace_id')
-      .eq('clerk_id', userId)
-      .single();
-
-    if (!userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
+    // Use demo user for non-authenticated access
+    const userId = DEMO_USER.id;
+    const workspaceId = DEMO_USER.workspace_id;
 
     // Create new conversation
     const { data: conversation, error } = await supabase
       .from('sam_conversations')
       .insert({
-        workspace_id: userData.current_workspace_id,
-        user_id: userData.id,
-        tenant_id: userData.current_workspace_id,
+        workspace_id: workspaceId,
+        user_id: userId,
+        tenant_id: workspaceId,
         title: title || 'New Conversation',
         status: 'active',
-        current_discovery_stage: 'introduction',
+        current_discovery_stage: 'business_context',
         discovery_progress: 0,
         conversation_context: {},
         business_profile: {}
@@ -111,6 +94,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
+    console.log('✅ Created conversation:', conversation?.id);
     return NextResponse.json({ conversation });
 
   } catch (error) {

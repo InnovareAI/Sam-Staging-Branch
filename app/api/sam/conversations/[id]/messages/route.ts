@@ -1,45 +1,28 @@
-import { auth } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../../lib/supabase';
+import { samKnowledge } from '../../../../../lib/sam-knowledge';
 import OpenAI from 'openai';
+
+// Demo user configuration for non-authenticated access
+const DEMO_USER = {
+  id: '00000000-0000-4000-8000-000000000001',
+  workspace_id: '00000000-0000-4000-8000-000000000001',
+  name: 'Demo User'
+};
 
 // GET /api/sam/conversations/[id]/messages - Get conversation messages
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    console.log('📬 Messages API called (demo mode)');
     
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { id: conversationId } = await params;
     const supabase = supabaseAdmin();
     
-    // Get user's workspace/tenant info
-    const { data: userData } = await supabase
-      .from('users')
-      .select('id, current_workspace_id')
-      .eq('clerk_id', userId)
-      .single();
+    // Use demo user for non-authenticated access
+    const userId = DEMO_USER.id;
+    const workspaceId = DEMO_USER.workspace_id;
 
-    if (!userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    // Verify conversation belongs to user
-    const { data: conversation } = await supabase
-      .from('sam_conversations')
-      .select('id')
-      .eq('id', conversationId)
-      .eq('workspace_id', userData.current_workspace_id)
-      .eq('user_id', userData.id)
-      .single();
-
-    if (!conversation) {
-      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
-    }
-
-    // Get messages
+    // Get messages for demo user
     const { data: messages, error } = await supabase
       .from('sam_conversation_messages')
       .select(`
@@ -56,7 +39,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         created_at
       `)
       .eq('conversation_id', conversationId)
-      .eq('tenant_id', userData.current_workspace_id)
+      .eq('tenant_id', workspaceId)
       .order('message_order', { ascending: true });
 
     if (error) {
@@ -64,7 +47,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json({ messages });
+    console.log('📨 Found messages:', messages?.length || 0);
+    return NextResponse.json({ messages: messages || [] });
 
   } catch (error) {
     console.error('Error in messages GET:', error);
@@ -78,12 +62,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 // POST /api/sam/conversations/[id]/messages - Send message to Sam
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    console.log('💬 Sending message to Sam (demo mode)');
     
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { id: conversationId } = await params;
     const body = await req.json();
     const { content } = body;
@@ -94,27 +74,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const supabase = supabaseAdmin();
     
-    // Get user's workspace/tenant info
-    const { data: userData } = await supabase
-      .from('users')
-      .select('id, current_workspace_id')
-      .eq('clerk_id', userId)
-      .single();
+    // Use demo user for non-authenticated access
+    const userId = DEMO_USER.id;
+    const workspaceId = DEMO_USER.workspace_id;
+    
+    console.log('🔍 Demo user sending message:', content.trim());
 
-    if (!userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    // Verify conversation belongs to user
+    // Get conversation (verify it exists)
     const { data: conversation } = await supabase
       .from('sam_conversations')
       .select('id, current_discovery_stage, conversation_context, business_profile')
       .eq('id', conversationId)
-      .eq('workspace_id', userData.current_workspace_id)
-      .eq('user_id', userData.id)
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', userId)
       .single();
 
     if (!conversation) {
+      console.error('❌ Conversation not found for demo user');
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
@@ -134,7 +110,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .from('sam_conversation_messages')
       .insert({
         conversation_id: conversationId,
-        tenant_id: userData.current_workspace_id,
+        tenant_id: workspaceId,
         role: 'user',
         content: content.trim(),
         message_order: nextOrder,
@@ -158,16 +134,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       
       if (!openaiApiKey || openaiApiKey === 'your_openrouter_api_key_here') {
         // Fallback to intelligent placeholder if no API key
-        samResponse = `Hi! I'm Sam, your AI sales assistant. I understand you said: "${content.trim()}"
+        // Generate intelligent fallback response using knowledge base
+        const personaGuidance = samKnowledge.getPersonaGuidance(content.trim());
+        const objectionResponse = samKnowledge.getObjectionResponse(content.trim());
+        
+        samResponse = `Hi! I'm Sam, your AI sales assistant with 14 specialized agents covering your entire sales process. I understand you said: "${content.trim()}"
 
-I'm here to help you with:
-• Sales process optimization
-• Lead qualification and management  
-• Customer relationship insights
-• Pipeline analysis and forecasting
-• Sales strategy development
+${personaGuidance ? `${personaGuidance}\n\n` : ''}${objectionResponse ? `${objectionResponse}\n\n` : ''}I'm here to help you with:
+• **Intelligent Prospecting**: Data enrichment and lead qualification
+• **Personalized Outreach**: Context-aware messaging across channels  
+• **Campaign Management**: Multi-channel campaign orchestration
+• **Follow-up Automation**: Smart reply handling and nurturing
+• **Analytics & Optimization**: Performance tracking and improvement suggestions
 
-To enable my full AI capabilities, please add your OpenRouter API key to the environment. For now, I can still help with general sales guidance - what specific sales challenge can I assist you with today?`;
+Key differentiators: Agent orchestration, context awareness, compliance-first approach, multi-tenant architecture, and ROI delivery in weeks not months.
+
+To enable my full AI capabilities, please add your OpenRouter API key to the environment. What specific sales challenge can I help optimize today?`;
         modelUsed = 'fallback';
       } else {
         // Configure OpenAI client for OpenRouter
@@ -194,19 +176,8 @@ To enable my full AI capabilities, please add your OpenRouter API key to the env
           content: msg.content
         })) || [];
 
-        // Sam's personality and context
-        const systemPrompt = `You are Sam, an expert AI sales assistant. Your role is to help users with all aspects of sales, lead management, customer relationships, and business growth.
-
-Key traits:
-- Professional yet friendly and approachable
-- Expert in sales methodology, CRM, lead qualification
-- Provide actionable, specific advice
-- Ask clarifying questions to better understand needs
-- Reference best practices from sales industry
-
-Context: This is a multi-tenant sales platform. The user is working in their own workspace with their own data and leads.
-
-Keep responses focused, helpful, and sales-oriented. If the user asks about non-sales topics, gently redirect to how you can help with their sales objectives.`;
+        // Load Sam's comprehensive knowledge base and generate dynamic system prompt
+        const systemPrompt = samKnowledge.getSystemPrompt();
 
         const response = await openai.chat.completions.create({
           model: 'anthropic/claude-3.5-sonnet', // Using Claude via OpenRouter
@@ -239,7 +210,7 @@ While I resolve this issue, I can still provide general sales guidance. What spe
       .from('sam_conversation_messages')
       .insert({
         conversation_id: conversationId,
-        tenant_id: userData.current_workspace_id,
+        tenant_id: workspaceId,
         role: 'assistant',
         content: samResponse,
         model_used: modelUsed,
