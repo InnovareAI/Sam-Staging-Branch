@@ -10,7 +10,10 @@ import {
   Building,
   ChevronRight,
   ChevronDown,
-  Search
+  Search,
+  Upload,
+  FileText,
+  Plus
 } from 'lucide-react';
 
 interface KnowledgeItem {
@@ -29,6 +32,8 @@ const KnowledgeBase = () => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showUpload, setShowUpload] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
 
   // Fetch knowledge base items from API
   useEffect(() => {
@@ -61,7 +66,8 @@ const KnowledgeBase = () => {
     { id: 'core', name: 'Core Identity' },
     { id: 'conversational-design', name: 'Conversation Design' },
     { id: 'strategy', name: 'Sales Strategy' },
-    { id: 'verticals', name: 'Industry Verticals' }
+    { id: 'verticals', name: 'Industry Verticals' },
+    { id: 'uploaded', name: 'Uploaded Documents' }
   ];
 
   // Items are already filtered by the API based on search and category
@@ -74,6 +80,29 @@ const KnowledgeBase = () => {
       newExpanded.add(itemId);
     }
     setExpandedItems(newExpanded);
+  };
+
+  const handleFileUpload = async () => {
+    if (!uploadFile) return;
+    
+    const formData = new FormData();
+    formData.append('file', uploadFile);
+    
+    try {
+      const response = await fetch('/api/knowledge/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (response.ok) {
+        setUploadFile(null);
+        setShowUpload(false);
+        // Refresh knowledge items
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+    }
   };
 
   return (
@@ -97,22 +126,68 @@ const KnowledgeBase = () => {
           />
         </div>
 
-        {/* Category Filter */}
-        <div className="flex flex-wrap gap-2">
-          {categories.map(category => (
-            <button
-              key={category.id}
-              onClick={() => setSelectedCategory(category.id)}
-              className={`px-3 py-1 rounded-full text-sm transition-colors ${
-                selectedCategory === category.id
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-              }`}
-            >
-              {category.name}
-            </button>
-          ))}
+        {/* Category Filter & Upload Button */}
+        <div className="flex justify-between items-center">
+          <div className="flex flex-wrap gap-2">
+            {categories.map(category => (
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                  selectedCategory === category.id
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+          
+          <button
+            onClick={() => setShowUpload(!showUpload)}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <Upload size={16} />
+            Upload Document
+          </button>
         </div>
+
+        {/* Upload Dialog */}
+        {showUpload && (
+          <div className="mt-4 p-4 bg-gray-800 rounded-lg border border-gray-600">
+            <h3 className="text-white font-medium mb-3">Upload Knowledge Document</h3>
+            <div className="space-y-3">
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,.txt,.md"
+                onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                className="w-full text-gray-300 bg-gray-700 rounded border border-gray-600 px-3 py-2"
+              />
+              {uploadFile && (
+                <div className="flex items-center gap-2 text-sm text-purple-300">
+                  <FileText size={16} />
+                  Ready to upload: {uploadFile.name}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleFileUpload}
+                  disabled={!uploadFile}
+                  className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Upload
+                </button>
+                <button
+                  onClick={() => setShowUpload(false)}
+                  className="px-4 py-2 bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Knowledge Items */}
@@ -134,6 +209,7 @@ const KnowledgeBase = () => {
                   case 'conversational-design': return MessageSquare;
                   case 'strategy': return Target;
                   case 'verticals': return Building;
+                  case 'uploaded': return FileText;
                   default: return Book;
                 }
               };

@@ -21,7 +21,7 @@ package = "@netlify/plugin-nextjs"
 
 [build]
 publish = "/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/.next"
-publishOrigin = "ui"
+publishOrigin = "config"
 commandOrigin = "config"
 command = "npm run build"
 
