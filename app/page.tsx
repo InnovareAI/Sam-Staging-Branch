@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import TrainingRoom from './components/TrainingRoom';
 import KnowledgeBase from './components/KnowledgeBase';
 import ContactCenter from './components/ContactCenter';
 import CampaignHub from './components/CampaignHub';
@@ -32,7 +31,6 @@ export default function Page() {
   const menuItems = [
     { id: 'chat', label: 'Chat with Sam', icon: MessageCircle, active: true },
     { id: 'knowledge', label: 'Knowledge Base', icon: Book, active: false },
-    { id: 'training', label: 'Sam Training Room', icon: GraduationCap, active: false },
     { id: 'contact', label: 'Contact Center', icon: Users, active: false },
     { id: 'campaign', label: 'Campaign Hub', icon: Megaphone, active: false },
     { id: 'pipeline', label: 'Lead Pipeline', icon: TrendingUp, active: false },
@@ -187,9 +185,7 @@ export default function Page() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col bg-gray-900">
-        {activeMenuItem === 'training' ? (
-          <TrainingRoom />
-        ) : activeMenuItem === 'knowledge' ? (
+        {activeMenuItem === 'knowledge' ? (
           <KnowledgeBase />
         ) : activeMenuItem === 'contact' ? (
           <ContactCenter />

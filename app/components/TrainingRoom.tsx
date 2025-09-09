@@ -155,9 +155,7 @@ const TrainingRoom: React.FC = () => {
     <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold text-white mb-4">Sam Training Room</h1>
-        <div className="bg-white rounded-lg p-6">
-          <OnboardingWizard />
-        </div>
+        <OnboardingWizard />
       </div>
     </div>
   );
