@@ -22,10 +22,10 @@ interface InboundRequest {
 }
 
 // Mock inbound requests data
-const MOCK_REQUESTS: InboundRequest[] = [
+const MOCK_REQUESTS = [
   { 
     id: '1', 
-    type: 'demo', 
+    type: 'demo' as const, 
     subject: 'Demo request from Acme Corp', 
     from: 'kevin@acme.com', 
     time: 'now',
@@ -34,7 +34,7 @@ const MOCK_REQUESTS: InboundRequest[] = [
   },
   { 
     id: '2', 
-    type: 'pricing', 
+    type: 'pricing' as const, 
     subject: 'Pricing for 10k leads', 
     from: 'mara@beta.com', 
     time: '5m',
@@ -43,7 +43,7 @@ const MOCK_REQUESTS: InboundRequest[] = [
   },
   { 
     id: '3', 
-    type: 'support', 
+    type: 'support' as const, 
     subject: 'Login issue', 
     from: 'ops@charlie.com', 
     time: '10m',
@@ -52,14 +52,14 @@ const MOCK_REQUESTS: InboundRequest[] = [
   },
   { 
     id: '4', 
-    type: 'demo', 
+    type: 'demo' as const, 
     subject: 'Product walkthrough request', 
     from: 'sarah@deltatech.com', 
     time: '1h',
     company: 'Delta Tech',
     details: 'Technical team wants to see API integration capabilities' 
   }
-];
+] satisfies InboundRequest[];
 
 // Inbound Inbox Component from Contact Center v1
 function InboundInbox() {
