@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useUser, useOrganization, UserButton, SignOutButton, SignIn, SignUp } from '@clerk/nextjs';
+import { useUser, useOrganization, UserButton, SignOutButton } from '@clerk/nextjs';
 import { OrganizationSwitcher } from './components/OrganizationSwitcher';
 import { InviteUserModal } from './components/InviteUserModal';
 import { useSamChat } from '@/lib/hooks/useSamChat';
@@ -47,8 +47,6 @@ export default function Page() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
   const [activeMenuItem, setActiveMenuItem] = useState('chat');
-  const [showSignIn, setShowSignIn] = useState(false);
-  const [showSignUp, setShowSignUp] = useState(false);
 
   // Load conversations when user is authenticated
   useEffect(() => {
@@ -87,58 +85,19 @@ export default function Page() {
             
             <div className="space-x-4">
               <button 
-                onClick={() => setShowSignIn(true)}
+                onClick={() => window.location.href = '/sign-in'}
                 className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-medium"
               >
                 Sign In
               </button>
               <button 
-                onClick={() => setShowSignUp(true)}
+                onClick={() => window.location.href = '/sign-up'}
                 className="bg-transparent border border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white px-8 py-3 rounded-lg font-medium"
               >
                 Sign Up
               </button>
             </div>
 
-            {/* Sign In Modal */}
-            {showSignIn && (
-              <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-                <div className="relative bg-white rounded-lg w-full max-w-md shadow-2xl">
-                  <button 
-                    onClick={() => setShowSignIn(false)}
-                    className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 z-10 bg-white rounded-full p-1"
-                  >
-                    <X size={20} />
-                  </button>
-                  <div className="p-4 pt-12">
-                    <SignIn 
-                      fallbackRedirectUrl="/"
-                      signUpUrl="/sign-up"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Sign Up Modal */}
-            {showSignUp && (
-              <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-                <div className="relative bg-white rounded-lg w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
-                  <button 
-                    onClick={() => setShowSignUp(false)}
-                    className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 z-10 bg-white rounded-full p-1"
-                  >
-                    <X size={20} />
-                  </button>
-                  <div className="p-4 pt-12">
-                    <SignUp 
-                      fallbackRedirectUrl="/"
-                      signInUrl="/sign-in"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       );
@@ -176,58 +135,18 @@ export default function Page() {
           
           <div className="space-x-4">
             <button 
-              onClick={() => setShowSignIn(true)}
+              onClick={() => window.location.href = '/sign-in'}
               className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-medium"
             >
               Sign In
             </button>
             <button 
-              onClick={() => setShowSignUp(true)}
+              onClick={() => window.location.href = '/sign-up'}
               className="bg-transparent border border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white px-8 py-3 rounded-lg font-medium"
             >
               Sign Up
             </button>
           </div>
-
-          {/* Sign In Modal */}
-          {showSignIn && (
-            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-              <div className="relative bg-white rounded-lg w-full max-w-md shadow-2xl">
-                <button 
-                  onClick={() => setShowSignIn(false)}
-                  className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 z-10 bg-white rounded-full p-1"
-                >
-                  <X size={20} />
-                </button>
-                <div className="p-4 pt-12">
-                  <SignIn 
-                    fallbackRedirectUrl="/"
-                    signUpUrl="/sign-up"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Sign Up Modal */}
-          {showSignUp && (
-            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-              <div className="relative bg-white rounded-lg w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
-                <button 
-                  onClick={() => setShowSignUp(false)}
-                  className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 z-10 bg-white rounded-full p-1"
-                >
-                  <X size={20} />
-                </button>
-                <div className="p-4 pt-12">
-                  <SignUp 
-                    fallbackRedirectUrl="/"
-                    signInUrl="/sign-in"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     );
