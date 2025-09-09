@@ -102,18 +102,18 @@ export default function Page() {
 
             {/* Sign In Modal */}
             {showSignIn && (
-              <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-                <div className="relative bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
+              <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+                <div className="relative bg-white rounded-lg w-full max-w-md shadow-2xl">
                   <button 
                     onClick={() => setShowSignIn(false)}
-                    className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 z-10"
+                    className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 z-10 bg-white rounded-full p-1"
                   >
-                    <X size={24} />
+                    <X size={20} />
                   </button>
-                  <div className="mt-4">
+                  <div className="p-4 pt-12">
                     <SignIn 
                       fallbackRedirectUrl="/"
-                      signUpUrl="#"
+                      signUpUrl="/sign-up"
                     />
                   </div>
                 </div>
@@ -122,18 +122,18 @@ export default function Page() {
 
             {/* Sign Up Modal */}
             {showSignUp && (
-              <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-                <div className="relative bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+              <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+                <div className="relative bg-white rounded-lg w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
                   <button 
                     onClick={() => setShowSignUp(false)}
-                    className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 z-10"
+                    className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 z-10 bg-white rounded-full p-1"
                   >
-                    <X size={24} />
+                    <X size={20} />
                   </button>
-                  <div className="mt-4">
+                  <div className="p-4 pt-12">
                     <SignUp 
                       fallbackRedirectUrl="/"
-                      signInUrl="#"
+                      signInUrl="/sign-in"
                     />
                   </div>
                 </div>
@@ -191,18 +191,18 @@ export default function Page() {
 
           {/* Sign In Modal */}
           {showSignIn && (
-            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-              <div className="relative bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+              <div className="relative bg-white rounded-lg w-full max-w-md shadow-2xl">
                 <button 
                   onClick={() => setShowSignIn(false)}
-                  className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 z-10"
+                  className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 z-10 bg-white rounded-full p-1"
                 >
-                  <X size={24} />
+                  <X size={20} />
                 </button>
-                <div className="mt-4">
+                <div className="p-4 pt-12">
                   <SignIn 
                     fallbackRedirectUrl="/"
-                    signUpUrl="#"
+                    signUpUrl="/sign-up"
                   />
                 </div>
               </div>
@@ -211,18 +211,18 @@ export default function Page() {
 
           {/* Sign Up Modal */}
           {showSignUp && (
-            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-              <div className="relative bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+              <div className="relative bg-white rounded-lg w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
                 <button 
                   onClick={() => setShowSignUp(false)}
-                  className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 z-10"
+                  className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 z-10 bg-white rounded-full p-1"
                 >
-                  <X size={24} />
+                  <X size={20} />
                 </button>
-                <div className="mt-4">
+                <div className="p-4 pt-12">
                   <SignUp 
                     fallbackRedirectUrl="/"
-                    signInUrl="#"
+                    signInUrl="/sign-in"
                   />
                 </div>
               </div>
