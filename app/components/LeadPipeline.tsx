@@ -1,7 +1,58 @@
 'use client';
 
-import React from 'react';
-import { TrendingUp, Users, Target, CheckCircle, Clock } from 'lucide-react';
+import { useState } from 'react';
+
+// Pipeline Board Component from v1
+const COLUMNS = ['Prospects', 'Qualified', 'Opportunities', 'Closed'] as const;
+const MOCK_PIPELINE = {
+  Prospects: [{ id: 'p1', name: 'Acme Inc.' }, { id: 'p2', name: 'Beta LLC' }],
+  Qualified: [{ id: 'q1', name: 'CoreTech' }],
+  Opportunities: [{ id: 'o1', name: 'DeltaWorks' }],
+  Closed: [{ id: 'c1', name: 'Everest' }],
+};
+
+type PipelineCard = { id: string; name: string };
+type PipelineData = Record<typeof COLUMNS[number], PipelineCard[]>;
+
+function PipelineBoard() {
+  const [cols, setCols] = useState<PipelineData>(MOCK_PIPELINE);
+  
+  const move = (from: string, to: string, idx: number) => {
+    const item = cols[from as keyof PipelineData][idx];
+    const newCols = { ...cols };
+    newCols[from as keyof PipelineData] = newCols[from as keyof PipelineData].filter((_, i) => i !== idx);
+    newCols[to as keyof PipelineData] = [...newCols[to as keyof PipelineData], item];
+    setCols(newCols);
+  };
+  
+  return (
+    <div className="grid grid-cols-4 gap-4">
+      {COLUMNS.map(col => (
+        <div key={col} className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+          <div className="font-semibold mb-4 text-white text-center">{col}</div>
+          <div className="space-y-3">
+            {cols[col]?.map((card: PipelineCard, i: number) => (
+              <div key={card.id} className="p-3 bg-gray-700 border border-gray-600 rounded-lg">
+                <div className="text-sm text-white font-medium mb-2">{card.name}</div>
+                <div className="flex gap-1 flex-wrap">
+                  {COLUMNS.filter(c => c !== col).map(target => (
+                    <button 
+                      key={target} 
+                      onClick={() => move(col, target, i)} 
+                      className="px-2 py-1 bg-gray-600 hover:bg-gray-500 text-gray-200 rounded text-xs transition-colors"
+                    >
+                      {target}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const LeadPipeline: React.FC = () => {
   return (
@@ -12,47 +63,9 @@ const LeadPipeline: React.FC = () => {
         <p className="text-gray-400">Track prospects from discovery to opportunities</p>
       </div>
 
-      {/* Coming Soon Content */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <TrendingUp size={64} className="mx-auto mb-6 text-purple-500 opacity-50" />
-          <h2 className="text-2xl font-bold text-white mb-4">Lead Pipeline</h2>
-          <p className="text-gray-400 mb-8">
-            Comprehensive pipeline management with enrichment status, lead scoring, and next action recommendations.
-          </p>
-          
-          {/* Preview Pipeline Stages */}
-          <div className="grid grid-cols-1 gap-4 text-left">
-            <div className="flex items-center gap-3 p-4 bg-gray-800 rounded-lg border border-gray-700">
-              <Target size={20} className="text-blue-400" />
-              <div>
-                <h3 className="text-white font-medium">Discovery</h3>
-                <p className="text-gray-400 text-sm">Lead identification and initial outreach</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-4 bg-gray-800 rounded-lg border border-gray-700">
-              <Users size={20} className="text-yellow-400" />
-              <div>
-                <h3 className="text-white font-medium">Qualified</h3>
-                <p className="text-gray-400 text-sm">Engaged prospects with confirmed interest</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-4 bg-gray-800 rounded-lg border border-gray-700">
-              <Clock size={20} className="text-orange-400" />
-              <div>
-                <h3 className="text-white font-medium">Opportunity</h3>
-                <p className="text-gray-400 text-sm">Active deals in negotiation</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-4 bg-gray-800 rounded-lg border border-gray-700">
-              <CheckCircle size={20} className="text-green-400" />
-              <div>
-                <h3 className="text-white font-medium">Closed Won</h3>
-                <p className="text-gray-400 text-sm">Successfully converted customers</p>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Pipeline Board */}
+      <div className="max-w-7xl">
+        <PipelineBoard />
       </div>
     </div>
   );
