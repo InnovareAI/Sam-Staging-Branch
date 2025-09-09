@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ArrowRight, ArrowLeft } from 'lucide-react';
 
-// Onboarding scripts from Training Room v2
+// Onboarding scripts from Training Room v2 2
 const opener = [
   "Hi, I'm Sam. How's your day going so far?",
   "Good to hear. Before we get started, what should I call you?"
@@ -42,31 +41,27 @@ type Answer = { stageId: number; value: string };
 // Progress Bar Component
 function ProgressBar({ progress }: { progress: number }) {
   return (
-    <div className="w-full bg-gray-700 rounded h-2">
-      <div className="bg-purple-600 h-2 rounded transition-all duration-300" style={{width:`${progress}%`}} />
+    <div className="w-full bg-gray-200 rounded h-2">
+      <div className="bg-blue-600 h-2 rounded" style={{width:`${progress}%`}} />
     </div>
   );
 }
 
-// Question Card Component
+// Question Card Component  
 function QuestionCard({ question, onSubmit }: { question: string; onSubmit: (val:string)=>void }) {
   const [val, setVal] = useState('');
   return (
-    <div className="p-4 bg-gray-800 border border-gray-700 rounded-lg space-y-4">
-      <p className="text-gray-300">{question}</p>
-      <textarea
-        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none min-h-[120px]"
+    <div className="p-4 border rounded bg-gray-50 space-y-2">
+      <p>{question}</p>
+      <input
+        type="text"
+        className="mt-1 border px-2 py-1 w-full"
         placeholder="Your answer... (or skip)"
         value={val}
         onChange={e=>setVal(e.target.value)}
       />
       <div className="flex gap-2">
-        <button 
-          onClick={()=>onSubmit(val)} 
-          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-        >
-          Submit
-        </button>
+        <button onClick={()=>onSubmit(val)} className="px-3 py-2 bg-blue-600 text-white rounded">Submit</button>
       </div>
     </div>
   );
@@ -110,57 +105,42 @@ function OnboardingWizard() {
   const progress = step < 3 ? 10 + step*20 : ((stageIndex+1)/stages.length)*100;
 
   return (
-    <div className="space-y-4 p-6 bg-gray-900 text-white">
+    <div className="space-y-4">
       <ProgressBar progress={progress} />
 
       {step===0 && (
         <div className="space-y-3">
-          {opener.map((line,i)=>(<p key={i} className="text-gray-300">{line}</p>))}
-          <button onClick={next} className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors">Continue</button>
+          {opener.map((line,i)=>(<p key={i}>{line}</p>))}
+          <button onClick={next} className="px-4 py-2 bg-blue-600 text-white rounded">Continue</button>
         </div>
       )}
 
       {step===1 && (
         <div className="space-y-3">
-          {orientation.map((line,i)=>(<p key={i} className="text-gray-300">{line}</p>))}
-          <button onClick={next} className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors">Continue</button>
+          {orientation.map((line,i)=>(<p key={i}>{line}</p>))}
+          <button onClick={next} className="px-4 py-2 bg-blue-600 text-white rounded">Continue</button>
         </div>
       )}
 
       {step===2 && (
         <div className="space-y-3">
-          <h3 className="font-semibold text-white">Quick Tour</h3>
+          <h3 className="font-semibold">Quick Tour</h3>
           <ul className="list-disc pl-5 space-y-1">
-            {roomTour.map((line,i)=>(<li key={i} className="text-gray-300">{line}</li>))}
+            {roomTour.map((line,i)=>(<li key={i}>{line}</li>))}
           </ul>
-          <button onClick={next} className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors">Start</button>
+          <button onClick={next} className="px-4 py-2 bg-blue-600 text-white rounded">Start</button>
         </div>
       )}
 
       {step===3 && (
         <div className="space-y-4">
-          <h3 className="font-semibold text-white">{stages[stageIndex].title}</h3>
+          <h3 className="font-semibold">{stages[stageIndex].title}</h3>
           <QuestionCard question={stages[stageIndex].question} onSubmit={onAnswer} />
           <div className="flex gap-2">
-            <button 
-              onClick={()=>setStageIndex(Math.max(0, stageIndex-1))} 
-              className="px-3 py-2 border border-gray-600 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors"
-            >
-              Back
-            </button>
-            <button 
-              onClick={nextStage} 
-              className="px-3 py-2 border border-gray-600 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors"
-            >
-              Skip
-            </button>
+            <button onClick={()=>setStageIndex(Math.max(0, stageIndex-1))} className="px-3 py-2 border rounded">Back</button>
+            <button onClick={nextStage} className="px-3 py-2 border rounded">Skip</button>
             {stageIndex===stages.length-1 && (
-              <button 
-                onClick={()=>alert('Onboarding complete')} 
-                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
-              >
-                Finish
-              </button>
+              <button onClick={()=>alert('Onboarding complete')} className="px-3 py-2 bg-emerald-600 text-white rounded">Finish</button>
             )}
           </div>
         </div>
@@ -175,7 +155,9 @@ const TrainingRoom: React.FC = () => {
     <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold text-white mb-4">Sam Training Room</h1>
-        <OnboardingWizard />
+        <div className="bg-white rounded-lg p-6">
+          <OnboardingWizard />
+        </div>
       </div>
     </div>
   );
