@@ -59,19 +59,19 @@
       "static/chunks/main-app-8979707e7acb6cc8.js",
       "static/chunks/app/api/test-simple/route-d05a1282943bbfcf.js"
     ],
-    "/api/webhooks/clerk/route": [
-      "static/chunks/webpack-488f06ef95150697.js",
-      "static/chunks/4bd1b696-c023c6e3521b1417.js",
-      "static/chunks/255-e3bf15caf1f1e0f9.js",
-      "static/chunks/main-app-8979707e7acb6cc8.js",
-      "static/chunks/app/api/webhooks/clerk/route-d05a1282943bbfcf.js"
-    ],
     "/api/workspaces/invite/route": [
       "static/chunks/webpack-488f06ef95150697.js",
       "static/chunks/4bd1b696-c023c6e3521b1417.js",
       "static/chunks/255-e3bf15caf1f1e0f9.js",
       "static/chunks/main-app-8979707e7acb6cc8.js",
       "static/chunks/app/api/workspaces/invite/route-d05a1282943bbfcf.js"
+    ],
+    "/api/webhooks/clerk/route": [
+      "static/chunks/webpack-488f06ef95150697.js",
+      "static/chunks/4bd1b696-c023c6e3521b1417.js",
+      "static/chunks/255-e3bf15caf1f1e0f9.js",
+      "static/chunks/main-app-8979707e7acb6cc8.js",
+      "static/chunks/app/api/webhooks/clerk/route-d05a1282943bbfcf.js"
     ],
     "/api/workspaces/join/route": [
       "static/chunks/webpack-488f06ef95150697.js",
