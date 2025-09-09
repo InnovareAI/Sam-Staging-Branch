@@ -1,8 +1,8 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
   "/api/knowledge/route": "app/api/knowledge/route.js",
-  "/api/sam/chat/route": "app/api/sam/chat/route.js",
   "/api/knowledge/upload/route": "app/api/knowledge/upload/route.js",
+  "/api/sam/chat/route": "app/api/sam/chat/route.js",
   "/api/test-email/route": "app/api/test-email/route.js",
   "/api/test-sam/route": "app/api/test-sam/route.js",
   "/api/test-simple/route": "app/api/test-simple/route.js",

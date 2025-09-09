@@ -1,75 +1,194 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Book, 
-  User, 
-  MessageSquare, 
-  AlertTriangle, 
-  Target,
-  Building,
-  ChevronRight,
-  ChevronDown,
-  Search,
-  Upload,
-  FileText,
-  Plus,
-  TestTube
-} from 'lucide-react';
+import React, { useState } from 'react';
 
-// Vector Test Component for v2
+// Upload Area Component from VisualMock v1
+function UploadArea() {
+  const [file, setFile] = useState<File | null>(null);
+  const [status, setStatus] = useState<'idle' | 'uploading' | 'done'>('idle');
+  
+  return (
+    <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+      <h3 className="font-semibold mb-2 text-white">Upload Document</h3>
+      <div className="border-2 border-dashed border-gray-600 rounded p-6 text-center">
+        <input 
+          type="file" 
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)} 
+          className="text-gray-300"
+        />
+        <p className="text-sm text-gray-400 mt-2">PDF, DOCX, MD, URL exports</p>
+      </div>
+      <div className="flex items-center gap-2 mt-3">
+        <button
+          className="px-3 py-2 rounded bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 transition-colors"
+          disabled={!file || status === 'uploading'}
+          onClick={() => setStatus('done')}
+        >
+          {status === 'uploading' ? 'Uploading…' : 'Upload (mock)'}
+        </button>
+        {file && <span className="text-sm text-gray-400">Selected: {file.name}</span>}
+      </div>
+    </div>
+  );
+}
+
+// Vector Test Component from VisualMock v1
 function VectorTest() {
   const [q, setQ] = useState('');
-  const [res, setRes] = useState<any[]>([]);
-  
-  const run = async () => {
-    try {
-      const r = await fetch('/api/kb/test-retrieval', { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ query: q, scope: { org_id: 'org-demo' }})
-      });
-      const j = await r.json();
-      setRes(j.results || []);
-    } catch (error) {
-      console.error('Vector test error:', error);
-      setRes([]);
-    }
+  const [results, setResults] = useState<Array<{ score: number; text: string; labels: string[] }>>([]);
+
+  const run = () => {
+    // mock results
+    setResults([
+      { score: 0.89, text: 'Our ICP are B2B SaaS startups…', labels: ['icp', 'saas'] },
+      { score: 0.74, text: 'Competitors include HubSpot and Apollo…', labels: ['competitive'] },
+      { score: 0.66, text: 'Success metrics: reply %, meetings/mo, ROI…', labels: ['metrics'] },
+    ]);
   };
 
   return (
-    <div className="mb-6 p-4 bg-gray-800 border border-gray-700 rounded-lg">
-      <div className="flex items-center gap-2 mb-3">
-        <TestTube size={20} className="text-purple-400" />
-        <h3 className="text-white font-semibold">Test Knowledge Retrieval</h3>
-      </div>
-      <p className="text-gray-400 text-sm mb-4">
-        Test vector search capabilities with your knowledge base
-      </p>
-      <div className="flex gap-2 mb-4">
+    <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+      <h3 className="font-semibold mb-2 text-white">Test Knowledge Retrieval</h3>
+      <div className="flex gap-2">
         <input 
-          className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none" 
-          placeholder="Ask a question..." 
+          className="bg-gray-700 border border-gray-600 px-3 py-2 rounded text-white placeholder-gray-400 w-full focus:border-purple-500 focus:outline-none" 
+          placeholder="Ask a question…" 
           value={q} 
           onChange={e => setQ(e.target.value)} 
-          onKeyPress={e => e.key === 'Enter' && run()}
         />
         <button 
-          onClick={run} 
-          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded transition-colors" 
+          onClick={run}
         >
-          Search
+          Run
         </button>
       </div>
-      {res.length > 0 && (
-        <div className="space-y-2 max-h-80 overflow-auto">
-          {res.map((r, i) => (
-            <div key={i} className="p-3 border border-gray-600 rounded bg-gray-700">
-              <div className="text-xs text-gray-400 mb-1">
-                Relevance Score: {r.score?.toFixed?.(3)}
-              </div>
-              <div className="text-sm text-gray-300">
-                {r.text?.slice(0, 200)}{(r.text?.length || 0) > 200 ? '...' : ''}
+      <div className="space-y-2 mt-3 max-h-72 overflow-auto">
+        {results.map((r, i) => (
+          <div key={i} className="p-3 bg-gray-700 border border-gray-600 rounded">
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-800 text-white text-[10px]">
+                {(r.score * 100).toFixed(0)}
+              </span>
+              <span>score</span>
+            </div>
+            <div className="text-sm mt-1 text-gray-300">{r.text}</div>
+            <div className="flex gap-2 mt-2 flex-wrap">
+              {r.labels.map(l => (
+                <span key={l} className="px-2 py-0.5 text-xs rounded bg-gray-600 text-gray-200">
+                  {l}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Documents Table Component from VisualMock v1
+type Doc = { name: string; status: 'Ready' | 'Processing' | 'Error'; uploaded: string; labels: string[] };
+const MOCK_DOCS: Doc[] = [
+  { name: 'ICP_SaaS.pdf', status: 'Ready', uploaded: '10m ago', labels: ['icp', 'saas'] },
+  { name: 'Competitors_2025.md', status: 'Processing', uploaded: '2m ago', labels: ['competitive'] },
+  { name: 'CaseStudy_Acme.pdf', status: 'Error', uploaded: '1h ago', labels: [] },
+];
+
+function DocumentsTable() {
+  return (
+    <div className="bg-gray-800 border border-gray-700 rounded-lg">
+      <div className="px-4 py-3 border-b border-gray-700 font-semibold text-white">Documents</div>
+      <table className="w-full text-sm">
+        <thead className="bg-gray-750 text-gray-400">
+          <tr>
+            <th className="text-left px-4 py-2">File Name</th>
+            <th className="text-left px-4 py-2">Status</th>
+            <th className="text-left px-4 py-2">Uploaded</th>
+            <th className="text-left px-4 py-2">Labels</th>
+            <th className="text-right px-4 py-2">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {MOCK_DOCS.map((d) => (
+            <tr key={d.name} className="border-t border-gray-700">
+              <td className="px-4 py-2 text-gray-300">{d.name}</td>
+              <td className="px-4 py-2">
+                {d.status === 'Ready' && (
+                  <span className="inline-flex items-center gap-1 text-green-400">
+                    <span className="w-2 h-2 rounded-full bg-green-500" />Ready
+                  </span>
+                )}
+                {d.status === 'Processing' && (
+                  <span className="inline-flex items-center gap-1 text-yellow-400">
+                    <span className="w-2 h-2 rounded-full bg-yellow-500" />Processing
+                  </span>
+                )}
+                {d.status === 'Error' && (
+                  <span className="inline-flex items-center gap-1 text-red-400">
+                    <span className="w-2 h-2 rounded-full bg-red-500" />Error
+                  </span>
+                )}
+              </td>
+              <td className="px-4 py-2 text-gray-400">{d.uploaded}</td>
+              <td className="px-4 py-2">
+                <div className="flex gap-2 flex-wrap">
+                  {d.labels.length ? (
+                    d.labels.map(l => (
+                      <span key={l} className="px-2 py-0.5 text-xs rounded bg-gray-600 text-gray-200">
+                        {l}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-500">—</span>
+                  )}
+                </div>
+              </td>
+              <td className="px-4 py-2 text-right">
+                <button className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors">
+                  View Chunks
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Chunk Drawer Component from VisualMock v1
+const MOCK_CHUNKS = [
+  { text: 'Our ICP: B2B SaaS, 50–200 employees, NA/EU, VP Sales/CRO…', labels: ['icp', 'saas', 'vp_sales'], confidence: 0.92 },
+  { text: 'Competitors: HubSpot, Apollo; we win on personalization at scale…', labels: ['competitive'], confidence: 0.81 },
+];
+
+function ChunkDrawer() {
+  const [open, setOpen] = useState(false);
+  
+  return (
+    <div className="bg-gray-800 border border-gray-700 rounded-lg">
+      <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
+        <div className="font-semibold text-white">Chunks</div>
+        <button 
+          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors" 
+          onClick={() => setOpen(!open)}
+        >
+          {open ? 'Close' : 'Open'}
+        </button>
+      </div>
+      {open && (
+        <div className="p-4 space-y-3 max-h-72 overflow-auto">
+          {MOCK_CHUNKS.map((c, i) => (
+            <div key={i} className="p-3 bg-gray-700 border border-gray-600 rounded">
+              <div className="text-sm text-gray-300">{c.text}</div>
+              <div className="flex gap-2 mt-2 flex-wrap">
+                {c.labels.map(l => (
+                  <span key={l} className="px-2 py-0.5 text-xs rounded bg-gray-600 text-gray-200">
+                    {l}
+                  </span>
+                ))}
+                <span className="ml-auto text-xs text-gray-400">conf: {Math.round(c.confidence * 100)}%</span>
               </div>
             </div>
           ))}
@@ -79,276 +198,30 @@ function VectorTest() {
   );
 }
 
-interface KnowledgeItem {
-  id: string;
-  title: string;
-  category: string;
-  content: string;
-  tags: string[];
-  created_at: string;
-  updated_at: string;
-}
-
-const KnowledgeBase = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-  const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showUpload, setShowUpload] = useState(false);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-
-  // Fetch knowledge base items from API
-  useEffect(() => {
-    const fetchKnowledge = async () => {
-      try {
-        setLoading(true);
-        const params = new URLSearchParams();
-        if (searchTerm) params.append('search', searchTerm);
-        if (selectedCategory !== 'all') params.append('category', selectedCategory);
-        
-        const response = await fetch(`/api/knowledge?${params.toString()}`);
-        const data = await response.json();
-        
-        if (data.success) {
-          setKnowledgeItems(data.data);
-        }
-      } catch (error) {
-        console.error('Error fetching knowledge base:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const debounceTimer = setTimeout(fetchKnowledge, 300);
-    return () => clearTimeout(debounceTimer);
-  }, [searchTerm, selectedCategory]);
-
-  const categories = [
-    { id: 'all', name: 'All Categories' },
-    { id: 'core', name: 'Core Identity' },
-    { id: 'conversational-design', name: 'Conversation Design' },
-    { id: 'strategy', name: 'Sales Strategy' },
-    { id: 'verticals', name: 'Industry Verticals' },
-    { id: 'uploaded', name: 'Uploaded Documents' }
-  ];
-
-  // Items are already filtered by the API based on search and category
-
-  const toggleExpanded = (itemId: string) => {
-    const newExpanded = new Set(expandedItems);
-    if (newExpanded.has(itemId)) {
-      newExpanded.delete(itemId);
-    } else {
-      newExpanded.add(itemId);
-    }
-    setExpandedItems(newExpanded);
-  };
-
-  const handleFileUpload = async () => {
-    if (!uploadFile) return;
-    
-    const formData = new FormData();
-    formData.append('file', uploadFile);
-    
-    try {
-      const response = await fetch('/api/knowledge/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (response.ok) {
-        setUploadFile(null);
-        setShowUpload(false);
-        // Refresh knowledge items
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error('Upload error:', error);
-    }
-  };
-
+const KnowledgeBase: React.FC = () => {
   return (
-    <div className="flex-1 flex flex-col bg-gray-900">
+    <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
       {/* Header */}
-      <div className="border-b border-gray-700 p-6">
-        <h1 className="text-white text-2xl font-bold mb-4">SAM AI Knowledge Base</h1>
-        <p className="text-gray-400 text-sm mb-6">
-          Comprehensive training data and conversational patterns for SAM AI v4.4
-        </p>
-
-        {/* Search Bar */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="text"
-            placeholder="Search knowledge base..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
-          />
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">Knowledge Base</h1>
+          <p className="text-gray-400">Manage and search your knowledge documents</p>
         </div>
-
-        {/* Category Filter & Upload Button */}
-        <div className="flex justify-between items-center">
-          <div className="flex flex-wrap gap-2">
-            {categories.map(category => (
-              <button
-                key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
-                className={`px-3 py-1 rounded-full text-sm transition-colors ${
-                  selectedCategory === category.id
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                }`}
-              >
-                {category.name}
-              </button>
-            ))}
-          </div>
-          
-          <button
-            onClick={() => setShowUpload(!showUpload)}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            <Upload size={16} />
-            Upload Document
-          </button>
-        </div>
-
-        {/* Upload Dialog */}
-        {showUpload && (
-          <div className="mt-4 p-4 bg-gray-800 rounded-lg border border-gray-600">
-            <h3 className="text-white font-medium mb-3">Upload Knowledge Document</h3>
-            <div className="space-y-3">
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx,.txt,.md"
-                onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-                className="w-full text-gray-300 bg-gray-700 rounded border border-gray-600 px-3 py-2"
-              />
-              {uploadFile && (
-                <div className="flex items-center gap-2 text-sm text-purple-300">
-                  <FileText size={16} />
-                  Ready to upload: {uploadFile.name}
-                </div>
-              )}
-              <div className="flex gap-2">
-                <button
-                  onClick={handleFileUpload}
-                  disabled={!uploadFile}
-                  className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Upload
-                </button>
-                <button
-                  onClick={() => setShowUpload(false)}
-                  className="px-4 py-2 bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Knowledge Items */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {/* Vector Test Component */}
-        <VectorTest />
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto mb-4"></div>
-            <p className="text-gray-400">Loading knowledge base...</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {knowledgeItems.map(item => {
-              const isExpanded = expandedItems.has(item.id);
-              
-              // Get icon based on category
-              const getIcon = (category: string) => {
-                switch (category) {
-                  case 'core': return User;
-                  case 'conversational-design': return MessageSquare;
-                  case 'strategy': return Target;
-                  case 'verticals': return Building;
-                  case 'uploaded': return FileText;
-                  default: return Book;
-                }
-              };
-              
-              const IconComponent = getIcon(item.category);
+      {/* Main Content */}
+      <div className="max-w-7xl space-y-6">
+        {/* Upload and Test Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <UploadArea />
+          <VectorTest />
+        </div>
 
-              return (
-                <div key={item.id} className="bg-gray-800 rounded-lg border border-gray-700">
-                  <button
-                    onClick={() => toggleExpanded(item.id)}
-                    className="w-full p-4 flex items-center justify-between hover:bg-gray-750 transition-colors"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <IconComponent size={20} className="text-purple-400" />
-                      <div className="text-left">
-                        <h3 className="text-white font-medium">{item.title}</h3>
-                        <p className="text-gray-400 text-sm capitalize">
-                          {item.category.replace('-', ' ')}
-                        </p>
-                        {item.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {item.tags.slice(0, 3).map(tag => (
-                              <span key={tag} className="text-xs text-purple-300 bg-purple-900/20 px-1 py-0.5 rounded">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {isExpanded ? (
-                      <ChevronDown className="text-gray-400" size={20} />
-                    ) : (
-                      <ChevronRight className="text-gray-400" size={20} />
-                    )}
-                  </button>
-
-                  {isExpanded && (
-                    <div className="px-4 pb-4">
-                      <div className="bg-gray-900 rounded-lg p-4">
-                        <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">
-                          {item.content}
-                        </p>
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          <span className="text-xs text-purple-400 bg-purple-900/30 px-2 py-1 rounded">
-                            {item.category.replace('-', ' ').toUpperCase()}
-                          </span>
-                          {item.tags.map(tag => (
-                            <span key={tag} className="text-xs text-blue-400 bg-blue-900/20 px-2 py-1 rounded">
-                              {tag}
-                            </span>
-                          ))}
-                          <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">
-                            Updated: {new Date(item.updated_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {knowledgeItems.length === 0 && !loading && (
-              <div className="text-center py-12">
-                <Book className="mx-auto mb-4 text-gray-600" size={48} />
-                <h3 className="text-white text-lg mb-2">No knowledge found</h3>
-                <p className="text-gray-400">
-                  Try adjusting your search terms or category filter.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Documents Table */}
+        <DocumentsTable />
+        
+        {/* Chunk Drawer */}
+        <ChunkDrawer />
       </div>
     </div>
   );
