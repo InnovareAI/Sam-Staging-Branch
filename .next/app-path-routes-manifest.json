@@ -6,12 +6,12 @@
   "/api/test-email/route": "/api/test-email",
   "/api/test-sam/route": "/api/test-sam",
   "/api/test-simple/route": "/api/test-simple",
-  "/api/workspaces/invite/route": "/api/workspaces/invite",
   "/api/webhooks/clerk/route": "/api/webhooks/clerk",
   "/api/workspaces/join/route": "/api/workspaces/join",
+  "/api/workspaces/invite/route": "/api/workspaces/invite",
   "/api/workspaces/switch/route": "/api/workspaces/switch",
   "/invite/[token]/page": "/invite/[token]",
   "/page": "/",
-  "/sign-in/[[...sign-in]]/page": "/sign-in/[[...sign-in]]",
-  "/sign-up/[[...sign-up]]/page": "/sign-up/[[...sign-up]]"
+  "/sign-up/[[...sign-up]]/page": "/sign-up/[[...sign-up]]",
+  "/sign-in/[[...sign-in]]/page": "/sign-in/[[...sign-in]]"
 }
