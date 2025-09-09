@@ -11,8 +11,18 @@ import {
   Users
 } from 'lucide-react';
 
+interface InboundRequest {
+  id: string;
+  type: 'demo' | 'pricing' | 'support';
+  subject: string;
+  from: string;
+  time: string;
+  company: string;
+  details: string;
+}
+
 // Mock inbound requests data
-const MOCK_REQUESTS = [
+const MOCK_REQUESTS: InboundRequest[] = [
   { 
     id: '1', 
     type: 'demo', 
@@ -50,16 +60,6 @@ const MOCK_REQUESTS = [
     details: 'Technical team wants to see API integration capabilities' 
   }
 ];
-
-interface InboundRequest {
-  id: string;
-  type: 'demo' | 'pricing' | 'support';
-  subject: string;
-  from: string;
-  time: string;
-  company: string;
-  details: string;
-}
 
 // Inbound Inbox Component from Contact Center v1
 function InboundInbox() {
