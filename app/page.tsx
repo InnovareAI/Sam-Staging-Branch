@@ -248,9 +248,6 @@ function AuthenticatedApp({
                 <p className="text-gray-400 text-sm">Sales Assistant</p>
               </div>
             </div>
-            <button className="text-gray-400 hover:text-gray-300 transition-colors">
-              <X size={20} />
-            </button>
           </div>
           {/* Organization Switcher - Only show if user has organizations */}
           {organization && (
