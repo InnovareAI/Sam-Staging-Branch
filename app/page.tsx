@@ -49,6 +49,7 @@ export default function Page() {
 
   // Load conversations when user is authenticated
   useEffect(() => {
+    console.log('🔍 Auth State:', { userLoaded, user: !!user, userId: user?.id });
     if (userLoaded && user) {
       console.log('🔄 Loading conversations for authenticated user...');
       loadConversations();
