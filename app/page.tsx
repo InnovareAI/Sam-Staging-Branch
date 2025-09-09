@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useUser, useOrganization, UserButton, SignOutButton } from '@clerk/nextjs';
-import { OrganizationSwitcher } from './components/OrganizationSwitcher';
-import { InviteUserModal } from './components/InviteUserModal';
+import { supabase } from '@/lib/supabase';
+import { User } from '@supabase/supabase-js';
 import { useSamChat } from '@/lib/hooks/useSamChat';
 import TrainingRoom from './components/TrainingRoom';
 import { 
@@ -17,20 +16,24 @@ import {
   Settings,
   Send,
   Paperclip,
-  Building,
   UserPlus,
   LogOut
 } from 'lucide-react';
 
 export default function Page() {
-  // Check if Clerk is properly configured
-  const isClerkConfigured = 
-    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && 
-    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY !== 'your_publishable_key_here';
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [showMagicLink, setShowMagicLink] = useState(false);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState('');
 
-  const { user, isLoaded: userLoaded } = useUser();
-  const { organization } = useOrganization();
-  
   // Sam chat integration
   const { 
     messages, 
@@ -43,67 +46,188 @@ export default function Page() {
   } = useSamChat();
 
   const [showStarterScreen, setShowStarterScreen] = useState(true);
-  const [showInviteModal, setShowInviteModal] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
   const [activeMenuItem, setActiveMenuItem] = useState('chat');
 
-  // Load conversations when user is authenticated
+  // Check user authentication status
   useEffect(() => {
-    console.log('🔍 Auth State:', { userLoaded, user: !!user, userId: user?.id });
-    if (userLoaded && user) {
-      console.log('🔄 Loading conversations for authenticated user...');
-      loadConversations();
-    }
-  }, [userLoaded, user, loadConversations]);
+    const getUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user || null);
+      setLoading(false);
+    };
 
-  // Add timeout for loading state to prevent infinite loading
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
-  
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoadingTimeout(true);
-    }, 5000); // Show timeout UI after 5 seconds, but don't auto-redirect
-    
-    return () => clearTimeout(timer);
-  }, [userLoaded]);
+    getUser();
 
-  // Loading state - wait for authentication (with timeout fallback)
-  if (!userLoaded) {
-    if (loadingTimeout) {
-      // After timeout, show the landing page with authentication buttons
-      return (
-        <div className="flex h-screen bg-gray-900 items-center justify-center">
-          <div className="text-center">
-            <img 
-              src="/SAM.jpg" 
-              alt="Sam AI" 
-              className="w-32 h-32 rounded-full mx-auto mb-8 object-cover"
-              style={{ objectPosition: 'center 30%' }}
-            />
-            <h1 className="text-4xl font-bold text-white mb-4">Welcome to SAM AI</h1>
-            <p className="text-gray-400 text-lg mb-8">Your AI-powered Sales Assistant</p>
-            
-            <div className="space-x-4">
-              <button 
-                onClick={() => window.location.href = '/sign-in'}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-medium"
-              >
-                Sign In
-              </button>
-              <button 
-                onClick={() => window.location.href = '/sign-up'}
-                className="bg-transparent border border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white px-8 py-3 rounded-lg font-medium"
-              >
-                Sign Up
-              </button>
-            </div>
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('🔍 Supabase Auth Event:', event, session?.user?.id);
+        setUser(session?.user || null);
+        
+        if (session?.user && event === 'SIGNED_IN') {
+          console.log('✅ User authenticated with Supabase');
+          
+          // Create tenant/organization if it doesn't exist
+          await createTenantIfNeeded(session.user);
+          
+          loadConversations();
+        } else if (session?.user) {
+          loadConversations();
+        }
+      }
+    );
 
-          </div>
-        </div>
-      );
+    return () => subscription.unsubscribe();
+  }, [loadConversations]);
+
+  // Handle sign in
+  const handleSignIn = async () => {
+    setAuthLoading(true);
+    setAuthError('');
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setAuthError(error.message);
     }
     
-    // Normal loading state
+    setAuthLoading(false);
+  };
+
+  // Handle sign up
+  const handleSignUp = async () => {
+    setAuthLoading(true);
+    setAuthError('');
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+          company_name: companyName
+        }
+      }
+    });
+
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      setAuthError('Account created successfully! You can now sign in.');
+    }
+    
+    setAuthLoading(false);
+  };
+
+  // Handle magic link
+  const handleMagicLink = async () => {
+    setAuthLoading(true);
+    setAuthError('');
+
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true
+      }
+    });
+
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      setAuthError('Check your email for the magic link!');
+    }
+    
+    setAuthLoading(false);
+  };
+
+  // Handle password reset
+  const handlePasswordReset = async () => {
+    if (!email) {
+      setAuthError('Please enter your email address first');
+      return;
+    }
+
+    setAuthLoading(true);
+    setAuthError('');
+
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email);
+
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      setAuthError('Check your email for password reset link!');
+    }
+    
+    setAuthLoading(false);
+  };
+
+  // Create tenant/organization if needed
+  const createTenantIfNeeded = async (user: any) => {
+    if (!user.user_metadata?.company_name) return;
+
+    try {
+      // Check if tenant already exists
+      const { data: existingTenant } = await supabase
+        .from('tenants')
+        .select('id')
+        .eq('company_name', user.user_metadata.company_name)
+        .single();
+
+      if (!existingTenant) {
+        // Create new tenant
+        const { data: newTenant, error } = await supabase
+          .from('tenants')
+          .insert({
+            name: user.user_metadata.company_name,
+            company_name: user.user_metadata.company_name,
+            slug: user.user_metadata.company_name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+            plan: 'starter',
+            status: 'active'
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error creating tenant:', error);
+          return;
+        }
+
+        console.log('✅ Created tenant:', newTenant);
+
+        // Create tenant membership
+        if (newTenant) {
+          const { error: membershipError } = await supabase
+            .from('tenant_memberships')
+            .insert({
+              user_id: user.id,
+              tenant_id: newTenant.id,
+              role: 'owner'
+            });
+
+          if (membershipError) {
+            console.error('Error creating tenant membership:', membershipError);
+          } else {
+            console.log('✅ Created tenant membership');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in createTenantIfNeeded:', error);
+    }
+  };
+
+  // Handle sign out
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  // Loading state
+  if (loading) {
     return (
       <div className="flex h-screen bg-gray-900 items-center justify-center">
         <div className="text-center">
@@ -119,34 +243,227 @@ export default function Page() {
     );
   }
 
-  // Not authenticated - show landing page with auth buttons
+  // Not authenticated - show auth form
   if (!user) {
     return (
       <div className="flex h-screen bg-gray-900 items-center justify-center">
-        <div className="text-center">
-          <img 
-            src="/SAM.jpg" 
-            alt="Sam AI" 
-            className="w-32 h-32 rounded-full mx-auto mb-8 object-cover"
-            style={{ objectPosition: 'center 30%' }}
-          />
-          <h1 className="text-4xl font-bold text-white mb-4">Welcome to SAM AI</h1>
-          <p className="text-gray-400 text-lg mb-8">Your AI-powered Sales Assistant</p>
-          
-          <div className="space-x-4">
-            <button 
-              onClick={() => window.location.href = '/sign-in'}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-medium"
-            >
-              Sign In
-            </button>
-            <button 
-              onClick={() => window.location.href = '/sign-up'}
-              className="bg-transparent border border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white px-8 py-3 rounded-lg font-medium"
-            >
-              Sign Up
-            </button>
+        <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md">
+          <div className="text-center mb-8">
+            <img 
+              src="/SAM.jpg" 
+              alt="Sam AI" 
+              className="w-16 h-16 rounded-full mx-auto mb-4 object-cover"
+              style={{ objectPosition: 'center 30%' }}
+            />
+            <h1 className="text-2xl font-bold text-white mb-2">
+              {isSignUp ? 'Join SAM AI' : 'Welcome to SAM AI'}
+            </h1>
+            <p className="text-gray-400">Your AI-powered Sales Assistant</p>
           </div>
+
+          {showMagicLink ? (
+            /* MAGIC LINK FORM */
+            <div>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                handleMagicLink();
+              }}>
+                <div className="space-y-4">
+                  <div>
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  {authError && (
+                    <div className={`text-sm px-4 py-2 rounded ${
+                      authError.includes('Check your email') 
+                        ? 'bg-green-900/50 text-green-300' 
+                        : 'bg-red-900/50 text-red-300'
+                    }`}>
+                      {authError}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white py-3 rounded-lg font-medium transition-colors"
+                  >
+                    {authLoading ? 'Sending...' : 'Send Magic Link'}
+                  </button>
+                </div>
+              </form>
+
+              <div className="mt-4 text-center">
+                <button
+                  onClick={() => setShowMagicLink(false)}
+                  className="text-purple-400 hover:text-purple-300 text-sm"
+                >
+                  Back to Sign In
+                </button>
+              </div>
+            </div>
+          ) : showPasswordReset ? (
+            /* PASSWORD RESET FORM */
+            <div>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                handlePasswordReset();
+              }}>
+                <div className="space-y-4">
+                  <div>
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  {authError && (
+                    <div className={`text-sm px-4 py-2 rounded ${
+                      authError.includes('Check your email') 
+                        ? 'bg-green-900/50 text-green-300' 
+                        : 'bg-red-900/50 text-red-300'
+                    }`}>
+                      {authError}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white py-3 rounded-lg font-medium transition-colors"
+                  >
+                    {authLoading ? 'Sending...' : 'Send Password Reset'}
+                  </button>
+                </div>
+              </form>
+
+              <div className="mt-4 text-center">
+                <button
+                  onClick={() => setShowPasswordReset(false)}
+                  className="text-purple-400 hover:text-purple-300 text-sm"
+                >
+                  Back to Sign In
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* REGULAR SIGN IN/UP FORM */
+            <div>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                isSignUp ? handleSignUp() : handleSignIn();
+              }}>
+                <div className="space-y-4">
+                  {isSignUp && (
+                    <>
+                      <div className="flex space-x-3">
+                        <input
+                          type="text"
+                          placeholder="First Name"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
+                          required
+                        />
+                        <input
+                          type="text"
+                          placeholder="Last Name"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
+                          required
+                        />
+                      </div>
+                      
+                      <div>
+                        <input
+                          type="text"
+                          placeholder="Company Name"
+                          value={companyName}
+                          onChange={(e) => setCompanyName(e.target.value)}
+                          className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
+                          required
+                        />
+                      </div>
+                    </>
+                  )}
+                  
+                  <div>
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <input
+                      type="password"
+                      placeholder="Password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  {authError && (
+                    <div className={`text-sm px-4 py-2 rounded ${
+                      authError.includes('Check your email') 
+                        ? 'bg-green-900/50 text-green-300' 
+                        : 'bg-red-900/50 text-red-300'
+                    }`}>
+                      {authError}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white py-3 rounded-lg font-medium transition-colors"
+                  >
+                    {authLoading ? 'Loading...' : isSignUp ? 'Sign Up' : 'Sign In'}
+                  </button>
+                </div>
+              </form>
+
+              <div className="mt-6 space-y-3 text-center">
+                <div>
+                  <button
+                    onClick={() => setIsSignUp(!isSignUp)}
+                    className="text-purple-400 hover:text-purple-300 text-sm"
+                  >
+                    {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
+                  </button>
+                </div>
+                
+                <div className="flex items-center justify-center space-x-4 text-sm">
+                  {!isSignUp && (
+                    <button
+                      onClick={() => setShowPasswordReset(true)}
+                      className="text-gray-400 hover:text-purple-300 transition-colors"
+                    >
+                      Reset Password
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -167,12 +484,10 @@ export default function Page() {
       const messageContent = inputMessage.trim();
       setInputMessage('');
       
-      // Hide starter screen when user sends first message
       if (showStarterScreen) {
         setShowStarterScreen(false);
       }
 
-      // Send message to Sam
       await sendMessage(messageContent);
     }
   };
@@ -184,52 +499,7 @@ export default function Page() {
     }
   };
 
-  // Always show the full interface
-  return (
-    <AuthenticatedApp 
-      user={user}
-      organization={organization}
-      messages={messages}
-      currentConversation={currentConversation}
-      isLoading={isLoading}
-      isSending={isSending}
-      sendMessage={sendMessage}
-      error={error}
-      showStarterScreen={showStarterScreen}
-      inputMessage={inputMessage}
-      setInputMessage={setInputMessage}
-      activeMenuItem={activeMenuItem}
-      setActiveMenuItem={setActiveMenuItem}
-      handleSendMessage={handleSendMessage}
-      handleKeyPress={handleKeyPress}
-      showInviteModal={showInviteModal}
-      setShowInviteModal={setShowInviteModal}
-      menuItems={menuItems}
-    />
-  );
-}
-
-
-// Authenticated App Component - The full SAM AI interface
-function AuthenticatedApp({ 
-  user, 
-  organization, 
-  messages, 
-  currentConversation, 
-  isLoading, 
-  isSending, 
-  error, 
-  showStarterScreen, 
-  inputMessage, 
-  setInputMessage, 
-  activeMenuItem, 
-  setActiveMenuItem, 
-  handleSendMessage, 
-  handleKeyPress, 
-  showInviteModal, 
-  setShowInviteModal, 
-  menuItems 
-}: any) {
+  // Authenticated user - show main app
   return (
     <div className="flex h-screen bg-gray-800">
       {/* Left Sidebar */}
@@ -250,12 +520,6 @@ function AuthenticatedApp({
               </div>
             </div>
           </div>
-          {/* Organization Switcher - Only show if user has organizations */}
-          {organization && (
-            <div className="mb-4">
-              <OrganizationSwitcher />
-            </div>
-          )}
         </div>
 
         {/* Navigation Menu */}
@@ -281,19 +545,6 @@ function AuthenticatedApp({
               );
             })}
           </nav>
-          
-          {/* Invite Team Section */}
-          <div className="px-3 mt-6">
-            <div className="border-t border-gray-600 pt-4">
-              <button
-                onClick={() => setShowInviteModal(true)}
-                className="w-full flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-600 hover:text-gray-300 transition-colors border border-gray-600 hover:border-purple-500"
-              >
-                <UserPlus size={18} />
-                <span>Invite Team</span>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Sidebar Bottom */}
@@ -306,47 +557,29 @@ function AuthenticatedApp({
           <div className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                {user ? (
-                  <>
-                    <UserButton 
-                      afterSignOutUrl="/sign-in"
-                      appearance={{
-                        elements: {
-                          avatarBox: "w-8 h-8"
-                        }
-                      }}
-                    />
-                    <div>
-                      <p className="text-white text-sm font-medium">
-                        {user.firstName || user.username || 'User'}
-                      </p>
-                      {organization && (
-                        <p className="text-purple-400 text-xs flex items-center gap-1">
-                          <Building size={10} />
-                          {organization.name}
-                        </p>
-                      )}
-                      {!organization && (
-                        <p className="text-gray-400 text-xs">Personal</p>
-                      )}
-                    </div>
-                    <SignOutButton redirectUrl="/sign-in">
-                      <button className="ml-3 p-2 text-gray-400 hover:text-white hover:bg-purple-600/20 rounded-lg transition-all duration-200 group" title="Sign out">
-                        <LogOut size={16} className="group-hover:scale-110 transition-transform" />
-                      </button>
-                    </SignOutButton>
-                  </>
-                ) : (
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
-                      <span className="text-gray-300 text-sm">U</span>
-                    </div>
-                    <div>
-                      <p className="text-white text-sm font-medium">Guest User</p>
-                      <p className="text-gray-400 text-xs">Demo Mode</p>
-                    </div>
-                  </div>
-                )}
+                <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm font-medium">
+                    {user.email?.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-white text-sm font-medium">
+                    {user.user_metadata?.first_name ? 
+                      `${user.user_metadata.first_name} ${user.user_metadata.last_name}` : 
+                      user.email?.split('@')[0]
+                    }
+                  </p>
+                  <p className="text-gray-400 text-xs">
+                    {user.user_metadata?.company_name || user.email}
+                  </p>
+                </div>
+                <button 
+                  onClick={handleSignOut}
+                  className="ml-3 p-2 text-gray-400 hover:text-white hover:bg-purple-600/20 rounded-lg transition-all duration-200 group" 
+                  title="Sign out"
+                >
+                  <LogOut size={16} className="group-hover:scale-110 transition-transform" />
+                </button>
               </div>
             </div>
           </div>
@@ -355,13 +588,11 @@ function AuthenticatedApp({
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col bg-gray-900">
-        {/* Conditional Rendering */}
         {activeMenuItem === 'training' ? (
           <TrainingRoom />
         ) : showStarterScreen ? (
           /* STARTER SCREEN */
           <div className="flex-1 flex flex-col items-center justify-start pt-24 p-6">
-            {/* Large Sam Image */}
             <div className="mb-12">
               <img 
                 src="/SAM.jpg" 
@@ -371,7 +602,6 @@ function AuthenticatedApp({
               />
             </div>
             
-            {/* CTA Text */}
             <div className="text-center">
               <h2 className="text-white text-2xl font-medium">
                 What do you want to get done today?
@@ -379,7 +609,7 @@ function AuthenticatedApp({
             </div>
           </div>
         ) : (
-          /* CHAT MESSAGES - Real Sam conversation */
+          /* CHAT MESSAGES */
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {isLoading && messages.length === 0 && (
               <div className="flex justify-center items-center py-8">
@@ -399,23 +629,18 @@ function AuthenticatedApp({
                       />
                       <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl">
                         <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                        {message.confidence_score && (
-                          <div className="mt-2 text-xs text-gray-400">
-                            Confidence: {Math.round(message.confidence_score * 100)}%
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}
                   {message.role === 'user' && (
-                    <div className="flex items-center justify-end space-x-2 mb-1">
-                      <span className="text-gray-400 text-sm font-medium">You</span>
-                    </div>
-                  )}
-                  {message.role === 'user' && (
-                    <div className="bg-gray-800 text-white px-4 py-3 rounded-2xl">
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                    </div>
+                    <>
+                      <div className="flex items-center justify-end space-x-2 mb-1">
+                        <span className="text-gray-400 text-sm font-medium">You</span>
+                      </div>
+                      <div className="bg-gray-800 text-white px-4 py-3 rounded-2xl">
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -445,10 +670,9 @@ function AuthenticatedApp({
           </div>
         )}
 
-        {/* CHAT INPUT CONTAINER - Fixed at bottom, only show for chat */}
+        {/* CHAT INPUT CONTAINER */}
         {activeMenuItem === 'chat' && (
           <div className="flex-shrink-0 p-6">
-            {/* Status Bar - BLACK background */}
             <div className="bg-black text-white px-4 py-3 rounded-t-lg max-w-4xl mx-auto">
               <div className="flex items-center space-x-3">
                 <span className="text-sm">
@@ -469,7 +693,6 @@ function AuthenticatedApp({
               </div>
             </div>
             
-            {/* Input Area - GRAY background, attached below */}
             <div className="bg-gray-700 p-4 rounded-b-lg max-w-4xl mx-auto">
               <div className="flex items-end bg-gray-600 rounded-lg px-4 py-2">
                 <button className="text-gray-400 hover:text-gray-200 transition-colors p-1 mr-2">
@@ -499,14 +722,6 @@ function AuthenticatedApp({
           </div>
         )}
       </div>
-
-      {/* Invite User Modal */}
-      <InviteUserModal
-        isOpen={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
-        workspaceId={organization?.id || user?.id || 'demo-workspace'}
-        workspaceName={organization?.name || `${user?.firstName || 'Demo'} Workspace`}
-      />
     </div>
   );
 }
