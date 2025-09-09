@@ -18,6 +18,8 @@ export default function SignUpPage() {
           <p className="text-gray-400">Start your AI-powered sales journey</p>
         </div>
         <SignUp 
+          redirectUrl="/"
+          signInUrl="/sign-in"
           appearance={{
             elements: {
               rootBox: "mx-auto",

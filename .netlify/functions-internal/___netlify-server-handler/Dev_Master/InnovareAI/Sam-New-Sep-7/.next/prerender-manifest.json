@@ -1,6 +1,30 @@
 {
   "version": 4,
   "routes": {
+    "/": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/",
+      "dataRoute": "/index.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
     "/_not-found": {
       "initialStatus": 404,
       "experimentalBypassFor": [
@@ -25,37 +49,13 @@
         "x-next-revalidated-tags",
         "x-next-revalidate-tag-token"
       ]
-    },
-    "/": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/",
-      "dataRoute": "/index.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
     }
   },
   "dynamicRoutes": {},
   "notFoundRoutes": [],
   "preview": {
-    "previewModeId": "520a755841f329ba702f4f01407e0c07",
-    "previewModeSigningKey": "7a6f0a5246371e370e4a8b9031a9825b97e774f0214b5eca5a66d45d31d8d193",
-    "previewModeEncryptionKey": "dbd491ce8a4ac628b1c97f4c05656b2530d96f4f43f5bfcbbdfd9bf3a38e6364"
+    "previewModeId": "7251c68db5cd85f1ee30ec817f138916",
+    "previewModeSigningKey": "6ed6578f24a9ba18d0d1b5eb77899bff31ff39166d1a3f4498f874fabe0009bf",
+    "previewModeEncryptionKey": "11004f321d114d66f397f7eb00e2040b5b70c7d2ea1f3a90b4baa9d5f3dd1267"
   }
 }

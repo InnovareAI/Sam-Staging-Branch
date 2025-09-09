@@ -1,0 +1,13 @@
+{
+  "dependencies": {
+    "@apify/actors-mcp-server": "^0.2.13",
+    "@clerk/nextjs": "^6.31.6",
+    "@clerk/themes": "^2.4.15",
+    "@coretext-ai/apollo-free-tier-complete-mcp": "^1.0.0",
+    "@modelcontextprotocol/server-github": "^2025.4.8",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "shadcn": "^3.2.1"
+  }
+}

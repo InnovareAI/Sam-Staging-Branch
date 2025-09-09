@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../../lib/supabase';
-import { samKnowledge } from '../../../../../lib/sam-knowledge';
+import { samKnowledge } from '../../../../../../lib/sam-knowledge';
 import OpenAI from 'openai';
 
 // Demo user configuration for non-authenticated access
