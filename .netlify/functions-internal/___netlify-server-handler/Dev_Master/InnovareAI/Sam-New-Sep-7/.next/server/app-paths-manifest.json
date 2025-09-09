@@ -1,7 +1,8 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/api/sam/conversations/[id]/messages/route": "app/api/sam/conversations/[id]/messages/route.js",
+  "/api/organizations/create/route": "app/api/organizations/create/route.js",
   "/api/sam/conversations/route": "app/api/sam/conversations/route.js",
+  "/api/sam/conversations/[id]/messages/route": "app/api/sam/conversations/[id]/messages/route.js",
   "/api/test-auth/route": "app/api/test-auth/route.js",
   "/api/test-email/route": "app/api/test-email/route.js",
   "/api/test-sam/route": "app/api/test-sam/route.js",
@@ -10,8 +11,8 @@
   "/api/workspaces/invite/route": "app/api/workspaces/invite/route.js",
   "/api/workspaces/join/route": "app/api/workspaces/join/route.js",
   "/api/workspaces/switch/route": "app/api/workspaces/switch/route.js",
-  "/page": "app/page.js",
-  "/sign-up/[[...sign-up]]/page": "app/sign-up/[[...sign-up]]/page.js",
+  "/invite/[token]/page": "app/invite/[token]/page.js",
   "/sign-in/[[...sign-in]]/page": "app/sign-in/[[...sign-in]]/page.js",
-  "/invite/[token]/page": "app/invite/[token]/page.js"
+  "/sign-up/[[...sign-up]]/page": "app/sign-up/[[...sign-up]]/page.js",
+  "/page": "app/page.js"
 }

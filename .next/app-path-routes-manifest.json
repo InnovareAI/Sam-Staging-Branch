@@ -1,17 +1,18 @@
 {
   "/_not-found/page": "/_not-found",
+  "/api/organizations/create/route": "/api/organizations/create",
   "/api/sam/conversations/[id]/messages/route": "/api/sam/conversations/[id]/messages",
   "/api/sam/conversations/route": "/api/sam/conversations",
-  "/api/test-auth/route": "/api/test-auth",
   "/api/test-email/route": "/api/test-email",
+  "/api/test-auth/route": "/api/test-auth",
   "/api/test-sam/route": "/api/test-sam",
-  "/api/webhooks/clerk/route": "/api/webhooks/clerk",
   "/api/test-simple/route": "/api/test-simple",
+  "/api/webhooks/clerk/route": "/api/webhooks/clerk",
+  "/api/workspaces/invite/route": "/api/workspaces/invite",
   "/api/workspaces/join/route": "/api/workspaces/join",
   "/api/workspaces/switch/route": "/api/workspaces/switch",
-  "/api/workspaces/invite/route": "/api/workspaces/invite",
   "/invite/[token]/page": "/invite/[token]",
-  "/page": "/",
   "/sign-in/[[...sign-in]]/page": "/sign-in/[[...sign-in]]",
+  "/page": "/",
   "/sign-up/[[...sign-up]]/page": "/sign-up/[[...sign-up]]"
 }

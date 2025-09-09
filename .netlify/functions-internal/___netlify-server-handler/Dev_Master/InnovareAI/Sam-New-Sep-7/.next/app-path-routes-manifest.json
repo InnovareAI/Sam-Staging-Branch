@@ -1,7 +1,8 @@
 {
   "/_not-found/page": "/_not-found",
-  "/api/sam/conversations/[id]/messages/route": "/api/sam/conversations/[id]/messages",
+  "/api/organizations/create/route": "/api/organizations/create",
   "/api/sam/conversations/route": "/api/sam/conversations",
+  "/api/sam/conversations/[id]/messages/route": "/api/sam/conversations/[id]/messages",
   "/api/test-auth/route": "/api/test-auth",
   "/api/test-email/route": "/api/test-email",
   "/api/test-sam/route": "/api/test-sam",
@@ -10,8 +11,8 @@
   "/api/workspaces/invite/route": "/api/workspaces/invite",
   "/api/workspaces/join/route": "/api/workspaces/join",
   "/api/workspaces/switch/route": "/api/workspaces/switch",
-  "/page": "/",
-  "/sign-up/[[...sign-up]]/page": "/sign-up/[[...sign-up]]",
+  "/invite/[token]/page": "/invite/[token]",
   "/sign-in/[[...sign-in]]/page": "/sign-in/[[...sign-in]]",
-  "/invite/[token]/page": "/invite/[token]"
+  "/sign-up/[[...sign-up]]/page": "/sign-up/[[...sign-up]]",
+  "/page": "/"
 }

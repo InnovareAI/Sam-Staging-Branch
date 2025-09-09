@@ -62,12 +62,72 @@ export default function Page() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setLoadingTimeout(true);
-    }, 8000); // 8 second timeout
+      // Force redirect after timeout
+      if (!userLoaded) {
+        window.location.href = '/sign-in';
+      }
+    }, 5000); // Reduced to 5 seconds
     
     return () => clearTimeout(timer);
-  }, []);
+  }, [userLoaded]);
 
-  // Skip all loading states - go directly to app
+  // Loading state - wait for authentication (with timeout fallback)
+  if (!userLoaded) {
+    if (loadingTimeout) {
+      // After timeout, show fallback UI or redirect
+      window.location.href = '/sign-in';
+      return (
+        <div className="flex h-screen bg-gray-900 items-center justify-center">
+          <div className="text-center">
+            <img 
+              src="/SAM.jpg" 
+              alt="Sam AI" 
+              className="w-24 h-24 rounded-full mx-auto mb-4"
+            />
+            <div className="text-white text-lg mb-2">Redirecting to sign-in...</div>
+            <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <div className="mt-4">
+              <p className="text-gray-400 text-sm mb-2">Taking longer than expected...</p>
+              <button 
+                onClick={() => window.location.href = '/sign-in'}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm"
+              >
+                Continue to Sign In
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // Normal loading state
+    return (
+      <div className="flex h-screen bg-gray-900 items-center justify-center">
+        <div className="text-center">
+          <img 
+            src="/SAM.jpg" 
+            alt="Sam AI" 
+            className="w-24 h-24 rounded-full mx-auto mb-4"
+          />
+          <div className="text-white text-lg mb-2">Loading SAM AI...</div>
+          <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Not authenticated - redirect to sign-in (full page)
+  if (!user) {
+    window.location.href = '/sign-in';
+    return (
+      <div className="flex h-screen bg-gray-900 items-center justify-center">
+        <div className="text-center">
+          <div className="text-white text-lg mb-2">Redirecting to sign-in...</div>
+          <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
 
   const menuItems = [
     { id: 'chat', label: 'Chat with Sam', icon: MessageCircle, active: true },

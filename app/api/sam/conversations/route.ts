@@ -1,28 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
-
-// Demo user configuration for non-authenticated access
-const DEMO_USER = {
-  id: '00000000-0000-4000-8000-000000000001',
-  workspace_id: '00000000-0000-4000-8000-000000000001', 
-  name: 'Demo User'
-};
 
 // GET /api/sam/conversations - List user's conversations
 export async function GET(req: NextRequest) {
   try {
-    console.log('🔍 Sam conversations API called (demo mode)');
+    // Get authenticated user from Clerk
+    const { userId, orgId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    console.log('🔍 Sam conversations API called for user:', userId, 'org:', orgId);
     
     const supabase = supabaseAdmin();
-    
-    // Use demo user for non-authenticated access
-    const userId = DEMO_USER.id;
-    const workspaceId = DEMO_USER.workspace_id;
-    
-    console.log('📊 Using demo user:', userId, 'workspace:', workspaceId);
 
-    // Get conversations for demo user
-    const { data: conversations, error } = await supabase
+    // Get conversations for authenticated user and their current organization
+    let query = supabase
       .from('sam_conversations')
       .select(`
         id,
@@ -34,12 +29,22 @@ export async function GET(req: NextRequest) {
         last_user_message,
         last_active_at,
         created_at,
-        updated_at
+        updated_at,
+        organization_id
       `)
-      .eq('workspace_id', workspaceId)
       .eq('user_id', userId)
       .order('last_active_at', { ascending: false })
       .limit(20);
+
+    // If user is in an organization, filter by organization
+    if (orgId) {
+      query = query.eq('organization_id', orgId);
+    } else {
+      // If no organization, show personal conversations only
+      query = query.is('organization_id', null);
+    }
+
+    const { data: conversations, error } = await query;
 
     if (error) {
       console.error('Error fetching conversations:', error);
@@ -61,24 +66,26 @@ export async function GET(req: NextRequest) {
 // POST /api/sam/conversations - Create new conversation
 export async function POST(req: NextRequest) {
   try {
-    console.log('🆕 Creating new conversation (demo mode)');
+    // Get authenticated user from Clerk
+    const { userId, orgId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    console.log('🆕 Creating new conversation for user:', userId, 'org:', orgId);
     
     const body = await req.json();
     const { title } = body;
 
     const supabase = supabaseAdmin();
-    
-    // Use demo user for non-authenticated access
-    const userId = DEMO_USER.id;
-    const workspaceId = DEMO_USER.workspace_id;
 
-    // Create new conversation
+    // Create new conversation for authenticated user in their current organization
     const { data: conversation, error } = await supabase
       .from('sam_conversations')
       .insert({
-        workspace_id: workspaceId,
         user_id: userId,
-        tenant_id: workspaceId,
+        organization_id: orgId || null, // Associate with current organization
         title: title || 'New Conversation',
         status: 'active',
         current_discovery_stage: 'business_context',
@@ -94,7 +101,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    console.log('✅ Created conversation:', conversation?.id);
+    console.log('✅ Created conversation:', conversation?.id, 'for org:', orgId);
     return NextResponse.json({ conversation });
 
   } catch (error) {

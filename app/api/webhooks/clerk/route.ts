@@ -235,10 +235,78 @@ export async function POST(req: Request) {
       break;
       
     case 'organization.created':
+      try {
+        // Sync new organization to Supabase
+        const orgData = evt.data;
+        const supabase = supabaseAdmin();
+        
+        const { error: orgError } = await supabase
+          .from('organizations')
+          .upsert({
+            clerk_org_id: orgData.id,
+            name: orgData.name,
+            slug: orgData.slug,
+            created_by: orgData.created_by,
+            settings: {
+              industry: null,
+              team_size: '1-10',
+              features: ['chat', 'knowledge_base', 'campaigns'],
+              subscription_plan: 'starter'
+            }
+          }, {
+            onConflict: 'clerk_org_id'
+          });
+
+        if (orgError) {
+          console.error('Organization sync error:', orgError);
+        } else {
+          console.log('✅ Organization synced to Supabase:', orgData.id);
+        }
+        
+        return new Response('Organization synced successfully', { status: 200 });
+      } catch (error) {
+        console.error('Organization sync error:', error);
+        return new Response('Organization sync failed', { status: 500 });
+      }
+      
     case 'organization.updated':
-      // Handle organization events if needed
-      console.log('Organization event:', eventType, evt.data);
-      break;
+      try {
+        // Update organization in Supabase
+        const orgData = evt.data;
+        const supabase = supabaseAdmin();
+        
+        const { error: updateError } = await supabase
+          .from('organizations')
+          .update({
+            name: orgData.name,
+            slug: orgData.slug,
+            updated_at: new Date().toISOString()
+          })
+          .eq('clerk_org_id', orgData.id);
+
+        if (updateError) {
+          console.error('Organization update error:', updateError);
+        } else {
+          console.log('✅ Organization updated in Supabase:', orgData.id);
+        }
+        
+        return new Response('Organization updated successfully', { status: 200 });
+      } catch (error) {
+        console.error('Organization update error:', error);
+        return new Response('Organization update failed', { status: 500 });
+      }
+
+    case 'organizationMembership.created':
+      try {
+        // Handle when users join organizations
+        const membershipData = evt.data;
+        console.log('✅ User joined organization:', membershipData);
+        
+        return new Response('Membership created successfully', { status: 200 });
+      } catch (error) {
+        console.error('Membership creation error:', error);
+        return new Response('Membership creation failed', { status: 500 });
+      }
       
     default:
       console.log('Unhandled webhook event:', eventType);

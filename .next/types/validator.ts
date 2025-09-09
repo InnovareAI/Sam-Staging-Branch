@@ -71,6 +71,12 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   handler satisfies AppPageConfig<"/sign-up/[[...sign-up]]">
 }
 
+// Validate ../../app/api/organizations/create/route.ts
+{
+  const handler = {} as typeof import("../../app/api/organizations/create/route.js")
+  handler satisfies RouteHandlerConfig<"/api/organizations/create">
+}
+
 // Validate ../../app/api/sam/conversations/[id]/messages/route.ts
 {
   const handler = {} as typeof import("../../app/api/sam/conversations/[id]/messages/route.js")
