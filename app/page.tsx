@@ -147,11 +147,6 @@ export default function Page() {
 
   // Handle password reset
   const handlePasswordReset = async () => {
-    if (!email) {
-      setAuthError('Please enter your email address first');
-      return;
-    }
-
     setAuthLoading(true);
     setAuthError('');
 
@@ -223,7 +218,26 @@ export default function Page() {
 
   // Handle sign out
   const handleSignOut = async () => {
+    const currentUser = user;
     await supabase.auth.signOut();
+    
+    // Clear form state
+    setEmail('');
+    setPassword('');
+    setFirstName('');
+    setLastName('');
+    setCompanyName('');
+    setIsSignUp(false);
+    setShowMagicLink(false);
+    setShowPasswordReset(false);
+    setAuthLoading(false);
+    
+    // Show goodbye message
+    if (currentUser?.user_metadata?.first_name) {
+      setAuthError(`Goodbye ${currentUser.user_metadata.first_name}, see you soon!`);
+    } else {
+      setAuthError('Goodbye, see you soon!');
+    }
   };
 
   // Loading state
@@ -282,7 +296,7 @@ export default function Page() {
 
                   {authError && (
                     <div className={`text-sm px-4 py-2 rounded ${
-                      authError.includes('Check your email') 
+                      authError.includes('Check your email') || authError.includes('Goodbye') || authError.includes('Account created successfully')
                         ? 'bg-green-900/50 text-green-300' 
                         : 'bg-red-900/50 text-red-300'
                     }`}>
@@ -330,7 +344,7 @@ export default function Page() {
 
                   {authError && (
                     <div className={`text-sm px-4 py-2 rounded ${
-                      authError.includes('Check your email') 
+                      authError.includes('Check your email') || authError.includes('Goodbye') || authError.includes('Account created successfully')
                         ? 'bg-green-900/50 text-green-300' 
                         : 'bg-red-900/50 text-red-300'
                     }`}>
@@ -423,7 +437,7 @@ export default function Page() {
 
                   {authError && (
                     <div className={`text-sm px-4 py-2 rounded ${
-                      authError.includes('Check your email') 
+                      authError.includes('Check your email') || authError.includes('Goodbye') || authError.includes('Account created successfully')
                         ? 'bg-green-900/50 text-green-300' 
                         : 'bg-red-900/50 text-red-300'
                     }`}>
@@ -452,12 +466,28 @@ export default function Page() {
                 </div>
                 
                 <div className="flex items-center justify-center space-x-4 text-sm">
-                  {!isSignUp && (
+                  {!isSignUp ? (
+                    <>
+                      <button
+                        onClick={() => setShowPasswordReset(true)}
+                        className="text-gray-400 hover:text-purple-300 transition-colors"
+                      >
+                        Reset Password
+                      </button>
+                      <span className="text-gray-600">|</span>
+                      <button
+                        onClick={() => setShowMagicLink(true)}
+                        className="text-gray-400 hover:text-purple-300 transition-colors"
+                      >
+                        Magic Link
+                      </button>
+                    </>
+                  ) : (
                     <button
-                      onClick={() => setShowPasswordReset(true)}
+                      onClick={() => setShowMagicLink(true)}
                       className="text-gray-400 hover:text-purple-300 transition-colors"
                     >
-                      Reset Password
+                      Use Magic Link Instead
                     </button>
                   )}
                 </div>
