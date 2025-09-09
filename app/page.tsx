@@ -13,6 +13,7 @@ import {
   Users, 
   Megaphone, 
   TrendingUp,
+  BarChart3,
   Settings,
   X,
   Send,
@@ -74,7 +75,8 @@ export default function Page() {
     { id: 'training', label: 'Sam Training Room', icon: GraduationCap, active: false },
     { id: 'contact', label: 'Contact Center', icon: Users, active: false },
     { id: 'campaign', label: 'Campaign Hub', icon: Megaphone, active: false },
-    { id: 'pipeline', label: 'Lead Pipeline', icon: TrendingUp, active: false }
+    { id: 'pipeline', label: 'Lead Pipeline', icon: TrendingUp, active: false },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3, active: false }
   ];
 
   const handleSendMessage = async () => {
