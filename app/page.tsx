@@ -26,7 +26,49 @@ export default function Page() {
   const [activeMenuItem, setActiveMenuItem] = useState('chat');
   const [messages, setMessages] = useState<any[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Load persisted data on component mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Load messages from localStorage
+      const savedMessages = localStorage.getItem('sam_messages');
+      if (savedMessages) {
+        try {
+          const parsedMessages = JSON.parse(savedMessages);
+          if (Array.isArray(parsedMessages) && parsedMessages.length > 0) {
+            setMessages(parsedMessages);
+            setShowStarterScreen(false);
+          }
+        } catch (error) {
+          console.error('Error loading saved messages:', error);
+        }
+      }
+
+      // Load active menu item
+      const savedMenuItem = localStorage.getItem('sam_active_menu');
+      if (savedMenuItem) {
+        setActiveMenuItem(savedMenuItem);
+      }
+
+      setIsLoaded(true);
+    }
+  }, []);
+
+  // Save messages to localStorage whenever messages change
+  useEffect(() => {
+    if (isLoaded && typeof window !== 'undefined') {
+      localStorage.setItem('sam_messages', JSON.stringify(messages));
+    }
+  }, [messages, isLoaded]);
+
+  // Save active menu item to localStorage
+  useEffect(() => {
+    if (isLoaded && typeof window !== 'undefined') {
+      localStorage.setItem('sam_active_menu', activeMenuItem);
+    }
+  }, [activeMenuItem, isLoaded]);
 
   const menuItems = [
     { id: 'chat', label: 'Chat with Sam', icon: MessageCircle, active: true },
@@ -114,6 +156,28 @@ export default function Page() {
     }
   };
 
+  // Show loading state while data is being loaded
+  if (!isLoaded) {
+    return (
+      <div className="flex h-screen bg-gray-900 items-center justify-center">
+        <div className="text-center">
+          <img 
+            src="/SAM.jpg" 
+            alt="Sam AI" 
+            className="w-24 h-24 rounded-full object-cover mx-auto mb-4"
+            style={{ objectPosition: 'center 30%' }}
+          />
+          <div className="text-white text-lg font-medium">Loading SAM AI...</div>
+          <div className="flex justify-center mt-4 space-x-1">
+            <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+            <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Authenticated user - show main app
   return (
     <div className="flex h-screen bg-gray-800">
@@ -164,9 +228,20 @@ export default function Page() {
 
         {/* Sidebar Bottom */}
         <div className="border-t border-gray-600">
-          <button className="w-full flex items-center space-x-3 px-6 py-3 text-gray-400 hover:bg-gray-600 hover:text-gray-300 transition-colors">
+          <button 
+            onClick={() => {
+              if (confirm('Clear all conversation history? This cannot be undone.')) {
+                setMessages([]);
+                setShowStarterScreen(true);
+                setActiveMenuItem('chat');
+                localStorage.removeItem('sam_messages');
+                localStorage.removeItem('sam_active_menu');
+              }
+            }}
+            className="w-full flex items-center space-x-3 px-6 py-3 text-gray-400 hover:bg-gray-600 hover:text-gray-300 transition-colors"
+          >
             <Settings size={18} />
-            <span className="text-sm font-medium">Settings</span>
+            <span className="text-sm font-medium">Clear History</span>
           </button>
           
           <div className="p-4">
