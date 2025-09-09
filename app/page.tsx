@@ -15,7 +15,6 @@ import {
   TrendingUp,
   BarChart3,
   Settings,
-  X,
   Send,
   Paperclip,
   Building,
@@ -70,7 +69,7 @@ export default function Page() {
   // Loading state - wait for authentication (with timeout fallback)
   if (!userLoaded) {
     if (loadingTimeout) {
-      // After timeout, show the landing page with modal authentication
+      // After timeout, show the landing page with authentication buttons
       return (
         <div className="flex h-screen bg-gray-900 items-center justify-center">
           <div className="text-center">
