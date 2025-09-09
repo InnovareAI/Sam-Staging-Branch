@@ -22,28 +22,52 @@ export async function POST(req: NextRequest) {
     // Get objection response if applicable
     const objectionResponse = await supabaseKnowledge.getObjectionResponse(message);
 
-    // Use the consultant-style onboarding flow for new conversations
+    // Use the room tour onboarding flow from conversation scripts
     let response = "";
     const isFirstMessage = conversationHistory.length === 0;
     
     if (isFirstMessage) {
       // Step 1: Small Talk (Human Entry)
-      response = "Hey there — how's your day going so far? Calm, or one of those fire-drill mornings?";
+      response = "Hi there! How's your day going? Busy morning or a bit calmer?";
     } else {
       // Handle responses based on conversation context
       const userInput = message.toLowerCase();
       
-      // Step 2 & 3: Acknowledge, empathize, and position as consultant
-      if (userInput.includes('calm') || userInput.includes('good') || userInput.includes('quiet')) {
-        response = "Nice, those are rare. Always good to start a chat without too many fires burning.\n\nI'm SAM — think of me as your GTM consultant in AI form. I work alongside founders, sales, and marketing leads to take the heavy lifting out of prospecting, outreach, and follow-up.\n\nBefore we dive into your business, would it help if I give you a quick overview of how I work and the features I bring to the table? Or would you prefer we go straight into your current GTM challenges?";
-      } else if (userInput.includes('hectic') || userInput.includes('busy') || userInput.includes('crazy') || userInput.includes('fire')) {
-        response = "Makes sense — most GTM leaders I talk with are juggling ten things at once. That's exactly why I keep things simple here.\n\nI'm SAM — think of me as your GTM consultant in AI form. I work alongside founders, sales, and marketing leads to take the heavy lifting out of prospecting, outreach, and follow-up.\n\nBefore we dive into your business, would it help if I give you a quick overview of how I work and the features I bring to the table? Or would you prefer we go straight into your current GTM challenges?";
+      // Step 2: Acknowledge and introduce with room tour
+      if (userInput.includes('busy') || userInput.includes('hectic') || userInput.includes('crazy') || userInput.includes('fire')) {
+        response = "I get that. I'm Sam. My role is to take the heavy lifting out of prospecting and follow-up. Before we dive in, let me show you around the workspace.\n\nOn the left, you'll see tabs. The first is *Chat with Sam* — that's right here. This is where you and I talk. Does that make sense?";
+      } else if (userInput.includes('calm') || userInput.includes('good') || userInput.includes('quiet') || userInput.includes('calmer')) {
+        response = "Nice, those are rare. I'm Sam. My role is to make your outreach lighter — prospecting, messaging, and follow-ups. Before we dive in, let me give you a quick tour so you know where everything is.\n\nThis is where we'll talk. You can ask me questions here anytime. If you need to stop or take a break, I'll remember and we'll resume later. Does that sound good?";
       }
-      // Step 5: Branching options
-      else if (userInput.includes('explain features') || userInput.includes('overview') || userInput.includes('how you work')) {
-        response = "Sure thing. Here's the quick version: I coordinate a team of 14 specialized AI agents. Together, they handle lead discovery, enrichment, personalization, outreach, replies, and analytics. I'll walk you through how each part fits your workflow.\n\nWhich area would you like me to dive deeper into first — lead discovery and enrichment, personalized outreach, or automated follow-ups and analytics?";
-      } else if (userInput.includes('challenges') || userInput.includes('talk about my') || userInput.includes('straight into')) {
-        response = "Great — let's make this about you. Tell me, where do you feel the most friction in your GTM motion right now — finding leads, personalizing messaging, or staying consistent with follow-ups?";
+      // Room Tour Steps - Knowledge Base
+      else if (userInput.includes('make sense') || userInput.includes('sounds good') || userInput.includes('yes')) {
+        response = "Great! Next up is the Knowledge Base tab. Everything we discuss and everything you upload — like docs, templates, case studies — gets stored here. I'll use this to tailor my answers and campaigns.\n\nClear so far?";
+      }
+      // Room Tour Steps - Training Room
+      else if (userInput.includes('clear') || userInput.includes('understand')) {
+        response = "Perfect. The Sam Training Room is where I'll guide you through a 7-stage onboarding journey: Business context, ICP, Competition, Sales process, Metrics, Tech/Compliance, and Content. We'll go step by step, one question at a time.\n\nMaking sense?";
+      }
+      // Room Tour Steps - Contact Center
+      else if (userInput.includes('making sense')) {
+        response = "Excellent. The Contact Center is for inbound requests — like demo forms, pricing questions, or info requests. My inbound agent handles those automatically.\n\nFollowing along?";
+      }
+      // Room Tour Steps - Campaign Hub
+      else if (userInput.includes('following')) {
+        response = "Great! Campaign Hub is where we'll build campaigns. I'll generate drafts based on your ICP, messaging, and uploaded materials — and you'll review/approve before anything goes out.\n\nStill with me?";
+      }
+      // Room Tour Steps - Lead Pipeline
+      else if (userInput.includes('still with') || userInput.includes('with me')) {
+        response = "Perfect. Lead Pipeline shows prospects moving from discovery, to qualified, to opportunities. You'll see enrichment status, scores, and next actions.\n\nAll good?";
+      }
+      // Room Tour Steps - Analytics & Closing
+      else if (userInput.includes('all good')) {
+        response = "Finally, Analytics is where we track results: readiness scores, campaign metrics, reply/meeting rates, and agent performance.\n\nAt any time, you can invite teammates, check settings, or update your profile. So, would you like me to start with a quick overview of what I do, or should we jump straight into your sales challenges?";
+      }
+      // Branching after tour
+      else if (userInput.includes('overview') || userInput.includes('what you do')) {
+        response = "Sure thing. I coordinate a team of 14 specialized AI agents that handle lead discovery, enrichment, personalization, outreach, replies, and analytics. Which area interests you most — finding leads, personalizing messages, or tracking results?";
+      } else if (userInput.includes('challenges') || userInput.includes('jump straight')) {
+        response = "Great — let's make this about you. Tell me, where do you feel the most friction in your sales process right now — finding leads, personalizing messaging, or staying consistent with follow-ups?";
       }
       // Handle objections if detected
       else if (objectionResponse) {
@@ -53,9 +77,9 @@ export async function POST(req: NextRequest) {
       else if (personaGuidance) {
         response = personaGuidance + "\n\nWhat's the biggest challenge you're facing in your current sales process?";
       }
-      // Default consultant response
+      // Default response - restart room tour
       else {
-        response = "I'm SAM — your GTM consultant in AI form. I help founders, sales, and marketing teams take the heavy lifting out of prospecting and outreach.\n\nWhat's bringing you here today? Are you looking to scale your lead generation, improve your outreach personalization, or streamline your follow-up process?";
+        response = "Hi! I'm Sam. My role is to take the heavy lifting out of prospecting and follow-up. Before we dive in, let me show you around the workspace so you know where everything is.\n\nThis is Chat with Sam — where you and I talk. You can ask questions here anytime, pause, or resume later. Sound good?";
       }
     }
 
