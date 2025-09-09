@@ -44,23 +44,23 @@ export async function POST(req: NextRequest) {
         response = "Great! Next up is the Knowledge Base tab. Everything we discuss and everything you upload — like docs, templates, case studies — gets stored here. I'll use this to tailor my answers and campaigns.\n\nClear so far?";
       }
       // Room Tour Steps - Training Room
-      else if (userInput.includes('clear') || userInput.includes('understand')) {
+      else if (userInput.includes('clear') || userInput.includes('understand') || userInput.includes('yup') || userInput.includes('yep') || userInput.includes('sure')) {
         response = "Perfect. The Sam Training Room is where I'll guide you through a 7-stage onboarding journey: Business context, ICP, Competition, Sales process, Metrics, Tech/Compliance, and Content. We'll go step by step, one question at a time.\n\nMaking sense?";
       }
       // Room Tour Steps - Contact Center
-      else if (userInput.includes('making sense')) {
+      else if (userInput.includes('making sense') || userInput.includes('sense') || userInput.includes('got it') || userInput.includes('right')) {
         response = "Excellent. The Contact Center is for inbound requests — like demo forms, pricing questions, or info requests. My inbound agent handles those automatically.\n\nFollowing along?";
       }
       // Room Tour Steps - Campaign Hub
-      else if (userInput.includes('following')) {
+      else if (userInput.includes('following') || userInput.includes('along') || userInput.includes('yeah') || userInput.includes('uh huh')) {
         response = "Great! Campaign Hub is where we'll build campaigns. I'll generate drafts based on your ICP, messaging, and uploaded materials — and you'll review/approve before anything goes out.\n\nStill with me?";
       }
       // Room Tour Steps - Lead Pipeline
-      else if (userInput.includes('still with') || userInput.includes('with me')) {
+      else if (userInput.includes('still with') || userInput.includes('with me') || userInput.includes('good') || userInput.includes('fine')) {
         response = "Perfect. Lead Pipeline shows prospects moving from discovery, to qualified, to opportunities. You'll see enrichment status, scores, and next actions.\n\nAll good?";
       }
       // Room Tour Steps - Analytics & Closing
-      else if (userInput.includes('all good')) {
+      else if (userInput.includes('all good') || userInput.includes('sounds great') || userInput.includes('perfect')) {
         response = "Finally, Analytics is where we track results: readiness scores, campaign metrics, reply/meeting rates, and agent performance.\n\nAt any time, you can invite teammates, check settings, or update your profile. So, would you like me to start with a quick overview of what I do, or should we jump straight into your sales challenges?";
       }
       // Branching after tour
