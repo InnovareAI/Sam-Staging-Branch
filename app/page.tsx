@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import TrainingRoom from './components/TrainingRoom';
 import KnowledgeBase from './components/KnowledgeBase';
 import ContactCenter from './components/ContactCenter';
@@ -27,6 +27,7 @@ export default function Page() {
   const [activeMenuItem, setActiveMenuItem] = useState('chat');
   const [messages, setMessages] = useState<any[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const menuItems = [
     { id: 'chat', label: 'Chat with Sam', icon: MessageCircle, active: true },
@@ -37,6 +38,15 @@ export default function Page() {
     { id: 'pipeline', label: 'Lead Pipeline', icon: TrendingUp, active: false },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, active: false }
   ];
+
+  // Auto-scroll to bottom when messages change or when sending
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isSending]);
 
   // Simple message handler without authentication
   const handleSendMessage = async () => {
@@ -261,6 +271,7 @@ export default function Page() {
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
         )}
 
