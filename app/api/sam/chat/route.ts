@@ -1,6 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseKnowledge } from '@/lib/supabase-knowledge';
 
+// Helper function to call OpenRouter API
+async function callOpenRouter(messages: any[], systemPrompt: string) {
+  const openRouterKey = process.env.OPENROUTER_API_KEY;
+  
+  if (!openRouterKey) {
+    throw new Error('OpenRouter API key not configured');
+  }
+
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openRouterKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://app.meet-sam.com',
+      'X-Title': 'SAM AI Platform'
+    },
+    body: JSON.stringify({
+      model: 'anthropic/claude-3.5-sonnet',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages
+      ],
+      temperature: 0.7,
+      max_tokens: 1000
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenRouter API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0]?.message?.content || 'I apologize, but I had trouble processing that request.';
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -13,88 +48,68 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get the system prompt with integrated knowledge base
-    const systemPrompt = await supabaseKnowledge.getSystemPrompt();
-    
-    // Get persona-specific guidance
-    const personaGuidance = await supabaseKnowledge.getPersonaGuidance(message);
-    
-    // Get objection response if applicable
-    const objectionResponse = await supabaseKnowledge.getObjectionResponse(message);
+    // Build Sam's personality and knowledge system prompt
+    const systemPrompt = `You are Sam, an AI-powered Sales Assistant that helps businesses automate and optimize their sales processes. You have a warm, professional, and conversational personality.
 
-    // Use the room tour onboarding flow from conversation scripts
-    let response = "";
-    const isFirstMessage = conversationHistory.length === 0;
+CORE IDENTITY:
+- You coordinate a team of 14 specialized AI agents for lead discovery, enrichment, personalization, outreach, replies, and analytics
+- You help with prospecting, messaging, follow-ups, and sales automation 
+- You're knowledgeable about sales processes, lead generation, CRM systems, and B2B outreach
+- You can discuss the SAM platform features: Knowledge Base, Contact Center, Campaign Hub, Lead Pipeline, and Analytics
+
+CONVERSATION STYLE:
+- Be natural and conversational, not scripted
+- Ask follow-up questions to understand their specific needs
+- Provide actionable advice and insights
+- Be helpful but not pushy
+- Use "you" and "your" to keep it personal
+- Keep responses concise but informative (2-4 sentences typically)
+
+KEY CAPABILITIES YOU CAN DISCUSS:
+- Lead discovery and enrichment
+- Personalized message creation and outreach
+- Automated follow-up sequences
+- Inbound request handling
+- Campaign performance tracking
+- Sales pipeline management
+- Integration with existing tools and CRMs
+
+PLATFORM FEATURES:
+- Knowledge Base: Document storage and context for personalization
+- Contact Center: Automated inbound request handling
+- Campaign Hub: Campaign creation and management
+- Lead Pipeline: Prospect tracking and scoring
+- Analytics: Performance metrics and ROI tracking
+
+Remember: You're having a real conversation, not following a script. Respond naturally to whatever the user asks, whether it's about sales, the platform, their business challenges, or general questions. Always be helpful and try to guide the conversation toward understanding their sales challenges when appropriate.`;
+
+    // Convert conversation history to OpenRouter format
+    const messages = conversationHistory.map((msg: any) => ({
+      role: msg.role === 'user' ? 'user' : 'assistant',
+      content: msg.content
+    }));
+
+    // Add current message
+    messages.push({
+      role: 'user',
+      content: message
+    });
+
+    // Get AI response
+    let response: string;
     
-    if (isFirstMessage) {
-      // Step 1: Small Talk (Human Entry)
-      response = "Hi there! How's your day going? Busy morning or a bit calmer?";
-    } else {
-      // Handle responses based on conversation context
-      const userInput = message.toLowerCase();
-      
-      // Step 2: Acknowledge and introduce with room tour
-      if (userInput.includes('busy') || userInput.includes('hectic') || userInput.includes('crazy') || userInput.includes('fire')) {
-        response = "I get that. I'm Sam. My role is to take the heavy lifting out of prospecting and follow-up. Before we dive in, let me show you around the workspace.\n\nOn the left, you'll see tabs. The first is *Chat with Sam* — that's right here. This is where you and I talk. Does that make sense?";
-      } else if (userInput.includes('calm') || userInput.includes('good') || userInput.includes('quiet') || userInput.includes('calmer')) {
-        response = "Nice, those are rare. I'm Sam. My role is to make your outreach lighter — prospecting, messaging, and follow-ups. Before we dive in, let me give you a quick tour so you know where everything is.\n\nThis is where we'll talk. You can ask me questions here anytime. If you need to stop or take a break, I'll remember and we'll resume later. Does that sound good?";
-      }
-      // Room Tour Steps - Knowledge Base
-      else if (userInput.includes('make sense') || userInput.includes('sounds good') || userInput.includes('yes') || userInput.includes('ok') || userInput.includes('okay')) {
-        response = "Great! Next up is the Knowledge Base tab. Everything we discuss and everything you upload — like docs, templates, case studies — gets stored here. I'll use this to tailor my answers and campaigns.\n\nClear so far?";
-      }
-      // Room Tour Steps - Training Room
-      else if (userInput.includes('clear') || userInput.includes('understand') || userInput.includes('yup') || userInput.includes('yep') || userInput.includes('sure')) {
-        response = "Perfect. The Sam Training Room is where I'll guide you through a 7-stage onboarding journey: Business context, ICP, Competition, Sales process, Metrics, Tech/Compliance, and Content. We'll go step by step, one question at a time.\n\nMaking sense?";
-      }
-      // Room Tour Steps - Contact Center
-      else if (userInput.includes('making sense') || userInput.includes('sense') || userInput.includes('got it') || userInput.includes('right')) {
-        response = "Excellent. The Contact Center is for inbound requests — like demo forms, pricing questions, or info requests. My inbound agent handles those automatically.\n\nFollowing along?";
-      }
-      // Room Tour Steps - Campaign Hub
-      else if (userInput.includes('following') || userInput.includes('along') || userInput.includes('yeah') || userInput.includes('uh huh')) {
-        response = "Great! Campaign Hub is where we'll build campaigns. I'll generate drafts based on your ICP, messaging, and uploaded materials — and you'll review/approve before anything goes out.\n\nStill with me?";
-      }
-      // Room Tour Steps - Lead Pipeline
-      else if (userInput.includes('still with') || userInput.includes('with me') || userInput.includes('good') || userInput.includes('fine')) {
-        response = "Perfect. Lead Pipeline shows prospects moving from discovery, to qualified, to opportunities. You'll see enrichment status, scores, and next actions.\n\nAll good?";
-      }
-      // Room Tour Steps - Analytics & Closing
-      else if (userInput.includes('all good') || userInput.includes('sounds great') || userInput.includes('perfect')) {
-        response = "Finally, Analytics is where we track results: readiness scores, campaign metrics, reply/meeting rates, and agent performance.\n\nAt any time, you can invite teammates, check settings, or update your profile. So, would you like me to start with a quick overview of what I do, or should we jump straight into your sales challenges?";
-      }
-      // Branching after tour
-      else if (userInput.includes('overview') || userInput.includes('what you do')) {
-        response = "Sure thing. I coordinate a team of 14 specialized AI agents that handle lead discovery, enrichment, personalization, outreach, replies, and analytics. Which area interests you most — finding leads, personalizing messages, or tracking results?";
-      } else if (userInput.includes('challenges') || userInput.includes('jump straight')) {
-        response = "Great — let's make this about you. Tell me, where do you feel the most friction in your sales process right now — finding leads, personalizing messaging, or staying consistent with follow-ups?";
-      }
-      // Handle objections if detected
-      else if (objectionResponse) {
-        response = objectionResponse;
-      }
-      // Add persona-specific guidance if detected
-      else if (personaGuidance) {
-        response = personaGuidance + "\n\nWhat's the biggest challenge you're facing in your current sales process?";
-      }
-      // Handle generic responses to avoid falling through
-      else if (userInput.length < 10 && (userInput.includes('sure') || userInput.includes('right') || userInput.includes('got it') || userInput.includes('yep') || userInput.includes('yeah'))) {
-        response = "Perfect! I'm here to help streamline your sales process. What's the biggest challenge you're facing right now — finding qualified leads, crafting personalized messages, or staying consistent with follow-ups?";
-      }
-      // Default response - restart room tour
-      else {
-        response = "I want to make sure I understand what you need. Are you looking for help with lead generation, sales automation, or something else? Let me know what's on your mind.";
-      }
+    try {
+      response = await callOpenRouter(messages, systemPrompt);
+    } catch (error) {
+      console.error('OpenRouter API error:', error);
+      // Fallback response if AI fails
+      response = "I'm experiencing some technical difficulties right now, but I'm here to help with your sales challenges. What specific area of sales would you like to discuss - lead generation, outreach, or pipeline management?";
     }
 
     return NextResponse.json({
       response,
       timestamp: new Date().toISOString(),
-      knowledgeUsed: {
-        personaDetected: !!personaGuidance,
-        objectionHandled: !!objectionResponse,
-        systemPromptLength: systemPrompt.length
-      }
+      aiPowered: true
     });
 
   } catch (error) {
