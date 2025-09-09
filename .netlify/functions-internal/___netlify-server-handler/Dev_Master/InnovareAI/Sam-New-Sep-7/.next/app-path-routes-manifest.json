@@ -1,6 +1,7 @@
 {
   "/_not-found/page": "/_not-found",
   "/api/knowledge/route": "/api/knowledge",
+  "/api/knowledge/upload/route": "/api/knowledge/upload",
   "/api/sam/chat/route": "/api/sam/chat",
   "/api/test-email/route": "/api/test-email",
   "/api/test-sam/route": "/api/test-sam",
