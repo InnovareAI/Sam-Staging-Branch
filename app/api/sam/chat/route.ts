@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
         response = "Nice, those are rare. I'm Sam. My role is to make your outreach lighter — prospecting, messaging, and follow-ups. Before we dive in, let me give you a quick tour so you know where everything is.\n\nThis is where we'll talk. You can ask me questions here anytime. If you need to stop or take a break, I'll remember and we'll resume later. Does that sound good?";
       }
       // Room Tour Steps - Knowledge Base
-      else if (userInput.includes('make sense') || userInput.includes('sounds good') || userInput.includes('yes')) {
+      else if (userInput.includes('make sense') || userInput.includes('sounds good') || userInput.includes('yes') || userInput.includes('ok') || userInput.includes('okay')) {
         response = "Great! Next up is the Knowledge Base tab. Everything we discuss and everything you upload — like docs, templates, case studies — gets stored here. I'll use this to tailor my answers and campaigns.\n\nClear so far?";
       }
       // Room Tour Steps - Training Room
@@ -77,9 +77,13 @@ export async function POST(req: NextRequest) {
       else if (personaGuidance) {
         response = personaGuidance + "\n\nWhat's the biggest challenge you're facing in your current sales process?";
       }
+      // Handle generic responses to avoid falling through
+      else if (userInput.length < 10 && (userInput.includes('sure') || userInput.includes('right') || userInput.includes('got it') || userInput.includes('yep') || userInput.includes('yeah'))) {
+        response = "Perfect! I'm here to help streamline your sales process. What's the biggest challenge you're facing right now — finding qualified leads, crafting personalized messages, or staying consistent with follow-ups?";
+      }
       // Default response - restart room tour
       else {
-        response = "Hi! I'm Sam. My role is to take the heavy lifting out of prospecting and follow-up. Before we dive in, let me show you around the workspace so you know where everything is.\n\nThis is Chat with Sam — where you and I talk. You can ask questions here anytime, pause, or resume later. Sound good?";
+        response = "I want to make sure I understand what you need. Are you looking for help with lead generation, sales automation, or something else? Let me know what's on your mind.";
       }
     }
 
