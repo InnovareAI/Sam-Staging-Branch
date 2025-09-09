@@ -13,8 +13,71 @@ import {
   Search,
   Upload,
   FileText,
-  Plus
+  Plus,
+  TestTube
 } from 'lucide-react';
+
+// Vector Test Component for v2
+function VectorTest() {
+  const [q, setQ] = useState('');
+  const [res, setRes] = useState<any[]>([]);
+  
+  const run = async () => {
+    try {
+      const r = await fetch('/api/kb/test-retrieval', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ query: q, scope: { org_id: 'org-demo' }})
+      });
+      const j = await r.json();
+      setRes(j.results || []);
+    } catch (error) {
+      console.error('Vector test error:', error);
+      setRes([]);
+    }
+  };
+
+  return (
+    <div className="mb-6 p-4 bg-gray-800 border border-gray-700 rounded-lg">
+      <div className="flex items-center gap-2 mb-3">
+        <TestTube size={20} className="text-purple-400" />
+        <h3 className="text-white font-semibold">Test Knowledge Retrieval</h3>
+      </div>
+      <p className="text-gray-400 text-sm mb-4">
+        Test vector search capabilities with your knowledge base
+      </p>
+      <div className="flex gap-2 mb-4">
+        <input 
+          className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none" 
+          placeholder="Ask a question..." 
+          value={q} 
+          onChange={e => setQ(e.target.value)} 
+          onKeyPress={e => e.key === 'Enter' && run()}
+        />
+        <button 
+          onClick={run} 
+          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+        >
+          Search
+        </button>
+      </div>
+      {res.length > 0 && (
+        <div className="space-y-2 max-h-80 overflow-auto">
+          {res.map((r, i) => (
+            <div key={i} className="p-3 border border-gray-600 rounded bg-gray-700">
+              <div className="text-xs text-gray-400 mb-1">
+                Relevance Score: {r.score?.toFixed?.(3)}
+              </div>
+              <div className="text-sm text-gray-300">
+                {r.text?.slice(0, 200)}{(r.text?.length || 0) > 200 ? '...' : ''}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface KnowledgeItem {
   id: string;
@@ -192,6 +255,8 @@ const KnowledgeBase = () => {
 
       {/* Knowledge Items */}
       <div className="flex-1 overflow-y-auto p-6">
+        {/* Vector Test Component */}
+        <VectorTest />
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto mb-4"></div>

@@ -3,6 +3,10 @@
 import React, { useState } from 'react';
 import TrainingRoom from './components/TrainingRoom';
 import KnowledgeBase from './components/KnowledgeBase';
+import ContactCenter from './components/ContactCenter';
+import CampaignHub from './components/CampaignHub';
+import LeadPipeline from './components/LeadPipeline';
+import Analytics from './components/Analytics';
 import { 
   MessageCircle, 
   Book, 
@@ -177,6 +181,14 @@ export default function Page() {
           <TrainingRoom />
         ) : activeMenuItem === 'knowledge' ? (
           <KnowledgeBase />
+        ) : activeMenuItem === 'contact' ? (
+          <ContactCenter />
+        ) : activeMenuItem === 'campaign' ? (
+          <CampaignHub />
+        ) : activeMenuItem === 'pipeline' ? (
+          <LeadPipeline />
+        ) : activeMenuItem === 'analytics' ? (
+          <Analytics />
         ) : showStarterScreen ? (
           /* STARTER SCREEN */
           <div className="flex-1 flex flex-col items-center justify-start pt-24 p-6">
