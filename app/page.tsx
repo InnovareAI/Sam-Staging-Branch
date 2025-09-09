@@ -23,6 +23,16 @@ export default function Page() {
   const [messages, setMessages] = useState<any[]>([]);
   const [isSending, setIsSending] = useState(false);
 
+  const menuItems = [
+    { id: 'chat', label: 'Chat with Sam', icon: MessageCircle, active: true },
+    { id: 'knowledge', label: 'Knowledge Base', icon: Book, active: false },
+    { id: 'training', label: 'Sam Training Room', icon: GraduationCap, active: false },
+    { id: 'contact', label: 'Contact Center', icon: Users, active: false },
+    { id: 'campaign', label: 'Campaign Hub', icon: Megaphone, active: false },
+    { id: 'pipeline', label: 'Lead Pipeline', icon: TrendingUp, active: false },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3, active: false }
+  ];
+
   // Simple message handler without authentication
   const handleSendMessage = async () => {
     if (inputMessage.trim()) {
@@ -50,29 +60,6 @@ export default function Page() {
         setMessages(prev => [...prev, aiMessage]);
         setIsSending(false);
       }, 1000);
-    }
-  };
-
-  const menuItems = [
-    { id: 'chat', label: 'Chat with Sam', icon: MessageCircle, active: true },
-    { id: 'knowledge', label: 'Knowledge Base', icon: Book, active: false },
-    { id: 'training', label: 'Sam Training Room', icon: GraduationCap, active: false },
-    { id: 'contact', label: 'Contact Center', icon: Users, active: false },
-    { id: 'campaign', label: 'Campaign Hub', icon: Megaphone, active: false },
-    { id: 'pipeline', label: 'Lead Pipeline', icon: TrendingUp, active: false },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3, active: false }
-  ];
-
-  const handleSendMessage = async () => {
-    if (inputMessage.trim()) {
-      const messageContent = inputMessage.trim();
-      setInputMessage('');
-      
-      if (showStarterScreen) {
-        setShowStarterScreen(false);
-      }
-
-      await sendMessage(messageContent);
     }
   };
 
@@ -177,11 +164,6 @@ export default function Page() {
         ) : (
           /* CHAT MESSAGES */
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {isLoading && messages.length === 0 && (
-              <div className="flex justify-center items-center py-8">
-                <div className="text-gray-400">Loading conversation...</div>
-              </div>
-            )}
             {messages.map((message) => (
               <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[70%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
@@ -242,12 +224,12 @@ export default function Page() {
             <div className="bg-black text-white px-4 py-3 rounded-t-lg max-w-4xl mx-auto">
               <div className="flex items-center space-x-3">
                 <span className="text-sm">
-                  {isSending ? 'Processing...' : isLoading ? 'Loading...' : 'Ready'}
+                  {isSending ? 'Processing...' : 'Ready'}
                 </span>
                 <div className="flex space-x-1">
-                  <div className={`w-2 h-2 rounded-full ${isSending || isLoading ? 'bg-purple-400 animate-pulse' : 'bg-green-400'}`}></div>
-                  <div className={`w-2 h-2 rounded-full ${isSending || isLoading ? 'bg-purple-500 animate-pulse' : 'bg-green-500'}`} style={{animationDelay: '0.2s'}}></div>
-                  <div className={`w-2 h-2 rounded-full ${isSending || isLoading ? 'bg-purple-600 animate-pulse' : 'bg-green-600'}`} style={{animationDelay: '0.4s'}}></div>
+                  <div className={`w-2 h-2 rounded-full ${isSending ? 'bg-purple-400 animate-pulse' : 'bg-green-400'}`}></div>
+                  <div className={`w-2 h-2 rounded-full ${isSending ? 'bg-purple-500 animate-pulse' : 'bg-green-500'}`} style={{animationDelay: '0.2s'}}></div>
+                  <div className={`w-2 h-2 rounded-full ${isSending ? 'bg-purple-600 animate-pulse' : 'bg-green-600'}`} style={{animationDelay: '0.4s'}}></div>
                 </div>
               </div>
               <div className="text-xs text-gray-400 mt-1">
