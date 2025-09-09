@@ -102,76 +102,40 @@ export default function Page() {
 
             {/* Sign In Modal */}
             {showSignIn && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="relative bg-gray-800 rounded-lg p-1 max-w-md w-full mx-4">
+              <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+                <div className="relative bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
                   <button 
                     onClick={() => setShowSignIn(false)}
-                    className="absolute top-4 right-4 text-gray-400 hover:text-white z-10"
+                    className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 z-10"
                   >
                     <X size={24} />
                   </button>
-                  <SignIn 
-                    fallbackRedirectUrl="/"
-                    signUpUrl="#"
-                    appearance={{
-                      elements: {
-                        rootBox: "mx-auto",
-                        card: "bg-gray-800 shadow-xl border-0",
-                        headerTitle: "hidden",
-                        headerSubtitle: "hidden", 
-                        logoBox: "hidden",
-                        logoImage: "hidden",
-                        header: "hidden",
-                        socialButtonsBlockButton: "bg-gray-700 border-gray-600 text-white hover:bg-gray-600",
-                        formButtonPrimary: "bg-purple-600 hover:bg-purple-700 text-white",
-                        footerActionLink: "text-purple-400 hover:text-purple-300",
-                        identityPreviewText: "text-gray-300",
-                        identityPreviewEditButtonIcon: "text-purple-400",
-                        formFieldLabel: "text-gray-300",
-                        formFieldInput: "bg-gray-700 border-gray-600 text-white",
-                        dividerLine: "bg-gray-600",
-                        dividerText: "text-gray-400",
-                      }
-                    }}
-                  />
+                  <div className="mt-4">
+                    <SignIn 
+                      fallbackRedirectUrl="/"
+                      signUpUrl="#"
+                    />
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Sign Up Modal */}
             {showSignUp && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="relative bg-gray-800 rounded-lg p-1 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+                <div className="relative bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
                   <button 
                     onClick={() => setShowSignUp(false)}
-                    className="absolute top-4 right-4 text-gray-400 hover:text-white z-10"
+                    className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 z-10"
                   >
                     <X size={24} />
                   </button>
-                  <SignUp 
-                    fallbackRedirectUrl="/"
-                    signInUrl="#"
-                    appearance={{
-                      elements: {
-                        rootBox: "mx-auto",
-                        card: "bg-gray-800 shadow-xl border-0", 
-                        headerTitle: "hidden",
-                        headerSubtitle: "hidden",
-                        logoBox: "hidden", 
-                        logoImage: "hidden",
-                        header: "hidden",
-                        socialButtonsBlockButton: "bg-gray-700 border-gray-600 text-white hover:bg-gray-600",
-                        formButtonPrimary: "bg-purple-600 hover:bg-purple-700 text-white",
-                        footerActionLink: "text-purple-400 hover:text-purple-300",
-                        identityPreviewText: "text-gray-300",
-                        identityPreviewEditButtonIcon: "text-purple-400", 
-                        formFieldLabel: "text-gray-300",
-                        formFieldInput: "bg-gray-700 border-gray-600 text-white",
-                        dividerLine: "bg-gray-600",
-                        dividerText: "text-gray-400",
-                      }
-                    }}
-                  />
+                  <div className="mt-4">
+                    <SignUp 
+                      fallbackRedirectUrl="/"
+                      signInUrl="#"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -227,76 +191,40 @@ export default function Page() {
 
           {/* Sign In Modal */}
           {showSignIn && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="relative bg-gray-800 rounded-lg p-1 max-w-md w-full mx-4">
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+              <div className="relative bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
                 <button 
                   onClick={() => setShowSignIn(false)}
-                  className="absolute top-4 right-4 text-gray-400 hover:text-white z-10"
+                  className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 z-10"
                 >
                   <X size={24} />
                 </button>
-                <SignIn 
-                  fallbackRedirectUrl="/"
-                  signUpUrl="#"
-                  appearance={{
-                    elements: {
-                      rootBox: "mx-auto",
-                      card: "bg-gray-800 shadow-xl border-0",
-                      headerTitle: "hidden",
-                      headerSubtitle: "hidden", 
-                      logoBox: "hidden",
-                      logoImage: "hidden",
-                      header: "hidden",
-                      socialButtonsBlockButton: "bg-gray-700 border-gray-600 text-white hover:bg-gray-600",
-                      formButtonPrimary: "bg-purple-600 hover:bg-purple-700 text-white",
-                      footerActionLink: "text-purple-400 hover:text-purple-300",
-                      identityPreviewText: "text-gray-300",
-                      identityPreviewEditButtonIcon: "text-purple-400",
-                      formFieldLabel: "text-gray-300",
-                      formFieldInput: "bg-gray-700 border-gray-600 text-white",
-                      dividerLine: "bg-gray-600",
-                      dividerText: "text-gray-400",
-                    }
-                  }}
-                />
+                <div className="mt-4">
+                  <SignIn 
+                    fallbackRedirectUrl="/"
+                    signUpUrl="#"
+                  />
+                </div>
               </div>
             </div>
           )}
 
           {/* Sign Up Modal */}
           {showSignUp && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="relative bg-gray-800 rounded-lg p-1 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+              <div className="relative bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
                 <button 
                   onClick={() => setShowSignUp(false)}
-                  className="absolute top-4 right-4 text-gray-400 hover:text-white z-10"
+                  className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 z-10"
                 >
                   <X size={24} />
                 </button>
-                <SignUp 
-                  fallbackRedirectUrl="/"
-                  signInUrl="#"
-                  appearance={{
-                    elements: {
-                      rootBox: "mx-auto",
-                      card: "bg-gray-800 shadow-xl border-0", 
-                      headerTitle: "hidden",
-                      headerSubtitle: "hidden",
-                      logoBox: "hidden", 
-                      logoImage: "hidden",
-                      header: "hidden",
-                      socialButtonsBlockButton: "bg-gray-700 border-gray-600 text-white hover:bg-gray-600",
-                      formButtonPrimary: "bg-purple-600 hover:bg-purple-700 text-white",
-                      footerActionLink: "text-purple-400 hover:text-purple-300",
-                      identityPreviewText: "text-gray-300",
-                      identityPreviewEditButtonIcon: "text-purple-400", 
-                      formFieldLabel: "text-gray-300",
-                      formFieldInput: "bg-gray-700 border-gray-600 text-white",
-                      dividerLine: "bg-gray-600",
-                      dividerText: "text-gray-400",
-                    }
-                  }}
-                />
+                <div className="mt-4">
+                  <SignUp 
+                    fallbackRedirectUrl="/"
+                    signInUrl="#"
+                  />
+                </div>
               </div>
             </div>
           )}
