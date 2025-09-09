@@ -1,9 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import { User } from '@supabase/supabase-js';
-import { useSamChat } from '@/lib/hooks/useSamChat';
+import React, { useState } from 'react';
 import TrainingRoom from './components/TrainingRoom';
 import { 
   MessageCircle, 
@@ -15,483 +12,46 @@ import {
   BarChart3,
   Settings,
   Send,
-  Paperclip,
-  UserPlus,
-  LogOut
+  Paperclip
 } from 'lucide-react';
 
 export default function Page() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [showMagicLink, setShowMagicLink] = useState(false);
-  const [showPasswordReset, setShowPasswordReset] = useState(false);
-  const [authLoading, setAuthLoading] = useState(false);
-  const [authError, setAuthError] = useState('');
-
-  // Sam chat integration
-  const { 
-    messages, 
-    currentConversation, 
-    isLoading, 
-    isSending, 
-    sendMessage, 
-    loadConversations,
-    error 
-  } = useSamChat();
-
+  // No authentication - direct app access
   const [showStarterScreen, setShowStarterScreen] = useState(true);
   const [inputMessage, setInputMessage] = useState('');
   const [activeMenuItem, setActiveMenuItem] = useState('chat');
+  const [messages, setMessages] = useState<any[]>([]);
+  const [isSending, setIsSending] = useState(false);
 
-  // Check user authentication status
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
-      setLoading(false);
-    };
-
-    getUser();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('🔍 Supabase Auth Event:', event, session?.user?.id);
-        setUser(session?.user || null);
-        
-        if (session?.user && event === 'SIGNED_IN') {
-          console.log('✅ User authenticated with Supabase');
-          
-          // Create tenant/organization if it doesn't exist
-          await createTenantIfNeeded(session.user);
-          
-          loadConversations();
-        } else if (session?.user) {
-          loadConversations();
-        }
+  // Simple message handler without authentication
+  const handleSendMessage = async () => {
+    if (inputMessage.trim()) {
+      const userMessage = {
+        id: Date.now(),
+        role: 'user',
+        content: inputMessage.trim()
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+      setInputMessage('');
+      setIsSending(true);
+      
+      if (showStarterScreen) {
+        setShowStarterScreen(false);
       }
-    );
 
-    return () => subscription.unsubscribe();
-  }, [loadConversations]);
-
-  // Handle sign in
-  const handleSignIn = async () => {
-    setAuthLoading(true);
-    setAuthError('');
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      setAuthError(error.message);
-    }
-    
-    setAuthLoading(false);
-  };
-
-  // Handle sign up
-  const handleSignUp = async () => {
-    setAuthLoading(true);
-    setAuthError('');
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-          company_name: companyName
-        }
-      }
-    });
-
-    if (error) {
-      setAuthError(error.message);
-    } else {
-      setAuthError('Account created successfully! You can now sign in.');
-    }
-    
-    setAuthLoading(false);
-  };
-
-  // Handle magic link
-  const handleMagicLink = async () => {
-    setAuthLoading(true);
-    setAuthError('');
-
-    const { data, error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true
-      }
-    });
-
-    if (error) {
-      setAuthError(error.message);
-    } else {
-      setAuthError('Check your email for the magic link!');
-    }
-    
-    setAuthLoading(false);
-  };
-
-  // Handle password reset
-  const handlePasswordReset = async () => {
-    setAuthLoading(true);
-    setAuthError('');
-
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email);
-
-    if (error) {
-      setAuthError(error.message);
-    } else {
-      setAuthError('Check your email for password reset link!');
-    }
-    
-    setAuthLoading(false);
-  };
-
-  // Create tenant/organization if needed
-  const createTenantIfNeeded = async (user: any) => {
-    if (!user.user_metadata?.company_name) return;
-
-    try {
-      // Check if tenant already exists
-      const { data: existingTenant } = await supabase
-        .from('tenants')
-        .select('id')
-        .eq('company_name', user.user_metadata.company_name)
-        .single();
-
-      if (!existingTenant) {
-        // Create new tenant
-        const { data: newTenant, error } = await supabase
-          .from('tenants')
-          .insert({
-            name: user.user_metadata.company_name,
-            company_name: user.user_metadata.company_name,
-            slug: user.user_metadata.company_name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-            plan: 'starter',
-            status: 'active'
-          })
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Error creating tenant:', error);
-          return;
-        }
-
-        console.log('✅ Created tenant:', newTenant);
-
-        // Create tenant membership
-        if (newTenant) {
-          const { error: membershipError } = await supabase
-            .from('tenant_memberships')
-            .insert({
-              user_id: user.id,
-              tenant_id: newTenant.id,
-              role: 'owner'
-            });
-
-          if (membershipError) {
-            console.error('Error creating tenant membership:', membershipError);
-          } else {
-            console.log('✅ Created tenant membership');
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error in createTenantIfNeeded:', error);
+      // Simulate AI response (replace with actual API call later)
+      setTimeout(() => {
+        const aiMessage = {
+          id: Date.now() + 1,
+          role: 'assistant',
+          content: "I'm SAM AI! I'm here to help with your sales needs. How can I assist you today?"
+        };
+        setMessages(prev => [...prev, aiMessage]);
+        setIsSending(false);
+      }, 1000);
     }
   };
-
-  // Handle sign out
-  const handleSignOut = async () => {
-    // Clear form state immediately
-    setEmail('');
-    setPassword('');
-    setFirstName('');
-    setLastName('');
-    setCompanyName('');
-    setIsSignUp(false);
-    setShowMagicLink(false);
-    setShowPasswordReset(false);
-    setAuthLoading(false);
-    setAuthError('');
-    
-    // Sign out from Supabase
-    await supabase.auth.signOut();
-  };
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="flex h-screen bg-gray-900 items-center justify-center">
-        <div className="text-center">
-          <img 
-            src="/SAM.jpg" 
-            alt="Sam AI" 
-            className="w-24 h-24 rounded-full mx-auto mb-4"
-          />
-          <div className="text-white text-lg mb-2">Loading SAM AI...</div>
-          <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-        </div>
-      </div>
-    );
-  }
-
-  // Not authenticated - show auth form
-  if (!user) {
-    return (
-      <div className="flex h-screen bg-gray-900 items-center justify-center">
-        <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md">
-          <div className="text-center mb-8">
-            <img 
-              src="/SAM.jpg" 
-              alt="Sam AI" 
-              className="w-16 h-16 rounded-full mx-auto mb-4 object-cover"
-              style={{ objectPosition: 'center 30%' }}
-            />
-            <h1 className="text-2xl font-bold text-white mb-2">
-              {isSignUp ? 'Join SAM AI' : 'Welcome to SAM AI'}
-            </h1>
-            <p className="text-gray-400">Your AI-powered Sales Assistant</p>
-          </div>
-
-          {showMagicLink ? (
-            /* MAGIC LINK FORM */
-            <div>
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                handleMagicLink();
-              }}>
-                <div className="space-y-4">
-                  <div>
-                    <input
-                      type="email"
-                      placeholder="Email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
-                      required
-                    />
-                  </div>
-
-                  {authError && (
-                    <div className={`text-sm px-4 py-2 rounded ${
-                      authError.includes('Check your email') || authError.includes('Goodbye') || authError.includes('Account created successfully')
-                        ? 'bg-green-900/50 text-green-300' 
-                        : 'bg-red-900/50 text-red-300'
-                    }`}>
-                      {authError}
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={authLoading}
-                    className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white py-3 rounded-lg font-medium transition-colors"
-                  >
-                    {authLoading ? 'Sending...' : 'Send Magic Link'}
-                  </button>
-                </div>
-              </form>
-
-              <div className="mt-4 text-center">
-                <button
-                  onClick={() => setShowMagicLink(false)}
-                  className="text-purple-400 hover:text-purple-300 text-sm"
-                >
-                  Back to Sign In
-                </button>
-              </div>
-            </div>
-          ) : showPasswordReset ? (
-            /* PASSWORD RESET FORM */
-            <div>
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                handlePasswordReset();
-              }}>
-                <div className="space-y-4">
-                  <div>
-                    <input
-                      type="email"
-                      placeholder="Email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
-                      required
-                    />
-                  </div>
-
-                  {authError && (
-                    <div className={`text-sm px-4 py-2 rounded ${
-                      authError.includes('Check your email') || authError.includes('Goodbye') || authError.includes('Account created successfully')
-                        ? 'bg-green-900/50 text-green-300' 
-                        : 'bg-red-900/50 text-red-300'
-                    }`}>
-                      {authError}
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={authLoading}
-                    className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white py-3 rounded-lg font-medium transition-colors"
-                  >
-                    {authLoading ? 'Sending...' : 'Send Password Reset'}
-                  </button>
-                </div>
-              </form>
-
-              <div className="mt-4 text-center">
-                <button
-                  onClick={() => setShowPasswordReset(false)}
-                  className="text-purple-400 hover:text-purple-300 text-sm"
-                >
-                  Back to Sign In
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* REGULAR SIGN IN/UP FORM */
-            <div>
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                isSignUp ? handleSignUp() : handleSignIn();
-              }}>
-                <div className="space-y-4">
-                  {isSignUp && (
-                    <>
-                      <div className="flex space-x-3">
-                        <input
-                          type="text"
-                          placeholder="First Name"
-                          value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                          className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
-                          required
-                        />
-                        <input
-                          type="text"
-                          placeholder="Last Name"
-                          value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                          className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
-                          required
-                        />
-                      </div>
-                      
-                      <div>
-                        <input
-                          type="text"
-                          placeholder="Company Name"
-                          value={companyName}
-                          onChange={(e) => setCompanyName(e.target.value)}
-                          className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
-                          required
-                        />
-                      </div>
-                    </>
-                  )}
-                  
-                  <div>
-                    <input
-                      type="email"
-                      placeholder="Email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <input
-                      type="password"
-                      placeholder="Password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
-                      required
-                    />
-                  </div>
-
-                  {authError && (
-                    <div className={`text-sm px-4 py-2 rounded ${
-                      authError.includes('Check your email') || authError.includes('Goodbye') || authError.includes('Account created successfully')
-                        ? 'bg-green-900/50 text-green-300' 
-                        : 'bg-red-900/50 text-red-300'
-                    }`}>
-                      {authError}
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={authLoading}
-                    className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white py-3 rounded-lg font-medium transition-colors"
-                  >
-                    {authLoading ? 'Loading...' : isSignUp ? 'Sign Up' : 'Sign In'}
-                  </button>
-                </div>
-              </form>
-
-              <div className="mt-6 space-y-3 text-center">
-                <div>
-                  <button
-                    onClick={() => setIsSignUp(!isSignUp)}
-                    className="text-purple-400 hover:text-purple-300 text-sm"
-                  >
-                    {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
-                  </button>
-                </div>
-                
-                <div className="flex items-center justify-center space-x-4 text-sm">
-                  {!isSignUp ? (
-                    <>
-                      <button
-                        onClick={() => setShowPasswordReset(true)}
-                        className="text-gray-400 hover:text-purple-300 transition-colors"
-                      >
-                        Reset Password
-                      </button>
-                      <span className="text-gray-600">|</span>
-                      <button
-                        onClick={() => setShowMagicLink(true)}
-                        className="text-gray-400 hover:text-purple-300 transition-colors"
-                      >
-                        Magic Link
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => setShowMagicLink(true)}
-                      className="text-gray-400 hover:text-purple-300 transition-colors"
-                    >
-                      Use Magic Link Instead
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
 
   const menuItems = [
     { id: 'chat', label: 'Chat with Sam', icon: MessageCircle, active: true },
@@ -579,31 +139,13 @@ export default function Page() {
           </button>
           
           <div className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
-                    {user.email?.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-white text-sm font-medium">
-                    {user.user_metadata?.first_name ? 
-                      `${user.user_metadata.first_name} ${user.user_metadata.last_name}` : 
-                      user.email?.split('@')[0]
-                    }
-                  </p>
-                  <p className="text-gray-400 text-xs">
-                    {user.user_metadata?.company_name || user.email}
-                  </p>
-                </div>
-                <button 
-                  onClick={handleSignOut}
-                  className="ml-3 p-2 text-gray-400 hover:text-white hover:bg-purple-600/20 rounded-lg transition-all duration-200 group" 
-                  title="Sign out"
-                >
-                  <LogOut size={16} className="group-hover:scale-110 transition-transform" />
-                </button>
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-medium">A</span>
+              </div>
+              <div>
+                <p className="text-white text-sm font-medium">Anonymous User</p>
+                <p className="text-gray-400 text-xs">No Authentication</p>
               </div>
             </div>
           </div>
@@ -709,11 +251,7 @@ export default function Page() {
                 </div>
               </div>
               <div className="text-xs text-gray-400 mt-1">
-                {error ? `Error: ${error}` :
-                 isSending ? 'Sam is thinking...' : 
-                 isLoading ? 'Loading conversation...' : 
-                 currentConversation ? `Active: ${currentConversation.title}` :
-                 'Connected to Sam AI database'}
+                {isSending ? 'Sam is thinking...' : 'Ready to chat with Sam AI'}
               </div>
             </div>
             
