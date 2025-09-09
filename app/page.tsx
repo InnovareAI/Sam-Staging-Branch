@@ -219,9 +219,15 @@ export default function Page() {
   // Handle sign out
   const handleSignOut = async () => {
     const currentUser = user;
-    await supabase.auth.signOut();
     
-    // Clear form state
+    // Show goodbye message first
+    if (currentUser?.user_metadata?.first_name) {
+      setAuthError(`Goodbye ${currentUser.user_metadata.first_name}, see you soon!`);
+    } else {
+      setAuthError('Goodbye, see you soon!');
+    }
+    
+    // Clear form state immediately
     setEmail('');
     setPassword('');
     setFirstName('');
@@ -232,12 +238,8 @@ export default function Page() {
     setShowPasswordReset(false);
     setAuthLoading(false);
     
-    // Show goodbye message
-    if (currentUser?.user_metadata?.first_name) {
-      setAuthError(`Goodbye ${currentUser.user_metadata.first_name}, see you soon!`);
-    } else {
-      setAuthError('Goodbye, see you soon!');
-    }
+    // Sign out from Supabase
+    await supabase.auth.signOut();
   };
 
   // Loading state
@@ -300,7 +302,19 @@ export default function Page() {
                         ? 'bg-green-900/50 text-green-300' 
                         : 'bg-red-900/50 text-red-300'
                     }`}>
-                      {authError}
+                      {authError.includes('Goodbye') ? (
+                        <div className="flex items-center space-x-3">
+                          <img 
+                            src="/SAM.jpg" 
+                            alt="Sam AI" 
+                            className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                            style={{ objectPosition: 'center 30%' }}
+                          />
+                          <span>{authError}</span>
+                        </div>
+                      ) : (
+                        authError
+                      )}
                     </div>
                   )}
 
@@ -348,7 +362,19 @@ export default function Page() {
                         ? 'bg-green-900/50 text-green-300' 
                         : 'bg-red-900/50 text-red-300'
                     }`}>
-                      {authError}
+                      {authError.includes('Goodbye') ? (
+                        <div className="flex items-center space-x-3">
+                          <img 
+                            src="/SAM.jpg" 
+                            alt="Sam AI" 
+                            className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                            style={{ objectPosition: 'center 30%' }}
+                          />
+                          <span>{authError}</span>
+                        </div>
+                      ) : (
+                        authError
+                      )}
                     </div>
                   )}
 
@@ -441,7 +467,19 @@ export default function Page() {
                         ? 'bg-green-900/50 text-green-300' 
                         : 'bg-red-900/50 text-red-300'
                     }`}>
-                      {authError}
+                      {authError.includes('Goodbye') ? (
+                        <div className="flex items-center space-x-3">
+                          <img 
+                            src="/SAM.jpg" 
+                            alt="Sam AI" 
+                            className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                            style={{ objectPosition: 'center 30%' }}
+                          />
+                          <span>{authError}</span>
+                        </div>
+                      ) : (
+                        authError
+                      )}
                     </div>
                   )}
 
