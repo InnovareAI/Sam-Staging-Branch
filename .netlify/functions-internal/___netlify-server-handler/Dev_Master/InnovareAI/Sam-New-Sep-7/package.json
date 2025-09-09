@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:staging": "cp .env.staging .env.local.bak && mv .env.local .env.local.prod && mv .env.staging .env.local && next build && mv .env.local .env.staging && mv .env.local.prod .env.local",
     "start": "next start",
     "lint": "next lint",
-    "deploy:staging": "npm run build && netlify deploy --dir=.next --alias=staging"
+    "deploy:staging": "npm run build:staging && netlify deploy --dir=.next --alias=staging"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.31.9",
