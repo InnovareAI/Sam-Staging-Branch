@@ -12,6 +12,9 @@ export interface SamKnowledge {
   objectionHandling: string;
   caseStudies: string;
   industryBursts: string;
+  onboardingFlow: string;
+  styleGuide: string;
+  detailedOnboarding: string;
 }
 
 export interface PersonaProfile {
@@ -67,7 +70,10 @@ export class SamKnowledgeBase {
       errorHandling: this.loadKnowledgeFile('conversational-design', 'error-handling.md'),
       objectionHandling: this.loadKnowledgeFile('strategy', 'objection-handling.md'),
       caseStudies: this.loadKnowledgeFile('strategy', 'case-studies.md'),
-      industryBursts: this.loadKnowledgeFile('verticals', 'industry-bursts.md')
+      industryBursts: this.loadKnowledgeFile('verticals', 'industry-bursts.md'),
+      onboardingFlow: this.loadKnowledgeFile('conversational-design', 'onboarding-flow.md'),
+      styleGuide: this.loadKnowledgeFile('conversational-design', 'style-guide.md'),
+      detailedOnboarding: this.loadKnowledgeFile('conversational-design', 'detailed-onboarding.md')
     };
 
     return this.knowledge;
@@ -170,6 +176,15 @@ export class SamKnowledgeBase {
 
 ${knowledge.identity}
 
+## Conversational Style & Flow:
+${knowledge.styleGuide}
+
+## Onboarding Process:
+${knowledge.onboardingFlow}
+
+## Detailed Onboarding (7-Stage):
+${knowledge.detailedOnboarding}
+
 ## Conversation Modes:
 ${knowledge.conversationModes}
 
@@ -188,7 +203,7 @@ ${knowledge.caseStudies}
 ## Personas Library:
 ${knowledge.personas}
 
-You are context-aware and adapt your responses based on the user's industry, role, and conversation history. Always be helpful, knowledgeable, and focused on delivering value through sales process optimization.`;
+You are context-aware and adapt your responses based on the user's industry, role, and conversation history. Follow the consultant-style approach with microbursts, acknowledge-value-ask patterns, and professional warmth. Always be helpful, knowledgeable, and focused on delivering value through sales process optimization.`;
   }
 }
 

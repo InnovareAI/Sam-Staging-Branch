@@ -24,19 +24,19 @@
       "static/chunks/main-app-8979707e7acb6cc8.js",
       "static/chunks/app/api/sam/conversations/[id]/messages/route-d05a1282943bbfcf.js"
     ],
-    "/api/test-auth/route": [
-      "static/chunks/webpack-488f06ef95150697.js",
-      "static/chunks/4bd1b696-c023c6e3521b1417.js",
-      "static/chunks/255-e3bf15caf1f1e0f9.js",
-      "static/chunks/main-app-8979707e7acb6cc8.js",
-      "static/chunks/app/api/test-auth/route-d05a1282943bbfcf.js"
-    ],
     "/api/sam/conversations/route": [
       "static/chunks/webpack-488f06ef95150697.js",
       "static/chunks/4bd1b696-c023c6e3521b1417.js",
       "static/chunks/255-e3bf15caf1f1e0f9.js",
       "static/chunks/main-app-8979707e7acb6cc8.js",
       "static/chunks/app/api/sam/conversations/route-d05a1282943bbfcf.js"
+    ],
+    "/api/test-auth/route": [
+      "static/chunks/webpack-488f06ef95150697.js",
+      "static/chunks/4bd1b696-c023c6e3521b1417.js",
+      "static/chunks/255-e3bf15caf1f1e0f9.js",
+      "static/chunks/main-app-8979707e7acb6cc8.js",
+      "static/chunks/app/api/test-auth/route-d05a1282943bbfcf.js"
     ],
     "/api/test-email/route": [
       "static/chunks/webpack-488f06ef95150697.js",
@@ -66,6 +66,13 @@
       "static/chunks/main-app-8979707e7acb6cc8.js",
       "static/chunks/app/api/webhooks/clerk/route-d05a1282943bbfcf.js"
     ],
+    "/api/workspaces/invite/route": [
+      "static/chunks/webpack-488f06ef95150697.js",
+      "static/chunks/4bd1b696-c023c6e3521b1417.js",
+      "static/chunks/255-e3bf15caf1f1e0f9.js",
+      "static/chunks/main-app-8979707e7acb6cc8.js",
+      "static/chunks/app/api/workspaces/invite/route-d05a1282943bbfcf.js"
+    ],
     "/api/workspaces/join/route": [
       "static/chunks/webpack-488f06ef95150697.js",
       "static/chunks/4bd1b696-c023c6e3521b1417.js",
@@ -79,13 +86,6 @@
       "static/chunks/255-e3bf15caf1f1e0f9.js",
       "static/chunks/main-app-8979707e7acb6cc8.js",
       "static/chunks/app/api/workspaces/switch/route-d05a1282943bbfcf.js"
-    ],
-    "/api/workspaces/invite/route": [
-      "static/chunks/webpack-488f06ef95150697.js",
-      "static/chunks/4bd1b696-c023c6e3521b1417.js",
-      "static/chunks/255-e3bf15caf1f1e0f9.js",
-      "static/chunks/main-app-8979707e7acb6cc8.js",
-      "static/chunks/app/api/workspaces/invite/route-d05a1282943bbfcf.js"
     ],
     "/invite/[token]/page": [
       "static/chunks/webpack-488f06ef95150697.js",

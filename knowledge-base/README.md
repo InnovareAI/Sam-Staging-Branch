@@ -13,6 +13,9 @@ This knowledge base contains all training data and conversational patterns for S
 ### Conversational Design (`/conversational-design/`)
 - `conversation-modes.md` - Four conversation modes (Onboarding, Product QA, Campaign, Repair)
 - `error-handling.md` - Error scenarios and repair strategies
+- `onboarding-flow.md` - Consultant-style onboarding opener (5-step flow)
+- `style-guide.md` - Complete conversational style guide with tone, patterns, and recovery behaviors
+- `detailed-onboarding.md` - Comprehensive 7-stage onboarding process with must-have/nice-to-have fields
 
 ### Strategy (`/strategy/`)
 - `objection-handling.md` - Common objections and proven responses
