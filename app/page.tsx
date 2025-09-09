@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import TrainingRoom from './components/TrainingRoom';
+import KnowledgeBase from './components/KnowledgeBase';
 import { 
   MessageCircle, 
   Book, 
@@ -50,16 +51,47 @@ export default function Page() {
         setShowStarterScreen(false);
       }
 
-      // Simulate AI response (replace with actual API call later)
-      setTimeout(() => {
-        const aiMessage = {
+      // Call SAM AI API with knowledge base integration
+      try {
+        const response = await fetch('/api/sam/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: userMessage.content,
+            conversationHistory: messages
+          }),
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+          const aiMessage = {
+            id: Date.now() + 1,
+            role: 'assistant',
+            content: data.response
+          };
+          setMessages(prev => [...prev, aiMessage]);
+        } else {
+          const errorMessage = {
+            id: Date.now() + 1,
+            role: 'assistant',
+            content: "I apologize, but I'm having trouble processing your request right now. Please try again."
+          };
+          setMessages(prev => [...prev, errorMessage]);
+        }
+      } catch (error) {
+        console.error('Chat API error:', error);
+        const errorMessage = {
           id: Date.now() + 1,
           role: 'assistant',
-          content: "I'm SAM AI! I'm here to help with your sales needs. How can I assist you today?"
+          content: "I'm experiencing technical difficulties. Please try again in a moment."
         };
-        setMessages(prev => [...prev, aiMessage]);
+        setMessages(prev => [...prev, errorMessage]);
+      } finally {
         setIsSending(false);
-      }, 1000);
+      }
     }
   };
 
@@ -143,6 +175,8 @@ export default function Page() {
       <div className="flex-1 flex flex-col bg-gray-900">
         {activeMenuItem === 'training' ? (
           <TrainingRoom />
+        ) : activeMenuItem === 'knowledge' ? (
+          <KnowledgeBase />
         ) : showStarterScreen ? (
           /* STARTER SCREEN */
           <div className="flex-1 flex flex-col items-center justify-start pt-24 p-6">
