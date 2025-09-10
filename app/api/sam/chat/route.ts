@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseKnowledge } from '@/lib/supabase-knowledge';
+import { getCurrentUser } from '@/app/lib/auth';
+import { supabaseAdmin } from '../../../lib/supabase';
 
 // Helper function to call OpenRouter API
 async function callOpenRouter(messages: any[], systemPrompt: string) {
@@ -36,8 +38,19 @@ async function callOpenRouter(messages: any[], systemPrompt: string) {
   return data.choices[0]?.message?.content || 'I apologize, but I had trouble processing that request.';
 }
 
+// Use shared supabase admin client
+
 export async function POST(req: NextRequest) {
   try {
+    // Get current authenticated user
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' }, 
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { message, conversationHistory = [] } = body;
 
@@ -189,10 +202,39 @@ INSTRUCTIONS:
       response = "I'm experiencing some technical difficulties right now, but I'm here to help with your sales challenges. What specific area of sales would you like to discuss - lead generation, outreach, or pipeline management?";
     }
 
+    // Save conversation to database with user/organization context
+    try {
+      const adminClient = supabaseAdmin();
+      const { error } = await adminClient
+        .from('sam_conversations')
+        .insert({
+          user_id: user.clerkId,
+          organization_id: user.organizationId || null,
+          message: message,
+          response: response,
+          metadata: {
+            scriptPosition,
+            scriptProgress,
+            timestamp: new Date().toISOString()
+          }
+        });
+
+      if (error) {
+        console.error('Error saving conversation:', error);
+      }
+    } catch (saveError) {
+      console.error('Error saving conversation:', saveError);
+      // Don't fail the request if conversation save fails
+    }
+
     return NextResponse.json({
       response,
       timestamp: new Date().toISOString(),
-      aiPowered: true
+      aiPowered: true,
+      user: {
+        id: user.clerkId,
+        organizationId: user.organizationId
+      }
     });
 
   } catch (error) {

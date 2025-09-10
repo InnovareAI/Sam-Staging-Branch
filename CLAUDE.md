@@ -262,11 +262,136 @@ netlify rollback
 - Multiple deployment attempts without fixing root cause - ROOT CAUSE IDENTIFIED AND FIXED
 - Violated TODO tracking protocol during debugging - PROTOCOL RESTORED
 
+## MILESTONE SYSTEM - CRITICAL FOR CODE PRESERVATION
+
+### 🎯 Overview
+The SAM AI Milestone System provides comprehensive, date-stamped backups of major development stages. **NEVER LOSE WORKING CODE AGAIN!**
+
+### 📁 System Files
+- **`MILESTONE_SYSTEM.md`** - Master index of all milestones
+- **`MILESTONE_YYYY-MM-DD_vX.X.md`** - Individual milestone files with complete code
+- **`create-milestone.sh`** - Automated milestone creation script
+- **`README_MILESTONE_SYSTEM.md`** - Complete usage guide
+
+### 🚀 Creating Milestones
+
+#### Automated Creation (Recommended):
+```bash
+./create-milestone.sh "v2.1" "Feature Name" "Description"
+
+# Examples:
+./create-milestone.sh "v2.1" "Supabase Integration" "Complete Supabase backend with authentication"
+./create-milestone.sh "v2.2" "Authentication System" "Multi-tenant authentication with Clerk"
+```
+
+#### When to Create Milestones:
+- ✅ **Major feature completions** (AI capabilities, UI overhauls)
+- ✅ **Architecture changes** (database integration, authentication)
+- ✅ **Before risky changes** (major refactoring, dependency updates)
+- ✅ **Production deployments** (working staging versions)
+- ✅ **Integration milestones** (API integrations, third-party services)
+
+### 🔄 Restoring Milestones
+
+#### Quick Restore Process:
+1. **Find milestone file** (e.g., `MILESTONE_2025-01-09_v2.0.md`)
+2. **Copy code sections** from the milestone file
+3. **Paste into project files** (replace existing code)
+4. **Follow restore instructions** in the milestone file
+
+#### Example Restore Commands:
+```bash
+# Navigate to project
+cd /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7
+
+# Copy code from milestone file to actual files
+# (manual copy/paste from milestone .md file)
+
+# Install dependencies
+npm install
+
+# Add environment variables to .env.local
+# (copy from milestone .env section)
+
+# Start development
+npm run dev
+
+# Deploy if needed
+npm run build
+netlify deploy --dir=.next --alias=staging
+```
+
+### 📊 Current Milestones
+
+#### ✅ MILESTONE 2025-01-09 v2.0 - Human Conversational AI Complete
+**Status**: Current Production Ready  
+**Features**:
+- Human conversational AI with OpenRouter Claude 3.5 Sonnet
+- Balanced script adherence with natural conversation flexibility
+- Complete training data script integration for RAG system
+- Sticky memory with localStorage persistence
+- Auto-scroll chat functionality
+- All UI components functional
+- Production-ready Next.js 15.5.2 architecture
+
+**File**: `MILESTONE_2025-01-09_v2.0.md` (Complete code backup)
+
+### 🛠️ Milestone Best Practices
+
+#### MANDATORY Usage Rules:
+- **ALWAYS create milestones before major changes**
+- **NEVER skip milestone creation for working features**
+- **TEST restore process occasionally**
+- **UPDATE milestone index in MILESTONE_SYSTEM.md**
+- **COMMIT milestone files to git**
+
+#### Naming Conventions:
+- **Semantic versioning**: v2.0, v2.1, v2.2 (major.minor)
+- **Descriptive names**: "Supabase Integration", "Authentication System"  
+- **Consistent dates**: YYYY-MM-DD format
+
+### ⚡ Quick Milestone Commands
+
+```bash
+# Create new milestone
+./create-milestone.sh "v2.1" "New Feature" "Description"
+
+# List all milestones
+ls -la MILESTONE_*.md
+
+# View milestone system
+cat MILESTONE_SYSTEM.md
+
+# Check current state before milestone
+git status && git log --oneline -5
+```
+
+### 🔧 Script Features
+
+The `create-milestone.sh` script automatically:
+- ✅ Creates properly formatted milestone files
+- ✅ Includes current git commit and branch info  
+- ✅ Adds timestamp and version info
+- ✅ Copies all current code files
+- ✅ Includes package.json and configuration
+- ✅ Provides complete restore instructions
+- ✅ Reminds to update the milestone index
+
+### 🎉 Benefits
+
+- **Never lose working code** - Every major stage preserved
+- **Date-stamped organization** - Easy to find any version
+- **Complete code included** - Full restore capability  
+- **Copy/paste restore** - No complex git operations needed
+- **Automated creation** - Script handles tedious work
+- **Git integration** - Tracks commits and branches
+
 ### CRITICAL ENFORCEMENT RULES
 - **🚨 SUBAGENT RULE**: Read CLAUDE.md + CLAUDE_GUARDRAILS_MASTERFILE.md before ANY task - NO EXCEPTIONS
 - **🚨 CONFIRMATION REQUIRED**: Must explicitly confirm understanding and get user approval before proceeding
 - **🚨 NO TASK EXECUTION**: Without proper file reading and confirmation, NO WORK IS ALLOWED
 - **ALWAYS use TodoWrite tool for task tracking** (MANDATORY per CLAUDE.md)
+- **ALWAYS create milestones before major changes** (MANDATORY per milestone system)
 - ALWAYS test on staging before production deployment
 - ENSURE multi-tenant data isolation in all queries
 - MAINTAIN conversation context across sessions
@@ -275,4 +400,4 @@ netlify rollback
 - **DO NOT make changes without proper TODO tracking**
 
 ---
-Last Updated: 2025-01-09 - SAM AI Platform v2.0 - AUTHENTICATION CURRENTLY BROKEN - NEEDS IMMEDIATE FIX
+Last Updated: 2025-01-09 - SAM AI Platform v2.0 - MILESTONE SYSTEM ACTIVE - Complete code preservation enabled

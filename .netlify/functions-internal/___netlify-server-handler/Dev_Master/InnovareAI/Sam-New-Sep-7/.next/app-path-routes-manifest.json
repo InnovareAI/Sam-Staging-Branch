@@ -1,10 +1,20 @@
 {
   "/_not-found/page": "/_not-found",
+  "/api/admin/check-db/route": "/api/admin/check-db",
   "/api/knowledge/upload/route": "/api/knowledge/upload",
-  "/api/sam/chat/route": "/api/sam/chat",
   "/api/knowledge/route": "/api/knowledge",
+  "/api/organization/create/route": "/api/organization/create",
+  "/api/sam/chat/route": "/api/sam/chat",
   "/api/test-email/route": "/api/test-email",
   "/api/test-sam/route": "/api/test-sam",
+  "/api/test-signup/route": "/api/test-signup",
   "/api/test-simple/route": "/api/test-simple",
-  "/page": "/"
+  "/api/webhooks/clerk/route": "/api/webhooks/clerk",
+  "/api/test-user-status/route": "/api/test-user-status",
+  "/direct-access/page": "/direct-access",
+  "/page": "/",
+  "/sign-in/[[...sign-in]]/page": "/sign-in/[[...sign-in]]",
+  "/sign-up/[[...sign-up]]/page": "/sign-up/[[...sign-up]]",
+  "/signin/page": "/signin",
+  "/signup/page": "/signup"
 }

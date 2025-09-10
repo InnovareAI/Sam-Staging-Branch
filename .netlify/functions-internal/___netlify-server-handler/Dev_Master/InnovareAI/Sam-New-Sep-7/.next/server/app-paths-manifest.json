@@ -1,10 +1,20 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
+  "/api/admin/check-db/route": "app/api/admin/check-db/route.js",
   "/api/knowledge/upload/route": "app/api/knowledge/upload/route.js",
-  "/api/sam/chat/route": "app/api/sam/chat/route.js",
   "/api/knowledge/route": "app/api/knowledge/route.js",
+  "/api/organization/create/route": "app/api/organization/create/route.js",
+  "/api/sam/chat/route": "app/api/sam/chat/route.js",
   "/api/test-email/route": "app/api/test-email/route.js",
   "/api/test-sam/route": "app/api/test-sam/route.js",
+  "/api/test-signup/route": "app/api/test-signup/route.js",
   "/api/test-simple/route": "app/api/test-simple/route.js",
-  "/page": "app/page.js"
+  "/api/webhooks/clerk/route": "app/api/webhooks/clerk/route.js",
+  "/api/test-user-status/route": "app/api/test-user-status/route.js",
+  "/direct-access/page": "app/direct-access/page.js",
+  "/page": "app/page.js",
+  "/sign-in/[[...sign-in]]/page": "app/sign-in/[[...sign-in]]/page.js",
+  "/sign-up/[[...sign-up]]/page": "app/sign-up/[[...sign-up]]/page.js",
+  "/signin/page": "app/signin/page.js",
+  "/signup/page": "app/signup/page.js"
 }
