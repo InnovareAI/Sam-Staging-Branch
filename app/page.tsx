@@ -31,6 +31,8 @@ export default function Page() {
   const [messages, setMessages] = useState<any[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [passwordChangeData, setPasswordChangeData] = useState({ password: '', confirmPassword: '', loading: false });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Check authentication state on mount (strict authentication required)
@@ -62,6 +64,18 @@ export default function Page() {
     return () => {
       subscription.unsubscribe();
     };
+  }, []);
+
+  // Check for password change URL parameter
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('change-password') === 'true') {
+        setShowPasswordChange(true);
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
   }, []);
 
   // Load persisted data on component mount
@@ -124,6 +138,41 @@ export default function Page() {
   }, [messages, isSending]);
 
   // Simple message handler without authentication
+  // Handle password change
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (passwordChangeData.password !== passwordChangeData.confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+
+    if (passwordChangeData.password.length < 6) {
+      alert('Password must be at least 6 characters long');
+      return;
+    }
+
+    setPasswordChangeData(prev => ({ ...prev, loading: true }));
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: passwordChangeData.password
+      });
+
+      if (error) {
+        alert('Error updating password: ' + error.message);
+      } else {
+        alert('Password updated successfully!');
+        setShowPasswordChange(false);
+        setPasswordChangeData({ password: '', confirmPassword: '', loading: false });
+      }
+    } catch (err) {
+      alert('An unexpected error occurred');
+    } finally {
+      setPasswordChangeData(prev => ({ ...prev, loading: false }));
+    }
+  };
+
   const handleSendMessage = async () => {
     if (inputMessage.trim()) {
       const userMessage = {
@@ -516,6 +565,68 @@ export default function Page() {
           </div>
         )}
       </div>
+
+      {/* Password Change Modal */}
+      {showPasswordChange && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold text-white mb-4">Change Password</h2>
+            <p className="text-gray-400 mb-6">Enter your new password below</p>
+            
+            <form onSubmit={handlePasswordChange} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  New Password
+                </label>
+                <input 
+                  type="password" 
+                  value={passwordChangeData.password}
+                  onChange={(e) => setPasswordChangeData(prev => ({ ...prev, password: e.target.value }))}
+                  required
+                  minLength={6}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Enter new password (min 6 characters)"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Confirm New Password
+                </label>
+                <input 
+                  type="password" 
+                  value={passwordChangeData.confirmPassword}
+                  onChange={(e) => setPasswordChangeData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  required
+                  minLength={6}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Confirm new password"
+                />
+              </div>
+              
+              <div className="flex space-x-4 pt-4">
+                <button 
+                  type="submit"
+                  disabled={passwordChangeData.loading}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                >
+                  {passwordChangeData.loading ? 'Updating...' : 'Update Password'}
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordChange(false);
+                    setPasswordChangeData({ password: '', confirmPassword: '', loading: false });
+                  }}
+                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

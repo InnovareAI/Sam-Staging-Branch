@@ -21,9 +21,12 @@ export async function POST(request: NextRequest) {
 
     console.log('Sending password reset email to:', email);
 
-    // Send password reset email using Supabase
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?type=recovery`,
+    // Send magic link for passwordless login using Supabase
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email,
+      options: {
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?type=magiclink`,
+      }
     });
 
     if (error) {
@@ -35,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      message: 'Password reset email sent successfully'
+      message: 'Magic link sent successfully'
     });
 
   } catch (error) {
@@ -122,7 +125,7 @@ export async function GET() {
                 const data = await response.json();
                 
                 if (response.ok) {
-                    successDiv.textContent = 'Password reset email sent! Check your inbox for instructions.';
+                    successDiv.textContent = 'Magic link sent! Check your email and click the link to change your password in the app.';
                     successDiv.classList.remove('hidden');
                     document.getElementById('email').value = '';
                 } else {

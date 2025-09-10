@@ -136,10 +136,10 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Check if this is a password recovery flow
-      if (type === 'recovery') {
-        // Redirect to password reset page
-        return NextResponse.redirect(new URL('/reset-password', request.url));
+      // Check if this is a password recovery flow or magic link
+      if (type === 'recovery' || type === 'magiclink') {
+        // Redirect to password change page in the app with a special flag
+        return NextResponse.redirect(new URL('/?change-password=true', request.url));
       }
 
       // Redirect to the main app
