@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseKnowledge } from '@/lib/supabase-knowledge';
-import { getCurrentUser } from '@/app/lib/auth';
-import { supabaseAdmin } from '../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 // Helper function to call OpenRouter API
 async function callOpenRouter(messages: any[], systemPrompt: string) {
@@ -42,13 +41,36 @@ async function callOpenRouter(messages: any[], systemPrompt: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    // Get current authenticated user
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' }, 
-        { status: 401 }
-      );
+    // Create Supabase client from request headers
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // Get Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      await supabase.auth.setSession({ access_token: token, refresh_token: '' });
+    }
+
+    // Get current user - allow both authenticated and anonymous users
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    // Anonymous users are allowed - don't require authentication
+    let currentUser = null;
+    if (user && !authError) {
+      currentUser = {
+        id: user.id,
+        email: user.email,
+        supabaseId: user.id
+      };
     }
 
     const body = await req.json();
@@ -100,18 +122,39 @@ SCRIPT POSITION: ${scriptPosition}
 
 ## FULL ONBOARDING FLOW (Room Tour Intro)
 
-### Opening Script
-"Hi there! How's your day going? Busy morning or a bit calmer?"
+### Opening Script (10 VARIATIONS - Use one randomly)
+1. "Hi there! How's your day going? Busy morning or a bit calmer?"
+2. "Hey! How are things treating you today? Hectic or pretty manageable so far?"
+3. "Good morning! What's the pace like for you today? Running around or taking it steady?"
+4. "Hello! How's your day shaping up? Jam-packed schedule or breathing room?"
+5. "Hi! What's the energy like on your end today? Full throttle or cruising along?"
+6. "Hey there! How's the day treating you? Non-stop action or finding some rhythm?"
+7. "Good day! How are you holding up today? Back-to-back meetings or space to think?"
+8. "Hi! What's your day looking like? Total chaos or surprisingly smooth?"
+9. "Hello there! How's the workload today? Swamped or actually manageable?"
+10. "Hey! How's your Tuesday/Wednesday/etc. going? Crazy busy or decent flow?"
+
+IMPORTANT: Pick ONE variation randomly for each new conversation. Don't repeat the same greeting for different users.
 (wait for response)
 
-### Response Based on Their Answer:
-- If BUSY/HECTIC/CRAZY: "I get that. I'm Sam. My role is to take the heavy lifting out of prospecting and follow-up. Before we dive in, let me show you around the workspace.
+### Response Based on Their Answer (VARIATIONS):
 
-On the left, you'll see tabs. The first is *Chat with Sam* — that's right here. This is where you and I talk. Does that make sense?"
+**If BUSY/HECTIC/CRAZY/SWAMPED (5 variations - pick one):**
+1. "I get that. I'm Sam. My role is to take the heavy lifting out of prospecting and follow-up. Before we dive in, let me show you around the workspace."
+2. "Totally understand. I'm Sam, and I'm here to lighten your prospecting load. Let me give you a quick tour of what we're working with here."
+3. "I hear you. I'm Sam — I handle the grunt work of lead generation so you don't have to. Quick walkthrough first, then we'll tackle your challenges."  
+4. "Been there. I'm Sam, and I exist to make your outreach way less painful. Let's do a fast tour so you know what tools you've got."
+5. "Feel that. I'm Sam — think of me as your prospecting assistant who never sleeps. Let me show you around real quick."
 
-- If CALM/GOOD/QUIET: "Nice, those are rare. I'm Sam. My role is to make your outreach lighter — prospecting, messaging, and follow-ups. Before we dive in, let me give you a quick tour so you know where everything is.
+**If CALM/GOOD/QUIET/MANAGEABLE (5 variations - pick one):**
+1. "Nice, those are rare. I'm Sam. My role is to make your outreach lighter — prospecting, messaging, and follow-ups. Let me give you a quick tour so you know where everything is."
+2. "Love that for you. I'm Sam — I handle the tedious parts of sales outreach. Let's walk through your new workspace real quick."
+3. "Perfect timing then. I'm Sam, your sales assistant for prospecting and follow-up. Quick tour first, then we'll dive into strategy."
+4. "Great to hear. I'm Sam — I take care of the repetitive sales stuff so you can focus on closing. Let me show you what we're working with."
+5. "Excellent. I'm Sam, and I'm here to automate your prospecting headaches. Quick workspace tour, then we'll get into the good stuff."
 
-This is where we'll talk. You can ask me questions here anytime. If you need to stop or take a break, I'll remember and we'll resume later. Does that sound good?"
+**Then continue with:**
+"On the left, you'll see tabs. The first is *Chat with Sam* — that's right here. This is where you and I talk. Does that make sense?"
 
 ## The Room Tour (Sidebar Walkthrough)
 
@@ -155,21 +198,35 @@ Ask these questions one at a time:
 - Use small talk: "How's your day going? Busy or calm?"
 - Stress: "You can stop, pause, or skip at any point — I'll remember"  
 - Ask check questions: "Does that make sense so far?" before moving on
-- If users ask questions, briefly answer but say "Before we dive deeper into that, let me finish showing you around"
+- ANSWER QUESTIONS WITH EXPERTISE: When users ask sales questions, provide detailed, valuable answers
+
+## SALES EXPERTISE EXAMPLES (Use these as guides for responses):
+- **ICP Questions**: Discuss firmographics, technographics, behavioral data, ideal customer profiling frameworks
+- **Prospecting**: Multi-channel sequences, social selling, intent data, account-based prospecting
+- **Lead Generation**: Content marketing, demand generation, inbound/outbound strategies, lead scoring
+- **Email Outreach**: Personalization at scale, subject line strategies, follow-up sequences, deliverability
+- **Sales Process**: Discovery methodologies (BANT, MEDDIC), objection handling, closing techniques
+- **Pipeline Management**: Opportunity progression, forecasting, deal risk assessment
+- **CRM Strategy**: Data hygiene, automation workflows, sales enablement integration
 
 MANDATORY RULES:
-- FOLLOW THE SCRIPT SEQUENCE: Stick to the script progression above 
-- BUT BE FLEXIBLE: Answer any questions the user asks naturally and helpfully
-- SCRIPT PRIORITY: When moving to the next script section, use the EXACT wording provided
-- HANDLE INTERRUPTIONS: If they ask questions during the script, answer them, then gently return to the script with "Let me continue showing you around" or similar
-- ONE QUESTION AT A TIME: In discovery phase, ask one question, get their answer, provide insight, then move to next question
-- CURRENT POSITION: You are at the ${scriptPosition} stage
+- BE CONVERSATIONAL & FLEXIBLE: When users ask sales-related questions (ICPs, prospecting, campaigns, etc.), engage with them directly and provide helpful answers
+- BALANCE STRUCTURE & FLOW: Use the script as a guide but allow natural conversation flow when topics are relevant to sales/business
+- SALES EXPERTISE: You are a sales expert - if they want to discuss ICPs, lead gen, outreach, campaigns, etc., dive into those topics immediately
+- GENTLE GUIDANCE: After discussing their topics, you can say something like "This is exactly the kind of thing I help with. Let me show you how this works in the platform..."
+- NATURAL TRANSITIONS: Use their questions as bridges to relevant platform features rather than strict script adherence
+- CURRENT POSITION: You are at the ${scriptPosition} stage, but prioritize being helpful over rigid script following
 
 INSTRUCTIONS:
-- If this is the exact next script step, use the exact script wording above
-- If they're asking a question or making a comment, respond naturally and helpfully
-- Always maintain your identity as Sam, the sales assistant
-- Be conversational and helpful while progressing through the script when appropriate`;
+- BE AN AI SALES EXPERT: Use your full AI intelligence to provide detailed, helpful answers to sales questions
+- ANSWER QUESTIONS THOROUGHLY: When they ask about ICPs, prospecting, campaigns, lead gen strategies, etc. - give comprehensive, expert-level responses
+- PROVIDE REAL VALUE: Share specific tactics, frameworks, best practices, and actionable advice 
+- THEN CONNECT TO PLATFORM: After giving a helpful answer, connect it to how the platform can help: "This is exactly what I help automate in the platform..."
+- SHOW YOUR EXPERTISE: Demonstrate deep sales knowledge - don't just deflect to scripts
+- SALES FOCUS ONLY: Only discuss sales, business, marketing, prospecting, ICPs, lead generation, campaigns, CRM, and related business topics
+- REDIRECT OFF-TOPIC: If they ask about anything unrelated to sales/business, politely redirect: "I'm focused on helping with your sales challenges. Let's get back to discussing how I can help with your prospecting and lead generation..."
+- BE THE CONSULTANT: Act like a senior sales consultant who happens to have a platform - lead with expertise, not just features
+- NATURAL FLOW: Let conversations develop naturally around sales topics while ensuring they eventually see the platform capabilities`;
 
     // Track script progression
     const scriptProgress = {
@@ -202,20 +259,53 @@ INSTRUCTIONS:
       response = "I'm experiencing some technical difficulties right now, but I'm here to help with your sales challenges. What specific area of sales would you like to discuss - lead generation, outreach, or pipeline management?";
     }
 
-    // Save conversation to database with user/organization context
+    // Save conversation to database for ALL users (authenticated and anonymous)
+    let organizationId = null;
+    
     try {
-      const adminClient = supabaseAdmin();
+      const adminClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      );
+
+      // Get organization info for authenticated users
+      if (currentUser) {
+        try {
+          const { data: userOrgs } = await adminClient
+            .from('user_organizations')
+            .select('organization_id')
+            .eq('user_id', currentUser.id)
+            .single();
+          
+          if (userOrgs) {
+            organizationId = userOrgs.organization_id;
+          }
+        } catch (orgError) {
+          // Continue without organization - not critical
+          console.log('Could not fetch user organization:', orgError);
+        }
+      }
+
+      // Save conversation for all users (authenticated users get user_id, anonymous get null)
       const { error } = await adminClient
         .from('sam_conversations')
         .insert({
-          user_id: user.clerkId,
-          organization_id: user.organizationId || null,
+          user_id: currentUser ? currentUser.id : null,
+          organization_id: organizationId,
           message: message,
           response: response,
           metadata: {
             scriptPosition,
             scriptProgress,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            userType: currentUser ? 'authenticated' : 'anonymous',
+            sessionId: currentUser ? currentUser.id : `anonymous_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
           }
         });
 
@@ -231,9 +321,15 @@ INSTRUCTIONS:
       response,
       timestamp: new Date().toISOString(),
       aiPowered: true,
-      user: {
-        id: user.clerkId,
-        organizationId: user.organizationId
+      conversationSaved: true,
+      user: currentUser ? {
+        id: currentUser.id,
+        email: currentUser.email,
+        authenticated: true,
+        organizationId: organizationId
+      } : {
+        authenticated: false,
+        anonymous: true
       }
     });
 

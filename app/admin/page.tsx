@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useRouter } from 'next/navigation';
 import SuperAdminInvite from '@/components/SuperAdminInvite';
+import AdminDashboard from '@/components/AdminDashboard';
 
 export default function AdminPage() {
   const [user, setUser] = useState<any>(null);
@@ -63,14 +64,17 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 py-8">
-      <div className="max-w-4xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4">
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-bold text-gray-800 mb-2">🛡️ Super Admin Panel</h1>
           <p className="text-gray-600">Welcome, {user.user_metadata?.first_name || 'Thorsten'}</p>
           <p className="text-sm text-gray-500">{user.email}</p>
         </div>
 
-        <SuperAdminInvite />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <SuperAdminInvite />
+          <AdminDashboard />
+        </div>
       </div>
     </div>
   );

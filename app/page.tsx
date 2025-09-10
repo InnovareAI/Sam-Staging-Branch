@@ -6,6 +6,7 @@ import ContactCenter from './components/ContactCenter';
 import CampaignHub from './components/CampaignHub';
 import LeadPipeline from './components/LeadPipeline';
 import Analytics from './components/Analytics';
+import { supabase } from './lib/supabase';
 import { 
   MessageCircle, 
   Book, 
@@ -16,11 +17,14 @@ import {
   BarChart3,
   Settings,
   Send,
-  Paperclip
+  Paperclip,
+  LogOut
 } from 'lucide-react';
 
 export default function Page() {
-  // No authentication - direct app access
+  // Authentication and app state
+  const [user, setUser] = useState<any>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [showStarterScreen, setShowStarterScreen] = useState(true);
   const [inputMessage, setInputMessage] = useState('');
   const [activeMenuItem, setActiveMenuItem] = useState('chat');
@@ -28,6 +32,37 @@ export default function Page() {
   const [isSending, setIsSending] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Check authentication state on mount (strict authentication required)
+  useEffect(() => {
+    const getUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        console.log('Auth check result:', user ? 'authenticated' : 'not authenticated');
+        setUser(user);
+      } catch (error) {
+        console.error('Error getting user:', error);
+        setUser(null);
+      } finally {
+        setIsAuthLoading(false);
+      }
+    };
+
+    getUser();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log('Auth state change:', event, session?.user ? 'user present' : 'no user');
+        setUser(session?.user || null);
+        setIsAuthLoading(false);
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // Load persisted data on component mount
   useEffect(() => {
@@ -156,22 +191,75 @@ export default function Page() {
     }
   };
 
-  // Show loading state while data is being loaded
-  if (!isLoaded) {
+  // Handle logout
+  const handleLogout = async () => {
+    if (confirm('Are you sure you want to sign out?')) {
+      try {
+        // Sign out from Supabase completely
+        await supabase.auth.signOut({ scope: 'global' });
+        
+        // Clear all authentication-related storage
+        localStorage.removeItem('supabase.auth.token');
+        localStorage.removeItem('sam_messages');
+        localStorage.removeItem('sam_active_menu');
+        
+        // Clear session storage as well
+        sessionStorage.clear();
+        
+        // Reset app state
+        setMessages([]);
+        setShowStarterScreen(true);
+        setActiveMenuItem('chat');
+        setUser(null);
+        setIsAuthLoading(false);
+        
+        // Force page reload to clear any cached auth state
+        window.location.reload();
+      } catch (error) {
+        console.error('Error signing out:', error);
+        // Force reload even if signOut fails
+        window.location.reload();
+      }
+    }
+  };
+
+  // Show loading state while checking authentication OR loading local data
+  if (isAuthLoading || !isLoaded) {
     return (
       <div className="flex h-screen bg-gray-900 items-center justify-center">
         <div className="text-center">
+          <div className="text-white text-lg font-medium">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Authentication required - redirect to sign-in if not authenticated
+  if (!user) {
+    return (
+      <div className="flex h-screen bg-gray-900 items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-6">
           <img 
             src="/SAM.jpg" 
             alt="Sam AI" 
-            className="w-24 h-24 rounded-full object-cover mx-auto mb-4"
+            className="w-20 h-20 rounded-full object-cover mx-auto mb-6"
             style={{ objectPosition: 'center 30%' }}
           />
-          <div className="text-white text-lg font-medium">Loading SAM AI...</div>
-          <div className="flex justify-center mt-4 space-x-1">
-            <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-            <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-            <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+          <h1 className="text-3xl font-bold text-white mb-4">Welcome to SAM AI</h1>
+          <p className="text-gray-400 mb-8">Your AI-powered Sales Assistant Platform</p>
+          <div className="space-y-4">
+            <a 
+              href="/api/auth/signin"
+              className="block w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+            >
+              Sign In
+            </a>
+            <a 
+              href="/api/auth/signup"
+              className="block w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-3 px-6 rounded-lg transition-colors"
+            >
+              Create Account
+            </a>
           </div>
         </div>
       </div>
@@ -245,15 +333,49 @@ export default function Page() {
           </button>
           
           <div className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">A</span>
-              </div>
+            {user ? (
               <div>
-                <p className="text-white text-sm font-medium">Anonymous User</p>
-                <p className="text-gray-400 text-xs">No Authentication</p>
+                <div className="flex items-center space-x-3 mb-3">
+                  <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+                    <span className="text-white text-sm font-medium">
+                      {user.email ? user.email.charAt(0).toUpperCase() : 'U'}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white text-sm font-medium truncate">
+                      {user.email || 'Authenticated User'}
+                    </p>
+                    <p className="text-gray-400 text-xs">Authenticated</p>
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => window.location.href = '/settings'}
+                    className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-white text-sm font-medium transition-colors"
+                  >
+                    <Settings size={16} />
+                    <span>Settings</span>
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg text-gray-200 hover:text-white text-sm font-medium transition-colors"
+                  >
+                    <LogOut size={16} />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm font-medium">A</span>
+                </div>
+                <div>
+                  <p className="text-white text-sm font-medium">Anonymous User</p>
+                  <p className="text-gray-400 text-xs">No Authentication</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
