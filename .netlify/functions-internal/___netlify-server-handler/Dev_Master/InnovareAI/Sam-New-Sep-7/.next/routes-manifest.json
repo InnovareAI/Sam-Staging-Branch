@@ -18,24 +18,7 @@
     "afterFiles": [],
     "fallback": []
   },
-  "dynamicRoutes": [
-    {
-      "page": "/sign-in/[[...sign-in]]",
-      "regex": "^/sign\\-in(?:/(.+?))?(?:/)?$",
-      "routeKeys": {
-        "nxtPsignin": "nxtPsign-in"
-      },
-      "namedRegex": "^/sign\\-in(?:/(?<nxtPsignin>.+?))?(?:/)?$"
-    },
-    {
-      "page": "/sign-up/[[...sign-up]]",
-      "regex": "^/sign\\-up(?:/(.+?))?(?:/)?$",
-      "routeKeys": {
-        "nxtPsignup": "nxtPsign-up"
-      },
-      "namedRegex": "^/sign\\-up(?:/(?<nxtPsignup>.+?))?(?:/)?$"
-    }
-  ],
+  "dynamicRoutes": [],
   "staticRoutes": [
     {
       "page": "/",
@@ -48,6 +31,18 @@
       "regex": "^/_not\\-found(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/admin",
+      "regex": "^/admin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin(?:/)?$"
+    },
+    {
+      "page": "/auth/callback",
+      "regex": "^/auth/callback(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/auth/callback(?:/)?$"
     },
     {
       "page": "/direct-access",

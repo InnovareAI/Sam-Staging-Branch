@@ -1,7 +1,7 @@
 'use client';
 
 import { createClient } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { supabase } from './supabase';
 
 // Enhanced Supabase client with tenant-aware helpers
 export class TenantAwareSupabaseClient {
@@ -236,4 +236,4 @@ export class TenantAwareSupabaseClient {
 export const tenantSupabase = new TenantAwareSupabaseClient();
 
 // Export for direct use in components
-export { supabase } from '@/lib/supabase';
+export { supabase } from './supabase';

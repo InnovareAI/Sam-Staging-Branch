@@ -7,7 +7,8 @@
 
 | Date | Version | Milestone | Status | Backup File |
 |------|---------|-----------|---------|-------------|
-| 2025-01-09 | v2.0 | Human Conversational AI Complete | ✅ Current | [MILESTONE_2025-01-09_v2.0.md](#milestone-2025-01-09-v20) |
+| 2025-09-10 | v2.4 | Dual-Mode SAM AI System Complete | ✅ Current | [MILESTONE_2025-09-10_v2.4.md](#milestone-2025-09-10-v24) |
+| 2025-01-09 | v2.0 | Human Conversational AI Complete | ✅ Archived | [MILESTONE_2025-01-09_v2.0.md](#milestone-2025-01-09-v20) |
 | 2025-01-09 | v1.9 | Script Integration & RAG Training | ✅ Archived | [MILESTONE_2025-01-09_v1.9.md](#milestone-2025-01-09-v19) |
 | 2025-01-09 | v1.8 | Sticky Memory & Persistence | ✅ Archived | [MILESTONE_2025-01-09_v1.8.md](#milestone-2025-01-09-v18) |
 | 2025-01-09 | v1.7 | Auto-scroll Chat & UI Polish | ✅ Archived | [MILESTONE_2025-01-09_v1.7.md](#milestone-2025-01-09-v17) |
