@@ -42,7 +42,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch all workspaces with member information
+    // CRITICAL: Super Admin should ONLY see InnovareAI workspace
+    // Filter to ONLY show the PRIMARY InnovareAI workspace (exact slug match: 'innovareai')
+    // This excludes duplicates like 'innovareai-674' and other companies like '3cubed'
     const { data: workspaces, error } = await adminSupabase
       .from('workspaces')
       .select(`
@@ -60,7 +62,8 @@ export async function GET(request: NextRequest) {
           joined_at
         )
       `)
-      .order('created_at', { ascending: false });
+      .eq('slug', 'innovareai')  // ONLY primary InnovareAI workspace
+      .order('created_at', { ascending: true });  // Show oldest first (primary workspace)
 
     if (error) {
       console.error('Failed to fetch workspaces:', error);

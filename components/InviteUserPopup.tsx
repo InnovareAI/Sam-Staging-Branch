@@ -8,7 +8,7 @@ interface InviteUserPopupProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: InviteFormData) => Promise<void>;
-  workspaces?: Array<{ id: string; name: string; company: string }>;
+  workspaces?: Array<{ id: string; name: string; company?: string; slug?: string }>;
 }
 
 export interface InviteFormData {
@@ -111,9 +111,6 @@ export default function InviteUserPopup({
     }))
   ];
 
-  // Debug logging
-  console.log('InviteUserPopup workspaces:', workspaces);
-  console.log('Workspace options:', workspaceOptions);
 
   return (
     <FormPopup
