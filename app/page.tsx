@@ -420,6 +420,7 @@ export default function Page() {
           name: newWorkspaceName,
           owner_id: user.id,
           created_by: user.id,
+          company: selectedCompany,
           settings: {}
         })
         .select()
