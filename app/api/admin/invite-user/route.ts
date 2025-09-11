@@ -189,6 +189,8 @@ export async function POST(request: NextRequest) {
       console.log(`User ${email} invited to organization ${organizationId} with role ${role}`);
     }
 
+    const companyConfig = COMPANY_CONFIG[company as keyof typeof COMPANY_CONFIG];
+    
     return NextResponse.json({
       message: 'Invitation sent successfully',
       company: companyConfig.companyName,
