@@ -7,12 +7,16 @@ const COMPANY_CONFIG = {
   InnovareAI: {
     postmarkApiKey: process.env.POSTMARK_INNOVAREAI_API_KEY,
     fromEmail: 'noreply@innovareai.com',
-    companyName: 'InnovareAI'
+    companyName: 'InnovareAI',
+    contactEmail: 'sp@innovareai.com', // Sarah Powell
+    contactName: 'Sarah Powell'
   },
   '3cubedai': {
     postmarkApiKey: process.env.POSTMARK_3CUBEDAI_API_KEY,
     fromEmail: 'noreply@3cubedai.com',
-    companyName: '3CubedAI'
+    companyName: '3CubedAI',
+    contactEmail: 'sophia@3cubed.ai',
+    contactName: 'Sophia'
   }
 };
 
@@ -144,7 +148,7 @@ export async function POST(request: NextRequest) {
                 <li>Collaborate with your team in shared workspaces</li>
               </ul>
               <p style="color: #666; font-size: 14px;">
-                If you have any questions, our support team is here to help.
+                If you have any questions, please contact ${companyConfig.contactName} at ${companyConfig.contactEmail} or our support team.
               </p>
               <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
               <p style="color: #999; font-size: 12px;">
@@ -169,7 +173,7 @@ export async function POST(request: NextRequest) {
             - Track campaign performance and analytics
             - Collaborate with your team in shared workspaces
             
-            If you have any questions, our support team is here to help.
+            If you have any questions, please contact ${companyConfig.contactName} at ${companyConfig.contactEmail} or our support team.
             
             This invitation was sent by ${companyConfig.companyName}.
           `
@@ -182,11 +186,29 @@ export async function POST(request: NextRequest) {
       // Don't fail the invitation if email fails, just log it
     }
 
-    // If organization is specified, prepare to add user when they accept
-    if (organizationId) {
-      // You might want to store pending invitations in a separate table
-      // for now, we'll just log it
-      console.log(`User ${email} invited to organization ${organizationId} with role ${role}`);
+    // Store workspace invitation with company tagging
+    if (workspaceId || organizationId) {
+      const companyConfig = COMPANY_CONFIG[company as keyof typeof COMPANY_CONFIG];
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + 7); // 7 days expiration
+
+      const { error: invitationError } = await adminSupabase
+        .from('workspace_invitations')
+        .insert({
+          workspace_id: workspaceId || organizationId,
+          email: email,
+          role: role,
+          company: company,
+          expires_at: expirationDate.toISOString(),
+          invited_by: user.id
+        });
+
+      if (invitationError) {
+        console.error('Failed to store invitation:', invitationError);
+        // Don't fail the request, just log the error
+      } else {
+        console.log(`User ${email} invited to ${workspaceId ? 'workspace' : 'organization'} ${workspaceId || organizationId} by ${companyConfig.companyName}`);
+      }
     }
 
     const companyConfig = COMPANY_CONFIG[company as keyof typeof COMPANY_CONFIG];

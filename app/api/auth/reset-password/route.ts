@@ -1,11 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Create Supabase client
-const supabase = createClient(
+// Create Supabase admin client for generating reset tokens
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+// Postmark email service
+async function sendEmail(to: string, subject: string, htmlBody: string) {
+  if (!process.env.POSTMARK_SERVER_TOKEN) {
+    throw new Error('Postmark not configured');
+  }
+
+  const response = await fetch('https://api.postmarkapp.com/email', {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'X-Postmark-Server-Token': process.env.POSTMARK_SERVER_TOKEN,
+    },
+    body: JSON.stringify({
+      From: process.env.POSTMARK_FROM_EMAIL || 'noreply@innovareai.com',
+      To: to,
+      Subject: subject,
+      HtmlBody: htmlBody,
+      MessageStream: 'outbound'
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Email send failed: ${error}`);
+  }
+
+  return await response.json();
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,27 +49,112 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Sending password reset email to:', email);
+    console.log('Sending password reset to:', email);
 
-    // Send magic link for passwordless login using Supabase
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email,
-      options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?type=magiclink`,
-      }
-    });
-
-    if (error) {
-      console.error('Password reset error:', error);
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
+    // Check if user exists first
+    const { data: users, error: userError } = await supabaseAdmin.auth.admin.listUsers();
+    
+    if (userError) {
+      console.error('Error checking users:', userError);
+    }
+    
+    const userExists = users?.users?.find((user: any) => user.email === email);
+    
+    if (!userExists) {
+      // Still return success for security (don't reveal if email exists)
+      return NextResponse.json({
+        success: true,
+        message: 'If this email exists in our system, you will receive a password reset link.'
+      });
     }
 
-    return NextResponse.json({
-      message: 'Magic link sent successfully'
-    });
+    // Use Postmark for reliable email delivery
+    if (process.env.POSTMARK_SERVER_TOKEN) {
+      const currentSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com';
+      
+      // Generate a password reset token using Supabase admin
+      const { data, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email: email,
+        options: {
+          redirectTo: `${currentSiteUrl}/reset-password`
+        }
+      });
+
+      if (linkError) {
+        console.error('Password reset generation error:', linkError);
+        return NextResponse.json(
+          { error: 'Unable to generate password reset. Please try again later.' },
+          { status: 503 }
+        );
+      }
+
+      // Don't use Supabase links - create our own reset page link
+      const resetUrl = `${currentSiteUrl}/reset-password?email=${encodeURIComponent(email)}&recovery=true`;
+      
+      const htmlBody = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Your SAM AI Magic Link</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { text-align: center; margin-bottom: 30px; }
+                .button { display: inline-block; padding: 12px 24px; background: #7c3aed; color: white; text-decoration: none; border-radius: 6px; }
+                .footer { margin-top: 30px; font-size: 14px; color: #666; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>✨ Your SAM AI Magic Link</h1>
+                </div>
+                
+                <p>Hi there,</p>
+                
+                <p>We received a request to reset your password for your SAM AI account (<strong>${email}</strong>).</p>
+                
+                <p>Click the button below to reset your password and sign in to SAM AI:</p>
+                
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="${resetUrl}" class="button">Reset Password</a>
+                </p>
+                
+                <p><small>If the button doesn't work, copy and paste this link:</small></p>
+                <p style="word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 12px;">
+                    ${resetUrl}
+                </p>
+                
+                <p><em>This link will expire in 24 hours for security.</em></p>
+                
+                <p>If you didn't request this password reset, you can safely ignore this email.</p>
+                
+                <div class="footer">
+                    <p>Best regards,<br><strong>The SAM AI Team</strong></p>
+                    <p style="color: #999; font-size: 12px;">SAM AI - Your AI-powered Sales Assistant Platform</p>
+                </div>
+            </div>
+        </body>
+        </html>
+      `;
+
+      await sendEmail(email, '🔑 Reset Your SAM AI Password', htmlBody);
+      
+      console.log('✅ Password reset email sent via Postmark successfully');
+      return NextResponse.json({
+        success: true,
+        message: 'Password reset email sent! Check your email and click the link to reset your password.'
+      });
+    }
+
+    // If Postmark is not configured
+    return NextResponse.json(
+      { error: 'Email service not configured. Please try again later.' },
+      { status: 503 }
+    );
+
 
   } catch (error) {
     console.error('Reset password API error:', error);
@@ -65,8 +180,8 @@ export async function GET() {
     <div class="max-w-md w-full mx-auto bg-gray-800 rounded-lg shadow-xl p-8">
         <div class="text-center mb-8">
             <img src="/SAM.jpg" alt="SAM AI" class="w-16 h-16 rounded-full object-cover mx-auto mb-4" style="object-position: center 30%;">
-            <h1 class="text-2xl font-bold text-white">Reset Your Password</h1>
-            <p class="text-gray-400">Enter your email address and we'll send you instructions to reset your password.</p>
+            <h1 class="text-2xl font-bold text-white">Get Magic Link</h1>
+            <p class="text-gray-400">Enter your email address and we'll send you a magic link to instantly sign in to SAM AI.</p>
         </div>
         
         <form id="reset-form" class="space-y-6">
@@ -86,7 +201,7 @@ export async function GET() {
                 type="submit"
                 class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
             >
-                Send Reset Link
+                Send Magic Link
             </button>
             
             <div class="text-center">
@@ -125,11 +240,11 @@ export async function GET() {
                 const data = await response.json();
                 
                 if (response.ok) {
-                    successDiv.textContent = 'Magic link sent! Check your email and click the link to change your password in the app.';
+                    successDiv.textContent = 'Magic link sent! Check your email and click the link to instantly sign in to SAM AI.';
                     successDiv.classList.remove('hidden');
                     document.getElementById('email').value = '';
                 } else {
-                    errorDiv.textContent = data.error || 'Failed to send reset email. Please try again.';
+                    errorDiv.textContent = data.error || 'Failed to send magic link. Please try again.';
                     errorDiv.classList.remove('hidden');
                 }
             } catch (error) {

@@ -46,6 +46,7 @@
     "src-old-vite",
     "src",
     "dist",
-    "vite.config.ts"
+    "vite.config.ts",
+    "supabase/functions/**/*"
   ]
 }

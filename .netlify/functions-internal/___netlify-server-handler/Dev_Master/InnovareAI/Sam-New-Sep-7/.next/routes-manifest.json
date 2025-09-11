@@ -20,6 +20,22 @@
   },
   "dynamicRoutes": [
     {
+      "page": "/api/sam/threads/[threadId]",
+      "regex": "^/api/sam/threads/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPthreadId": "nxtPthreadId"
+      },
+      "namedRegex": "^/api/sam/threads/(?<nxtPthreadId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/sam/threads/[threadId]/messages",
+      "regex": "^/api/sam/threads/([^/]+?)/messages(?:/)?$",
+      "routeKeys": {
+        "nxtPthreadId": "nxtPthreadId"
+      },
+      "namedRegex": "^/api/sam/threads/(?<nxtPthreadId>[^/]+?)/messages(?:/)?$"
+    },
+    {
       "page": "/invite/[token]",
       "regex": "^/invite/([^/]+?)(?:/)?$",
       "routeKeys": {
@@ -60,10 +76,16 @@
       "namedRegex": "^/direct\\-access(?:/)?$"
     },
     {
-      "page": "/settings",
-      "regex": "^/settings(?:/)?$",
+      "page": "/reset-password",
+      "regex": "^/reset\\-password(?:/)?$",
       "routeKeys": {},
-      "namedRegex": "^/settings(?:/)?$"
+      "namedRegex": "^/reset\\-password(?:/)?$"
+    },
+    {
+      "page": "/settings-backup",
+      "regex": "^/settings\\-backup(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/settings\\-backup(?:/)?$"
     },
     {
       "page": "/signin",

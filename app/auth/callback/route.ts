@@ -1,16 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
   const type = requestUrl.searchParams.get('type');
+  const error = requestUrl.searchParams.get('error');
+  const errorDescription = requestUrl.searchParams.get('error_description');
+  
+
+  // Handle authentication errors
+  if (error) {
+    console.error('Auth callback error:', error, errorDescription);
+    
+    if (error === 'access_denied' && errorDescription?.includes('expired')) {
+      return NextResponse.redirect(
+        new URL('/api/auth/reset-password?error=expired', request.url)
+      );
+    }
+    
+    return NextResponse.redirect(
+      new URL('/api/auth/signin?error=' + error, request.url)
+    );
+  }
 
   if (code) {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const cookieStore = cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
     try {
       // Exchange the auth code for a session
@@ -138,8 +156,10 @@ export async function GET(request: NextRequest) {
 
       // Check if this is a password recovery flow or magic link
       if (type === 'recovery' || type === 'magiclink') {
-        // Redirect to password change page in the app with a special flag
-        return NextResponse.redirect(new URL('/?change-password=true', request.url));
+        // For magic link authentication, user should be automatically signed in
+        // No password change needed - redirect directly to the app
+        console.log('Magic link authentication successful, redirecting to app');
+        return NextResponse.redirect(new URL('/', request.url));
       }
 
       // Redirect to the main app

@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-// Create Supabase client for server-side auth
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
+    const cookieStore = cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    
     const { email, password } = await request.json();
 
     // Validate input
@@ -21,7 +19,7 @@ export async function POST(request: NextRequest) {
 
     console.log('Signing in user with Supabase Auth:', { email });
 
-    // Sign in with Supabase Auth
+    // Sign in with Supabase Auth (this will set the session cookies)
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -55,6 +53,7 @@ export async function POST(request: NextRequest) {
     if (data.session && data.user) {
       console.log('User signed in successfully:', data.user.id);
 
+      // The session is automatically stored in cookies by the Supabase client
       return NextResponse.json({
         message: 'Sign-in successful!',
         user: {
@@ -62,11 +61,6 @@ export async function POST(request: NextRequest) {
           email: data.user.email,
           firstName: data.user.user_metadata?.first_name,
           lastName: data.user.user_metadata?.last_name
-        },
-        session: {
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-          expires_at: data.session.expires_at
         }
       });
     }

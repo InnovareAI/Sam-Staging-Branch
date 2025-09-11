@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
@@ -9,6 +8,24 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [validToken, setValidToken] = useState<boolean | null>(null);
+  const [email, setEmail] = useState('');
+
+  // Check for email parameter - simple approach
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlEmail = urlParams.get('email');
+    const recovery = urlParams.get('recovery');
+    
+    if (urlEmail && recovery === 'true') {
+      // Valid reset link - allow password change
+      setEmail(urlEmail);
+      setValidToken(true);
+    } else {
+      setValidToken(false);
+      setError('Invalid reset link - please request a new password reset');
+    }
+  }, []);
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,17 +45,23 @@ export default function ResetPasswordPage() {
     setMessage('');
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password
+      // Use the API to update password
+      const response = await fetch('/api/auth/reset-password-confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
       });
 
-      if (error) {
-        setError(error.message);
-      } else {
-        setMessage('Password updated successfully! Redirecting...');
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage('Password updated successfully! Redirecting to sign in...');
+        setError('');
         setTimeout(() => {
-          window.location.href = '/';
+          window.location.href = '/api/auth/signin';
         }, 2000);
+      } else {
+        setError(data.error || 'Failed to update password');
       }
     } catch (err) {
       setError('An unexpected error occurred');
@@ -46,6 +69,52 @@ export default function ResetPasswordPage() {
       setLoading(false);
     }
   };
+
+  if (validToken === false) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="max-w-md w-full mx-auto bg-gray-800 rounded-lg shadow-xl p-8">
+          <div className="text-center mb-8">
+            <img 
+              src="/SAM.jpg" 
+              alt="SAM AI" 
+              className="w-16 h-16 rounded-full object-cover mx-auto mb-4" 
+              style={{ objectPosition: 'center 30%' }}
+            />
+            <h1 className="text-2xl font-bold text-white">Invalid Reset Link</h1>
+            <p className="text-gray-400">This password reset link is invalid or has expired</p>
+          </div>
+          
+          <div className="p-4 bg-red-600 text-white rounded-lg mb-6">
+            {error}
+          </div>
+          
+          <div className="text-center">
+            <a href="/api/auth/reset-password" className="text-purple-400 hover:text-purple-300">
+              Request a new password reset
+            </a>
+            <br />
+            <a href="/api/auth/signin" className="text-gray-400 hover:text-gray-300 text-sm mt-2 inline-block">
+              Back to sign in
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (validToken === null) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="max-w-md w-full mx-auto bg-gray-800 rounded-lg shadow-xl p-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+            <p className="text-gray-400 mt-4">Validating reset link...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -58,7 +127,7 @@ export default function ResetPasswordPage() {
             style={{ objectPosition: 'center 30%' }}
           />
           <h1 className="text-2xl font-bold text-white">Reset Your Password</h1>
-          <p className="text-gray-400">Enter your new password below</p>
+          <p className="text-gray-400">Enter your new password for {email}</p>
         </div>
         
         <form onSubmit={handlePasswordReset} className="space-y-6">

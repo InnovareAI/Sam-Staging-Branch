@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Login Test</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #1a1a1a; color: white; }
+        .container { max-width: 400px; margin: 0 auto; }
+        input, button { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #333; }
+        input { background: #333; color: white; }
+        button { background: #7c3aed; color: white; cursor: pointer; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #065f46; }
+        .error { background: #7f1d1d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SAM AI Quick Login Test</h1>
+        
+        <h3>Magic Link</h3>
+        <input type="email" id="emailMagic" placeholder="Email for magic link" value="test@example.com">
+        <button onclick="sendMagicLink()">Send Magic Link</button>
+        
+        <h3>Direct Login</h3>
+        <input type="email" id="email" placeholder="Email" value="test@example.com">
+        <input type="password" id="password" placeholder="Password" value="testpassword123">
+        <button onclick="signIn()">Sign In</button>
+        
+        <h3>Status</h3>
+        <div id="result"></div>
+        <button onclick="checkUser()">Check Current User</button>
+        <button onclick="signOut()">Sign Out</button>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://latxadqrvrrrcvkktrog.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdHhhZHFydnJycmN2a2t0cm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTk5ODYsImV4cCI6MjA2ODI3NTk4Nn0.3WkAgXpk_MyQioVf_SED9O_ArjcT9nH0uy9we2okftE';
+        
+        const { createClient } = supabase;
+        const client = createClient(supabaseUrl, supabaseKey);
+        
+        function showResult(message, isError = false) {
+            const result = document.getElementById('result');
+            result.textContent = message;
+            result.className = 'result ' + (isError ? 'error' : 'success');
+        }
+        
+        async function sendMagicLink() {
+            const email = document.getElementById('emailMagic').value;
+            try {
+                showResult('Sending magic link...');
+                const response = await fetch('/api/auth/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await response.json();
+                showResult(data.message || data.error, !response.ok);
+            } catch (error) {
+                showResult('Network error: ' + error.message, true);
+            }
+        }
+        
+        async function signIn() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                showResult('Signing in...');
+                const { data, error } = await client.auth.signInWithPassword({
+                    email,
+                    password
+                });
+                
+                if (error) {
+                    showResult('Sign in error: ' + error.message, true);
+                } else {
+                    showResult('✅ Signed in successfully! User: ' + data.user.email);
+                }
+            } catch (error) {
+                showResult('Unexpected error: ' + error.message, true);
+            }
+        }
+        
+        async function checkUser() {
+            try {
+                const { data: { user } } = await client.auth.getUser();
+                if (user) {
+                    showResult('✅ Current user: ' + user.email);
+                } else {
+                    showResult('❌ No user signed in');
+                }
+            } catch (error) {
+                showResult('Error checking user: ' + error.message, true);
+            }
+        }
+        
+        async function signOut() {
+            try {
+                const { error } = await client.auth.signOut();
+                if (error) {
+                    showResult('Sign out error: ' + error.message, true);
+                } else {
+                    showResult('✅ Signed out successfully');
+                }
+            } catch (error) {
+                showResult('Sign out error: ' + error.message, true);
+            }
+        }
+        
+        // Check user on page load
+        checkUser();
+    </script>
+</body>
+</html>

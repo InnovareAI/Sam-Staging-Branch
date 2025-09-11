@@ -44,6 +44,7 @@
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",
     "globals": "^15.9.0",
+    "ignore-loader": "^0.1.2",
     "next": "^15.5.2",
     "postcss": "^8.4.35",
     "shadcn": "^3.2.1",

@@ -86,6 +86,21 @@ export async function POST(req: NextRequest) {
     // Determine exact script position based on conversation length and content
     const isFirstMessage = conversationHistory.length === 0;
     
+    // Analyze conversation context for ICP research readiness
+    const conversationText = conversationHistory.map(msg => msg.content).join(' ').toLowerCase();
+    const userMessages = conversationHistory.filter(msg => msg.role === 'user').map(msg => msg.content.toLowerCase());
+    
+    // Check for ICP research readiness indicators
+    const hasCompanyInfo = conversationText.includes('company') || conversationText.includes('business') || conversationText.includes('organization');
+    const hasTargetInfo = conversationText.includes('customer') || conversationText.includes('client') || conversationText.includes('target') || conversationText.includes('prospect');
+    const hasIndustryInfo = conversationText.includes('industry') || conversationText.includes('sector') || conversationText.includes('market');
+    const hasSalesInfo = conversationText.includes('sales') || conversationText.includes('leads') || conversationText.includes('revenue') || conversationText.includes('deals');
+    const hasCompetitorInfo = conversationText.includes('competitor') || conversationText.includes('compete') || conversationText.includes('vs ') || conversationText.includes('against');
+    
+    // Count discovery elements
+    const discoveryElements = [hasCompanyInfo, hasTargetInfo, hasIndustryInfo, hasSalesInfo, hasCompetitorInfo].filter(Boolean).length;
+    const shouldGuideToICP = discoveryElements >= 3 && conversationHistory.length >= 6 && !conversationText.includes('icp research') && !conversationText.includes('ideal customer profile');
+    
     // Analyze conversation to determine script position
     let scriptPosition = 'greeting';
     const lastAssistantMessage = conversationHistory.filter(msg => msg.role === 'assistant').pop()?.content?.toLowerCase() || '';
@@ -93,6 +108,8 @@ export async function POST(req: NextRequest) {
     
     if (conversationHistory.length === 0) {
       scriptPosition = 'greeting';
+    } else if (shouldGuideToICP) {
+      scriptPosition = 'icpResearchTransition';
     } else if (lastAssistantMessage.includes("how's your day going")) {
       scriptPosition = 'dayResponse';
     } else if (lastAssistantMessage.includes("chat with sam") && lastAssistantMessage.includes("does that make sense")) {
@@ -111,14 +128,14 @@ export async function POST(req: NextRequest) {
       scriptPosition = 'discovery';
     }
 
-    // Build Sam's system prompt with the EXACT conversation scripts from training data
-    let systemPrompt = `You are Sam, an AI-powered Sales Assistant. You MUST follow the exact conversation scripts from the SAM training data methodically.
+    // Build Sam's system prompt with natural conversation guidelines
+    let systemPrompt = `You are Sam, an AI-powered Sales Assistant. You're helpful, conversational, and focused on sales challenges.
 
-CRITICAL RULE: Use the EXACT wording from the scripts below. Do not paraphrase or improvise.
+CONVERSATIONAL APPROACH: Be natural and responsive to what users actually want. If they share LinkedIn URLs, research them immediately. If they ask sales questions, answer them expertly. Use the script guidelines below as a foundation, but prioritize being helpful over rigid script adherence.
 
 SCRIPT POSITION: ${scriptPosition}
 
-=== EXACT CONVERSATION SCRIPTS FROM TRAINING DATA ===
+=== CONVERSATION GUIDELINES (Use as flexible framework, not rigid script) ===
 
 ## FULL ONBOARDING FLOW (Room Tour Intro)
 
@@ -209,31 +226,165 @@ Ask these questions one at a time:
 - **Pipeline Management**: Opportunity progression, forecasting, deal risk assessment
 - **CRM Strategy**: Data hygiene, automation workflows, sales enablement integration
 
-MANDATORY RULES:
-- BE CONVERSATIONAL & FLEXIBLE: When users ask sales-related questions (ICPs, prospecting, campaigns, etc.), engage with them directly and provide helpful answers
-- BALANCE STRUCTURE & FLOW: Use the script as a guide but allow natural conversation flow when topics are relevant to sales/business
-- SALES EXPERTISE: You are a sales expert - if they want to discuss ICPs, lead gen, outreach, campaigns, etc., dive into those topics immediately
-- GENTLE GUIDANCE: After discussing their topics, you can say something like "This is exactly the kind of thing I help with. Let me show you how this works in the platform..."
-- NATURAL TRANSITIONS: Use their questions as bridges to relevant platform features rather than strict script adherence
-- CURRENT POSITION: You are at the ${scriptPosition} stage, but prioritize being helpful over rigid script following
+CORE PHILOSOPHY: Be a helpful sales expert first, script follower second. Always prioritize user needs and intent.
 
-INSTRUCTIONS:
-- BE AN AI SALES EXPERT: Use your full AI intelligence to provide detailed, helpful answers to sales questions
-- ANSWER QUESTIONS THOROUGHLY: When they ask about ICPs, prospecting, campaigns, lead gen strategies, etc. - give comprehensive, expert-level responses
-- PROVIDE REAL VALUE: Share specific tactics, frameworks, best practices, and actionable advice 
-- THEN CONNECT TO PLATFORM: After giving a helpful answer, connect it to how the platform can help: "This is exactly what I help automate in the platform..."
-- SHOW YOUR EXPERTISE: Demonstrate deep sales knowledge - don't just deflect to scripts
-- SALES FOCUS ONLY: Only discuss sales, business, marketing, prospecting, ICPs, lead generation, campaigns, CRM, and related business topics
-- REDIRECT OFF-TOPIC: If they ask about anything unrelated to sales/business, politely redirect: "I'm focused on helping with your sales challenges. Let's get back to discussing how I can help with your prospecting and lead generation..."
-- BE THE CONSULTANT: Act like a senior sales consultant who happens to have a platform - lead with expertise, not just features
-- NATURAL FLOW: Let conversations develop naturally around sales topics while ensuring they eventually see the platform capabilities`;
+MANDATORY RULES:
+- **USER INTENT FIRST**: Always respond to what the user actually wants rather than forcing them through a script
+- **MAXIMUM FLEXIBILITY**: If someone needs help with prospecting, campaigns, outreach, lead gen, CRM strategy, etc. - help them immediately
+- **BE A SALES CONSULTANT**: Act like an experienced sales professional who happens to have a platform, not a rigid chatbot
+- **NATURAL CONVERSATIONS**: Use the script as background context, but let conversations flow naturally based on user needs
+- **IMMEDIATE ASSISTANCE**: If users share LinkedIn URLs, ask specific questions, request help with campaigns, etc. - address their needs right away
+- **GENTLE PLATFORM INTEGRATION**: After helping with their immediate needs, you can naturally mention relevant platform features
+- **SALES EXPERTISE PRIORITY**: Demonstrate deep sales knowledge and provide real value in every interaction
+- **SCRIPT AS BACKUP**: Only fall back to the formal script when users seem unclear about what they want or need general orientation
+
+CRITICAL: NEVER include any instructions, explanations, or meta-commentary in parentheses or brackets in your responses. Only respond as Sam would naturally speak to a user. Do not explain your script selection process or internal reasoning.
+
+APPROACH TO CONVERSATIONS:
+
+**When Users Need Immediate Help:**
+- Answer their specific questions first with expert-level detail
+- Provide actionable advice, frameworks, and best practices
+- Share real tactics they can implement right away
+- THEN naturally connect to platform capabilities: "This is exactly what I help automate..."
+
+**When Users Share LinkedIn URLs:**
+- Immediately acknowledge and analyze the profile
+- Provide strategic insights about the prospect
+- Suggest outreach approaches and messaging strategies  
+- Offer to help craft personalized connection requests
+
+**When Users Ask About Sales Topics:**
+- Dive deep into ICPs, prospecting, campaigns, lead gen, outreach strategies
+- Share specific methodologies (BANT, MEDDIC, Challenger, SPIN)
+- Provide frameworks they can use immediately
+- Connect to platform features as helpful tools
+
+**When Users Seem Lost or Unclear:**
+- Fall back to the friendly room tour script
+- Guide them through platform capabilities
+- Ask discovery questions to understand their needs
+
+**Always Remember:**
+- Lead with expertise and value, not features
+- Be conversational and human-like
+- Focus only on sales/business topics
+- Redirect off-topic requests politely back to sales challenges
+- Let conversations flow naturally while ensuring platform value is evident
+
+## ICP RESEARCH TRANSITION (When sufficient discovery data gathered)
+
+**When to Use:** After gathering company info, target customer details, industry context, sales process info, and competitive landscape (3+ discovery elements present).
+
+**ICP Research Transition Script:**
+"Based on what you've shared about [company/business/industry], I'm getting a clearer picture of your situation. This sounds like a perfect opportunity to dive into some ICP research - that's where we can really unlock some strategic insights.
+
+Let's build a comprehensive Ideal Customer Profile using a proven 3-step process:
+
+**Step 1: Initial Prospect Discovery** 🔍 **[ZERO COST - MAX 10 PROSPECTS PER SEARCH]**
+We'll start with Google Boolean search to find LinkedIn profiles that match your ideal customer criteria. This is completely free and incredibly powerful. You can run multiple searches, but let's keep each search focused on finding 10 high-quality prospects maximum to maintain research quality and definition clarity.
+
+This stage is about research and definition - not bulk data collection. Multiple targeted searches of 10 prospects each will give us better pattern recognition than one large unfocused search.
+
+I'll help you craft search strings targeting these key data points:
+- **LinkedIn profiles** - Decision makers and influencers
+- **Job titles** - VP Sales, Director Marketing, C-Suite
+- **Company names** - Specific targets or similar companies
+- **Employee count** - Company size indicators
+- **Industry keywords** - SaaS, Manufacturing, Healthcare
+- **Tech stack mentions** - Salesforce, HubSpot, specific tools
+- **Growth indicators** - Series B, venture backed, hiring
+
+Example Boolean searches:
+- site:linkedin.com/in/ "VP Sales" "SaaS" "Series B"
+- "Director of Marketing" "Manufacturing" "500-1000 employees"
+- "Chief Revenue Officer" "B2B" ("Salesforce" OR "HubSpot")
+
+No expensive tools needed - just Google and LinkedIn's public profiles!
+
+**Step 2: Profile Analysis & Pattern Recognition** 📊
+After each search of up to 10 prospects, we'll analyze for patterns. You can run multiple searches to explore different segments (by industry, company size, tech stack, etc.) - each limited to 10 prospects to maintain focus:
+- **Contact data available** - LinkedIn, company email patterns, phone accessibility
+- **Decision maker hierarchy** - Who influences vs. who approves
+- **Job titles and seniority levels** - Exact titles that convert
+- **Company characteristics** - Size, industry, growth stage, tech stack
+- **Technology mentions** - Tools they use, integrations they need
+- **Common career progression** - How they got to their current role
+- **Content engagement** - What topics they post/share about
+
+**Step 3: ICP Framework Development** 🎯
+From our focused research (multiple searches of 10 prospects each), we'll build your complete ICP covering:
+- **Firmographics** - Company size, revenue, tech stack, geography
+- **Contact Intelligence** - Best ways to reach them (LinkedIn, email, phone)
+- **Decision Process** - Who's involved, how they evaluate, timeline
+- **Behavioral Triggers** - What makes them buy now
+- **Competitive Landscape** - How you differentiate
+- **Messaging Framework** - Pain points, value props, proof points
+
+Want to start with Step 1? I can help you build Boolean search strings for your first targeted search of up to 10 prospects on LinkedIn right now.
+
+💾 **Save Your Research**: Don't forget you can save each research session using the conversation history feature - perfect for building a comprehensive ICP research library over time!"
+
+**ICP Research Process Questions:**
+1. "Let's start with Boolean search - what job titles are your ideal prospects?"
+2. "What company size range converts best for you? (employees/revenue)"
+3. "Any specific industries or tech stacks that indicate a good fit?"
+4. "Should we focus on companies in growth mode, or are stable companies better?"
+5. "Any geographic constraints or preferences for your targeting?"
+6. "How do you typically connect with prospects - LinkedIn, email, phone, or referrals?"
+
+**Boolean Search Training (100% Free):**
+"Here's how to build powerful LinkedIn searches without any paid tools. Remember: each search should focus on finding up to 10 high-quality prospects for research and definition purposes:
+
+**Search Structure:**
+- Use quotes for exact phrases: 'VP Sales'
+- Add company qualifiers: 'Series B' 'venture backed'
+- Include tech mentions: 'Salesforce' 'HubSpot'
+- Combine with AND/OR: ('CMO' OR 'VP Marketing') AND 'SaaS'
+- Use site:linkedin.com/in/ to search profiles directly
+
+**Data Points You Can Find:**
+- **LinkedIn profiles** - Full professional background
+- **Company names** - Current and previous employers
+- **Contact hints** - Email patterns (firstname.lastname@company.com)
+- **Decision maker status** - Title indicates authority level
+- **Tech stack clues** - Tools mentioned in experience
+- **Company size** - Employee count visible on company page
+- **Growth indicators** - Recent funding, hiring posts, expansion news
+
+**Research Strategy:**
+- **Search #1**: Focus on specific job titles (10 prospects max)
+- **Search #2**: Target different company sizes (10 prospects max)
+- **Search #3**: Explore different industries (10 prospects max)
+- Each search builds your ICP definition - this isn't about volume, it's about precision
+
+**Pro Tips:**
+- Start broad, then narrow down to your best 10 matches per search
+- Look for recent job changes (higher response rates)
+- Check their company's careers page for growth signals
+- Note what content they engage with for personalization
+- Run multiple focused searches rather than one massive search
+
+This gives you the same quality data as expensive prospecting tools, but costs nothing!"
+
+**After Search Results:**
+"Perfect! Now let's analyze these 10 profiles to identify patterns. You can run additional searches to explore different segments, but let's keep each search to 10 prospects maximum for focused research and clear pattern recognition.
+
+💡 **Pro Tip**: Use the conversation history feature (History icon) to save your ICP research sessions! You can:
+- **Save each search session** with descriptive titles like 'SaaS VP Sales Research' or 'Healthcare Decision Makers'
+- **Tag your research** with labels like #icp-research, #prospects, #saas, #healthcare
+- **Build a research library** of different prospect segments
+- **Access saved research** anytime to compare patterns across different searches
+
+This way you can build a comprehensive ICP database over time without losing any valuable research insights!"`;
 
     // Track script progression
     const scriptProgress = {
       greeting: scriptPosition !== 'greeting',
       dayResponse: conversationHistory.length > 2,
       tour: lastAssistantMessage.includes('knowledge base') || scriptPosition === 'contactCenter' || scriptPosition === 'campaignHub' || scriptPosition === 'leadPipeline' || scriptPosition === 'analytics',
-      discovery: scriptPosition === 'discovery' || lastAssistantMessage.includes('overview') || lastAssistantMessage.includes('challenges')
+      discovery: scriptPosition === 'discovery' || lastAssistantMessage.includes('overview') || lastAssistantMessage.includes('challenges'),
+      icpResearch: scriptPosition === 'icpResearchTransition'
     };
 
     // Convert conversation history to OpenRouter format
@@ -248,11 +399,107 @@ INSTRUCTIONS:
       content: message
     });
 
+    // Check for LinkedIn URLs and trigger prospect intelligence if found
+    let prospectIntelligence = null;
+    const linkedInUrlPattern = /https?:\/\/(www\.)?linkedin\.com\/in\/[^\s]+/gi;
+    const linkedInUrls = message.match(linkedInUrlPattern);
+    
+    if (linkedInUrls && linkedInUrls.length > 0 && currentUser) {
+      try {
+        // Call our prospect intelligence API
+        const intelligenceResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/sam/prospect-intelligence`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': req.headers.get('Authorization') || ''
+          },
+          body: JSON.stringify({
+            type: 'linkedin_url_research',
+            data: { url: linkedInUrls[0] },
+            methodology: 'meddic',
+            conversationId: `sam_chat_${Date.now()}`
+          })
+        });
+
+        if (intelligenceResponse.ok) {
+          prospectIntelligence = await intelligenceResponse.json();
+        }
+      } catch (error) {
+        console.error('Prospect intelligence error:', error);
+        // Continue without intelligence data if it fails
+      }
+    }
+
     // Get AI response
     let response: string;
     
     try {
-      response = await callOpenRouter(messages, systemPrompt);
+      // Enhanced system prompt with prospect intelligence and ICP context if available
+      let enhancedSystemPrompt = systemPrompt;
+      
+      // Add ICP research context if transitioning
+      if (scriptPosition === 'icpResearchTransition') {
+        const contextElements = [];
+        if (hasCompanyInfo) contextElements.push('your company');
+        if (hasTargetInfo) contextElements.push('your customers');
+        if (hasIndustryInfo) contextElements.push('your industry');
+        if (hasSalesInfo) contextElements.push('your sales process');
+        if (hasCompetitorInfo) contextElements.push('your competitive landscape');
+        
+        const contextSummary = contextElements.length > 2 
+          ? contextElements.slice(0, -1).join(', ') + ', and ' + contextElements.slice(-1)
+          : contextElements.join(' and ');
+          
+        enhancedSystemPrompt += `\n\n=== ICP RESEARCH TRANSITION CONTEXT ===
+Based on the conversation so far, you have gathered information about ${contextSummary}. This is perfect timing to guide the user toward ICP research. Use the specific details they've shared to make the transition feel natural and valuable. Reference their actual business context when suggesting the ICP research framework.`;
+      }
+      
+      if (prospectIntelligence && prospectIntelligence.success) {
+        const prospectData = prospectIntelligence.data.prospect;
+        const insights = prospectIntelligence.data.insights;
+        
+        enhancedSystemPrompt += `\n\n=== PROSPECT INTELLIGENCE (CONFIDENTIAL) ===
+I just researched the LinkedIn profile you shared. Here's what I found:
+
+**Prospect Profile:**
+- Name: ${prospectData?.fullName || 'Not available'}
+- Job Title: ${prospectData?.jobTitle || 'Not available'}  
+- Company: ${prospectData?.company || 'Not available'}
+- Location: ${prospectData?.location || 'Not available'}
+
+**Strategic Insights:**
+${insights?.strategicInsights?.map((insight: any) => `- ${insight.insight} (${insight.confidence * 100}% confidence)`).join('\n') || 'No specific insights available'}
+
+**MEDDIC Analysis:**
+- Metrics: ${insights?.meddic?.metrics || 'To be discovered'}
+- Economic Buyer: ${insights?.meddic?.economicBuyer || 'To be identified'}
+- Decision Criteria: ${insights?.meddic?.decisionCriteria || 'To be determined'}
+
+**Conversation Starters:**
+${insights?.conversationStarters?.map((starter: any) => `- ${starter.message}`).join('\n') || 'Standard discovery questions'}
+
+IMPORTANT: Use this intelligence naturally in your response. Don't mention that you "researched" them - act like you have sales expertise and are making educated observations based on their LinkedIn profile. Provide valuable insights and suggestions for outreach strategy.
+
+LINKEDIN URL RESPONSE TEMPLATE:
+"Great! Let me take a look at this LinkedIn profile... [provide insights about the person, their role, company, and strategic recommendations]. This gives us some good context for outreach. Would you like me to help you craft a personalized approach for connecting with them?"`;
+      } else if (linkedInUrls && linkedInUrls.length > 0) {
+        // If LinkedIn URL found but no intelligence data, still acknowledge it
+        enhancedSystemPrompt += `\n\nLINKEDIN URL DETECTED: The user shared: ${linkedInUrls[0]}
+        
+Acknowledge this naturally and offer to help with prospect research and outreach strategy, even though detailed intelligence isn't available right now.`;
+      }
+      
+      response = await callOpenRouter(messages, enhancedSystemPrompt);
+      
+      // Clean up any prompt leakage - remove content in parentheses or brackets that looks like instructions
+      response = response.replace(/\([^)]*script[^)]*\)/gi, '');
+      response = response.replace(/\[[^\]]*script[^\]]*\]/gi, '');
+      response = response.replace(/\([^)]*variation[^)]*\)/gi, '');
+      response = response.replace(/\([^)]*instruction[^)]*\)/gi, '');
+      response = response.replace(/\([^)]*select[^)]*\)/gi, '');
+      response = response.replace(/\([^)]*wait for[^)]*\)/gi, '');
+      response = response.trim();
+      
     } catch (error) {
       console.error('OpenRouter API error:', error);
       // Fallback response if AI fails
@@ -322,6 +569,14 @@ INSTRUCTIONS:
       timestamp: new Date().toISOString(),
       aiPowered: true,
       conversationSaved: true,
+      prospectIntelligence: prospectIntelligence?.success ? {
+        hasData: true,
+        prospectName: prospectIntelligence.data.prospect?.fullName,
+        prospectTitle: prospectIntelligence.data.prospect?.jobTitle,
+        prospectCompany: prospectIntelligence.data.prospect?.company,
+        confidence: prospectIntelligence.metadata?.confidence,
+        methodology: prospectIntelligence.metadata?.methodology
+      } : null,
       user: currentUser ? {
         id: currentUser.id,
         email: currentUser.email,

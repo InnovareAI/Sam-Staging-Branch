@@ -1,10 +1,10 @@
-(()=>{var a={};a.id=20,a.ids=[20],a.modules={261:a=>{"use strict";a.exports=require("next/dist/shared/lib/router/utils/app-paths")},3295:a=>{"use strict";a.exports=require("next/dist/server/app-render/after-task-async-storage.external.js")},10846:a=>{"use strict";a.exports=require("next/dist/compiled/next-server/app-page.runtime.prod.js")},11997:a=>{"use strict";a.exports=require("punycode")},19121:a=>{"use strict";a.exports=require("next/dist/server/app-render/action-async-storage.external.js")},27910:a=>{"use strict";a.exports=require("stream")},29294:a=>{"use strict";a.exports=require("next/dist/server/app-render/work-async-storage.external.js")},44870:a=>{"use strict";a.exports=require("next/dist/compiled/next-server/app-route.runtime.prod.js")},55591:a=>{"use strict";a.exports=require("https")},63033:a=>{"use strict";a.exports=require("next/dist/server/app-render/work-unit-async-storage.external.js")},74075:a=>{"use strict";a.exports=require("zlib")},78335:()=>{},79551:a=>{"use strict";a.exports=require("url")},81630:a=>{"use strict";a.exports=require("http")},86439:a=>{"use strict";a.exports=require("next/dist/shared/lib/no-fallback-error.external")},88420:(a,b,c)=>{"use strict";c.r(b),c.d(b,{handler:()=>D,patchFetch:()=>C,routeModule:()=>y,serverHooks:()=>B,workAsyncStorage:()=>z,workUnitAsyncStorage:()=>A});var d={};c.r(d),c.d(d,{POST:()=>x});var e=c(95736),f=c(9117),g=c(4044),h=c(39326),i=c(32324),j=c(261),k=c(54290),l=c(85328),m=c(38928),n=c(46595),o=c(3421),p=c(17679),q=c(41681),r=c(63446),s=c(86439),t=c(51356),u=c(10641),v=c(82461);async function w(a,b){let c=process.env.OPENROUTER_API_KEY;if(!c)throw Error("OpenRouter API key not configured");let d=await fetch("https://openrouter.ai/api/v1/chat/completions",{method:"POST",headers:{Authorization:`Bearer ${c}`,"Content-Type":"application/json","HTTP-Referer":"https://app.meet-sam.com","X-Title":"SAM AI Platform"},body:JSON.stringify({model:"anthropic/claude-3.5-sonnet",messages:[{role:"system",content:b},...a],temperature:.7,max_tokens:1e3})});if(!d.ok)throw Error(`OpenRouter API error: ${d.status}`);let e=await d.json();return e.choices[0]?.message?.content||"I apologize, but I had trouble processing that request."}async function x(a){try{let b,c=(0,v.UU)("https://latxadqrvrrrcvkktrog.supabase.co","eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdHhhZHFydnJycmN2a2t0cm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTk5ODYsImV4cCI6MjA2ODI3NTk4Nn0.3WkAgXpk_MyQioVf_SED9O_ArjcT9nH0uy9we2okftE",{auth:{autoRefreshToken:!1,persistSession:!1}}),d=a.headers.get("Authorization");if(d){let a=d.replace("Bearer ","");await c.auth.setSession({access_token:a,refresh_token:""})}let{data:{user:e},error:f}=await c.auth.getUser(),g=null;e&&!f&&(g={id:e.id,email:e.email,supabaseId:e.id});let{message:h,conversationHistory:i=[]}=await a.json();if(!h)return u.NextResponse.json({error:"Message is required"},{status:400});i.length;let j="greeting",k=i.filter(a=>"assistant"===a.role).pop()?.content?.toLowerCase()||"";i.filter(a=>"user"===a.role).pop()?.content?.toLowerCase(),0===i.length?j="greeting":k.includes("how's your day going")?j="dayResponse":k.includes("chat with sam")&&k.includes("does that make sense")?j="knowledgeBase":k.includes("knowledge base")&&k.includes("clear so far")?j="contactCenter":k.includes("contact center")&&k.includes("following along")?j="campaignHub":k.includes("campaign hub")&&k.includes("still with me")?j="leadPipeline":k.includes("lead pipeline")&&k.includes("all good")?j="analytics":(k.includes("analytics")||k.includes("overview")||k.includes("jump straight"),j="discovery");let l=`You are Sam, an AI-powered Sales Assistant. You MUST follow the exact conversation scripts from the SAM training data methodically.
+(()=>{var a={};a.id=2020,a.ids=[2020],a.modules={261:a=>{"use strict";a.exports=require("next/dist/shared/lib/router/utils/app-paths")},3295:a=>{"use strict";a.exports=require("next/dist/server/app-render/after-task-async-storage.external.js")},10846:a=>{"use strict";a.exports=require("next/dist/compiled/next-server/app-page.runtime.prod.js")},11997:a=>{"use strict";a.exports=require("punycode")},19121:a=>{"use strict";a.exports=require("next/dist/server/app-render/action-async-storage.external.js")},27910:a=>{"use strict";a.exports=require("stream")},29294:a=>{"use strict";a.exports=require("next/dist/server/app-render/work-async-storage.external.js")},44870:a=>{"use strict";a.exports=require("next/dist/compiled/next-server/app-route.runtime.prod.js")},55591:a=>{"use strict";a.exports=require("https")},63033:a=>{"use strict";a.exports=require("next/dist/server/app-render/work-unit-async-storage.external.js")},74075:a=>{"use strict";a.exports=require("zlib")},78335:()=>{},79551:a=>{"use strict";a.exports=require("url")},81630:a=>{"use strict";a.exports=require("http")},86439:a=>{"use strict";a.exports=require("next/dist/shared/lib/no-fallback-error.external")},88420:(a,b,c)=>{"use strict";c.r(b),c.d(b,{handler:()=>D,patchFetch:()=>C,routeModule:()=>y,serverHooks:()=>B,workAsyncStorage:()=>z,workUnitAsyncStorage:()=>A});var d={};c.r(d),c.d(d,{POST:()=>x});var e=c(95736),f=c(9117),g=c(4044),h=c(39326),i=c(32324),j=c(261),k=c(54290),l=c(85328),m=c(38928),n=c(46595),o=c(3421),p=c(17679),q=c(41681),r=c(63446),s=c(86439),t=c(51356),u=c(10641),v=c(82461);async function w(a,b){let c=process.env.OPENROUTER_API_KEY;if(!c)throw Error("OpenRouter API key not configured");let d=await fetch("https://openrouter.ai/api/v1/chat/completions",{method:"POST",headers:{Authorization:`Bearer ${c}`,"Content-Type":"application/json","HTTP-Referer":"https://app.meet-sam.com","X-Title":"SAM AI Platform"},body:JSON.stringify({model:"anthropic/claude-3.5-sonnet",messages:[{role:"system",content:b},...a],temperature:.7,max_tokens:1e3})});if(!d.ok)throw Error(`OpenRouter API error: ${d.status}`);let e=await d.json();return e.choices[0]?.message?.content||"I apologize, but I had trouble processing that request."}async function x(a){try{let b,c=(0,v.UU)("https://latxadqrvrrrcvkktrog.supabase.co","eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdHhhZHFydnJycmN2a2t0cm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTk5ODYsImV4cCI6MjA2ODI3NTk4Nn0.3WkAgXpk_MyQioVf_SED9O_ArjcT9nH0uy9we2okftE",{auth:{autoRefreshToken:!1,persistSession:!1}}),d=a.headers.get("Authorization");if(d){let a=d.replace("Bearer ","");await c.auth.setSession({access_token:a,refresh_token:""})}let{data:{user:e},error:f}=await c.auth.getUser(),g=null;e&&!f&&(g={id:e.id,email:e.email,supabaseId:e.id});let{message:h,conversationHistory:i=[]}=await a.json();if(!h)return u.NextResponse.json({error:"Message is required"},{status:400});i.length;let j=i.map(a=>a.content).join(" ").toLowerCase();i.filter(a=>"user"===a.role).map(a=>a.content.toLowerCase());let k=j.includes("company")||j.includes("business")||j.includes("organization"),l=j.includes("customer")||j.includes("client")||j.includes("target")||j.includes("prospect"),m=j.includes("industry")||j.includes("sector")||j.includes("market"),n=j.includes("sales")||j.includes("leads")||j.includes("revenue")||j.includes("deals"),o=j.includes("competitor")||j.includes("compete")||j.includes("vs ")||j.includes("against"),p=[k,l,m,n,o].filter(Boolean).length>=3&&i.length>=6&&!j.includes("icp research")&&!j.includes("ideal customer profile"),q="greeting",r=i.filter(a=>"assistant"===a.role).pop()?.content?.toLowerCase()||"";i.filter(a=>"user"===a.role).pop()?.content?.toLowerCase(),0===i.length?q="greeting":p?q="icpResearchTransition":r.includes("how's your day going")?q="dayResponse":r.includes("chat with sam")&&r.includes("does that make sense")?q="knowledgeBase":r.includes("knowledge base")&&r.includes("clear so far")?q="contactCenter":r.includes("contact center")&&r.includes("following along")?q="campaignHub":r.includes("campaign hub")&&r.includes("still with me")?q="leadPipeline":r.includes("lead pipeline")&&r.includes("all good")?q="analytics":(r.includes("analytics")||r.includes("overview")||r.includes("jump straight"),q="discovery");let s=`You are Sam, an AI-powered Sales Assistant. You're helpful, conversational, and focused on sales challenges.
 
-CRITICAL RULE: Use the EXACT wording from the scripts below. Do not paraphrase or improvise.
+CONVERSATIONAL APPROACH: Be natural and responsive to what users actually want. If they share LinkedIn URLs, research them immediately. If they ask sales questions, answer them expertly. Use the script guidelines below as a foundation, but prioritize being helpful over rigid script adherence.
 
-SCRIPT POSITION: ${j}
+SCRIPT POSITION: ${q}
 
-=== EXACT CONVERSATION SCRIPTS FROM TRAINING DATA ===
+=== CONVERSATION GUIDELINES (Use as flexible framework, not rigid script) ===
 
 ## FULL ONBOARDING FLOW (Room Tour Intro)
 
@@ -95,21 +95,186 @@ Ask these questions one at a time:
 - **Pipeline Management**: Opportunity progression, forecasting, deal risk assessment
 - **CRM Strategy**: Data hygiene, automation workflows, sales enablement integration
 
-MANDATORY RULES:
-- BE CONVERSATIONAL & FLEXIBLE: When users ask sales-related questions (ICPs, prospecting, campaigns, etc.), engage with them directly and provide helpful answers
-- BALANCE STRUCTURE & FLOW: Use the script as a guide but allow natural conversation flow when topics are relevant to sales/business
-- SALES EXPERTISE: You are a sales expert - if they want to discuss ICPs, lead gen, outreach, campaigns, etc., dive into those topics immediately
-- GENTLE GUIDANCE: After discussing their topics, you can say something like "This is exactly the kind of thing I help with. Let me show you how this works in the platform..."
-- NATURAL TRANSITIONS: Use their questions as bridges to relevant platform features rather than strict script adherence
-- CURRENT POSITION: You are at the ${j} stage, but prioritize being helpful over rigid script following
+CORE PHILOSOPHY: Be a helpful sales expert first, script follower second. Always prioritize user needs and intent.
 
-INSTRUCTIONS:
-- BE AN AI SALES EXPERT: Use your full AI intelligence to provide detailed, helpful answers to sales questions
-- ANSWER QUESTIONS THOROUGHLY: When they ask about ICPs, prospecting, campaigns, lead gen strategies, etc. - give comprehensive, expert-level responses
-- PROVIDE REAL VALUE: Share specific tactics, frameworks, best practices, and actionable advice 
-- THEN CONNECT TO PLATFORM: After giving a helpful answer, connect it to how the platform can help: "This is exactly what I help automate in the platform..."
-- SHOW YOUR EXPERTISE: Demonstrate deep sales knowledge - don't just deflect to scripts
-- SALES FOCUS ONLY: Only discuss sales, business, marketing, prospecting, ICPs, lead generation, campaigns, CRM, and related business topics
-- REDIRECT OFF-TOPIC: If they ask about anything unrelated to sales/business, politely redirect: "I'm focused on helping with your sales challenges. Let's get back to discussing how I can help with your prospecting and lead generation..."
-- BE THE CONSULTANT: Act like a senior sales consultant who happens to have a platform - lead with expertise, not just features
-- NATURAL FLOW: Let conversations develop naturally around sales topics while ensuring they eventually see the platform capabilities`,m={greeting:"greeting"!==j,dayResponse:i.length>2,tour:k.includes("knowledge base")||"contactCenter"===j||"campaignHub"===j||"leadPipeline"===j||"analytics"===j,discovery:"discovery"===j||k.includes("overview")||k.includes("challenges")},n=i.map(a=>({role:"user"===a.role?"user":"assistant",content:a.content}));n.push({role:"user",content:h});try{b=await w(n,l)}catch(a){console.error("OpenRouter API error:",a),b="I'm experiencing some technical difficulties right now, but I'm here to help with your sales challenges. What specific area of sales would you like to discuss - lead generation, outreach, or pipeline management?"}let o=null;try{let a=(0,v.UU)("https://latxadqrvrrrcvkktrog.supabase.co",process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{autoRefreshToken:!1,persistSession:!1}});if(g)try{let{data:b}=await a.from("user_organizations").select("organization_id").eq("user_id",g.id).single();b&&(o=b.organization_id)}catch(a){console.log("Could not fetch user organization:",a)}let{error:c}=await a.from("sam_conversations").insert({user_id:g?g.id:null,organization_id:o,message:h,response:b,metadata:{scriptPosition:j,scriptProgress:m,timestamp:new Date().toISOString(),userType:g?"authenticated":"anonymous",sessionId:g?g.id:`anonymous_${Date.now()}_${Math.random().toString(36).substr(2,9)}`}});c&&console.error("Error saving conversation:",c)}catch(a){console.error("Error saving conversation:",a)}return u.NextResponse.json({response:b,timestamp:new Date().toISOString(),aiPowered:!0,conversationSaved:!0,user:g?{id:g.id,email:g.email,authenticated:!0,organizationId:o}:{authenticated:!1,anonymous:!0}})}catch(a){return console.error("SAM Chat API error:",a),u.NextResponse.json({error:"Internal server error"},{status:500})}}let y=new e.AppRouteRouteModule({definition:{kind:f.RouteKind.APP_ROUTE,page:"/api/sam/chat/route",pathname:"/api/sam/chat",filename:"route",bundlePath:"app/api/sam/chat/route"},distDir:".next",relativeProjectDir:"",resolvedPagePath:"/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/app/api/sam/chat/route.ts",nextConfigOutput:"standalone",userland:d}),{workAsyncStorage:z,workUnitAsyncStorage:A,serverHooks:B}=y;function C(){return(0,g.patchFetch)({workAsyncStorage:z,workUnitAsyncStorage:A})}async function D(a,b,c){var d;let e="/api/sam/chat/route";"/index"===e&&(e="/");let g=await y.prepare(a,b,{srcPage:e,multiZoneDraftMode:!1});if(!g)return b.statusCode=400,b.end("Bad Request"),null==c.waitUntil||c.waitUntil.call(c,Promise.resolve()),null;let{buildId:u,params:v,nextConfig:w,isDraftMode:x,prerenderManifest:z,routerServerContext:A,isOnDemandRevalidate:B,revalidateOnlyGenerated:C,resolvedPathname:D}=g,E=(0,j.normalizeAppPath)(e),F=!!(z.dynamicRoutes[E]||z.routes[D]);if(F&&!x){let a=!!z.routes[D],b=z.dynamicRoutes[E];if(b&&!1===b.fallback&&!a)throw new s.NoFallbackError}let G=null;!F||y.isDev||x||(G="/index"===(G=D)?"/":G);let H=!0===y.isDev||!F,I=F&&!H,J=a.method||"GET",K=(0,i.getTracer)(),L=K.getActiveScopeSpan(),M={params:v,prerenderManifest:z,renderOpts:{experimental:{cacheComponents:!!w.experimental.cacheComponents,authInterrupts:!!w.experimental.authInterrupts},supportsDynamicResponse:H,incrementalCache:(0,h.getRequestMeta)(a,"incrementalCache"),cacheLifeProfiles:null==(d=w.experimental)?void 0:d.cacheLife,isRevalidate:I,waitUntil:c.waitUntil,onClose:a=>{b.on("close",a)},onAfterTaskError:void 0,onInstrumentationRequestError:(b,c,d)=>y.onRequestError(a,b,d,A)},sharedContext:{buildId:u}},N=new k.NodeNextRequest(a),O=new k.NodeNextResponse(b),P=l.NextRequestAdapter.fromNodeNextRequest(N,(0,l.signalFromNodeResponse)(b));try{let d=async c=>y.handle(P,M).finally(()=>{if(!c)return;c.setAttributes({"http.status_code":b.statusCode,"next.rsc":!1});let d=K.getRootSpanAttributes();if(!d)return;if(d.get("next.span_type")!==m.BaseServerSpan.handleRequest)return void console.warn(`Unexpected root span type '${d.get("next.span_type")}'. Please report this Next.js issue https://github.com/vercel/next.js`);let e=d.get("next.route");if(e){let a=`${J} ${e}`;c.setAttributes({"next.route":e,"http.route":e,"next.span_name":a}),c.updateName(a)}else c.updateName(`${J} ${a.url}`)}),g=async g=>{var i,j;let k=async({previousCacheEntry:f})=>{try{if(!(0,h.getRequestMeta)(a,"minimalMode")&&B&&C&&!f)return b.statusCode=404,b.setHeader("x-nextjs-cache","REVALIDATED"),b.end("This page could not be found"),null;let e=await d(g);a.fetchMetrics=M.renderOpts.fetchMetrics;let i=M.renderOpts.pendingWaitUntil;i&&c.waitUntil&&(c.waitUntil(i),i=void 0);let j=M.renderOpts.collectedTags;if(!F)return await (0,o.I)(N,O,e,M.renderOpts.pendingWaitUntil),null;{let a=await e.blob(),b=(0,p.toNodeOutgoingHttpHeaders)(e.headers);j&&(b[r.NEXT_CACHE_TAGS_HEADER]=j),!b["content-type"]&&a.type&&(b["content-type"]=a.type);let c=void 0!==M.renderOpts.collectedRevalidate&&!(M.renderOpts.collectedRevalidate>=r.INFINITE_CACHE)&&M.renderOpts.collectedRevalidate,d=void 0===M.renderOpts.collectedExpire||M.renderOpts.collectedExpire>=r.INFINITE_CACHE?void 0:M.renderOpts.collectedExpire;return{value:{kind:t.CachedRouteKind.APP_ROUTE,status:e.status,body:Buffer.from(await a.arrayBuffer()),headers:b},cacheControl:{revalidate:c,expire:d}}}}catch(b){throw(null==f?void 0:f.isStale)&&await y.onRequestError(a,b,{routerKind:"App Router",routePath:e,routeType:"route",revalidateReason:(0,n.c)({isRevalidate:I,isOnDemandRevalidate:B})},A),b}},l=await y.handleResponse({req:a,nextConfig:w,cacheKey:G,routeKind:f.RouteKind.APP_ROUTE,isFallback:!1,prerenderManifest:z,isRoutePPREnabled:!1,isOnDemandRevalidate:B,revalidateOnlyGenerated:C,responseGenerator:k,waitUntil:c.waitUntil});if(!F)return null;if((null==l||null==(i=l.value)?void 0:i.kind)!==t.CachedRouteKind.APP_ROUTE)throw Object.defineProperty(Error(`Invariant: app-route received invalid cache entry ${null==l||null==(j=l.value)?void 0:j.kind}`),"__NEXT_ERROR_CODE",{value:"E701",enumerable:!1,configurable:!0});(0,h.getRequestMeta)(a,"minimalMode")||b.setHeader("x-nextjs-cache",B?"REVALIDATED":l.isMiss?"MISS":l.isStale?"STALE":"HIT"),x&&b.setHeader("Cache-Control","private, no-cache, no-store, max-age=0, must-revalidate");let m=(0,p.fromNodeOutgoingHttpHeaders)(l.value.headers);return(0,h.getRequestMeta)(a,"minimalMode")&&F||m.delete(r.NEXT_CACHE_TAGS_HEADER),!l.cacheControl||b.getHeader("Cache-Control")||m.get("Cache-Control")||m.set("Cache-Control",(0,q.getCacheControlHeader)(l.cacheControl)),await (0,o.I)(N,O,new Response(l.value.body,{headers:m,status:l.value.status||200})),null};L?await g(L):await K.withPropagatedContext(a.headers,()=>K.trace(m.BaseServerSpan.handleRequest,{spanName:`${J} ${a.url}`,kind:i.SpanKind.SERVER,attributes:{"http.method":J,"http.target":a.url}},g))}catch(b){if(L||b instanceof s.NoFallbackError||await y.onRequestError(a,b,{routerKind:"App Router",routePath:E,routeType:"route",revalidateReason:(0,n.c)({isRevalidate:I,isOnDemandRevalidate:B})}),F)throw b;return await (0,o.I)(N,O,new Response(null,{status:500})),null}}},96487:()=>{}};var b=require("../../../../webpack-runtime.js");b.C(a);var c=b.X(0,[586,692,461],()=>b(b.s=88420));module.exports=c})();
+MANDATORY RULES:
+- **USER INTENT FIRST**: Always respond to what the user actually wants rather than forcing them through a script
+- **MAXIMUM FLEXIBILITY**: If someone needs help with prospecting, campaigns, outreach, lead gen, CRM strategy, etc. - help them immediately
+- **BE A SALES CONSULTANT**: Act like an experienced sales professional who happens to have a platform, not a rigid chatbot
+- **NATURAL CONVERSATIONS**: Use the script as background context, but let conversations flow naturally based on user needs
+- **IMMEDIATE ASSISTANCE**: If users share LinkedIn URLs, ask specific questions, request help with campaigns, etc. - address their needs right away
+- **GENTLE PLATFORM INTEGRATION**: After helping with their immediate needs, you can naturally mention relevant platform features
+- **SALES EXPERTISE PRIORITY**: Demonstrate deep sales knowledge and provide real value in every interaction
+- **SCRIPT AS BACKUP**: Only fall back to the formal script when users seem unclear about what they want or need general orientation
+
+CRITICAL: NEVER include any instructions, explanations, or meta-commentary in parentheses or brackets in your responses. Only respond as Sam would naturally speak to a user. Do not explain your script selection process or internal reasoning.
+
+APPROACH TO CONVERSATIONS:
+
+**When Users Need Immediate Help:**
+- Answer their specific questions first with expert-level detail
+- Provide actionable advice, frameworks, and best practices
+- Share real tactics they can implement right away
+- THEN naturally connect to platform capabilities: "This is exactly what I help automate..."
+
+**When Users Share LinkedIn URLs:**
+- Immediately acknowledge and analyze the profile
+- Provide strategic insights about the prospect
+- Suggest outreach approaches and messaging strategies  
+- Offer to help craft personalized connection requests
+
+**When Users Ask About Sales Topics:**
+- Dive deep into ICPs, prospecting, campaigns, lead gen, outreach strategies
+- Share specific methodologies (BANT, MEDDIC, Challenger, SPIN)
+- Provide frameworks they can use immediately
+- Connect to platform features as helpful tools
+
+**When Users Seem Lost or Unclear:**
+- Fall back to the friendly room tour script
+- Guide them through platform capabilities
+- Ask discovery questions to understand their needs
+
+**Always Remember:**
+- Lead with expertise and value, not features
+- Be conversational and human-like
+- Focus only on sales/business topics
+- Redirect off-topic requests politely back to sales challenges
+- Let conversations flow naturally while ensuring platform value is evident
+
+## ICP RESEARCH TRANSITION (When sufficient discovery data gathered)
+
+**When to Use:** After gathering company info, target customer details, industry context, sales process info, and competitive landscape (3+ discovery elements present).
+
+**ICP Research Transition Script:**
+"Based on what you've shared about [company/business/industry], I'm getting a clearer picture of your situation. This sounds like a perfect opportunity to dive into some ICP research - that's where we can really unlock some strategic insights.
+
+Let's build a comprehensive Ideal Customer Profile using a proven 3-step process:
+
+**Step 1: Initial Prospect Discovery** 🔍 **[ZERO COST - MAX 10 PROSPECTS PER SEARCH]**
+We'll start with Google Boolean search to find LinkedIn profiles that match your ideal customer criteria. This is completely free and incredibly powerful. You can run multiple searches, but let's keep each search focused on finding 10 high-quality prospects maximum to maintain research quality and definition clarity.
+
+This stage is about research and definition - not bulk data collection. Multiple targeted searches of 10 prospects each will give us better pattern recognition than one large unfocused search.
+
+I'll help you craft search strings targeting these key data points:
+- **LinkedIn profiles** - Decision makers and influencers
+- **Job titles** - VP Sales, Director Marketing, C-Suite
+- **Company names** - Specific targets or similar companies
+- **Employee count** - Company size indicators
+- **Industry keywords** - SaaS, Manufacturing, Healthcare
+- **Tech stack mentions** - Salesforce, HubSpot, specific tools
+- **Growth indicators** - Series B, venture backed, hiring
+
+Example Boolean searches:
+- site:linkedin.com/in/ "VP Sales" "SaaS" "Series B"
+- "Director of Marketing" "Manufacturing" "500-1000 employees"
+- "Chief Revenue Officer" "B2B" ("Salesforce" OR "HubSpot")
+
+No expensive tools needed - just Google and LinkedIn's public profiles!
+
+**Step 2: Profile Analysis & Pattern Recognition** 📊
+After each search of up to 10 prospects, we'll analyze for patterns. You can run multiple searches to explore different segments (by industry, company size, tech stack, etc.) - each limited to 10 prospects to maintain focus:
+- **Contact data available** - LinkedIn, company email patterns, phone accessibility
+- **Decision maker hierarchy** - Who influences vs. who approves
+- **Job titles and seniority levels** - Exact titles that convert
+- **Company characteristics** - Size, industry, growth stage, tech stack
+- **Technology mentions** - Tools they use, integrations they need
+- **Common career progression** - How they got to their current role
+- **Content engagement** - What topics they post/share about
+
+**Step 3: ICP Framework Development** 🎯
+From our focused research (multiple searches of 10 prospects each), we'll build your complete ICP covering:
+- **Firmographics** - Company size, revenue, tech stack, geography
+- **Contact Intelligence** - Best ways to reach them (LinkedIn, email, phone)
+- **Decision Process** - Who's involved, how they evaluate, timeline
+- **Behavioral Triggers** - What makes them buy now
+- **Competitive Landscape** - How you differentiate
+- **Messaging Framework** - Pain points, value props, proof points
+
+Want to start with Step 1? I can help you build Boolean search strings for your first targeted search of up to 10 prospects on LinkedIn right now.
+
+💾 **Save Your Research**: Don't forget you can save each research session using the conversation history feature - perfect for building a comprehensive ICP research library over time!"
+
+**ICP Research Process Questions:**
+1. "Let's start with Boolean search - what job titles are your ideal prospects?"
+2. "What company size range converts best for you? (employees/revenue)"
+3. "Any specific industries or tech stacks that indicate a good fit?"
+4. "Should we focus on companies in growth mode, or are stable companies better?"
+5. "Any geographic constraints or preferences for your targeting?"
+6. "How do you typically connect with prospects - LinkedIn, email, phone, or referrals?"
+
+**Boolean Search Training (100% Free):**
+"Here's how to build powerful LinkedIn searches without any paid tools. Remember: each search should focus on finding up to 10 high-quality prospects for research and definition purposes:
+
+**Search Structure:**
+- Use quotes for exact phrases: 'VP Sales'
+- Add company qualifiers: 'Series B' 'venture backed'
+- Include tech mentions: 'Salesforce' 'HubSpot'
+- Combine with AND/OR: ('CMO' OR 'VP Marketing') AND 'SaaS'
+- Use site:linkedin.com/in/ to search profiles directly
+
+**Data Points You Can Find:**
+- **LinkedIn profiles** - Full professional background
+- **Company names** - Current and previous employers
+- **Contact hints** - Email patterns (firstname.lastname@company.com)
+- **Decision maker status** - Title indicates authority level
+- **Tech stack clues** - Tools mentioned in experience
+- **Company size** - Employee count visible on company page
+- **Growth indicators** - Recent funding, hiring posts, expansion news
+
+**Research Strategy:**
+- **Search #1**: Focus on specific job titles (10 prospects max)
+- **Search #2**: Target different company sizes (10 prospects max)
+- **Search #3**: Explore different industries (10 prospects max)
+- Each search builds your ICP definition - this isn't about volume, it's about precision
+
+**Pro Tips:**
+- Start broad, then narrow down to your best 10 matches per search
+- Look for recent job changes (higher response rates)
+- Check their company's careers page for growth signals
+- Note what content they engage with for personalization
+- Run multiple focused searches rather than one massive search
+
+This gives you the same quality data as expensive prospecting tools, but costs nothing!"
+
+**After Search Results:**
+"Perfect! Now let's analyze these 10 profiles to identify patterns. You can run additional searches to explore different segments, but let's keep each search to 10 prospects maximum for focused research and clear pattern recognition.
+
+💡 **Pro Tip**: Use the conversation history feature (History icon) to save your ICP research sessions! You can:
+- **Save each search session** with descriptive titles like 'SaaS VP Sales Research' or 'Healthcare Decision Makers'
+- **Tag your research** with labels like #icp-research, #prospects, #saas, #healthcare
+- **Build a research library** of different prospect segments
+- **Access saved research** anytime to compare patterns across different searches
+
+This way you can build a comprehensive ICP database over time without losing any valuable research insights!"`,t={greeting:"greeting"!==q,dayResponse:i.length>2,tour:r.includes("knowledge base")||"contactCenter"===q||"campaignHub"===q||"leadPipeline"===q||"analytics"===q,discovery:"discovery"===q||r.includes("overview")||r.includes("challenges"),icpResearch:"icpResearchTransition"===q},x=i.map(a=>({role:"user"===a.role?"user":"assistant",content:a.content}));x.push({role:"user",content:h});let y=null,z=h.match(/https?:\/\/(www\.)?linkedin\.com\/in\/[^\s]+/gi);if(z&&z.length>0&&g)try{let b=await fetch("https://app.meet-sam.com/api/sam/prospect-intelligence",{method:"POST",headers:{"Content-Type":"application/json",Authorization:a.headers.get("Authorization")||""},body:JSON.stringify({type:"linkedin_url_research",data:{url:z[0]},methodology:"meddic",conversationId:`sam_chat_${Date.now()}`})});b.ok&&(y=await b.json())}catch(a){console.error("Prospect intelligence error:",a)}try{let a=s;if("icpResearchTransition"===q){let b=[];k&&b.push("your company"),l&&b.push("your customers"),m&&b.push("your industry"),n&&b.push("your sales process"),o&&b.push("your competitive landscape");let c=b.length>2?b.slice(0,-1).join(", ")+", and "+b.slice(-1):b.join(" and ");a+=`
+
+=== ICP RESEARCH TRANSITION CONTEXT ===
+Based on the conversation so far, you have gathered information about ${c}. This is perfect timing to guide the user toward ICP research. Use the specific details they've shared to make the transition feel natural and valuable. Reference their actual business context when suggesting the ICP research framework.`}if(y&&y.success){let b=y.data.prospect,c=y.data.insights;a+=`
+
+=== PROSPECT INTELLIGENCE (CONFIDENTIAL) ===
+I just researched the LinkedIn profile you shared. Here's what I found:
+
+**Prospect Profile:**
+- Name: ${b?.fullName||"Not available"}
+- Job Title: ${b?.jobTitle||"Not available"}  
+- Company: ${b?.company||"Not available"}
+- Location: ${b?.location||"Not available"}
+
+**Strategic Insights:**
+${c?.strategicInsights?.map(a=>`- ${a.insight} (${100*a.confidence}% confidence)`).join("\n")||"No specific insights available"}
+
+**MEDDIC Analysis:**
+- Metrics: ${c?.meddic?.metrics||"To be discovered"}
+- Economic Buyer: ${c?.meddic?.economicBuyer||"To be identified"}
+- Decision Criteria: ${c?.meddic?.decisionCriteria||"To be determined"}
+
+**Conversation Starters:**
+${c?.conversationStarters?.map(a=>`- ${a.message}`).join("\n")||"Standard discovery questions"}
+
+IMPORTANT: Use this intelligence naturally in your response. Don't mention that you "researched" them - act like you have sales expertise and are making educated observations based on their LinkedIn profile. Provide valuable insights and suggestions for outreach strategy.
+
+LINKEDIN URL RESPONSE TEMPLATE:
+"Great! Let me take a look at this LinkedIn profile... [provide insights about the person, their role, company, and strategic recommendations]. This gives us some good context for outreach. Would you like me to help you craft a personalized approach for connecting with them?"`}else z&&z.length>0&&(a+=`
+
+LINKEDIN URL DETECTED: The user shared: ${z[0]}
+        
+Acknowledge this naturally and offer to help with prospect research and outreach strategy, even though detailed intelligence isn't available right now.`);b=(b=(b=(b=(b=(b=(b=(b=await w(x,a)).replace(/\([^)]*script[^)]*\)/gi,"")).replace(/\[[^\]]*script[^\]]*\]/gi,"")).replace(/\([^)]*variation[^)]*\)/gi,"")).replace(/\([^)]*instruction[^)]*\)/gi,"")).replace(/\([^)]*select[^)]*\)/gi,"")).replace(/\([^)]*wait for[^)]*\)/gi,"")).trim()}catch(a){console.error("OpenRouter API error:",a),b="I'm experiencing some technical difficulties right now, but I'm here to help with your sales challenges. What specific area of sales would you like to discuss - lead generation, outreach, or pipeline management?"}let A=null;try{let a=(0,v.UU)("https://latxadqrvrrrcvkktrog.supabase.co",process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{autoRefreshToken:!1,persistSession:!1}});if(g)try{let{data:b}=await a.from("user_organizations").select("organization_id").eq("user_id",g.id).single();b&&(A=b.organization_id)}catch(a){console.log("Could not fetch user organization:",a)}let{error:c}=await a.from("sam_conversations").insert({user_id:g?g.id:null,organization_id:A,message:h,response:b,metadata:{scriptPosition:q,scriptProgress:t,timestamp:new Date().toISOString(),userType:g?"authenticated":"anonymous",sessionId:g?g.id:`anonymous_${Date.now()}_${Math.random().toString(36).substr(2,9)}`}});c&&console.error("Error saving conversation:",c)}catch(a){console.error("Error saving conversation:",a)}return u.NextResponse.json({response:b,timestamp:new Date().toISOString(),aiPowered:!0,conversationSaved:!0,prospectIntelligence:y?.success?{hasData:!0,prospectName:y.data.prospect?.fullName,prospectTitle:y.data.prospect?.jobTitle,prospectCompany:y.data.prospect?.company,confidence:y.metadata?.confidence,methodology:y.metadata?.methodology}:null,user:g?{id:g.id,email:g.email,authenticated:!0,organizationId:A}:{authenticated:!1,anonymous:!0}})}catch(a){return console.error("SAM Chat API error:",a),u.NextResponse.json({error:"Internal server error"},{status:500})}}let y=new e.AppRouteRouteModule({definition:{kind:f.RouteKind.APP_ROUTE,page:"/api/sam/chat/route",pathname:"/api/sam/chat",filename:"route",bundlePath:"app/api/sam/chat/route"},distDir:".next",relativeProjectDir:"",resolvedPagePath:"/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/app/api/sam/chat/route.ts",nextConfigOutput:"standalone",userland:d}),{workAsyncStorage:z,workUnitAsyncStorage:A,serverHooks:B}=y;function C(){return(0,g.patchFetch)({workAsyncStorage:z,workUnitAsyncStorage:A})}async function D(a,b,c){var d;let e="/api/sam/chat/route";"/index"===e&&(e="/");let g=await y.prepare(a,b,{srcPage:e,multiZoneDraftMode:!1});if(!g)return b.statusCode=400,b.end("Bad Request"),null==c.waitUntil||c.waitUntil.call(c,Promise.resolve()),null;let{buildId:u,params:v,nextConfig:w,isDraftMode:x,prerenderManifest:z,routerServerContext:A,isOnDemandRevalidate:B,revalidateOnlyGenerated:C,resolvedPathname:D}=g,E=(0,j.normalizeAppPath)(e),F=!!(z.dynamicRoutes[E]||z.routes[D]);if(F&&!x){let a=!!z.routes[D],b=z.dynamicRoutes[E];if(b&&!1===b.fallback&&!a)throw new s.NoFallbackError}let G=null;!F||y.isDev||x||(G="/index"===(G=D)?"/":G);let H=!0===y.isDev||!F,I=F&&!H,J=a.method||"GET",K=(0,i.getTracer)(),L=K.getActiveScopeSpan(),M={params:v,prerenderManifest:z,renderOpts:{experimental:{cacheComponents:!!w.experimental.cacheComponents,authInterrupts:!!w.experimental.authInterrupts},supportsDynamicResponse:H,incrementalCache:(0,h.getRequestMeta)(a,"incrementalCache"),cacheLifeProfiles:null==(d=w.experimental)?void 0:d.cacheLife,isRevalidate:I,waitUntil:c.waitUntil,onClose:a=>{b.on("close",a)},onAfterTaskError:void 0,onInstrumentationRequestError:(b,c,d)=>y.onRequestError(a,b,d,A)},sharedContext:{buildId:u}},N=new k.NodeNextRequest(a),O=new k.NodeNextResponse(b),P=l.NextRequestAdapter.fromNodeNextRequest(N,(0,l.signalFromNodeResponse)(b));try{let d=async c=>y.handle(P,M).finally(()=>{if(!c)return;c.setAttributes({"http.status_code":b.statusCode,"next.rsc":!1});let d=K.getRootSpanAttributes();if(!d)return;if(d.get("next.span_type")!==m.BaseServerSpan.handleRequest)return void console.warn(`Unexpected root span type '${d.get("next.span_type")}'. Please report this Next.js issue https://github.com/vercel/next.js`);let e=d.get("next.route");if(e){let a=`${J} ${e}`;c.setAttributes({"next.route":e,"http.route":e,"next.span_name":a}),c.updateName(a)}else c.updateName(`${J} ${a.url}`)}),g=async g=>{var i,j;let k=async({previousCacheEntry:f})=>{try{if(!(0,h.getRequestMeta)(a,"minimalMode")&&B&&C&&!f)return b.statusCode=404,b.setHeader("x-nextjs-cache","REVALIDATED"),b.end("This page could not be found"),null;let e=await d(g);a.fetchMetrics=M.renderOpts.fetchMetrics;let i=M.renderOpts.pendingWaitUntil;i&&c.waitUntil&&(c.waitUntil(i),i=void 0);let j=M.renderOpts.collectedTags;if(!F)return await (0,o.I)(N,O,e,M.renderOpts.pendingWaitUntil),null;{let a=await e.blob(),b=(0,p.toNodeOutgoingHttpHeaders)(e.headers);j&&(b[r.NEXT_CACHE_TAGS_HEADER]=j),!b["content-type"]&&a.type&&(b["content-type"]=a.type);let c=void 0!==M.renderOpts.collectedRevalidate&&!(M.renderOpts.collectedRevalidate>=r.INFINITE_CACHE)&&M.renderOpts.collectedRevalidate,d=void 0===M.renderOpts.collectedExpire||M.renderOpts.collectedExpire>=r.INFINITE_CACHE?void 0:M.renderOpts.collectedExpire;return{value:{kind:t.CachedRouteKind.APP_ROUTE,status:e.status,body:Buffer.from(await a.arrayBuffer()),headers:b},cacheControl:{revalidate:c,expire:d}}}}catch(b){throw(null==f?void 0:f.isStale)&&await y.onRequestError(a,b,{routerKind:"App Router",routePath:e,routeType:"route",revalidateReason:(0,n.c)({isRevalidate:I,isOnDemandRevalidate:B})},A),b}},l=await y.handleResponse({req:a,nextConfig:w,cacheKey:G,routeKind:f.RouteKind.APP_ROUTE,isFallback:!1,prerenderManifest:z,isRoutePPREnabled:!1,isOnDemandRevalidate:B,revalidateOnlyGenerated:C,responseGenerator:k,waitUntil:c.waitUntil});if(!F)return null;if((null==l||null==(i=l.value)?void 0:i.kind)!==t.CachedRouteKind.APP_ROUTE)throw Object.defineProperty(Error(`Invariant: app-route received invalid cache entry ${null==l||null==(j=l.value)?void 0:j.kind}`),"__NEXT_ERROR_CODE",{value:"E701",enumerable:!1,configurable:!0});(0,h.getRequestMeta)(a,"minimalMode")||b.setHeader("x-nextjs-cache",B?"REVALIDATED":l.isMiss?"MISS":l.isStale?"STALE":"HIT"),x&&b.setHeader("Cache-Control","private, no-cache, no-store, max-age=0, must-revalidate");let m=(0,p.fromNodeOutgoingHttpHeaders)(l.value.headers);return(0,h.getRequestMeta)(a,"minimalMode")&&F||m.delete(r.NEXT_CACHE_TAGS_HEADER),!l.cacheControl||b.getHeader("Cache-Control")||m.get("Cache-Control")||m.set("Cache-Control",(0,q.getCacheControlHeader)(l.cacheControl)),await (0,o.I)(N,O,new Response(l.value.body,{headers:m,status:l.value.status||200})),null};L?await g(L):await K.withPropagatedContext(a.headers,()=>K.trace(m.BaseServerSpan.handleRequest,{spanName:`${J} ${a.url}`,kind:i.SpanKind.SERVER,attributes:{"http.method":J,"http.target":a.url}},g))}catch(b){if(L||b instanceof s.NoFallbackError||await y.onRequestError(a,b,{routerKind:"App Router",routePath:E,routeType:"route",revalidateReason:(0,n.c)({isRevalidate:I,isOnDemandRevalidate:B})}),F)throw b;return await (0,o.I)(N,O,new Response(null,{status:500})),null}}},96487:()=>{}};var b=require("../../../../webpack-runtime.js");b.C(a);var c=b.X(0,[4586,1692,4842],()=>b(b.s=88420));module.exports=c})();
