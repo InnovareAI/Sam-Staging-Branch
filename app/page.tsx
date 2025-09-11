@@ -6,7 +6,8 @@ import ContactCenter from './components/ContactCenter';
 import CampaignHub from './components/CampaignHub';
 import LeadPipeline from './components/LeadPipeline';
 import Analytics from './components/Analytics';
-import { supabase } from './lib/supabase';
+import ConversationHistory from '../components/ConversationHistory';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { 
   MessageCircle, 
   Book, 
@@ -18,10 +19,17 @@ import {
   Settings,
   Send,
   Paperclip,
-  LogOut
+  LogOut,
+  History,
+  Plus,
+  Building2,
+  Mail
 } from 'lucide-react';
 
 export default function Page() {
+  // Initialize Supabase client
+  const supabase = createClientComponentClient();
+  
   // Authentication and app state
   const [user, setUser] = useState<any>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -33,7 +41,14 @@ export default function Page() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [passwordChangeData, setPasswordChangeData] = useState({ password: '', confirmPassword: '', loading: false });
+  const [showConversationHistory, setShowConversationHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Workspace state
+  const [workspaces, setWorkspaces] = useState<any[]>([]);
+  const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
+  const [newWorkspaceName, setNewWorkspaceName] = useState('');
+  const [workspacesLoading, setWorkspacesLoading] = useState(false);
 
   // Check authentication state on mount (strict authentication required)
   useEffect(() => {
@@ -42,6 +57,9 @@ export default function Page() {
         const { data: { user } } = await supabase.auth.getUser();
         console.log('Auth check result:', user ? 'authenticated' : 'not authenticated');
         setUser(user);
+        if (user) {
+          loadWorkspaces(user.id);
+        }
       } catch (error) {
         console.error('Error getting user:', error);
         setUser(null);
@@ -57,6 +75,9 @@ export default function Page() {
       (event, session) => {
         console.log('Auth state change:', event, session?.user ? 'user present' : 'no user');
         setUser(session?.user || null);
+        if (session?.user) {
+          loadWorkspaces(session.user.id);
+        }
         setIsAuthLoading(false);
       }
     );
@@ -119,15 +140,6 @@ export default function Page() {
     }
   }, [activeMenuItem, isLoaded]);
 
-  const menuItems = [
-    { id: 'chat', label: 'Chat with Sam', icon: MessageCircle, active: true },
-    { id: 'knowledge', label: 'Knowledge Base', icon: Book, active: false },
-    { id: 'contact', label: 'Contact Center', icon: Users, active: false },
-    { id: 'campaign', label: 'Campaign Hub', icon: Megaphone, active: false },
-    { id: 'pipeline', label: 'Lead Pipeline', icon: TrendingUp, active: false },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3, active: false }
-  ];
-
   // Auto-scroll to bottom when messages change or when sending
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -137,7 +149,16 @@ export default function Page() {
     scrollToBottom();
   }, [messages, isSending]);
 
-  // Simple message handler without authentication
+  const menuItems = [
+    { id: 'chat', label: 'Chat with Sam', icon: MessageCircle, active: true },
+    { id: 'knowledge', label: 'Knowledge Base', icon: Book, active: false },
+    { id: 'contact', label: 'Contact Center', icon: Users, active: false },
+    { id: 'campaign', label: 'Campaign Hub', icon: Megaphone, active: false },
+    { id: 'pipeline', label: 'Lead Pipeline', icon: TrendingUp, active: false },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3, active: false },
+    { id: 'settings', label: 'Settings', icon: Settings, active: false }
+  ];
+
   // Handle password change
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -240,6 +261,11 @@ export default function Page() {
     }
   };
 
+  const handleLoadConversation = (conversationMessages: any[]) => {
+    setMessages(conversationMessages);
+    setShowStarterScreen(false);
+  };
+
   // Handle logout
   const handleLogout = async () => {
     if (confirm('Are you sure you want to sign out?')) {
@@ -269,6 +295,74 @@ export default function Page() {
         // Force reload even if signOut fails
         window.location.reload();
       }
+    }
+  };
+
+  // Load workspaces for current user
+  const loadWorkspaces = async (userId: string) => {
+    try {
+      setWorkspacesLoading(true);
+      const { data, error } = await supabase
+        .from('workspaces')
+        .select(`
+          *,
+          workspace_members (
+            id,
+            user_id,
+            role,
+            joined_at,
+            users (
+              email,
+              first_name,
+              last_name
+            )
+          )
+        `)
+        .eq('owner_id', userId);
+
+      if (error) throw error;
+      setWorkspaces(data || []);
+    } catch (error) {
+      console.error('Failed to load workspaces:', error);
+    } finally {
+      setWorkspacesLoading(false);
+    }
+  };
+
+  // Create new workspace
+  const createWorkspace = async () => {
+    if (!newWorkspaceName.trim() || !user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('workspaces')
+        .insert({
+          name: newWorkspaceName,
+          owner_id: user.id,
+          created_by: user.id,
+          settings: {}
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Add owner as workspace member
+      await supabase
+        .from('workspace_members')
+        .insert({
+          workspace_id: data.id,
+          user_id: user.id,
+          role: 'owner'
+        });
+
+      setNewWorkspaceName('');
+      setShowCreateWorkspace(false);
+      await loadWorkspaces(user.id);
+      alert('Workspace created successfully!');
+    } catch (error) {
+      console.error('Failed to create workspace:', error);
+      alert('Failed to create workspace');
     }
   };
 
@@ -399,15 +493,8 @@ export default function Page() {
                 </div>
                 <div className="flex space-x-2">
                   <button
-                    onClick={() => window.location.href = '/settings'}
-                    className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-white text-sm font-medium transition-colors"
-                  >
-                    <Settings size={16} />
-                    <span>Settings</span>
-                  </button>
-                  <button
                     onClick={handleLogout}
-                    className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg text-gray-200 hover:text-white text-sm font-medium transition-colors"
+                    className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg text-gray-200 hover:text-white text-sm font-medium transition-colors"
                   >
                     <LogOut size={16} />
                     <span>Sign Out</span>
@@ -441,6 +528,186 @@ export default function Page() {
           <LeadPipeline />
         ) : activeMenuItem === 'analytics' ? (
           <Analytics />
+        ) : activeMenuItem === 'settings' ? (
+          /* SETTINGS PAGE */
+          <div className="flex-1 p-6 overflow-y-auto">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center justify-between mb-8">
+                <h1 className="text-3xl font-bold text-white flex items-center">
+                  <Settings className="mr-3" size={36} />
+                  Settings
+                </h1>
+                <button 
+                  onClick={() => setActiveMenuItem('chat')}
+                  className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
+                >
+                  ← Back to Chat
+                </button>
+              </div>
+
+              {/* User Profile Section */}
+              <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 className="text-2xl font-semibold text-white mb-6">User Profile</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                    <input
+                      type="email"
+                      value={user?.email || ''}
+                      disabled
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">First Name</label>
+                      <input
+                        type="text"
+                        value={user?.user_metadata?.first_name || ''}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                        placeholder="Enter first name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Last Name</label>
+                      <input
+                        type="text"
+                        value={user?.user_metadata?.last_name || ''}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                        placeholder="Enter last name"
+                      />
+                    </div>
+                  </div>
+                  <button className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors">
+                    Update Profile
+                  </button>
+                </div>
+              </div>
+
+              {/* App Settings */}
+              <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 className="text-2xl font-semibold text-white mb-6">App Settings</h2>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-white font-medium">Clear Chat History</h3>
+                      <p className="text-gray-400 text-sm">Remove all conversation history from this device</p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        if (confirm('Clear all conversation history? This cannot be undone.')) {
+                          setMessages([]);
+                          setShowStarterScreen(true);
+                          setActiveMenuItem('chat');
+                          localStorage.removeItem('sam_messages');
+                          localStorage.removeItem('sam_active_menu');
+                          alert('Chat history cleared successfully');
+                        }
+                      }}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                      Clear History
+                    </button>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-white font-medium">Change Password</h3>
+                      <p className="text-gray-400 text-sm">Update your account password</p>
+                    </div>
+                    <button 
+                      onClick={() => setShowPasswordChange(true)}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                      Change Password
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Workspace Management */}
+              <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-semibold text-white">Workspace Management</h2>
+                  <button
+                    onClick={() => setShowCreateWorkspace(true)}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                  >
+                    <Plus size={16} />
+                    <span>Create Workspace</span>
+                  </button>
+                </div>
+
+                {workspacesLoading ? (
+                  <div className="text-center py-8">
+                    <div className="text-gray-400">Loading workspaces...</div>
+                  </div>
+                ) : workspaces.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-700 rounded-lg">
+                    <Building2 className="mx-auto mb-4 text-gray-600" size={48} />
+                    <p className="text-gray-400 mb-4">No workspaces yet</p>
+                    <button
+                      onClick={() => setShowCreateWorkspace(true)}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg"
+                    >
+                      Create Your First Workspace
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {workspaces.map((workspace) => (
+                      <div key={workspace.id} className="bg-gray-700 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <h3 className="text-white font-semibold">{workspace.name}</h3>
+                            <p className="text-gray-400 text-sm">
+                              Created {new Date(workspace.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded">
+                              Owner
+                            </span>
+                            <button
+                              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center space-x-1 transition-colors"
+                            >
+                              <Mail size={14} />
+                              <span>Invite</span>
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="text-sm text-gray-400">
+                          <Users size={14} className="inline mr-1" />
+                          {workspace.workspace_members?.length || 0} members
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Account Actions */}
+              <div className="bg-gray-800 rounded-lg p-6">
+                <h2 className="text-2xl font-semibold text-white mb-6">Account Actions</h2>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-white font-medium">Sign Out</h3>
+                      <p className="text-gray-400 text-sm">Sign out of your SAM AI account</p>
+                    </div>
+                    <button 
+                      onClick={handleLogout}
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                    >
+                      <LogOut size={16} />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : showStarterScreen ? (
           /* STARTER SCREEN */
           <div className="flex-1 flex flex-col items-center justify-start pt-24 p-6">
@@ -538,6 +805,13 @@ export default function Page() {
             
             <div className="bg-gray-700 p-4 rounded-b-lg max-w-4xl mx-auto">
               <div className="flex items-end bg-gray-600 rounded-lg px-4 py-2">
+                <button 
+                  onClick={() => setShowConversationHistory(true)}
+                  className="text-gray-400 hover:text-gray-200 transition-colors p-1 mr-2"
+                  title="Conversation History"
+                >
+                  <History size={18} />
+                </button>
                 <button className="text-gray-400 hover:text-gray-200 transition-colors p-1 mr-2">
                   <Paperclip size={18} />
                 </button>
@@ -564,7 +838,55 @@ export default function Page() {
             </div>
           </div>
         )}
+
       </div>
+
+      {/* Conversation History */}
+      <ConversationHistory
+        isOpen={showConversationHistory}
+        onClose={() => setShowConversationHistory(false)}
+        currentMessages={messages}
+        onLoadConversation={handleLoadConversation}
+      />
+
+      {/* Create Workspace Modal */}
+      {showCreateWorkspace && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-xl font-semibold text-white mb-4">Create New Workspace</h3>
+            <input
+              type="text"
+              value={newWorkspaceName}
+              onChange={(e) => setNewWorkspaceName(e.target.value)}
+              placeholder="Workspace name"
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white mb-4"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  createWorkspace();
+                }
+              }}
+            />
+            <div className="flex space-x-3">
+              <button
+                onClick={createWorkspace}
+                disabled={!newWorkspaceName.trim()}
+                className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white py-2 rounded-lg transition-colors"
+              >
+                Create
+              </button>
+              <button
+                onClick={() => {
+                  setShowCreateWorkspace(false);
+                  setNewWorkspaceName('');
+                }}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Password Change Modal */}
       {showPasswordChange && (
