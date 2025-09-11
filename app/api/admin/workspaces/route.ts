@@ -42,9 +42,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // CRITICAL: Super Admin should ONLY see InnovareAI workspace
-    // Filter to ONLY show the PRIMARY InnovareAI workspace (exact slug match: 'innovareai')
-    // This excludes duplicates like 'innovareai-674' and other companies like '3cubed'
+    // SuperAdmin can see ALL workspaces in the display
+    // But invitation restrictions are handled in the InviteUserPopup component
     const { data: workspaces, error } = await adminSupabase
       .from('workspaces')
       .select(`
@@ -62,8 +61,7 @@ export async function GET(request: NextRequest) {
           joined_at
         )
       `)
-      .eq('slug', 'innovareai')  // ONLY primary InnovareAI workspace
-      .order('created_at', { ascending: true });  // Show oldest first (primary workspace)
+      .order('created_at', { ascending: false });  // Show newest first
 
     if (error) {
       console.error('Failed to fetch workspaces:', error);
@@ -73,19 +71,49 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user information for workspace owners
+    // Get all unique user IDs (owners + members)
     const ownerIds = [...new Set(workspaces?.map(w => w.owner_id).filter(Boolean))];
-    const { data: users } = await adminSupabase
-      .from('users')
-      .select('id, email, first_name, last_name')
-      .in('id', ownerIds);
+    const memberIds = [...new Set(workspaces?.flatMap(w => 
+      w.workspace_members?.map(m => m.user_id) || []
+    ))];
+    const allUserIds = [...new Set([...ownerIds, ...memberIds])];
 
-    const userMap = new Map(users?.map(u => [u.id, u]) || []);
+    // Fetch user information from auth.users
+    const userMap = new Map();
+    if (allUserIds.length > 0) {
+      try {
+        // Fetch users in batches to avoid hitting limits
+        const batchSize = 50;
+        for (let i = 0; i < allUserIds.length; i += batchSize) {
+          const batch = allUserIds.slice(i, i + batchSize);
+          const { data: batchUsers } = await adminSupabase.auth.admin.listUsers();
+          
+          if (batchUsers?.users) {
+            batchUsers.users
+              .filter((user: any) => batch.includes(user.id))
+              .forEach((user: any) => {
+                userMap.set(user.id, {
+                  id: user.id,
+                  email: user.email,
+                  first_name: user.user_metadata?.first_name,
+                  last_name: user.user_metadata?.last_name
+                });
+              });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user details:', error);
+      }
+    }
 
-    // Enrich workspaces with owner information
+    // Enrich workspaces with owner and member information
     const enrichedWorkspaces = workspaces?.map(workspace => ({
       ...workspace,
       owner: userMap.get(workspace.owner_id),
+      workspace_members: workspace.workspace_members?.map(member => ({
+        ...member,
+        user: userMap.get(member.user_id)
+      })) || [],
       member_count: workspace.workspace_members?.length || 0
     })) || [];
 

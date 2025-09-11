@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         joined_at,
         workspaces (
           name,
-          company
+          slug
         )
       `);
 

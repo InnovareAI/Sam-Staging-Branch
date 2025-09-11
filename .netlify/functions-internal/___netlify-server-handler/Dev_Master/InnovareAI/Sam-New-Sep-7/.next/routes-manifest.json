@@ -98,6 +98,12 @@
       "regex": "^/signup(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/signup(?:/)?$"
+    },
+    {
+      "page": "/test-invite",
+      "regex": "^/test\\-invite(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/test\\-invite(?:/)?$"
     }
   ],
   "dataRoutes": [],

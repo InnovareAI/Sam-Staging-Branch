@@ -62,6 +62,8 @@ export default function Page() {
   const [users, setUsers] = useState<any[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [userStats, setUserStats] = useState<any>(null);
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Check if user is super admin
   const checkSuperAdmin = (email: string) => {
@@ -532,6 +534,68 @@ export default function Page() {
     }
   };
 
+  // Checkbox handling functions
+  const handleUserSelect = (userId: string, checked: boolean) => {
+    const newSelected = new Set(selectedUsers);
+    if (checked) {
+      newSelected.add(userId);
+    } else {
+      newSelected.delete(userId);
+    }
+    setSelectedUsers(newSelected);
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      // Select all non-super-admin users
+      const allUserIds = users.filter(user => !user.is_super_admin).map(user => user.id);
+      setSelectedUsers(new Set(allUserIds));
+    } else {
+      setSelectedUsers(new Set());
+    }
+  };
+
+  // Bulk delete users function
+  const handleBulkDeleteUsers = async () => {
+    if (selectedUsers.size === 0) {
+      alert('Please select users to delete');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${selectedUsers.size} selected user${selectedUsers.size > 1 ? 's' : ''}? This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch('/api/admin/delete-users', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify({ userIds: Array.from(selectedUsers) })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(`✅ Successfully deleted ${selectedUsers.size} user${selectedUsers.size > 1 ? 's' : ''}!`);
+        setSelectedUsers(new Set());
+        loadUsers(); // Refresh the user list
+      } else {
+        throw new Error(result.error || 'Failed to delete users');
+      }
+    } catch (error) {
+      console.error('Bulk delete failed:', error);
+      alert(`❌ Failed to delete users: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Show loading state while checking authentication OR loading local data
   if (isAuthLoading || !isLoaded) {
     return (
@@ -926,13 +990,13 @@ export default function Page() {
                           <div>
                             <div className="flex items-center space-x-2 mb-1">
                               <h3 className="text-white font-semibold">{workspace.name}</h3>
-                              {workspace.company && (
+                              {workspace.slug && (
                                 <span className={`text-xs px-2 py-1 rounded ${
-                                  workspace.company === 'InnovareAI' 
+                                  workspace.slug === 'innovareai' 
                                     ? 'bg-blue-600 text-white' 
                                     : 'bg-green-600 text-white'
                                 }`}>
-                                  {workspace.company}
+                                  {workspace.slug}
                                 </span>
                               )}
                             </div>
@@ -943,6 +1007,27 @@ export default function Page() {
                               <p className="text-gray-500 text-xs mt-1">
                                 Owner: {workspace.owner.email || 'Unknown'}
                               </p>
+                            )}
+                            {/* Display workspace members */}
+                            {workspace.workspace_members && workspace.workspace_members.length > 0 && (
+                              <div className="mt-2">
+                                <p className="text-gray-400 text-xs mb-1">
+                                  Members ({workspace.workspace_members.length}):
+                                </p>
+                                <div className="flex flex-wrap gap-1">
+                                  {workspace.workspace_members.slice(0, 3).map((member: any, idx: number) => (
+                                    <span key={idx} className="text-xs bg-gray-600 text-gray-200 px-2 py-1 rounded">
+                                      {member.user?.email || `User ${member.user_id.slice(0, 8)}`}
+                                      <span className="text-gray-400 ml-1">({member.role})</span>
+                                    </span>
+                                  ))}
+                                  {workspace.workspace_members.length > 3 && (
+                                    <span className="text-xs text-gray-400">
+                                      +{workspace.workspace_members.length - 3} more
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             )}
                           </div>
                           <div className="flex items-center space-x-2">
@@ -1387,6 +1472,14 @@ export default function Page() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-600">
+                      <th className="text-left py-3 px-4 text-gray-300 w-12">
+                        <input
+                          type="checkbox"
+                          onChange={(e) => handleSelectAll(e.target.checked)}
+                          checked={selectedUsers.size > 0 && selectedUsers.size === users.filter(u => !u.is_super_admin).length}
+                          className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500"
+                        />
+                      </th>
                       <th className="text-left py-3 px-4 text-gray-300">Email</th>
                       <th className="text-left py-3 px-4 text-gray-300">Status</th>
                       <th className="text-left py-3 px-4 text-gray-300">Workspaces</th>
@@ -1397,6 +1490,15 @@ export default function Page() {
                   <tbody>
                     {users.map((user) => (
                       <tr key={user.id} className="border-b border-gray-700 hover:bg-gray-700/30">
+                        <td className="py-3 px-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedUsers.has(user.id)}
+                            onChange={(e) => handleUserSelect(user.id, e.target.checked)}
+                            disabled={user.is_super_admin}
+                            className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          />
+                        </td>
                         <td className="py-3 px-4">
                           <div>
                             <div className="text-white font-medium">{user.email}</div>
@@ -1424,12 +1526,13 @@ export default function Page() {
                                   <div key={idx} className="text-xs">
                                     <span className="text-white">{membership.workspaces?.name || 'Unknown'}</span>
                                     <span className={`ml-2 px-1 py-0.5 rounded text-xs ${
-                                      membership.workspaces?.company === 'InnovareAI' 
+                                      membership.workspaces?.slug === 'innovareai' 
                                         ? 'bg-blue-500 text-white'
                                         : 'bg-green-500 text-white'
                                     }`}>
-                                      {membership.workspaces?.company || 'Unknown'}
+                                      {membership.workspaces?.slug || 'Unknown'}
                                     </span>
+                                    <span className="ml-2 text-gray-400">({membership.role})</span>
                                   </div>
                                 ))}
                               </div>
@@ -1459,7 +1562,23 @@ export default function Page() {
               </div>
             )}
 
-            <div className="flex justify-end mt-6">
+            <div className="flex justify-between items-center mt-6">
+              <div className="flex items-center space-x-4">
+                {selectedUsers.size > 0 && (
+                  <button
+                    onClick={handleBulkDeleteUsers}
+                    disabled={isDeleting}
+                    className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-6 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                  >
+                    <span>{isDeleting ? 'Deleting...' : `Delete ${selectedUsers.size} User${selectedUsers.size > 1 ? 's' : ''}`}</span>
+                  </button>
+                )}
+                {selectedUsers.size > 0 && (
+                  <span className="text-gray-400 text-sm">
+                    {selectedUsers.size} user{selectedUsers.size > 1 ? 's' : ''} selected
+                  </span>
+                )}
+              </div>
               <button
                 onClick={() => setShowManageUsers(false)}
                 className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
