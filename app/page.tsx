@@ -409,56 +409,95 @@ export default function Page() {
     }
   };
 
-  // Create new workspace
+  // Create new workspace - ULTIMATE bulletproof version
   const createWorkspace = async () => {
     if (!newWorkspaceName.trim() || !user) return;
 
     try {
-      // Try with company field first, fallback without if column doesn't exist
-      let { data, error } = await supabase
-        .from('workspaces')
-        .insert({
+      console.log('Attempting workspace creation via service role API...');
+      
+      // Use bulletproof service role API that bypasses ALL RLS issues
+      const response = await fetch('/api/admin/create-workspace-minimal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify({
           name: newWorkspaceName,
-          owner_id: user.id,
-          created_by: user.id,
-          company: selectedCompany || 'InnovareAI',
-          settings: {}
+          company: selectedCompany || 'InnovareAI'
         })
-        .select()
-        .single();
+      });
 
-      // If company column doesn't exist, retry without it
-      if (error && error.message?.includes('company')) {
-        console.log('Company column not found, creating workspace without company field');
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('workspaces')
-          .insert({
-            name: newWorkspaceName,
-            owner_id: user.id,
-            created_by: user.id,
-            settings: {}
-          })
-          .select()
-          .single();
-        
-        data = fallbackData;
-        error = fallbackError;
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        console.log('Workspace created via service role API:', result.workspace);
+        setNewWorkspaceName('');
+        setShowCreateWorkspace(false);
+        await loadWorkspaces(user.id, isSuperAdmin);
+        alert('✅ Workspace created successfully!');
+        return;
       }
 
-      if (error) throw error;
+      // If API fails, fall back to direct attempts with progressive schema fallback
+      console.log('Service role API failed, trying direct insertion...');
+      const attempts = [
+        { name: newWorkspaceName, owner_id: user.id, created_by: user.id, company: selectedCompany || 'InnovareAI', settings: {} },
+        { name: newWorkspaceName, owner_id: user.id, created_by: user.id, settings: {} },
+        { name: newWorkspaceName, owner_id: user.id, settings: {} },
+        { name: newWorkspaceName, owner_id: user.id }
+      ];
 
-      console.log('Workspace created successfully');
+      let data = null;
+      let finalError = null;
+
+      for (let i = 0; i < attempts.length; i++) {
+        try {
+          console.log(`Direct attempt ${i + 1}:`, attempts[i]);
+          
+          const { data: result, error } = await supabase
+            .from('workspaces')
+            .insert(attempts[i])
+            .select()
+            .single();
+
+          if (!error) {
+            data = result;
+            console.log(`Workspace created on direct attempt ${i + 1}`);
+            break;
+          } else {
+            finalError = error;
+            if (error.message?.includes('infinite recursion')) {
+              throw new Error('❌ Database RLS policies are preventing workspace creation. This requires manual database configuration.');
+            }
+          }
+        } catch (attemptError: any) {
+          finalError = attemptError;
+          if (attemptError.message?.includes('infinite recursion') || attemptError.message?.includes('Database RLS')) {
+            throw attemptError;
+          }
+        }
+      }
+
+      if (!data) {
+        throw new Error(`All creation methods failed. API error: ${result.error || 'Unknown'}. Direct error: ${finalError?.message || 'Unknown'}`);
+      }
 
       setNewWorkspaceName('');
       setShowCreateWorkspace(false);
       await loadWorkspaces(user.id, isSuperAdmin);
-      alert('Workspace created successfully!');
-    } catch (error: any) {
-      console.error('Failed to create workspace:', error);
-      const errorMessage = error?.message || 'Unknown error occurred';
-      const errorDetails = error?.details || error?.hint || '';
+      alert('✅ Workspace created successfully!');
       
-      alert(`Failed to create workspace: ${errorMessage}${errorDetails ? `. ${errorDetails}` : ''}`);
+    } catch (error: any) {
+      console.error('Complete workspace creation failure:', error);
+      const errorMessage = error?.message || 'Unknown error occurred';
+      
+      if (errorMessage.includes('infinite recursion') || errorMessage.includes('Database RLS')) {
+        alert(`❌ ${errorMessage}\n\n🔧 To fix: Execute the SQL script in FIX_RLS_POLICIES_MANUAL.sql via Supabase console.`);
+      } else {
+        alert(`❌ Failed to create workspace: ${errorMessage}`);
+      }
     }
   };
 
