@@ -902,13 +902,10 @@ export default function Page() {
                   <h2 className="text-2xl font-semibold text-white">
                     {isSuperAdmin ? 'All Workspaces' : 'My Workspaces'}
                   </h2>
-                  <button
-                    onClick={() => setShowCreateWorkspace(true)}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
-                  >
-                    <Plus size={16} />
-                    <span>Create Workspace</span>
-                  </button>
+                  {/* Real-time workspace count */}
+                  <div className="text-gray-400 text-sm">
+                    {workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''}
+                  </div>
                 </div>
 
                 {workspacesLoading ? (
@@ -918,13 +915,8 @@ export default function Page() {
                 ) : workspaces.length === 0 ? (
                   <div className="text-center py-12 bg-gray-700 rounded-lg">
                     <Building2 className="mx-auto mb-4 text-gray-600" size={48} />
-                    <p className="text-gray-400 mb-4">No workspaces yet</p>
-                    <button
-                      onClick={() => setShowCreateWorkspace(true)}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg"
-                    >
-                      Create Your First Workspace
-                    </button>
+                    <p className="text-gray-400">No workspaces created yet</p>
+                    <p className="text-gray-500 text-sm">Use "Create Tenant" in the Super Admin panel above</p>
                   </div>
                 ) : (
                   <div className="space-y-4">

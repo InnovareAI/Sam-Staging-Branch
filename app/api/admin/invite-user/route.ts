@@ -186,16 +186,18 @@ export async function POST(request: NextRequest) {
       // Don't fail the invitation if email fails, just log it
     }
 
-    // Store workspace invitation with company tagging
+    // CRITICAL: Store workspace invitation and ENSURE membership assignment
     if (workspaceId || organizationId) {
+      const targetWorkspaceId = workspaceId || organizationId;
       const companyConfig = COMPANY_CONFIG[company as keyof typeof COMPANY_CONFIG];
       const expirationDate = new Date();
       expirationDate.setDate(expirationDate.getDate() + 7); // 7 days expiration
 
+      // Step 1: Store the workspace invitation
       const { error: invitationError } = await adminSupabase
         .from('workspace_invitations')
         .insert({
-          workspace_id: workspaceId || organizationId,
+          workspace_id: targetWorkspaceId,
           email: email,
           role: role,
           company: company,
@@ -204,11 +206,34 @@ export async function POST(request: NextRequest) {
         });
 
       if (invitationError) {
-        console.error('Failed to store invitation:', invitationError);
-        // Don't fail the request, just log the error
-      } else {
-        console.log(`User ${email} invited to ${workspaceId ? 'workspace' : 'organization'} ${workspaceId || organizationId} by ${companyConfig.companyName}`);
+        console.error('CRITICAL: Failed to store workspace invitation:', invitationError);
+        return NextResponse.json(
+          { error: 'Failed to create workspace invitation record', details: invitationError.message },
+          { status: 500 }
+        );
       }
+
+      // Step 2: IMMEDIATELY add user to workspace_members table (bypassing RLS with service role)
+      const { error: membershipError } = await adminSupabase
+        .from('workspace_members')
+        .insert({
+          workspace_id: targetWorkspaceId,
+          user_id: inviteData.user?.id,
+          role: role,
+          invited_by: user.id,
+          joined_at: new Date().toISOString()
+        });
+
+      if (membershipError) {
+        console.error('CRITICAL: Failed to add user to workspace_members:', membershipError);
+        // This is critical - if we can't add them to the workspace, the invitation is useless
+        return NextResponse.json(
+          { error: 'Failed to assign user to workspace', details: membershipError.message },
+          { status: 500 }
+        );
+      }
+
+      console.log(`✅ SUCCESS: User ${email} invited and ASSIGNED to workspace ${targetWorkspaceId} with role ${role} by ${companyConfig.companyName}`);
     }
 
     const companyConfig = COMPANY_CONFIG[company as keyof typeof COMPANY_CONFIG];

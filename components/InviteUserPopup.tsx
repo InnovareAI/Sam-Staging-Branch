@@ -46,6 +46,7 @@ export default function InviteUserPopup({
     
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
+    if (!formData.workspaceId) newErrors.workspaceId = 'Workspace selection is required';
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -103,7 +104,7 @@ export default function InviteUserPopup({
   ];
 
   const workspaceOptions = [
-    { value: '', label: 'No specific workspace' },
+    { value: '', label: 'Select a workspace...' },
     ...workspaces.map(ws => ({ value: ws.id, label: `${ws.name} (${ws.company})` }))
   ];
 
@@ -184,16 +185,16 @@ export default function InviteUserPopup({
           />
         </div>
 
-        {/* Workspace Selection */}
-        {workspaces.length > 0 && (
-          <SamSelect
-            label="Workspace (Optional)"
-            value={formData.workspaceId || ''}
-            onChange={(value) => setFormData({ ...formData, workspaceId: value })}
-            options={workspaceOptions}
-            disabled={isSubmitting}
-          />
-        )}
+        {/* Workspace Selection - REQUIRED */}
+        <SamSelect
+          label="Target Workspace"
+          value={formData.workspaceId || ''}
+          onChange={(value) => setFormData({ ...formData, workspaceId: value })}
+          options={workspaceOptions}
+          required
+          disabled={isSubmitting}
+          error={errors.workspaceId}
+        />
 
         {/* Company Badge */}
         <div className="flex items-center space-x-2 p-3 bg-gray-700 rounded-lg">
