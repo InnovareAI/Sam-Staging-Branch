@@ -414,8 +414,8 @@ export default function Page() {
     if (!newWorkspaceName.trim() || !user) return;
 
     try {
-      // Try creating workspace with company field, fallback without if it fails
-      let { data, error } = await supabase
+      // Create workspace directly without workspace_members to avoid RLS recursion
+      const { data, error } = await supabase
         .from('workspaces')
         .insert({
           name: newWorkspaceName,
@@ -427,48 +427,26 @@ export default function Page() {
         .select()
         .single();
 
-      // If company column doesn't exist, try without it
-      if (error && error.message?.includes('company')) {
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('workspaces')
-          .insert({
-            name: newWorkspaceName,
-            owner_id: user.id,
-            created_by: user.id,
-            settings: {}
-          })
-          .select()
-          .single();
-        
-        data = fallbackData;
-        error = fallbackError;
-      }
-
       if (error) throw error;
 
-      // Add owner as workspace member (if table exists)
-      try {
-        await supabase
-          .from('workspace_members')
-          .insert({
-            workspace_id: data.id,
-            user_id: user.id,
-            role: 'owner'
-          });
-      } catch (memberError) {
-        console.warn('Could not add workspace member:', memberError);
-        // Continue without failing - workspace is created
-      }
+      // Skip workspace_members insertion completely due to RLS policy recursion
+      console.log('Workspace created successfully, workspace_members skipped due to RLS issues');
 
       setNewWorkspaceName('');
       setShowCreateWorkspace(false);
-      await loadWorkspaces(user.id);
+      await loadWorkspaces(user.id, isSuperAdmin);
       alert('Workspace created successfully!');
     } catch (error: any) {
       console.error('Failed to create workspace:', error);
       const errorMessage = error?.message || 'Unknown error occurred';
       const errorDetails = error?.details || error?.hint || '';
-      alert(`Failed to create workspace: ${errorMessage}${errorDetails ? `. ${errorDetails}` : ''}`);
+      
+      // Special handling for RLS recursion error
+      if (errorMessage.includes('infinite recursion')) {
+        alert(`Failed to create workspace: Database policy issue detected. Workspace_members table has circular RLS policies that need manual fixing in Supabase console.`);
+      } else {
+        alert(`Failed to create workspace: ${errorMessage}${errorDetails ? `. ${errorDetails}` : ''}`);
+      }
     }
   };
 
