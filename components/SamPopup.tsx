@@ -33,29 +33,29 @@ export default function SamPopup({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
+      {/* Backdrop - More subtle, workspace-style */}
       <div 
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-gray-900/90 backdrop-blur-md"
         onClick={onClose}
       />
       
-      {/* Popup */}
+      {/* Popup - Workspace panel styling */}
       <div className={`
         relative w-full ${sizeClasses[size]} mx-4 
-        bg-gray-800 rounded-xl border border-gray-700
-        shadow-2xl shadow-purple-500/10
-        transform transition-all duration-200 ease-out
+        bg-gray-800 rounded-lg border border-gray-600
+        shadow-xl shadow-black/30
+        transform transition-all duration-300 ease-out
         ${className}
       `}>
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-700">
+        {/* Header - Workspace panel style */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-600 bg-gray-700/50">
           <h2 className="text-xl font-semibold text-white">{title}</h2>
           {showCloseButton && (
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-gray-700"
+              className="text-gray-400 hover:text-gray-200 transition-colors p-2 rounded-md hover:bg-gray-700"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
           )}
         </div>
@@ -105,7 +105,7 @@ export function ConfirmPopup({
         <div className="flex justify-end space-x-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+            className="px-6 py-2 text-gray-300 bg-gray-600 hover:bg-gray-500 rounded-lg transition-colors font-medium"
           >
             {cancelText}
           </button>
@@ -114,7 +114,7 @@ export function ConfirmPopup({
               onConfirm();
               onClose();
             }}
-            className={`px-4 py-2 rounded-lg transition-colors ${confirmClasses[confirmVariant]}`}
+            className={`px-6 py-2 rounded-lg transition-colors font-medium ${confirmClasses[confirmVariant]}`}
           >
             {confirmText}
           </button>
@@ -151,18 +151,18 @@ export function FormPopup({
       <form onSubmit={onSubmit} className="space-y-6">
         {children}
         
-        <div className="flex justify-end space-x-3 pt-4 border-t border-gray-700">
+        <div className="flex justify-end space-x-3 pt-6 border-t border-gray-600">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+            className="px-6 py-2 text-gray-300 bg-gray-600 hover:bg-gray-500 rounded-lg transition-colors font-medium"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={submitDisabled}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+            className="px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
           >
             {submitText}
           </button>
