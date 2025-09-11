@@ -23,7 +23,8 @@ import {
   History,
   Plus,
   Building2,
-  Mail
+  Mail,
+  User
 } from 'lucide-react';
 
 export default function Page() {
@@ -49,6 +50,17 @@ export default function Page() {
   const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [workspacesLoading, setWorkspacesLoading] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState<'InnovareAI' | '3cubedai'>('InnovareAI');
+  const [showInviteUser, setShowInviteUser] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteWorkspaceId, setInviteWorkspaceId] = useState<string | null>(null);
+
+  // Check if user is super admin
+  const checkSuperAdmin = (email: string) => {
+    const superAdminEmails = ['tl@innovareai.com', 'cl@innovareai.com'];
+    return superAdminEmails.includes(email.toLowerCase());
+  };
 
   // Check authentication state on mount (strict authentication required)
   useEffect(() => {
@@ -58,6 +70,7 @@ export default function Page() {
         console.log('Auth check result:', user ? 'authenticated' : 'not authenticated');
         setUser(user);
         if (user) {
+          setIsSuperAdmin(checkSuperAdmin(user.email || ''));
           loadWorkspaces(user.id);
         }
       } catch (error) {
@@ -76,6 +89,7 @@ export default function Page() {
         console.log('Auth state change:', event, session?.user ? 'user present' : 'no user');
         setUser(session?.user || null);
         if (session?.user) {
+          setIsSuperAdmin(checkSuperAdmin(session.user.email || ''));
           loadWorkspaces(session.user.id);
         }
         setIsAuthLoading(false);
@@ -156,7 +170,8 @@ export default function Page() {
     { id: 'campaign', label: 'Campaign Hub', icon: Megaphone, active: false },
     { id: 'pipeline', label: 'Lead Pipeline', icon: TrendingUp, active: false },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, active: false },
-    { id: 'settings', label: 'Settings', icon: Settings, active: false }
+    { id: 'profile', label: 'Profile', icon: User, active: false },
+    ...(isSuperAdmin ? [{ id: 'superadmin', label: 'SuperAdmin', icon: Settings, active: false }] : [])
   ];
 
   // Handle password change
@@ -528,14 +543,14 @@ export default function Page() {
           <LeadPipeline />
         ) : activeMenuItem === 'analytics' ? (
           <Analytics />
-        ) : activeMenuItem === 'settings' ? (
-          /* SETTINGS PAGE */
+        ) : activeMenuItem === 'profile' ? (
+          /* USER PROFILE PAGE */
           <div className="flex-1 p-6 overflow-y-auto">
             <div className="max-w-4xl mx-auto">
               <div className="flex items-center justify-between mb-8">
                 <h1 className="text-3xl font-bold text-white flex items-center">
-                  <Settings className="mr-3" size={36} />
-                  Settings
+                  <User className="mr-3" size={36} />
+                  User Profile
                 </h1>
                 <button 
                   onClick={() => setActiveMenuItem('chat')}
@@ -547,7 +562,7 @@ export default function Page() {
 
               {/* User Profile Section */}
               <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">User Profile</h2>
+                <h2 className="text-2xl font-semibold text-white mb-6">Profile Information</h2>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
@@ -555,8 +570,9 @@ export default function Page() {
                       type="email"
                       value={user?.email || ''}
                       disabled
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white opacity-50"
                     />
+                    <p className="text-gray-400 text-xs mt-1">Email cannot be changed</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -577,6 +593,15 @@ export default function Page() {
                         placeholder="Enter last name"
                       />
                     </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Account Created</label>
+                    <input
+                      type="text"
+                      value={user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                      disabled
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white opacity-50"
+                    />
                   </div>
                   <button className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors">
                     Update Profile
@@ -625,10 +650,99 @@ export default function Page() {
                 </div>
               </div>
 
+              {/* Account Actions */}
+              <div className="bg-gray-800 rounded-lg p-6">
+                <h2 className="text-2xl font-semibold text-white mb-6">Account Actions</h2>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-white font-medium">Sign Out</h3>
+                      <p className="text-gray-400 text-sm">Sign out of your SAM AI account</p>
+                    </div>
+                    <button 
+                      onClick={handleLogout}
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                    >
+                      <LogOut size={16} />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : activeMenuItem === 'superadmin' ? (
+          /* SUPER ADMIN PAGE */
+          <div className="flex-1 p-6 overflow-y-auto">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center justify-between mb-8">
+                <h1 className="text-3xl font-bold text-white flex items-center">
+                  <Settings className="mr-3" size={36} />
+                  SuperAdmin Panel
+                </h1>
+                <button 
+                  onClick={() => setActiveMenuItem('chat')}
+                  className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
+                >
+                  ← Back to Chat
+                </button>
+              </div>
+
+              {/* Super Admin Panel */}
+              {isSuperAdmin && (
+                <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-lg p-6 mb-6 border border-purple-500">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-2xl font-semibold text-white flex items-center">
+                        <Settings className="mr-2" size={24} />
+                        Super Admin Panel
+                      </h2>
+                      <p className="text-purple-200 text-sm">Advanced tenant and user management</p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <label className="text-white text-sm font-medium">Company:</label>
+                      <select
+                        value={selectedCompany}
+                        onChange={(e) => setSelectedCompany(e.target.value as 'InnovareAI' | '3cubedai')}
+                        className="bg-gray-700 text-white px-3 py-1 rounded border border-gray-600"
+                      >
+                        <option value="InnovareAI">InnovareAI</option>
+                        <option value="3cubedai">3CubedAI</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <button
+                      onClick={() => setShowCreateWorkspace(true)}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors"
+                    >
+                      <Building2 size={18} />
+                      <span>Create Tenant</span>
+                    </button>
+                    <button
+                      onClick={() => setShowInviteUser(true)}
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors"
+                    >
+                      <Mail size={18} />
+                      <span>Invite User</span>
+                    </button>
+                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors">
+                      <Users size={18} />
+                      <span>Manage Users</span>
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-purple-200">
+                    Company emails will be sent from: {selectedCompany === 'InnovareAI' ? 'noreply@innovareai.com' : 'noreply@3cubedai.com'}
+                  </div>
+                </div>
+              )}
+
               {/* Workspace Management */}
-              <div className="bg-gray-800 rounded-lg p-6 mb-6">
+              <div className="bg-gray-800 rounded-lg p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-semibold text-white">Workspace Management</h2>
+                  <h2 className="text-2xl font-semibold text-white">My Workspaces</h2>
                   <button
                     onClick={() => setShowCreateWorkspace(true)}
                     className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
@@ -670,6 +784,10 @@ export default function Page() {
                             </span>
                             <button
                               className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center space-x-1 transition-colors"
+                              onClick={() => {
+                                setInviteWorkspaceId(workspace.id);
+                                setShowInviteUser(true);
+                              }}
                             >
                               <Mail size={14} />
                               <span>Invite</span>
@@ -685,26 +803,6 @@ export default function Page() {
                     ))}
                   </div>
                 )}
-              </div>
-
-              {/* Account Actions */}
-              <div className="bg-gray-800 rounded-lg p-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">Account Actions</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-white font-medium">Sign Out</h3>
-                      <p className="text-gray-400 text-sm">Sign out of your SAM AI account</p>
-                    </div>
-                    <button 
-                      onClick={handleLogout}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                    >
-                      <LogOut size={16} />
-                      <span>Sign Out</span>
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -848,6 +946,128 @@ export default function Page() {
         currentMessages={messages}
         onLoadConversation={handleLoadConversation}
       />
+
+      {/* Invite User Modal */}
+      {showInviteUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-xl font-semibold text-white mb-4">Invite User to Workspace</h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+              <input
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="user@example.com"
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-300 mb-2">Select Workspace</label>
+              <select
+                value={inviteWorkspaceId || ''}
+                onChange={(e) => setInviteWorkspaceId(e.target.value)}
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+              >
+                <option value="">Select a workspace...</option>
+                {workspaces.map((workspace) => (
+                  <option key={workspace.id} value={workspace.id}>
+                    {workspace.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-300 mb-2">Company</label>
+              <div className="flex items-center space-x-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    value="InnovareAI"
+                    checked={selectedCompany === 'InnovareAI'}
+                    onChange={(e) => setSelectedCompany(e.target.value as 'InnovareAI')}
+                    className="mr-2"
+                  />
+                  <span className="text-white">InnovareAI</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    value="3cubedai"
+                    checked={selectedCompany === '3cubedai'}
+                    onChange={(e) => setSelectedCompany(e.target.value as '3cubedai')}
+                    className="mr-2"
+                  />
+                  <span className="text-white">3CubedAI</span>
+                </label>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                Invitation will be sent from: {selectedCompany === 'InnovareAI' ? 'noreply@innovareai.com' : 'noreply@3cubedai.com'}
+              </p>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={async () => {
+                  if (!inviteEmail.trim() || !inviteWorkspaceId) {
+                    alert('Please fill in all fields');
+                    return;
+                  }
+
+                  try {
+                    const response = await fetch('/api/admin/invite-user', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+                      },
+                      body: JSON.stringify({
+                        email: inviteEmail,
+                        firstName: inviteEmail.split('@')[0],
+                        lastName: 'User',
+                        workspaceId: inviteWorkspaceId,
+                        company: selectedCompany,
+                        role: 'member'
+                      })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                      alert(`Invitation sent successfully to ${inviteEmail} from ${selectedCompany}!`);
+                      setShowInviteUser(false);
+                      setInviteEmail('');
+                      setInviteWorkspaceId(null);
+                    } else {
+                      alert(`Failed to send invitation: ${data.error}`);
+                    }
+                  } catch (error) {
+                    console.error('Error sending invitation:', error);
+                    alert('Failed to send invitation');
+                  }
+                }}
+                disabled={!inviteEmail.trim() || !inviteWorkspaceId}
+                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white py-2 rounded-lg transition-colors"
+              >
+                Send Invitation
+              </button>
+              <button
+                onClick={() => {
+                  setShowInviteUser(false);
+                  setInviteEmail('');
+                  setInviteWorkspaceId(null);
+                }}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Workspace Modal */}
       {showCreateWorkspace && (
