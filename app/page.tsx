@@ -7,6 +7,7 @@ import CampaignHub from './components/CampaignHub';
 import LeadPipeline from './components/LeadPipeline';
 import Analytics from './components/Analytics';
 import ConversationHistory from '../components/ConversationHistory';
+import InviteUserPopup, { InviteFormData } from '../components/InviteUserPopup';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { 
   MessageCircle, 
@@ -498,6 +499,36 @@ export default function Page() {
       } else {
         alert(`❌ Failed to create workspace: ${errorMessage}`);
       }
+    }
+  };
+
+  // Invite user function
+  const handleInviteUser = async (inviteData: InviteFormData) => {
+    try {
+      const response = await fetch('/api/admin/invite-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify(inviteData)
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(`✅ Invitation sent successfully to ${inviteData.email}!`);
+        // Refresh users list if open
+        if (showManageUsers) {
+          loadUsers();
+        }
+      } else {
+        throw new Error(result.error || 'Failed to send invitation');
+      }
+    } catch (error) {
+      console.error('Invitation failed:', error);
+      alert(`❌ Failed to send invitation: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error; // Re-throw to let popup handle the error state
     }
   };
 
@@ -1447,6 +1478,14 @@ export default function Page() {
           </div>
         </div>
       )}
+
+      {/* Invite User Popup */}
+      <InviteUserPopup
+        isOpen={showInviteUser}
+        onClose={() => setShowInviteUser(false)}
+        onSubmit={handleInviteUser}
+        workspaces={workspaces}
+      />
     </div>
   );
 }
