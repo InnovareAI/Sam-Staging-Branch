@@ -414,8 +414,8 @@ export default function Page() {
     if (!newWorkspaceName.trim() || !user) return;
 
     try {
-      // Create workspace directly without workspace_members to avoid RLS recursion
-      const { data, error } = await supabase
+      // Try with company field first, fallback without if column doesn't exist
+      let { data, error } = await supabase
         .from('workspaces')
         .insert({
           name: newWorkspaceName,
@@ -427,10 +427,27 @@ export default function Page() {
         .select()
         .single();
 
+      // If company column doesn't exist, retry without it
+      if (error && error.message?.includes('company')) {
+        console.log('Company column not found, creating workspace without company field');
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('workspaces')
+          .insert({
+            name: newWorkspaceName,
+            owner_id: user.id,
+            created_by: user.id,
+            settings: {}
+          })
+          .select()
+          .single();
+        
+        data = fallbackData;
+        error = fallbackError;
+      }
+
       if (error) throw error;
 
-      // Skip workspace_members insertion completely due to RLS policy recursion
-      console.log('Workspace created successfully, workspace_members skipped due to RLS issues');
+      console.log('Workspace created successfully');
 
       setNewWorkspaceName('');
       setShowCreateWorkspace(false);
@@ -441,12 +458,7 @@ export default function Page() {
       const errorMessage = error?.message || 'Unknown error occurred';
       const errorDetails = error?.details || error?.hint || '';
       
-      // Special handling for RLS recursion error
-      if (errorMessage.includes('infinite recursion')) {
-        alert(`Failed to create workspace: Database policy issue detected. Workspace_members table has circular RLS policies that need manual fixing in Supabase console.`);
-      } else {
-        alert(`Failed to create workspace: ${errorMessage}${errorDetails ? `. ${errorDetails}` : ''}`);
-      }
+      alert(`Failed to create workspace: ${errorMessage}${errorDetails ? `. ${errorDetails}` : ''}`);
     }
   };
 
