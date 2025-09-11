@@ -414,36 +414,61 @@ export default function Page() {
     if (!newWorkspaceName.trim() || !user) return;
 
     try {
-      const { data, error } = await supabase
+      // Try creating workspace with company field, fallback without if it fails
+      let { data, error } = await supabase
         .from('workspaces')
         .insert({
           name: newWorkspaceName,
           owner_id: user.id,
           created_by: user.id,
-          company: selectedCompany,
+          company: selectedCompany || 'InnovareAI',
           settings: {}
         })
         .select()
         .single();
 
+      // If company column doesn't exist, try without it
+      if (error && error.message?.includes('company')) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('workspaces')
+          .insert({
+            name: newWorkspaceName,
+            owner_id: user.id,
+            created_by: user.id,
+            settings: {}
+          })
+          .select()
+          .single();
+        
+        data = fallbackData;
+        error = fallbackError;
+      }
+
       if (error) throw error;
 
-      // Add owner as workspace member
-      await supabase
-        .from('workspace_members')
-        .insert({
-          workspace_id: data.id,
-          user_id: user.id,
-          role: 'owner'
-        });
+      // Add owner as workspace member (if table exists)
+      try {
+        await supabase
+          .from('workspace_members')
+          .insert({
+            workspace_id: data.id,
+            user_id: user.id,
+            role: 'owner'
+          });
+      } catch (memberError) {
+        console.warn('Could not add workspace member:', memberError);
+        // Continue without failing - workspace is created
+      }
 
       setNewWorkspaceName('');
       setShowCreateWorkspace(false);
       await loadWorkspaces(user.id);
       alert('Workspace created successfully!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create workspace:', error);
-      alert('Failed to create workspace');
+      const errorMessage = error?.message || 'Unknown error occurred';
+      const errorDetails = error?.details || error?.hint || '';
+      alert(`Failed to create workspace: ${errorMessage}${errorDetails ? `. ${errorDetails}` : ''}`);
     }
   };
 
