@@ -105,8 +105,15 @@ export default function InviteUserPopup({
 
   const workspaceOptions = [
     { value: '', label: 'Select a workspace...' },
-    ...workspaces.map(ws => ({ value: ws.id, label: `${ws.name} (${ws.company})` }))
+    ...workspaces.map(ws => ({ 
+      value: ws.id, 
+      label: `${ws.name}${ws.company ? ` (${ws.company})` : ws.slug ? ` (${ws.slug})` : ''}`
+    }))
   ];
+
+  // Debug logging
+  console.log('InviteUserPopup workspaces:', workspaces);
+  console.log('Workspace options:', workspaceOptions);
 
   return (
     <FormPopup

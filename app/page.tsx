@@ -872,7 +872,10 @@ export default function Page() {
                       <span>Create Tenant</span>
                     </button>
                     <button
-                      onClick={() => setShowInviteUser(true)}
+                      onClick={() => {
+                        console.log('Opening invite popup with workspaces:', workspaces);
+                        setShowInviteUser(true);
+                      }}
                       className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors"
                     >
                       <Mail size={18} />
