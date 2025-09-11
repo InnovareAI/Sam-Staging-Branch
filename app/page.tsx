@@ -56,6 +56,12 @@ export default function Page() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteWorkspaceId, setInviteWorkspaceId] = useState<string | null>(null);
 
+  // User management state
+  const [showManageUsers, setShowManageUsers] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userStats, setUserStats] = useState<any>(null);
+
   // Check if user is super admin
   const checkSuperAdmin = (email: string) => {
     const superAdminEmails = ['tl@innovareai.com', 'cl@innovareai.com'];
@@ -70,8 +76,9 @@ export default function Page() {
         console.log('Auth check result:', user ? 'authenticated' : 'not authenticated');
         setUser(user);
         if (user) {
-          setIsSuperAdmin(checkSuperAdmin(user.email || ''));
-          loadWorkspaces(user.id);
+          const isAdmin = checkSuperAdmin(user.email || '');
+          setIsSuperAdmin(isAdmin);
+          loadWorkspaces(user.id, isAdmin);
         }
       } catch (error) {
         console.error('Error getting user:', error);
@@ -89,8 +96,9 @@ export default function Page() {
         console.log('Auth state change:', event, session?.user ? 'user present' : 'no user');
         setUser(session?.user || null);
         if (session?.user) {
-          setIsSuperAdmin(checkSuperAdmin(session.user.email || ''));
-          loadWorkspaces(session.user.id);
+          const isAdmin = checkSuperAdmin(session.user.email || '');
+          setIsSuperAdmin(isAdmin);
+          loadWorkspaces(session.user.id, isAdmin);
         }
         setIsAuthLoading(false);
       }
@@ -313,34 +321,91 @@ export default function Page() {
     }
   };
 
-  // Load workspaces for current user
-  const loadWorkspaces = async (userId: string) => {
+  // Load all workspaces for super admin or user's own workspaces
+  const loadWorkspaces = async (userId: string, isAdmin?: boolean) => {
     try {
       setWorkspacesLoading(true);
-      const { data, error } = await supabase
-        .from('workspaces')
-        .select(`
-          *,
-          workspace_members (
-            id,
-            user_id,
-            role,
-            joined_at,
-            users (
-              email,
-              first_name,
-              last_name
-            )
-          )
-        `)
-        .eq('owner_id', userId);
+      
+      // Use parameter or current state
+      const shouldLoadAllWorkspaces = isAdmin ?? isSuperAdmin;
+      
+      // If super admin, load all workspaces via admin API
+      if (shouldLoadAllWorkspaces) {
+        const response = await fetch('/api/admin/workspaces', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        });
 
-      if (error) throw error;
-      setWorkspaces(data || []);
+        if (response.ok) {
+          const data = await response.json();
+          setWorkspaces(data.workspaces || []);
+        } else {
+          console.error('Failed to fetch admin workspaces');
+          // Fall back to regular user workspaces
+          await loadUserWorkspaces(userId);
+        }
+      } else {
+        // Regular user - load only their workspaces
+        await loadUserWorkspaces(userId);
+      }
     } catch (error) {
       console.error('Failed to load workspaces:', error);
     } finally {
       setWorkspacesLoading(false);
+    }
+  };
+
+  // Load workspaces for current user only
+  const loadUserWorkspaces = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('workspaces')
+      .select(`
+        *,
+        workspace_members (
+          id,
+          user_id,
+          role,
+          joined_at,
+          users (
+            email,
+            first_name,
+            last_name
+          )
+        )
+      `)
+      .eq('owner_id', userId);
+
+    if (error) throw error;
+    setWorkspaces(data || []);
+  };
+
+  // Load all users for super admin
+  const loadUsers = async () => {
+    try {
+      setUsersLoading(true);
+      
+      const response = await fetch('/api/admin/users', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data.users || []);
+        setUserStats(data.stats || {});
+      } else {
+        console.error('Failed to fetch users');
+      }
+    } catch (error) {
+      console.error('Failed to load users:', error);
+    } finally {
+      setUsersLoading(false);
     }
   };
 
@@ -727,14 +792,20 @@ export default function Page() {
                       <Mail size={18} />
                       <span>Invite User</span>
                     </button>
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors">
+                    <button 
+                      onClick={() => {
+                        setShowManageUsers(true);
+                        loadUsers();
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors"
+                    >
                       <Users size={18} />
                       <span>Manage Users</span>
                     </button>
                   </div>
 
                   <div className="text-xs text-purple-200">
-                    Company emails will be sent from: {selectedCompany === 'InnovareAI' ? 'noreply@innovareai.com' : 'noreply@3cubedai.com'}
+                    Company emails will be sent from: {selectedCompany === 'InnovareAI' ? 'sp@innovareai.com' : 'sophia@3cubed.ai'}
                   </div>
                 </div>
               )}
@@ -742,7 +813,9 @@ export default function Page() {
               {/* Workspace Management */}
               <div className="bg-gray-800 rounded-lg p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-semibold text-white">My Workspaces</h2>
+                  <h2 className="text-2xl font-semibold text-white">
+                    {isSuperAdmin ? 'All Workspaces' : 'My Workspaces'}
+                  </h2>
                   <button
                     onClick={() => setShowCreateWorkspace(true)}
                     className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
@@ -773,14 +846,34 @@ export default function Page() {
                       <div key={workspace.id} className="bg-gray-700 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-3">
                           <div>
-                            <h3 className="text-white font-semibold">{workspace.name}</h3>
+                            <div className="flex items-center space-x-2 mb-1">
+                              <h3 className="text-white font-semibold">{workspace.name}</h3>
+                              {workspace.company && (
+                                <span className={`text-xs px-2 py-1 rounded ${
+                                  workspace.company === 'InnovareAI' 
+                                    ? 'bg-blue-600 text-white' 
+                                    : 'bg-green-600 text-white'
+                                }`}>
+                                  {workspace.company}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-gray-400 text-sm">
                               Created {new Date(workspace.created_at).toLocaleDateString()}
                             </p>
+                            {isSuperAdmin && workspace.owner && (
+                              <p className="text-gray-500 text-xs mt-1">
+                                Owner: {workspace.owner.email || 'Unknown'}
+                              </p>
+                            )}
                           </div>
                           <div className="flex items-center space-x-2">
-                            <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded">
-                              Owner
+                            <span className={`text-xs px-2 py-1 rounded ${
+                              isSuperAdmin && workspace.owner_id !== user.id
+                                ? 'bg-gray-600 text-gray-300'
+                                : 'bg-purple-600 text-white'
+                            }`}>
+                              {isSuperAdmin && workspace.owner_id !== user.id ? 'View' : 'Owner'}
                             </span>
                             <button
                               className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center space-x-1 transition-colors"
@@ -797,7 +890,7 @@ export default function Page() {
                         
                         <div className="text-sm text-gray-400">
                           <Users size={14} className="inline mr-1" />
-                          {workspace.workspace_members?.length || 0} members
+                          {workspace.member_count || workspace.workspace_members?.length || 0} members
                         </div>
                       </div>
                     ))}
@@ -1005,7 +1098,7 @@ export default function Page() {
                 </label>
               </div>
               <p className="text-xs text-gray-400 mt-1">
-                Invitation will be sent from: {selectedCompany === 'InnovareAI' ? 'noreply@innovareai.com' : 'noreply@3cubedai.com'}
+                Invitation will be sent from: {selectedCompany === 'InnovareAI' ? 'sp@innovareai.com' : 'sophia@3cubed.ai'}
               </p>
             </div>
 
@@ -1166,6 +1259,136 @@ export default function Page() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* User Management Modal */}
+      {showManageUsers && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-semibold text-white">Manage Users</h3>
+              <button
+                onClick={() => setShowManageUsers(false)}
+                className="text-gray-400 hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* User Statistics */}
+            {userStats && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <div className="text-2xl font-bold text-white">{userStats.total_users}</div>
+                  <div className="text-sm text-gray-400">Total Users</div>
+                </div>
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <div className="text-2xl font-bold text-green-400">{userStats.active_users}</div>
+                  <div className="text-sm text-gray-400">Active Users</div>
+                </div>
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <div className="text-2xl font-bold text-yellow-400">{userStats.pending_invitations}</div>
+                  <div className="text-sm text-gray-400">Pending Invites</div>
+                </div>
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <div className="text-2xl font-bold text-purple-400">{userStats.super_admins}</div>
+                  <div className="text-sm text-gray-400">Super Admins</div>
+                </div>
+              </div>
+            )}
+
+            {/* Users List */}
+            {usersLoading ? (
+              <div className="text-center py-8">
+                <div className="text-gray-400">Loading users...</div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-600">
+                      <th className="text-left py-3 px-4 text-gray-300">Email</th>
+                      <th className="text-left py-3 px-4 text-gray-300">Status</th>
+                      <th className="text-left py-3 px-4 text-gray-300">Workspaces</th>
+                      <th className="text-left py-3 px-4 text-gray-300">Last Sign In</th>
+                      <th className="text-left py-3 px-4 text-gray-300">Created</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => (
+                      <tr key={user.id} className="border-b border-gray-700 hover:bg-gray-700/30">
+                        <td className="py-3 px-4">
+                          <div>
+                            <div className="text-white font-medium">{user.email}</div>
+                            {user.is_super_admin && (
+                              <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded mt-1 inline-block">
+                                Super Admin
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            user.email_confirmed_at 
+                              ? 'bg-green-600 text-white'
+                              : 'bg-yellow-600 text-white'
+                          }`}>
+                            {user.email_confirmed_at ? 'Confirmed' : 'Pending'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="text-gray-300">
+                            {user.memberships.length > 0 ? (
+                              <div className="space-y-1">
+                                {user.memberships.map((membership: any, idx: number) => (
+                                  <div key={idx} className="text-xs">
+                                    <span className="text-white">{membership.workspaces?.name || 'Unknown'}</span>
+                                    <span className={`ml-2 px-1 py-0.5 rounded text-xs ${
+                                      membership.workspaces?.company === 'InnovareAI' 
+                                        ? 'bg-blue-500 text-white'
+                                        : 'bg-green-500 text-white'
+                                    }`}>
+                                      {membership.workspaces?.company || 'Unknown'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-gray-500">No workspaces</span>
+                            )}
+                            {user.pending_invitations.length > 0 && (
+                              <div className="text-yellow-400 text-xs mt-1">
+                                {user.pending_invitations.length} pending invite(s)
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-gray-300 text-sm">
+                          {user.last_sign_in_at 
+                            ? new Date(user.last_sign_in_at).toLocaleDateString()
+                            : 'Never'
+                          }
+                        </td>
+                        <td className="py-3 px-4 text-gray-300 text-sm">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => setShowManageUsers(false)}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

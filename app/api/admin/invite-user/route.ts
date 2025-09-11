@@ -6,14 +6,14 @@ import * as postmark from 'postmark';
 const COMPANY_CONFIG = {
   InnovareAI: {
     postmarkApiKey: process.env.POSTMARK_INNOVAREAI_API_KEY,
-    fromEmail: 'noreply@innovareai.com',
+    fromEmail: 'sp@innovareai.com', // Sarah Powell
     companyName: 'InnovareAI',
-    contactEmail: 'sp@innovareai.com', // Sarah Powell
+    contactEmail: 'sp@innovareai.com',
     contactName: 'Sarah Powell'
   },
   '3cubedai': {
     postmarkApiKey: process.env.POSTMARK_3CUBEDAI_API_KEY,
-    fromEmail: 'noreply@3cubedai.com',
+    fromEmail: 'sophia@3cubed.ai', // Sophia
     companyName: '3CubedAI',
     contactEmail: 'sophia@3cubed.ai',
     contactName: 'Sophia'
