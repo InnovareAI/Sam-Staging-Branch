@@ -103,8 +103,10 @@ export default function InviteUserPopup({
     { value: 'owner', label: 'Owner' }
   ];
 
-  // Filter workspaces for invitation - SuperAdmin can only invite to InnovareAI
-  const filteredWorkspaces = workspaces.filter(ws => ws.slug === 'innovareai');
+  // Show all workspaces for invitation (SuperAdmin can invite to any workspace)
+  const filteredWorkspaces = workspaces;
+  console.log('📋 InviteUserPopup received workspaces:', workspaces?.length || 0);
+  console.log('📋 Workspace names in invite popup:', workspaces?.map(w => w.name) || []);
   
   const workspaceOptions = [
     { value: '', label: 'Select a workspace...' },

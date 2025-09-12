@@ -54,6 +54,8 @@ export default function Page() {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<'InnovareAI' | '3cubedai'>('InnovareAI');
   const [showInviteUser, setShowInviteUser] = useState(false);
+  const [selectedWorkspaces, setSelectedWorkspaces] = useState<Set<string>>(new Set());
+  const [isDeletingWorkspaces, setIsDeletingWorkspaces] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteWorkspaceId, setInviteWorkspaceId] = useState<string | null>(null);
 
@@ -327,10 +329,12 @@ export default function Page() {
   // Load all workspaces for super admin or user's own workspaces
   const loadWorkspaces = async (userId: string, isAdmin?: boolean) => {
     try {
+      console.log('🔄 loadWorkspaces called with userId:', userId, 'isAdmin:', isAdmin, 'isSuperAdmin:', isSuperAdmin);
       setWorkspacesLoading(true);
       
       // Use parameter or current state
       const shouldLoadAllWorkspaces = isAdmin ?? isSuperAdmin;
+      console.log('🎯 shouldLoadAllWorkspaces:', shouldLoadAllWorkspaces);
       
       // If super admin, load all workspaces via admin API
       if (shouldLoadAllWorkspaces) {
@@ -344,9 +348,11 @@ export default function Page() {
 
         if (response.ok) {
           const data = await response.json();
+          console.log('📊 Admin API returned workspaces:', data.workspaces?.length || 0);
+          console.log('📋 Workspace names:', data.workspaces?.map((w: any) => w.name) || []);
           setWorkspaces(data.workspaces || []);
         } else {
-          console.error('Failed to fetch admin workspaces');
+          console.error('❌ Failed to fetch admin workspaces');
           // Fall back to regular user workspaces
           await loadUserWorkspaces(userId);
         }
@@ -435,9 +441,10 @@ export default function Page() {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        console.log('Workspace created via service role API:', result.workspace);
+        console.log('✅ Workspace created via service role API:', result.workspace);
         setNewWorkspaceName('');
         setShowCreateWorkspace(false);
+        console.log('🔄 Reloading workspaces after creation...');
         await loadWorkspaces(user.id, isSuperAdmin);
         alert('✅ Workspace created successfully!');
         return;
@@ -555,6 +562,27 @@ export default function Page() {
     }
   };
 
+  // Workspace checkbox handling functions
+  const handleWorkspaceSelect = (workspaceId: string, checked: boolean) => {
+    const newSelected = new Set(selectedWorkspaces);
+    if (checked) {
+      newSelected.add(workspaceId);
+    } else {
+      newSelected.delete(workspaceId);
+    }
+    setSelectedWorkspaces(newSelected);
+  };
+
+  const handleSelectAllWorkspaces = (checked: boolean) => {
+    if (checked) {
+      // Select all workspaces except InnovareAI (protect the main workspace)
+      const allWorkspaceIds = workspaces.filter(ws => ws.slug !== 'innovareai').map(ws => ws.id);
+      setSelectedWorkspaces(new Set(allWorkspaceIds));
+    } else {
+      setSelectedWorkspaces(new Set());
+    }
+  };
+
   // Bulk delete users function
   const handleBulkDeleteUsers = async () => {
     if (selectedUsers.size === 0) {
@@ -593,6 +621,49 @@ export default function Page() {
       alert(`❌ Failed to delete users: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Bulk delete workspaces function
+  const handleBulkDeleteWorkspaces = async () => {
+    if (selectedWorkspaces.size === 0) {
+      alert('Please select workspaces to delete');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${selectedWorkspaces.size} selected workspace${selectedWorkspaces.size > 1 ? 's' : ''}? This action cannot be undone and will remove all associated data.`
+    );
+
+    if (!confirmed) return;
+
+    setIsDeletingWorkspaces(true);
+    try {
+      const response = await fetch('/api/admin/delete-workspaces', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify({ workspaceIds: Array.from(selectedWorkspaces) })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(`✅ Successfully deleted ${selectedWorkspaces.size} workspace${selectedWorkspaces.size > 1 ? 's' : ''}!`);
+        setSelectedWorkspaces(new Set());
+        if (user) {
+          await loadWorkspaces(user.id, isSuperAdmin); // Refresh the workspace list
+        }
+      } else {
+        throw new Error(result.error || 'Failed to delete workspaces');
+      }
+    } catch (error) {
+      console.error('Bulk workspace delete failed:', error);
+      alert(`❌ Failed to delete workspaces: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsDeletingWorkspaces(false);
     }
   };
 
@@ -936,7 +1007,13 @@ export default function Page() {
                       <span>Create Tenant</span>
                     </button>
                     <button
-                      onClick={() => setShowInviteUser(true)}
+                      onClick={async () => {
+                        console.log('🔄 Refreshing workspaces before opening invite popup...');
+                        if (user) {
+                          await loadWorkspaces(user.id, isSuperAdmin);
+                        }
+                        setShowInviteUser(true);
+                      }}
                       className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors"
                     >
                       <Mail size={18} />
@@ -963,9 +1040,22 @@ export default function Page() {
               {/* Workspace Management */}
               <div className="bg-gray-800 rounded-lg p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-semibold text-white">
-                    {isSuperAdmin ? 'All Workspaces' : 'My Workspaces'}
-                  </h2>
+                  <div className="flex items-center space-x-4">
+                    <h2 className="text-2xl font-semibold text-white">
+                      {isSuperAdmin ? 'All Workspaces' : 'My Workspaces'}
+                    </h2>
+                    {isSuperAdmin && workspaces.length > 0 && (
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          onChange={(e) => handleSelectAllWorkspaces(e.target.checked)}
+                          checked={selectedWorkspaces.size > 0 && selectedWorkspaces.size === workspaces.filter(ws => ws.slug !== 'innovareai').length}
+                          className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span className="text-gray-400 text-sm">Select All</span>
+                      </div>
+                    )}
+                  </div>
                   {/* Real-time workspace count */}
                   <div className="text-gray-400 text-sm">
                     {workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''}
@@ -987,8 +1077,18 @@ export default function Page() {
                     {workspaces.map((workspace) => (
                       <div key={workspace.id} className="bg-gray-700 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-3">
-                          <div>
-                            <div className="flex items-center space-x-2 mb-1">
+                          <div className="flex items-start space-x-3">
+                            {isSuperAdmin && (
+                              <input
+                                type="checkbox"
+                                checked={selectedWorkspaces.has(workspace.id)}
+                                onChange={(e) => handleWorkspaceSelect(workspace.id, e.target.checked)}
+                                disabled={workspace.slug === 'innovareai'}
+                                className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed mt-1"
+                              />
+                            )}
+                            <div>
+                              <div className="flex items-center space-x-2 mb-1">
                               <h3 className="text-white font-semibold">{workspace.name}</h3>
                               {workspace.slug && (
                                 <span className={`text-xs px-2 py-1 rounded ${
@@ -1029,6 +1129,7 @@ export default function Page() {
                                 </div>
                               </div>
                             )}
+                            </div>
                           </div>
                           <div className="flex items-center space-x-2">
                             <span className={`text-xs px-2 py-1 rounded ${
@@ -1057,6 +1158,27 @@ export default function Page() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* Bulk delete controls for workspaces */}
+                {isSuperAdmin && selectedWorkspaces.size > 0 && (
+                  <div className="flex justify-between items-center mt-6 pt-6 border-t border-gray-600">
+                    <div className="flex items-center space-x-4">
+                      <button
+                        onClick={handleBulkDeleteWorkspaces}
+                        disabled={isDeletingWorkspaces}
+                        className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-6 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                      >
+                        <span>{isDeletingWorkspaces ? 'Deleting...' : `Delete ${selectedWorkspaces.size} Workspace${selectedWorkspaces.size > 1 ? 's' : ''}`}</span>
+                      </button>
+                      <span className="text-gray-400 text-sm">
+                        {selectedWorkspaces.size} workspace{selectedWorkspaces.size > 1 ? 's' : ''} selected
+                      </span>
+                    </div>
+                    <div className="text-gray-500 text-xs">
+                      Note: InnovareAI workspace is protected and cannot be deleted
+                    </div>
                   </div>
                 )}
               </div>

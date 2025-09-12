@@ -5,12 +5,11 @@
         joined_at,
         workspaces (
           name,
-          company
+          slug
         )
       `),{data:l}=await e.from("workspace_invitations").select(`
         email,
         role,
-        company,
         expires_at,
         accepted_at,
         created_at,

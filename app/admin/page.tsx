@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase';
 import { useRouter } from 'next/navigation';
 import SuperAdminInvite from '@/components/SuperAdminInvite';
 import AdminDashboard from '@/components/AdminDashboard';
+import Link from 'next/link';
+import { Mail } from 'lucide-react';
 
 export default function AdminPage() {
   const [user, setUser] = useState<any>(null);
@@ -69,6 +71,17 @@ export default function AdminPage() {
           <h1 className="text-4xl font-bold text-gray-800 mb-2">🛡️ Super Admin Panel</h1>
           <p className="text-gray-600">Welcome, {user.user_metadata?.first_name || 'Thorsten'}</p>
           <p className="text-sm text-gray-500">{user.email}</p>
+          
+          {/* Quick Navigation */}
+          <div className="mt-6 flex justify-center">
+            <Link
+              href="/admin/activecampaign"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              ActiveCampaign Integration
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

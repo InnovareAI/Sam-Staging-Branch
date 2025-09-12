@@ -48,27 +48,39 @@ export async function DELETE(request: NextRequest) {
     }
 
     // First, check which users are super admins - they cannot be deleted
-    const { data: usersToCheck, error: checkError } = await adminSupabase
-      .from('users')
-      .select('id, email, is_super_admin')
-      .in('id', userIds);
+    let superAdminUserIds: string[] = [];
+    
+    try {
+      // Get user details from auth.users to check for super admin emails
+      const { data: authUsers, error: authError } = await adminSupabase.auth.admin.listUsers();
+      
+      if (authError) {
+        throw authError;
+      }
 
-    if (checkError) {
+      // Find super admin users by email
+      const superAdminUsers = authUsers?.users?.filter((authUser: any) => 
+        superAdminEmails.includes(authUser.email?.toLowerCase() || '')
+      ) || [];
+      
+      superAdminUserIds = superAdminUsers.map(u => u.id);
+      
+    } catch (checkError) {
       console.error('Error checking users:', checkError);
       return NextResponse.json(
-        { error: 'Failed to check user permissions', details: checkError.message },
+        { error: 'Failed to check user permissions', details: checkError instanceof Error ? checkError.message : 'Unknown error' },
         { status: 500 }
       );
     }
 
-    // Filter out super admin users
-    const superAdminUsers = usersToCheck?.filter(u => u.is_super_admin) || [];
+    // Filter out super admin users from deletion list
     const deletableUserIds = userIds.filter(id => 
-      !superAdminUsers.some(admin => admin.id === id)
+      !superAdminUserIds.includes(id)
     );
 
-    if (superAdminUsers.length > 0) {
-      console.warn('Attempted to delete super admin users:', superAdminUsers.map(u => u.email));
+    if (superAdminUserIds.length > 0) {
+      const protectedCount = userIds.length - deletableUserIds.length;
+      console.warn(`Attempted to delete ${protectedCount} super admin users`);
       if (deletableUserIds.length === 0) {
         return NextResponse.json(
           { error: 'Cannot delete super admin users' },
@@ -99,11 +111,12 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
+    const protectedCount = userIds.length - deletableUserIds.length;
     const response: any = {
       success: true,
       deletedCount,
       totalRequested: userIds.length,
-      superAdminSkipped: superAdminUsers.length
+      superAdminSkipped: protectedCount
     };
 
     if (errors.length > 0) {
@@ -111,8 +124,13 @@ export async function DELETE(request: NextRequest) {
       response.partialSuccess = true;
     }
 
-    if (superAdminUsers.length > 0) {
-      response.skippedUsers = superAdminUsers.map(u => ({ id: u.id, email: u.email, reason: 'Super admin cannot be deleted' }));
+    if (protectedCount > 0) {
+      response.skippedUsers = userIds
+        .filter(id => !deletableUserIds.includes(id))
+        .map(id => ({ 
+          id, 
+          reason: 'Super admin cannot be deleted' 
+        }));
     }
 
     return NextResponse.json(response);

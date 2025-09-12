@@ -73,7 +73,6 @@ export async function GET(request: NextRequest) {
       .select(`
         email,
         role,
-        company,
         expires_at,
         accepted_at,
         created_at,
