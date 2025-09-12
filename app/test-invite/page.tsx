@@ -35,7 +35,7 @@ export default function TestInvitePage() {
     setMessage('');
 
     try {
-      const response = await fetch('/api/admin/invite-user', {
+      const response = await fetch('/api/admin/simple-invite', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

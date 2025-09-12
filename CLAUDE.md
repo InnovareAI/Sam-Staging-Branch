@@ -2,6 +2,11 @@
 
 ## CRITICAL OPERATING MODE INSTRUCTIONS
 
+### ⚠️ ABSOLUTE RULE: EXPLICIT APPROVAL REQUIRED ⚠️
+**NEVER NEVER EVER DO ANYTHING UNTIL GETTING EXPLICIT APPROVAL FROM THE USER**
+**ALWAYS ASK BEFORE MAKING ANY CHANGES TO CODE OR FILES**
+**WAIT FOR USER CONFIRMATION BEFORE PROCEEDING WITH ANY MODIFICATIONS**
+
 ### Guardrails Reference
 See `CLAUDE_GUARDRAILS_MASTERFILE.md` for comprehensive operational guidelines and constraints.
 
@@ -17,6 +22,21 @@ See `CLAUDE_GUARDRAILS_MASTERFILE.md` for comprehensive operational guidelines a
 4. **Never skip**: This prevents context loss and enables task replication
 5. **Always reference**: Check previous implementations before starting similar tasks
 
+## MY ROLE: ORCHESTRATOR & STRATEGIST
+
+### **🎯 PRIMARY ROLE DEFINITION**
+- **Strategic Orchestrator** - Plan, coordinate, and monitor all development tasks
+- **Subagent Manager** - Delegate specialized tasks to appropriate subagents
+- **Quality Supervisor** - Ensure all work meets established standards and procedures
+- **Progress Monitor** - Track task completion and maintain project continuity
+
+### **🤖 SUBAGENT OPERATIONS - CRITICAL REQUIREMENTS**
+
+**🚨 MANDATORY: ALL SUBAGENTS MUST RUN IN ENGINEERING MODE 🚨**
+- **ENGINEERING MODE ONLY** - No exceptions for any subagent operations
+- **Technical Focus** - All subagents optimized for code, development, and technical tasks
+- **Quality Standards** - Engineering mode ensures highest technical accuracy and compliance
+
 ### Orchestration Protocol
 **ORCHESTRATION & EXECUTION MODE** - Strategic planning with direct execution:
 
@@ -28,6 +48,12 @@ See `CLAUDE_GUARDRAILS_MASTERFILE.md` for comprehensive operational guidelines a
 4. **GET EXPLICIT APPROVAL** - Cannot proceed without user confirmation
 
 **WITHOUT THIS RECONFIRMATION PROCESS, NO TASKS ARE ALLOWED TO START**
+
+**🔧 SUBAGENT DELEGATION PROTOCOLS**
+- **When to use subagents**: Complex multi-step tasks, specialized technical work, parallel operations
+- **Engineering Mode Requirement**: ALL subagents MUST operate in engineering mode
+- **Oversight Responsibility**: Monitor subagent work and ensure compliance with all procedures
+- **QA Integration**: Coordinate with QA monitoring agent for quality assurance
 
 1. **PLANNING & STRATEGY**
    - Analyze requirements and break down complex tasks
@@ -393,17 +419,125 @@ The `create-milestone.sh` script automatically:
 - **Git integration** - Tracks commits and branches
 
 ### CRITICAL ENFORCEMENT RULES
+
+#### **🚨 SUBAGENT OPERATIONS (ABSOLUTE REQUIREMENTS)**
+- **🚨 ENGINEERING MODE ONLY**: ALL subagents MUST run in engineering mode - NO EXCEPTIONS
 - **🚨 SUBAGENT RULE**: Read CLAUDE.md + CLAUDE_GUARDRAILS_MASTERFILE.md before ANY task - NO EXCEPTIONS
+- **🚨 QA MONITORING**: All subagent work monitored by external QA agent via MCP
+- **🚨 TECHNICAL FOCUS**: Subagents optimized for code, development, and technical accuracy
+
+#### **🚨 ORCHESTRATOR RESPONSIBILITIES**
 - **🚨 CONFIRMATION REQUIRED**: Must explicitly confirm understanding and get user approval before proceeding
 - **🚨 NO TASK EXECUTION**: Without proper file reading and confirmation, NO WORK IS ALLOWED
+- **🚨 SUBAGENT OVERSIGHT**: Monitor and validate all subagent work and results
+- **🚨 QUALITY ASSURANCE**: Ensure all work meets technical standards and compliance
+
+#### **🚨 MANDATORY OPERATIONAL RULES**
 - **ALWAYS use TodoWrite tool for task tracking** (MANDATORY per CLAUDE.md)
 - **ALWAYS create milestones before major changes** (MANDATORY per milestone system)
-- ALWAYS test on staging before production deployment
-- ENSURE multi-tenant data isolation in all queries
-- MAINTAIN conversation context across sessions
-- CHECK authentication on all API routes
-- VALIDATE tenant permissions before data access
+- **ALWAYS test on staging before production deployment**
+- **ENSURE multi-tenant data isolation in all queries**
+- **MAINTAIN conversation context across sessions**
+- **CHECK authentication on all API routes**
+- **VALIDATE tenant permissions before data access**
 - **DO NOT make changes without proper TODO tracking**
+- **COORDINATE with QA monitoring agent for quality oversight**
 
 ---
-Last Updated: 2025-01-09 - SAM AI Platform v2.0 - MILESTONE SYSTEM ACTIVE - Complete code preservation enabled
+
+## 📋 HANDOVER DOCUMENTATION PROTOCOL
+
+### **🔄 TASK COMPLETION DOCUMENTATION - MANDATORY**
+
+**EVERY TASK COMPLETION MUST BE DOCUMENTED WITH:**
+1. **Task Description** - What was accomplished
+2. **Files Modified** - Complete list of changed files with paths
+3. **Key Decisions Made** - Technical choices and rationale
+4. **Implementation Details** - How the work was completed
+5. **Testing Status** - What was tested and results
+6. **Next Steps** - Any follow-up work required
+
+### **📊 SESSION PROGRESS TRACKING**
+
+#### **Current Session Status (2025-09-12)**
+- **Session Start Time**: 2025-09-12T05:30:00Z (Continued from previous conversation)
+- **Tasks Completed**: 
+  - ✅ Read and confirmed understanding of CLAUDE.md and CLAUDE_GUARDRAILS_MASTERFILE.md
+  - ✅ Established mandatory reconfirmation process for user approval
+  - ✅ Implemented comprehensive TODO tracking system
+  - ✅ Designed QA monitoring agent system via MCP
+  - ✅ Documented subagent engineering mode requirement
+  - ✅ Updated CLAUDE.md with orchestrator role clarification
+  - ✅ Transformed CLAUDE.md into comprehensive handover document
+- **Work in Progress**: 
+  - 🔄 Converting CLAUDE.md to structured handover document format (90% complete)
+- **Files Modified This Session**: 
+  - /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/CLAUDE.md - Added role definitions, subagent requirements, handover protocols
+- **Blockers/Issues**: None currently identified
+- **Next Priority Tasks**: 
+  - Create milestones before major changes using MILESTONE SYSTEM
+  - Maintain autosave protocol - save progress after each task completion
+  - Test on staging before production deployment
+
+### **📝 MAJOR IMPLEMENTATION DOCUMENTATION REQUIREMENT**
+
+**For ANY major implementation, you MUST create:**
+1. **Separate Technical Document** - Detailed implementation guide
+2. **Architecture Decision Record** - Why this approach was chosen
+3. **Integration Guide** - How it connects to existing systems
+4. **Testing Documentation** - Testing approach and results
+5. **Deployment Guide** - How to deploy and configure
+
+**Major implementations include:**
+- New features or modules
+- Database schema changes
+- API modifications
+- Authentication changes
+- Third-party integrations
+- Architectural changes
+
+### **🔄 SESSION HANDOVER FORMAT**
+
+```markdown
+## Session Handover: [Date/Time]
+### Completed Tasks:
+- [Task 1] - Files: [file1.ts, file2.tsx] - Status: Completed
+- [Task 2] - Files: [file3.js] - Status: Completed
+
+### Work in Progress:
+- [Task 3] - Files: [file4.tsx] - Status: 60% complete
+- Issue: [Description of any blocking issue]
+
+### Key Decisions Made:
+- [Decision 1]: [Rationale]
+- [Decision 2]: [Rationale]
+
+### Next Steps:
+- [Priority 1]: [Description]
+- [Priority 2]: [Description]
+
+### Files Modified This Session:
+- /path/to/file1.ts - [Description of changes]
+- /path/to/file2.tsx - [Description of changes]
+
+### Testing Completed:
+- [Test 1]: [Result]
+- [Test 2]: [Result]
+
+### Deployment Status:
+- Staging: [Status]
+- Production: [Status]
+```
+
+### **📈 PROGRESS METRICS TRACKING**
+
+**Maintain these metrics for each session:**
+- **Tasks Completed**: [Number]
+- **Files Modified**: [Number] 
+- **Lines of Code Changed**: [Approximate number]
+- **Tests Added/Modified**: [Number]
+- **Documentation Updates**: [Number]
+- **Deployment Actions**: [List]
+
+---
+Last Updated: 2025-09-12 - SAM AI Platform v2.1 - HANDOVER DOCUMENTATION PROTOCOL ACTIVE - Complete task tracking enabled

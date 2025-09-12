@@ -70,6 +70,12 @@
       "namedRegex": "^/admin/activecampaign(?:/)?$"
     },
     {
+      "page": "/admin/monitoring",
+      "regex": "^/admin/monitoring(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/monitoring(?:/)?$"
+    },
+    {
       "page": "/auth/callback",
       "regex": "^/auth/callback(?:/)?$",
       "routeKeys": {},

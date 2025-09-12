@@ -35,7 +35,7 @@ export default function InviteUserForm({ organizations, onInviteSuccess }: Invit
         throw new Error('You must be logged in to send invitations');
       }
 
-      const response = await fetch('/api/admin/invite-user', {
+      const response = await fetch('/api/admin/simple-invite', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

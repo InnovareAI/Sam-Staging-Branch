@@ -16,9 +16,9 @@ export async function POST(req: NextRequest) {
 
     // Get invite details
     const { data: invite, error: inviteError } = await supabase
-      .from('workspace_invites')
+      .from('workspace_invitations')
       .select('*')
-      .eq('token', token)
+      .eq('invite_token', token)
       .single();
 
     if (inviteError || !invite) {
@@ -96,10 +96,10 @@ export async function POST(req: NextRequest) {
 
     // Mark invitation as accepted
     const { error: updateError } = await supabase
-      .from('workspace_invites')
+      .from('workspace_invitations')
       .update({ 
         accepted_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        accepted_by: currentUserId
       })
       .eq('id', invite.id);
 

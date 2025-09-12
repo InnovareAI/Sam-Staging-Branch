@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser, useAuth } from '@clerk/nextjs';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,20 +21,36 @@ interface ConnectionTest {
 }
 
 function ActiveCampaignAdminPage() {
-  const { user } = useUser();
-  const { getToken } = useAuth();
+  const supabase = createClientComponentClient();
+  const [user, setUser] = useState<any>(null);
   const [lists, setLists] = useState<ActiveCampaignList[]>([]);
   const [connectionTest, setConnectionTest] = useState<ConnectionTest | null>(null);
   const [loading, setLoading] = useState(false);
   const [testContactResult, setTestContactResult] = useState<any>(null);
 
+  // Check authentication on mount
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    getUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
   // Test connection
   const testConnection = async () => {
     setLoading(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/api/admin/activecampaign?action=test', {
         headers: {
-          'Authorization': `Bearer ${await getToken()}`,
+          'Authorization': `Bearer ${session?.access_token}`,
         },
       });
       
@@ -56,9 +72,10 @@ function ActiveCampaignAdminPage() {
   // Get all lists
   const getLists = async () => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/api/admin/activecampaign?action=lists', {
         headers: {
-          'Authorization': `Bearer ${await getToken()}`,
+          'Authorization': `Bearer ${session?.access_token}`,
         },
       });
       
@@ -88,11 +105,12 @@ function ActiveCampaignAdminPage() {
         }
       };
 
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/api/admin/activecampaign', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await getToken()}`,
+          'Authorization': `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify(testData)
       });

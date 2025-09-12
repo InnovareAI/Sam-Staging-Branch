@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { ServerClient } from 'postmark';
+import { createPostmarkHelper, EMAIL_BYPASS_MODE, shouldBypassEmail, getSafeTestEmail } from '../../../../lib/postmark-helper';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -65,27 +66,43 @@ export async function POST(req: NextRequest) {
       
       // Store pending invite
       await supabase
-        .from('workspace_invites')
+        .from('workspace_invitations')
         .insert({
           email: email,
           workspace_id: workspaceId,
           role: role,
-          token: inviteToken,
+          invite_token: inviteToken,
           invited_by: workspace.owner_id,
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
+          company: 'InnovareAI' // Default company
         });
     }
 
-    // Send email via Postmark
+    // Send email via enhanced Postmark helper with suppression handling
     const inviterData = Array.isArray(workspace.users) ? workspace.users[0] : workspace.users;
     const inviterName = `${inviterData?.first_name || ''} ${inviterData?.last_name || ''}`.trim() || inviterData?.email;
     
-    const emailTemplate = isNewUser ? {
-      To: email,
-      From: 'noreply@meet-sam.com',
-      Subject: `You're invited to join ${workspace.name} on SAM AI`,
-      HtmlBody: `
+    // Use InnovareAI as default company for workspace invites
+    const postmarkHelper = createPostmarkHelper('InnovareAI');
+    
+    if (postmarkHelper) {
+      // Handle email bypass mode for testing
+      let targetEmail = email;
+      let emailNote = '';
+      
+      if (shouldBypassEmail(email)) {
+        targetEmail = getSafeTestEmail();
+        emailNote = ` (BYPASS MODE: Original recipient was ${email})`;
+        console.warn(`EMAIL_BYPASS_MODE: Redirecting workspace invite from ${email} to ${targetEmail}`);
+      }
+      
+      const subject = isNewUser 
+        ? `You're invited to join ${workspace.name} on SAM AI${emailNote}`
+        : `You've been added to ${workspace.name} on SAM AI${emailNote}`;
+        
+      const htmlBody = isNewUser ? `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          ${emailNote ? `<div style="background: #fff3cd; padding: 10px; border-radius: 4px; margin-bottom: 20px; color: #856404;"><strong>TEST MODE:</strong> This email was originally intended for ${email}</div>` : ''}
           <div style="text-align: center; margin-bottom: 30px;">
             <h1 style="color: #7C3AED; margin: 0;">SAM AI</h1>
             <p style="color: #6B7280; margin: 5px 0;">AI-Powered Sales Assistant Platform</p>
@@ -120,24 +137,19 @@ export async function POST(req: NextRequest) {
           <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0;">
           
           <p style="color: #6B7280; font-size: 14px; text-align: center;">
-            This invitation was sent to ${email}. If you didn't expect this email, you can safely ignore it.
+            This invitation was sent to ${emailNote ? email + ' (redirected for testing)' : targetEmail}. If you didn't expect this email, you can safely ignore it.
           </p>
         </div>
-      `,
-      MessageStream: 'outbound'
-    } : {
-      To: email,
-      From: 'noreply@meet-sam.com',
-      Subject: `You've been added to ${workspace.name} on SAM AI`,
-      HtmlBody: `
+      ` : `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          ${emailNote ? `<div style="background: #fff3cd; padding: 10px; border-radius: 4px; margin-bottom: 20px; color: #856404;"><strong>TEST MODE:</strong> This email was originally intended for ${email}</div>` : ''}
           <div style="text-align: center; margin-bottom: 30px;">
             <h1 style="color: #7C3AED; margin: 0;">SAM AI</h1>
             <p style="color: #6B7280; margin: 5px 0;">AI-Powered Sales Assistant Platform</p>
           </div>
           
           <div style="background: #F0FDF4; padding: 30px; border-radius: 12px; margin-bottom: 30px;">
-            <h2 style="color: #1F2937; margin-top: 0;">Welcome to the team! 🎉</h2>
+            <h2 style="color: #1F2937; margin-top: 0;">Welcome to the team!</h2>
             <p style="color: #4B5563; line-height: 1.6;">
               <strong>${inviterName}</strong> has added you to the workspace 
               <strong>"${workspace.name}"</strong> as a <strong>${role}</strong>.
@@ -157,14 +169,83 @@ export async function POST(req: NextRequest) {
           <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0;">
           
           <p style="color: #6B7280; font-size: 14px; text-align: center;">
-            This email was sent to ${email} because you've been added to a SAM AI workspace.
+            This email was sent to ${emailNote ? email + ' (redirected for testing)' : targetEmail} because you've been added to a SAM AI workspace.
           </p>
         </div>
-      `,
-      MessageStream: 'outbound'
-    };
-
-    await postmarkClient.sendEmail(emailTemplate);
+      `;
+      
+      const textBody = isNewUser ? `
+        You're invited to join ${workspace.name} on SAM AI
+        ${emailNote}
+        
+        ${inviterName} has invited you to join the workspace "${workspace.name}" as a ${role}.
+        
+        SAM AI is an intelligent sales assistant platform that helps teams automate prospecting, lead generation, and customer engagement.
+        
+        Accept your invitation: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/invite/${inviteToken}
+        
+        This invitation expires in 7 days.
+        
+        If you didn't expect this email, you can safely ignore it.
+      ` : `
+        You've been added to ${workspace.name} on SAM AI
+        ${emailNote}
+        
+        Welcome to the team!
+        
+        ${inviterName} has added you to the workspace "${workspace.name}" as a ${role}.
+        
+        Access your workspace: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}
+        
+        You can now collaborate with your team using SAM AI.
+      `;
+      
+      const emailResult = await postmarkHelper.sendEmailSafely({
+        To: targetEmail,
+        Subject: subject,
+        HtmlBody: htmlBody,
+        TextBody: textBody
+      });
+      
+      if (!emailResult.success) {
+        console.error('Workspace invite email failed:', {
+          error: emailResult.error,
+          targetEmail,
+          originalEmail: email,
+          suppressionInfo: emailResult.suppressionInfo,
+          canRetryAfterReactivation: emailResult.canRetryAfterReactivation
+        });
+        
+        // If email failed due to suppression, log detailed info but don't fail the invitation
+        if (emailResult.suppressionInfo) {
+          console.warn(`Email suppression detected for workspace invite to ${email}:`, {
+            reason: emailResult.suppressionInfo.SuppressionReason,
+            origin: emailResult.suppressionInfo.Origin,
+            createdAt: emailResult.suppressionInfo.CreatedAt
+          });
+        }
+      } else {
+        console.log(`Workspace invite email sent successfully to ${targetEmail} (MessageID: ${emailResult.messageId})`);
+      }
+    } else {
+      console.warn('Postmark helper not available for workspace invite');
+      // Fallback to original Postmark client if helper fails
+      const emailTemplate = isNewUser ? {
+        To: email,
+        From: 'noreply@meet-sam.com',
+        Subject: `You're invited to join ${workspace.name} on SAM AI`,
+        HtmlBody: `<div>Fallback email content for ${inviterName} inviting you to ${workspace.name}</div>`,
+        MessageStream: 'outbound'
+      } : {
+        To: email,
+        From: 'noreply@meet-sam.com', 
+        Subject: `You've been added to ${workspace.name} on SAM AI`,
+        HtmlBody: `<div>Fallback email content - you've been added to ${workspace.name}</div>`,
+        MessageStream: 'outbound'
+      };
+      
+      await postmarkClient.sendEmail(emailTemplate);
+    }
 
     return NextResponse.json({ 
       success: true, 

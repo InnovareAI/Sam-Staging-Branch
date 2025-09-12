@@ -514,7 +514,7 @@ export default function Page() {
   // Invite user function
   const handleInviteUser = async (inviteData: InviteFormData) => {
     try {
-      const response = await fetch('/api/admin/invite-user', {
+      const response = await fetch('/api/admin/simple-invite', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1396,7 +1396,7 @@ export default function Page() {
                   }
 
                   try {
-                    const response = await fetch('/api/admin/invite-user', {
+                    const response = await fetch('/api/admin/simple-invite', {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',

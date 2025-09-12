@@ -1,5 +1,6 @@
 import { supabase, supabaseAdmin } from '../../../lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
+import { createPostmarkHelper, shouldBypassEmail, getSafeTestEmail } from '../../../../lib/postmark-helper';
 
 interface InviteUser {
   email: string;
@@ -83,6 +84,24 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
+        // Check for email suppression before sending invitation
+        let emailWarning = null;
+        const postmarkHelper = createPostmarkHelper('InnovareAI');
+        
+        if (postmarkHelper) {
+          // Check if email should be bypassed
+          if (shouldBypassEmail(email)) {
+            emailWarning = `Email bypass mode active - invitations will be redirected to test addresses`;
+            console.warn(`BULK_INVITE_BYPASS: ${email} will be redirected in email system`);
+          } else {
+            // Check suppression status
+            const suppressionCheck = await postmarkHelper.checkEmailSuppression(email);
+            if (!suppressionCheck.canSend) {
+              emailWarning = `Email may be suppressed: ${suppressionCheck.reason}`;
+            }
+          }
+        }
+
         // Send invitation via Supabase Admin API
         const { data: inviteData, error: inviteError } = await adminSupabase.auth.admin.inviteUserByEmail(email, {
           data: {
@@ -109,7 +128,8 @@ export async function POST(request: NextRequest) {
             email,
             status: 'success',
             userId: inviteData.user?.id,
-            invitedAt: inviteData.user?.invited_at
+            invitedAt: inviteData.user?.invited_at,
+            emailWarning: emailWarning || undefined
           });
           successCount++;
         }
