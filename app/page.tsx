@@ -8,6 +8,7 @@ import LeadPipeline from './components/LeadPipeline';
 import Analytics from './components/Analytics';
 import ConversationHistory from '../components/ConversationHistory';
 import InviteUserPopup, { InviteFormData } from '../components/InviteUserPopup';
+import AuthModal from '../components/AuthModal';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { 
   MessageCircle, 
@@ -58,6 +59,10 @@ export default function Page() {
   const [isDeletingWorkspaces, setIsDeletingWorkspaces] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteWorkspaceId, setInviteWorkspaceId] = useState<string | null>(null);
+  
+  // Authentication modal state
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
 
   // User management state
   const [showManageUsers, setShowManageUsers] = useState(false);
@@ -692,18 +697,24 @@ export default function Page() {
           <h1 className="text-3xl font-bold text-white mb-4">Welcome to SAM AI</h1>
           <p className="text-gray-400 mb-8">Your AI-powered Sales Assistant Platform</p>
           <div className="space-y-4">
-            <a 
-              href="/api/auth/signin"
-              className="block w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+            <button 
+              onClick={() => {
+                setAuthModalMode('signin');
+                setShowAuthModal(true);
+              }}
+              className="block w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-6 rounded-lg transition-colors transform hover:scale-105"
             >
               Sign In
-            </a>
-            <a 
-              href="/api/auth/signup"
-              className="block w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-3 px-6 rounded-lg transition-colors"
+            </button>
+            <button 
+              onClick={() => {
+                setAuthModalMode('signup');
+                setShowAuthModal(true);
+              }}
+              className="block w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-3 px-6 rounded-lg transition-colors transform hover:scale-105"
             >
               Create Account
-            </a>
+            </button>
           </div>
         </div>
       </div>
@@ -1718,6 +1729,13 @@ export default function Page() {
         onClose={() => setShowInviteUser(false)}
         onSubmit={handleInviteUser}
         workspaces={workspaces}
+      />
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        initialMode={authModalMode}
       />
     </div>
   );
