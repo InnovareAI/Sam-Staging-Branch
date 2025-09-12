@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useUser, useAuth } from '@clerk/nextjs';
+import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,8 +20,9 @@ interface ConnectionTest {
   data?: any;
 }
 
-export default function ActiveCampaignAdminPage() {
+function ActiveCampaignAdminPage() {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const [lists, setLists] = useState<ActiveCampaignList[]>([]);
   const [connectionTest, setConnectionTest] = useState<ConnectionTest | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,7 +34,7 @@ export default function ActiveCampaignAdminPage() {
     try {
       const response = await fetch('/api/admin/activecampaign?action=test', {
         headers: {
-          'Authorization': `Bearer ${await user?.getToken()}`,
+          'Authorization': `Bearer ${await getToken()}`,
         },
       });
       
@@ -56,7 +58,7 @@ export default function ActiveCampaignAdminPage() {
     try {
       const response = await fetch('/api/admin/activecampaign?action=lists', {
         headers: {
-          'Authorization': `Bearer ${await user?.getToken()}`,
+          'Authorization': `Bearer ${await getToken()}`,
         },
       });
       
@@ -90,7 +92,7 @@ export default function ActiveCampaignAdminPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await user?.getToken()}`,
+          'Authorization': `Bearer ${await getToken()}`,
         },
         body: JSON.stringify(testData)
       });
@@ -275,3 +277,7 @@ export default function ActiveCampaignAdminPage() {
     </div>
   );
 }
+
+export default dynamic(() => Promise.resolve(ActiveCampaignAdminPage), {
+  ssr: false,
+});

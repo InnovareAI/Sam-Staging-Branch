@@ -64,6 +64,12 @@
       "namedRegex": "^/admin(?:/)?$"
     },
     {
+      "page": "/admin/activecampaign",
+      "regex": "^/admin/activecampaign(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/activecampaign(?:/)?$"
+    },
+    {
       "page": "/auth/callback",
       "regex": "^/auth/callback(?:/)?$",
       "routeKeys": {},
