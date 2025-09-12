@@ -10,7 +10,7 @@ const supabase = createClient(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, workspaceId, organizationId, role = 'member', firstName, lastName } = body;
+    const { email, workspaceId, organizationId, role = 'member', firstName, lastName, company } = body;
     
     // Support both workspaceId and organizationId field names
     const targetWorkspaceId = workspaceId || organizationId;
@@ -32,9 +32,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`🔄 SIMPLE INVITE: Processing invitation for ${email} to workspace ${targetWorkspaceId}`);
+    console.log(`🔄 SIMPLE INVITE: Processing invitation for ${email} to workspace ${targetWorkspaceId} (company: ${company})`);
 
-    // Step 1: Check if user already exists in auth.users
+    // SAFETY PROTOCOL: Check if email is already used in ANY tenant
+    console.log(`🛡️ SAFETY CHECK: Verifying email ${email} uniqueness across all tenants`);
     const { data: existingUsers, error: checkError } = await supabase.auth.admin.listUsers();
     if (checkError) {
       console.error('❌ Error checking existing users:', checkError);
@@ -45,6 +46,64 @@ export async function POST(request: NextRequest) {
     }
 
     const existingUser = existingUsers.users.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+    
+    if (existingUser) {
+      // Email already exists - check if they're in a different workspace
+      const { data: existingMemberships, error: membershipError } = await supabase
+        .from('workspace_members')
+        .select(`
+          id, 
+          workspace_id, 
+          role,
+          workspaces!inner(id, name, slug)
+        `)
+        .eq('user_id', existingUser.id);
+
+      if (membershipError) {
+        console.error('❌ Error checking existing memberships:', membershipError);
+        return NextResponse.json(
+          { error: 'Failed to check user memberships' },
+          { status: 500 }
+        );
+      }
+
+      // Check if user is trying to join a different tenant
+      const isInDifferentWorkspace = existingMemberships?.some((membership: any) => 
+        membership.workspace_id !== targetWorkspaceId
+      );
+
+      if (isInDifferentWorkspace) {
+        const existingWorkspaces = existingMemberships?.map((m: any) => m.workspaces?.name || 'Unknown').join(', ');
+        console.log(`🚫 SAFETY PROTOCOL: ${email} already exists in different workspace(s): ${existingWorkspaces}`);
+        return NextResponse.json(
+          { 
+            error: `This email is already registered with another workspace (${existingWorkspaces}). Each email can only be used in one tenant. Please use a different email address.`,
+            code: 'EMAIL_ALREADY_USED_IN_DIFFERENT_TENANT'
+          },
+          { status: 409 }
+        );
+      }
+
+      // User exists and is in the same workspace - check if already a member
+      const isAlreadyMember = existingMemberships?.some((membership: any) => 
+        membership.workspace_id === targetWorkspaceId
+      );
+
+      if (isAlreadyMember) {
+        console.log(`ℹ️ USER ALREADY MEMBER: ${email} already in workspace ${targetWorkspaceId}`);
+        const existingRole = existingMemberships?.find((m: any) => m.workspace_id === targetWorkspaceId)?.role;
+        return NextResponse.json({
+          success: true,
+          message: 'User already a member of this workspace',
+          user: { id: existingUser.id, email, role: existingRole },
+          alreadyMember: true
+        });
+      }
+    }
+
+    console.log(`✅ EMAIL SAFETY CHECK PASSED: ${email} is available for workspace ${targetWorkspaceId}`);
+
+    // Determine user ID from safety check
     let userId: string;
 
     if (existingUser) {
@@ -162,9 +221,32 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ SUCCESS: ${email} (${userId}) added to workspace ${targetWorkspaceId} as ${role}`);
 
-    // Step 5: Optional - Send simple email notification
+    // Step 5: Send email notification and sync to ActiveCampaign
     try {
-      await sendSimpleNotification(email, firstName, targetWorkspaceId);
+      await sendSimpleNotification(email, firstName, targetWorkspaceId, company);
+      
+      // Step 6: Sync to ActiveCampaign if available
+      if (process.env.ACTIVECAMPAIGN_API_KEY && process.env.ACTIVECAMPAIGN_BASE_URL) {
+        console.log(`🔄 Syncing ${email} to ActiveCampaign...`);
+        try {
+          const { activeCampaignService } = await import('../../../../lib/activecampaign');
+          const acCompany = company === '3cubedai' || company === '3CubedAI' ? '3CubedAI' : 'InnovareAI';
+          const acResult = await activeCampaignService.addSamUserToList(
+            email, 
+            firstName || '', 
+            lastName || '', 
+            acCompany as 'InnovareAI' | '3CubedAI'
+          );
+          
+          if (acResult.success) {
+            console.log(`✅ ActiveCampaign sync successful for ${email}`);
+          } else {
+            console.warn(`⚠️ ActiveCampaign sync failed for ${email}:`, acResult.error);
+          }
+        } catch (acError) {
+          console.warn(`⚠️ ActiveCampaign sync error for ${email}:`, acError);
+        }
+      }
     } catch (emailError) {
       console.warn('⚠️ Email notification failed:', emailError);
       // Don't fail the whole request if email fails
@@ -190,27 +272,39 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Custom email notification using Postmark with correct sender
-async function sendSimpleNotification(email: string, firstName?: string, workspaceId?: string) {
+// Custom email notification using Postmark with company-specific sender
+async function sendSimpleNotification(email: string, firstName?: string, workspaceId?: string, company?: string) {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com';
+  
+  // Determine sender based on company
+  const is3Cubed = company === '3cubedai' || company === '3CubedAI';
+  const senderEmail = is3Cubed ? 'sophia@3cubed.ai' : 'sp@innovareai.com';
+  const senderName = is3Cubed ? 'Sophia Caldwell' : 'Sarah Powell';
+  const apiToken = is3Cubed ? process.env.POSTMARK_3CUBEDAI_API_KEY : process.env.POSTMARK_INNOVAREAI_API_KEY;
   
   console.log('📧 SENDING CUSTOM EMAIL NOTIFICATION:');
   console.log(`   To: ${email}`);
-  console.log(`   From: sp@innovareai.com (Sarah Powell)`);
+  console.log(`   From: ${senderEmail} (${senderName})`);
+  console.log(`   Company: ${company || 'InnovareAI'}`);
   console.log(`   Name: ${firstName || 'New User'}`);
   console.log(`   Workspace: ${workspaceId}`);
 
+  if (!apiToken) {
+    console.warn(`⚠️ No Postmark API token configured for company: ${company || 'InnovareAI'}`);
+    return;
+  }
+
   try {
-    // Use Postmark to send custom invitation email with correct sender
+    // Use Postmark to send custom invitation email with company-specific sender
     const postmarkResponse = await fetch('https://api.postmarkapp.com/email', {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'X-Postmark-Server-Token': process.env.POSTMARK_API_TOKEN || ''
+        'X-Postmark-Server-Token': apiToken
       },
       body: JSON.stringify({
-        From: 'sp@innovareai.com',
+        From: senderEmail,
         To: email,
         Subject: 'Welcome to SAM AI - Your Account is Ready!',
         HtmlBody: `
@@ -231,7 +325,7 @@ async function sendSimpleNotification(email: string, firstName?: string, workspa
             <p>If you have any questions, feel free to reach out to our team.</p>
             
             <p>Best regards,<br>
-            Sarah Powell<br>
+            ${senderName}<br>
             SAM AI Team</p>
             
             <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
@@ -255,7 +349,7 @@ Get Started:
 If you have any questions, feel free to reach out to our team.
 
 Best regards,
-Sarah Powell
+${senderName}
 SAM AI Team
         `,
         MessageStream: 'outbound'

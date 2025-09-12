@@ -26,7 +26,9 @@ import {
   Plus,
   Building2,
   Mail,
-  User
+  User,
+  UserPlus,
+  Shield
 } from 'lucide-react';
 
 export default function Page() {
@@ -53,6 +55,7 @@ export default function Page() {
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [workspacesLoading, setWorkspacesLoading] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isWorkspaceAdmin, setIsWorkspaceAdmin] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<'InnovareAI' | '3cubedai'>('InnovareAI');
   const [showInviteUser, setShowInviteUser] = useState(false);
   const [selectedWorkspaces, setSelectedWorkspaces] = useState<Set<string>>(new Set());
@@ -88,7 +91,7 @@ export default function Page() {
         if (user) {
           const isAdmin = checkSuperAdmin(user.email || '');
           setIsSuperAdmin(isAdmin);
-          loadWorkspaces(user.id, isAdmin);
+          await loadWorkspaces(user.id, isAdmin);
         }
       } catch (error) {
         console.error('Error getting user:', error);
@@ -188,6 +191,8 @@ export default function Page() {
     { id: 'campaign', label: 'Campaign Hub', icon: Megaphone, active: false },
     { id: 'pipeline', label: 'Lead Pipeline', icon: TrendingUp, active: false },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, active: false },
+    { id: 'invite', label: 'Invite Team', icon: UserPlus, active: false },
+    ...(isWorkspaceAdmin ? [{ id: 'admin', label: 'Workspace Admin', icon: Shield, active: false }] : []),
     { id: 'profile', label: 'Profile', icon: User, active: false },
     ...(isSuperAdmin ? [{ id: 'superadmin', label: 'SuperAdmin', icon: Settings, active: false }] : [])
   ];
@@ -374,26 +379,72 @@ export default function Page() {
 
   // Load workspaces for current user only
   const loadUserWorkspaces = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('workspaces')
-      .select(`
-        *,
-        workspace_members (
-          id,
-          user_id,
-          role,
-          joined_at,
-          users (
-            email,
-            first_name,
-            last_name
+    try {
+      // Get workspaces where user is owner
+      const { data: ownedWorkspaces, error: ownedError } = await supabase
+        .from('workspaces')
+        .select(`
+          *,
+          workspace_members (
+            id,
+            user_id,
+            role,
+            joined_at,
+            users (
+              email,
+              first_name,
+              last_name
+            )
           )
-        )
-      `)
-      .eq('owner_id', userId);
+        `)
+        .eq('owner_id', userId);
 
-    if (error) throw error;
-    setWorkspaces(data || []);
+      if (ownedError) throw ownedError;
+
+      // Get workspaces where user is a member
+      const { data: memberWorkspaces, error: memberError } = await supabase
+        .from('workspace_members')
+        .select(`
+          workspaces (
+            *,
+            workspace_members (
+              id,
+              user_id,
+              role,
+              joined_at,
+              users (
+                email,
+                first_name,
+                last_name
+              )
+            )
+          )
+        `)
+        .eq('user_id', userId);
+
+      if (memberError) throw memberError;
+
+      // Combine and deduplicate workspaces
+      const allWorkspaces = [...(ownedWorkspaces || [])];
+      
+      // Add member workspaces that aren't already included
+      memberWorkspaces?.forEach((member: any) => {
+        if (member.workspaces && !allWorkspaces.find((ws: any) => ws.id === member.workspaces.id)) {
+          allWorkspaces.push(member.workspaces);
+        }
+      });
+
+      console.log('📊 User workspaces loaded:', allWorkspaces.length, 'workspaces');
+      setWorkspaces(allWorkspaces);
+
+      // Check if user is workspace admin (owner or admin role in any workspace)
+      const isOwner = allWorkspaces.some(ws => ws.owner_id === userId);
+      const isAdminMember = memberWorkspaces?.some((member: any) => member.role === 'admin');
+      setIsWorkspaceAdmin(isOwner || isAdminMember || false);
+    } catch (error) {
+      console.error('Error loading user workspaces:', error);
+      setWorkspaces([]);
+    }
   };
 
   // Load all users for super admin
@@ -840,6 +891,286 @@ export default function Page() {
           <LeadPipeline />
         ) : activeMenuItem === 'analytics' ? (
           <Analytics />
+        ) : activeMenuItem === 'invite' ? (
+          /* INVITE TEAM PAGE */
+          <div className="flex-1 p-6 overflow-y-auto">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center justify-between mb-8">
+                <h1 className="text-3xl font-bold text-white flex items-center">
+                  <UserPlus className="mr-3" size={36} />
+                  Invite Team Members
+                </h1>
+                <button 
+                  onClick={() => setActiveMenuItem('chat')}
+                  className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
+                >
+                  ← Back to Chat
+                </button>
+              </div>
+
+              {/* Invite Section */}
+              <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 className="text-2xl font-semibold text-white mb-6">Invite Coworkers to SAM AI</h2>
+                <p className="text-gray-400 mb-6">
+                  Invite your team members to join your workspace on the SAM AI platform. 
+                  They'll receive an email invitation with instructions to get started.
+                </p>
+                
+                <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-lg p-6 border border-purple-500">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-white text-lg font-semibold mb-2">Ready to invite someone?</h3>
+                      <p className="text-purple-200 text-sm">Click the button to send an invitation email</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        console.log('🔄 Loading user workspaces for invite...');
+                        if (user) {
+                          await loadWorkspaces(user.id, isSuperAdmin);
+                        }
+                        setShowInviteUser(true);
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors"
+                    >
+                      <Mail size={18} />
+                      <span>Send Invitation</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Current Team Members */}
+              <div className="bg-gray-800 rounded-lg p-6">
+                <h2 className="text-2xl font-semibold text-white mb-6">Current Team Members</h2>
+                
+                {workspacesLoading ? (
+                  <div className="text-center py-8">
+                    <div className="text-gray-400">Loading workspace information...</div>
+                  </div>
+                ) : workspaces.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-700 rounded-lg">
+                    <Users className="mx-auto mb-4 text-gray-600" size={48} />
+                    <p className="text-gray-400">No workspace information available</p>
+                    <p className="text-gray-500 text-sm">Contact your administrator for workspace access</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {workspaces.map((workspace) => (
+                      <div key={workspace.id} className="bg-gray-700 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <div className="flex items-center space-x-2 mb-1">
+                              <h3 className="text-white font-semibold">{workspace.name}</h3>
+                              {workspace.slug && (
+                                <span className={`text-xs px-2 py-1 rounded ${
+                                  workspace.slug === 'innovareai' 
+                                    ? 'bg-blue-600 text-white' 
+                                    : 'bg-green-600 text-white'
+                                }`}>
+                                  {workspace.slug}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-gray-400 text-sm">
+                              Created {new Date(workspace.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <button
+                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center space-x-1 transition-colors"
+                            onClick={() => {
+                              setInviteWorkspaceId(workspace.id);
+                              setShowInviteUser(true);
+                            }}
+                          >
+                            <Mail size={14} />
+                            <span>Invite to This Workspace</span>
+                          </button>
+                        </div>
+                        
+                        {/* Display workspace members */}
+                        {workspace.workspace_members && workspace.workspace_members.length > 0 ? (
+                          <div className="mt-3">
+                            <p className="text-gray-400 text-xs mb-2">
+                              Team Members ({workspace.workspace_members.length}):
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {workspace.workspace_members.map((member: any, idx: number) => (
+                                <div key={idx} className="flex items-center space-x-2 bg-gray-600 px-3 py-1 rounded-lg">
+                                  <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
+                                    <span className="text-white text-xs font-medium">
+                                      {member.users?.email ? member.users.email.charAt(0).toUpperCase() : 'U'}
+                                    </span>
+                                  </div>
+                                  <span className="text-white text-sm">
+                                    {member.users?.email || `User ${member.user_id.slice(0, 8)}`}
+                                  </span>
+                                  <span className="text-gray-400 text-xs">({member.role})</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-3 text-gray-500 text-sm">
+                            No team members yet - invite your first coworker!
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : activeMenuItem === 'admin' ? (
+          /* WORKSPACE ADMIN PAGE */
+          <div className="flex-1 p-6 overflow-y-auto">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center justify-between mb-8">
+                <h1 className="text-3xl font-bold text-white flex items-center">
+                  <Shield className="mr-3" size={36} />
+                  Workspace Administration
+                </h1>
+                <button 
+                  onClick={() => setActiveMenuItem('chat')}
+                  className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
+                >
+                  ← Back to Chat
+                </button>
+              </div>
+
+              {/* Workspace Management */}
+              <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 className="text-2xl font-semibold text-white mb-6">My Workspaces</h2>
+                
+                {workspacesLoading ? (
+                  <div className="text-center py-8">
+                    <div className="text-gray-400">Loading workspace information...</div>
+                  </div>
+                ) : workspaces.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-700 rounded-lg">
+                    <Shield className="mx-auto mb-4 text-gray-600" size={48} />
+                    <p className="text-gray-400">No workspace access available</p>
+                    <p className="text-gray-500 text-sm">Contact your administrator for workspace access</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {workspaces.filter(workspace => workspace.owner_id === user?.id || 
+                      workspace.workspace_members?.some((member: any) => member.user_id === user?.id && member.role === 'admin')).map((workspace) => (
+                      <div key={workspace.id} className="bg-gray-700 rounded-lg p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <div className="flex items-center space-x-2 mb-2">
+                              <h3 className="text-white font-semibold text-lg">{workspace.name}</h3>
+                              {workspace.slug && (
+                                <span className={`text-xs px-2 py-1 rounded ${
+                                  workspace.slug === 'innovareai' 
+                                    ? 'bg-blue-600 text-white' 
+                                    : 'bg-green-600 text-white'
+                                }`}>
+                                  {workspace.slug}
+                                </span>
+                              )}
+                              {workspace.owner_id === user?.id && (
+                                <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded">Owner</span>
+                              )}
+                            </div>
+                            <p className="text-gray-400 text-sm">
+                              Created {new Date(workspace.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-400">
+                              {workspace.workspace_members?.length || 0} members
+                            </span>
+                            <button
+                              className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm flex items-center space-x-1 transition-colors"
+                              onClick={() => {
+                                setInviteWorkspaceId(workspace.id);
+                                setShowInviteUser(true);
+                              }}
+                            >
+                              <UserPlus size={16} />
+                              <span>Invite Member</span>
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {/* Workspace Members List */}
+                        {workspace.workspace_members && workspace.workspace_members.length > 0 ? (
+                          <div className="mt-4">
+                            <h4 className="text-white font-medium mb-3">Team Members</h4>
+                            <div className="space-y-2">
+                              {workspace.workspace_members.map((member: any, idx: number) => (
+                                <div key={idx} className="flex items-center justify-between bg-gray-600 px-4 py-2 rounded-lg">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                                      <span className="text-white text-sm font-medium">
+                                        {member.users?.email ? member.users.email.charAt(0).toUpperCase() : 'U'}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <p className="text-white font-medium">
+                                        {member.users?.email || `User ${member.user_id.slice(0, 8)}`}
+                                      </p>
+                                      <p className="text-gray-400 text-sm">
+                                        Joined {new Date(member.joined_at).toLocaleDateString()}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <span className={`text-xs px-2 py-1 rounded ${
+                                      member.role === 'owner' ? 'bg-purple-600 text-white' :
+                                      member.role === 'admin' ? 'bg-blue-600 text-white' :
+                                      'bg-gray-500 text-white'
+                                    }`}>
+                                      {member.role}
+                                    </span>
+                                    {workspace.owner_id === user?.id && member.role !== 'owner' && (
+                                      <button
+                                        className="text-red-400 hover:text-red-300 text-sm"
+                                        onClick={() => {
+                                          if (confirm('Remove this member from the workspace?')) {
+                                            // TODO: Implement member removal
+                                            alert('Member removal functionality will be implemented');
+                                          }
+                                        }}
+                                      >
+                                        Remove
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-4 text-gray-500 text-sm bg-gray-600 rounded-lg p-4 text-center">
+                            No team members yet - invite your first coworker!
+                          </div>
+                        )}
+
+                        {/* Workspace Settings */}
+                        {workspace.owner_id === user?.id && (
+                          <div className="mt-6 pt-4 border-t border-gray-600">
+                            <h4 className="text-white font-medium mb-3">Workspace Settings</h4>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-gray-300">Workspace Name</p>
+                                <p className="text-gray-400 text-sm">Change the display name of this workspace</p>
+                              </div>
+                              <button className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded text-sm transition-colors">
+                                Edit Name
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         ) : activeMenuItem === 'profile' ? (
           /* USER PROFILE PAGE */
           <div className="flex-1 p-6 overflow-y-auto">

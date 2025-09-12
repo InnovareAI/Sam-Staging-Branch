@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FormPopup, SamInput, SamSelect } from './SamPopup';
 import { Mail, User, Building2 } from 'lucide-react';
 
@@ -108,6 +108,47 @@ export default function InviteUserPopup({
   console.log('📋 InviteUserPopup received workspaces:', workspaces?.length || 0);
   console.log('📋 Workspace names in invite popup:', workspaces?.map(w => w.name) || []);
   
+  // Auto-detect company based on selected workspace
+  const selectedWorkspace = workspaces?.find(ws => ws.id === formData.workspaceId);
+  
+  // Enhanced detection logic for 3CubedAI workspaces
+  const is3CubedWorkspace = selectedWorkspace && (
+    // Check slug field
+    selectedWorkspace.slug === '3cubed' ||
+    selectedWorkspace.slug === '3cubedai' ||
+    selectedWorkspace.slug?.toLowerCase().includes('3cubed') ||
+    // Check name field  
+    selectedWorkspace.name === '3cubed' ||
+    selectedWorkspace.name === '3CubedAI' ||
+    selectedWorkspace.name?.toLowerCase().includes('3cubed') ||
+    selectedWorkspace.name?.toLowerCase().includes('3 cubed') ||
+    // Check company field if it exists
+    selectedWorkspace.company === '3cubedai' ||
+    selectedWorkspace.company === '3CubedAI' ||
+    // Check any custom fields
+    (selectedWorkspace as any)?.tenant === '3cubedai' ||
+    (selectedWorkspace as any)?.tenant === '3CubedAI'
+  );
+  
+  const detectedCompany = is3CubedWorkspace ? '3cubedai' as const : 'InnovareAI' as const;
+  
+  // Debug logging
+  console.log('🔍 Workspace Detection Debug:', {
+    selectedWorkspaceId: formData.workspaceId,
+    selectedWorkspace: selectedWorkspace,
+    is3CubedWorkspace: is3CubedWorkspace,
+    detectedCompany: detectedCompany,
+    currentCompany: formData.company
+  });
+  
+  // Update company when workspace changes
+  useEffect(() => {
+    if (formData.workspaceId && selectedWorkspace && formData.company !== detectedCompany) {
+      console.log('🔄 Auto-updating company from', formData.company, 'to', detectedCompany, 'for workspace:', selectedWorkspace.name);
+      setFormData(prev => ({ ...prev, company: detectedCompany }));
+    }
+  }, [formData.workspaceId, detectedCompany]);
+  
   const workspaceOptions = [
     { value: '', label: 'Select a workspace...' },
     ...filteredWorkspaces.map(ws => ({ 
@@ -182,6 +223,7 @@ export default function InviteUserPopup({
             options={companyOptions}
             required
             disabled={isSubmitting}
+            help={selectedWorkspace ? `Auto-detected as ${detectedCompany} from workspace "${selectedWorkspace.name}"` : "Select a workspace to auto-detect company"}
           />
           
           <SamSelect
