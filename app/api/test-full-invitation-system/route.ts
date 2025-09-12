@@ -19,8 +19,8 @@ const COMPANIES = {
   cubedai: {
     name: '3CubedAI',
     api_key: process.env.POSTMARK_3CUBEDAI_API_KEY!,
-    from_email: 'noreply@3cubed.ai',
-    from_name: '3CubedAI Team',
+    from_email: 'sophia@3cubed.ai',
+    from_name: 'Sophia Caldwell - 3CubedAI',
     test_email: 'tl@3cubed.ai'
   }
 };
