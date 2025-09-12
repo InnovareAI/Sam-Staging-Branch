@@ -225,4 +225,4 @@ Private - InnovareAI proprietary software
 - **Supabase Dashboard**: https://supabase.com/dashboard/project/latxadqrvrrrcvkktrog
 
 ---
-*Last updated: January 2025 - SAM AI Platform v2.0*
+*Last updated: January 2025 - SAM AI Platform v2.0*# Email routing fix - added missing Postmark API keys Fri Sep 12 10:51:34 CEST 2025
