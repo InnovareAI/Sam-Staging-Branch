@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import * as postmark from 'postmark';
 import { createPostmarkHelper, EMAIL_BYPASS_MODE, shouldBypassEmail, getSafeTestEmail } from '../../../../lib/postmark-helper';
+import { activeCampaignService } from '../../../../lib/activecampaign';
 
 // Enhanced type definitions for better error handling
 interface SupabaseUser {
@@ -783,6 +784,53 @@ export async function POST(request: NextRequest) {
       workspaceAssigned: !!(workspaceId || organizationId),
       successMessage
     });
+
+    // Step 5: Sync to ActiveCampaign (SAM list with company tag)
+    try {
+      logInvitationDebug('ACTIVECAMPAIGN_SYNC_START', {
+        email,
+        firstName,
+        lastName,
+        company: companyConfig.companyName,
+        message: 'Starting ActiveCampaign sync to SAM list'
+      });
+
+      const acCompany = companyConfig.companyName === 'InnovareAI' ? 'InnovareAI' : '3CubedAI';
+      const acResult = await activeCampaignService.addSamUserToList(
+        email,
+        firstName || '',
+        lastName || '',
+        acCompany as 'InnovareAI' | '3CubedAI'
+      );
+
+      if (acResult.success) {
+        logInvitationDebug('ACTIVECAMPAIGN_SYNC_SUCCESS', {
+          email,
+          company: acCompany,
+          contactId: acResult.contactId,
+          listId: acResult.listId,
+          tagId: acResult.tagId,
+          message: 'Successfully synced user to ActiveCampaign SAM list'
+        });
+      } else {
+        logInvitationDebug('ACTIVECAMPAIGN_SYNC_WARNING', {
+          email,
+          company: acCompany,
+          error: acResult.error,
+          message: 'Failed to sync to ActiveCampaign - user invitation still successful'
+        }, 'WARN');
+      }
+    } catch (acError) {
+      logInvitationDebug('ACTIVECAMPAIGN_SYNC_ERROR', {
+        email,
+        company: companyConfig.companyName,
+        error: acError instanceof Error ? acError.message : String(acError),
+        message: 'ActiveCampaign sync failed - user invitation still successful'
+      }, 'ERROR');
+      
+      // Don't fail the entire invitation process if ActiveCampaign sync fails
+      // The user invitation was successful, AC sync is a bonus feature
+    }
 
     return NextResponse.json({
       message: successMessage,

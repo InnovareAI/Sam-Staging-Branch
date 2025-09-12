@@ -117,6 +117,68 @@ class ActiveCampaignService {
     }
   }
 
+  // Get all tags
+  async getTags() {
+    try {
+      const response = await this.request('tags');
+      return response.tags || [];
+    } catch (error) {
+      console.error('Error getting tags:', error);
+      throw error;
+    }
+  }
+
+  // Find or create a tag
+  async findOrCreateTag(tagName: string) {
+    try {
+      // First, try to find existing tag
+      const tagsResponse = await this.request('tags');
+      const existingTag = tagsResponse.tags?.find((tag: any) => tag.tag === tagName);
+      
+      if (existingTag) {
+        console.log(`Tag "${tagName}" already exists in ActiveCampaign`);
+        return existingTag;
+      }
+
+      // Tag doesn't exist, create new one
+      const createData = {
+        tag: {
+          tag: tagName,
+          tagType: 'contact',
+          description: `Company tag for ${tagName}`
+        }
+      };
+
+      const createResponse = await this.request('tags', 'POST', createData);
+      console.log(`Created new tag in ActiveCampaign: ${tagName}`);
+      return createResponse.tag;
+      
+    } catch (error) {
+      console.error(`Error finding/creating tag ${tagName}:`, error);
+      throw error;
+    }
+  }
+
+  // Add tag to contact
+  async addTagToContact(contactId: string, tagId: string) {
+    try {
+      const tagContactData = {
+        contactTag: {
+          contact: contactId,
+          tag: tagId
+        }
+      };
+
+      const response = await this.request('contactTags', 'POST', tagContactData);
+      console.log(`Added tag ${tagId} to contact ${contactId}`);
+      return response;
+      
+    } catch (error) {
+      console.error(`Error adding tag ${tagId} to contact ${contactId}:`, error);
+      throw error;
+    }
+  }
+
   // Main method to add new member to list
   async addNewMemberToList(email: string, firstName: string, lastName: string, listId: string, additionalData?: any) {
     try {
@@ -138,6 +200,80 @@ class ActiveCampaignService {
       
     } catch (error) {
       console.error(`❌ Failed to add ${email} to ActiveCampaign list ${listId}:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Enhanced method for SAM platform integration
+  async addSamUserToList(email: string, firstName: string, lastName: string, company: 'InnovareAI' | '3CubedAI') {
+    try {
+      console.log(`🚀 Adding SAM user ${email} from ${company} to ActiveCampaign...`);
+      
+      // Find or create the contact
+      const contact = await this.findOrCreateContact({
+        email,
+        firstName,
+        lastName,
+        fieldValues: []
+      });
+
+      // Find or create the SAM list
+      const lists = await this.getLists();
+      let samList = lists.find((list: any) => list.name === 'SAM');
+      
+      if (!samList) {
+        console.log('SAM list not found, creating it...');
+        const createListData = {
+          list: {
+            name: 'SAM',
+            stringid: 'sam-users',
+            sender_url: 'https://app.meet-sam.com',
+            sender_reminder: 'You subscribed to SAM AI Platform updates',
+            send_last_broadcast: 0,
+            carboncopy: '',
+            subscription_notify: '',
+            unsubscription_notify: '',
+            to_name: 'SAM User',
+            optinoptout: 1,
+            sender_name: company === 'InnovareAI' ? 'Sarah Powell - SAM AI' : 'Sophia Caldwell - SAM AI',
+            sender_addr1: '',
+            sender_addr2: '',
+            sender_city: '',
+            sender_state: '',
+            sender_zip: '',
+            sender_country: '',
+            sender_phone: '',
+            fulladdress: '',
+            codepeek: 0,
+            description: 'SAM AI Platform users from both InnovareAI and 3CubedAI'
+          }
+        };
+
+        const listResponse = await this.request('lists', 'POST', createListData);
+        samList = listResponse.list;
+        console.log(`✅ Created SAM list: ${samList.id}`);
+      }
+
+      // Add contact to SAM list
+      await this.addContactToList(contact.id, samList.id);
+
+      // Find or create company tag
+      const companyTag = await this.findOrCreateTag(company);
+
+      // Add company tag to contact  
+      await this.addTagToContact(contact.id, companyTag.id);
+      
+      console.log(`✅ Successfully added ${email} to SAM list with ${company} tag`);
+      return { 
+        success: true, 
+        contactId: contact.id, 
+        listId: samList.id, 
+        tagId: companyTag.id,
+        company: company
+      };
+      
+    } catch (error) {
+      console.error(`❌ Failed to add SAM user ${email}:`, error);
       return { success: false, error: error.message };
     }
   }
