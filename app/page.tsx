@@ -28,15 +28,37 @@ import {
   Mail,
   User,
   UserPlus,
-  Shield
+  Shield,
+  Linkedin as LinkedinIcon
 } from 'lucide-react';
 
 export default function Page() {
   // Initialize Supabase client
   const supabase = createClientComponentClient();
   
+  // Helper function to get auth token (cached from session state)
+  const getAuthToken = async () => {
+    if (session?.access_token) {
+      return session.access_token;
+    }
+    
+    // Only call getSession if we don't have a cached token
+    try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (currentSession) {
+        setSession(currentSession);
+        return currentSession.access_token;
+      }
+    } catch (error) {
+      console.error('Error getting session:', error);
+    }
+    
+    return null;
+  };
+  
   // Authentication and app state
   const [user, setUser] = useState<any>(null);
+  const [session, setSession] = useState<any>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [showStarterScreen, setShowStarterScreen] = useState(true);
   const [inputMessage, setInputMessage] = useState('');
@@ -75,6 +97,10 @@ export default function Page() {
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // LinkedIn connection state
+  const [hasLinkedInConnection, setHasLinkedInConnection] = useState(false);
+  const [linkedInLoading, setLinkedInLoading] = useState(false);
+
   // Check if user is super admin
   const checkSuperAdmin = (email: string) => {
     const superAdminEmails = ['tl@innovareai.com', 'cl@innovareai.com'];
@@ -88,14 +114,22 @@ export default function Page() {
         const { data: { user } } = await supabase.auth.getUser();
         console.log('Auth check result:', user ? 'authenticated' : 'not authenticated');
         setUser(user);
+        
         if (user) {
+          // Cache session for token optimization
+          const { data: { session } } = await supabase.auth.getSession();
+          setSession(session);
+          
           const isAdmin = checkSuperAdmin(user.email || '');
           setIsSuperAdmin(isAdmin);
           await loadWorkspaces(user.id, isAdmin);
+        } else {
+          setSession(null);
         }
       } catch (error) {
         console.error('Error getting user:', error);
         setUser(null);
+        setSession(null);
       } finally {
         setIsAuthLoading(false);
       }
@@ -107,7 +141,21 @@ export default function Page() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('Auth state change:', event, session?.user ? 'user present' : 'no user');
+        
+        // 🧠 MEMORY FIX: Preserve existing messages when auth state changes
+        // Only clear messages on explicit SIGNED_OUT event, not on token refresh
+        if (event === 'SIGNED_OUT') {
+          console.log('🧠 MEMORY: Auth state change - user signed out, clearing messages');
+          setMessages([]);
+          setShowStarterScreen(true);
+          localStorage.removeItem('sam_messages');
+        } else {
+          console.log('🧠 MEMORY: Auth state change - preserving conversation history');
+        }
+        
         setUser(session?.user || null);
+        setSession(session); // Cache session for token optimization
+        
         if (session?.user) {
           const isAdmin = checkSuperAdmin(session.user.email || '');
           setIsSuperAdmin(isAdmin);
@@ -174,6 +222,13 @@ export default function Page() {
       localStorage.setItem('sam_active_menu', activeMenuItem);
     }
   }, [activeMenuItem, isLoaded]);
+
+  // Check LinkedIn connection when user accesses profile
+  useEffect(() => {
+    if (activeMenuItem === 'profile' && user) {
+      checkLinkedInConnection();
+    }
+  }, [activeMenuItem, user]);
 
   // Auto-scroll to bottom when messages change or when sending
   const scrollToBottom = () => {
@@ -348,10 +403,11 @@ export default function Page() {
       
       // If super admin, load all workspaces via admin API
       if (shouldLoadAllWorkspaces) {
+        const token = await getAuthToken();
         const response = await fetch('/api/admin/workspaces', {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
@@ -447,15 +503,35 @@ export default function Page() {
     }
   };
 
+  // Check LinkedIn connection status
+  const checkLinkedInConnection = async () => {
+    try {
+      setLinkedInLoading(true);
+      const response = await fetch('/api/unipile/accounts');
+      if (response.ok) {
+        const data = await response.json();
+        setHasLinkedInConnection(data.has_linkedin || false);
+      } else {
+        setHasLinkedInConnection(false);
+      }
+    } catch (error) {
+      console.error('LinkedIn status check failed:', error);
+      setHasLinkedInConnection(false);
+    } finally {
+      setLinkedInLoading(false);
+    }
+  };
+
   // Load all users for super admin
   const loadUsers = async () => {
     try {
       setUsersLoading(true);
       
+      const token = await getAuthToken();
       const response = await fetch('/api/admin/users', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -486,7 +562,7 @@ export default function Page() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          'Authorization': `Bearer ${await getAuthToken()}`
         },
         body: JSON.stringify({
           name: newWorkspaceName,
@@ -574,7 +650,7 @@ export default function Page() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          'Authorization': `Bearer ${await getAuthToken()}`
         },
         body: JSON.stringify(inviteData)
       });
@@ -658,7 +734,7 @@ export default function Page() {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          'Authorization': `Bearer ${await getAuthToken()}`
         },
         body: JSON.stringify({ userIds: Array.from(selectedUsers) })
       });
@@ -699,7 +775,7 @@ export default function Page() {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          'Authorization': `Bearer ${await getAuthToken()}`
         },
         body: JSON.stringify({ workspaceIds: Array.from(selectedWorkspaces) })
       });
@@ -1237,6 +1313,62 @@ export default function Page() {
                 </div>
               </div>
 
+              {/* LinkedIn Integration */}
+              <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 className="text-2xl font-semibold text-white mb-6">LinkedIn Integration</h2>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <h3 className="text-white font-medium">LinkedIn Account Connection</h3>
+                        {linkedInLoading ? (
+                          <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <div className={`w-3 h-3 rounded-full ${hasLinkedInConnection ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        )}
+                      </div>
+                      <p className="text-gray-400 text-sm">
+                        {linkedInLoading ? 'Checking connection status...' : 
+                         hasLinkedInConnection ? 'LinkedIn account connected - prospect features enabled' :
+                         'Connect your LinkedIn account to enable prospect research and enrichment'}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button 
+                        onClick={checkLinkedInConnection}
+                        disabled={linkedInLoading}
+                        className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white px-3 py-2 rounded-lg transition-colors text-sm"
+                      >
+                        {linkedInLoading ? 'Checking...' : 'Refresh'}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          checkLinkedInConnection();
+                          window.location.href = '/integrations/unipile';
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                      >
+                        <LinkedinIcon className="w-4 h-4" />
+                        <span>{hasLinkedInConnection ? 'Manage' : 'Connect'} LinkedIn</span>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-white font-medium">Prospect Approval System</h3>
+                      <p className="text-gray-400 text-sm">Access the AI-powered prospect approval and outreach system</p>
+                    </div>
+                    <button 
+                      onClick={() => window.location.href = '/dashboard/prospect-approval'}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                      Open Prospects
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* App Settings */}
               <div className="bg-gray-800 rounded-lg p-6 mb-6">
                 <h2 className="text-2xl font-semibold text-white mb-6">App Settings</h2>
@@ -1742,7 +1874,7 @@ export default function Page() {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+                        'Authorization': `Bearer ${await getAuthToken()}`
                       },
                       body: JSON.stringify({
                         email: inviteEmail,
