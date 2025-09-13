@@ -16,12 +16,20 @@ interface ActiveCampaignList {
 }
 
 class ActiveCampaignService {
-  private baseUrl: string;
-  private apiKey: string;
+  private baseUrl: string | null = null;
+  private apiKey: string | null = null;
+  private initialized = false;
 
-  constructor() {
+  private initialize() {
+    if (this.initialized) return;
+    
     this.baseUrl = process.env.ACTIVECAMPAIGN_BASE_URL || '';
     this.apiKey = process.env.ACTIVECAMPAIGN_API_KEY || '';
+    this.initialized = true;
+  }
+
+  private checkCredentials() {
+    this.initialize();
     
     if (!this.baseUrl || !this.apiKey) {
       throw new Error('ActiveCampaign API credentials not configured');
@@ -29,12 +37,13 @@ class ActiveCampaignService {
   }
 
   private async request(endpoint: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET', data?: any) {
+    this.checkCredentials();
     const url = `${this.baseUrl}/api/3/${endpoint}`;
     
     const options: RequestInit = {
       method,
       headers: {
-        'Api-Token': this.apiKey,
+        'Api-Token': this.apiKey!,
         'Content-Type': 'application/json',
       },
     };
