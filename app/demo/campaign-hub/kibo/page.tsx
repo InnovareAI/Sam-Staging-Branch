@@ -286,7 +286,7 @@ export default function KiboCampaignHubPage() {
             <CardHeader className={`bg-gradient-to-r ${campaignCards[currentCard].color} text-white p-6`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <campaignCards[currentCard].icon className="h-8 w-8" />
+                  {React.createElement(campaignCards[currentCard].icon, { className: "h-8 w-8" })}
                   <div>
                     <CardTitle className="text-xl font-bold">{campaignCards[currentCard].title}</CardTitle>
                     <p className="text-white/80">Section {currentCard + 1} of {campaignCards.length}</p>

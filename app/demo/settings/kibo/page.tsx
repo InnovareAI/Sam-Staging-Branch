@@ -421,7 +421,7 @@ export default function KiboSettingsPage() {
             <CardHeader className={`bg-gradient-to-r ${settingsCards[currentCard].color} text-white p-6`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <settingsCards[currentCard].icon className="h-8 w-8" />
+                  {React.createElement(settingsCards[currentCard].icon, { className: "h-8 w-8" })}
                   <div>
                     <CardTitle className="text-xl font-bold">{settingsCards[currentCard].title}</CardTitle>
                     <CardDescription className="text-white/80">
