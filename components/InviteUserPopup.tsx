@@ -223,7 +223,6 @@ export default function InviteUserPopup({
             options={companyOptions}
             required
             disabled={isSubmitting}
-            help={selectedWorkspace ? `Auto-detected as ${detectedCompany} from workspace "${selectedWorkspace.name}"` : "Select a workspace to auto-detect company"}
           />
           
           <SamSelect

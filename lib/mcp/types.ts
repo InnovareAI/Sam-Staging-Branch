@@ -88,6 +88,69 @@ export interface ApifyProspectRequest {
   waitForResults?: boolean
 }
 
+// Google Search specific types
+export interface GoogleSearchMCPConfig {
+  // Google Custom Search API
+  googleApiKey: string
+  googleCseId: string
+  
+  // SerpAPI for advanced searches (optional)
+  serpApiKey?: string
+  
+  organizationId: string
+  userId: string
+  maxResults?: number
+  searchTimeout?: number
+}
+
+// Unipile specific types
+export interface UnipileMCPConfig {
+  dsn: string
+  apiKey: string
+  clientId?: string
+  clientSecret?: string
+  webhookSecret?: string
+  organizationId: string
+  userId: string
+}
+
+// N8N specific types  
+export interface N8NMCPConfig {
+  baseUrl: string
+  apiKey: string
+  organizationId: string
+  userId: string
+}
+
+// Apollo specific types
+export interface ApolloMCPConfig {
+  apiKey: string
+  baseUrl?: string
+  organizationId: string
+  userId: string
+}
+
+// Reply Agent specific types
+export interface ReplyAgentMCPConfig {
+  model: 'claude-sonnet' | 'gpt-4o' | 'gemini-pro'
+  maxTokens?: number
+  temperature?: number
+  organizationId: string
+  userId: string
+}
+
+export interface WebSearchRequest {
+  query: string
+  searchType: 'boolean_linkedin' | 'company_intelligence' | 'icp_research'
+  maxResults?: number
+  filters?: {
+    geography?: string
+    companySize?: string
+    industry?: string
+    jobTitles?: string[]
+  }
+}
+
 // SAM AI Intelligence types
 export interface ProspectIntelligence {
   prospect: {

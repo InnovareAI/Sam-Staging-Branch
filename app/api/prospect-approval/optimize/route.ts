@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       .from('sam_learning_models')
       .select('*')
       .eq('user_id', user_id)
-      .eq('workspace_id', workspaceId)
+      .eq('workspace_id', workspace_id)
       .eq('model_type', 'prospect_approval')
       .single()
 
@@ -300,7 +300,7 @@ export async function GET(request: NextRequest) {
       .from('sam_learning_models')
       .select('*')
       .eq('user_id', userId)
-      .eq('workspace_id', workspaceId)
+      .eq('workspace_id', workspace_id)
       .eq('model_type', 'prospect_approval')
       .single()
 

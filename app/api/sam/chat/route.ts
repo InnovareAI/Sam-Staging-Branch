@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseKnowledge } from '@/lib/supabase-knowledge';
 import { createClient } from '@supabase/supabase-js';
+import { knowledgeClassifier } from '@/lib/services/knowledge-classifier';
 
 // Helper function to call OpenRouter API
 async function callOpenRouter(messages: any[], systemPrompt: string) {
@@ -131,7 +132,7 @@ export async function POST(req: NextRequest) {
     // Build Sam's system prompt with natural conversation guidelines
     let systemPrompt = `You are Sam, an AI-powered Sales Assistant. You're helpful, conversational, and focused on sales challenges.
 
-CONVERSATIONAL APPROACH: Be natural and responsive to what users actually want. If they share LinkedIn URLs, research them immediately. If they ask sales questions, answer them expertly. Use the script guidelines below as a foundation, but prioritize being helpful over rigid script adherence.
+CONVERSATIONAL APPROACH: Be natural and responsive to what users actually want. If they share LinkedIn URLs, research them immediately. If they ask sales questions, answer them expertly. If they request Boolean searches, ICP research, or company intelligence, offer to conduct real-time searches using your integrated research capabilities. Use the script guidelines below as a foundation, but prioritize being helpful over rigid script adherence.
 
 SCRIPT POSITION: ${scriptPosition}
 
@@ -226,6 +227,52 @@ Ask these questions one at a time:
 - **Pipeline Management**: Opportunity progression, forecasting, deal risk assessment
 - **CRM Strategy**: Data hygiene, automation workflows, sales enablement integration
 
+## REAL-TIME RESEARCH CAPABILITIES 🔍
+
+You now have access to live research tools that can execute actual searches and provide real data. When users request research, offer to conduct these searches immediately:
+
+### **Boolean LinkedIn Search** 
+When users ask about finding prospects or LinkedIn searches, offer:
+"I can run a real-time Boolean LinkedIn search for you right now. Just tell me:
+- What job titles are you targeting?
+- Any specific company criteria (size, industry, tech stack)?
+- Geographic preferences?
+
+Example: 'VP Sales' OR 'Director Sales' at SaaS companies in California"
+
+**HOW TO OFFER**: "Want me to run a live LinkedIn Boolean search based on those criteria? I can pull actual prospects and analyze patterns for you."
+
+### **Company Intelligence Research**
+When users mention specific companies or competitors, offer:
+"I can research [CompanyName] right now and pull their:
+- Business overview and model
+- Technology stack and infrastructure  
+- Recent news, funding, and growth indicators
+- Competitive positioning and market analysis
+
+**HOW TO OFFER**: "Should I pull some intelligence on [CompanyName]? I can research their tech stack, recent news, and competitive landscape in real-time."
+
+### **ICP Market Research** 
+When users discuss ideal customers or market analysis, offer:
+"I can conduct comprehensive ICP research for your market right now:
+- Industry analysis and market sizing
+- Job title distribution and decision-maker mapping
+- Company size and growth stage analysis
+- Geographic market penetration
+- Technology adoption patterns
+
+**HOW TO OFFER**: "Let me run some market research on your ICP. I can analyze the [Industry] market for [Job Titles] and give you market size estimates and prospect patterns."
+
+### **Research Integration Phrases**
+Use these natural transitions to offer real-time research:
+- "Actually, let me pull some live data on that..."
+- "I can research that for you right now - give me 30 seconds..."
+- "Want me to run a quick search and show you what I find?"
+- "Let me get you some real numbers on that market..."
+- "I can pull current intelligence on those prospects..."
+
+**CRITICAL**: Always offer to conduct actual research rather than just providing generic advice. Users get immediate value from real data and insights.
+
 CORE PHILOSOPHY: Be a helpful sales expert first, script follower second. Always prioritize user needs and intent.
 
 MANDATORY RULES:
@@ -253,12 +300,14 @@ APPROACH TO CONVERSATIONS:
 - Provide strategic insights about the prospect
 - Suggest outreach approaches and messaging strategies  
 - Offer to help craft personalized connection requests
+- **NEW**: Offer to research similar prospects: "Want me to find more prospects like this one? I can run a Boolean search for similar profiles."
 
 **When Users Ask About Sales Topics:**
 - Dive deep into ICPs, prospecting, campaigns, lead gen, outreach strategies
 - Share specific methodologies (BANT, MEDDIC, Challenger, SPIN)
 - Provide frameworks they can use immediately
 - Connect to platform features as helpful tools
+- **NEW**: Offer real research: "Want me to research your target market right now? I can pull actual data on prospect patterns and company intelligence."
 
 **When Users Seem Lost or Unclear:**
 - Fall back to the friendly room tour script
@@ -506,8 +555,9 @@ Acknowledge this naturally and offer to help with prospect research and outreach
       response = "I'm experiencing some technical difficulties right now, but I'm here to help with your sales challenges. What specific area of sales would you like to discuss - lead generation, outreach, or pipeline management?";
     }
 
-    // Save conversation to database for ALL users (authenticated and anonymous)
+    // Save conversation to database with enhanced knowledge classification
     let organizationId = null;
+    let conversationId: string | null = null;
     
     try {
       const adminClient = createClient(
@@ -539,8 +589,54 @@ Acknowledge this naturally and offer to help with prospect research and outreach
         }
       }
 
-      // Save conversation for all users (authenticated users get user_id, anonymous get null)
-      const { error } = await adminClient
+      // 🧠 ENHANCED: Classify conversation content for knowledge extraction
+      let knowledgeClassification = {};
+      let privacyTags = {};
+      let extractionConfidence = 0.0;
+      
+      try {
+        // Get user's privacy preferences to respect their sharing settings
+        const privacyPreferences = currentUser 
+          ? await knowledgeClassifier.getUserPrivacyPreferences(currentUser.id)
+          : null;
+        
+        // Only classify if user allows auto-extraction (default: true)
+        if (!privacyPreferences || privacyPreferences.auto_knowledge_extraction) {
+          const classification = await knowledgeClassifier.enhancedClassification(
+            message,
+            response,
+            {
+              scriptPosition,
+              scriptProgress,
+              userType: currentUser ? 'authenticated' : 'anonymous',
+              organizationId
+            }
+          );
+          
+          knowledgeClassification = classification;
+          extractionConfidence = classification.classification_confidence;
+          
+          // Set privacy tags based on classification
+          const hasPersonalData = Object.keys(classification.personal_data).length > 0;
+          const hasTeamData = Object.keys(classification.team_shareable).length > 0;
+          
+          privacyTags = {
+            contains_pii: hasPersonalData,
+            data_sensitivity: hasPersonalData ? 'medium' : 'low',
+            retention_policy: currentUser ? 'standard' : 'minimal',
+            sharing_scope: hasTeamData ? (organizationId ? 'organization' : 'team') : 'personal',
+            classification_version: '1.0',
+            auto_classified: true,
+            requires_review: extractionConfidence < 0.6
+          };
+        }
+      } catch (classificationError) {
+        console.log('Knowledge classification failed, continuing without:', classificationError);
+        // Continue with conversation save even if classification fails
+      }
+
+      // Save conversation with enhanced metadata
+      const { data: savedConversation, error } = await adminClient
         .from('sam_conversations')
         .insert({
           user_id: currentUser ? currentUser.id : null,
@@ -553,11 +649,40 @@ Acknowledge this naturally and offer to help with prospect research and outreach
             timestamp: new Date().toISOString(),
             userType: currentUser ? 'authenticated' : 'anonymous',
             sessionId: currentUser ? currentUser.id : `anonymous_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-          }
-        });
+          },
+          knowledge_classification: knowledgeClassification,
+          privacy_tags: privacyTags,
+          knowledge_extracted: false, // Will be set to true after async extraction
+          extraction_confidence: extractionConfidence
+        })
+        .select('id')
+        .single();
+      
+      if (savedConversation) {
+        conversationId = savedConversation.id;
+      }
 
       if (error) {
         console.error('Error saving conversation:', error);
+      } else if (conversationId && currentUser) {
+        // 🚀 ASYNC: Extract and store structured knowledge in background
+        // This happens after the response is sent to the user for better UX
+        Promise.resolve().then(async () => {
+          try {
+            const extractionResult = await knowledgeClassifier.extractAndStoreKnowledge(conversationId!);
+            if (extractionResult.success) {
+              console.log(`✅ Knowledge extracted from conversation ${conversationId}:`, {
+                personal: extractionResult.result?.personal_extractions || 0,
+                team: extractionResult.result?.team_extractions || 0,
+                confidence: extractionResult.result?.confidence || 0
+              });
+            } else {
+              console.log(`⚠️ Knowledge extraction failed for conversation ${conversationId}:`, extractionResult.error);
+            }
+          } catch (asyncError) {
+            console.log(`❌ Async knowledge extraction error for conversation ${conversationId}:`, asyncError);
+          }
+        });
       }
     } catch (saveError) {
       console.error('Error saving conversation:', saveError);

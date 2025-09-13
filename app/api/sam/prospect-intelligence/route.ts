@@ -86,6 +86,18 @@ export async function POST(request: NextRequest) {
       case 'strategic_insights':
         intelligenceResult = await generateStrategicInsights(data, methodology)
         break
+
+      case 'boolean_linkedin_search':
+        intelligenceResult = await executeBooleanLinkedInSearch(data, methodology, urgency, budget)
+        break
+
+      case 'company_intelligence_search':
+        intelligenceResult = await executeCompanyIntelligenceSearch(data, methodology)
+        break
+
+      case 'icp_research_search':
+        intelligenceResult = await executeICPResearchSearch(data, methodology, urgency, budget)
+        break
       
       default:
         return NextResponse.json({
@@ -372,5 +384,167 @@ async function storeIntelligenceForConversation(
   } catch (error) {
     // Don't fail the main request if storage fails
     console.error('Failed to store intelligence for conversation:', error)
+  }
+}
+
+// Execute Boolean LinkedIn search using WebSearch MCP
+async function executeBooleanLinkedInSearch(
+  data: { query: string, maxResults?: number, includeSnippets?: boolean },
+  methodology: string,
+  urgency: string,
+  budget: number
+) {
+  const startTime = Date.now()
+  
+  try {
+    const searchResult = await mcpRegistry.callTool({
+      method: 'tools/call',
+      params: {
+        name: 'boolean_linkedin_search',
+        arguments: {
+          query: data.query,
+          maxResults: data.maxResults || 10,
+          includeSnippets: data.includeSnippets ?? true
+        }
+      }
+    })
+
+    if (searchResult.isError) {
+      return {
+        success: false,
+        error: searchResult.content[0]?.text || 'Boolean LinkedIn search failed',
+        data: null,
+        processingTime: Date.now() - startTime
+      }
+    }
+
+    const searchData = JSON.parse(searchResult.content[0]?.text || '{}')
+
+    return {
+      success: true,
+      data: searchData,
+      processingTime: Date.now() - startTime,
+      confidence: 0.9,
+      source: 'websearch-mcp',
+      costEstimate: '$0.01'
+    }
+
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Boolean LinkedIn search failed',
+      data: null,
+      processingTime: Date.now() - startTime
+    }
+  }
+}
+
+// Execute Company Intelligence search using WebSearch MCP
+async function executeCompanyIntelligenceSearch(
+  data: { companyName: string, searchType?: string, maxResults?: number },
+  methodology: string
+) {
+  const startTime = Date.now()
+  
+  try {
+    const searchResult = await mcpRegistry.callTool({
+      method: 'tools/call',
+      params: {
+        name: 'company_intelligence_search',
+        arguments: {
+          companyName: data.companyName,
+          searchType: data.searchType || 'overview',
+          maxResults: data.maxResults || 10
+        }
+      }
+    })
+
+    if (searchResult.isError) {
+      return {
+        success: false,
+        error: searchResult.content[0]?.text || 'Company intelligence search failed',
+        data: null,
+        processingTime: Date.now() - startTime
+      }
+    }
+
+    const searchData = JSON.parse(searchResult.content[0]?.text || '{}')
+
+    return {
+      success: true,
+      data: searchData,
+      processingTime: Date.now() - startTime,
+      confidence: 0.87,
+      source: 'websearch-mcp',
+      costEstimate: '$0.02'
+    }
+
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Company intelligence search failed',
+      data: null,
+      processingTime: Date.now() - startTime
+    }
+  }
+}
+
+// Execute ICP Research search using WebSearch MCP
+async function executeICPResearchSearch(
+  data: { 
+    industry: string, 
+    jobTitles: string[], 
+    companySize?: string, 
+    geography?: string,
+    maxResults?: number 
+  },
+  methodology: string,
+  urgency: string,
+  budget: number
+) {
+  const startTime = Date.now()
+  
+  try {
+    const searchResult = await mcpRegistry.callTool({
+      method: 'tools/call',
+      params: {
+        name: 'icp_research_search',
+        arguments: {
+          industry: data.industry,
+          jobTitles: data.jobTitles,
+          companySize: data.companySize || 'any',
+          geography: data.geography || 'United States',
+          maxResults: data.maxResults || 15
+        }
+      }
+    })
+
+    if (searchResult.isError) {
+      return {
+        success: false,
+        error: searchResult.content[0]?.text || 'ICP research search failed',
+        data: null,
+        processingTime: Date.now() - startTime
+      }
+    }
+
+    const searchData = JSON.parse(searchResult.content[0]?.text || '{}')
+
+    return {
+      success: true,
+      data: searchData,
+      processingTime: Date.now() - startTime,
+      confidence: searchData.marketSize?.confidence || 0.85,
+      source: 'websearch-mcp',
+      costEstimate: '$0.03'
+    }
+
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'ICP research search failed',
+      data: null,
+      processingTime: Date.now() - startTime
+    }
   }
 }
