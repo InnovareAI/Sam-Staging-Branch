@@ -1,0 +1,156 @@
+{
+  "version": 3,
+  "pages404": true,
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [
+    {
+      "page": "/api/sam/threads/[threadId]",
+      "regex": "^/api/sam/threads/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPthreadId": "nxtPthreadId"
+      },
+      "namedRegex": "^/api/sam/threads/(?<nxtPthreadId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/sam/threads/[threadId]/messages",
+      "regex": "^/api/sam/threads/([^/]+?)/messages(?:/)?$",
+      "routeKeys": {
+        "nxtPthreadId": "nxtPthreadId"
+      },
+      "namedRegex": "^/api/sam/threads/(?<nxtPthreadId>[^/]+?)/messages(?:/)?$"
+    },
+    {
+      "page": "/invite/[token]",
+      "regex": "^/invite/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPtoken": "nxtPtoken"
+      },
+      "namedRegex": "^/invite/(?<nxtPtoken>[^/]+?)(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/admin",
+      "regex": "^/admin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin(?:/)?$"
+    },
+    {
+      "page": "/admin/activecampaign",
+      "regex": "^/admin/activecampaign(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/activecampaign(?:/)?$"
+    },
+    {
+      "page": "/admin/monitoring",
+      "regex": "^/admin/monitoring(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/monitoring(?:/)?$"
+    },
+    {
+      "page": "/auth/callback",
+      "regex": "^/auth/callback(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/auth/callback(?:/)?$"
+    },
+    {
+      "page": "/dashboard/data-enrichment",
+      "regex": "^/dashboard/data\\-enrichment(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/data\\-enrichment(?:/)?$"
+    },
+    {
+      "page": "/dashboard/prospect-approval",
+      "regex": "^/dashboard/prospect\\-approval(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/prospect\\-approval(?:/)?$"
+    },
+    {
+      "page": "/direct-access",
+      "regex": "^/direct\\-access(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/direct\\-access(?:/)?$"
+    },
+    {
+      "page": "/integrations/unipile",
+      "regex": "^/integrations/unipile(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/integrations/unipile(?:/)?$"
+    },
+    {
+      "page": "/reset-password",
+      "regex": "^/reset\\-password(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/reset\\-password(?:/)?$"
+    },
+    {
+      "page": "/settings-backup",
+      "regex": "^/settings\\-backup(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/settings\\-backup(?:/)?$"
+    },
+    {
+      "page": "/signin",
+      "regex": "^/signin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/signin(?:/)?$"
+    },
+    {
+      "page": "/signup",
+      "regex": "^/signup(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/signup(?:/)?$"
+    },
+    {
+      "page": "/test-invite",
+      "regex": "^/test\\-invite(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/test\\-invite(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSuffix": ".prefetch.rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments"
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

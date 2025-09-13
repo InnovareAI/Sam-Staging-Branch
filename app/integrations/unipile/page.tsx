@@ -42,6 +42,8 @@ export default function UnipileIntegrationPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [duplicates, setDuplicates] = useState<any[]>([])
+  const [autoCleanupInProgress, setAutoCleanupInProgress] = useState(false)
 
   const fetchAccounts = async () => {
     try {
@@ -50,6 +52,26 @@ export default function UnipileIntegrationPage() {
       if (response.ok) {
         const data = await response.json()
         setAccounts(data.accounts || [])
+        setDuplicates(data.duplicates || [])
+        
+        // Automatically clean up duplicates in the background if detected
+        if (data.duplicates_detected > 0) {
+          setAutoCleanupInProgress(true)
+          setTimeout(async () => {
+            try {
+              const cleanupResponse = await fetch('/api/unipile/accounts?cleanup=true')
+              if (cleanupResponse.ok) {
+                const cleanupData = await cleanupResponse.json()
+                setAccounts(cleanupData.accounts || [])
+                setDuplicates([])
+              }
+            } catch (error) {
+              console.error('Auto cleanup error:', error)
+            } finally {
+              setAutoCleanupInProgress(false)
+            }
+          }, 2000) // 2 second delay to let user see the page first
+        }
       } else {
         throw new Error('Failed to fetch accounts')
       }
@@ -66,6 +88,7 @@ export default function UnipileIntegrationPage() {
     setRefreshing(true)
     await fetchAccounts()
   }
+
 
   useEffect(() => {
     fetchAccounts()
@@ -104,6 +127,15 @@ export default function UnipileIntegrationPage() {
             </div>
           </CardContent>
         </Card>
+      ) : autoCleanupInProgress ? (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <RefreshCw className="h-5 w-5 text-blue-600 animate-spin" />
+              <p className="text-blue-800">Optimizing your LinkedIn connections...</p>
+            </div>
+          </CardContent>
+        </Card>
       ) : error ? (
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
@@ -137,6 +169,7 @@ export default function UnipileIntegrationPage() {
           </CardContent>
         </Card>
       )}
+
 
       {/* Connection Instructions */}
       <Card>
@@ -202,7 +235,7 @@ export default function UnipileIntegrationPage() {
             <ul className="text-sm text-blue-800 space-y-1">
               <li>• Use your regular LinkedIn login credentials</li>
               <li>• Premium LinkedIn accounts provide enhanced features</li>
-              <li>• You can connect multiple LinkedIn accounts if needed</li>
+              <li>• SAM AI automatically manages your connections and prevents duplicates</li>
               <li>• All data is securely processed through Unipile's platform</li>
             </ul>
           </div>
