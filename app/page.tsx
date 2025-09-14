@@ -32,7 +32,12 @@ import {
   Shield,
   Linkedin as LinkedinIcon,
   CheckSquare,
-  Database
+  Database,
+  Grid3x3,
+  List,
+  Info,
+  Badge,
+  ArrowLeft
 } from 'lucide-react';
 
 // LinkedIn Logo Component (Official LinkedIn branding)
@@ -112,6 +117,7 @@ export default function Page() {
   const [userStats, setUserStats] = useState<any>(null);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'card' | 'info'>('info');
 
   // LinkedIn connection state
   const [hasLinkedInConnection, setHasLinkedInConnection] = useState(false);
@@ -552,8 +558,52 @@ export default function Page() {
         }
       });
 
-      console.log('📊 User workspaces loaded:', allWorkspaces.length, 'workspaces');
-      setWorkspaces(allWorkspaces);
+      // For each workspace, fetch pending invitations
+      const workspacesWithInvitations = await Promise.all(
+        allWorkspaces.map(async (workspace) => {
+          // Fetch pending invitations
+          const { data: invitationsData, error: invitationsError } = await supabase
+            .from('invitations')
+            .select('email, status')
+            .eq('workspace_id', workspace.id)
+            .eq('status', 'pending');
+
+          if (invitationsError) {
+            console.error('Error fetching invitations for workspace:', workspace.name, invitationsError);
+          }
+
+          const pendingInvitations = invitationsData || [];
+          const pendingList = pendingInvitations.map((inv: any) => 
+            `${inv.email} (pending)`
+          );
+
+          // Determine company based on workspace name
+          let company = 'InnovareAI'; // default
+          let companyColor = 'bg-blue-600';
+          
+          if (workspace.name.toLowerCase().includes('3cubed') || workspace.name === '3cubed') {
+            company = '3cubed';
+            companyColor = 'bg-orange-600';
+          } else if (workspace.name.toLowerCase().includes('sendingcell')) {
+            company = 'Sendingcell';
+            companyColor = 'bg-green-600';
+          } else if (workspace.name.toLowerCase().includes('wt') || workspace.name.toLowerCase().includes('matchmaker')) {
+            company = 'WT Matchmaker';
+            companyColor = 'bg-purple-600';
+          }
+
+          return {
+            ...workspace,
+            pendingInvitations: pendingInvitations.length,
+            pendingList: pendingList,
+            company: company,
+            companyColor: companyColor
+          };
+        })
+      );
+
+      console.log('📊 User workspaces loaded:', workspacesWithInvitations.length, 'workspaces');
+      setWorkspaces(workspacesWithInvitations);
 
       // Check if user is workspace admin (owner or admin role in any workspace)
       const isOwner = allWorkspaces.some(ws => ws.owner_id === userId);
