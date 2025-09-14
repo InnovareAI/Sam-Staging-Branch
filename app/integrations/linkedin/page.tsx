@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
-  LinkedinIcon, 
   CheckCircle, 
   AlertCircle, 
   RefreshCw,
@@ -17,6 +16,7 @@ import {
   Shield
 } from 'lucide-react'
 import LinkedInOnboarding from '@/components/LinkedInOnboarding'
+import { LinkedInLogo } from '@/components/ui/LinkedInLogo'
 
 interface UnipileAccount {
   id: string
@@ -139,7 +139,7 @@ export default function UnipileIntegrationPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <LinkedinIcon className="h-5 w-5 text-[#0A66C2]" />
+                <LinkedInLogo size={20} className="text-[#0A66C2]" />
                 <p className="text-[#0A66C2]/80">
                   Connect your LinkedIn account to get started with SAM AI
                 </p>
@@ -162,7 +162,7 @@ export default function UnipileIntegrationPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-[#0A66C2]">
-              <LinkedinIcon className="h-5 w-5" />
+              <LinkedInLogo size={20} />
               Why Connect LinkedIn?
             </CardTitle>
             <CardDescription>
@@ -233,7 +233,7 @@ export default function UnipileIntegrationPage() {
                 onClick={() => setShowLinkedInModal(true)}
                 className="bg-[#0A66C2] hover:bg-[#084d94] text-white"
               >
-                <LinkedinIcon className="h-4 w-4 mr-2" />
+                <LinkedInLogo size={16} className="mr-2" />
                 Connect LinkedIn Account
               </Button>
             </div>
@@ -255,7 +255,7 @@ export default function UnipileIntegrationPage() {
               {linkedInAccounts.map((account) => (
                 <div key={account.id} className="flex items-center justify-between p-4 border border-[#0A66C2]/20 rounded-lg bg-[#0A66C2]/5">
                   <div className="flex items-center gap-3">
-                    <LinkedinIcon className="h-8 w-8 text-[#0A66C2]" />
+                    <LinkedInLogo size={32} className="text-[#0A66C2]" />
                     <div>
                       <div className="font-medium text-[#0A66C2]">{account.name}</div>
                       <div className="text-sm text-muted-foreground">
