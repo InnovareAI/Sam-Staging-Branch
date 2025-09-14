@@ -2181,6 +2181,13 @@ export default function Page() {
                             return 'bg-gray-600 text-white';
                           };
                           
+                          const getCompanyName = (slug: string) => {
+                            if (slug === 'innovareai') return 'InnovareAI';
+                            if (slug === '3cubed') return '3cubed';
+                            if (slug === 'sendingcell' || slug === 'wt-matchmaker') return '3cubed';
+                            return slug;
+                          };
+                          
                           return (
                             <div key={workspace.id} className="bg-gray-700 rounded-lg p-3">
                               <div className="flex items-center justify-between">
@@ -2198,7 +2205,7 @@ export default function Page() {
                                     <h3 className="text-white font-semibold">{workspace.name}</h3>
                                     {workspace.slug && (
                                       <span className={`text-xs px-2 py-1 rounded ${getCompanyColor(workspace.slug)}`}>
-                                        {workspace.slug}
+                                        {getCompanyName(workspace.slug)}
                                       </span>
                                     )}
                                   </div>
@@ -2240,6 +2247,13 @@ export default function Page() {
                             return 'bg-gray-600 text-white';
                           };
                           
+                          const getCompanyName = (slug: string) => {
+                            if (slug === 'innovareai') return 'InnovareAI';
+                            if (slug === '3cubed') return '3cubed';
+                            if (slug === 'sendingcell' || slug === 'wt-matchmaker') return '3cubed';
+                            return slug;
+                          };
+                          
                           return (
                             <div key={workspace.id} className="bg-gray-700 rounded-lg p-4">
                               <div className="flex items-start justify-between mb-3">
@@ -2271,7 +2285,7 @@ export default function Page() {
                                 <h3 className="text-white font-semibold mb-1">{workspace.name}</h3>
                                 {workspace.slug && (
                                   <span className={`text-xs px-2 py-1 rounded ${getCompanyColor(workspace.slug)}`}>
-                                    {workspace.slug}
+                                    {getCompanyName(workspace.slug)}
                                   </span>
                                 )}
                               </div>
@@ -2306,6 +2320,13 @@ export default function Page() {
                             return 'bg-gray-600 text-white';
                           };
                           
+                          const getCompanyName = (slug: string) => {
+                            if (slug === 'innovareai') return 'InnovareAI';
+                            if (slug === '3cubed') return '3cubed';
+                            if (slug === 'sendingcell' || slug === 'wt-matchmaker') return '3cubed';
+                            return slug;
+                          };
+                          
                           return (
                             <div key={workspace.id} className="bg-gray-700 rounded-lg p-4">
                               <div className="flex items-center justify-between mb-3">
@@ -2324,7 +2345,7 @@ export default function Page() {
                                       <h3 className="text-white font-semibold">{workspace.name}</h3>
                                       {workspace.slug && (
                                         <span className={`text-xs px-2 py-1 rounded ${getCompanyColor(workspace.slug)}`}>
-                                          {workspace.slug}
+                                          {getCompanyName(workspace.slug)}
                                         </span>
                                       )}
                                     </div>
