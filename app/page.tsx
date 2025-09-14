@@ -581,15 +581,11 @@ export default function Page() {
           let company = 'InnovareAI'; // default
           let companyColor = 'bg-blue-600';
           
-          if (workspace.name.toLowerCase().includes('3cubed') || workspace.name === '3cubed') {
+          if (workspace.name.toLowerCase().includes('3cubed') || workspace.name === '3cubed' ||
+              workspace.name.toLowerCase().includes('sendingcell') ||
+              workspace.name.toLowerCase().includes('wt') || workspace.name.toLowerCase().includes('matchmaker')) {
             company = '3cubed';
             companyColor = 'bg-orange-600';
-          } else if (workspace.name.toLowerCase().includes('sendingcell')) {
-            company = 'Sendingcell';
-            companyColor = 'bg-green-600';
-          } else if (workspace.name.toLowerCase().includes('wt') || workspace.name.toLowerCase().includes('matchmaker')) {
-            company = 'WT Matchmaker';
-            companyColor = 'bg-purple-600';
           }
 
           return {
@@ -2181,7 +2177,7 @@ export default function Page() {
                         {workspaces.map((workspace) => {
                           const getCompanyColor = (slug: string) => {
                             if (slug === 'innovareai') return 'bg-blue-600 text-white';
-                            if (slug === '3cubed') return 'bg-orange-600 text-white';
+                            if (slug === '3cubed' || slug === 'sendingcell' || slug === 'wt-matchmaker') return 'bg-orange-600 text-white';
                             return 'bg-gray-600 text-white';
                           };
                           
@@ -2240,7 +2236,7 @@ export default function Page() {
                         {workspaces.map((workspace) => {
                           const getCompanyColor = (slug: string) => {
                             if (slug === 'innovareai') return 'bg-blue-600 text-white';
-                            if (slug === '3cubed') return 'bg-orange-600 text-white';
+                            if (slug === '3cubed' || slug === 'sendingcell' || slug === 'wt-matchmaker') return 'bg-orange-600 text-white';
                             return 'bg-gray-600 text-white';
                           };
                           
@@ -2306,7 +2302,7 @@ export default function Page() {
                         {workspaces.map((workspace) => {
                           const getCompanyColor = (slug: string) => {
                             if (slug === 'innovareai') return 'bg-blue-600 text-white';
-                            if (slug === '3cubed') return 'bg-orange-600 text-white';
+                            if (slug === '3cubed' || slug === 'sendingcell' || slug === 'wt-matchmaker') return 'bg-orange-600 text-white';
                             return 'bg-gray-600 text-white';
                           };
                           
