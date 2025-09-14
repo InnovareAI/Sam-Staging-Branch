@@ -120,6 +120,7 @@ export default function Page() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'card' | 'info'>('info');
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
+  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<'all' | 'innovareai' | '3cubed'>('all');
 
   // LinkedIn connection state
   const [hasLinkedInConnection, setHasLinkedInConnection] = useState(false);
@@ -1984,6 +1985,22 @@ export default function Page() {
                   </div>
                   
                   <div className="flex items-center space-x-4">
+                    {/* Company Filter */}
+                    {workspaces.length > 0 && (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-gray-400 text-sm">Company:</span>
+                        <select
+                          value={selectedCompanyFilter}
+                          onChange={(e) => setSelectedCompanyFilter(e.target.value as 'all' | 'innovareai' | '3cubed')}
+                          className="bg-gray-700 border border-gray-600 text-white rounded-md px-3 py-1 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        >
+                          <option value="all">All Companies</option>
+                          <option value="innovareai">InnovareAI</option>
+                          <option value="3cubed">3cubed</option>
+                        </select>
+                      </div>
+                    )}
+                    
                     {/* View Mode Toggles */}
                     {workspaces.length > 0 && (
                       <div className="flex items-center space-x-1 bg-gray-700 rounded-lg p-1">
@@ -2025,7 +2042,26 @@ export default function Page() {
                     
                     {/* Real-time workspace count */}
                     <div className="text-gray-400 text-sm">
-                      {workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''}
+                      {(() => {
+                        const filteredCount = workspaces.filter(workspace => {
+                          if (selectedCompanyFilter === 'all') return true;
+                          if (selectedCompanyFilter === 'innovareai') return workspace.slug === 'innovareai';
+                          if (selectedCompanyFilter === '3cubed') {
+                            return workspace.slug === '3cubed' || 
+                                   workspace.slug === 'sendingcell' || 
+                                   workspace.slug === 'wt-matchmaker' ||
+                                   workspace.name.toLowerCase().includes('3cubed') ||
+                                   workspace.name.toLowerCase().includes('sendingcell') ||
+                                   workspace.name.toLowerCase().includes('wt') || 
+                                   workspace.name.toLowerCase().includes('matchmaker');
+                          }
+                          return false;
+                        }).length;
+                        
+                        return selectedCompanyFilter === 'all' 
+                          ? `${workspaces.length} workspace${workspaces.length !== 1 ? 's' : ''}`
+                          : `${filteredCount} of ${workspaces.length} workspace${workspaces.length !== 1 ? 's' : ''}`;
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -2041,11 +2077,40 @@ export default function Page() {
                     <p className="text-gray-500 text-sm">Use "Create Workspace" in the Super Admin panel above</p>
                   </div>
                 ) : (
+                  (() => {
+                    // Filter workspaces based on selected company
+                    const filteredWorkspaces = workspaces.filter(workspace => {
+                      if (selectedCompanyFilter === 'all') return true;
+                      
+                      if (selectedCompanyFilter === 'innovareai') {
+                        return workspace.slug === 'innovareai';
+                      }
+                      
+                      if (selectedCompanyFilter === '3cubed') {
+                        return workspace.slug === '3cubed' || 
+                               workspace.slug === 'sendingcell' || 
+                               workspace.slug === 'wt-matchmaker' ||
+                               workspace.name.toLowerCase().includes('3cubed') ||
+                               workspace.name.toLowerCase().includes('sendingcell') ||
+                               workspace.name.toLowerCase().includes('wt') || 
+                               workspace.name.toLowerCase().includes('matchmaker');
+                      }
+                      
+                      return false;
+                    });
+
+                    return filteredWorkspaces.length === 0 ? (
+                      <div className="text-center py-12 bg-gray-700 rounded-lg">
+                        <Building2 className="mx-auto mb-4 text-gray-600" size={48} />
+                        <p className="text-gray-400">No workspaces found for {selectedCompanyFilter === 'innovareai' ? 'InnovareAI' : selectedCompanyFilter === '3cubed' ? '3cubed' : 'selected company'}</p>
+                        <p className="text-gray-500 text-sm">Try selecting "All Companies" or a different company filter</p>
+                      </div>
+                    ) : (
                   <>
                     {/* List View */}
                     {viewMode === 'list' && (
                       <div className="space-y-2">
-                        {workspaces.map((workspace) => {
+                        {filteredWorkspaces.map((workspace) => {
                           const getCompanyColor = (slug: string) => {
                             if (slug === 'innovareai') return 'bg-blue-600 text-white';
                             if (slug === '3cubed' || slug === 'sendingcell' || slug === 'wt-matchmaker') return 'bg-orange-600 text-white';
@@ -2119,7 +2184,7 @@ export default function Page() {
                     {/* Card View */}
                     {viewMode === 'card' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {workspaces.map((workspace) => {
+                        {filteredWorkspaces.map((workspace) => {
                           const getCompanyColor = (slug: string) => {
                             if (slug === 'innovareai') return 'bg-blue-600 text-white';
                             if (slug === '3cubed' || slug === 'sendingcell' || slug === 'wt-matchmaker') return 'bg-orange-600 text-white';
@@ -2200,7 +2265,7 @@ export default function Page() {
                     {/* Info View (Default - Full Details) */}
                     {viewMode === 'info' && (
                       <div className="space-y-4">
-                        {workspaces.map((workspace) => {
+                        {filteredWorkspaces.map((workspace) => {
                           const getCompanyColor = (slug: string) => {
                             if (slug === 'innovareai') return 'bg-blue-600 text-white';
                             if (slug === '3cubed' || slug === 'sendingcell' || slug === 'wt-matchmaker') return 'bg-orange-600 text-white';
@@ -2306,6 +2371,8 @@ export default function Page() {
                       </div>
                     )}
                   </>
+                    );
+                  })()
                 )}
 
                 {/* Workspace Detail Page */}
