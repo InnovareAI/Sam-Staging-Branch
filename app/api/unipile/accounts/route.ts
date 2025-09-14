@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 
 // Helper function to make Unipile API calls
 async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: any) {
@@ -34,6 +36,53 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
   }
 
   return await response.json()
+}
+
+// Helper function to store user account association
+async function storeUserAccountAssociation(userId: string, unipileAccount: any) {
+  try {
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    
+    const connectionParams = unipileAccount.connection_params?.im || {}
+    
+    const associationData = {
+      user_id: userId,
+      unipile_account_id: unipileAccount.id,
+      platform: unipileAccount.type,
+      account_name: unipileAccount.name,
+      account_email: connectionParams.email || connectionParams.username,
+      linkedin_public_identifier: connectionParams.publicIdentifier,
+      linkedin_profile_url: connectionParams.publicIdentifier ? 
+        `https://www.linkedin.com/in/${connectionParams.publicIdentifier}` : null,
+      connection_status: 'active'
+    }
+    
+    const { data, error } = await supabase
+      .from('user_unipile_accounts')
+      .upsert(associationData, { 
+        onConflict: 'unipile_account_id',
+        ignoreDuplicates: false 
+      })
+      .select()
+    
+    if (error) {
+      console.error('Failed to store user account association:', error)
+      return false
+    }
+    
+    console.log(`✅ Stored user account association:`, {
+      userId,
+      unipileAccountId: unipileAccount.id,
+      accountName: unipileAccount.name,
+      platform: unipileAccount.type
+    })
+    
+    return true
+  } catch (error) {
+    console.error('Error storing user account association:', error)
+    return false
+  }
 }
 
 // Helper function to check if a specific user's LinkedIn account exists and is connected
@@ -160,6 +209,21 @@ export async function GET(request: NextRequest) {
 // POST method for account reconnection
 export async function POST(request: NextRequest) {
   try {
+    // Authenticate user first
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required to connect LinkedIn account',
+        timestamp: new Date().toISOString()
+      }, { status: 401 })
+    }
+
+    console.log(`👤 User ${user.email} (${user.id}) attempting LinkedIn connection`)
+
     const body = await request.json()
     const { action, account_id, linkedin_credentials, captcha_response } = body
     
@@ -313,11 +377,15 @@ export async function POST(request: NextRequest) {
         }
       }, 1000) // 1 second delay for immediate auto-cleanup
       
+      // Store user account association
+      const associationStored = await storeUserAccountAssociation(user.id, result)
+      
       return NextResponse.json({
         success: true,
         action: 'created',
         account: result,
         auto_cleanup_scheduled: true,
+        user_association_stored: associationStored,
         timestamp: new Date().toISOString()
       })
     }

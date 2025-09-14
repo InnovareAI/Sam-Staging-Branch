@@ -80,22 +80,40 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // EMERGENCY PRIVACY FIX: Return EMPTY array until proper user association is implemented
-    // This prevents showing ALL accounts to users - major privacy violation
+    // NEW PROPER PRIVACY IMPLEMENTATION: Only show accounts that belong to this user
     const userEmail = user.email;
+    const userId = user.id;
     
-    console.log(`🚨 PRIVACY PROTECTION: Hiding all accounts for user ${userEmail} until proper association is implemented`);
-    console.log(`📋 Available accounts in Unipile:`, accounts.map(acc => ({
-      id: acc.id,
-      name: acc.name,
-      type: acc.type,
-      created: acc.created_at
-    })));
+    console.log(`👤 Fetching accounts for user: ${userEmail} (${userId})`);
     
-    // Return empty array to protect privacy
-    const userOwnedAccounts = [];
+    // Get user's account associations from database
+    const { data: userAssociations, error: associationError } = await supabase
+      .from('user_unipile_accounts')
+      .select('*')
+      .eq('user_id', userId);
+    
+    if (associationError) {
+      console.error('Error fetching user account associations:', associationError);
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to fetch user account associations',
+        accounts: [],
+        total: 0,
+        timestamp: new Date().toISOString()
+      }, { status: 500 });
+    }
+    
+    console.log(`📋 User has ${userAssociations?.length || 0} associated accounts in database`);
+    
+    // Filter Unipile accounts to only include user's associated accounts
+    const userUnipileIds = new Set((userAssociations || []).map(assoc => assoc.unipile_account_id));
+    const userOwnedAccounts = accounts.filter((account: any) => 
+      userUnipileIds.has(account.id)
+    );
 
-    console.log(`🔒 Privacy Protection Active: Showing 0 accounts to prevent privacy violation`);
+    console.log(`🔒 Privacy Protection: Showing ${userOwnedAccounts.length} of ${accounts.length} total accounts`);
+    console.log(`✅ User-owned account IDs:`, Array.from(userUnipileIds));
+    console.log(`✅ Matched accounts:`, userOwnedAccounts.map(acc => ({ id: acc.id, name: acc.name })));
 
     // Transform accounts for Contact Center display
     const formattedAccounts = userOwnedAccounts
