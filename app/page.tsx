@@ -11,6 +11,7 @@ import InviteUserPopup, { InviteFormData } from '../components/InviteUserPopup';
 import AuthModal from '../components/AuthModal';
 import LinkedInOnboarding from '../components/LinkedInOnboarding';
 import { UnipileModal } from '../components/integrations/UnipileModal';
+import { ChannelSelectionModal } from '../components/campaign/ChannelSelectionModal';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { 
   MessageCircle, 
@@ -32,6 +33,8 @@ import {
   UserPlus,
   Shield,
   Linkedin as LinkedinIcon,
+  Target,
+  MessageSquare,
   CheckSquare,
   Database,
   Grid3x3,
@@ -101,7 +104,7 @@ export default function Page() {
   const [workspacesLoading, setWorkspacesLoading] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isWorkspaceAdmin, setIsWorkspaceAdmin] = useState(false);
-  const [selectedCompany, setSelectedCompany] = useState<'InnovareAI' | '3cubedai'>('InnovareAI');
+  const [selectedCompany, setSelectedCompany] = useState<'All' | 'InnovareAI' | '3cubedai'>('All');
   const [showInviteUser, setShowInviteUser] = useState(false);
   const [selectedWorkspaces, setSelectedWorkspaces] = useState<Set<string>>(new Set());
   const [isDeletingWorkspaces, setIsDeletingWorkspaces] = useState(false);
@@ -127,9 +130,44 @@ export default function Page() {
   const [hasLinkedInConnection, setHasLinkedInConnection] = useState(false);
   const [linkedInLoading, setLinkedInLoading] = useState(false);
   const [showLinkedInOnboarding, setShowLinkedInOnboarding] = useState(false);
-  const [showUnipileModal, setShowUnipileModal] = useState(true); // Show on page load for testing
+  const [showUnipileModal, setShowUnipileModal] = useState(false); // Only show when user clicks Advanced Setup
+  const [showChannelSelectionModal, setShowChannelSelectionModal] = useState(false);
+  
+  // Mock connected accounts for demonstration (in production, fetch from API)
+  const [connectedAccounts] = useState([
+    {
+      id: 'gmail-1',
+      platform: 'gmail' as const,
+      email: 'user@company.com',
+      name: 'Primary Gmail',
+      status: 'active' as const
+    },
+    {
+      id: 'outlook-1', 
+      platform: 'outlook' as const,
+      email: 'user@outlook.com',
+      name: 'Outlook Account',
+      status: 'active' as const
+    },
+    {
+      id: 'linkedin-1',
+      platform: 'linkedin' as const,
+      name: 'LinkedIn Professional',
+      status: 'active' as const
+    }
+  ]);
+
   const [linkedInSkipped, setLinkedInSkipped] = useState(false);
   const [isDisconnectingLinkedIn, setIsDisconnectingLinkedIn] = useState(false);
+
+  // Handler for channel selection confirmation
+  const handleChannelSelectionConfirm = (selection: any) => {
+    console.log('Channel selection confirmed:', selection);
+    setShowChannelSelectionModal(false);
+    
+    // TODO: Start campaign with selected channels
+    alert(`Campaign setup complete!\nStrategy: ${selection.strategy}\nAccounts: ${JSON.stringify(selection.selectedAccounts)}`);
+  };
 
   // Check skip preference on mount
   useEffect(() => {
@@ -254,15 +292,11 @@ export default function Page() {
       const savedMessages = localStorage.getItem('sam_messages');
       if (savedMessages) {
         try {
-          // For testing Unipile modal, clear saved messages and force starter screen
-          localStorage.removeItem('sam-messages');
-          
-          // Original logic commented out for testing
-          // const parsedMessages = JSON.parse(savedMessages);
-          // if (Array.isArray(parsedMessages) && parsedMessages.length > 0) {
-          //   setMessages(parsedMessages);
-          //   setShowStarterScreen(false);
-          // }
+          const parsedMessages = JSON.parse(savedMessages);
+          if (Array.isArray(parsedMessages) && parsedMessages.length > 0) {
+            setMessages(parsedMessages);
+            setShowStarterScreen(false);
+          }
         } catch (error) {
           console.error('Error loading saved messages:', error);
         }
@@ -1828,47 +1862,102 @@ export default function Page() {
                 </div>
               </div>
 
-              {/* Unipile Multi-Channel Integration */}
+              {/* Integration Status - Simplified */}
               <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">Unipile Multi-Channel Integration</h2>
+                <h2 className="text-2xl font-semibold text-white mb-6">🔗 Connected Services</h2>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
-                        <h3 className="text-white font-medium">Multi-Platform Messaging</h3>
+                        <h3 className="text-white font-medium">Smart Integration</h3>
+                        <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">Intelligent</span>
                       </div>
                       <p className="text-gray-300 text-sm">
-                        Connect LinkedIn, Gmail, Outlook, and SMTP for unified outreach campaigns
+                        SAM will prompt you to connect accounts only when needed for specific tasks
                       </p>
                     </div>
                     <div className="flex items-center space-x-2">
                       <button 
                         onClick={() => setShowUnipileModal(true)}
-                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                        className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
                       >
                         <Settings size={16} className="text-white" />
-                        <span>Configure Unipile</span>
+                        <span>Advanced Setup</span>
                       </button>
                     </div>
                   </div>
                   
-                  {/* Preview of available platforms */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-                    <div className="bg-blue-600 rounded-lg p-3 text-center">
-                      <LinkedinIcon className="w-6 h-6 text-white mx-auto mb-1" />
-                      <span className="text-xs text-white">LinkedIn</span>
+                  {/* Status indicators - only show what's actually connected */}
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h4 className="text-white font-medium mb-3">Current Status:</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-300">LinkedIn Data Access</span>
+                        <span className="text-yellow-400">• Connect when needed</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-300">Email Campaigns</span>
+                        <span className="text-yellow-400">• Connect when needed</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-300">Calendar Integration</span>
+                        <span className="text-yellow-400">• Connect when needed</span>
+                      </div>
                     </div>
-                    <div className="bg-red-600 rounded-lg p-3 text-center">
-                      <Mail className="w-6 h-6 text-white mx-auto mb-1" />
-                      <span className="text-xs text-white">Gmail</span>
+                    <div className="mt-3 text-xs text-gray-400">
+                      💡 SAM will ask you to connect specific accounts only when required for your workflows
                     </div>
-                    <div className="bg-blue-500 rounded-lg p-3 text-center">
-                      <Mail className="w-6 h-6 text-white mx-auto mb-1" />
-                      <span className="text-xs text-white">Outlook</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Campaign Management - Simplified */}
+              <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 className="text-2xl font-semibold text-white mb-6">🚀 Campaign Management</h2>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <h3 className="text-white font-medium">Smart Campaign Builder</h3>
+                      </div>
+                      <p className="text-gray-300 text-sm">
+                        Let SAM guide you through campaign setup and handle account connections automatically
+                      </p>
                     </div>
-                    <div className="bg-gray-600 rounded-lg p-3 text-center">
-                      <Settings className="w-6 h-6 text-white mx-auto mb-1" />
-                      <span className="text-xs text-white">SMTP</span>
+                    <div className="flex items-center space-x-2">
+                      <button 
+                        onClick={() => {
+                          // TODO: Replace with actual SAM conversation trigger
+                          alert('SAM: "I can help you set up a campaign! What type of outreach are you planning - LinkedIn prospecting, email campaigns, or both? I\'ll guide you through the process and connect the necessary accounts when needed."')
+                        }}
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                      >
+                        <MessageCircle size={16} className="text-white" />
+                        <span>Ask SAM to Help</span>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Simple workflow indicator */}
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h4 className="text-white font-medium mb-3">How it works:</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs">1</div>
+                        <span className="text-gray-300">Tell SAM what you want to achieve</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-white text-xs">2</div>
+                        <span className="text-gray-300">SAM suggests the best approach and tools</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center text-white text-xs">3</div>
+                        <span className="text-gray-300">Connect accounts only when needed</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-6 h-6 bg-orange-600 rounded-full flex items-center justify-center text-white text-xs">4</div>
+                        <span className="text-gray-300">SAM executes and manages your campaign</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1968,9 +2057,10 @@ export default function Page() {
                       <label className="text-white text-sm font-medium">Company:</label>
                       <select
                         value={selectedCompany}
-                        onChange={(e) => setSelectedCompany(e.target.value as 'InnovareAI' | '3cubedai')}
+                        onChange={(e) => setSelectedCompany(e.target.value as 'All' | 'InnovareAI' | '3cubedai')}
                         className="bg-gray-700 text-white px-3 py-1 rounded border border-gray-600"
                       >
+                        <option value="All">All Companies</option>
                         <option value="InnovareAI">InnovareAI</option>
                         <option value="3cubedai">3CubedAI</option>
                       </select>
@@ -2011,7 +2101,10 @@ export default function Page() {
                   </div>
 
                   <div className="text-xs text-purple-200">
-                    Company emails will be sent from: {selectedCompany === 'InnovareAI' ? 'sp@innovareai.com' : 'sophia@3cubed.ai'}
+                    Company emails will be sent from: {
+                      selectedCompany === 'All' ? 'sp@innovareai.com or sophia@3cubed.ai' :
+                      selectedCompany === 'InnovareAI' ? 'sp@innovareai.com' : 'sophia@3cubed.ai'
+                    }
                   </div>
                 </div>
               )}
@@ -2037,22 +2130,6 @@ export default function Page() {
                   </div>
                   
                   <div className="flex items-center space-x-4">
-                    {/* Company Filter */}
-                    {workspaces.length > 0 && (
-                      <div className="flex items-center space-x-2">
-                        <span className="text-gray-400 text-sm">Company:</span>
-                        <select
-                          value={selectedCompanyFilter}
-                          onChange={(e) => setSelectedCompanyFilter(e.target.value as 'all' | 'innovareai' | '3cubed')}
-                          className="bg-gray-700 border border-gray-600 text-white rounded-md px-3 py-1 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                        >
-                          <option value="all">All Companies</option>
-                          <option value="innovareai">InnovareAI</option>
-                          <option value="3cubed">3cubed</option>
-                        </select>
-                      </div>
-                    )}
-                    
                     {/* View Mode Toggles */}
                     {workspaces.length > 0 && (
                       <div className="flex items-center space-x-1 bg-gray-700 rounded-lg p-1">
@@ -2783,7 +2860,10 @@ export default function Page() {
                 </label>
               </div>
               <p className="text-xs text-gray-400 mt-1">
-                Invitation will be sent from: {selectedCompany === 'InnovareAI' ? 'sp@innovareai.com' : 'sophia@3cubed.ai'}
+                Invitation will be sent from: {
+                  selectedCompany === 'All' ? 'sp@innovareai.com or sophia@3cubed.ai' :
+                  selectedCompany === 'InnovareAI' ? 'sp@innovareai.com' : 'sophia@3cubed.ai'
+                }
               </p>
             </div>
 
@@ -3138,6 +3218,14 @@ export default function Page() {
       <UnipileModal
         isOpen={showUnipileModal}
         onClose={() => setShowUnipileModal(false)}
+      />
+
+      {/* Channel Selection Modal - Triggered by SAM when needed */}
+      <ChannelSelectionModal
+        isOpen={showChannelSelectionModal}
+        onClose={() => setShowChannelSelectionModal(false)}
+        onConfirm={handleChannelSelectionConfirm}
+        connectedAccounts={connectedAccounts}
       />
     </div>
   );
