@@ -2013,7 +2013,7 @@ export default function Page() {
                       className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors"
                     >
                       <Building2 size={18} />
-                      <span>Create Tenant</span>
+                      <span>Create Workspace</span>
                     </button>
                     <button
                       onClick={async () => {
@@ -2079,7 +2079,7 @@ export default function Page() {
                   <div className="text-center py-12 bg-gray-700 rounded-lg">
                     <Building2 className="mx-auto mb-4 text-gray-600" size={48} />
                     <p className="text-gray-400">No workspaces created yet</p>
-                    <p className="text-gray-500 text-sm">Use "Create Tenant" in the Super Admin panel above</p>
+                    <p className="text-gray-500 text-sm">Use "Create Workspace" in the Super Admin panel above</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -2141,13 +2141,6 @@ export default function Page() {
                             </div>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <span className={`text-xs px-2 py-1 rounded ${
-                              isSuperAdmin && workspace.owner_id !== user.id
-                                ? 'bg-gray-600 text-gray-300'
-                                : 'bg-purple-600 text-white'
-                            }`}>
-                              {isSuperAdmin && workspace.owner_id !== user.id ? 'View' : 'Owner'}
-                            </span>
                             <button
                               className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center space-x-1 transition-colors"
                               onClick={() => {
