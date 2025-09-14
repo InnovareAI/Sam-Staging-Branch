@@ -2060,7 +2060,11 @@ export default function Page() {
                           };
                           
                           return (
-                            <div key={workspace.id} className="bg-gray-700 rounded-lg p-3">
+                            <div 
+                              key={workspace.id} 
+                              className="bg-gray-700 hover:bg-gray-600 rounded-lg p-3 cursor-pointer transition-colors"
+                              onClick={() => setSelectedWorkspaceId(workspace.id)}
+                            >
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-3">
                                   {isSuperAdmin && (
@@ -2070,13 +2074,11 @@ export default function Page() {
                                       onChange={(e) => handleWorkspaceSelect(workspace.id, e.target.checked)}
                                       disabled={workspace.slug === 'innovareai'}
                                       className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      onClick={(e) => e.stopPropagation()}
                                     />
                                   )}
                                   <div className="flex items-center space-x-2">
-                                    <h3 
-                                      className="text-white font-semibold hover:text-purple-400 cursor-pointer transition-colors"
-                                      onClick={() => setSelectedWorkspaceId(workspace.id)}
-                                    >
+                                    <h3 className="text-white font-semibold">
                                       {workspace.name}
                                     </h3>
                                     {workspace.slug && (
@@ -2098,7 +2100,8 @@ export default function Page() {
                                 </div>
                                 <button
                                   className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center space-x-1 transition-colors"
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setInviteWorkspaceId(workspace.id);
                                     setShowInviteUser(true);
                                   }}
@@ -2131,7 +2134,11 @@ export default function Page() {
                           };
                           
                           return (
-                            <div key={workspace.id} className="bg-gray-700 rounded-lg p-4">
+                            <div 
+                              key={workspace.id} 
+                              className="bg-gray-700 hover:bg-gray-600 rounded-lg p-4 cursor-pointer transition-colors"
+                              onClick={() => setSelectedWorkspaceId(workspace.id)}
+                            >
                               <div className="flex items-start justify-between mb-3">
                                 <div className="flex items-center space-x-2">
                                   {isSuperAdmin && (
@@ -2141,13 +2148,15 @@ export default function Page() {
                                       onChange={(e) => handleWorkspaceSelect(workspace.id, e.target.checked)}
                                       disabled={workspace.slug === 'innovareai'}
                                       className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      onClick={(e) => e.stopPropagation()}
                                     />
                                   )}
                                   <Building2 size={20} className="text-purple-400" />
                                 </div>
                                 <button
                                   className="bg-green-600 hover:bg-green-700 text-white p-2 rounded text-sm transition-colors"
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setInviteWorkspaceId(workspace.id);
                                     setShowInviteUser(true);
                                   }}
@@ -2158,10 +2167,7 @@ export default function Page() {
                               </div>
                               
                               <div className="mb-3">
-                                <h3 
-                                  className="text-white font-semibold mb-1 hover:text-purple-400 cursor-pointer transition-colors"
-                                  onClick={() => setSelectedWorkspaceId(workspace.id)}
-                                >
+                                <h3 className="text-white font-semibold mb-1">
                                   {workspace.name}
                                 </h3>
                                 {workspace.slug && (
@@ -2209,7 +2215,11 @@ export default function Page() {
                           };
                           
                           return (
-                            <div key={workspace.id} className="bg-gray-700 rounded-lg p-4">
+                            <div 
+                              key={workspace.id} 
+                              className="bg-gray-700 hover:bg-gray-600 rounded-lg p-4 cursor-pointer transition-colors"
+                              onClick={() => setSelectedWorkspaceId(workspace.id)}
+                            >
                               <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-start space-x-3">
                                   {isSuperAdmin && (
@@ -2219,14 +2229,12 @@ export default function Page() {
                                       onChange={(e) => handleWorkspaceSelect(workspace.id, e.target.checked)}
                                       disabled={workspace.slug === 'innovareai'}
                                       className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed mt-1"
+                                      onClick={(e) => e.stopPropagation()}
                                     />
                                   )}
                                   <div>
                                     <div className="flex items-center space-x-2 mb-1">
-                                      <h3 
-                                        className="text-white font-semibold hover:text-purple-400 cursor-pointer transition-colors"
-                                        onClick={() => setSelectedWorkspaceId(workspace.id)}
-                                      >
+                                      <h3 className="text-white font-semibold">
                                         {workspace.name}
                                       </h3>
                                       {workspace.slug && (
@@ -2269,7 +2277,8 @@ export default function Page() {
                                 <div className="flex items-center space-x-2">
                                   <button
                                     className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center space-x-1 transition-colors"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       setInviteWorkspaceId(workspace.id);
                                       setShowInviteUser(true);
                                     }}
