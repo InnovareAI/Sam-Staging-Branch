@@ -96,19 +96,39 @@ export async function POST(request: NextRequest) {
 
     // Update parent workspace workflow statistics
     if (status === 'completed') {
-      await supabase
+      // Get current successful_executions count and increment
+      const { data: currentWorkflow } = await supabase
         .from('workspace_n8n_workflows')
-        .update({
-          successful_executions: supabase.sql`successful_executions + 1`
-        })
+        .select('successful_executions')
         .eq('id', execution.workspace_n8n_workflow_id)
+        .single()
+      
+      if (currentWorkflow) {
+        await supabase
+          .from('workspace_n8n_workflows')
+          .update({
+            successful_executions: (currentWorkflow.successful_executions || 0) + 1,
+            last_execution_at: new Date().toISOString()
+          })
+          .eq('id', execution.workspace_n8n_workflow_id)
+      }
     } else if (status === 'failed') {
-      await supabase
+      // Get current failed_executions count and increment
+      const { data: currentWorkflow } = await supabase
         .from('workspace_n8n_workflows')
-        .update({
-          failed_executions: supabase.sql`failed_executions + 1`
-        })
+        .select('failed_executions')
         .eq('id', execution.workspace_n8n_workflow_id)
+        .single()
+      
+      if (currentWorkflow) {
+        await supabase
+          .from('workspace_n8n_workflows')
+          .update({
+            failed_executions: (currentWorkflow.failed_executions || 0) + 1,
+            last_execution_at: new Date().toISOString()
+          })
+          .eq('id', execution.workspace_n8n_workflow_id)
+      }
     }
 
     // TODO: Send real-time notifications to user via WebSocket or SSE

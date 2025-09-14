@@ -665,7 +665,7 @@ export const COMPONENT_BUNDLES = {
 
 // Quick installer for common bundles
 export async function installComponentBundle(bundle: keyof typeof COMPONENT_BUNDLES) {
-  const components = COMPONENT_BUNDLES[bundle];
+  const components = [...COMPONENT_BUNDLES[bundle]]; // Convert readonly array to mutable
   return await installShadCNComponents(components);
 }
 
