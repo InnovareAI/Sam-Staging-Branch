@@ -131,13 +131,29 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Unipile connection status check error:', error)
+    
+    // Enhanced error response for debugging
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const isCredentialsError = errorMessage.includes('credentials not configured') || 
+                               errorMessage.includes('401') || 
+                               errorMessage.includes('403')
+    
     return NextResponse.json({
       success: false,
       has_linkedin: false,
       connection_status: 'error',
-      error: 'Unable to verify LinkedIn connection status',
+      error: isCredentialsError ? 
+        'Unipile integration not configured. Please check environment variables.' : 
+        'Unable to verify LinkedIn connection status',
+      debug_info: {
+        error_message: errorMessage,
+        error_type: error instanceof Error ? error.constructor.name : typeof error,
+        has_dsn: !!process.env.UNIPILE_DSN,
+        has_api_key: !!process.env.UNIPILE_API_KEY,
+        environment: process.env.NODE_ENV || 'unknown'
+      },
       timestamp: new Date().toISOString()
-    })
+    }, { status: isCredentialsError ? 503 : 500 })
   }
 }
 
@@ -145,7 +161,24 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { action, account_id, linkedin_credentials } = body
+    const { action, account_id, linkedin_credentials, captcha_response } = body
+    
+    if (action === 'complete_captcha' && account_id && captcha_response) {
+      // Complete CAPTCHA challenge for existing account
+      console.log('Completing CAPTCHA challenge for account:', { account_id, has_response: !!captcha_response })
+      
+      const result = await callUnipileAPI(`accounts/${account_id}/challenges/captcha`, 'POST', {
+        captcha_response: captcha_response
+      })
+      
+      return NextResponse.json({
+        success: true,
+        action: 'captcha_completed',
+        account: result,
+        message: 'CAPTCHA challenge completed successfully',
+        timestamp: new Date().toISOString()
+      })
+    }
     
     if (action === 'reconnect' && account_id) {
       // Use Unipile's reconnect functionality for existing accounts
@@ -200,7 +233,9 @@ export async function POST(request: NextRequest) {
         username: linkedin_credentials.username,
         password: linkedin_credentials.password,
         // Include 2FA code if provided
-        ...(linkedin_credentials.twoFaCode && { twoFaCode: linkedin_credentials.twoFaCode })
+        ...(linkedin_credentials.twoFaCode && { twoFaCode: linkedin_credentials.twoFaCode }),
+        // Include CAPTCHA response if provided
+        ...(linkedin_credentials.captchaResponse && { captcha_response: linkedin_credentials.captchaResponse })
       })
       
       // Enhanced logging to debug 2FA response
@@ -289,7 +324,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: false,
-      error: 'Invalid action. Use "reconnect" or "create"',
+      error: 'Invalid action. Use "reconnect", "create", or "complete_captcha"',
       timestamp: new Date().toISOString()
     }, { status: 400 })
     
@@ -300,22 +335,39 @@ export async function POST(request: NextRequest) {
     const errorMessage = error instanceof Error ? error.message : 'Account operation failed'
     let statusCode = 500
     let requires2FA = false
+    let requiresCaptcha = false
     
-    // Detect 2FA requirement - enhanced detection
+    // Detect specific error types
     if (errorMessage.includes('2FA') || 
         errorMessage.includes('two-factor') || 
         errorMessage.includes('verification') ||
         errorMessage.includes('challenge') ||
-        errorMessage.includes('authenticate') ||
-        statusCode === 401) {
+        errorMessage.includes('authenticate')) {
       statusCode = 422 // Unprocessable Entity - indicates 2FA needed
       requires2FA = true
+    } else if (errorMessage.includes('captcha') || errorMessage.includes('CAPTCHA')) {
+      statusCode = 422
+      requiresCaptcha = true
+    } else if (errorMessage.includes('credentials not configured') || 
+               errorMessage.includes('401') || 
+               errorMessage.includes('403')) {
+      statusCode = 503 // Service Unavailable - configuration issue
     }
     
     return NextResponse.json({
       success: false,
-      error: errorMessage,
+      error: statusCode === 503 ? 
+        'Unipile integration not configured. Please check environment variables.' : 
+        errorMessage,
       requires_2fa: requires2FA,
+      requires_captcha: requiresCaptcha,
+      debug_info: {
+        error_message: errorMessage,
+        error_type: error instanceof Error ? error.constructor.name : typeof error,
+        has_dsn: !!process.env.UNIPILE_DSN,
+        has_api_key: !!process.env.UNIPILE_API_KEY,
+        environment: process.env.NODE_ENV || 'unknown'
+      },
       timestamp: new Date().toISOString()
     }, { status: statusCode })
   }

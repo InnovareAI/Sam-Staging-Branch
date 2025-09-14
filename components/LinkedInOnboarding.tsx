@@ -262,7 +262,28 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
         })
       });
 
-      const createData = await createResponse.json();
+      if (!createResponse.ok) {
+        const errorData = await createResponse.json();
+        console.error('LinkedIn API error:', {
+          status: createResponse.status,
+          statusText: createResponse.statusText,
+          errorData
+        });
+        
+        // Handle specific HTTP status codes
+        if (createResponse.status === 503) {
+          throw new Error('LinkedIn integration is temporarily unavailable. Please try again later.');
+        } else if (createResponse.status === 422) {
+          // This is handled below for 2FA/CAPTCHA requirements
+        } else if (createResponse.status >= 500) {
+          throw new Error('Server error. Please try again later.');
+        }
+        
+        // Continue with error data for 422 responses (2FA/CAPTCHA)
+        const createData = errorData;
+      } else {
+        var createData = await createResponse.json();
+      }
       
       if (createData.success) {
         // Handle CAPTCHA completion
@@ -334,7 +355,20 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
       
     } catch (error) {
       console.error('LinkedIn connection error:', error);
-      setConnectionError('Unable to connect LinkedIn at this time. Please try again.');
+      
+      // Provide more specific error messages based on the error type
+      if (error instanceof Error) {
+        if (error.message.includes('credentials not configured') || 
+            error.message.includes('503')) {
+          setConnectionError('LinkedIn integration is temporarily unavailable. Please try again later or contact support.');
+        } else if (error.message.includes('Network')) {
+          setConnectionError('Network error. Please check your connection and try again.');
+        } else {
+          setConnectionError('Unable to connect LinkedIn at this time. Please try again.');
+        }
+      } else {
+        setConnectionError('Unable to connect LinkedIn at this time. Please try again.');
+      }
     } finally {
       setConnecting(false);
     }
