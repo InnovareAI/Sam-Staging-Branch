@@ -11,7 +11,10 @@ import {
   RefreshCw,
   Plus,
   Settings,
-  Info
+  Info,
+  Users,
+  MessageSquare,
+  Shield
 } from 'lucide-react'
 import LinkedInOnboarding from '@/components/LinkedInOnboarding'
 
