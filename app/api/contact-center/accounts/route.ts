@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 // Helper function to make Unipile API calls
 async function callUnipileAPI(endpoint: string, method: string = 'GET') {
@@ -32,6 +34,23 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Fetching Unipile accounts for Contact Center backend integration...');
 
+    // Authenticate user first
+    const cookieStore = cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required',
+        accounts: [],
+        total: 0,
+        timestamp: new Date().toISOString()
+      }, { status: 401 });
+    }
+
+    console.log(`👤 Authenticated user: ${user.email} (${user.id})`);
+
     if (!process.env.UNIPILE_DSN || !process.env.UNIPILE_API_KEY) {
       console.error('❌ Unipile credentials not configured');
       return NextResponse.json({
@@ -61,8 +80,25 @@ export async function GET(request: NextRequest) {
       });
     });
 
+    // EMERGENCY PRIVACY FIX: Return EMPTY array until proper user association is implemented
+    // This prevents showing ALL accounts to users - major privacy violation
+    const userEmail = user.email;
+    
+    console.log(`🚨 PRIVACY PROTECTION: Hiding all accounts for user ${userEmail} until proper association is implemented`);
+    console.log(`📋 Available accounts in Unipile:`, accounts.map(acc => ({
+      id: acc.id,
+      name: acc.name,
+      type: acc.type,
+      created: acc.created_at
+    })));
+    
+    // Return empty array to protect privacy
+    const userOwnedAccounts = [];
+
+    console.log(`🔒 Privacy Protection Active: Showing 0 accounts to prevent privacy violation`);
+
     // Transform accounts for Contact Center display
-    const formattedAccounts = accounts
+    const formattedAccounts = userOwnedAccounts
       .filter((account: any) => account.type === 'LINKEDIN') // Focus on LinkedIn for now
       .map((account: any) => {
         const sourceStatus = account.sources?.[0]?.status;
@@ -99,11 +135,13 @@ export async function GET(request: NextRequest) {
         success: true,
         accounts: [],
         total: 0,
-        message: 'No LinkedIn accounts found. Connect your LinkedIn through the Unipile integration first.',
+        message: `No LinkedIn accounts found for ${userEmail}. Only your own connected accounts will be displayed here for privacy.`,
         debug_info: {
-          total_accounts: accounts.length,
-          linkedin_accounts: accounts.filter((a: any) => a.type === 'LINKEDIN').length,
-          other_accounts: accounts.filter((a: any) => a.type !== 'LINKEDIN').map((a: any) => a.type)
+          user_email: userEmail,
+          total_accounts_in_unipile: accounts.length,
+          user_owned_accounts: userOwnedAccounts.length,
+          linkedin_accounts_owned: userOwnedAccounts.filter((a: any) => a.type === 'LINKEDIN').length,
+          privacy_filtering_active: true
         },
         timestamp: new Date().toISOString()
       });
@@ -114,6 +152,8 @@ export async function GET(request: NextRequest) {
       accounts: formattedAccounts,
       total: formattedAccounts.length,
       connected_count: formattedAccounts.filter(a => a.status === 'connected').length,
+      user_email: userEmail,
+      privacy_filtering_active: true,
       timestamp: new Date().toISOString()
     });
 
