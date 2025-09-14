@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
   Zap, Users, TrendingUp, Mail, LinkedinIcon, Target, Play, BarChart3, 
-  DollarSign, Eye, Heart, Star, Sparkles, Butterfly, Flower, Waves
+  DollarSign, Eye, Heart, Star, Sparkles, Flower, Waves
 } from 'lucide-react'
 
 export default function SHSFCampaignHubPage() {
@@ -22,6 +22,7 @@ export default function SHSFCampaignHubPage() {
   const springY = useSpring(mouseY, { stiffness: 300, damping: 30 })
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
     const updateMouse = (e: MouseEvent) => {
       setCursorPosition({ x: e.clientX, y: e.clientY })
       mouseX.set(e.clientX)
@@ -38,13 +39,13 @@ export default function SHSFCampaignHubPage() {
           key={i}
           className="absolute"
           initial={{ 
-            x: Math.random() * window.innerWidth, 
-            y: Math.random() * window.innerHeight,
+            x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1200), 
+            y: Math.random() * (typeof window !== 'undefined' ? window.innerHeight : 800),
             opacity: 0 
           }}
           animate={{ 
-            x: Math.random() * window.innerWidth,
-            y: Math.random() * window.innerHeight,
+            x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1200),
+            y: Math.random() * (typeof window !== 'undefined' ? window.innerHeight : 800),
             opacity: [0, 0.3, 0],
             scale: [0.5, 1.8, 0.5],
             rotate: 360
@@ -56,7 +57,7 @@ export default function SHSFCampaignHubPage() {
           }}
         >
           <div className="text-purple-300/20 text-4xl">
-            {[<Sparkles />, <Heart />, <Star />, <Butterfly />, <Flower />, <Waves />, <Zap />, <Target />, <TrendingUp />, <Eye />][i]}
+            {[<Sparkles />, <Heart />, <Star />, <Flower />, <Waves />, <Zap />, <Target />, <TrendingUp />, <Eye />][i]}
           </div>
         </motion.div>
       ))}
@@ -178,7 +179,7 @@ export default function SHSFCampaignHubPage() {
                     transition={{ delay: 0.7, duration: 1.2 }}
                     className="text-rose-700 flex items-center gap-3 text-xl"
                   >
-                    <Butterfly className="h-6 w-6" />
+                    <Flower className="h-6 w-6" />
                     SHSF UI - Mindful Campaign Creation
                   </motion.p>
                 </div>

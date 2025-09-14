@@ -23,10 +23,41 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
   const response = await fetch(url, options)
   
   if (!response.ok) {
-    throw new Error(`Unipile API error: ${response.status} ${response.statusText}`)
+    const errorText = await response.text()
+    console.error(`Unipile API error: ${response.status} ${response.statusText}`, {
+      url,
+      method,
+      body: body ? JSON.stringify(body, null, 2) : undefined,
+      errorResponse: errorText
+    })
+    throw new Error(`Unipile API error: ${response.status} ${response.statusText} - ${errorText}`)
   }
 
   return await response.json()
+}
+
+// Helper function to check if a specific user's LinkedIn account exists and is connected
+function checkUserLinkedInConnection(accounts: any[], userEmail?: string) {
+  if (!userEmail) {
+    // Without user context, we can't determine user-specific connections
+    return { hasLinkedIn: false, userAccount: null }
+  }
+  
+  const userLinkedInAccount = accounts.find(account => 
+    account.type === 'LINKEDIN' && 
+    (account.connection_params?.im?.username === userEmail ||
+     account.connection_params?.email === userEmail ||
+     account.metadata?.user_email === userEmail)
+  )
+  
+  const isConnected = userLinkedInAccount?.sources?.some((source: any) => 
+    source.status === 'OK' || source.status === 'CREDENTIALS'
+  )
+  
+  return { 
+    hasLinkedIn: !!userLinkedInAccount && isConnected,
+    userAccount: userLinkedInAccount 
+  }
 }
 
 // Helper function to find duplicate LinkedIn accounts
@@ -62,79 +93,49 @@ function findDuplicateLinkedInAccounts(accounts: any[]) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Get cleanup parameter
-    const url = new URL(request.url)
-    const cleanup = url.searchParams.get('cleanup') === 'true'
-    
     // Fetch accounts using helper function
     const data = await callUnipileAPI('accounts')
-    const accounts = Array.isArray(data) ? data : (data.accounts || [])
+    const accounts = Array.isArray(data) ? data : (data.items || data.accounts || [])
     
-    // Detect duplicate LinkedIn accounts
-    const duplicates = findDuplicateLinkedInAccounts(accounts)
-    
-    // Always automatically cleanup duplicates - no user intervention needed
-    if (duplicates.length > 0) {
-      console.log(`Found ${duplicates.length} duplicate LinkedIn accounts, cleaning up...`)
-      
-      const deletionResults = []
-      for (const duplicate of duplicates) {
-        try {
-          await callUnipileAPI(`accounts/${duplicate.id}`, 'DELETE')
-          deletionResults.push({ id: duplicate.id, deleted: true })
-          console.log(`Deleted duplicate LinkedIn account: ${duplicate.id}`)
-        } catch (error) {
-          deletionResults.push({ id: duplicate.id, deleted: false, error: error.message })
-          console.error(`Failed to delete duplicate account ${duplicate.id}:`, error)
-        }
-      }
-      
-      // Fetch updated accounts list after cleanup
-      const updatedData = await callUnipileAPI('accounts')
-      const updatedAccounts = Array.isArray(updatedData) ? updatedData : (updatedData.accounts || [])
-      
-      return NextResponse.json({
-        success: true,
-        accounts: updatedAccounts,
-        has_linkedin: updatedAccounts.some((account: any) => 
-          account.type === 'LINKEDIN' && 
-          account.sources?.some((source: any) => 
-            source.status === 'OK' || source.status === 'CREDENTIALS'
-          )
-        ),
-        auto_cleanup_performed: true,
-        duplicates_removed: deletionResults,
-        message: `Automatically cleaned up ${deletionResults.filter(r => r.deleted).length} duplicate LinkedIn accounts`,
-        timestamp: new Date().toISOString()
-      })
-    }
-    
-    // Check if any account has LinkedIn connected (type: LINKEDIN)
+    // Enhanced logging to debug account visibility
+    const linkedInAccounts = accounts.filter(account => account.type === 'LINKEDIN')
+    console.log('All LinkedIn accounts found:', {
+      total_accounts: accounts.length,
+      linkedin_count: linkedInAccounts.length,
+      linkedin_accounts: linkedInAccounts.map(acc => ({
+        id: acc.id,
+        name: acc.name,
+        username: acc.connection_params?.im?.username || acc.connection_params?.email,
+        status: acc.sources?.map(s => s.status) || [],
+        created: acc.created_at
+      }))
+    })
+
+    // Check if ANY LinkedIn accounts exist and are running (system-wide check)
     const hasLinkedIn = accounts.some((account: any) => 
       account.type === 'LINKEDIN' && 
       account.sources?.some((source: any) => 
         source.status === 'OK' || source.status === 'CREDENTIALS'
       )
     )
-    
+
+    // SECURITY: Never expose actual account details to frontend
+    // This is just a general system check - user-specific verification happens during connection
     return NextResponse.json({
       success: true,
-      accounts: accounts,
       has_linkedin: hasLinkedIn,
-      duplicates_detected: 0, // Always 0 since we auto-cleanup
-      duplicates: [], // Empty since we auto-cleanup
-      auto_cleanup_available: true,
-      message: duplicates.length > 0 ? 'LinkedIn connections optimized' : 'All LinkedIn connections are clean',
+      connection_status: hasLinkedIn ? 'connected' : 'not_connected',
+      message: hasLinkedIn ? 'LinkedIn integration is available' : 'LinkedIn connection required',
       timestamp: new Date().toISOString()
     })
 
   } catch (error) {
-    console.error('Unipile accounts check error:', error)
+    console.error('Unipile connection status check error:', error)
     return NextResponse.json({
       success: false,
-      accounts: [],
       has_linkedin: false,
-      error: error instanceof Error ? error.message : 'Unable to check Unipile account status',
+      connection_status: 'error',
+      error: 'Unable to verify LinkedIn connection status',
       timestamp: new Date().toISOString()
     })
   }
@@ -163,35 +164,102 @@ export async function POST(request: NextRequest) {
     if (action === 'create') {
       // First, check for existing LinkedIn accounts
       const existingData = await callUnipileAPI('accounts')
-      const existingAccounts = Array.isArray(existingData) ? existingData : (existingData.accounts || [])
+      const existingAccounts = Array.isArray(existingData) ? existingData : (existingData.items || existingData.accounts || [])
       const existingLinkedIn = existingAccounts.filter(account => account.type === 'LINKEDIN')
       
-      // If LinkedIn account already exists, suggest reconnect instead
-      if (existingLinkedIn.length > 0) {
+      // Check if user's LinkedIn credentials match any existing account for reconnect
+      const matchingAccount = existingLinkedIn.find(acc => 
+        acc.connection_params?.im?.username === linkedin_credentials.username ||
+        acc.connection_params?.email === linkedin_credentials.username
+      )
+      
+      if (matchingAccount) {
+        // User has an existing account - use reconnect instead of create
+        const reconnectResult = await callUnipileAPI(`accounts/${matchingAccount.id}/reconnect`, 'POST', {
+          credentials: linkedin_credentials
+        })
+        
         return NextResponse.json({
-          success: false,
-          error: 'LinkedIn account already exists',
-          suggestion: 'Use reconnect instead of creating new account',
-          existing_accounts: existingLinkedIn.map(acc => ({
-            id: acc.id,
-            name: acc.name,
-            status: acc.sources?.[0]?.status
-          })),
+          success: true,
+          action: 'reconnected',
+          account: reconnectResult,
+          message: 'LinkedIn account reconnected successfully',
           timestamp: new Date().toISOString()
-        }, { status: 409 })
+        })
       }
       
       // Create new account if none exists
-      const result = await callUnipileAPI('accounts', 'POST', {
-        type: 'LINKEDIN',
-        credentials: linkedin_credentials
+      console.log('Creating new LinkedIn account with credentials:', {
+        username: linkedin_credentials.username,
+        hasPassword: !!linkedin_credentials.password,
+        has2FA: !!linkedin_credentials.twoFaCode
       })
+      
+      const result = await callUnipileAPI('accounts', 'POST', {
+        provider: 'LINKEDIN',
+        username: linkedin_credentials.username,
+        password: linkedin_credentials.password,
+        // Include 2FA code if provided
+        ...(linkedin_credentials.twoFaCode && { twoFaCode: linkedin_credentials.twoFaCode })
+      })
+      
+      // Enhanced logging to debug 2FA response
+      console.log('Unipile account creation response:', {
+        hasAccount: !!result,
+        resultKeys: result ? Object.keys(result) : [],
+        status: result?.status,
+        requires2FA: result?.requires_2fa || result?.requires2fa,
+        account_id: result?.id,
+        full_result: result
+      })
+
+      // Check for checkpoint requirements (CAPTCHA, 2FA, etc.)
+      if (result?.object === 'Checkpoint') {
+        const checkpointType = result.checkpoint?.type
+        console.log('LinkedIn checkpoint detected:', {
+          type: checkpointType,
+          account_id: result.account_id
+        })
+
+        if (checkpointType === 'CAPTCHA') {
+          return NextResponse.json({
+            success: false,
+            error: 'LinkedIn requires CAPTCHA verification. Please complete the verification.',
+            requires_captcha: true,
+            checkpoint_type: checkpointType,
+            account_id: result.account_id,
+            captcha_data: {
+              public_key: result.checkpoint.public_key,
+              data: result.checkpoint.data
+            },
+            timestamp: new Date().toISOString()
+          }, { status: 422 })
+        } else if (checkpointType === '2FA' || checkpointType === 'two_factor' || checkpointType === 'IN_APP_VALIDATION') {
+          return NextResponse.json({
+            success: false,
+            error: 'LinkedIn requires 2-factor authentication. Please complete the verification.',
+            requires_2fa: true,
+            checkpoint_type: checkpointType,
+            account_id: result.account_id,
+            timestamp: new Date().toISOString()
+          }, { status: 422 })
+        } else {
+          return NextResponse.json({
+            success: false,
+            error: `LinkedIn requires additional verification: ${checkpointType}. Please contact support.`,
+            requires_verification: true,
+            checkpoint_type: checkpointType,
+            account_id: result.account_id,
+            timestamp: new Date().toISOString()
+          }, { status: 422 })
+        }
+      }
       
       // Immediate auto-cleanup: Check for duplicates after creation
       setTimeout(async () => {
         try {
           const updatedData = await callUnipileAPI('accounts')
-          const updatedAccounts = Array.isArray(updatedData) ? updatedData : (updatedData.accounts || [])
+          const updatedAccounts = Array.isArray(updatedData) ? updatedData : (updatedData.items || updatedData.accounts || [])
           const duplicates = findDuplicateLinkedInAccounts(updatedAccounts)
           
           if (duplicates.length > 0) {
@@ -227,11 +295,29 @@ export async function POST(request: NextRequest) {
     
   } catch (error) {
     console.error('Unipile account operation error:', error)
+    
+    // Check if error indicates 2FA is required
+    const errorMessage = error instanceof Error ? error.message : 'Account operation failed'
+    let statusCode = 500
+    let requires2FA = false
+    
+    // Detect 2FA requirement - enhanced detection
+    if (errorMessage.includes('2FA') || 
+        errorMessage.includes('two-factor') || 
+        errorMessage.includes('verification') ||
+        errorMessage.includes('challenge') ||
+        errorMessage.includes('authenticate') ||
+        statusCode === 401) {
+      statusCode = 422 // Unprocessable Entity - indicates 2FA needed
+      requires2FA = true
+    }
+    
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Account operation failed',
+      error: errorMessage,
+      requires_2fa: requires2FA,
       timestamp: new Date().toISOString()
-    }, { status: 500 })
+    }, { status: statusCode })
   }
 }
 

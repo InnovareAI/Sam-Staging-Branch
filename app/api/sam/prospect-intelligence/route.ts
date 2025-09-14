@@ -404,7 +404,7 @@ async function executeBooleanLinkedInSearch(
         arguments: {
           query: data.query,
           maxResults: data.maxResults || 10,
-          includeSnippets: data.includeSnippets ?? true
+          location: 'United States'
         }
       }
     })
@@ -450,7 +450,7 @@ async function executeCompanyIntelligenceSearch(
     const searchResult = await mcpRegistry.callTool({
       method: 'tools/call',
       params: {
-        name: 'company_intelligence_search',
+        name: 'company_research_search',
         arguments: {
           companyName: data.companyName,
           searchType: data.searchType || 'overview',
@@ -508,12 +508,12 @@ async function executeICPResearchSearch(
     const searchResult = await mcpRegistry.callTool({
       method: 'tools/call',
       params: {
-        name: 'icp_research_search',
+        name: 'icp_prospect_discovery',
         arguments: {
-          industry: data.industry,
+          industries: [data.industry],
           jobTitles: data.jobTitles,
           companySize: data.companySize || 'any',
-          geography: data.geography || 'United States',
+          location: data.geography || 'United States',
           maxResults: data.maxResults || 15
         }
       }

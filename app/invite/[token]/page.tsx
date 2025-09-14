@@ -4,6 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { Building2, UserCheck, Clock, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 
 interface InviteData {
   id: string;
@@ -119,10 +123,10 @@ export default function InviteAcceptPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <div className="text-center">
-          <Clock className="animate-spin mx-auto mb-4" size={48} />
-          <p>Loading invitation...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading invitation...</p>
         </div>
       </div>
     );
@@ -130,17 +134,22 @@ export default function InviteAcceptPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-6">
-          <AlertCircle className="mx-auto mb-4 text-red-500" size={64} />
-          <h1 className="text-2xl font-bold mb-4">Invalid Invitation</h1>
-          <p className="text-gray-400 mb-6">{error}</p>
-          <a 
-            href="/api/auth/signin"
-            className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg inline-block transition-colors"
-          >
-            Sign In to SAM AI
-          </a>
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="container mx-auto px-4">
+          <Card className="w-full max-w-md mx-auto">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+                <AlertCircle className="h-8 w-8 text-destructive" />
+              </div>
+              <CardTitle className="text-2xl">Invalid Invitation</CardTitle>
+              <CardDescription>{error}</CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <Button asChild>
+                <a href="/api/auth/signin">Sign In to SAM AI</a>
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
@@ -154,77 +163,78 @@ export default function InviteAcceptPage() {
   const daysUntilExpiry = Math.ceil(timeUntilExpiry / (1000 * 60 * 60 * 24));
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-      <div className="max-w-lg mx-auto px-6">
-        <div className="bg-gray-800 rounded-lg p-8 shadow-xl">
-          <div className="text-center mb-8">
-            <div className="bg-purple-600 rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-              <Building2 size={32} />
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+      <div className="container mx-auto px-4">
+        <Card className="w-full max-w-lg mx-auto">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary">
+              <Building2 className="h-8 w-8 text-primary-foreground" />
             </div>
-            <h1 className="text-2xl font-bold mb-2">You're Invited!</h1>
-            <p className="text-gray-400">
+            <CardTitle className="text-2xl">You're Invited!</CardTitle>
+            <CardDescription>
               Join <strong>{invite.workspace.name}</strong> on SAM AI
-            </p>
-          </div>
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Invitation Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Workspace:</span>
+                  <span className="font-medium">{invite.workspace.name}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Role:</span>
+                  <Badge variant="secondary" className="capitalize">{invite.role}</Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Invited by:</span>
+                  <span className="font-medium">{inviterName}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Your email:</span>
+                  <span className="font-medium">{invite.email}</span>
+                </div>
+              </CardContent>
+            </Card>
 
-          <div className="space-y-6">
-            <div className="bg-gray-700 rounded-lg p-4">
-              <h3 className="font-semibold mb-2">Invitation Details</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Workspace:</span>
-                  <span>{invite.workspace.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Role:</span>
-                  <span className="capitalize">{invite.role}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Invited by:</span>
-                  <span>{inviterName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Your email:</span>
-                  <span>{invite.email}</span>
-                </div>
-              </div>
-            </div>
+            <Alert>
+              <Clock className="h-4 w-4" />
+              <AlertDescription>
+                Expires in {daysUntilExpiry} day{daysUntilExpiry !== 1 ? 's' : ''} 
+                ({expiresAt.toLocaleDateString()})
+              </AlertDescription>
+            </Alert>
 
-            <div className="bg-yellow-900/20 border border-yellow-600 rounded-lg p-4">
-              <div className="flex items-center">
-                <Clock className="mr-2 text-yellow-500" size={16} />
-                <span className="text-yellow-200 text-sm">
-                  Expires in {daysUntilExpiry} day{daysUntilExpiry !== 1 ? 's' : ''} 
-                  ({expiresAt.toLocaleDateString()})
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <button
+            <div className="space-y-4">
+              <Button
                 onClick={acceptInvite}
                 disabled={accepting}
-                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-700 disabled:opacity-50 text-white py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center"
+                className="w-full"
+                size="lg"
               >
                 {accepting ? (
                   <>
-                    <Clock className="animate-spin mr-2" size={16} />
+                    <Clock className="mr-2 h-4 w-4 animate-spin" />
                     Accepting...
                   </>
                 ) : (
                   <>
-                    <UserCheck className="mr-2" size={16} />
+                    <UserCheck className="mr-2 h-4 w-4" />
                     Accept Invitation
                   </>
                 )}
-              </button>
+              </Button>
 
-              <p className="text-center text-sm text-gray-400">
+              <p className="text-center text-sm text-muted-foreground">
                 By accepting, you'll create an account or join the workspace if you're already signed in.
               </p>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

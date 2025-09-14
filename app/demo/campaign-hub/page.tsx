@@ -86,15 +86,6 @@ export default function DemoCampaignHubPage() {
     }
   }, [controls, isInView])
 
-  // Floating card animation
-  const floatingAnimation = {
-    y: [-10, 10, -10],
-    transition: {
-      duration: 4,
-      repeat: Infinity,
-      ease: "easeInOut"
-    }
-  }
 
   // Campaign card hover effect
   const CampaignCard = ({ campaign, index }) => {
@@ -234,11 +225,26 @@ export default function DemoCampaignHubPage() {
       {/* Floating background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <motion.div
-          animate={floatingAnimation}
+          animate={{
+            y: [-10, 10, -10]
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: "linear"
+          }}
           className="absolute -top-4 -left-4 w-72 h-72 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-full blur-3xl"
         />
         <motion.div
-          animate={{...floatingAnimation, transition: {...floatingAnimation.transition, delay: 2}}}
+          animate={{
+            y: [10, -10, 10]
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: "linear",
+            delay: 2
+          }}
           className="absolute -bottom-4 -right-4 w-96 h-96 bg-gradient-to-r from-pink-400/20 to-yellow-400/20 rounded-full blur-3xl"
         />
       </div>

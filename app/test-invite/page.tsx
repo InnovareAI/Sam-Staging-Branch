@@ -2,6 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function TestInvitePage() {
   const supabase = createClientComponentClient();
@@ -68,146 +73,150 @@ export default function TestInvitePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white text-center">
-          <h1 className="text-2xl mb-4">Authentication Required</h1>
-          <p>Please sign in to access this page.</p>
-        </div>
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Authentication Required</CardTitle>
+            <CardDescription>Please sign in to access this page.</CardDescription>
+          </CardHeader>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 py-12">
-      <div className="max-w-2xl mx-auto px-6">
-        <div className="bg-gray-800 rounded-lg p-8">
-          <h1 className="text-3xl font-bold text-white mb-6">Test User Invitation</h1>
-          
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">
-                  First Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">
-                  Last Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  required
-                />
-              </div>
-            </div>
+    <div className="min-h-screen bg-background text-foreground py-12">
+      <div className="container mx-auto px-4">
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-3xl font-bold">Test User Invitation</CardTitle>
+              <CardDescription>Send invitations to test users</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">First Name</label>
+                    <Input
+                      type="text"
+                      value={formData.firstName}
+                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Last Name</label>
+                    <Input
+                      type="text"
+                      value={formData.lastName}
+                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
 
-            <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">
-                Email Address
-              </label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                required
-              />
-            </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Email Address</label>
+                  <Input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    required
+                  />
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">
-                  Company
-                </label>
-                <select
-                  value={formData.company}
-                  onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                  className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="InnovareAI">InnovareAI</option>
-                  <option value="3cubedai">3CubedAI</option>
-                </select>
-              </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Company</label>
+                    <Select 
+                      value={formData.company} 
+                      onValueChange={(value) => setFormData({ ...formData, company: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="InnovareAI">InnovareAI</SelectItem>
+                        <SelectItem value="3cubedai">3CubedAI</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">
-                  Role
-                </label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
-                  <option value="owner">Owner</option>
-                </select>
-              </div>
-            </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Role</label>
+                    <Select 
+                      value={formData.role} 
+                      onValueChange={(value) => setFormData({ ...formData, role: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="member">Member</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="owner">Owner</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
 
-            <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">
-                Workspace ID (Optional)
-              </label>
-              <input
-                type="text"
-                value={formData.workspaceId}
-                onChange={(e) => setFormData({ ...formData, workspaceId: e.target.value })}
-                placeholder="Leave empty for general invitation"
-                className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Workspace ID (Optional)</label>
+                  <Input
+                    type="text"
+                    value={formData.workspaceId}
+                    onChange={(e) => setFormData({ ...formData, workspaceId: e.target.value })}
+                    placeholder="Leave empty for general invitation"
+                  />
+                </div>
 
-            <div className="flex justify-between items-center">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-medium transition-colors"
-              >
-                {isSubmitting ? 'Sending Invitation...' : 'Send Invitation'}
-              </button>
-              
-              <a
-                href="/"
-                className="text-purple-400 hover:text-purple-300 transition-colors"
-              >
-                ← Back to App
-              </a>
-            </div>
-          </form>
+                <div className="flex justify-between items-center">
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-8"
+                  >
+                    {isSubmitting ? 'Sending Invitation...' : 'Send Invitation'}
+                  </Button>
+                  
+                  <Button variant="ghost" asChild>
+                    <a href="/">← Back to App</a>
+                  </Button>
+                </div>
+              </form>
 
-          {message && (
-            <div className={`mt-6 p-4 rounded-lg ${
-              message.includes('✅') ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'
-            }`}>
-              {message}
-            </div>
-          )}
+              {message && (
+                <div className="mt-6">
+                  <Alert variant={message.includes('✅') ? 'default' : 'destructive'}>
+                    <AlertDescription>{message}</AlertDescription>
+                  </Alert>
+                </div>
+              )}
 
-          <div className="mt-8 text-gray-400 text-sm">
-            <h3 className="font-medium mb-2">User Info:</h3>
-            <p>Email: {user.email}</p>
-            <p>User ID: {user.id}</p>
-          </div>
+              <Card className="mt-8">
+                <CardHeader>
+                  <CardTitle className="text-base">User Info</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Email: {user.email}</p>
+                  <p className="text-sm text-muted-foreground">User ID: {user.id}</p>
+                </CardContent>
+              </Card>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

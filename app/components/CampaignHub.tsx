@@ -15,8 +15,8 @@ function CampaignList() {
     switch (status) {
       case 'active': return 'text-green-400 bg-green-900/20';
       case 'paused': return 'text-yellow-400 bg-yellow-900/20';
-      case 'draft': return 'text-gray-400 bg-gray-900/20';
-      default: return 'text-gray-400 bg-gray-900/20';
+      case 'draft': return 'text-muted-foreground bg-muted/20';
+      default: return 'text-muted-foreground bg-muted/20';
     }
   };
 
@@ -100,7 +100,7 @@ const CampaignHub: React.FC = () => {
   const [showBuilder, setShowBuilder] = useState(false);
 
   return (
-    <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
+    <div className="flex-1 bg-background p-6 overflow-y-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>

@@ -26,54 +26,6 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/dashboard/prospect-approval": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/dashboard/prospect-approval",
-      "dataRoute": "/dashboard/prospect-approval.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/dashboard/data-enrichment": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/dashboard/data-enrichment",
-      "dataRoute": "/dashboard/data-enrichment.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
     "/reset-password": {
       "experimentalBypassFor": [
         {
@@ -98,6 +50,54 @@
         "x-next-revalidate-tag-token"
       ]
     },
+    "/admin/monitoring": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/admin/monitoring",
+      "dataRoute": "/admin/monitoring.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/signin": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/signin",
+      "dataRoute": "/signin.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
     "/integrations/unipile": {
       "experimentalBypassFor": [
         {
@@ -113,6 +113,30 @@
       "initialRevalidateSeconds": false,
       "srcRoute": "/integrations/unipile",
       "dataRoute": "/integrations/unipile.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/dashboard/data-enrichment": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/dashboard/data-enrichment",
+      "dataRoute": "/dashboard/data-enrichment.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -194,7 +218,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/signin": {
+    "/admin/activecampaign": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -207,8 +231,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/signin",
-      "dataRoute": "/signin.rsc",
+      "srcRoute": "/admin/activecampaign",
+      "dataRoute": "/admin/activecampaign.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -218,7 +242,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/admin/monitoring": {
+    "/": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -231,8 +255,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/admin/monitoring",
-      "dataRoute": "/admin/monitoring.rsc",
+      "srcRoute": "/",
+      "dataRoute": "/index.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -266,7 +290,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/admin/activecampaign": {
+    "/dashboard/prospect-approval": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -279,8 +303,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/admin/activecampaign",
-      "dataRoute": "/admin/activecampaign.rsc",
+      "srcRoute": "/dashboard/prospect-approval",
+      "dataRoute": "/dashboard/prospect-approval.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -313,37 +337,13 @@
         "x-next-revalidated-tags",
         "x-next-revalidate-tag-token"
       ]
-    },
-    "/": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/",
-      "dataRoute": "/index.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
     }
   },
   "dynamicRoutes": {},
   "notFoundRoutes": [],
   "preview": {
-    "previewModeId": "2a6988381e05d40627adbced94898829",
-    "previewModeSigningKey": "f9d1a0b423d6ff2eba317211968c7fe0693e7aa73abe3954d25de077abb3fc67",
-    "previewModeEncryptionKey": "baa411cce7bc3695fd1b11e92de89cb128a32903781224e727ed22b88d20d77a"
+    "previewModeId": "0f52d47b6e33d6880b1051a8623f61f3",
+    "previewModeSigningKey": "454a3f54efdc491ca780b0de445dd00fddb7310b054dc387c958bb19e77fe1ee",
+    "previewModeEncryptionKey": "d1e378f6df594a117c0ac5e7ab6e027d6de99d5dd2bf851b123c31a696a9fce7"
   }
 }

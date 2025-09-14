@@ -2,6 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function DirectAccessPage() {
   const [organizationName, setOrganizationName] = useState('');
@@ -61,7 +65,7 @@ export default function DirectAccessPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center py-12 px-4">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center py-12 px-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <img 
@@ -70,48 +74,50 @@ export default function DirectAccessPage() {
             className="w-24 h-24 rounded-full object-cover mx-auto mb-6"
             style={{ objectPosition: 'center 30%' }}
           />
-          <h1 className="text-white text-3xl font-bold mb-2">SAM AI - Direct Access</h1>
-          <p className="text-gray-400 mb-8">Skip authentication and go straight to the application</p>
+          <h1 className="text-foreground text-3xl font-bold mb-2">SAM AI - Direct Access</h1>
+          <p className="text-muted-foreground mb-8">Skip authentication and go straight to the application</p>
         </div>
 
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 className="text-white font-medium mb-4">Quick Setup</h3>
-          <div className="space-y-4">
-            <input
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Setup</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input
               type="text"
               value={userName}
               onChange={(e) => setUserName(e.target.value)}
               placeholder="Your name (e.g., 'John Doe')"
-              className="w-full px-3 py-2 border border-gray-600 placeholder-gray-500 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500"
               disabled={isCreating}
             />
-            <input
+            <Input
               type="text"
               value={organizationName}
               onChange={(e) => setOrganizationName(e.target.value)}
               placeholder="Organization name (e.g., 'Acme Corp')"
-              className="w-full px-3 py-2 border border-gray-600 placeholder-gray-500 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500"
               disabled={isCreating}
             />
             {error && (
-              <div className="text-red-400 text-sm">{error}</div>
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
-            <button 
+            <Button 
               onClick={createDirectAccess}
               disabled={isCreating}
-              className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-lg transition-colors"
+              className="w-full"
             >
               {isCreating ? 'Setting up...' : 'Access SAM AI Now'}
-            </button>
-          </div>
-        </div>
+            </Button>
+          </CardContent>
+        </Card>
         
         <div className="text-center">
-          <p className="text-gray-500 text-sm">
+          <p className="text-muted-foreground text-sm">
             This bypasses authentication for testing purposes
           </p>
-          <p className="text-gray-500 text-xs mt-2">
-            Regular auth: <a href="/signin" className="text-purple-400 hover:text-purple-300">Sign In</a> | <a href="/signup" className="text-purple-400 hover:text-purple-300">Sign Up</a>
+          <p className="text-muted-foreground text-xs mt-2">
+            Regular auth: <a href="/signin" className="text-primary hover:underline">Sign In</a> | <a href="/signup" className="text-primary hover:underline">Sign Up</a>
           </p>
         </div>
       </div>

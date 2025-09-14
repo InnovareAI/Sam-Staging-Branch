@@ -47,6 +47,7 @@
     "src",
     "dist",
     "vite.config.ts",
-    "supabase/functions/**/*"
+    "supabase/functions/**/*",
+    "docs/**/*"
   ]
 }

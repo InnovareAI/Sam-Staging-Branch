@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, Building2, MessageCircle, TrendingUp, Activity } from 'lucide-react';
+import { Users, Building2, MessageCircle, TrendingUp, Activity, Timer } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface Stats {
   users: {
@@ -52,122 +54,180 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="text-center">
-          <Activity className="animate-spin mx-auto mb-4 text-blue-600" size={32} />
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
+      <Card>
+        <CardContent className="p-8">
+          <div className="text-center space-y-4">
+            <Activity className="animate-spin mx-auto h-8 w-8 text-muted-foreground" />
+            <p className="text-muted-foreground">Loading dashboard...</p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">📊 Platform Metrics</h2>
-          <div className="text-sm text-gray-500">
-            Updates every 30s
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl flex items-center gap-2">
+              📊 Platform Metrics
+            </CardTitle>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Timer className="h-3 w-3" />
+              Updates every 30s
+            </div>
           </div>
-        </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Key Metrics Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Users</p>
+                    <p className="text-2xl font-bold">{stats?.users.total || 0}</p>
+                    <p className="text-xs text-muted-foreground">
+                      +{stats?.users.thisWeek || 0} this week
+                    </p>
+                  </div>
+                  <div className="p-2 bg-blue-50 dark:bg-blue-950 rounded-full">
+                    <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="bg-blue-50 rounded-lg p-4 border-l-4 border-blue-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-600 text-sm font-medium">Users</p>
-                <p className="text-2xl font-bold text-blue-900">{stats?.users.total || 0}</p>
-                <p className="text-xs text-blue-600">+{stats?.users.thisWeek || 0} this week</p>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Organizations</p>
+                    <p className="text-2xl font-bold">{stats?.organizations.total || 0}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats?.organizations.active || 0} active
+                    </p>
+                  </div>
+                  <div className="p-2 bg-muted rounded-full">
+                    <Building2 className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Conversations</p>
+                    <p className="text-2xl font-bold">{stats?.conversations.total || 0}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats?.conversations.today || 0} today
+                    </p>
+                  </div>
+                  <div className="p-2 bg-green-50 dark:bg-green-950 rounded-full">
+                    <MessageCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Engagement</p>
+                    <p className="text-2xl font-bold">
+                      {stats?.conversations.avgPerUser.toFixed(1) || '0.0'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">avg per user</p>
+                  </div>
+                  <div className="p-2 bg-amber-50 dark:bg-amber-950 rounded-full">
+                    <Activity className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Today's Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Today's Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="space-y-1">
+                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    {stats?.users.today || 0}
+                  </p>
+                  <p className="text-sm text-muted-foreground">New Users</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {stats?.conversations.today || 0}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Conversations</p>
+                </div>
+                <div className="space-y-1">
+                  <p className={`text-2xl font-bold ${
+                    (stats?.users.growth || 0) >= 0 
+                      ? 'text-green-600 dark:text-green-400' 
+                      : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    {stats?.users.growth > 0 ? '+' : ''}{stats?.users.growth?.toFixed(1) || 0}%
+                  </p>
+                  <p className="text-sm text-muted-foreground">Growth</p>
+                </div>
               </div>
-              <Users size={32} className="text-blue-500" />
-            </div>
-          </div>
-
-          <div className="bg-purple-50 rounded-lg p-4 border-l-4 border-purple-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-600 text-sm font-medium">Organizations</p>
-                <p className="text-2xl font-bold text-purple-900">{stats?.organizations.total || 0}</p>
-                <p className="text-xs text-purple-600">{stats?.organizations.active || 0} active</p>
-              </div>
-              <Building2 size={32} className="text-purple-500" />
-            </div>
-          </div>
-
-          <div className="bg-green-50 rounded-lg p-4 border-l-4 border-green-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-600 text-sm font-medium">Conversations</p>
-                <p className="text-2xl font-bold text-green-900">{stats?.conversations.total || 0}</p>
-                <p className="text-xs text-green-600">{stats?.conversations.today || 0} today</p>
-              </div>
-              <MessageCircle size={32} className="text-green-500" />
-            </div>
-          </div>
-
-          <div className="bg-yellow-50 rounded-lg p-4 border-l-4 border-yellow-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-yellow-600 text-sm font-medium">Engagement</p>
-                <p className="text-2xl font-bold text-yellow-900">
-                  {stats?.conversations.avgPerUser.toFixed(1) || '0.0'}
-                </p>
-                <p className="text-xs text-yellow-600">avg per user</p>
-              </div>
-              <Activity size={32} className="text-yellow-500" />
-            </div>
-          </div>
-        </div>
-
-        {/* Today's Activity */}
-        <div className="bg-gray-50 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
-            <TrendingUp className="mr-2" size={20} />
-            Today's Activity
-          </h3>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-bold text-blue-600">{stats?.users.today || 0}</p>
-              <p className="text-sm text-gray-600">New Users</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-green-600">{stats?.conversations.today || 0}</p>
-              <p className="text-sm text-gray-600">Conversations</p>
-            </div>
-            <div>
-              <p className={`text-2xl font-bold ${
-                (stats?.users.growth || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {stats?.users.growth > 0 ? '+' : ''}{stats?.users.growth.toFixed(1) || 0}%
-              </p>
-              <p className="text-sm text-gray-600">Growth</p>
-            </div>
-          </div>
-        </div>
-      </div>
+            </CardContent>
+          </Card>
+        </CardContent>
+      </Card>
 
       {/* Top Organizations */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">🏢 Top Organizations</h3>
-        <div className="space-y-3">
-          {stats?.orgUsage.slice(0, 5).map((org) => (
-            <div key={org.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded">
-              <div>
-                <p className="font-medium text-gray-800">{org.name}</p>
-                <p className="text-sm text-gray-600">{org.users} users</p>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            🏢 Top Organizations
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {stats?.orgUsage && stats.orgUsage.length > 0 ? (
+              stats.orgUsage.slice(0, 5).map((org) => (
+                <Card key={org.id} className="border-l-4 border-l-primary/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <p className="font-medium">{org.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {org.users} users
+                        </p>
+                      </div>
+                      <div className="text-right space-y-1">
+                        <Badge variant="secondary" className="text-sm font-bold">
+                          {org.conversations}
+                        </Badge>
+                        <p className="text-xs text-muted-foreground">conversations</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>No organization data available yet</p>
               </div>
-              <div className="text-right">
-                <p className="font-bold text-green-600">{org.conversations}</p>
-                <p className="text-xs text-gray-500">chats</p>
-              </div>
-            </div>
-          ))}
-          {(!stats?.orgUsage || stats.orgUsage.length === 0) && (
-            <p className="text-gray-500 text-center py-4">No organization data yet</p>
-          )}
-        </div>
-      </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

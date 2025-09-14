@@ -79,7 +79,7 @@ function InboundInbox() {
       case 'demo': return 'text-green-400 bg-green-900/20';
       case 'pricing': return 'text-blue-400 bg-blue-900/20';
       case 'support': return 'text-orange-400 bg-orange-900/20';
-      default: return 'text-gray-400 bg-gray-900/20';
+      default: return 'text-muted-foreground bg-muted/20';
     }
   };
 
@@ -212,7 +212,7 @@ function InboundInbox() {
 
 const ContactCenter: React.FC = () => {
   return (
-    <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
+    <div className="flex-1 bg-background p-6 overflow-y-auto">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-2">Contact Center</h1>

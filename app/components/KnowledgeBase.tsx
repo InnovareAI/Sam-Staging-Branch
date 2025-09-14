@@ -200,7 +200,7 @@ function ChunkDrawer() {
 
 const KnowledgeBase: React.FC = () => {
   return (
-    <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
+    <div className="flex-1 bg-background p-6 overflow-y-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>

@@ -2,6 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
@@ -32,7 +36,6 @@ export default function SignUpPage() {
       return;
     }
 
-
     try {
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
@@ -61,9 +64,9 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center space-y-4">
           <div className="mx-auto flex justify-center">
             <img 
               src="/SAM.jpg" 
@@ -72,87 +75,86 @@ export default function SignUpPage() {
               style={{ objectPosition: 'center 30%' }}
             />
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
+          <CardTitle className="text-3xl font-bold">
             Create Your Account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-400">
+          </CardTitle>
+          <CardDescription>
             Sign up for SAM AI
-          </p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSignUp}>
-          <div className="rounded-md shadow-sm space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <input
-                type="text"
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-6" onSubmit={handleSignUp}>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  type="text"
+                  required
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="First name"
+                />
+                <Input
+                  type="text"
+                  required
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Last name"
+                />
+              </div>
+              <Input
+                type="email"
                 required
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-600 placeholder-gray-500 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                placeholder="First name"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email address"
               />
-              <input
-                type="text"
+              <Input
+                type="password"
                 required
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-600 placeholder-gray-500 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                placeholder="Last name"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+              />
+              <Input
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm Password"
               />
             </div>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="appearance-none relative block w-full px-3 py-2 border border-gray-600 placeholder-gray-500 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-              placeholder="Email address"
-            />
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="appearance-none relative block w-full px-3 py-2 border border-gray-600 placeholder-gray-500 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-              placeholder="Password"
-            />
-            <input
-              type="password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="appearance-none relative block w-full px-3 py-2 border border-gray-600 placeholder-gray-500 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-              placeholder="Confirm Password"
-            />
-          </div>
 
-          {error && (
-            <div className="text-red-400 text-sm text-center">{error}</div>
-          )}
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-          {success && (
-            <div className="text-green-400 text-sm text-center">{success}</div>
-          )}
+            {success && (
+              <Alert>
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            )}
 
-          <div>
-            <button
+            <Button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full"
             >
               {loading ? 'Creating account...' : 'Create Account'}
-            </button>
-          </div>
+            </Button>
 
-          <div className="text-center">
-            <p className="text-sm text-gray-400">
-              Already have an account?{' '}
-              <a href="/signin" className="text-purple-400 hover:text-purple-300">
-                Sign in here
-              </a>
-            </p>
-          </div>
-        </form>
-      </div>
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">
+                Already have an account?{' '}
+                <a href="/signin" className="text-primary hover:underline">
+                  Sign in here
+                </a>
+              </p>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

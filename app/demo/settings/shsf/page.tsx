@@ -25,7 +25,6 @@ import {
   Waves,
   Heart,
   Star,
-  Butterfly,
   Flower
 } from 'lucide-react'
 
@@ -86,7 +85,7 @@ export default function SHSFSettingsPage() {
             transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
             className="text-purple-300/30 text-2xl"
           >
-            {[<Sparkles />, <Heart />, <Star />, <Butterfly />, <Flower />, <Waves />][i]}
+            {[<Sparkles />, <Heart />, <Star />, <Flower />, <Waves />][i]}
           </motion.div>
         </motion.div>
       ))}
@@ -115,12 +114,12 @@ export default function SHSFSettingsPage() {
       scale: 1.05, 
       y: -2, 
       opacity: 1,
-      transition: { type: "spring", stiffness: 300, damping: 25 }
+      transition: { type: "spring" as const, stiffness: 300, damping: 25 }
     },
     hover: { 
       scale: 1.02, 
       y: -1,
-      transition: { type: "spring", stiffness: 400, damping: 20 }
+      transition: { type: "spring" as const, stiffness: 400, damping: 20 }
     }
   }
 
@@ -133,7 +132,7 @@ export default function SHSFSettingsPage() {
       transition: {
         delay: i * 0.15,
         duration: 0.8,
-        type: "spring",
+        type: "spring" as const,
         stiffness: 100,
         damping: 15
       }
@@ -144,7 +143,7 @@ export default function SHSFSettingsPage() {
       rotateY: 5,
       scale: 1.02,
       boxShadow: "0 25px 50px rgba(139, 69, 19, 0.1)",
-      transition: { type: "spring", stiffness: 300, damping: 20 }
+      transition: { type: "spring" as const, stiffness: 300, damping: 20 }
     }
   }
 
@@ -153,7 +152,7 @@ export default function SHSFSettingsPage() {
       scale: 1.02,
       boxShadow: "0 0 0 3px rgba(139, 69, 19, 0.1)",
       borderColor: "#8b4513",
-      transition: { type: "spring", stiffness: 300, damping: 25 }
+      transition: { type: "spring" as const, stiffness: 300, damping: 25 }
     }
   }
 
@@ -269,7 +268,7 @@ export default function SHSFSettingsPage() {
                     transition={{ delay: 0.7, duration: 0.8 }}
                     className="text-rose-700 flex items-center gap-2 text-lg"
                   >
-                    <Butterfly className="h-5 w-5" />
+                    <Flower className="h-5 w-5" />
                     SHSF UI - Motion-First Micro-Interactions
                   </motion.p>
                 </div>
@@ -318,14 +317,14 @@ export default function SHSFSettingsPage() {
                     <TabsTrigger 
                       value={tab.id}
                       className="relative w-full h-14 text-gray-700 data-[state=active]:text-white transition-colors duration-300 overflow-hidden rounded-xl"
-                      onHoverStart={() => setIsHovering(true)}
-                      onHoverEnd={() => setIsHovering(false)}
                     >
                       <motion.div
                         variants={tabVariants}
                         initial="inactive"
                         animate={activeTab === tab.id ? "active" : "inactive"}
                         whileHover="hover"
+                        onHoverStart={() => setIsHovering(true)}
+                        onHoverEnd={() => setIsHovering(false)}
                         className="flex items-center gap-3 relative z-10"
                       >
                         <motion.div

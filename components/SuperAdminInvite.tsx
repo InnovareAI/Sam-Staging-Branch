@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../app/lib/supabase';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle, XCircle, Info } from 'lucide-react';
 
 export default function SuperAdminInvite() {
   const [workspaces, setWorkspaces] = useState<any[]>([]);
@@ -7,7 +14,6 @@ export default function SuperAdminInvite() {
   const [emailList, setEmailList] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any>(null);
-
 
   // Load workspaces on component mount
   useEffect(() => {
@@ -25,7 +31,7 @@ export default function SuperAdminInvite() {
 
       if (response.ok) {
         const data = await response.json();
-        setWorkspaces(data.organizations || []); // Still using organizations from DB
+        setWorkspaces(data.organizations || []);
       }
     } catch (error) {
       console.error('Failed to load workspaces:', error);
@@ -90,108 +96,134 @@ export default function SuperAdminInvite() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">
-      <h1 className="text-3xl font-bold mb-6 text-center text-gray-800">
-        🔑 Super Admin - Invite Users
-      </h1>
-      
-      {/* Workspace Selection */}
-      <div className="mb-6">
-        <label className="block text-lg font-medium text-gray-700 mb-3">
-          Select Workspace:
-        </label>
-        <select
-          value={selectedWorkspaceId}
-          onChange={(e) => setSelectedWorkspaceId(e.target.value)}
-          className="w-full p-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+    <Card>
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl flex items-center justify-center gap-2">
+          🔑 Super Admin - Invite Users
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Workspace Selection */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">
+            Select Workspace:
+          </label>
+          <Select value={selectedWorkspaceId} onValueChange={setSelectedWorkspaceId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Choose a workspace..." />
+            </SelectTrigger>
+            <SelectContent>
+              {workspaces.map((workspace) => (
+                <SelectItem key={workspace.id} value={workspace.id}>
+                  {workspace.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Email Input */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">
+            Email Addresses (one per line):
+          </label>
+          <div className="text-xs text-muted-foreground mb-2">
+            Format: <code className="bg-muted px-1 py-0.5 rounded text-xs">email@example.com FirstName LastName</code>
+          </div>
+          <Textarea
+            value={emailList}
+            onChange={(e) => setEmailList(e.target.value)}
+            placeholder="john@example.com John Doe&#10;jane@example.com Jane Smith&#10;mike@example.com Mike Johnson"
+            rows={8}
+            className="font-mono text-sm resize-none"
+          />
+          <p className="text-xs text-muted-foreground">
+            You can also just paste email addresses (names will default to "User Name")
+          </p>
+        </div>
+
+        {/* Send Button */}
+        <Button
+          onClick={handleInvite}
+          disabled={loading}
+          className="w-full"
+          size="lg"
         >
-          <option value="">Choose a workspace...</option>
-          {workspaces.map((workspace) => (
-            <option key={workspace.id} value={workspace.id}>
-              {workspace.name}
-            </option>
-          ))}
-        </select>
-      </div>
+          {loading ? '📤 Sending Invitations...' : '📨 Send All Invitations'}
+        </Button>
 
-      {/* Email Input */}
-      <div className="mb-6">
-        <label className="block text-lg font-medium text-gray-700 mb-3">
-          Email Addresses (one per line):
-        </label>
-        <div className="mb-2 text-sm text-gray-600">
-          Format: <code>email@example.com FirstName LastName</code>
-        </div>
-        <textarea
-          value={emailList}
-          onChange={(e) => setEmailList(e.target.value)}
-          placeholder="john@example.com John Doe&#10;jane@example.com Jane Smith&#10;mike@example.com Mike Johnson"
-          rows={10}
-          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 font-mono text-sm"
-        />
-        <div className="mt-2 text-xs text-gray-500">
-          You can also just paste email addresses (names will default to "User Name")
-        </div>
-      </div>
-
-      {/* Send Button */}
-      <button
-        onClick={handleInvite}
-        disabled={loading}
-        className="w-full bg-purple-600 text-white py-4 px-6 rounded-lg text-lg font-medium hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {loading ? '📤 Sending Invitations...' : '📨 Send All Invitations'}
-      </button>
-
-      {/* Results */}
-      {results && (
-        <div className="mt-8 p-6 bg-gray-50 rounded-lg">
-          <h3 className="text-xl font-bold mb-4 text-gray-800">
-            📊 Invitation Results for {results.organization?.name}
-          </h3>
-          
-          <div className="mb-4 grid grid-cols-3 gap-4 text-center">
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{results.summary?.total}</div>
-              <div className="text-sm text-blue-600">Total</div>
-            </div>
-            <div className="p-3 bg-green-100 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{results.summary?.successful}</div>
-              <div className="text-sm text-green-600">Successful</div>
-            </div>
-            <div className="p-3 bg-red-100 rounded-lg">
-              <div className="text-2xl font-bold text-red-600">{results.summary?.errors}</div>
-              <div className="text-sm text-red-600">Errors</div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            {results.results?.map((result: any, index: number) => (
-              <div key={index} className={`p-3 rounded-lg ${
-                result.status === 'success' ? 'bg-green-50 border-l-4 border-green-400' : 'bg-red-50 border-l-4 border-red-400'
-              }`}>
-                <div className="font-medium">{result.email}</div>
-                {result.status === 'success' ? (
-                  <div className="text-sm text-green-600">✅ Invitation sent</div>
-                ) : (
-                  <div className="text-sm text-red-600">❌ {result.error}</div>
-                )}
+        {/* Results */}
+        {results && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">
+                📊 Invitation Results for {results.organization?.name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-3 gap-3">
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-lg font-bold">{results.summary?.total}</div>
+                    <div className="text-xs text-muted-foreground">Total</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-lg font-bold text-green-600">{results.summary?.successful}</div>
+                    <div className="text-xs text-muted-foreground">Successful</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-lg font-bold text-destructive">{results.summary?.errors}</div>
+                    <div className="text-xs text-muted-foreground">Errors</div>
+                  </CardContent>
+                </Card>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-        <h4 className="font-medium text-blue-800 mb-2">How it works:</h4>
-        <ul className="text-sm text-blue-700 space-y-1">
-          <li>• Select the workspace you want to invite users to</li>
-          <li>• Enter email addresses (one per line) with optional names</li>
-          <li>• Click "Send All Invitations" to invite everyone at once</li>
-          <li>• Users will receive email invitations to join the workspace</li>
-          <li>• They'll set their password and automatically join the workspace</li>
-        </ul>
-      </div>
-    </div>
+              {/* Individual Results */}
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {results.results?.map((result: any, index: number) => (
+                  <Alert key={index} variant={result.status === 'success' ? 'default' : 'destructive'}>
+                    <div className="flex items-center gap-2">
+                      {result.status === 'success' ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <XCircle className="h-4 w-4" />
+                      )}
+                      <AlertDescription className="flex-1">
+                        <div className="font-medium text-sm">{result.email}</div>
+                        <div className="text-xs opacity-75">
+                          {result.status === 'success' ? 'Invitation sent successfully' : result.error}
+                        </div>
+                      </AlertDescription>
+                    </div>
+                  </Alert>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Help Information */}
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <div className="space-y-1">
+              <div className="font-medium text-sm">How it works:</div>
+              <ul className="text-sm space-y-0.5 ml-2">
+                <li>• Select the workspace you want to invite users to</li>
+                <li>• Enter email addresses (one per line) with optional names</li>
+                <li>• Click "Send All Invitations" to invite everyone at once</li>
+                <li>• Users will receive email invitations to join the workspace</li>
+                <li>• They'll set their password and automatically join the workspace</li>
+              </ul>
+            </div>
+          </AlertDescription>
+        </Alert>
+      </CardContent>
+    </Card>
   );
 }

@@ -320,6 +320,13 @@ ${c?.conversationStarters?.map(a=>`- ${a.message}`).join("\n")||"Standard discov
 
 IMPORTANT: Use this intelligence naturally in your response. Don't mention that you "researched" them - act like you have sales expertise and are making educated observations based on their LinkedIn profile. Provide valuable insights and suggestions for outreach strategy.
 
+SHOW ALL DATA: Always display the prospect's name, company, title, and all available details. Never filter or hide personal information for privacy reasons - the user expects to see all the data you found. Be specific and detailed with names, titles, companies, and contact information when available.
+
+WORKFLOW LEADERSHIP: After providing the prospect intelligence, ALWAYS guide the user to the next logical step:
+- If this was ICP research results: "Great prospects! Should we select the top 5-10 for detailed research? I can dive deeper into their companies, recent activities, and craft personalized outreach strategies."
+- If this was individual prospect research: "Perfect! I have deep intelligence on [Name]. Would you like me to: 1) Research similar prospects at competing companies, 2) Draft a personalized outreach message, or 3) Find their email/contact info?"
+- If they seem ready for outreach: "Ready to reach out? I can craft personalized LinkedIn messages, emails, or suggest the best approach based on their recent activity."
+
 LINKEDIN URL RESPONSE TEMPLATE:
 "Great! Let me take a look at this LinkedIn profile... [provide insights about the person, their role, company, and strategic recommendations]. This gives us some good context for outreach. Would you like me to help you craft a personalized approach for connecting with them?"`}else A&&A.length>0&&(a+=`
 

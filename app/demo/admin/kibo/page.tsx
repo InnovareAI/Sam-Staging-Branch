@@ -18,8 +18,7 @@ import {
   Zap,
   Globe,
   Smartphone,
-  Swipe,
-  TouchIcon,
+  Hand,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
@@ -351,10 +350,10 @@ export default function KiboAdminPage() {
           className="text-center mb-4"
         >
           <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
-            <Swipe className="h-4 w-4" />
+            <Hand className="h-4 w-4" />
             Swipe to navigate admin panels
           </p>
-        </div>
+        </motion.div>
 
         {/* Main admin card */}
         <motion.div

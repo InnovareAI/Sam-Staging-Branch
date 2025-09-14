@@ -48,6 +48,12 @@
 - Never commit secrets or API keys
 - Run lint/typecheck commands after changes when available
 
+## CRITICAL: Directory Restrictions
+- **MUST work ONLY in /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7**
+- **NEVER access files outside this directory without explicit permission**
+- **NEVER assume files exist in other directories**
+- **ALWAYS use absolute paths within this project directory**
+
 ---
 
 # SAM AI Documentation Reference

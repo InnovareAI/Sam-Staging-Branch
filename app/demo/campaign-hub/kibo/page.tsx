@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
   Zap, Users, TrendingUp, Mail, LinkedinIcon, Target, Play, ChevronLeft, ChevronRight,
-  BarChart3, DollarSign, Eye, Smartphone, Swipe
+  BarChart3, DollarSign, Eye, Smartphone, Hand
 } from 'lucide-react'
 
 export default function KiboCampaignHubPage() {
@@ -266,7 +266,7 @@ export default function KiboCampaignHubPage() {
           className="text-center mb-4"
         >
           <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
-            <Swipe className="h-4 w-4" />
+            <Hand className="h-4 w-4" />
             Swipe to explore campaign tools
           </p>
         </motion.div>

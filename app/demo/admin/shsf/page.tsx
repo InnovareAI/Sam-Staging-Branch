@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { 
   Shield, Users, Activity, Database, Server, AlertTriangle, CheckCircle,
   TrendingUp, BarChart3, Settings, Globe, Zap, Heart, Star, Sparkles, 
-  Butterfly, Flower, Waves
+  Flower, Waves
 } from 'lucide-react'
 
 export default function SHSFAdminPage() {
@@ -57,7 +57,7 @@ export default function SHSFAdminPage() {
           }}
         >
           <div className="text-purple-300/20 text-3xl">
-            {[<Sparkles />, <Heart />, <Star />, <Butterfly />, <Flower />, <Waves />, <Shield />, <Activity />][i]}
+            {[<Sparkles />, <Heart />, <Star />, <Flower />, <Waves />, <Shield />, <Activity />][i]}
           </div>
         </motion.div>
       ))}
@@ -171,7 +171,7 @@ export default function SHSFAdminPage() {
                     transition={{ delay: 0.7, duration: 1 }}
                     className="text-rose-700 flex items-center gap-2 text-xl"
                   >
-                    <Butterfly className="h-6 w-6" />
+                    <Flower className="h-6 w-6" />
                     SHSF UI - Elegant Motion Dashboard
                   </motion.p>
                 </div>

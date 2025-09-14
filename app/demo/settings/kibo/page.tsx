@@ -24,7 +24,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Smartphone,
-  Gesture
+  Hand
 } from 'lucide-react'
 
 export default function KiboSettingsPage() {
@@ -255,7 +255,7 @@ export default function KiboSettingsPage() {
     const notificationTypes = [
       { title: 'Push Notifications', desc: 'Instant mobile alerts', icon: Smartphone },
       { title: 'Email Updates', desc: 'Daily digest and reports', icon: Bell },
-      { title: 'Touch Feedback', desc: 'Haptic response', icon: Gesture }
+      { title: 'Touch Feedback', desc: 'Haptic response', icon: Hand }
     ]
 
     return (
@@ -399,7 +399,7 @@ export default function KiboSettingsPage() {
           className="text-center mb-4"
         >
           <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
-            <Gesture className="h-4 w-4" />
+            <Hand className="h-4 w-4" />
             Swipe left or right to navigate
           </p>
         </motion.div>

@@ -50,7 +50,6 @@ export class SalesThinkTool {
       problem: 'Determine if this prospect is qualified and ready for sales engagement',
       constraints: [
         'Limited prospect data available',
-        'Need to respect GDPR and privacy regulations',
         'Sales team capacity constraints',
         'Budget and timeline requirements'
       ],

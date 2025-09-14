@@ -94,6 +94,120 @@
       "namedRegex": "^/dashboard/prospect\\-approval(?:/)?$"
     },
     {
+      "page": "/demo/admin",
+      "regex": "^/demo/admin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/admin(?:/)?$"
+    },
+    {
+      "page": "/demo/admin/blocks",
+      "regex": "^/demo/admin/blocks(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/admin/blocks(?:/)?$"
+    },
+    {
+      "page": "/demo/admin/kibo",
+      "regex": "^/demo/admin/kibo(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/admin/kibo(?:/)?$"
+    },
+    {
+      "page": "/demo/admin/origin",
+      "regex": "^/demo/admin/origin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/admin/origin(?:/)?$"
+    },
+    {
+      "page": "/demo/admin/shsf",
+      "regex": "^/demo/admin/shsf(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/admin/shsf(?:/)?$"
+    },
+    {
+      "page": "/demo/admin/skiper",
+      "regex": "^/demo/admin/skiper(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/admin/skiper(?:/)?$"
+    },
+    {
+      "page": "/demo/campaign-hub",
+      "regex": "^/demo/campaign\\-hub(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/campaign\\-hub(?:/)?$"
+    },
+    {
+      "page": "/demo/campaign-hub/blocks",
+      "regex": "^/demo/campaign\\-hub/blocks(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/campaign\\-hub/blocks(?:/)?$"
+    },
+    {
+      "page": "/demo/campaign-hub/kibo",
+      "regex": "^/demo/campaign\\-hub/kibo(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/campaign\\-hub/kibo(?:/)?$"
+    },
+    {
+      "page": "/demo/campaign-hub/origin",
+      "regex": "^/demo/campaign\\-hub/origin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/campaign\\-hub/origin(?:/)?$"
+    },
+    {
+      "page": "/demo/campaign-hub/shsf",
+      "regex": "^/demo/campaign\\-hub/shsf(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/campaign\\-hub/shsf(?:/)?$"
+    },
+    {
+      "page": "/demo/campaign-hub/skiper",
+      "regex": "^/demo/campaign\\-hub/skiper(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/campaign\\-hub/skiper(?:/)?$"
+    },
+    {
+      "page": "/demo/settings",
+      "regex": "^/demo/settings(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/settings(?:/)?$"
+    },
+    {
+      "page": "/demo/settings/blocks",
+      "regex": "^/demo/settings/blocks(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/settings/blocks(?:/)?$"
+    },
+    {
+      "page": "/demo/settings/kibo",
+      "regex": "^/demo/settings/kibo(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/settings/kibo(?:/)?$"
+    },
+    {
+      "page": "/demo/settings/origin",
+      "regex": "^/demo/settings/origin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/settings/origin(?:/)?$"
+    },
+    {
+      "page": "/demo/settings/shsf",
+      "regex": "^/demo/settings/shsf(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/settings/shsf(?:/)?$"
+    },
+    {
+      "page": "/demo/settings/skiper",
+      "regex": "^/demo/settings/skiper(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/settings/skiper(?:/)?$"
+    },
+    {
+      "page": "/demo/showcase",
+      "regex": "^/demo/showcase(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/demo/showcase(?:/)?$"
+    },
+    {
       "page": "/direct-access",
       "regex": "^/direct\\-access(?:/)?$",
       "routeKeys": {},
