@@ -2316,27 +2316,6 @@ export default function Page() {
                                         Owner: {workspace.owner.email || 'Unknown'}
                                       </p>
                                     )}
-                                    {/* Display workspace members */}
-                                    {workspace.workspace_members && workspace.workspace_members.length > 0 && (
-                                      <div className="mt-2">
-                                        <p className="text-gray-400 text-xs mb-1">
-                                          Members ({workspace.workspace_members.length}):
-                                        </p>
-                                        <div className="flex flex-wrap gap-1">
-                                          {workspace.workspace_members.slice(0, 3).map((member: any, idx: number) => (
-                                            <span key={idx} className="text-xs bg-gray-600 text-gray-200 px-2 py-1 rounded">
-                                              {member.user?.email || `User ${member.user_id.slice(0, 8)}`}
-                                              <span className="text-gray-400 ml-1">({member.role})</span>
-                                            </span>
-                                          ))}
-                                          {workspace.workspace_members.length > 3 && (
-                                            <span className="text-xs text-gray-400">
-                                              +{workspace.workspace_members.length - 3} more
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
                                   </div>
                                 </div>
                                 <div className="flex items-center space-x-2">
