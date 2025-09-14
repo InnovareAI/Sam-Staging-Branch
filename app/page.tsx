@@ -37,7 +37,8 @@ import {
   List,
   Info,
   Badge,
-  ArrowLeft
+  ArrowLeft,
+  X
 } from 'lucide-react';
 
 // LinkedIn Logo Component (Official LinkedIn branding)
@@ -118,6 +119,7 @@ export default function Page() {
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'card' | 'info'>('info');
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
 
   // LinkedIn connection state
   const [hasLinkedInConnection, setHasLinkedInConnection] = useState(false);
@@ -2202,7 +2204,12 @@ export default function Page() {
                                     />
                                   )}
                                   <div className="flex items-center space-x-2">
-                                    <h3 className="text-white font-semibold">{workspace.name}</h3>
+                                    <h3 
+                                      className="text-white font-semibold hover:text-purple-400 cursor-pointer transition-colors"
+                                      onClick={() => setSelectedWorkspaceId(workspace.id)}
+                                    >
+                                      {workspace.name}
+                                    </h3>
                                     {workspace.slug && (
                                       <span className={`text-xs px-2 py-1 rounded ${getCompanyColor(workspace.slug)}`}>
                                         {getCompanyName(workspace.slug)}
@@ -2282,7 +2289,12 @@ export default function Page() {
                               </div>
                               
                               <div className="mb-3">
-                                <h3 className="text-white font-semibold mb-1">{workspace.name}</h3>
+                                <h3 
+                                  className="text-white font-semibold mb-1 hover:text-purple-400 cursor-pointer transition-colors"
+                                  onClick={() => setSelectedWorkspaceId(workspace.id)}
+                                >
+                                  {workspace.name}
+                                </h3>
                                 {workspace.slug && (
                                   <span className={`text-xs px-2 py-1 rounded ${getCompanyColor(workspace.slug)}`}>
                                     {getCompanyName(workspace.slug)}
@@ -2342,7 +2354,12 @@ export default function Page() {
                                   )}
                                   <div>
                                     <div className="flex items-center space-x-2 mb-1">
-                                      <h3 className="text-white font-semibold">{workspace.name}</h3>
+                                      <h3 
+                                        className="text-white font-semibold hover:text-purple-400 cursor-pointer transition-colors"
+                                        onClick={() => setSelectedWorkspaceId(workspace.id)}
+                                      >
+                                        {workspace.name}
+                                      </h3>
                                       {workspace.slug && (
                                         <span className={`text-xs px-2 py-1 rounded ${getCompanyColor(workspace.slug)}`}>
                                           {getCompanyName(workspace.slug)}
@@ -2411,6 +2428,161 @@ export default function Page() {
                       </div>
                     )}
                   </>
+                )}
+
+                {/* Workspace Detail Page */}
+                {selectedWorkspaceId && (
+                  (() => {
+                    const selectedWorkspace = workspaces.find(ws => ws.id === selectedWorkspaceId);
+                    if (!selectedWorkspace) return null;
+
+                    const getCompanyColor = (slug: string) => {
+                      if (slug === 'innovareai') return 'bg-blue-600 text-white';
+                      if (slug === '3cubed' || slug === 'sendingcell' || slug === 'wt-matchmaker') return 'bg-orange-600 text-white';
+                      return 'bg-gray-600 text-white';
+                    };
+                    
+                    const getCompanyName = (slug: string) => {
+                      if (slug === 'innovareai') return 'InnovareAI';
+                      if (slug === '3cubed') return '3cubed';
+                      if (slug === 'sendingcell' || slug === 'wt-matchmaker') return '3cubed';
+                      return slug;
+                    };
+
+                    return (
+                      <div className="mt-8 bg-gray-800 rounded-lg p-6 border border-gray-600">
+                        <div className="flex items-center justify-between mb-6">
+                          <div className="flex items-center space-x-3">
+                            <h2 className="text-2xl font-bold text-white">Workspace Details</h2>
+                            {selectedWorkspace.slug && (
+                              <span className={`text-sm px-3 py-1 rounded ${getCompanyColor(selectedWorkspace.slug)}`}>
+                                {getCompanyName(selectedWorkspace.slug)}
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => setSelectedWorkspaceId(null)}
+                            className="text-gray-400 hover:text-white transition-colors"
+                            title="Close details"
+                          >
+                            <X size={24} />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          {/* Basic Information */}
+                          <div className="space-y-4">
+                            <h3 className="text-xl font-semibold text-white border-b border-gray-600 pb-2">
+                              {selectedWorkspace.name}
+                            </h3>
+                            
+                            <div className="space-y-3 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Created:</span>
+                                <span className="text-white">{new Date(selectedWorkspace.created_at).toLocaleDateString()}</span>
+                              </div>
+                              
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Workspace ID:</span>
+                                <span className="text-white font-mono text-xs">{selectedWorkspace.id}</span>
+                              </div>
+                              
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Slug:</span>
+                                <span className="text-white">{selectedWorkspace.slug || 'N/A'}</span>
+                              </div>
+
+                              {isSuperAdmin && selectedWorkspace.owner && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400">Owner:</span>
+                                  <span className="text-white">{selectedWorkspace.owner.email || 'Unknown'}</span>
+                                </div>
+                              )}
+
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Total Members:</span>
+                                <span className="text-white">{selectedWorkspace.member_count || selectedWorkspace.workspace_members?.length || 0}</span>
+                              </div>
+
+                              {selectedWorkspace.pendingInvitations > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400">Pending Invitations:</span>
+                                  <span className="bg-amber-600 text-white text-xs px-2 py-1 rounded">
+                                    {selectedWorkspace.pendingInvitations}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="pt-4">
+                              <button
+                                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex items-center space-x-2 transition-colors"
+                                onClick={() => {
+                                  setInviteWorkspaceId(selectedWorkspace.id);
+                                  setShowInviteUser(true);
+                                }}
+                              >
+                                <Mail size={16} />
+                                <span>Invite User to Workspace</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Members List */}
+                          <div className="space-y-4">
+                            <h3 className="text-xl font-semibold text-white border-b border-gray-600 pb-2">Members</h3>
+                            
+                            {selectedWorkspace.workspace_members && selectedWorkspace.workspace_members.length > 0 ? (
+                              <div className="space-y-2 max-h-64 overflow-y-auto">
+                                {selectedWorkspace.workspace_members.map((member: any, idx: number) => (
+                                  <div key={idx} className="bg-gray-700 rounded p-3 flex items-center justify-between">
+                                    <div>
+                                      <div className="text-white font-medium">
+                                        {member.user?.email || `User ${member.user_id.slice(0, 8)}`}
+                                      </div>
+                                      <div className="text-gray-400 text-sm">
+                                        Joined {new Date(member.created_at).toLocaleDateString()}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      <span className={`text-xs px-2 py-1 rounded ${
+                                        member.role === 'admin' 
+                                          ? 'bg-purple-600 text-white' 
+                                          : member.role === 'owner'
+                                          ? 'bg-yellow-600 text-white'
+                                          : 'bg-gray-600 text-white'
+                                      }`}>
+                                        {member.role}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-center py-8 text-gray-400">
+                                <Users size={48} className="mx-auto mb-3 opacity-50" />
+                                <p>No members found</p>
+                              </div>
+                            )}
+
+                            {/* Pending Invitations */}
+                            {selectedWorkspace.pendingList && selectedWorkspace.pendingList.length > 0 && (
+                              <div className="mt-6">
+                                <h4 className="text-lg font-semibold text-amber-400 mb-3">Pending Invitations</h4>
+                                <div className="space-y-2">
+                                  {selectedWorkspace.pendingList.map((invitation: string, idx: number) => (
+                                    <div key={idx} className="bg-amber-900/20 border border-amber-600/30 rounded p-2">
+                                      <span className="text-amber-300 text-sm">{invitation}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()
                 )}
 
                 {/* Bulk delete controls for workspaces */}
