@@ -1833,7 +1833,7 @@ export default function Page() {
                       {hasLinkedInConnection ? (
                         <>
                           <button 
-                            onClick={() => window.location.href = '/integrations/unipile'}
+                            onClick={() => window.location.href = '/integrations/linkedin'}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
                           >
                             <LinkedInLogo size={16} className="text-white" />

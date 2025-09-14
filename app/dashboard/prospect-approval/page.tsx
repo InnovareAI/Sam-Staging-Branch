@@ -344,7 +344,7 @@ export default function ProspectApprovalDashboard() {
                 </p>
                 <div className="flex gap-3">
                   <Button 
-                    onClick={() => window.open('/integrations/unipile', '_blank')}
+                    onClick={() => window.open('/integrations/linkedin', '_blank')}
                     className="bg-red-600 hover:bg-red-700 text-white"
                   >
                     <LinkedinIcon className="h-4 w-4 mr-2" />
