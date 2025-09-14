@@ -94,13 +94,26 @@ export async function GET(request: NextRequest) {
     
     if (associationError) {
       console.error('Error fetching user account associations:', associationError);
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to fetch user account associations',
-        accounts: [],
-        total: 0,
-        timestamp: new Date().toISOString()
-      }, { status: 500 });
+      
+      // Check if the error is due to missing table
+      if (associationError.message?.includes('relation "user_unipile_accounts" does not exist')) {
+        console.warn('⚠️ user_unipile_accounts table does not exist - using empty associations');
+        // For now, return empty array until table is created
+        var userAssociations = [];
+      } else {
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to fetch user account associations',
+          debug_info: {
+            error_message: associationError.message,
+            error_code: associationError.code,
+            needs_table_creation: associationError.message?.includes('does not exist')
+          },
+          accounts: [],
+          total: 0,
+          timestamp: new Date().toISOString()
+        }, { status: 500 });
+      }
     }
     
     console.log(`📋 User has ${userAssociations?.length || 0} associated accounts in database`);
