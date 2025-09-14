@@ -88,8 +88,16 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
   // Load reCAPTCHA script and render widget when needed
   useEffect(() => {
     if (needsCaptcha && captchaData?.public_key) {
+      console.log('🔧 Loading CAPTCHA script and widget:', {
+        needsCaptcha,
+        hasPublicKey: !!captchaData?.public_key,
+        publicKey: captchaData.public_key?.substring(0, 20) + '...',
+        scriptExists: !!document.querySelector('script[src*="recaptcha"]')
+      });
+
       // Load reCAPTCHA script if not already loaded
       if (!document.querySelector('script[src*="recaptcha"]')) {
+        console.log('📜 Loading Google reCAPTCHA script...');
         const script = document.createElement('script');
         script.src = 'https://www.google.com/recaptcha/api.js';
         script.async = true;
@@ -97,41 +105,94 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
         document.head.appendChild(script);
         
         script.onload = () => {
-          renderCaptcha();
+          console.log('✅ reCAPTCHA script loaded successfully');
+          setTimeout(renderCaptcha, 500); // Small delay to ensure script is ready
+        };
+        
+        script.onerror = (error) => {
+          console.error('❌ Failed to load reCAPTCHA script:', error);
+          setConnectionError('Failed to load CAPTCHA verification. Please check your internet connection or disable ad blockers.');
         };
       } else {
-        // Script already loaded, render immediately
-        renderCaptcha();
+        console.log('📜 reCAPTCHA script already loaded, rendering widget...');
+        // Script already loaded, render immediately with small delay
+        setTimeout(renderCaptcha, 100);
       }
     }
   }, [needsCaptcha, captchaData]);
 
   const renderCaptcha = () => {
-    if (window.grecaptcha && captchaData?.public_key) {
-      // Clear any existing widget
-      const captchaContainer = document.getElementById('linkedin-captcha');
-      if (captchaContainer) {
-        captchaContainer.innerHTML = '';
-        
-        try {
-          window.grecaptcha.render('linkedin-captcha', {
-            sitekey: captchaData.public_key,
-            callback: (response: string) => {
-              setCaptchaResponse(response);
-              console.log('CAPTCHA completed:', response);
-            },
-            'expired-callback': () => {
-              setCaptchaResponse('');
-              console.log('CAPTCHA expired');
-            },
-            'error-callback': () => {
-              setCaptchaResponse('');
-              console.log('CAPTCHA error');
-            }
-          });
-        } catch (error) {
-          console.error('Error rendering CAPTCHA:', error);
+    console.log('🎯 Attempting to render CAPTCHA widget:', {
+      hasGrecaptcha: !!window.grecaptcha,
+      hasPublicKey: !!captchaData?.public_key,
+      publicKey: captchaData?.public_key?.substring(0, 20) + '...',
+      containerExists: !!document.getElementById('linkedin-captcha')
+    });
+
+    if (!window.grecaptcha) {
+      console.warn('⚠️ Google reCAPTCHA not available yet, retrying in 1 second...');
+      setTimeout(renderCaptcha, 1000);
+      return;
+    }
+
+    if (!captchaData?.public_key) {
+      console.error('❌ No CAPTCHA public key available');
+      setConnectionError('CAPTCHA configuration error. Please try again or contact support.');
+      return;
+    }
+
+    const captchaContainer = document.getElementById('linkedin-captcha');
+    if (!captchaContainer) {
+      console.error('❌ CAPTCHA container not found in DOM');
+      return;
+    }
+
+    // Clear any existing widget
+    captchaContainer.innerHTML = '';
+    
+    try {
+      console.log('🎨 Rendering reCAPTCHA widget with site key:', captchaData.public_key);
+      
+      const widgetId = window.grecaptcha.render('linkedin-captcha', {
+        sitekey: captchaData.public_key,
+        callback: (response: string) => {
+          console.log('✅ CAPTCHA completed successfully, response length:', response.length);
+          setCaptchaResponse(response);
+        },
+        'expired-callback': () => {
+          console.warn('⏰ CAPTCHA expired, user needs to solve again');
+          setCaptchaResponse('');
+          setConnectionError('CAPTCHA expired. Please solve the verification again.');
+        },
+        'error-callback': () => {
+          console.error('❌ CAPTCHA error occurred');
+          setCaptchaResponse('');
+          setConnectionError('CAPTCHA verification failed. Please refresh the page and try again.');
         }
+      });
+      
+      console.log('📦 reCAPTCHA widget created with ID:', widgetId);
+      
+    } catch (error) {
+      console.error('💥 Error rendering CAPTCHA widget:', error);
+      setConnectionError(`CAPTCHA loading failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Show fallback message
+      if (captchaContainer) {
+        captchaContainer.innerHTML = `
+          <div class="p-4 bg-yellow-900/20 border border-yellow-500/30 rounded text-center">
+            <p class="text-yellow-300 text-sm mb-2">⚠️ CAPTCHA Widget Failed to Load</p>
+            <p class="text-xs text-yellow-400">This might be due to:</p>
+            <ul class="text-xs text-yellow-400 mt-1">
+              <li>• Ad blocker blocking reCAPTCHA</li>
+              <li>• Network connectivity issues</li>
+              <li>• Browser compatibility</li>
+            </ul>
+            <p class="text-xs text-yellow-300 mt-2 font-medium">
+              Please complete verification in the LinkedIn mobile app instead.
+            </p>
+          </div>
+        `;
       }
     }
   };
@@ -180,18 +241,23 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
         return;
       }
 
-      // Attempt to create LinkedIn account connection through Unipile API
+      // Attempt to create LinkedIn account connection
       const createResponse = await fetch('/api/unipile/accounts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'create',
+          action: needsCaptcha && pendingAccountId ? 'complete_captcha' : 'create',
+          ...(needsCaptcha && pendingAccountId && { 
+            account_id: pendingAccountId,
+            captcha_response: captchaResponse 
+          }),
           linkedin_credentials: {
             username: linkedInCredentials.username,
             password: linkedInCredentials.password,
-            ...(linkedInCredentials.twoFaCode && { twoFaCode: linkedInCredentials.twoFaCode })
+            ...(linkedInCredentials.twoFaCode && { twoFaCode: linkedInCredentials.twoFaCode }),
+            ...(captchaResponse && { captchaResponse: captchaResponse })
           }
         })
       });
@@ -199,6 +265,17 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
       const createData = await createResponse.json();
       
       if (createData.success) {
+        // Handle CAPTCHA completion
+        if (createData.action === 'captcha_completed') {
+          console.log('CAPTCHA verification completed successfully');
+          setNeedsCaptcha(false);
+          setCaptchaResponse('');
+          setCaptchaData(null);
+          setConnectionError('');
+          setStep(3);
+          return;
+        }
+
         // Check if this is actually a successful connection or requires 2FA
         // If response is successful but account isn't in running state, it likely needs 2FA
         const verifyConnection = await fetch('/api/unipile/accounts');
@@ -221,6 +298,7 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
 
         setStep(3);
         setNeeds2FA(false);
+        setNeedsCaptcha(false);
         // Update success message based on action type
         if (createData.action === 'already_connected') {
           console.log(`LinkedIn already connected - ${createData.running_accounts} accounts running`);
@@ -267,8 +345,8 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
       case 1:
         return (
           <div className="text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <LinkedInLogo size={32} className="text-blue-600" />
+            <div className="w-16 h-16 bg-[#0A66C2]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <LinkedInLogo size={32} className="text-[#0A66C2]" />
             </div>
             <h2 className="text-2xl font-bold text-white mb-3">Welcome to SAM AI!</h2>
             <p className="text-gray-400 mb-6">
@@ -311,8 +389,8 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
       case 2:
         return (
           <div className="text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <LinkedInLogo size={32} className="text-blue-600" />
+            <div className="w-16 h-16 bg-[#0A66C2]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <LinkedInLogo size={32} className="text-[#0A66C2]" />
             </div>
             <h2 className="text-xl font-bold text-white mb-3">Connect Your LinkedIn</h2>
             <p className="text-gray-400 mb-6">
@@ -463,14 +541,14 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
                       </div>
                       <div>
                         <h3 className="text-white font-medium text-sm">LinkedIn Verification Required</h3>
-                        <p className="text-orange-300 text-xs">Please complete the CAPTCHA verification</p>
+                        <p className="text-orange-300 text-xs">Please complete verification on LinkedIn directly</p>
                       </div>
                     </div>
                     
                     {/* CAPTCHA Interface */}
                     <div className="bg-gray-800 rounded-lg p-4 mb-4">
                       <div className="text-center">
-                        <div className="inline-block bg-white p-2 rounded-lg mb-4">
+                        <div className="inline-block bg-gray-700 p-2 rounded-lg mb-4">
                           {/* Google reCAPTCHA container */}
                           <div 
                             id="linkedin-captcha"
@@ -486,29 +564,42 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
                             )}
                           </div>
                         </div>
-                        <p className="text-orange-300 text-xs">
-                          Complete the verification above to continue connecting your LinkedIn account
+                        <p className="text-blue-300 text-sm mb-3">
+                          Please follow these steps to complete LinkedIn verification:
                         </p>
+                        
+                        <div className="space-y-2 text-left mb-4">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-blue-400 font-bold">1.</span>
+                            <span className="text-white text-xs">Open LinkedIn mobile app or linkedin.com</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-blue-400 font-bold">2.</span>
+                            <span className="text-white text-xs">Complete any CAPTCHA or verification prompts</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-green-400 font-bold">3.</span>
+                            <span className="text-white text-xs">Return here and check the box below</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* CAPTCHA Response Input */}
+                    {/* Manual Verification Confirmation */}
                     <div>
-                      <label className="block text-white text-sm font-medium mb-2 text-left">
-                        Verification Response
+                      <label className="flex items-center space-x-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!!captchaResponse}
+                          onChange={(e) => setCaptchaResponse(e.target.checked ? 'manual_verification_confirmed' : '')}
+                          className="w-4 h-4 text-blue-600 bg-gray-800 border-gray-600 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-white text-sm">
+                          I have completed the verification on LinkedIn
+                        </span>
                       </label>
-                      <input
-                        type="text"
-                        value={captchaResponse}
-                        placeholder="CAPTCHA will auto-fill here"
-                        className="w-full px-3 py-2 bg-gray-800 border border-orange-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-orange-400"
-                        disabled={true}
-                      />
-                      <p className="text-gray-400 text-xs mt-1 text-left">
-                        {captchaResponse 
-                          ? 'CAPTCHA verification completed - you can now proceed' 
-                          : 'The verification response will be automatically captured'
-                        }
+                      <p className="text-gray-400 text-xs mt-2 ml-7">
+                        Check this box after you've completed the CAPTCHA or security verification on LinkedIn
                       </p>
                     </div>
                   </div>
@@ -541,7 +632,7 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
                 !linkedInCredentials.username || 
                 !linkedInCredentials.password ||
                 (needs2FA && twoFAMethod === 'code' && !linkedInCredentials.twoFaCode) ||
-                (needsCaptcha && !captchaResponse)
+                false // Allow users to proceed after LinkedIn app verification
               }
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2"
             >
@@ -557,8 +648,8 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
                       : 'Connecting...'
                   : needsCaptcha
                     ? captchaResponse
-                      ? 'Continue with CAPTCHA'
-                      : 'Complete CAPTCHA Above'
+                      ? 'Continue with Verification'
+                      : 'Verification Complete - Click to Continue'
                     : needs2FA && twoFAMethod === 'code'
                       ? 'Verify Authentication Code'
                       : 'Connect LinkedIn Account'
@@ -579,7 +670,7 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
       case 3:
         return (
           <div className="text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-green-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
             <h2 className="text-xl font-bold text-white mb-3">Successfully Connected!</h2>

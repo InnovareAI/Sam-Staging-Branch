@@ -8,12 +8,12 @@ import {
   LinkedinIcon, 
   CheckCircle, 
   AlertCircle, 
-  ExternalLink, 
   RefreshCw,
   Plus,
   Settings,
   Info
 } from 'lucide-react'
+import LinkedInOnboarding from '@/components/LinkedInOnboarding'
 
 interface UnipileAccount {
   id: string
@@ -44,34 +44,16 @@ export default function UnipileIntegrationPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [duplicates, setDuplicates] = useState<any[]>([])
   const [autoCleanupInProgress, setAutoCleanupInProgress] = useState(false)
+  const [showLinkedInModal, setShowLinkedInModal] = useState(false)
 
   const fetchAccounts = async () => {
     try {
       setError(null)
-      const response = await fetch('/api/unipile/accounts')
+      const response = await fetch('/api/contact-center/accounts')
       if (response.ok) {
         const data = await response.json()
         setAccounts(data.accounts || [])
-        setDuplicates(data.duplicates || [])
-        
-        // Automatically clean up duplicates in the background if detected
-        if (data.duplicates_detected > 0) {
-          setAutoCleanupInProgress(true)
-          setTimeout(async () => {
-            try {
-              const cleanupResponse = await fetch('/api/unipile/accounts?cleanup=true')
-              if (cleanupResponse.ok) {
-                const cleanupData = await cleanupResponse.json()
-                setAccounts(cleanupData.accounts || [])
-                setDuplicates([])
-              }
-            } catch (error) {
-              console.error('Auto cleanup error:', error)
-            } finally {
-              setAutoCleanupInProgress(false)
-            }
-          }, 2000) // 2 second delay to let user see the page first
-        }
+        setDuplicates([])
       } else {
         throw new Error('Failed to fetch accounts')
       }
@@ -102,15 +84,16 @@ export default function UnipileIntegrationPage() {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold">Unipile Integration</h1>
+          <h1 className="text-3xl font-bold text-[#0A66C2]">LinkedIn Integration</h1>
           <p className="text-muted-foreground mt-2">
-            Connect your LinkedIn accounts to enable prospect enrichment and messaging
+            Connect your LinkedIn account to enable prospect enrichment and messaging
           </p>
         </div>
         <Button 
           onClick={refreshAccounts} 
           disabled={refreshing}
           variant="outline"
+          className="border-[#0A66C2] text-[#0A66C2] hover:bg-[#0A66C2] hover:text-white"
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
           Refresh
@@ -119,20 +102,11 @@ export default function UnipileIntegrationPage() {
 
       {/* Status Messages */}
       {loading ? (
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-[#0A66C2]/20 bg-[#0A66C2]/5">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <Info className="h-5 w-5 text-blue-600" />
-              <p className="text-blue-800">Loading your Unipile connections...</p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : autoCleanupInProgress ? (
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <RefreshCw className="h-5 w-5 text-blue-600 animate-spin" />
-              <p className="text-blue-800">Optimizing your LinkedIn connections...</p>
+              <Info className="h-5 w-5 text-[#0A66C2]" />
+              <p className="text-[#0A66C2]/80">Loading your LinkedIn connections...</p>
             </div>
           </CardContent>
         </Card>
@@ -152,120 +126,142 @@ export default function UnipileIntegrationPage() {
               <CheckCircle className="h-5 w-5 text-green-600" />
               <p className="text-green-800">
                 Great! You have {linkedInAccounts.length} LinkedIn account{linkedInAccounts.length !== 1 ? 's' : ''} connected.
-                You can now use the Prospect Approval system.
+                You can now use SAM AI's prospect features.
               </p>
             </div>
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-[#0A66C2]/20 bg-[#0A66C2]/5">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-              <p className="text-red-800">
-                No LinkedIn accounts connected. Please connect your LinkedIn account to use SAM AI's prospect features.
-              </p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <LinkedinIcon className="h-5 w-5 text-[#0A66C2]" />
+                <p className="text-[#0A66C2]/80">
+                  Connect your LinkedIn account to get started with SAM AI
+                </p>
+              </div>
+              <Button 
+                onClick={() => setShowLinkedInModal(true)}
+                className="bg-[#0A66C2] hover:bg-[#084d94] text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Connect LinkedIn
+              </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
 
-      {/* Connection Instructions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <LinkedinIcon className="h-5 w-5" />
-            LinkedIn Connection Guide
-          </CardTitle>
-          <CardDescription>
-            Follow these steps to connect your LinkedIn account to Unipile
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium text-blue-600">
-                1
+      {/* Connection Benefits */}
+      {!hasLinkedInConnections && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-[#0A66C2]">
+              <LinkedinIcon className="h-5 w-5" />
+              Why Connect LinkedIn?
+            </CardTitle>
+            <CardDescription>
+              Unlock powerful prospect research and messaging capabilities
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-[#0A66C2]/10 rounded-full flex items-center justify-center">
+                    <Users className="h-4 w-4 text-[#0A66C2]" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-[#0A66C2]">Prospect Research</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Access detailed profile information and company insights
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-[#0A66C2]/10 rounded-full flex items-center justify-center">
+                    <MessageSquare className="h-4 w-4 text-[#0A66C2]" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-[#0A66C2]">Smart Messaging</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Send personalized messages directly through LinkedIn
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h4 className="font-medium">Access Unipile Dashboard</h4>
-                <p className="text-sm text-muted-foreground">
-                  Open the Unipile dashboard in a new tab to manage your account connections
-                </p>
-                <Button 
-                  className="mt-2" 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => window.open('https://dashboard.unipile.com', '_blank')}
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Open Unipile Dashboard
-                </Button>
+
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-[#0A66C2]/10 rounded-full flex items-center justify-center">
+                    <Shield className="h-4 w-4 text-[#0A66C2]" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-[#0A66C2]">Secure & Private</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Your credentials are encrypted and securely stored
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-[#0A66C2]/10 rounded-full flex items-center justify-center">
+                    <CheckCircle className="h-4 w-4 text-[#0A66C2]" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-[#0A66C2]">Easy Setup</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Connect in just a few clicks with your existing LinkedIn account
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium text-blue-600">
-                2
-              </div>
-              <div>
-                <h4 className="font-medium">Connect LinkedIn Account</h4>
-                <p className="text-sm text-muted-foreground">
-                  In the Unipile dashboard, add a new LinkedIn account by providing your credentials
-                </p>
-              </div>
+            <div className="bg-[#0A66C2]/5 p-4 rounded-lg border border-[#0A66C2]/20">
+              <h5 className="font-medium text-[#0A66C2] mb-2">Ready to get started?</h5>
+              <p className="text-sm text-[#0A66C2]/80 mb-3">
+                Click the button below to connect your LinkedIn account and unlock SAM AI's full potential.
+              </p>
+              <Button 
+                onClick={() => setShowLinkedInModal(true)}
+                className="bg-[#0A66C2] hover:bg-[#084d94] text-white"
+              >
+                <LinkedinIcon className="h-4 w-4 mr-2" />
+                Connect LinkedIn Account
+              </Button>
             </div>
-
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium text-blue-600">
-                3
-              </div>
-              <div>
-                <h4 className="font-medium">Verify Connection</h4>
-                <p className="text-sm text-muted-foreground">
-                  Return to this page and click "Refresh" to verify your LinkedIn account is connected
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <h5 className="font-medium text-blue-900 mb-2">Important Notes:</h5>
-            <ul className="text-sm text-blue-800 space-y-1">
-              <li>• Use your regular LinkedIn login credentials</li>
-              <li>• Premium LinkedIn accounts provide enhanced features</li>
-              <li>• SAM AI automatically manages your connections and prevents duplicates</li>
-              <li>• All data is securely processed through Unipile's platform</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Connected Accounts */}
       {linkedInAccounts.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Connected LinkedIn Accounts</CardTitle>
+            <CardTitle className="text-[#0A66C2]">Connected LinkedIn Accounts</CardTitle>
             <CardDescription>
-              Your active LinkedIn connections through Unipile
+              Your active LinkedIn accounts integrated with SAM AI
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {linkedInAccounts.map((account) => (
-                <div key={account.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div key={account.id} className="flex items-center justify-between p-4 border border-[#0A66C2]/20 rounded-lg bg-[#0A66C2]/5">
                   <div className="flex items-center gap-3">
-                    <LinkedinIcon className="h-8 w-8 text-blue-600" />
+                    <LinkedinIcon className="h-8 w-8 text-[#0A66C2]" />
                     <div>
-                      <div className="font-medium">{account.name}</div>
+                      <div className="font-medium text-[#0A66C2]">{account.name}</div>
                       <div className="text-sm text-muted-foreground">
                         @{account.connection_params?.im?.publicIdentifier || account.connection_params?.im?.username}
                       </div>
                       {account.connection_params?.im?.premiumFeatures && (
                         <div className="flex gap-1 mt-1">
                           {account.connection_params.im.premiumFeatures.map((feature) => (
-                            <Badge key={feature} variant="secondary" className="text-xs">
+                            <Badge key={feature} className="text-xs bg-[#0A66C2] text-white">
                               {feature.replace('_', ' ')}
                             </Badge>
                           ))}
@@ -274,7 +270,10 @@ export default function UnipileIntegrationPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <Badge variant={account.sources[0]?.status === 'OK' ? 'default' : 'secondary'}>
+                    <Badge 
+                      variant={account.sources[0]?.status === 'OK' ? 'default' : 'secondary'}
+                      className={account.sources[0]?.status === 'OK' ? 'bg-green-500 text-white' : ''}
+                    >
                       {account.sources[0]?.status === 'OK' ? 'Active' : account.sources[0]?.status || 'Unknown'}
                     </Badge>
                     <div className="text-xs text-muted-foreground mt-1">
@@ -291,34 +290,43 @@ export default function UnipileIntegrationPage() {
       {/* Help & Support */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-[#0A66C2]">
             <Settings className="h-5 w-5" />
             Need Help?
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            If you're having trouble connecting your LinkedIn account or need assistance:
+            Having trouble connecting your LinkedIn account? Here are some quick tips:
           </p>
-          <div className="flex gap-3">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => window.open('https://docs.unipile.com', '_blank')}
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Unipile Documentation
-            </Button>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>• Make sure you're using your correct LinkedIn email and password</p>
+            <p>• If LinkedIn asks for verification, complete it in your browser first</p>
+            <p>• Premium LinkedIn accounts work best with SAM AI</p>
+            <p>• Your credentials are encrypted and stored securely</p>
+          </div>
+          <div className="flex gap-3 pt-2">
             <Button 
               variant="outline" 
               size="sm"
               onClick={() => window.location.href = '/dashboard/prospect-approval'}
+              className="border-[#0A66C2] text-[#0A66C2] hover:bg-[#0A66C2] hover:text-white"
             >
               Return to Prospect Approval
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      {/* LinkedIn Onboarding Modal */}
+      <LinkedInOnboarding
+        isOpen={showLinkedInModal}
+        onClose={() => setShowLinkedInModal(false)}
+        onComplete={() => {
+          setShowLinkedInModal(false)
+          fetchAccounts() // Refresh the accounts after connection
+        }}
+      />
     </div>
   )
 }
