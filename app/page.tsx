@@ -10,6 +10,7 @@ import ConversationHistory from '../components/ConversationHistory';
 import InviteUserPopup, { InviteFormData } from '../components/InviteUserPopup';
 import AuthModal from '../components/AuthModal';
 import LinkedInOnboarding from '../components/LinkedInOnboarding';
+import { UnipileModal } from '../components/integrations/UnipileModal';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { 
   MessageCircle, 
@@ -126,6 +127,7 @@ export default function Page() {
   const [hasLinkedInConnection, setHasLinkedInConnection] = useState(false);
   const [linkedInLoading, setLinkedInLoading] = useState(false);
   const [showLinkedInOnboarding, setShowLinkedInOnboarding] = useState(false);
+  const [showUnipileModal, setShowUnipileModal] = useState(true); // Show on page load for testing
   const [linkedInSkipped, setLinkedInSkipped] = useState(false);
   const [isDisconnectingLinkedIn, setIsDisconnectingLinkedIn] = useState(false);
 
@@ -252,11 +254,15 @@ export default function Page() {
       const savedMessages = localStorage.getItem('sam_messages');
       if (savedMessages) {
         try {
-          const parsedMessages = JSON.parse(savedMessages);
-          if (Array.isArray(parsedMessages) && parsedMessages.length > 0) {
-            setMessages(parsedMessages);
-            setShowStarterScreen(false);
-          }
+          // For testing Unipile modal, clear saved messages and force starter screen
+          localStorage.removeItem('sam-messages');
+          
+          // Original logic commented out for testing
+          // const parsedMessages = JSON.parse(savedMessages);
+          // if (Array.isArray(parsedMessages) && parsedMessages.length > 0) {
+          //   setMessages(parsedMessages);
+          //   setShowStarterScreen(false);
+          // }
         } catch (error) {
           console.error('Error loading saved messages:', error);
         }
@@ -1822,6 +1828,52 @@ export default function Page() {
                 </div>
               </div>
 
+              {/* Unipile Multi-Channel Integration */}
+              <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 className="text-2xl font-semibold text-white mb-6">Unipile Multi-Channel Integration</h2>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <h3 className="text-white font-medium">Multi-Platform Messaging</h3>
+                      </div>
+                      <p className="text-gray-300 text-sm">
+                        Connect LinkedIn, Gmail, Outlook, and SMTP for unified outreach campaigns
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button 
+                        onClick={() => setShowUnipileModal(true)}
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                      >
+                        <Settings size={16} className="text-white" />
+                        <span>Configure Unipile</span>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Preview of available platforms */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                    <div className="bg-blue-600 rounded-lg p-3 text-center">
+                      <LinkedinIcon className="w-6 h-6 text-white mx-auto mb-1" />
+                      <span className="text-xs text-white">LinkedIn</span>
+                    </div>
+                    <div className="bg-red-600 rounded-lg p-3 text-center">
+                      <Mail className="w-6 h-6 text-white mx-auto mb-1" />
+                      <span className="text-xs text-white">Gmail</span>
+                    </div>
+                    <div className="bg-blue-500 rounded-lg p-3 text-center">
+                      <Mail className="w-6 h-6 text-white mx-auto mb-1" />
+                      <span className="text-xs text-white">Outlook</span>
+                    </div>
+                    <div className="bg-gray-600 rounded-lg p-3 text-center">
+                      <Settings className="w-6 h-6 text-white mx-auto mb-1" />
+                      <span className="text-xs text-white">SMTP</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* App Settings */}
               <div className="bg-gray-800 rounded-lg p-6 mb-6">
                 <h2 className="text-2xl font-semibold text-white mb-6">App Settings</h2>
@@ -3080,6 +3132,12 @@ export default function Page() {
         isOpen={showLinkedInOnboarding}
         onClose={handleLinkedInOnboardingSkip}
         onComplete={handleLinkedInOnboardingComplete}
+      />
+
+      {/* Unipile Multi-Channel Integration Modal */}
+      <UnipileModal
+        isOpen={showUnipileModal}
+        onClose={() => setShowUnipileModal(false)}
       />
     </div>
   );
