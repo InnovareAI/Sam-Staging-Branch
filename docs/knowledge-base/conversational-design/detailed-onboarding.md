@@ -1,8 +1,12 @@
-# Detailed Onboarding Flow (7-Stage)
-Version: v4.4 | Last Updated: 2025-09-09
+# ICP-Driven Onboarding Flow (7-Stage Intelligence-First)
+Version: v5.0 | Last Updated: 2025-09-14
 
 ## Purpose
-This document provides the **detailed 7‑stage onboarding flow** for SAM, including lead questions, variants, must‑have vs nice‑to‑have fields, probes, example user answers + SAM responses, RAG field mappings, and compliance notes.
+This document provides the **ICP-driven 7‑stage onboarding flow** for SAM, where instead of asking abstract questions, SAM actively helps users discover and model their perfect ICPs using real data and intelligence capabilities. All exploration results are saved to the knowledge base for continuous learning and optimization.
+
+## Key Innovation: Intelligence-First Approach
+- **Before**: Abstract questions → User provides answers → Manual analysis required
+- **After**: Real data research → Interactive ICP building → Immediate actionable results
 
 ---
 

@@ -4,8 +4,8 @@
  * Centralized management of all MCP servers and tools
  */
 
-// import { BrightDataMCPServer } from './bright-data-mcp'
-// import { ApifyMCPServer } from './apify-mcp'
+import { BrightDataMCPServer } from './bright-data-mcp'
+import { ApifyMCPServer } from './apify-mcp'
 import { GoogleSearchMCPServer } from './google-search-mcp'
 import { UnipileMCPServer } from './unipile-mcp'
 import { N8NMCPServer } from './n8n-mcp'
@@ -34,8 +34,8 @@ export interface MCPServerConfig {
 }
 
 export class MCPRegistry {
-  // private brightDataServer?: BrightDataMCPServer
-  // private apifyServer?: ApifyMCPServer
+  private brightDataServer?: BrightDataMCPServer
+  private apifyServer?: ApifyMCPServer
   private googleSearchServer?: GoogleSearchMCPServer
   private unipileServer?: UnipileMCPServer
   private n8nServer?: N8NMCPServer
@@ -46,17 +46,17 @@ export class MCPRegistry {
     try {
       const initializedServers: string[] = []
 
-      // // Initialize Bright Data MCP Server
-      // if (config.brightData) {
-      //   this.brightDataServer = new BrightDataMCPServer(config.brightData)
-      //   initializedServers.push('Bright Data MCP')
-      // }
+      // Initialize Bright Data MCP Server
+      if (config.brightData) {
+        this.brightDataServer = new BrightDataMCPServer(config.brightData)
+        initializedServers.push('Bright Data MCP')
+      }
 
-      // // Initialize Apify MCP Server  
-      // if (config.apify) {
-      //   this.apifyServer = new ApifyMCPServer(config.apify)
-      //   initializedServers.push('Apify MCP')
-      // }
+      // Initialize Apify MCP Server  
+      if (config.apify) {
+        this.apifyServer = new ApifyMCPServer(config.apify)
+        initializedServers.push('Apify MCP')
+      }
 
       // Initialize Google Search MCP Server
       if (config.googleSearch) {
@@ -101,19 +101,19 @@ export class MCPRegistry {
   async listAllTools(): Promise<{ tools: Array<MCPTool & { server: string }> }> {
     const allTools: Array<MCPTool & { server: string }> = []
 
-    // if (this.brightDataServer) {
-    //   const brightDataTools = await this.brightDataServer.listTools()
-    //   brightDataTools.tools.forEach(tool => {
-    //     allTools.push({ ...tool, server: 'bright-data' })
-    //   })
-    // }
+    if (this.brightDataServer) {
+      const brightDataTools = await this.brightDataServer.listTools()
+      brightDataTools.tools.forEach(tool => {
+        allTools.push({ ...tool, server: 'bright-data' })
+      })
+    }
 
-    // if (this.apifyServer) {
-    //   const apifyTools = await this.apifyServer.listTools()
-    //   apifyTools.tools.forEach(tool => {
-    //     allTools.push({ ...tool, server: 'apify' })
-    //   })
-    // }
+    if (this.apifyServer) {
+      const apifyTools = await this.apifyServer.listTools()
+      apifyTools.tools.forEach(tool => {
+        allTools.push({ ...tool, server: 'apify' })
+      })
+    }
 
     if (this.googleSearchServer) {
       const googleSearchTools = await this.googleSearchServer.listTools()
@@ -140,29 +140,29 @@ export class MCPRegistry {
     const server = request.server || this.detectServerFromTool(request.params.name)
 
     switch (server) {
-      // case 'bright-data':
-      //   if (!this.brightDataServer) {
-      //     return {
-      //       content: [{
-      //         type: 'text',
-      //         text: 'Bright Data MCP server not available'
-      //       }],
-      //       isError: true
-      //     }
-      //   }
-      //   return await this.brightDataServer.callTool(request)
+      case 'bright-data':
+        if (!this.brightDataServer) {
+          return {
+            content: [{
+              type: 'text',
+              text: 'Bright Data MCP server not available'
+            }],
+            isError: true
+          }
+        }
+        return await this.brightDataServer.callTool(request)
 
-      // case 'apify':
-      //   if (!this.apifyServer) {
-      //     return {
-      //       content: [{
-      //         type: 'text',
-      //         text: 'Apify MCP server not available'
-      //       }],
-      //       isError: true
-      //     }
-      //   }
-      //   return await this.apifyServer.callTool(request)
+      case 'apify':
+        if (!this.apifyServer) {
+          return {
+            content: [{
+              type: 'text',
+              text: 'Apify MCP server not available'
+            }],
+            isError: true
+          }
+        }
+        return await this.apifyServer.callTool(request)
 
       case 'google-search':
         if (!this.googleSearchServer) {
@@ -232,13 +232,13 @@ export class MCPRegistry {
   private getAvailableServers(): string[] {
     const servers: string[] = []
     
-    // if (this.brightDataServer) {
-    //   servers.push('bright-data')
-    // }
+    if (this.brightDataServer) {
+      servers.push('bright-data')
+    }
     
-    // if (this.apifyServer) {
-    //   servers.push('apify')
-    // }
+    if (this.apifyServer) {
+      servers.push('apify')
+    }
 
     if (this.googleSearchServer) {
       servers.push('google-search')
@@ -248,31 +248,31 @@ export class MCPRegistry {
   }
 
   async getServerStatus(): Promise<{
-    // brightData: { available: boolean; tools: number }
-    // apify: { available: boolean; tools: number }
+    brightData: { available: boolean; tools: number }
+    apify: { available: boolean; tools: number }
     googleSearch: { available: boolean; tools: number }
     total: { servers: number; tools: number }
   }> {
-    // const brightDataTools = this.brightDataServer ? (await this.brightDataServer.listTools()).tools.length : 0
-    // const apifyTools = this.apifyServer ? (await this.apifyServer.listTools()).tools.length : 0
+    const brightDataTools = this.brightDataServer ? (await this.brightDataServer.listTools()).tools.length : 0
+    const apifyTools = this.apifyServer ? (await this.apifyServer.listTools()).tools.length : 0
     const googleSearchTools = this.googleSearchServer ? (await this.googleSearchServer.listTools()).tools.length : 0
 
     return {
-      // brightData: {
-      //   available: !!this.brightDataServer,
-      //   tools: brightDataTools
-      // },
-      // apify: {
-      //   available: !!this.apifyServer,
-      //   tools: apifyTools
-      // },
+      brightData: {
+        available: !!this.brightDataServer,
+        tools: brightDataTools
+      },
+      apify: {
+        available: !!this.apifyServer,
+        tools: apifyTools
+      },
       googleSearch: {
         available: !!this.googleSearchServer,
         tools: googleSearchTools
       },
       total: {
         servers: this.getAvailableServers().length,
-        tools: googleSearchTools // brightDataTools + apifyTools + googleSearchTools
+        tools: brightDataTools + apifyTools + googleSearchTools
       }
     }
   }
@@ -371,20 +371,20 @@ export const mcpRegistry = new MCPRegistry()
 // Configuration helpers
 export function createMCPConfig(): MCPServerConfig {
   return {
-    // brightData: process.env.BRIGHT_DATA_USERNAME ? {
-    //   username: process.env.BRIGHT_DATA_USERNAME!,
-    //   password: process.env.BRIGHT_DATA_PASSWORD!,
-    //   endpoint: process.env.BRIGHT_DATA_ENDPOINT || 'brd.superproxy.io',
-    //   port: parseInt(process.env.BRIGHT_DATA_PORT || '22225'),
-    //   organizationId: process.env.ORGANIZATION_ID || 'default-org',
-    //   userId: process.env.USER_ID || 'default-user'
-    // } : undefined,
+    brightData: {
+      username: process.env.BRIGHT_DATA_USERNAME || 'mock-username',
+      password: process.env.BRIGHT_DATA_PASSWORD || 'mock-password',
+      endpoint: process.env.BRIGHT_DATA_ENDPOINT || 'brd.superproxy.io',
+      port: parseInt(process.env.BRIGHT_DATA_PORT || '22225'),
+      organizationId: process.env.ORGANIZATION_ID || 'default-org',
+      userId: process.env.USER_ID || 'default-user'
+    },
     
-    // apify: process.env.APIFY_API_TOKEN ? {
-    //   apiToken: process.env.APIFY_API_TOKEN!,
-    //   organizationId: process.env.ORGANIZATION_ID || 'default-org', 
-    //   userId: process.env.USER_ID || 'default-user'
-    // } : undefined,
+    apify: {
+      apiToken: process.env.APIFY_API_TOKEN || 'mock-api-token',
+      organizationId: process.env.ORGANIZATION_ID || 'default-org', 
+      userId: process.env.USER_ID || 'default-user'
+    },
 
     googleSearch: process.env.GOOGLE_API_KEY && process.env.GOOGLE_CSE_ID ? {
       googleApiKey: process.env.GOOGLE_API_KEY!,
