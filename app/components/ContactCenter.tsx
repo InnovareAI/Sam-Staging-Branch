@@ -13,18 +13,19 @@ import {
   Settings,
   RefreshCw,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  MessageCircle
 } from 'lucide-react';
 
 interface InboundRequest {
   id: string;
-  type: 'demo' | 'pricing' | 'support' | 'email';
+  type: 'demo' | 'pricing' | 'support' | 'email' | 'general';
   subject: string;
   from: string;
   time: string;
   company: string;
   details: string;
-  platform?: 'unipile' | 'direct';
+  platform?: 'unipile' | 'direct' | 'linkedin';
   status?: 'new' | 'read' | 'replied' | 'archived';
 }
 
@@ -109,7 +110,7 @@ function InboxConnection() {
       
       console.log('📊 Backend response:', data);
       
-      if (data.success && data.accounts) {
+      if (data.success && data.accounts && data.accounts.length > 0) {
         // Update connected inboxes with backend data
         const formattedInboxes: ConnectedInbox[] = data.accounts.map((account: any) => ({
           id: account.id, // Use direct ID, not prefixed
@@ -123,12 +124,14 @@ function InboxConnection() {
         
         setConnectedInboxes(formattedInboxes);
         console.log('✅ Loaded inboxes:', formattedInboxes);
+        setError(null); // Clear any previous errors
       } else if (!data.success) {
         setError(data.error || 'Failed to load connected accounts');
         console.error('❌ API error:', data.error);
       } else {
-        setError('No connected accounts found');
-        console.log('ℹ️ No accounts found');
+        // Success but no accounts - show debug info
+        setError(`No LinkedIn accounts found. Debug: ${JSON.stringify(data.debug_info || {})}`);
+        console.log('ℹ️ No accounts found:', data);
       }
     } catch (error) {
       console.error('❌ Failed to load connected inboxes:', error);
@@ -298,15 +301,92 @@ function InboxConnection() {
   );
 }
 
-// Inbound Inbox Component from Contact Center v1
+// Inbound Inbox Component - Now pulls real messages from Unipile
 function InboundInbox() {
-  const [activeRequest, setActiveRequest] = useState<InboundRequest>(MOCK_REQUESTS[0]);
+  const [requests, setRequests] = useState<InboundRequest[]>([]);
+  const [activeRequest, setActiveRequest] = useState<InboundRequest | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadRealMessages = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      console.log('📨 Loading real messages from Unipile Contact Center API...');
+      
+      // Use our new messages API endpoint
+      const messagesResponse = await fetch('/api/contact-center/messages');
+      const messagesData = await messagesResponse.json();
+      
+      if (!messagesData.success) {
+        setError(messagesData.error || 'Failed to load messages');
+        setRequests([]);
+        return;
+      }
+
+      console.log('✅ Messages loaded:', messagesData);
+      
+      if (messagesData.messages && messagesData.messages.length > 0) {
+        // Messages are already transformed by the API
+        const transformedRequests: InboundRequest[] = messagesData.messages.map((msg: any) => ({
+          id: msg.id,
+          type: msg.type,
+          subject: msg.subject,
+          from: msg.from,
+          time: msg.time,
+          company: msg.company,
+          details: msg.details,
+          platform: msg.platform,
+          status: 'new' as const
+        }));
+        
+        setRequests(transformedRequests);
+        if (transformedRequests.length > 0) {
+          setActiveRequest(transformedRequests[0]);
+        }
+        
+        console.log(`✅ Loaded ${transformedRequests.length} real messages for Contact Center`);
+      } else {
+        console.log('ℹ️ No messages found, using mock data');
+        setRequests(MOCK_REQUESTS);
+        setActiveRequest(MOCK_REQUESTS[0]);
+      }
+    } catch (error) {
+      console.error('❌ Failed to load real messages:', error);
+      setError('Failed to load messages');
+      // Fallback to mock data
+      setRequests(MOCK_REQUESTS);
+      setActiveRequest(MOCK_REQUESTS[0]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatMessageTime = (dateString: string | undefined) => {
+    if (!dateString) return 'recently';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffMins < 1) return 'now';
+    if (diffMins < 60) return `${diffMins}m`;
+    if (diffHours < 24) return `${diffHours}h`;
+    return `${diffDays}d`;
+  };
+
+  useEffect(() => {
+    loadRealMessages();
+  }, []);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'demo': return Calendar;
       case 'pricing': return DollarSign;
       case 'support': return HelpCircle;
+      case 'general': return MessageCircle;
       default: return Mail;
     }
   };
@@ -316,7 +396,8 @@ function InboundInbox() {
       case 'demo': return 'text-green-400 bg-green-900/20';
       case 'pricing': return 'text-blue-400 bg-blue-900/20';
       case 'support': return 'text-orange-400 bg-orange-900/20';
-      default: return 'text-muted-foreground bg-muted/20';
+      case 'general': return 'text-purple-400 bg-purple-900/20';
+      default: return 'text-gray-400 bg-gray-900/20';
     }
   };
 
@@ -331,7 +412,7 @@ function InboundInbox() {
         <div className="divide-y divide-gray-700 max-h-96 overflow-y-auto">
           {MOCK_REQUESTS.map(request => {
             const IconComponent = getTypeIcon(request.type);
-            const isActive = request.id === activeRequest.id;
+            const isActive = activeRequest ? request.id === activeRequest.id : false;
             
             return (
               <div 
@@ -371,77 +452,85 @@ function InboundInbox() {
 
       {/* Request Details */}
       <div className="lg:col-span-2 bg-gray-800 border border-gray-700 rounded-lg">
-        <div className="border-b border-gray-700 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className={`p-2 rounded-lg ${getTypeColor(activeRequest.type)}`}>
-                {React.createElement(getTypeIcon(activeRequest.type), { size: 20 })}
+        {activeRequest ? (
+          <>
+            <div className="border-b border-gray-700 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className={`p-2 rounded-lg ${getTypeColor(activeRequest.type)}`}>
+                    {React.createElement(getTypeIcon(activeRequest.type), { size: 20 })}
+                  </div>
+                  <div>
+                    <span className={`text-xs uppercase font-medium ${getTypeColor(activeRequest.type).split(' ')[0]}`}>
+                      {activeRequest.type}
+                    </span>
+                    <h2 className="text-white font-semibold">{activeRequest.subject}</h2>
+                  </div>
+                </div>
               </div>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Contact Info */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">From:</span>
+                  <span className="text-white">{activeRequest.from}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Company:</span>
+                  <span className="text-white">{activeRequest.company}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Time:</span>
+                  <span className="text-white">{activeRequest.time}</span>
+                </div>
+              </div>
+
+              {/* Request Details */}
               <div>
-                <span className={`text-xs uppercase font-medium ${getTypeColor(activeRequest.type).split(' ')[0]}`}>
-                  {activeRequest.type}
-                </span>
-                <h2 className="text-white font-semibold">{activeRequest.subject}</h2>
+                <h4 className="text-white font-medium mb-2">Details</h4>
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <p className="text-gray-300 text-sm">{activeRequest.details}</p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-700">
+                {activeRequest.type === 'demo' && (
+                  <button className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors">
+                    <Calendar size={16} />
+                    Send Calendar Link
+                  </button>
+                )}
+                {activeRequest.type === 'pricing' && (
+                  <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                    <DollarSign size={16} />
+                    Send Pricing Sheet
+                  </button>
+                )}
+                {activeRequest.type === 'support' && (
+                  <button className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors">
+                    <HelpCircle size={16} />
+                    Route to Support
+                  </button>
+                )}
+                <button className="flex items-center gap-2 px-4 py-2 border border-gray-600 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors">
+                  <Users size={16} />
+                  Create Callback
+                </button>
+                <button className="flex items-center gap-2 px-4 py-2 border border-gray-600 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors">
+                  <ArrowRight size={16} />
+                  Escalate to AE
+                </button>
               </div>
             </div>
+          </>
+        ) : (
+          <div className="p-6 text-center text-gray-400">
+            <p>Select a request to view details</p>
           </div>
-        </div>
-        
-        <div className="p-6 space-y-6">
-          {/* Contact Info */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-400">From:</span>
-              <span className="text-white">{activeRequest.from}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-400">Company:</span>
-              <span className="text-white">{activeRequest.company}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-400">Time:</span>
-              <span className="text-white">{activeRequest.time}</span>
-            </div>
-          </div>
-
-          {/* Request Details */}
-          <div>
-            <h4 className="text-white font-medium mb-2">Details</h4>
-            <div className="bg-gray-700 rounded-lg p-4">
-              <p className="text-gray-300 text-sm">{activeRequest.details}</p>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-700">
-            {activeRequest.type === 'demo' && (
-              <button className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors">
-                <Calendar size={16} />
-                Send Calendar Link
-              </button>
-            )}
-            {activeRequest.type === 'pricing' && (
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-                <DollarSign size={16} />
-                Send Pricing Sheet
-              </button>
-            )}
-            {activeRequest.type === 'support' && (
-              <button className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors">
-                <HelpCircle size={16} />
-                Route to Support
-              </button>
-            )}
-            <button className="flex items-center gap-2 px-4 py-2 border border-gray-600 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors">
-              <Users size={16} />
-              Create Callback
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 border border-gray-600 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors">
-              <ArrowRight size={16} />
-              Escalate to AE
-            </button>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

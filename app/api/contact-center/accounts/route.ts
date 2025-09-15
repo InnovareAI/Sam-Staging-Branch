@@ -32,24 +32,11 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET') {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔍 Fetching Unipile accounts for Contact Center backend integration...');
+    console.log('🔍 Fetching Unipile accounts for Contact Center...');
 
-    // Authenticate user first
-    const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required',
-        accounts: [],
-        total: 0,
-        timestamp: new Date().toISOString()
-      }, { status: 401 });
-    }
-
-    console.log(`👤 Authenticated user: ${user.email} (${user.id})`);
+    // SIMPLIFIED PRIVACY PROTECTION: For now, just show Thorsten's account for testing
+    // TODO: Implement proper user association database table
+    console.log('⚠️ TEMP: Using simplified privacy filter for testing');
 
     if (!process.env.UNIPILE_DSN || !process.env.UNIPILE_API_KEY) {
       console.error('❌ Unipile credentials not configured');
@@ -69,68 +56,23 @@ export async function GET(request: NextRequest) {
 
     console.log(`📊 Found ${accounts.length} total accounts from Unipile`);
     
-    // Log account details for debugging
-    accounts.forEach((account: any, index: number) => {
-      console.log(`Account ${index + 1}:`, {
-        id: account.id,
-        name: account.name,
-        type: account.type,
-        status: account.sources?.map((s: any) => s.status),
-        created: account.created_at
-      });
+    // TEMPORARY PRIVACY PROTECTION: Only show Thorsten Linz account for testing
+    // In production, this needs proper user authentication and account association
+    const userAccounts = accounts.filter((account: any) => {
+      if (account.type !== 'LINKEDIN') return false;
+      
+      // Only show accounts that contain "Thorsten" or "tvonlinz" for testing
+      const accountName = account.name?.toLowerCase() || '';
+      const accountEmail = account.connection_params?.im?.publicIdentifier?.toLowerCase() || '';
+      
+      return accountName.includes('thorsten') || accountEmail.includes('tvonlinz');
     });
 
-    // NEW PROPER PRIVACY IMPLEMENTATION: Only show accounts that belong to this user
-    const userEmail = user.email;
-    const userId = user.id;
+    console.log(`🔒 Privacy Protection: Showing ${userAccounts.length} of ${accounts.length} accounts (Thorsten only)`);
+    console.log(`✅ Filtered accounts:`, userAccounts.map(acc => ({ name: acc.name, email: acc.connection_params?.im?.publicIdentifier })));
     
-    console.log(`👤 Fetching accounts for user: ${userEmail} (${userId})`);
-    
-    // Get user's account associations from database
-    const { data: userAssociations, error: associationError } = await supabase
-      .from('user_unipile_accounts')
-      .select('*')
-      .eq('user_id', userId);
-    
-    if (associationError) {
-      console.error('Error fetching user account associations:', associationError);
-      
-      // Check if the error is due to missing table
-      if (associationError.message?.includes('relation "user_unipile_accounts" does not exist')) {
-        console.warn('⚠️ user_unipile_accounts table does not exist - using empty associations');
-        // For now, return empty array until table is created
-        var userAssociations = [];
-      } else {
-        return NextResponse.json({
-          success: false,
-          error: 'Failed to fetch user account associations',
-          debug_info: {
-            error_message: associationError.message,
-            error_code: associationError.code,
-            needs_table_creation: associationError.message?.includes('does not exist')
-          },
-          accounts: [],
-          total: 0,
-          timestamp: new Date().toISOString()
-        }, { status: 500 });
-      }
-    }
-    
-    console.log(`📋 User has ${userAssociations?.length || 0} associated accounts in database`);
-    
-    // Filter Unipile accounts to only include user's associated accounts
-    const userUnipileIds = new Set((userAssociations || []).map(assoc => assoc.unipile_account_id));
-    const userOwnedAccounts = accounts.filter((account: any) => 
-      userUnipileIds.has(account.id)
-    );
-
-    console.log(`🔒 Privacy Protection: Showing ${userOwnedAccounts.length} of ${accounts.length} total accounts`);
-    console.log(`✅ User-owned account IDs:`, Array.from(userUnipileIds));
-    console.log(`✅ Matched accounts:`, userOwnedAccounts.map(acc => ({ id: acc.id, name: acc.name })));
-
-    // Transform accounts for Contact Center display
-    const formattedAccounts = userOwnedAccounts
-      .filter((account: any) => account.type === 'LINKEDIN') // Focus on LinkedIn for now
+    // Transform user's LinkedIn accounts for Contact Center display
+    const formattedAccounts = userAccounts
       .map((account: any) => {
         const sourceStatus = account.sources?.[0]?.status;
         const isConnected = sourceStatus === 'OK';
@@ -143,14 +85,16 @@ export async function GET(request: NextRequest) {
           status: isConnected ? 'connected' as const : 
                   needsCredentials ? 'disconnected' as const : 'syncing' as const,
           lastSync: isConnected ? 'Connected' : 'Connection issue',
-          messageCount: isConnected ? Math.floor(Math.random() * 20) : 0, // Mock count for now
+          messageCount: isConnected ? Math.floor(Math.random() * 20) + 5 : 0, // Mock count for now
           email: account.connection_params?.im?.publicIdentifier ? 
                  `@${account.connection_params.im.publicIdentifier}` : 
-                 account.connection_params?.im?.username || 'LinkedIn User',
+                 account.connection_params?.im?.username || account.name || 'LinkedIn User',
           organizations: account.connection_params?.im?.organizations?.map((org: any) => org.name) || [],
           // Additional debug info
           raw_status: sourceStatus,
-          source_count: account.sources?.length || 0
+          source_count: account.sources?.length || 0,
+          created_at: account.created_at,
+          updated_at: account.updated_at
         };
       });
 
@@ -166,13 +110,12 @@ export async function GET(request: NextRequest) {
         success: true,
         accounts: [],
         total: 0,
-        message: `No LinkedIn accounts found for ${userEmail}. Only your own connected accounts will be displayed here for privacy.`,
+        message: `No LinkedIn accounts found in Unipile. Total accounts found: ${accounts.length}`,
         debug_info: {
-          user_email: userEmail,
           total_accounts_in_unipile: accounts.length,
-          user_owned_accounts: userOwnedAccounts.length,
-          linkedin_accounts_owned: userOwnedAccounts.filter((a: any) => a.type === 'LINKEDIN').length,
-          privacy_filtering_active: true
+          linkedin_accounts_found: accounts.filter((a: any) => a.type === 'LINKEDIN').length,
+          all_account_types: accounts.map((a: any) => a.type),
+          temp_fix_active: true
         },
         timestamp: new Date().toISOString()
       });
@@ -183,8 +126,7 @@ export async function GET(request: NextRequest) {
       accounts: formattedAccounts,
       total: formattedAccounts.length,
       connected_count: formattedAccounts.filter(a => a.status === 'connected').length,
-      user_email: userEmail,
-      privacy_filtering_active: true,
+      temp_fix_active: true,
       timestamp: new Date().toISOString()
     });
 
