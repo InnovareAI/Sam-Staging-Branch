@@ -168,9 +168,19 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
+      console.log('🔐 Authentication check failed:', {
+        authError: authError?.message,
+        hasUser: !!user,
+        timestamp: new Date().toISOString()
+      })
       return NextResponse.json({
         success: false,
-        error: 'Authentication required'
+        error: 'Authentication required',
+        debug_info: {
+          auth_error: authError?.message,
+          has_user: !!user,
+          needs_signin: true
+        }
       }, { status: 401 })
     }
 
