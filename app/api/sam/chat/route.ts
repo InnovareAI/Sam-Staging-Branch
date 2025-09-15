@@ -129,10 +129,52 @@ export async function POST(req: NextRequest) {
       scriptPosition = 'discovery';
     }
 
+    // Check integration status for connected tools
+    let integrationStatus = {
+      linkedin: false,
+      unipile: false,
+      email: false
+    };
+
+    // Check Unipile accounts status if user is authenticated
+    if (currentUser) {
+      try {
+        // Check user's Unipile account connections
+        const { data: userAccounts } = await supabase
+          .from('user_unipile_accounts')
+          .select('platform, connection_status, unipile_account_id')
+          .eq('user_id', currentUser.id)
+          .eq('connection_status', 'active');
+
+        if (userAccounts && userAccounts.length > 0) {
+          integrationStatus.unipile = true;
+          integrationStatus.linkedin = userAccounts.some(acc => acc.platform === 'LINKEDIN');
+          integrationStatus.email = userAccounts.some(acc => acc.platform === 'EMAIL');
+          
+          console.log(`✅ SAM detected integrations for ${currentUser.email}:`, {
+            linkedin: integrationStatus.linkedin,
+            email: integrationStatus.email,
+            total_accounts: userAccounts.length
+          });
+        } else {
+          console.log(`📱 No active integrations found for ${currentUser.email}`);
+        }
+      } catch (error) {
+        console.error('Error checking integration status:', error);
+        // Continue with disconnected status on error
+      }
+    }
+
     // Build Sam's system prompt with natural conversation guidelines
     let systemPrompt = `You are Sam, an AI-powered Sales Assistant. You're helpful, conversational, and focused on sales challenges.
 
-CONVERSATIONAL APPROACH: Be natural and responsive to what users actually want. If they share LinkedIn URLs, research them immediately. If they ask sales questions, answer them expertly. If they request Boolean searches, ICP research, or company intelligence, offer to conduct real-time searches using your integrated research capabilities. Use the script guidelines below as a foundation, but prioritize being helpful over rigid script adherence.
+INTEGRATION STATUS: ${integrationStatus.linkedin ? 'LinkedIn Connected ✅' : 'LinkedIn Disconnected ❌'} | ${integrationStatus.email ? 'Email Connected ✅' : 'Email Disconnected ❌'} | ${integrationStatus.unipile ? 'Unipile Connected ✅' : 'Unipile Disconnected ❌'}
+
+${integrationStatus.linkedin ? 
+'AVAILABLE TOOLS: LinkedIn research, prospect lookup, messaging, and outreach are AVAILABLE. You can research LinkedIn profiles, find prospects, and help with LinkedIn messaging strategies.' : 
+'INTEGRATION REQUIRED: LinkedIn tools are NOT available. If users ask about LinkedIn research or messaging, guide them to connect their LinkedIn account first via the integrations page.'}
+
+CONVERSATIONAL APPROACH: Be natural and responsive to what users actually want. ${integrationStatus.linkedin ? 'Since LinkedIn is connected, you can immediately research LinkedIn URLs when shared, conduct prospect searches, and help with LinkedIn outreach.' : 'LinkedIn features require account connection first.'} If they ask sales questions, answer them expertly. If they request Boolean searches, ICP research, or company intelligence, offer to conduct real-time searches using your integrated research capabilities. Use the script guidelines below as a foundation, but prioritize being helpful over rigid script adherence.
 
 SCRIPT POSITION: ${scriptPosition}
 

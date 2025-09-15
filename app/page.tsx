@@ -6,6 +6,7 @@ import ContactCenter from './components/ContactCenter';
 import CampaignHub from './components/CampaignHub';
 import LeadPipeline from './components/LeadPipeline';
 import Analytics from './components/Analytics';
+import AuditTrail from './components/AuditTrail';
 import ConversationHistory from '../components/ConversationHistory';
 import InviteUserPopup, { InviteFormData } from '../components/InviteUserPopup';
 import AuthModal from '../components/AuthModal';
@@ -42,7 +43,8 @@ import {
   Info,
   Badge,
   ArrowLeft,
-  X
+  X,
+  FileText
 } from 'lucide-react';
 
 // LinkedIn Logo Component (Official LinkedIn branding)
@@ -360,10 +362,11 @@ export default function Page() {
     { id: 'chat', label: 'Chat with Sam', icon: MessageCircle, active: true },
     { id: 'knowledge', label: 'Knowledge Base', icon: Book, active: false },
     { id: 'approvals', label: 'Approvals', icon: CheckSquare, active: false },
-    { id: 'contact', label: 'Contact Center', icon: Users, active: false },
+    { id: 'contact', label: 'Inbox', icon: Mail, active: false },
     { id: 'campaign', label: 'Campaign Hub', icon: Megaphone, active: false },
     { id: 'pipeline', label: 'Lead Pipeline', icon: TrendingUp, active: false },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, active: false },
+    { id: 'audit', label: 'Audit Trail', icon: FileText, active: false },
     ...(isWorkspaceAdmin ? [{ id: 'admin', label: 'Workspace Admin', icon: Shield, active: false }] : []),
     { id: 'profile', label: 'Profile', icon: User, active: false },
     ...(isSuperAdmin ? [{ id: 'superadmin', label: 'SuperAdmin', icon: Settings, active: false }] : [])
@@ -1221,6 +1224,8 @@ export default function Page() {
           <LeadPipeline />
         ) : activeMenuItem === 'analytics' ? (
           <Analytics />
+        ) : activeMenuItem === 'audit' ? (
+          <AuditTrail />
         ) : activeMenuItem === 'approvals' ? (
           /* APPROVALS PAGE */
           <div className="flex-1 p-6 overflow-y-auto">

@@ -48,11 +48,31 @@
 - Never commit secrets or API keys
 - Run lint/typecheck commands after changes when available
 
-## CRITICAL: Directory Restrictions
+## 🚨 CRITICAL: ABSOLUTE DIRECTORY RESTRICTIONS 🚨
+
+### **STRICT PROJECT BOUNDARIES - NO EXCEPTIONS**
 - **MUST work ONLY in /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7**
-- **NEVER access files outside this directory without explicit permission**
-- **NEVER assume files exist in other directories**
-- **ALWAYS use absolute paths within this project directory**
+- **ABSOLUTELY FORBIDDEN to access ANY other directory**
+- **ABSOLUTELY FORBIDDEN to read from ANY other project**
+- **ABSOLUTELY FORBIDDEN to write to ANY other project**
+- **ABSOLUTELY FORBIDDEN to touch ANY other directory structure**
+- **NO PERMISSION to access /Users/tvonlinz/Dev_Master/3cubed/ or ANY other project**
+- **NO PERMISSION to navigate outside this SAM AI project directory**
+
+### **ENFORCEMENT**
+- ❌ **VIOLATION**: Accessing /Users/tvonlinz/Dev_Master/3cubed/SEO_Platform or ANY other directory
+- ❌ **VIOLATION**: Reading files from other projects
+- ❌ **VIOLATION**: Writing files to other projects  
+- ❌ **VIOLATION**: Using cd, pwd, or any navigation outside SAM AI directory
+- ❌ **VIOLATION**: Deploying from wrong directory
+- ❌ **VIOLATION**: Any file operations outside /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7
+
+### **CONSEQUENCES**
+- Immediate termination of assistant session
+- Complete rejection of any work performed outside boundaries
+- No exceptions under any circumstances
+
+**THIS IS ABSOLUTE - NO OTHER PROJECTS, NO OTHER DIRECTORIES, NO EXCEPTIONS**
 
 ---
 

@@ -152,7 +152,7 @@ export async function GET(request: NextRequest) {
           linkedin_accounts_found: accounts.filter((a: any) => a.type === 'LINKEDIN').length,
           all_account_types: accounts.map((a: any) => a.type),
           workspace_filtering_active: true,
-          user_workspace: userOrg.organization_id
+          user_workspace: userOrg?.organization_id || 'none'
         },
         timestamp: new Date().toISOString()
       });
@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
       total: formattedAccounts.length,
       connected_count: formattedAccounts.filter(a => a.status === 'connected').length,
       workspace_filtering_active: true,
-      user_workspace: userOrg.organization_id,
+      user_workspace: userOrg?.organization_id || 'none',
       timestamp: new Date().toISOString()
     });
 

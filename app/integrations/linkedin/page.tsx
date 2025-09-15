@@ -13,10 +13,15 @@ import {
   Info,
   Users,
   MessageSquare,
-  Shield
+  Shield,
+  Clock,
+  Bell
 } from 'lucide-react'
 import LinkedInOnboarding from '@/components/LinkedInOnboarding'
 import { LinkedInLogo } from '@/components/ui/LinkedInLogo'
+import { WhatsAppLogo } from '@/components/ui/WhatsAppLogo'
+import { TelegramLogo } from '@/components/ui/TelegramLogo'
+import { TwitterLogo } from '@/components/ui/TwitterLogo'
 
 interface UnipileAccount {
   id: string
@@ -335,6 +340,139 @@ export default function UnipileIntegrationPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Coming Soon: Messaging Platforms */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-gray-600" />
+            Coming Soon: Multi-Platform Messaging
+          </CardTitle>
+          <CardDescription>
+            Connect your messaging accounts for unified prospect communication across all channels
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-3 gap-4">
+            {/* WhatsApp Coming Soon */}
+            <div className="relative p-4 border border-green-200 rounded-lg bg-green-50/50 opacity-75">
+              <div className="absolute top-2 right-2">
+                <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Coming Soon
+                </Badge>
+              </div>
+              <div className="flex items-center gap-3 mb-3">
+                <WhatsAppLogo size={32} className="text-green-600" />
+                <div>
+                  <h4 className="font-medium text-green-800">WhatsApp</h4>
+                  <p className="text-xs text-green-600">Most Requested Feature</p>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm text-green-700">
+                <p>• Personal & Business messaging</p>
+                <p>• Voice notes & media support</p>
+                <p>• Group chat integration</p>
+                <p>• Global reach (2.8B users)</p>
+              </div>
+              <Button 
+                disabled 
+                className="w-full mt-3 bg-green-200 text-green-700 cursor-not-allowed"
+                size="sm"
+              >
+                <Bell className="h-4 w-4 mr-2" />
+                Notify Me
+              </Button>
+            </div>
+
+            {/* Telegram Coming Soon */}
+            <div className="relative p-4 border border-blue-200 rounded-lg bg-blue-50/50 opacity-75">
+              <div className="absolute top-2 right-2">
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-xs">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Coming Soon
+                </Badge>
+              </div>
+              <div className="flex items-center gap-3 mb-3">
+                <TelegramLogo size={32} className="text-blue-600" />
+                <div>
+                  <h4 className="font-medium text-blue-800">Telegram</h4>
+                  <p className="text-xs text-blue-600">Tech Community Focus</p>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm text-blue-700">
+                <p>• Channel & bot integration</p>
+                <p>• Crypto/tech communities</p>
+                <p>• Secure messaging</p>
+                <p>• Developer-friendly APIs</p>
+              </div>
+              <Button 
+                disabled 
+                className="w-full mt-3 bg-blue-200 text-blue-700 cursor-not-allowed"
+                size="sm"
+              >
+                <Bell className="h-4 w-4 mr-2" />
+                Notify Me
+              </Button>
+            </div>
+
+            {/* Twitter Coming Soon */}
+            <div className="relative p-4 border border-sky-200 rounded-lg bg-sky-50/50 opacity-75">
+              <div className="absolute top-2 right-2">
+                <Badge variant="secondary" className="bg-sky-100 text-sky-700 text-xs">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Coming Soon
+                </Badge>
+              </div>
+              <div className="flex items-center gap-3 mb-3">
+                <TwitterLogo size={32} className="text-sky-600" />
+                <div>
+                  <h4 className="font-medium text-sky-800">Twitter</h4>
+                  <p className="text-xs text-sky-600">Professional Networking</p>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm text-sky-700">
+                <p>• Direct messaging</p>
+                <p>• Tweet monitoring</p>
+                <p>• B2B networking</p>
+                <p>• Real-time engagement</p>
+              </div>
+              <Button 
+                disabled 
+                className="w-full mt-3 bg-sky-200 text-sky-700 cursor-not-allowed"
+                size="sm"
+              >
+                <Bell className="h-4 w-4 mr-2" />
+                Notify Me
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <MessageSquare className="h-4 w-4 text-blue-600" />
+              </div>
+              <div>
+                <h5 className="font-medium text-gray-900 mb-2">Unified Messaging Hub</h5>
+                <p className="text-sm text-gray-700 mb-3">
+                  SAM AI will soon connect all your messaging platforms for seamless prospect communication. 
+                  Manage LinkedIn, WhatsApp, Telegram, and Twitter conversations in one unified inbox.
+                </p>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <Badge variant="outline" className="text-xs">Cross-platform context</Badge>
+                  <Badge variant="outline" className="text-xs">AI-powered responses</Badge>
+                  <Badge variant="outline" className="text-xs">Unified contact management</Badge>
+                  <Badge variant="outline" className="text-xs">Global market reach</Badge>
+                </div>
+                <p className="text-xs text-gray-600">
+                  <strong>Early Access:</strong> Sign up to be notified when messaging integrations become available.
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Help & Support */}
       <Card>
