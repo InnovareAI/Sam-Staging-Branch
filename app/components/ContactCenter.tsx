@@ -410,7 +410,7 @@ function InboundInbox() {
           <p className="text-gray-400 text-sm">Recent inquiries and requests</p>
         </div>
         <div className="divide-y divide-gray-700 max-h-96 overflow-y-auto">
-          {MOCK_REQUESTS.map(request => {
+          {requests.map(request => {
             const IconComponent = getTypeIcon(request.type);
             const isActive = activeRequest ? request.id === activeRequest.id : false;
             
