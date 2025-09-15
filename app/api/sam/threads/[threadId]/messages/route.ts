@@ -49,8 +49,7 @@ export async function GET(
 ) {
   try {
     const resolvedParams = await params
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const supabase = createRouteHandlerClient({ cookies: cookies })
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
@@ -111,8 +110,7 @@ export async function POST(
 ) {
   try {
     const resolvedParams = await params
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const supabase = createRouteHandlerClient({ cookies: cookies })
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {

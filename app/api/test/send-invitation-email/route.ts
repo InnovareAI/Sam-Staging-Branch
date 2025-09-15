@@ -5,8 +5,7 @@ import { Client } from 'postmark';
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const supabase = createRouteHandlerClient({ cookies: cookies });
     
     const { userEmail, company } = await request.json();
     

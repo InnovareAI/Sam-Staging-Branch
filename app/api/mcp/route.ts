@@ -61,8 +61,7 @@ export async function POST(request: NextRequest) {
     await initializeMCP()
     
     // Get user authentication
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const supabase = createRouteHandlerClient({ cookies: cookies })
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {

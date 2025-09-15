@@ -5,8 +5,9 @@ import { cookies } from 'next/headers'
 // LinkedIn connection callback with duplicate detection and cleanup
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const supabase = createRouteHandlerClient({ 
+      cookies: cookies 
+    })
     const body = await request.json()
     
     const { account_id, user_id, provider, status, connection_params } = body

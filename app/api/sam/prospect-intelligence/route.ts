@@ -29,8 +29,7 @@ async function ensureMCPInitialized() {
 export async function POST(request: NextRequest) {
   try {
     // Authentication check
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const supabase = createRouteHandlerClient({ cookies: cookies })
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
@@ -369,8 +368,7 @@ async function storeIntelligenceForConversation(
   data: any
 ) {
   try {
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const supabase = createRouteHandlerClient({ cookies: cookies })
     
     await supabase
       .from('sam_conversation_intelligence')

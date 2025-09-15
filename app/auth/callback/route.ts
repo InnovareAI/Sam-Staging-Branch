@@ -27,8 +27,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (code) {
-    const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const supabase = createRouteHandlerClient({ cookies: cookies });
 
     try {
       // Exchange the auth code for a session

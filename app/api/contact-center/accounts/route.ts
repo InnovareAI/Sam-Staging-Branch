@@ -35,8 +35,7 @@ export async function GET(request: NextRequest) {
     console.log('🔍 Fetching Unipile accounts for Contact Center...');
 
     // 🚨 SECURITY: Get user authentication for workspace filtering
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const supabase = createRouteHandlerClient({ cookies: cookies })
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
