@@ -1006,7 +1006,7 @@ export default function Page() {
 
   // Authentication required - redirect to sign-in if not authenticated
   // 🚨 EMERGENCY: Bypass authentication for customer access
-  const bypassAuth = true; // Emergency bypass for production customer access
+  const bypassAuth = false; // Disabled bypass to fix proper login
   const testUser = bypassAuth && !user ? { id: 'emergency-customer-access', email: 'customer@access.com' } : user;
   if (!user && !bypassAuth) {
     return (
