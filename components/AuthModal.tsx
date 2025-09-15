@@ -20,6 +20,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
 
   const supabase = createClientComponentClient();
 
@@ -62,6 +64,65 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
         }, 1000);
       } else {
         setError(data.error || 'Sign-in failed');
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: resetEmail })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccess('Password reset email sent! Check your email and click the link to reset your password.');
+        setShowPasswordReset(false);
+        setResetEmail('');
+      } else {
+        setError(data.error || 'Password reset failed');
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMagicLink = async (emailToUse: string) => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch('/api/auth/magic-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: emailToUse })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccess('Magic link sent! Check your email and click the link to instantly sign in.');
+      } else {
+        setError(data.error || 'Magic link failed');
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -127,12 +188,18 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
               style={{ objectPosition: 'center 30%' }}
             />
             <h1 className="text-2xl font-bold text-white mb-2">
-              {mode === 'signin' ? 'Welcome Back' : 'Join SAM AI'}
+              {showPasswordReset 
+                ? 'Reset Password' 
+                : (mode === 'signin' ? 'Welcome Back' : 'Join SAM AI')
+              }
             </h1>
             <p className="text-gray-400 text-sm">
-              {mode === 'signin' 
-                ? 'Sign in to your Sales Assistant Platform' 
-                : 'Create your SAM AI account'
+              {showPasswordReset 
+                ? 'Enter your email to receive a password reset link'
+                : (mode === 'signin' 
+                  ? 'Sign in to your Sales Assistant Platform' 
+                  : 'Create your SAM AI account'
+                )
               }
             </p>
           </div>
@@ -140,7 +207,65 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
 
         {/* Form */}
         <div className="px-6 pb-6">
-          <form onSubmit={mode === 'signin' ? handleSignIn : handleSignUp} className="space-y-4">
+          {showPasswordReset ? (
+            <form onSubmit={handlePasswordReset} className="space-y-4">
+              <div>
+                <label htmlFor="resetEmail" className="block text-sm font-medium text-gray-300 mb-2">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                  <input
+                    type="email"
+                    id="resetEmail"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    required
+                    className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Enter your email for password reset"
+                  />
+                </div>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="p-3 bg-red-600 bg-opacity-20 border border-red-500 rounded-lg text-red-400 text-sm">
+                  {error}
+                </div>
+              )}
+
+              {/* Success Message */}
+              {success && (
+                <div className="p-3 bg-green-600 bg-opacity-20 border border-green-500 rounded-lg text-green-400 text-sm">
+                  {success}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || !resetEmail}
+                className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:from-purple-400 disabled:to-purple-500 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Sending...' : 'Send Password Reset'}
+              </button>
+
+              <div className="text-center pt-4 border-t border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordReset(false);
+                    setResetEmail('');
+                    setError('');
+                    setSuccess('');
+                  }}
+                  className="text-purple-400 hover:text-purple-300 font-medium transition-colors"
+                >
+                  Back to Sign In
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={mode === 'signin' ? handleSignIn : handleSignUp} className="space-y-4">
             {/* Sign Up Fields */}
             {mode === 'signup' && (
               <div className="grid grid-cols-2 gap-3">
@@ -270,22 +395,34 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
               </button>
             </div>
 
-            {/* Forgot Password Link (Sign In Mode Only) */}
+            {/* Forgot Password & Magic Link Options (Sign In Mode Only) */}
             {mode === 'signin' && (
-              <div className="text-center">
+              <div className="text-center space-y-2">
                 <button
                   type="button"
                   onClick={() => {
-                    // Handle forgot password
-                    alert('Password reset functionality will be implemented');
+                    setShowPasswordReset(true);
+                    setError('');
+                    setSuccess('');
                   }}
-                  className="text-purple-400 hover:text-purple-300 text-sm transition-colors"
+                  className="text-purple-400 hover:text-purple-300 text-sm transition-colors block mx-auto"
                 >
                   Forgot your password?
                 </button>
+                <div className="text-gray-500 text-xs">or</div>
+                <button
+                  type="button"
+                  onClick={() => handleMagicLink(email)}
+                  disabled={!email || loading}
+                  className="text-purple-400 hover:text-purple-300 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Send Magic Link ✨
+                </button>
+                <p className="text-gray-500 text-xs mt-1">Enter your email above, then click for instant access</p>
               </div>
             )}
           </form>
+          )}
         </div>
       </div>
     </div>

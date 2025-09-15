@@ -207,7 +207,9 @@ export default function Page() {
   // Check if user is super admin
   const checkSuperAdmin = (email: string) => {
     const superAdminEmails = ['tl@innovareai.com', 'cl@innovareai.com'];
-    return superAdminEmails.includes(email.toLowerCase());
+    const isSuper = superAdminEmails.includes(email.toLowerCase());
+    console.log('🛡️ ADMIN CHECK:', email, '→', isSuper ? 'SUPER ADMIN' : 'REGULAR USER');
+    return isSuper;
   };
 
   // Check authentication state on mount (strict authentication required)
@@ -264,7 +266,12 @@ export default function Page() {
           setIsSuperAdmin(isAdmin);
           loadWorkspaces(session.user.id, isAdmin);
         }
-        setIsAuthLoading(false);
+        
+        // Only set auth loading to false if this is not the initial session event
+        // The getUser() call above will handle the initial auth loading state
+        if (event !== 'INITIAL_SESSION') {
+          setIsAuthLoading(false);
+        }
       }
     );
 
@@ -507,11 +514,17 @@ export default function Page() {
       console.log('🔄 loadWorkspaces called with userId:', userId, 'isAdmin:', isAdmin, 'isSuperAdmin:', isSuperAdmin);
       setWorkspacesLoading(true);
       
-      // Use parameter or current state
-      const shouldLoadAllWorkspaces = isAdmin ?? isSuperAdmin;
-      console.log('🎯 shouldLoadAllWorkspaces:', shouldLoadAllWorkspaces);
+      // 🚨 SECURITY: Force strict tenant separation - only explicit super admins can see all workspaces
+      const userEmail = user?.email?.toLowerCase() || '';
+      const isTrueSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(userEmail);
+      const shouldLoadAllWorkspaces = isTrueSuperAdmin && (isAdmin ?? isSuperAdmin);
       
-      // If super admin, load all workspaces via admin API
+      console.log('🛡️ SECURITY CHECK:');
+      console.log('  - User email:', userEmail);
+      console.log('  - Is true super admin:', isTrueSuperAdmin);
+      console.log('  - Should load all workspaces:', shouldLoadAllWorkspaces);
+      
+      // Only true super admins can load all workspaces via admin API
       if (shouldLoadAllWorkspaces) {
         const token = await getAuthToken();
         const response = await fetch('/api/admin/workspaces', {
@@ -720,6 +733,21 @@ export default function Page() {
   const loadUsers = async () => {
     try {
       setUsersLoading(true);
+      
+      // 🚨 SECURITY: Only allow true super admins to load ALL users
+      const userEmail = user?.email?.toLowerCase() || '';
+      const isTrueSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(userEmail);
+      
+      console.log('🛡️ USER LOADING SECURITY CHECK:');
+      console.log('  - User email:', userEmail);
+      console.log('  - Is true super admin:', isTrueSuperAdmin);
+      
+      if (!isTrueSuperAdmin) {
+        console.log('🛡️ BLOCKED: Regular user cannot load all users');
+        setUsers([]);
+        setUserStats({});
+        return;
+      }
       
       const token = await getAuthToken();
       const response = await fetch('/api/admin/users', {
@@ -1009,40 +1037,57 @@ export default function Page() {
   // 🚨 EMERGENCY: Bypass authentication for customer access
   const bypassAuth = false; // Disabled bypass to fix proper login
   const testUser = bypassAuth && !user ? { id: 'emergency-customer-access', email: 'customer@access.com' } : user;
+  
   if (!user && !bypassAuth) {
     return (
-      <div className="flex h-screen bg-gray-900 items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-6">
-          <img 
-            src="/SAM.jpg" 
-            alt="Sam AI" 
-            className="w-20 h-20 rounded-full object-cover mx-auto mb-6"
-            style={{ objectPosition: 'center 30%' }}
-          />
-          <h1 className="text-3xl font-bold text-white mb-4">Welcome to SAM AI</h1>
-          <p className="text-gray-400 mb-8">Your AI-powered Sales Assistant Platform</p>
-          <div className="space-y-4">
-            <button 
-              onClick={() => {
-                setAuthModalMode('signin');
-                setShowAuthModal(true);
-              }}
-              className="block w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-6 rounded-lg transition-colors transform hover:scale-105"
-            >
-              Sign In
-            </button>
-            <button 
-              onClick={() => {
-                setAuthModalMode('signup');
-                setShowAuthModal(true);
-              }}
-              className="block w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-3 px-6 rounded-lg transition-colors transform hover:scale-105"
-            >
-              Create Account
-            </button>
+      <>
+        <div className="flex h-screen bg-gray-900 items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-6">
+            <img 
+              src="/SAM.jpg" 
+              alt="Sam AI" 
+              className="w-20 h-20 rounded-full object-cover mx-auto mb-6"
+              style={{ objectPosition: 'center 30%' }}
+            />
+            <h1 className="text-3xl font-bold text-white mb-4">Welcome to SAM AI</h1>
+            <p className="text-gray-400 mb-8">Your AI-powered Sales Assistant Platform</p>
+            <div className="space-y-4">
+              <button 
+                onClick={() => {
+                  console.log('🚨 SIGN IN BUTTON CLICKED');
+                  setAuthModalMode('signin');
+                  setShowAuthModal(true);
+                  console.log('🚨 showAuthModal set to true, mode: signin');
+                }}
+                className="block w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-6 rounded-lg transition-colors transform hover:scale-105"
+              >
+                Sign In
+              </button>
+              <button 
+                onClick={() => {
+                  console.log('🚨 SIGN UP BUTTON CLICKED');
+                  setAuthModalMode('signup');
+                  setShowAuthModal(true);
+                  console.log('🚨 showAuthModal set to true, mode: signup');
+                }}
+                className="block w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-3 px-6 rounded-lg transition-colors transform hover:scale-105"
+              >
+                Create Account
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+        
+        {/* Authentication Modal - Always rendered */}
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => {
+            console.log('🚨 AUTHMODAL CLOSE CLICKED');
+            setShowAuthModal(false);
+          }}
+          initialMode={authModalMode}
+        />
+      </>
     );
   }
 
@@ -3212,12 +3257,6 @@ export default function Page() {
         workspaces={workspaces}
       />
 
-      {/* Authentication Modal */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        initialMode={authModalMode}
-      />
 
       {/* LinkedIn Onboarding Modal */}
       <LinkedInOnboarding

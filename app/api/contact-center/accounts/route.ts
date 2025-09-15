@@ -34,9 +34,41 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Fetching Unipile accounts for Contact Center...');
 
-    // SIMPLIFIED PRIVACY PROTECTION: For now, just show Thorsten's account for testing
-    // TODO: Implement proper user association database table
-    console.log('⚠️ TEMP: Using simplified privacy filter for testing');
+    // 🚨 SECURITY: Get user authentication for workspace filtering
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required',
+        accounts: [],
+        total: 0,
+        timestamp: new Date().toISOString()
+      }, { status: 401 })
+    }
+
+    // Get user's organization/workspace
+    const { data: userOrg } = await supabase
+      .from('user_organizations')
+      .select('organization_id')
+      .eq('user_id', user.id)
+      .single()
+
+    // 🚨 TEMPORARY: Allow super admins to access even without workspace association
+    const userEmail = user.email?.toLowerCase() || ''
+    const isSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(userEmail)
+
+    if (!userOrg && !isSuperAdmin) {
+      return NextResponse.json({
+        success: false,
+        error: 'User not associated with any workspace',
+        accounts: [],
+        total: 0,
+        timestamp: new Date().toISOString()
+      }, { status: 403 })
+    }
 
     if (!process.env.UNIPILE_DSN || !process.env.UNIPILE_API_KEY) {
       console.error('❌ Unipile credentials not configured');
@@ -56,23 +88,28 @@ export async function GET(request: NextRequest) {
 
     console.log(`📊 Found ${accounts.length} total accounts from Unipile`);
     
-    // TEMPORARY PRIVACY PROTECTION: Only show Thorsten Linz account for testing
-    // In production, this needs proper user authentication and account association
-    const userAccounts = accounts.filter((account: any) => {
-      if (account.type !== 'LINKEDIN') return false;
-      
-      // Only show accounts that contain "Thorsten" or "tvonlinz" for testing
-      const accountName = account.name?.toLowerCase() || '';
-      const accountEmail = account.connection_params?.im?.publicIdentifier?.toLowerCase() || '';
-      
-      return accountName.includes('thorsten') || accountEmail.includes('tvonlinz');
-    });
+    // 🛡️ SECURITY: Get user's associated accounts only
+    const { data: userAccounts } = await supabase
+      .from('user_unipile_accounts')
+      .select('unipile_account_id, platform, account_name, account_email, linkedin_profile_url')
+      .eq('user_id', user.id)
 
-    console.log(`🔒 Privacy Protection: Showing ${userAccounts.length} of ${accounts.length} accounts (Thorsten only)`);
-    console.log(`✅ Filtered accounts:`, userAccounts.map(acc => ({ name: acc.name, email: acc.connection_params?.im?.publicIdentifier })));
+    const userAccountIds = new Set(userAccounts?.map(acc => acc.unipile_account_id) || [])
+
+    // Filter to only show LinkedIn accounts that belong to this user's workspace
+    const workspaceLinkedInAccounts = accounts.filter((account: any) => 
+      account.type === 'LINKEDIN' && userAccountIds.has(account.id)
+    )
+
+    console.log(`🔒 Security: User ${user.email} ${isSuperAdmin ? '(SUPER ADMIN)' : `in workspace ${userOrg?.organization_id}`} has ${workspaceLinkedInAccounts.length} LinkedIn accounts`);
+    console.log(`✅ User accounts:`, workspaceLinkedInAccounts.map(acc => ({ 
+      id: acc.id, 
+      name: acc.name, 
+      email: acc.connection_params?.im?.publicIdentifier 
+    })));
     
     // Transform user's LinkedIn accounts for Contact Center display
-    const formattedAccounts = userAccounts
+    const formattedAccounts = workspaceLinkedInAccounts
       .map((account: any) => {
         const sourceStatus = account.sources?.[0]?.status;
         const isConnected = sourceStatus === 'OK';
@@ -115,7 +152,8 @@ export async function GET(request: NextRequest) {
           total_accounts_in_unipile: accounts.length,
           linkedin_accounts_found: accounts.filter((a: any) => a.type === 'LINKEDIN').length,
           all_account_types: accounts.map((a: any) => a.type),
-          temp_fix_active: true
+          workspace_filtering_active: true,
+          user_workspace: userOrg.organization_id
         },
         timestamp: new Date().toISOString()
       });
@@ -126,7 +164,8 @@ export async function GET(request: NextRequest) {
       accounts: formattedAccounts,
       total: formattedAccounts.length,
       connected_count: formattedAccounts.filter(a => a.status === 'connected').length,
-      temp_fix_active: true,
+      workspace_filtering_active: true,
+      user_workspace: userOrg.organization_id,
       timestamp: new Date().toISOString()
     });
 

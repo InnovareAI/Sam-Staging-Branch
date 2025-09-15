@@ -52,10 +52,31 @@ export default function UnipileIntegrationPage() {
   const fetchAccounts = async () => {
     try {
       setError(null)
-      const response = await fetch('/api/contact-center/accounts')
+      // Use the main Unipile API which has auto-association logic and connection status
+      const response = await fetch('/api/unipile/accounts')
       if (response.ok) {
         const data = await response.json()
-        setAccounts(data.accounts || [])
+        // Check if we have LinkedIn connection status
+        if (data.has_linkedin) {
+          // If user has LinkedIn, get the detailed account list from contact center for display
+          const contactResponse = await fetch('/api/contact-center/accounts')
+          if (contactResponse.ok) {
+            const contactData = await contactResponse.json()
+            setAccounts(contactData.accounts || [])
+          } else {
+            // Fallback: show connection status without account details
+            setAccounts([{
+              id: 'linkedin-detected',
+              name: 'LinkedIn Account',
+              type: 'LINKEDIN',
+              created_at: new Date().toISOString(),
+              sources: [{ id: 'main', status: 'OK' }],
+              connection_params: { im: { username: 'Connected' } }
+            }])
+          }
+        } else {
+          setAccounts([])
+        }
         setDuplicates([])
       } else {
         throw new Error('Failed to fetch accounts')

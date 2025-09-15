@@ -18,7 +18,72 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Get prospects for this session
+    // 🚨 SECURITY: Get user authentication for workspace filtering
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 })
+    }
+
+    // Create user client to get authenticated user
+    const userSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: { headers: { Authorization: authHeader } }
+      }
+    )
+
+    const { data: { user }, error: authError } = await userSupabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid authentication'
+      }, { status: 401 })
+    }
+
+    // Get user's organization/workspace
+    const { data: userOrg } = await supabase
+      .from('user_organizations')
+      .select('organization_id')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!userOrg) {
+      return NextResponse.json({
+        success: false,
+        error: 'User not associated with any workspace'
+      }, { status: 403 })
+    }
+
+    // 🛡️ SECURITY: First verify the session belongs to the user's workspace
+    const { data: session, error: sessionError } = await supabase
+      .from('prospect_approval_sessions')
+      .select('user_id, organization_id')
+      .eq('id', sessionId)
+      .single()
+
+    if (sessionError || !session) {
+      return NextResponse.json({
+        success: false,
+        error: 'Session not found'
+      }, { status: 404 })
+    }
+
+    // Only allow access if session belongs to user's workspace OR user is super admin
+    const userEmail = user.email?.toLowerCase() || ''
+    const isSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(userEmail)
+    
+    if (!isSuperAdmin && session.organization_id !== userOrg.organization_id) {
+      return NextResponse.json({
+        success: false,
+        error: 'Access denied - session belongs to different workspace'
+      }, { status: 403 })
+    }
+
+    // Get prospects for this session (now workspace-validated)
     const { data: prospects, error } = await supabase
       .from('prospect_approval_data')
       .select('*')

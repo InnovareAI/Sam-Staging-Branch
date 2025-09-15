@@ -43,7 +43,7 @@ async function storeUserAccountAssociation(userId: string, unipileAccount: any) 
   try {
     console.log(`🔗 Starting association storage for user ${userId} and account ${unipileAccount.id}`)
     
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     
     const connectionParams = unipileAccount.connection_params?.im || {}
@@ -165,7 +165,7 @@ function findDuplicateLinkedInAccounts(accounts: any[]) {
 export async function GET(request: NextRequest) {
   try {
     // 🚨 SECURITY: Get user authentication for workspace filtering
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
@@ -343,7 +343,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Authenticate user first
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
