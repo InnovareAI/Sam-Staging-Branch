@@ -14,12 +14,14 @@ import {
   RefreshCw,
   CheckCircle,
   AlertCircle,
-  MessageCircle
+  MessageCircle,
+  Linkedin,
+  Send
 } from 'lucide-react';
 
 interface InboundRequest {
   id: string;
-  type: 'demo' | 'pricing' | 'support' | 'email' | 'general';
+  type: 'linkedin' | 'inmail';
   subject: string;
   from: string;
   time: string;
@@ -43,39 +45,39 @@ interface ConnectedInbox {
 const MOCK_REQUESTS = [
   { 
     id: '1', 
-    type: 'demo' as const, 
-    subject: 'Demo request from Acme Corp', 
-    from: 'kevin@acme.com', 
+    type: 'linkedin' as const, 
+    subject: 'Connection request from Acme Corp', 
+    from: 'Kevin Smith', 
     time: 'now',
     company: 'Acme Corp',
-    details: 'Interested in our enterprise solution for 500+ employees' 
+    details: 'Hi Thorsten, I saw your profile and would like to connect. We are interested in AI solutions for enterprise.' 
   },
   { 
     id: '2', 
-    type: 'pricing' as const, 
-    subject: 'Pricing for 10k leads', 
-    from: 'mara@beta.com', 
+    type: 'inmail' as const, 
+    subject: 'Partnership Opportunity', 
+    from: 'Mara Johnson', 
     time: '5m',
     company: 'Beta Systems',
-    details: 'Need pricing information for processing 10,000 leads monthly' 
+    details: 'Hi Thorsten, I represent Beta Systems and we are looking for AI automation partners for our enterprise clients.' 
   },
   { 
     id: '3', 
-    type: 'support' as const, 
-    subject: 'Login issue', 
-    from: 'ops@charlie.com', 
+    type: 'linkedin' as const, 
+    subject: 'AI Integration Discussion', 
+    from: 'Operations Team', 
     time: '10m',
     company: 'Charlie Solutions',
-    details: 'Users unable to access dashboard since this morning' 
+    details: 'Saw your post about multi-agent systems. Would love to discuss potential collaboration.' 
   },
   { 
     id: '4', 
-    type: 'demo' as const, 
+    type: 'inmail' as const, 
     subject: 'Product walkthrough request', 
-    from: 'sarah@deltatech.com', 
+    from: 'Sarah Chen', 
     time: '1h',
     company: 'Delta Tech',
-    details: 'Technical team wants to see API integration capabilities' 
+    details: 'Hi Thorsten, our technical team is evaluating AI automation tools and would like to understand your API integration capabilities.' 
   }
 ] satisfies InboundRequest[];
 
@@ -318,6 +320,9 @@ function InboundInbox() {
       const messagesResponse = await fetch('/api/contact-center/messages');
       const messagesData = await messagesResponse.json();
       
+      console.log('🔍 Raw API response:', messagesData);
+      console.log('🔍 First message type:', messagesData.messages?.[0]?.type);
+      
       if (!messagesData.success) {
         setError(messagesData.error || 'Failed to load messages');
         setRequests([]);
@@ -383,20 +388,16 @@ function InboundInbox() {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'demo': return Calendar;
-      case 'pricing': return DollarSign;
-      case 'support': return HelpCircle;
-      case 'general': return MessageCircle;
-      default: return Mail;
+      case 'linkedin': return Linkedin;
+      case 'inmail': return Send;
+      default: return MessageCircle;
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'demo': return 'text-green-400 bg-green-900/20';
-      case 'pricing': return 'text-blue-400 bg-blue-900/20';
-      case 'support': return 'text-orange-400 bg-orange-900/20';
-      case 'general': return 'text-purple-400 bg-purple-900/20';
+      case 'linkedin': return 'text-blue-400 bg-blue-900/20';
+      case 'inmail': return 'text-green-400 bg-green-900/20';
       default: return 'text-gray-400 bg-gray-900/20';
     }
   };
@@ -497,22 +498,16 @@ function InboundInbox() {
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-700">
-                {activeRequest.type === 'demo' && (
-                  <button className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors">
-                    <Calendar size={16} />
-                    Send Calendar Link
-                  </button>
-                )}
-                {activeRequest.type === 'pricing' && (
+                {activeRequest.type === 'linkedin' && (
                   <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-                    <DollarSign size={16} />
-                    Send Pricing Sheet
+                    <Linkedin size={16} />
+                    Reply on LinkedIn
                   </button>
                 )}
-                {activeRequest.type === 'support' && (
-                  <button className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors">
-                    <HelpCircle size={16} />
-                    Route to Support
+                {activeRequest.type === 'inmail' && (
+                  <button className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
+                    <Send size={16} />
+                    Send InMail Reply
                   </button>
                 )}
                 <button className="flex items-center gap-2 px-4 py-2 border border-gray-600 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors">

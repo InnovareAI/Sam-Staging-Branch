@@ -244,19 +244,23 @@ function generateMockMessagesFromMCP(account: any) {
 }
 
 // Helper functions
-function determineMessageType(message: any): 'demo' | 'pricing' | 'support' | 'general' {
+function determineMessageType(message: any): 'linkedin' | 'inmail' {
+  // Check if it's a LinkedIn InMail (formal connection request or structured message)
   const text = (message.text || message.body || '').toLowerCase();
+  const chatName = message.chat_info?.name || '';
   
-  if (text.includes('demo') || text.includes('demonstration') || text.includes('meeting') || text.includes('call')) {
-    return 'demo';
+  // InMail characteristics: formal language, business proposals, structured messaging
+  if (text.includes('connect') || 
+      text.includes('your profile') ||
+      text.includes('would like to connect') ||
+      text.includes('invitation') ||
+      chatName.includes('Invitation') ||
+      message.message_type === 'INMAIL') {
+    return 'inmail';
   }
-  if (text.includes('pricing') || text.includes('price') || text.includes('cost') || text.includes('quote')) {
-    return 'pricing';
-  }
-  if (text.includes('help') || text.includes('support') || text.includes('issue') || text.includes('problem')) {
-    return 'support';
-  }
-  return 'general';
+  
+  // Default to regular LinkedIn message
+  return 'linkedin';
 }
 
 function extractSenderName(message: any): string {
