@@ -993,8 +993,9 @@ export default function Page() {
     }
   };
 
-  // Show loading state while checking authentication OR loading local data
-  if (isAuthLoading || !isLoaded) {
+  // Show loading state while checking authentication
+  // For unauthenticated users, we don't need to wait for localStorage loading
+  if (isAuthLoading) {
     return (
       <div className="flex h-screen bg-gray-900 items-center justify-center">
         <div className="text-center">
@@ -1040,6 +1041,17 @@ export default function Page() {
               Create Account
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Authenticated user - wait for localStorage loading before showing main app
+  if (!isLoaded) {
+    return (
+      <div className="flex h-screen bg-gray-900 items-center justify-center">
+        <div className="text-center">
+          <div className="text-white text-lg font-medium">Loading your workspace...</div>
         </div>
       </div>
     );
