@@ -16,8 +16,16 @@ import {
   AlertCircle,
   MessageCircle,
   Linkedin,
-  Send
+  Send,
+  Plus,
+  Bell
 } from 'lucide-react';
+import { LinkedInLogo } from '@/components/ui/LinkedInLogo';
+import { GoogleLogo } from '@/components/ui/GoogleLogo';
+import { MicrosoftLogo } from '@/components/ui/MicrosoftLogo';
+import { WhatsAppLogo } from '@/components/ui/WhatsAppLogo';
+import { TelegramLogo } from '@/components/ui/TelegramLogo';
+import { TwitterLogo } from '@/components/ui/TwitterLogo';
 
 interface InboundRequest {
   id: string;
@@ -289,6 +297,148 @@ function InboxConnection() {
         </div>
       )}
 
+      {/* Add New Provider Connections */}
+      <div className="mt-6 p-4 bg-gray-800 border border-gray-700 rounded-lg">
+        <h4 className="text-white font-medium mb-4">Add Account Connections</h4>
+        
+        {/* Email & Calendar Providers */}
+        <div className="mb-6">
+          <h5 className="text-gray-300 text-sm font-medium mb-3">Email & Calendar</h5>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Google Workspace */}
+            <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg border border-gray-600">
+              <div className="flex items-center gap-3">
+                <GoogleLogo size={24} />
+                <div>
+                  <div className="text-white font-medium">Google Workspace</div>
+                  <div className="text-gray-400 text-xs">Gmail + Calendar + Drive</div>
+                </div>
+              </div>
+              <button 
+                disabled
+                className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-600 text-gray-400 rounded transition-colors cursor-not-allowed"
+              >
+                <Plus size={14} />
+                Coming Soon
+              </button>
+            </div>
+
+            {/* Microsoft 365 */}
+            <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg border border-gray-600">
+              <div className="flex items-center gap-3">
+                <MicrosoftLogo size={24} />
+                <div>
+                  <div className="text-white font-medium">Microsoft 365</div>
+                  <div className="text-gray-400 text-xs">Outlook + Teams + OneDrive</div>
+                </div>
+              </div>
+              <button 
+                disabled
+                className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-600 text-gray-400 rounded transition-colors cursor-not-allowed"
+              >
+                <Plus size={14} />
+                Coming Soon
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Social & Messaging Providers */}
+        <div className="mb-6">
+          <h5 className="text-gray-300 text-sm font-medium mb-3">Social & Messaging</h5>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* LinkedIn */}
+            <div className="flex items-center justify-between p-3 bg-blue-900/20 rounded-lg border border-blue-600/30">
+              <div className="flex items-center gap-3">
+                <LinkedInLogo size={24} className="text-blue-400" />
+                <div>
+                  <div className="text-white font-medium">LinkedIn</div>
+                  <div className="text-blue-300 text-xs">Connected ✓</div>
+                </div>
+              </div>
+              <button 
+                onClick={() => window.location.href = '/integrations/linkedin'}
+                className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+              >
+                <Settings size={14} />
+                Manage
+              </button>
+            </div>
+
+            {/* WhatsApp - Most Requested */}
+            <div className="relative flex items-center justify-between p-3 bg-green-900/20 rounded-lg border border-green-600/30">
+              <div className="absolute top-1 right-1">
+                <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">Most Requested</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <WhatsAppLogo size={24} className="text-green-400" />
+                <div>
+                  <div className="text-white font-medium">WhatsApp</div>
+                  <div className="text-gray-400 text-xs">Personal & Business</div>
+                </div>
+              </div>
+              <button 
+                disabled
+                className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-600 text-gray-400 rounded transition-colors cursor-not-allowed"
+              >
+                <Bell size={14} />
+                Notify Me
+              </button>
+            </div>
+
+            {/* Telegram */}
+            <div className="flex items-center justify-between p-3 bg-blue-900/20 rounded-lg border border-blue-600/30">
+              <div className="flex items-center gap-3">
+                <TelegramLogo size={24} className="text-blue-400" />
+                <div>
+                  <div className="text-white font-medium">Telegram</div>
+                  <div className="text-gray-400 text-xs">Tech Communities</div>
+                </div>
+              </div>
+              <button 
+                disabled
+                className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-600 text-gray-400 rounded transition-colors cursor-not-allowed"
+              >
+                <Bell size={14} />
+                Notify Me
+              </button>
+            </div>
+
+            {/* Twitter */}
+            <div className="flex items-center justify-between p-3 bg-sky-900/20 rounded-lg border border-sky-600/30">
+              <div className="flex items-center gap-3">
+                <TwitterLogo size={24} className="text-sky-400" />
+                <div>
+                  <div className="text-white font-medium">Twitter/X</div>
+                  <div className="text-gray-400 text-xs">Direct Messages</div>
+                </div>
+              </div>
+              <button 
+                disabled
+                className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-600 text-gray-400 rounded transition-colors cursor-not-allowed"
+              >
+                <Bell size={14} />
+                Notify Me
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Integration Note */}
+        <div className="p-3 bg-gray-900 rounded border border-gray-600">
+          <div className="flex items-start gap-3">
+            <MessageCircle className="h-5 w-5 text-blue-400 mt-0.5" />
+            <div>
+              <h5 className="text-white font-medium text-sm mb-1">Unified Messaging Hub</h5>
+              <p className="text-gray-400 text-xs">
+                Connect all your communication channels for seamless prospect management. 
+                SAM AI will provide unified context across LinkedIn, email, messaging, and social platforms.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Connection Status */}
       <div className="mt-4 p-3 bg-gray-900 rounded border border-gray-600">
         <div className="flex items-center gap-2 text-green-400">
@@ -296,7 +446,7 @@ function InboxConnection() {
           <span className="text-sm">Inbox monitoring active</span>
         </div>
         <p className="text-gray-500 text-xs mt-1">
-          New messages will appear automatically in your Contact Center
+          New messages will appear automatically in your Inbox
         </p>
       </div>
     </div>
@@ -538,7 +688,7 @@ const ContactCenter: React.FC = () => {
     <div className="flex-1 bg-background p-6 overflow-y-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Contact Center</h1>
+        <h1 className="text-3xl font-bold text-white mb-2">Inbox</h1>
         <p className="text-gray-400">Manage inbound requests and customer communications</p>
         
         {/* Tab Navigation */}
@@ -551,7 +701,7 @@ const ContactCenter: React.FC = () => {
                 : 'text-gray-400 hover:text-white hover:bg-gray-700'
             }`}
           >
-            Inbox Connections
+            Account Connections
           </button>
           <button
             onClick={() => setActiveTab('inbox')}
