@@ -21,7 +21,6 @@ export async function POST(request: NextRequest) {
 
     // Create the user_unipile_accounts table
     const createTableSQL = `
-      -- User Unipile Accounts Association Table
       CREATE TABLE IF NOT EXISTS user_unipile_accounts (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -33,13 +32,12 @@ export async function POST(request: NextRequest) {
         linkedin_profile_url TEXT,
         connection_status TEXT DEFAULT 'active' CHECK (connection_status IN ('active', 'disconnected', 'error')),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        
-        -- Ensure one user can't claim the same Unipile account multiple times
-        UNIQUE(unipile_account_id),
-        -- Ensure one user can't have duplicate LinkedIn identifiers
-        UNIQUE(user_id, linkedin_public_identifier) WHERE linkedin_public_identifier IS NOT NULL
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
+    `
+
+    const addConstraintsSQL = `
+      ALTER TABLE user_unipile_accounts ADD CONSTRAINT IF NOT EXISTS unique_unipile_account_id UNIQUE (unipile_account_id);
     `
 
     const enableRLSSQL = `
@@ -61,6 +59,11 @@ export async function POST(request: NextRequest) {
       CREATE INDEX IF NOT EXISTS idx_user_unipile_accounts_user_id ON user_unipile_accounts(user_id);
       CREATE INDEX IF NOT EXISTS idx_user_unipile_accounts_unipile_id ON user_unipile_accounts(unipile_account_id);
       CREATE INDEX IF NOT EXISTS idx_user_unipile_accounts_platform ON user_unipile_accounts(platform);
+      
+      -- Create partial unique index for LinkedIn identifiers
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_user_linkedin_unique 
+        ON user_unipile_accounts(user_id, linkedin_public_identifier) 
+        WHERE linkedin_public_identifier IS NOT NULL;
     `
 
     const createFunctionSQL = `
@@ -86,6 +89,7 @@ export async function POST(request: NextRequest) {
     // Execute each SQL statement
     const statements = [
       { name: 'Create Table', sql: createTableSQL },
+      { name: 'Add Constraints', sql: addConstraintsSQL },
       { name: 'Enable RLS', sql: enableRLSSQL },
       { name: 'Create Policy', sql: createPolicySQL },
       { name: 'Create Indexes', sql: createIndexesSQL },

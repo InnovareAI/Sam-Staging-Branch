@@ -33,6 +33,20 @@ export class WebSearchMCPServer {
     return {
       tools: [
         {
+          name: 'validate_linkedin_url',
+          description: 'Validate LinkedIn profile or company URL format',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              url: {
+                type: 'string',
+                description: 'LinkedIn URL to validate (profile or company)'
+              }
+            },
+            required: ['url']
+          }
+        },
+        {
           name: 'boolean_linkedin_search',
           description: 'Search LinkedIn using Boolean operators for precise prospect targeting',
           inputSchema: {
@@ -150,6 +164,8 @@ export class WebSearchMCPServer {
 
     try {
       switch (name) {
+        case 'validate_linkedin_url':
+          return await this.validateLinkedInUrl(args)
         case 'boolean_linkedin_search':
           return await this.executeBooleanLinkedInSearch(args)
         
@@ -179,6 +195,23 @@ export class WebSearchMCPServer {
         }],
         isError: true
       }
+    }
+  }
+
+  private async validateLinkedInUrl(args: any): Promise<MCPCallToolResult> {
+    const { url } = args || {}
+    const pattern = /^https?:\/\/(www\.)?linkedin\.com\/(in|company)\/[A-Za-z0-9\-_%]+\/?$/
+    const isValid = typeof url === 'string' && pattern.test(url)
+    const result = {
+      valid: isValid,
+      type: isValid ? (url.includes('/in/') ? 'profile' : 'company') : 'unknown',
+      normalized: isValid ? url.replace(/^http:\/\//, 'https://').split('?')[0] : null,
+      message: isValid ? 'Valid LinkedIn URL' : 'Invalid LinkedIn URL'
+    }
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      isError: !isValid
     }
   }
 

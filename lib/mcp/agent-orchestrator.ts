@@ -471,7 +471,7 @@ export class MCPAgentOrchestrator {
       return await this.registry.callTool({
         method: 'tools/call', 
         params: {
-          name: 'extract_linkedin_profiles',
+          name: 'research_linkedin_prospect',
           arguments: request.request
         },
         server: 'apify'

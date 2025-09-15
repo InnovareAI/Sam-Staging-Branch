@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 // Helper function to make Unipile API calls  
 async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: any) {
@@ -32,6 +34,18 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
 
 export async function POST(request: NextRequest) {
   try {
+    // Authenticate user first
+    const cookieStore = cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 });
+    }
+
     const { account_id } = await request.json();
 
     if (!account_id) {
@@ -40,6 +54,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    console.log(`👤 User ${user.email} requesting messages for account: ${account_id}`);
 
     console.log('🔍 Fetching recent messages from Unipile for account:', account_id);
 
@@ -52,6 +68,35 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+      // First, verify the account belongs to the authenticated user
+      console.log('🔒 Verifying account ownership for user:', user.email);
+      const accountsData = await callUnipileAPI('accounts');
+      const allAccounts = Array.isArray(accountsData) ? accountsData : (accountsData.items || accountsData.accounts || []);
+      
+      // Filter to user's accounts using same privacy logic as accounts API
+      const userEmail = user.email;
+      const userOwnedAccounts = allAccounts.filter((account: any) => {
+        const connectionParams = account.connection_params?.im || {};
+        const accountEmail = connectionParams.email || connectionParams.username;
+        const publicIdentifier = connectionParams.publicIdentifier;
+        
+        return accountEmail === userEmail || 
+               (publicIdentifier && userEmail.includes(publicIdentifier)) ||
+               account.name?.toLowerCase().includes(userEmail.split('@')[0].toLowerCase());
+      });
+
+      // Check if the requested account belongs to the user
+      const requestedAccount = userOwnedAccounts.find((account: any) => account.id === account_id);
+      if (!requestedAccount) {
+        console.log(`❌ Account ${account_id} does not belong to user ${userEmail}`);
+        return NextResponse.json({
+          success: false,
+          error: 'Access denied: Account does not belong to authenticated user'
+        }, { status: 403 });
+      }
+
+      console.log(`✅ Account ownership verified for user ${userEmail}`);
+
       // Call Unipile API to get messages for the specific account
       console.log('🌐 Making direct call to Unipile messages API...');
       const messagesData = await callUnipileAPI(`messages`, 'GET');
