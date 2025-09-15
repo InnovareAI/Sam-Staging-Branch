@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     
     const rolloutResults = []
     const usersToProcess = target_users.length > 0 ? 
-      allUsers.users.filter(u => target_users.includes(u.email)) : 
+      allUsers.users.filter((u: any) => target_users.includes(u.email)) : 
       allUsers.users
 
     for (const samUser of usersToProcess) {
