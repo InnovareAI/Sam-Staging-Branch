@@ -203,6 +203,12 @@ export async function GET(request: NextRequest) {
     const userEmail = user.email?.toLowerCase() || ''
     const isSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com', 'thorsten@innovareai.com', 'thorsten.linz@gmail.com'].includes(userEmail)
     
+    console.log(`🔍 User authentication check:`, {
+      user_id: user.id,
+      user_email: userEmail,
+      is_super_admin: isSuperAdmin
+    })
+    
     // TEMPORARY FIX: Skip workspace check entirely for debugging production issues
     if (!userOrg && !isSuperAdmin) {
       console.log(`⚠️ User ${user.email} not associated with workspace - allowing access for debugging`)
@@ -215,6 +221,49 @@ export async function GET(request: NextRequest) {
     // Fetch ALL accounts from Unipile (we'll filter by user associations)
     const data = await callUnipileAPI('accounts')
     const allAccounts = Array.isArray(data) ? data : (data.items || data.accounts || [])
+    
+    // 🚨 SPECIAL CASE: Auto-associate Thorsten's specific LinkedIn account
+    if (userEmail === 'tl@innovareai.com' && user.id) {
+      const thorstenLinkedInId = 'isCX0_ZQStWs1xxqilsw5Q'
+      const thorstenAccount = allAccounts.find(acc => acc.id === thorstenLinkedInId)
+      
+      if (thorstenAccount) {
+        console.log(`🔗 Auto-associating Thorsten's LinkedIn account: ${thorstenLinkedInId}`)
+        
+        // Check if association already exists
+        const { data: existingAssoc } = await supabase
+          .from('user_unipile_accounts')
+          .select('unipile_account_id')
+          .eq('user_id', user.id)
+          .eq('unipile_account_id', thorstenLinkedInId)
+          .single()
+        
+        if (!existingAssoc) {
+          // Create the association
+          const { data: newAssoc, error: assocError } = await supabase
+            .from('user_unipile_accounts')
+            .insert({
+              user_id: user.id,
+              unipile_account_id: thorstenLinkedInId,
+              platform: 'LINKEDIN',
+              account_name: 'Thorsten Linz',
+              account_email: 'tl@innovareai.com',
+              linkedin_public_identifier: 'tvonlinz',
+              linkedin_profile_url: 'https://linkedin.com/in/tvonlinz',
+              connection_status: 'active'
+            })
+            .select()
+          
+          if (assocError) {
+            console.error(`❌ Failed to auto-associate Thorsten's LinkedIn:`, assocError)
+          } else {
+            console.log(`✅ Successfully auto-associated Thorsten's LinkedIn account`)
+          }
+        } else {
+          console.log(`ℹ️ Thorsten's LinkedIn already associated`)
+        }
+      }
+    }
     
     // 🛡️ SECURITY: Get user's associated accounts only
     const { data: userAccounts } = await supabase
