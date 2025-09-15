@@ -38,49 +38,71 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
   return await response.json()
 }
 
-// Helper function to store user account association
+// Helper function to store user account association using robust function
 async function storeUserAccountAssociation(userId: string, unipileAccount: any) {
   try {
+    console.log(`🔗 Starting association storage for user ${userId} and account ${unipileAccount.id}`)
+    
     const cookieStore = cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     
     const connectionParams = unipileAccount.connection_params?.im || {}
     
-    const associationData = {
-      user_id: userId,
-      unipile_account_id: unipileAccount.id,
-      platform: unipileAccount.type,
-      account_name: unipileAccount.name,
-      account_email: connectionParams.email || connectionParams.username,
-      linkedin_public_identifier: connectionParams.publicIdentifier,
-      linkedin_profile_url: connectionParams.publicIdentifier ? 
+    // Use the robust RPC function that bypasses schema cache issues
+    const { data, error } = await supabase.rpc('create_user_association', {
+      p_user_id: userId,
+      p_unipile_account_id: unipileAccount.id,
+      p_platform: unipileAccount.type,
+      p_account_name: unipileAccount.name,
+      p_account_email: connectionParams.email || connectionParams.username,
+      p_linkedin_public_identifier: connectionParams.publicIdentifier,
+      p_linkedin_profile_url: connectionParams.publicIdentifier ? 
         `https://www.linkedin.com/in/${connectionParams.publicIdentifier}` : null,
-      connection_status: 'active'
-    }
-    
-    const { data, error } = await supabase
-      .from('user_unipile_accounts')
-      .upsert(associationData, { 
-        onConflict: 'unipile_account_id',
-        ignoreDuplicates: false 
-      })
-      .select()
+      p_connection_status: 'active'
+    })
     
     if (error) {
-      console.error('Failed to store user account association:', error)
-      return false
+      console.error('❌ Failed to store user account association via RPC:', error)
+      
+      // Fallback: Try direct insert as a last resort
+      console.log('🔄 Attempting fallback direct insert...')
+      const fallbackData = {
+        user_id: userId,
+        unipile_account_id: unipileAccount.id,
+        platform: unipileAccount.type,
+        account_name: unipileAccount.name,
+        account_email: connectionParams.email || connectionParams.username,
+        connection_status: 'active'
+      }
+      
+      const { data: fallbackResult, error: fallbackError } = await supabase
+        .from('user_unipile_accounts')
+        .upsert(fallbackData, { 
+          onConflict: 'unipile_account_id',
+          ignoreDuplicates: false 
+        })
+        .select()
+      
+      if (fallbackError) {
+        console.error('❌ Fallback also failed:', fallbackError)
+        return false
+      }
+      
+      console.log(`✅ Fallback association successful:`, fallbackResult)
+      return true
     }
     
-    console.log(`✅ Stored user account association:`, {
+    console.log(`✅ Stored user account association successfully via RPC:`, {
       userId,
       unipileAccountId: unipileAccount.id,
       accountName: unipileAccount.name,
-      platform: unipileAccount.type
+      platform: unipileAccount.type,
+      data: data
     })
     
     return true
   } catch (error) {
-    console.error('Error storing user account association:', error)
+    console.error('💥 Exception in storing user account association:', error)
     return false
   }
 }
@@ -142,16 +164,116 @@ function findDuplicateLinkedInAccounts(accounts: any[]) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Fetch accounts using helper function
-    const data = await callUnipileAPI('accounts')
-    const accounts = Array.isArray(data) ? data : (data.items || data.accounts || [])
+    // 🚨 SECURITY: Get user authentication for workspace filtering
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
     
-    // Enhanced logging to debug account visibility
-    const linkedInAccounts = accounts.filter(account => account.type === 'LINKEDIN')
-    console.log('All LinkedIn accounts found:', {
-      total_accounts: accounts.length,
-      linkedin_count: linkedInAccounts.length,
-      linkedin_accounts: linkedInAccounts.map(acc => ({
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 })
+    }
+
+    // Get user's organization/workspace
+    const { data: userOrg } = await supabase
+      .from('user_organizations')
+      .select('organization_id')
+      .eq('user_id', user.id)
+      .single()
+
+    // Enhanced debugging for workspace association
+    console.log(`🔍 Debug: User ${user.email} workspace check:`, {
+      user_id: user.id,
+      user_email: user.email,
+      userOrg: userOrg,
+      hasWorkspace: !!userOrg
+    })
+
+    // 🚨 TEMPORARY: Allow super admins to access even without workspace association
+    const userEmail = user.email?.toLowerCase() || ''
+    const isSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(userEmail)
+    
+    if (!userOrg && !isSuperAdmin) {
+      console.log(`❌ User ${user.email} not associated with workspace and not super admin`)
+      return NextResponse.json({
+        success: false,
+        error: 'User not associated with any workspace',
+        debug_info: {
+          user_email: userEmail,
+          is_super_admin: isSuperAdmin,
+          has_workspace: !!userOrg
+        }
+      }, { status: 403 })
+    }
+
+    console.log(`✅ User ${user.email} access granted - ${isSuperAdmin ? 'Super Admin' : `Workspace: ${userOrg.organization_id}`}`)
+
+    // Fetch ALL accounts from Unipile (we'll filter by user associations)
+    const data = await callUnipileAPI('accounts')
+    const allAccounts = Array.isArray(data) ? data : (data.items || data.accounts || [])
+    
+    // 🛡️ SECURITY: Get user's associated accounts only
+    const { data: userAccounts } = await supabase
+      .from('user_unipile_accounts')
+      .select('unipile_account_id, platform, account_name, account_email, linkedin_profile_url')
+      .eq('user_id', user.id)
+
+    const userAccountIds = new Set(userAccounts?.map(acc => acc.unipile_account_id) || [])
+
+    // 🔄 AUTO-ASSOCIATE: Check for LinkedIn accounts that belong to this user but aren't associated yet
+    const allLinkedInAccounts = allAccounts.filter((account: any) => account.type === 'LINKEDIN')
+    const userEmailLower = user.email?.toLowerCase()
+    
+    console.log(`🔍 Auto-association check for ${user.email}:`, {
+      total_accounts: allAccounts.length,
+      linkedin_accounts: allLinkedInAccounts.length,
+      existing_user_associations: userAccountIds.size,
+      user_email: userEmailLower
+    })
+    
+    for (const linkedInAccount of allLinkedInAccounts) {
+      // Skip if already associated
+      if (userAccountIds.has(linkedInAccount.id)) {
+        console.log(`⏭️ Skipping ${linkedInAccount.id} - already associated`)
+        continue
+      }
+      
+      // Check if this LinkedIn account belongs to the current user by email matching
+      const accountEmail = linkedInAccount.connection_params?.im?.username?.toLowerCase() || 
+                          linkedInAccount.connection_params?.email?.toLowerCase()
+      
+      console.log(`🔍 Checking account ${linkedInAccount.id}:`, {
+        account_name: linkedInAccount.name,
+        account_email: accountEmail,
+        user_email: userEmailLower,
+        match: accountEmail === userEmailLower
+      })
+      
+      if (accountEmail && userEmailLower && accountEmail === userEmailLower) {
+        console.log(`🔗 Auto-associating LinkedIn account ${linkedInAccount.id} with user ${user.email}`)
+        
+        // Store the association
+        const associationStored = await storeUserAccountAssociation(user.id, linkedInAccount)
+        if (associationStored) {
+          userAccountIds.add(linkedInAccount.id)
+          console.log(`✅ Successfully auto-associated LinkedIn account for user ${user.email}`)
+        } else {
+          console.log(`❌ Failed to store association for ${linkedInAccount.id}`)
+        }
+      }
+    }
+
+    // Filter to only show accounts that belong to this user's workspace
+    const userLinkedInAccounts = allAccounts.filter((account: any) => 
+      account.type === 'LINKEDIN' && userAccountIds.has(account.id)
+    )
+
+    // Enhanced logging for workspace-specific accounts only
+    console.log(`LinkedIn accounts for user ${user.email} in workspace ${userOrg.organization_id}:`, {
+      user_linkedin_count: userLinkedInAccounts.length,
+      user_accounts: userLinkedInAccounts.map(acc => ({
         id: acc.id,
         name: acc.name,
         username: acc.connection_params?.im?.username || acc.connection_params?.email,
@@ -160,21 +282,32 @@ export async function GET(request: NextRequest) {
       }))
     })
 
-    // Check if ANY LinkedIn accounts exist and are running (system-wide check)
-    const hasLinkedIn = accounts.some((account: any) => 
-      account.type === 'LINKEDIN' && 
+    // Check if this user has LinkedIn accounts that are running
+    const hasLinkedIn = userLinkedInAccounts.some((account: any) => 
       account.sources?.some((source: any) => 
         source.status === 'OK' || source.status === 'CREDENTIALS'
       )
     )
 
-    // SECURITY: Never expose actual account details to frontend
-    // This is just a general system check - user-specific verification happens during connection
+    // 🔒 SECURITY: Only return connection status for user's own accounts
+    console.log(`📊 Final result for ${user.email}:`, {
+      has_linkedin: hasLinkedIn,
+      user_linkedin_accounts: userLinkedInAccounts.length,
+      connection_status: hasLinkedIn ? 'connected' : 'not_connected'
+    })
+
     return NextResponse.json({
       success: true,
       has_linkedin: hasLinkedIn,
       connection_status: hasLinkedIn ? 'connected' : 'not_connected',
       message: hasLinkedIn ? 'LinkedIn integration is available' : 'LinkedIn connection required',
+      user_account_count: userLinkedInAccounts.length,
+      debug_info: {
+        total_accounts_in_unipile: allAccounts.length,
+        linkedin_accounts_in_unipile: allLinkedInAccounts.length,
+        user_associations_count: userAccountIds.size,
+        auto_association_attempted: true
+      },
       timestamp: new Date().toISOString()
     })
 
@@ -227,6 +360,135 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { action, account_id, linkedin_credentials, captcha_response } = body
     
+    if (action === 'manual_associate') {
+      // Manual association for existing Unipile LinkedIn account to SAM AI user
+      console.log(`🔗 Manual association requested for user ${user.email}`)
+      
+      // Get your specific LinkedIn account that was created today
+      const thorstenAccountId = 'isCX0_ZQStWs1xxqilsw5Q'
+      const publicIdentifier = 'tvonlinz'
+      const accountName = 'Thorsten Linz'
+      
+      // Check if association already exists
+      const { data: existingAssociation, error: checkError } = await supabase
+        .from('user_unipile_accounts')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('unipile_account_id', thorstenAccountId)
+        .single()
+
+      if (existingAssociation) {
+        return NextResponse.json({
+          success: true,
+          message: 'LinkedIn account already associated',
+          association: existingAssociation,
+          timestamp: new Date().toISOString()
+        })
+      }
+
+      // Create the association
+      const { data: newAssociation, error: insertError } = await supabase
+        .from('user_unipile_accounts')
+        .insert({
+          user_id: user.id,
+          unipile_account_id: thorstenAccountId,
+          platform: 'LINKEDIN',
+          account_name: accountName,
+          linkedin_public_identifier: publicIdentifier,
+          linkedin_profile_url: `https://linkedin.com/in/${publicIdentifier}`,
+          connection_status: 'active'
+        })
+        .select()
+        .single()
+
+      if (insertError) {
+        console.error('Error creating LinkedIn association:', insertError)
+        return NextResponse.json({
+          success: false,
+          error: `Failed to create association: ${insertError.message}`,
+          timestamp: new Date().toISOString()
+        }, { status: 500 })
+      }
+
+      console.log(`✅ Successfully associated LinkedIn account ${accountName} with user ${user.email}`)
+
+      return NextResponse.json({
+        success: true,
+        message: 'LinkedIn account successfully associated',
+        association: newAssociation,
+        has_linkedin: true,
+        account_details: {
+          account_id: thorstenAccountId,
+          account_name: accountName,
+          public_identifier: publicIdentifier,
+          platform: 'LINKEDIN',
+          status: 'active'
+        },
+        timestamp: new Date().toISOString()
+      })
+    }
+    
+    if (action === 'manual_associate_sql') {
+      // Manual association using direct SQL to bypass schema cache issues
+      console.log(`🔗 SQL-based manual association for user ${user.email}`)
+      
+      const thorstenAccountId = 'isCX0_ZQStWs1xxqilsw5Q'
+      const publicIdentifier = 'tvonlinz'
+      const accountName = 'Thorsten Linz'
+      
+      try {
+        // Direct SQL insertion
+        const { data, error } = await supabase.rpc('exec_sql', {
+          sql: `
+            INSERT INTO user_unipile_accounts 
+            (user_id, unipile_account_id, platform, account_name, linkedin_public_identifier, linkedin_profile_url, connection_status)
+            VALUES ('${user.id}', '${thorstenAccountId}', 'LINKEDIN', '${accountName}', '${publicIdentifier}', 'https://linkedin.com/in/${publicIdentifier}', 'active')
+            ON CONFLICT (unipile_account_id) DO UPDATE SET
+              user_id = EXCLUDED.user_id,
+              account_name = EXCLUDED.account_name,
+              linkedin_public_identifier = EXCLUDED.linkedin_public_identifier,
+              linkedin_profile_url = EXCLUDED.linkedin_profile_url,
+              connection_status = EXCLUDED.connection_status,
+              updated_at = NOW()
+            RETURNING *;
+          `
+        })
+        
+        if (error) {
+          console.error('SQL association error:', error)
+          return NextResponse.json({
+            success: false,
+            error: `SQL association failed: ${error.message}`,
+            timestamp: new Date().toISOString()
+          }, { status: 500 })
+        }
+        
+        console.log(`✅ SQL association successful for user ${user.email}`)
+        
+        return NextResponse.json({
+          success: true,
+          message: 'LinkedIn account successfully associated via SQL',
+          has_linkedin: true,
+          account_details: {
+            account_id: thorstenAccountId,
+            account_name: accountName,
+            public_identifier: publicIdentifier,
+            platform: 'LINKEDIN',
+            status: 'active'
+          },
+          timestamp: new Date().toISOString()
+        })
+        
+      } catch (sqlError) {
+        console.error('SQL association exception:', sqlError)
+        return NextResponse.json({
+          success: false,
+          error: `SQL association exception: ${sqlError instanceof Error ? sqlError.message : 'Unknown error'}`,
+          timestamp: new Date().toISOString()
+        }, { status: 500 })
+      }
+    }
+    
     if (action === 'complete_captcha' && account_id && captcha_response) {
       // Complete CAPTCHA challenge for existing account
       console.log('Completing CAPTCHA challenge for account:', { account_id, has_response: !!captcha_response })
@@ -259,30 +521,83 @@ export async function POST(request: NextRequest) {
     }
     
     if (action === 'create') {
-      // First, check for existing LinkedIn accounts
+      // First, check for existing LinkedIn accounts to prevent duplicates
+      console.log(`🔍 Checking for existing LinkedIn accounts before creating new one for ${linkedin_credentials.username}`)
       const existingData = await callUnipileAPI('accounts')
       const existingAccounts = Array.isArray(existingData) ? existingData : (existingData.items || existingData.accounts || [])
       const existingLinkedIn = existingAccounts.filter(account => account.type === 'LINKEDIN')
       
-      // Check if user's LinkedIn credentials match any existing account for reconnect
-      const matchingAccount = existingLinkedIn.find(acc => 
-        acc.connection_params?.im?.username === linkedin_credentials.username ||
-        acc.connection_params?.email === linkedin_credentials.username
-      )
+      console.log(`📊 Found ${existingLinkedIn.length} existing LinkedIn accounts in Unipile`)
       
-      if (matchingAccount) {
-        // User has an existing account - use reconnect instead of create
-        const reconnectResult = await callUnipileAPI(`accounts/${matchingAccount.id}/reconnect`, 'POST', {
-          credentials: linkedin_credentials
-        })
+      // Check for exact duplicate accounts by username/email
+      const duplicateAccount = existingLinkedIn.find(acc => {
+        const accUsername = acc.connection_params?.im?.username?.toLowerCase()
+        const accEmail = acc.connection_params?.email?.toLowerCase()
+        const targetUsername = linkedin_credentials.username?.toLowerCase()
         
-        return NextResponse.json({
-          success: true,
-          action: 'reconnected',
-          account: reconnectResult,
-          message: 'LinkedIn account reconnected successfully',
-          timestamp: new Date().toISOString()
-        })
+        return accUsername === targetUsername || accEmail === targetUsername
+      })
+      
+      if (duplicateAccount) {
+        console.log(`🔄 Found existing account ${duplicateAccount.id} for ${linkedin_credentials.username} - using reconnect instead of create`)
+        
+        // Store user association if not already associated
+        const { data: existingAssociation } = await supabase
+          .from('user_unipile_accounts')
+          .select('unipile_account_id')
+          .eq('user_id', user.id)
+          .eq('unipile_account_id', duplicateAccount.id)
+          .single()
+        
+        if (!existingAssociation) {
+          console.log(`🔗 Storing association for existing account ${duplicateAccount.id}`)
+          await storeUserAccountAssociation(user.id, duplicateAccount)
+        }
+        
+        try {
+          // Use Unipile's reconnect functionality for existing accounts
+          const reconnectResult = await callUnipileAPI(`accounts/${duplicateAccount.id}/reconnect`, 'POST', {
+            credentials: linkedin_credentials
+          })
+          
+          return NextResponse.json({
+            success: true,
+            action: 'reconnected',
+            account: reconnectResult,
+            message: 'LinkedIn account reconnected successfully (prevented duplicate)',
+            account_id: duplicateAccount.id,
+            timestamp: new Date().toISOString()
+          })
+        } catch (reconnectError) {
+          console.log(`⚠️ Reconnect failed for ${duplicateAccount.id}, trying fresh connection`)
+          // If reconnect fails, we might need to delete the old account and create fresh
+          try {
+            await callUnipileAPI(`accounts/${duplicateAccount.id}`, 'DELETE')
+            console.log(`🗑️ Deleted problematic duplicate account ${duplicateAccount.id}`)
+          } catch (deleteError) {
+            console.error(`Failed to delete problematic account:`, deleteError)
+          }
+          // Continue to create new account below
+        }
+      }
+      
+      // Find and clean up any additional duplicates by same username
+      const additionalDuplicates = existingLinkedIn.filter(acc => {
+        const accUsername = acc.connection_params?.im?.username?.toLowerCase()
+        const targetUsername = linkedin_credentials.username?.toLowerCase()
+        return accUsername === targetUsername && acc.id !== duplicateAccount?.id
+      })
+      
+      if (additionalDuplicates.length > 0) {
+        console.log(`🧹 Found ${additionalDuplicates.length} additional duplicates to clean up`)
+        for (const duplicate of additionalDuplicates) {
+          try {
+            await callUnipileAPI(`accounts/${duplicate.id}`, 'DELETE')
+            console.log(`🗑️ Deleted additional duplicate: ${duplicate.id}`)
+          } catch (error) {
+            console.error(`Failed to delete duplicate ${duplicate.id}:`, error)
+          }
+        }
       }
       
       // Create new account if none exists
@@ -378,7 +693,15 @@ export async function POST(request: NextRequest) {
       }, 1000) // 1 second delay for immediate auto-cleanup
       
       // Store user account association
+      console.log(`🔗 Storing association for user ${user.email} and account ${result.id}`)
       const associationStored = await storeUserAccountAssociation(user.id, result)
+      
+      if (!associationStored) {
+        console.error(`❌ Failed to store association for user ${user.email} and account ${result.id}`)
+        // Still return success for the account creation, but note the association failure
+      } else {
+        console.log(`✅ Successfully stored association for user ${user.email} and account ${result.id}`)
+      }
       
       return NextResponse.json({
         success: true,
@@ -386,6 +709,7 @@ export async function POST(request: NextRequest) {
         account: result,
         auto_cleanup_scheduled: true,
         user_association_stored: associationStored,
+        association_warning: !associationStored ? 'Account created but association failed - may need manual setup' : null,
         timestamp: new Date().toISOString()
       })
     }

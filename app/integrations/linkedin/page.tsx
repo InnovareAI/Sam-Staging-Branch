@@ -52,17 +52,105 @@ export default function UnipileIntegrationPage() {
   const fetchAccounts = async () => {
     try {
       setError(null)
-      const response = await fetch('/api/contact-center/accounts')
+      
+      // Check both Unipile API and our association database for comprehensive LinkedIn detection
+      console.log('🔍 Checking LinkedIn connections via multiple methods...')
+      
+      // Method 1: Check our direct LinkedIn association database
+      let hasLinkedInFromAssociations = false
+      try {
+        const associationResponse = await fetch('/api/linkedin/associate')
+        if (associationResponse.ok) {
+          const associationData = await associationResponse.json()
+          hasLinkedInFromAssociations = associationData.has_linkedin && associationData.count > 0
+          console.log('📊 Association check result:', {
+            has_linkedin: associationData.has_linkedin,
+            count: associationData.count,
+            associations: associationData.associations
+          })
+          
+          if (hasLinkedInFromAssociations) {
+            // Show accounts from association database
+            const linkedInAssociations = associationData.associations.filter((assoc: any) => 
+              assoc.platform === 'LINKEDIN' && assoc.connection_status === 'active'
+            )
+            
+            setAccounts(linkedInAssociations.map((assoc: any) => ({
+              id: assoc.unipile_account_id,
+              name: assoc.account_name || 'LinkedIn Account',
+              type: 'LINKEDIN',
+              created_at: assoc.created_at,
+              sources: [{ id: 'association', status: 'OK' }],
+              connection_params: {
+                im: {
+                  username: assoc.linkedin_public_identifier || assoc.account_email || 'Connected',
+                  publicIdentifier: assoc.linkedin_public_identifier
+                }
+              }
+            })))
+            
+            console.log('✅ LinkedIn connections found via associations')
+            setDuplicates([])
+            return
+          }
+        }
+      } catch (associationError) {
+        console.log('⚠️ Association check failed, continuing with Unipile check:', associationError)
+      }
+      
+      // Method 2: Check Unipile API (original method)
+      const response = await fetch('/api/unipile/accounts')
       if (response.ok) {
         const data = await response.json()
-        setAccounts(data.accounts || [])
+        console.log('📊 Unipile API result:', {
+          has_linkedin: data.has_linkedin,
+          connection_status: data.connection_status,
+          debug_info: data.debug_info
+        })
+        
+        if (data.has_linkedin) {
+          // If user has LinkedIn via Unipile, try to get detailed account list
+          try {
+            const contactResponse = await fetch('/api/contact-center/accounts')
+            if (contactResponse.ok) {
+              const contactData = await contactResponse.json()
+              setAccounts(contactData.accounts || [])
+              console.log('✅ LinkedIn accounts loaded from contact center')
+            } else {
+              // Fallback: show generic connection status
+              setAccounts([{
+                id: 'linkedin-unipile-detected',
+                name: 'LinkedIn Account',
+                type: 'LINKEDIN',
+                created_at: new Date().toISOString(),
+                sources: [{ id: 'unipile', status: 'OK' }],
+                connection_params: { im: { username: 'Connected via Unipile' } }
+              }])
+              console.log('✅ LinkedIn connection detected via Unipile (fallback display)')
+            }
+          } catch (contactError) {
+            console.log('⚠️ Contact center failed, using fallback display')
+            setAccounts([{
+              id: 'linkedin-unipile-fallback',
+              name: 'LinkedIn Account',
+              type: 'LINKEDIN',
+              created_at: new Date().toISOString(),
+              sources: [{ id: 'unipile', status: 'OK' }],
+              connection_params: { im: { username: 'Connected via Unipile' } }
+            }])
+          }
+        } else {
+          console.log('❌ No LinkedIn connections found')
+          setAccounts([])
+        }
         setDuplicates([])
       } else {
-        throw new Error('Failed to fetch accounts')
+        throw new Error(`Failed to fetch accounts: ${response.status}`)
       }
     } catch (error) {
       console.error('Error fetching accounts:', error)
       setError(error instanceof Error ? error.message : 'Unknown error')
+      setAccounts([])
     } finally {
       setLoading(false)
       setRefreshing(false)
