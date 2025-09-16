@@ -13,13 +13,16 @@ import {
   BrightDataProspectRequest,
   ProspectIntelligence
 } from './types'
+import { AutoIPAssignmentService } from '@/lib/services/auto-ip-assignment'
 
 export class BrightDataMCPServer {
   private config: BrightDataMCPConfig
   private tools: MCPTool[]
+  private autoIPService: AutoIPAssignmentService
 
   constructor(config: BrightDataMCPConfig) {
     this.config = config
+    this.autoIPService = new AutoIPAssignmentService()
     this.tools = this.initializeTools()
   }
 
@@ -115,6 +118,24 @@ export class BrightDataMCPServer {
           properties: {},
           required: []
         }
+      },
+      {
+        name: 'auto_assign_proxy_location',
+        description: 'Automatically assign optimal Bright Data proxy location based on user location',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            linkedinProfileLocation: {
+              type: 'string',
+              description: 'LinkedIn profile location for enhanced accuracy'
+            },
+            forceRegenerate: {
+              type: 'boolean',
+              description: 'Force regeneration of proxy configuration'
+            }
+          },
+          required: []
+        }
       }
     ]
   }
@@ -137,6 +158,9 @@ export class BrightDataMCPServer {
         
         case 'check_system_health':
           return await this.checkSystemHealth()
+        
+        case 'auto_assign_proxy_location':
+          return await this.autoAssignProxyLocation(request.params.arguments as any)
         
         default:
           return {
@@ -325,7 +349,8 @@ export class BrightDataMCPServer {
         components: {
           brightData: 'operational',
           compliance: 'active',
-          costOptimization: 'enabled'
+          costOptimization: 'enabled',
+          autoIPAssignment: 'active'
         },
         limits: {
           dailyQuota: 1000,
@@ -346,6 +371,58 @@ export class BrightDataMCPServer {
         content: [{
           type: 'text',
           text: `Health check error: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      }
+    }
+  }
+
+  private async autoAssignProxyLocation(request: { linkedinProfileLocation?: string, forceRegenerate?: boolean }): Promise<MCPCallToolResult> {
+    try {
+      // Detect user location (in a real implementation, you'd pass the actual request object)
+      const userLocation = await this.autoIPService.detectUserLocation()
+      
+      // Generate optimal proxy configuration
+      const proxyConfig = await this.autoIPService.generateOptimalProxyConfig(
+        userLocation || undefined,
+        request.linkedinProfileLocation
+      )
+
+      // Test connectivity
+      const connectivityTest = await this.autoIPService.testProxyConnectivity(proxyConfig)
+
+      const result = {
+        success: true,
+        proxyConfig: {
+          country: proxyConfig.country,
+          state: proxyConfig.state,
+          city: proxyConfig.city,
+          confidence: proxyConfig.confidence,
+          sessionId: proxyConfig.sessionId
+        },
+        userLocation,
+        connectivityTest,
+        recommendations: {
+          optimalLocation: `${proxyConfig.country}${proxyConfig.state ? `/${proxyConfig.state}` : ''}`,
+          alternativeLocations: this.autoIPService.getAvailableLocations()
+            .filter(loc => loc.country !== proxyConfig.country)
+            .slice(0, 3)
+            .map(loc => loc.displayName)
+        },
+        timestamp: new Date().toISOString()
+      }
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(result, null, 2)
+        }]
+      }
+    } catch (error) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Auto proxy assignment error: ${error instanceof Error ? error.message : 'Unknown error'}`
         }],
         isError: true
       }

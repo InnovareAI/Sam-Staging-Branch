@@ -23,20 +23,23 @@ import {
 import { LinkedInLogo } from '@/components/ui/LinkedInLogo';
 import { GoogleLogo } from '@/components/ui/GoogleLogo';
 import { MicrosoftLogo } from '@/components/ui/MicrosoftLogo';
+import { CalendlyLogo } from '@/components/ui/CalendlyLogo';
 import { WhatsAppLogo } from '@/components/ui/WhatsAppLogo';
 import { TelegramLogo } from '@/components/ui/TelegramLogo';
 import { TwitterLogo } from '@/components/ui/TwitterLogo';
 
 interface InboundRequest {
   id: string;
-  type: 'linkedin' | 'inmail';
+  type: 'linkedin' | 'inmail' | 'email' | 'gmail' | 'outlook';
   subject: string;
   from: string;
   time: string;
   company: string;
   details: string;
-  platform?: 'unipile' | 'direct' | 'linkedin';
+  platform?: 'unipile' | 'direct' | 'linkedin' | 'email' | 'google' | 'microsoft';
   status?: 'new' | 'read' | 'replied' | 'archived';
+  email_address?: string;
+  provider_type?: string;
 }
 
 interface ConnectedInbox {
@@ -108,6 +111,8 @@ function InboxConnection() {
   const [recentMessages, setRecentMessages] = useState<any[]>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailProviders, setEmailProviders] = useState<any[]>([]);
+  const [isConnecting, setIsConnecting] = useState<string | null>(null);
 
   const loadConnectedInboxes = async () => {
     setIsLoading(true);
@@ -173,9 +178,55 @@ function InboxConnection() {
     }
   };
 
+  const connectEmailProvider = async (providerType: string) => {
+    setIsConnecting(providerType);
+    try {
+      // Use Unipile for email connectivity (Gmail, Outlook)
+      const response = await fetch('/api/unipile/connect-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          provider: providerType,
+          platform: providerType === 'google' ? 'gmail' : 'outlook'
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.authUrl) {
+        // Redirect to Unipile OAuth flow
+        window.location.href = data.authUrl;
+      } else {
+        console.error(`❌ Failed to connect ${providerType} via Unipile:`, data.error);
+        alert(`Failed to connect ${providerType}: ${data.error}`);
+      }
+    } catch (error) {
+      console.error(`❌ Failed to connect ${providerType} via Unipile:`, error);
+      alert(`Failed to connect ${providerType} via Unipile. Please try again.`);
+    } finally {
+      setIsConnecting(null);
+    }
+  };
+
+  const loadEmailProviders = async () => {
+    try {
+      // Load connected email accounts via Unipile
+      const response = await fetch('/api/unipile/connect-email');
+      const data = await response.json();
+      
+      if (data.success) {
+        setEmailProviders(data.accounts || []);
+        console.log('📧 Loaded connected email accounts:', data.accounts?.length || 0);
+      }
+    } catch (error) {
+      console.error('❌ Failed to load email providers:', error);
+    }
+  };
+
   useEffect(() => {
     // Auto-load connected inboxes on mount
     loadConnectedInboxes();
+    loadEmailProviders();
   }, []);
 
   return (
@@ -304,7 +355,7 @@ function InboxConnection() {
         {/* Email & Calendar Providers */}
         <div className="mb-6">
           <h5 className="text-gray-300 text-sm font-medium mb-3">Email & Calendar</h5>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Google Workspace */}
             <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg border border-gray-600">
               <div className="flex items-center gap-3">
@@ -312,6 +363,52 @@ function InboxConnection() {
                 <div>
                   <div className="text-white font-medium">Google Workspace</div>
                   <div className="text-gray-400 text-xs">Gmail + Calendar + Drive</div>
+                </div>
+              </div>
+              <button 
+                onClick={() => connectEmailProvider('google')}
+                disabled={isConnecting === 'google'}
+                className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded transition-colors"
+              >
+                {isConnecting === 'google' ? (
+                  <RefreshCw size={14} className="animate-spin" />
+                ) : (
+                  <Plus size={14} />
+                )}
+                {isConnecting === 'google' ? 'Connecting...' : 'Connect'}
+              </button>
+            </div>
+
+            {/* Microsoft 365 */}
+            <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg border border-gray-600">
+              <div className="flex items-center gap-3">
+                <MicrosoftLogo size={24} />
+                <div>
+                  <div className="text-white font-medium">Microsoft 365</div>
+                  <div className="text-gray-400 text-xs">Outlook + Teams + OneDrive</div>
+                </div>
+              </div>
+              <button 
+                onClick={() => connectEmailProvider('microsoft')}
+                disabled={isConnecting === 'microsoft'}
+                className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded transition-colors"
+              >
+                {isConnecting === 'microsoft' ? (
+                  <RefreshCw size={14} className="animate-spin" />
+                ) : (
+                  <Plus size={14} />
+                )}
+                {isConnecting === 'microsoft' ? 'Connecting...' : 'Connect'}
+              </button>
+            </div>
+
+            {/* SMTP Email */}
+            <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg border border-gray-600">
+              <div className="flex items-center gap-3">
+                <Mail size={24} className="text-blue-400" />
+                <div>
+                  <div className="text-white font-medium">SMTP Email</div>
+                  <div className="text-gray-400 text-xs">Custom Email Provider</div>
                 </div>
               </div>
               <button 
@@ -323,13 +420,13 @@ function InboxConnection() {
               </button>
             </div>
 
-            {/* Microsoft 365 */}
+            {/* Calendly */}
             <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg border border-gray-600">
               <div className="flex items-center gap-3">
-                <MicrosoftLogo size={24} />
+                <CalendlyLogo size={24} className="text-blue-500" />
                 <div>
-                  <div className="text-white font-medium">Microsoft 365</div>
-                  <div className="text-gray-400 text-xs">Outlook + Teams + OneDrive</div>
+                  <div className="text-white font-medium">Calendly</div>
+                  <div className="text-gray-400 text-xs">Scheduling & Bookings</div>
                 </div>
               </div>
               <button 
@@ -365,11 +462,8 @@ function InboxConnection() {
               </button>
             </div>
 
-            {/* WhatsApp - Most Requested */}
-            <div className="relative flex items-center justify-between p-3 bg-green-900/20 rounded-lg border border-green-600/30">
-              <div className="absolute top-1 right-1">
-                <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">Most Requested</span>
-              </div>
+            {/* WhatsApp */}
+            <div className="flex items-center justify-between p-3 bg-green-900/20 rounded-lg border border-green-600/30">
               <div className="flex items-center gap-3">
                 <WhatsAppLogo size={24} className="text-green-400" />
                 <div>
@@ -381,8 +475,8 @@ function InboxConnection() {
                 disabled
                 className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-600 text-gray-400 rounded transition-colors cursor-not-allowed"
               >
-                <Bell size={14} />
-                Notify Me
+                <Clock size={14} />
+                Coming Soon
               </button>
             </div>
 
@@ -399,8 +493,8 @@ function InboxConnection() {
                 disabled
                 className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-600 text-gray-400 rounded transition-colors cursor-not-allowed"
               >
-                <Bell size={14} />
-                Notify Me
+                <Clock size={14} />
+                Coming Soon
               </button>
             </div>
 
@@ -417,8 +511,8 @@ function InboxConnection() {
                 disabled
                 className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-600 text-gray-400 rounded transition-colors cursor-not-allowed"
               >
-                <Bell size={14} />
-                Notify Me
+                <Clock size={14} />
+                Coming Soon
               </button>
             </div>
           </div>
@@ -459,19 +553,113 @@ function InboundInbox() {
   const [activeRequest, setActiveRequest] = useState<InboundRequest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showReplyModal, setShowReplyModal] = useState(false);
+  const [replyText, setReplyText] = useState('');
+
+  const handleReply = async () => {
+    if (!activeRequest) return;
+    
+    try {
+      console.log('🤖 Starting SAM reply workflow...', { 
+        messageId: activeRequest.id, 
+        from: activeRequest.from,
+        originalMessage: activeRequest.details,
+        userGuidance: replyText 
+      });
+      
+      // Start the complete SAM → Email → Unipile workflow
+      const workflowPayload = {
+        action: 'start_reply',
+        originalMessageId: activeRequest.id,
+        originalPlatform: activeRequest.platform || activeRequest.type,
+        originalSenderName: activeRequest.from,
+        originalSenderEmail: activeRequest.email_address,
+        originalSenderId: activeRequest.id, // Use message ID as sender ID for now
+        originalSubject: activeRequest.subject,
+        originalContent: activeRequest.details,
+        originalTimestamp: new Date().toISOString(),
+        userGuidance: replyText || 'Please draft an appropriate professional reply',
+        tonePreference: 'professional'
+      };
+      
+      console.log('📝 Starting SAM workflow...', workflowPayload);
+      
+      // Call the workflow API
+      const response = await fetch('/api/replies/workflow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(workflowPayload)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('✅ SAM intelligent workflow started:', result);
+        
+        // Enhanced success message with research insights
+        const research = result.research;
+        const leadScore = research?.leadScore?.overall || 'N/A';
+        const company = research?.company?.name || 'Unknown Company';
+        const category = result.leadPipeline?.category || 'Qualified Lead';
+        const hitlRequired = result.hitl?.required || false;
+        
+        let message = `🤖 SAM has analyzed and drafted a reply to ${activeRequest.from}!\n\n`;
+        message += `📊 PROSPECT RESEARCH:\n`;
+        message += `• Company: ${company}\n`;
+        message += `• Lead Score: ${leadScore}/100 (${category})\n`;
+        message += `• Industry: ${research?.company?.industry || 'Unknown'}\n`;
+        message += `• Confidence: ${Math.round((research?.confidence || 0) * 100)}%\n\n`;
+        
+        if (research?.insights?.length > 0) {
+          message += `💡 KEY INSIGHTS:\n`;
+          research.insights.slice(0, 3).forEach((insight: string, i: number) => {
+            message += `• ${insight}\n`;
+          });
+          message += `\n`;
+        }
+        
+        message += `🎯 DRAFT STATUS:\n`;
+        if (hitlRequired) {
+          message += `• Human approval required (${result.hitl.reason})\n`;
+          message += `• Priority: ${result.hitl.priority}\n\n`;
+          message += `The draft requires human review before sending. Check your approval queue.`;
+        } else {
+          message += `• Auto-approved for sending\n`;
+          message += `• Thread ID: ${result.threadId}\n\n`;
+          message += `The draft will be sent to your email for final approval. Reply with:\n`;
+          message += `• APPROVED - to send as-is\n`;
+          message += `• CHANGES: [your edits] - to modify\n`;
+          message += `• STOP - to cancel`;
+        }
+        
+        alert(message);
+        
+        setReplyText('');
+        setShowReplyModal(false);
+      } else {
+        throw new Error(result.error || 'Workflow start failed');
+      }
+      
+    } catch (error) {
+      console.error('❌ Failed to start SAM reply workflow:', error);
+      alert(`Failed to start reply workflow: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
 
   const loadRealMessages = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      console.log('📨 Loading real messages from Unipile Contact Center API...');
+      console.log('📨 Loading unified messages from LinkedIn and Email providers...');
       
-      // Use our new messages API endpoint
-      const messagesResponse = await fetch('/api/contact-center/messages');
+      // Use our new unified inbox messages API endpoint with 50 messages by default
+      const messagesResponse = await fetch('/api/inbox/messages?batch_size=50&limit=50');
       const messagesData = await messagesResponse.json();
       
-      console.log('🔍 Raw API response:', messagesData);
-      console.log('🔍 First message type:', messagesData.messages?.[0]?.type);
+      console.log('🔍 Unified inbox response:', messagesData);
+      console.log('📊 Message summary:', messagesData.summary);
       
       if (!messagesData.success) {
         setError(messagesData.error || 'Failed to load messages');
@@ -479,10 +667,10 @@ function InboundInbox() {
         return;
       }
 
-      console.log('✅ Messages loaded:', messagesData);
+      console.log('✅ Unified messages loaded:', messagesData);
       
       if (messagesData.messages && messagesData.messages.length > 0) {
-        // Messages are already transformed by the API
+        // Transform unified messages to InboundRequest format
         const transformedRequests: InboundRequest[] = messagesData.messages.map((msg: any) => ({
           id: msg.id,
           type: msg.type,
@@ -492,7 +680,9 @@ function InboundInbox() {
           company: msg.company,
           details: msg.details,
           platform: msg.platform,
-          status: 'new' as const
+          status: (msg.is_read === false || msg.status === 'new') ? 'new' as const : 'read' as const,
+          email_address: msg.email_address,
+          provider_type: msg.provider_type
         }));
         
         setRequests(transformedRequests);
@@ -500,14 +690,14 @@ function InboundInbox() {
           setActiveRequest(transformedRequests[0]);
         }
         
-        console.log(`✅ Loaded ${transformedRequests.length} real messages for Contact Center`);
+        console.log(`✅ Loaded ${transformedRequests.length} unified messages (${messagesData.summary?.linkedin || 0} LinkedIn, ${messagesData.summary?.email || 0} Email)`);
       } else {
         console.log('ℹ️ No messages found, using mock data');
         setRequests(MOCK_REQUESTS);
         setActiveRequest(MOCK_REQUESTS[0]);
       }
     } catch (error) {
-      console.error('❌ Failed to load real messages:', error);
+      console.error('❌ Failed to load unified messages:', error);
       setError('Failed to load messages');
       // Fallback to mock data
       setRequests(MOCK_REQUESTS);
@@ -533,7 +723,37 @@ function InboundInbox() {
   };
 
   useEffect(() => {
+    // Load messages immediately
     loadRealMessages();
+    
+    // Check for OAuth callback parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const error = urlParams.get('error');
+    const email = urlParams.get('email');
+    const platform = urlParams.get('platform');
+
+    if (success === 'email_connected' && email && platform) {
+      alert(`✅ ${platform.toUpperCase()} account connected successfully: ${email}`);
+      // Clean URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Reload email providers to show new connection
+      loadEmailProviders();
+    } else if (error) {
+      const message = urlParams.get('message') || 'Connection failed';
+      alert(`❌ Email connection failed: ${decodeURIComponent(message)}`);
+      // Clean URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    // Set up 15-minute auto-refresh interval (faster for HITL approval workflow)
+    const refreshInterval = setInterval(() => {
+      console.log('🔄 Auto-refreshing messages (15min interval)...');
+      loadRealMessages();
+    }, 15 * 60 * 1000); // 15 minutes for faster HITL responses
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(refreshInterval);
   }, []);
 
   const getTypeIcon = (type: string) => {
@@ -648,25 +868,19 @@ function InboundInbox() {
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-700">
-                {activeRequest.type === 'linkedin' && (
-                  <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-                    <Linkedin size={16} />
-                    Reply on LinkedIn
-                  </button>
-                )}
-                {activeRequest.type === 'inmail' && (
-                  <button className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
-                    <Send size={16} />
-                    Send InMail Reply
-                  </button>
-                )}
-                <button className="flex items-center gap-2 px-4 py-2 border border-gray-600 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors">
-                  <Users size={16} />
-                  Create Callback
+                <button 
+                  onClick={() => setShowReplyModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                >
+                  <Send size={16} />
+                  Reply
                 </button>
-                <button className="flex items-center gap-2 px-4 py-2 border border-gray-600 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors">
+                <button 
+                  onClick={() => setActiveRequest(null)}
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-600 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors"
+                >
                   <ArrowRight size={16} />
-                  Escalate to AE
+                  Mark as Read
                 </button>
               </div>
             </div>
@@ -677,6 +891,41 @@ function InboundInbox() {
           </div>
         )}
       </div>
+      
+      {/* Reply Modal */}
+      {showReplyModal && activeRequest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-white mb-4">
+              Reply to {activeRequest.from}
+            </h3>
+            <textarea
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Type your reply here..."
+              className="w-full h-32 p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 resize-none focus:outline-none focus:border-blue-500"
+            />
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={handleReply}
+                disabled={!replyText.trim()}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+              >
+                Send Reply
+              </button>
+              <button
+                onClick={() => {
+                  setShowReplyModal(false);
+                  setReplyText('');
+                }}
+                className="px-4 py-2 border border-gray-600 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
