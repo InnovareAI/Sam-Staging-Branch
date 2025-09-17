@@ -130,6 +130,7 @@ export default function Page() {
   const [userStats, setUserStats] = useState<any>(null);
   const [showAssignWorkspace, setShowAssignWorkspace] = useState(false);
   const [selectedUserForWorkspace, setSelectedUserForWorkspace] = useState<any>(null);
+  const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'card' | 'info'>('info');
@@ -176,7 +177,7 @@ export default function Page() {
     setShowChannelSelectionModal(false);
     
     // TODO: Start campaign with selected channels
-    alert(`Campaign setup complete!\nStrategy: ${selection.strategy}\nAccounts: ${JSON.stringify(selection.selectedAccounts)}`);
+    showNotification('success', `Campaign setup complete! Strategy: ${selection.strategy}`);
   };
 
   // Check skip preference on mount
@@ -446,12 +447,12 @@ export default function Page() {
     e.preventDefault();
     
     if (passwordChangeData.password !== passwordChangeData.confirmPassword) {
-      alert('Passwords do not match');
+      showNotification('error', 'Passwords do not match');
       return;
     }
 
     if (passwordChangeData.password.length < 6) {
-      alert('Password must be at least 6 characters long');
+      showNotification('error', 'Password must be at least 6 characters long');
       return;
     }
 
@@ -463,14 +464,14 @@ export default function Page() {
       });
 
       if (error) {
-        alert('Error updating password: ' + error.message);
+        showNotification('error', 'Error updating password: ' + error.message);
       } else {
-        alert('Password updated successfully!');
+        showNotification('success', 'Password updated successfully!');
         setShowPasswordChange(false);
         setPasswordChangeData({ password: '', confirmPassword: '', loading: false });
       }
     } catch (err) {
-      alert('An unexpected error occurred');
+      showNotification('error', 'An unexpected error occurred');
     } finally {
       setPasswordChangeData(prev => ({ ...prev, loading: false }));
     }
@@ -796,12 +797,12 @@ export default function Page() {
         // You could also make API calls to delete specific accounts here:
         // await fetch('/api/unipile/accounts', { method: 'DELETE', body: JSON.stringify({ account_id: 'specific-id' }) });
         
-        alert('LinkedIn accounts have been disconnected successfully.');
+        showNotification('success', 'LinkedIn accounts have been disconnected successfully.');
       }
       
     } catch (error) {
       console.error('LinkedIn disconnection failed:', error);
-      alert('Failed to disconnect LinkedIn accounts. Please try again.');
+      showNotification('error', 'Failed to disconnect LinkedIn accounts. Please try again.');
     } finally {
       setIsDisconnectingLinkedIn(false);
     }
@@ -878,7 +879,7 @@ export default function Page() {
         setShowCreateWorkspace(false);
         console.log('🔄 Reloading workspaces after creation...');
         await loadWorkspaces(user.id, isSuperAdmin);
-        alert('✅ Workspace created successfully!');
+        showNotification('success', 'Workspace created successfully!');
         return;
       }
 
@@ -929,16 +930,16 @@ export default function Page() {
       setNewWorkspaceName('');
       setShowCreateWorkspace(false);
       await loadWorkspaces(user.id, isSuperAdmin);
-      alert('✅ Workspace created successfully!');
+      showNotification('success', 'Workspace created successfully!');
       
     } catch (error: any) {
       console.error('Complete workspace creation failure:', error);
       const errorMessage = error?.message || 'Unknown error occurred';
       
       if (errorMessage.includes('infinite recursion') || errorMessage.includes('Database RLS')) {
-        alert(`❌ ${errorMessage}\n\n🔧 To fix: Execute the SQL script in FIX_RLS_POLICIES_MANUAL.sql via Supabase console.`);
+        showNotification('error', `${errorMessage}. To fix: Execute the SQL script in FIX_RLS_POLICIES_MANUAL.sql via Supabase console.`);
       } else {
-        alert(`❌ Failed to create workspace: ${errorMessage}`);
+        showNotification('error', `Failed to create workspace: ${errorMessage}`);
       }
     }
   };
@@ -958,7 +959,7 @@ export default function Page() {
       const result = await response.json();
 
       if (response.ok) {
-        alert(`✅ Invitation sent successfully to ${inviteData.email}!`);
+        showNotification('success', `Invitation sent successfully to ${inviteData.email}!`);
         // Refresh users list if open
         if (showManageUsers) {
           loadUsers();
@@ -968,7 +969,7 @@ export default function Page() {
       }
     } catch (error) {
       console.error('Invitation failed:', error);
-      alert(`❌ Failed to send invitation: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showNotification('error', `Failed to send invitation: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error; // Re-throw to let popup handle the error state
     }
   };
@@ -1015,6 +1016,12 @@ export default function Page() {
     }
   };
 
+  // Custom notification system
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 5000);
+  };
+
   // Bulk delete users function
   const handleResetPassword = async (userEmail: string) => {
     const confirmed = window.confirm(
@@ -1036,18 +1043,19 @@ export default function Page() {
       const result = await response.json();
 
       if (response.ok) {
-        alert(`✅ Password reset email sent to ${userEmail}!`);
+        showNotification('success', `Password reset email sent to ${userEmail}!`);
       } else {
         throw new Error(result.error || 'Failed to send password reset');
       }
     } catch (error) {
       console.error('Password reset failed:', error);
-      alert(`❌ Failed to send password reset: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showNotification('error', `Failed to send password reset: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
-  const handleAssignWorkspace = async (workspaceId: string, role: string) => {
-    if (!selectedUserForWorkspace) return;
+  const handleAssignWorkspace = async (workspaceId: string, role: string, userId?: string) => {
+    const targetUserId = userId || selectedUserForWorkspace?.id;
+    if (!targetUserId) return;
 
     try {
       const response = await fetch('/api/admin/users/assign-workspace', {
@@ -1066,7 +1074,7 @@ export default function Page() {
       const result = await response.json();
 
       if (response.ok) {
-        alert(`✅ ${result.message}`);
+        showNotification('success', result.message);
         setShowAssignWorkspace(false);
         setSelectedUserForWorkspace(null);
         loadUsers(); // Refresh users list to show updated workspace memberships
@@ -1075,13 +1083,63 @@ export default function Page() {
       }
     } catch (error) {
       console.error('Workspace assignment failed:', error);
-      alert(`❌ Failed to assign workspace: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showNotification('error', `Failed to assign workspace: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleReassignWorkspace = async (userId: string, workspaceId: string, role: string) => {
+    const user = users.find(u => u.id === userId);
+    const workspace = workspaces.find(w => w.id === workspaceId);
+    
+    if (!user || !workspace) {
+      showNotification('error', 'User or workspace not found');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `⚠️ WARNING: This will reassign ${user.email} to workspace "${workspace.name}" and DELETE ALL their history including:\n\n` +
+      `• All conversation threads and messages\n` +
+      `• Knowledge base entries\n` +
+      `• Campaign data and tracking\n` +
+      `• Integration connections\n` +
+      `• Email and proxy preferences\n\n` +
+      `This action CANNOT be undone. Are you sure you want to proceed?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch('/api/admin/users/reassign-workspace', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await getAuthToken()}`
+        },
+        body: JSON.stringify({ 
+          userId, 
+          workspaceId, 
+          role 
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        showNotification('success', result.message);
+        loadUsers(); // Refresh users list
+        loadWorkspaces(); // Refresh workspaces list
+      } else {
+        throw new Error(result.error || 'Failed to reassign workspace');
+      }
+    } catch (error) {
+      console.error('Workspace reassignment failed:', error);
+      showNotification('error', `Failed to reassign workspace: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
   const handleBulkDeleteUsers = async () => {
     if (selectedUsers.size === 0) {
-      alert('Please select users to delete');
+      showNotification('error', 'Please select users to delete');
       return;
     }
 
@@ -1105,7 +1163,7 @@ export default function Page() {
       const result = await response.json();
 
       if (response.ok) {
-        alert(`✅ Successfully deleted ${selectedUsers.size} user${selectedUsers.size > 1 ? 's' : ''}!`);
+        showNotification('success', `Successfully deleted ${selectedUsers.size} user${selectedUsers.size > 1 ? 's' : ''}!`);
         setSelectedUsers(new Set());
         loadUsers(); // Refresh the user list
       } else {
@@ -1113,7 +1171,7 @@ export default function Page() {
       }
     } catch (error) {
       console.error('Bulk delete failed:', error);
-      alert(`❌ Failed to delete users: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showNotification('error', `Failed to delete users: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsDeleting(false);
     }
@@ -1122,7 +1180,7 @@ export default function Page() {
   // Bulk delete workspaces function
   const handleBulkDeleteWorkspaces = async () => {
     if (selectedWorkspaces.size === 0) {
-      alert('Please select workspaces to delete');
+      showNotification('error', 'Please select workspaces to delete');
       return;
     }
 
@@ -1146,7 +1204,7 @@ export default function Page() {
       const result = await response.json();
 
       if (response.ok) {
-        alert(`✅ Successfully deleted ${selectedWorkspaces.size} workspace${selectedWorkspaces.size > 1 ? 's' : ''}!`);
+        showNotification('success', `Successfully deleted ${selectedWorkspaces.size} workspace${selectedWorkspaces.size > 1 ? 's' : ''}!`);
         setSelectedWorkspaces(new Set());
         if (user) {
           await loadWorkspaces(user.id, isSuperAdmin); // Refresh the workspace list
@@ -1156,7 +1214,7 @@ export default function Page() {
       }
     } catch (error) {
       console.error('Bulk workspace delete failed:', error);
-      alert(`❌ Failed to delete workspaces: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showNotification('error', `Failed to delete workspaces: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsDeletingWorkspaces(false);
     }
@@ -1955,7 +2013,7 @@ export default function Page() {
                                         onClick={() => {
                                           if (confirm('Remove this member from the workspace?')) {
                                             // TODO: Implement member removal
-                                            alert('Member removal functionality will be implemented');
+                                            showNotification('error', 'Member removal functionality will be implemented');
                                           }
                                         }}
                                       >
@@ -2183,7 +2241,7 @@ export default function Page() {
                   {/* Smart Campaign Builder */}
                   <button
                     onClick={() => {
-                      alert('SAM: "I can help you set up a campaign! What type of outreach are you planning - LinkedIn prospecting, email campaigns, or both? I\'ll guide you through the process and connect the necessary accounts when needed."')
+                      showNotification('success', 'SAM: "I can help you set up a campaign! What type of outreach are you planning - LinkedIn prospecting, email campaigns, or both? I\'ll guide you through the process and connect the necessary accounts when needed."')
                     }}
                     className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                   >
@@ -2306,7 +2364,7 @@ export default function Page() {
                           setActiveMenuItem('chat');
                           localStorage.removeItem('sam_messages');
                           localStorage.removeItem('sam_active_menu');
-                          alert('Chat history cleared successfully');
+                          showNotification('success', 'Chat history cleared successfully');
                         }
                       }}
                       className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
@@ -3192,7 +3250,7 @@ export default function Page() {
               <button
                 onClick={async () => {
                   if (!inviteEmail.trim() || !inviteWorkspaceId) {
-                    alert('Please fill in all fields');
+                    showNotification('error', 'Please fill in all fields');
                     return;
                   }
 
@@ -3216,16 +3274,16 @@ export default function Page() {
                     const data = await response.json();
 
                     if (response.ok) {
-                      alert(`Invitation sent successfully to ${inviteEmail} from ${selectedCompany}!`);
+                      showNotification('success', `Invitation sent successfully to ${inviteEmail} from ${selectedCompany}!`);
                       setShowInviteUser(false);
                       setInviteEmail('');
                       setInviteWorkspaceId(null);
                     } else {
-                      alert(`Failed to send invitation: ${data.error}`);
+                      showNotification('error', `Failed to send invitation: ${data.error}`);
                     }
                   } catch (error) {
                     console.error('Error sending invitation:', error);
-                    alert('Failed to send invitation');
+                    showNotification('error', 'Failed to send invitation');
                   }
                 }}
                 disabled={!inviteEmail.trim() || !inviteWorkspaceId}
@@ -3488,16 +3546,46 @@ export default function Page() {
                             >
                               Reset Password
                             </button>
-                            <button
-                              onClick={() => {
-                                setSelectedUserForWorkspace(user);
-                                setShowAssignWorkspace(true);
+                            <select
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  const [workspaceId, role] = e.target.value.split('|');
+                                  handleAssignWorkspace(workspaceId, role);
+                                  e.target.value = ''; // Reset selection
+                                }
                               }}
-                              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs transition-colors"
+                              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs transition-colors border-none cursor-pointer"
                               title="Assign user to workspace"
                             >
-                              Assign Workspace
-                            </button>
+                              <option value="">Assign Workspace</option>
+                              {workspaces.map((workspace) => (
+                                <optgroup key={workspace.id} label={`${workspace.name} (${workspace.slug})`}>
+                                  <option value={`${workspace.id}|member`}>→ Member</option>
+                                  <option value={`${workspace.id}|admin`}>→ Admin</option>
+                                  <option value={`${workspace.id}|owner`}>→ Owner</option>
+                                </optgroup>
+                              ))}
+                            </select>
+                            <select
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  const [workspaceId, role] = e.target.value.split('|');
+                                  handleReassignWorkspace(user.id, workspaceId, role);
+                                  e.target.value = ''; // Reset selection
+                                }
+                              }}
+                              className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs transition-colors border-none cursor-pointer ml-2"
+                              title="⚠️ Reassign user to different workspace (DELETES ALL HISTORY)"
+                            >
+                              <option value="">Reassign + Delete History</option>
+                              {workspaces.map((workspace) => (
+                                <optgroup key={workspace.id} label={`${workspace.name} (${workspace.slug})`}>
+                                  <option value={`${workspace.id}|member`}>→ Member</option>
+                                  <option value={`${workspace.id}|admin`}>→ Admin</option>
+                                  <option value={`${workspace.id}|owner`}>→ Owner</option>
+                                </optgroup>
+                              ))}
+                            </select>
                           </div>
                         </td>
                       </tr>
@@ -3656,6 +3744,35 @@ export default function Page() {
         onConfirm={handleChannelSelectionConfirm}
         connectedAccounts={connectedAccounts}
       />
+
+      {/* Custom Notification Modal */}
+      {notification && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-600">
+            <div className="flex items-center space-x-3">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+              }`}>
+                {notification.type === 'success' ? '✓' : '✕'}
+              </div>
+              <div className="flex-1">
+                <h3 className={`font-medium ${
+                  notification.type === 'success' ? 'text-green-400' : 'text-red-400'
+                }`}>
+                  {notification.type === 'success' ? 'Success' : 'Error'}
+                </h3>
+                <p className="text-gray-300 text-sm">{notification.message}</p>
+              </div>
+              <button
+                onClick={() => setNotification(null)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
