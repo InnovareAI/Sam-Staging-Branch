@@ -9,8 +9,8 @@ const supabaseAdmin = createClient(
 
 // Function to determine sender based on user affiliation
 function getSenderByAffiliation(userEmail: string): string {
-  // Check if user belongs to 3cubed (adjust domain/pattern as needed)
-  if (userEmail.includes('3cubed') || userEmail.includes('cubedcapital')) {
+  // Check if user belongs to 3cubed or sendingcell.com
+  if (userEmail.includes('3cubed') || userEmail.includes('cubedcapital') || userEmail.includes('sendingcell.com')) {
     return 'Sophia Caldwell <sophia@innovareai.com>';
   }
   
