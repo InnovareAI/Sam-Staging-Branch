@@ -20,7 +20,7 @@ async function callOpenRouter(messages: any[], systemPrompt: string) {
       'X-Title': 'SAM AI Platform'
     },
     body: JSON.stringify({
-      model: 'anthropic/claude-3.5-sonnet',
+      model: 'mistralai/mistral-large',
       messages: [
         { role: 'system', content: systemPrompt },
         ...messages
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { message, conversationHistory = [] } = body;
+    const { message, conversationHistory = [], loadMemory = true } = body;
 
     if (!message) {
       return NextResponse.json(
@@ -84,12 +84,49 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Load previous conversation history if user is authenticated and memory is requested
+    let enhancedConversationHistory = [...conversationHistory];
+    
+    if (currentUser && loadMemory && conversationHistory.length === 0) {
+      try {
+        // Get recent conversations from the last 7 days
+        const { data: recentConversations } = await supabase
+          .from('sam_conversations')
+          .select('user_message, assistant_response, created_at, conversation_context')
+          .eq('user_id', currentUser.id)
+          .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+          .order('created_at', { ascending: true })
+          .limit(20);
+
+        if (recentConversations && recentConversations.length > 0) {
+          // Convert stored conversations to chat format
+          const memoryContext = recentConversations.flatMap(conv => [
+            { role: 'user', content: conv.user_message },
+            { role: 'assistant', content: conv.assistant_response }
+          ]);
+
+          // Add memory context with a separator
+          enhancedConversationHistory = [
+            { role: 'system', content: `[MEMORY: Previous conversations from the last 7 days]` },
+            ...memoryContext,
+            { role: 'system', content: `[END MEMORY - Current conversation begins:]` },
+            ...conversationHistory
+          ];
+
+          console.log(`🧠 Loaded ${recentConversations.length} previous conversations for user ${currentUser.email}`);
+        }
+      } catch (error) {
+        console.error('Error loading conversation memory:', error);
+        // Continue without memory if there's an error
+      }
+    }
+
     // Determine exact script position based on conversation length and content
     const isFirstMessage = conversationHistory.length === 0;
     
     // Analyze conversation context for ICP research readiness
-    const conversationText = conversationHistory.map(msg => msg.content).join(' ').toLowerCase();
-    const userMessages = conversationHistory.filter(msg => msg.role === 'user').map(msg => msg.content.toLowerCase());
+    const conversationText = enhancedConversationHistory.map(msg => msg.content).join(' ').toLowerCase();
+    const userMessages = enhancedConversationHistory.filter(msg => msg.role === 'user').map(msg => msg.content.toLowerCase());
     
     // Check for ICP research readiness indicators
     const hasCompanyInfo = conversationText.includes('company') || conversationText.includes('business') || conversationText.includes('organization');
@@ -100,12 +137,12 @@ export async function POST(req: NextRequest) {
     
     // Count discovery elements
     const discoveryElements = [hasCompanyInfo, hasTargetInfo, hasIndustryInfo, hasSalesInfo, hasCompetitorInfo].filter(Boolean).length;
-    const shouldGuideToICP = discoveryElements >= 3 && conversationHistory.length >= 6 && !conversationText.includes('icp research') && !conversationText.includes('ideal customer profile');
+    const shouldGuideToICP = discoveryElements >= 3 && enhancedConversationHistory.length >= 6 && !conversationText.includes('icp research') && !conversationText.includes('ideal customer profile');
     
     // Analyze conversation to determine script position
     let scriptPosition = 'greeting';
-    const lastAssistantMessage = conversationHistory.filter(msg => msg.role === 'assistant').pop()?.content?.toLowerCase() || '';
-    const lastUserMessage = conversationHistory.filter(msg => msg.role === 'user').pop()?.content?.toLowerCase() || '';
+    const lastAssistantMessage = enhancedConversationHistory.filter(msg => msg.role === 'assistant').pop()?.content?.toLowerCase() || '';
+    const lastUserMessage = enhancedConversationHistory.filter(msg => msg.role === 'user').pop()?.content?.toLowerCase() || '';
     
     if (conversationHistory.length === 0) {
       scriptPosition = 'greeting';
@@ -478,8 +515,8 @@ This way you can build a comprehensive ICP database over time without losing any
       icpResearch: scriptPosition === 'icpResearchTransition'
     };
 
-    // Convert conversation history to OpenRouter format
-    const messages = conversationHistory.map((msg: any) => ({
+    // Convert enhanced conversation history to OpenRouter format
+    const messages = enhancedConversationHistory.map((msg: any) => ({
       role: msg.role === 'user' ? 'user' : 'assistant',
       content: msg.content
     }));
