@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Failed to get users', details: authError }, { status: 500 })
     }
     
-    const targetUser = authUsers.users.find(u => u.email === 'tl@innovareai.com')
+    const targetUser = authUsers.users.find((u: any) => u.email === 'tl@innovareai.com')
     
     if (!targetUser) {
       return NextResponse.json({ success: false, error: 'User tl@innovareai.com not found' }, { status: 404 })
