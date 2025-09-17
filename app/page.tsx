@@ -1127,7 +1127,9 @@ export default function Page() {
       if (response.ok) {
         showNotification('success', result.message);
         loadUsers(); // Refresh users list
-        loadWorkspaces(); // Refresh workspaces list
+        if (user) {
+          await loadWorkspaces(user.id, isSuperAdmin); // Refresh workspaces list
+        }
       } else {
         throw new Error(result.error || 'Failed to reassign workspace');
       }
