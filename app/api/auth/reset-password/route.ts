@@ -9,12 +9,17 @@ const supabaseAdmin = createClient(
 
 // Function to determine sender based on user affiliation
 function getSenderByAffiliation(userEmail: string): string {
+  // Debug logging
+  console.log('🔍 GENERAL ROUTE - Checking sender affiliation for:', userEmail);
+  
   // Check if user belongs to 3cubed or sendingcell.com
   if (userEmail.includes('3cubed') || userEmail.includes('cubedcapital') || userEmail.includes('sendingcell.com')) {
+    console.log('✅ GENERAL ROUTE - 3cubed affiliation detected, using Sophia Caldwell');
     return 'Sophia Caldwell <sophia@innovareai.com>';
   }
   
   // Default to Sarah Powell for InnovareAI and other users
+  console.log('✅ GENERAL ROUTE - InnovareAI affiliation, using Sarah Powell');
   return 'Sarah Powell <sarah@innovareai.com>';
 }
 
@@ -35,7 +40,7 @@ async function sendEmail(to: string, subject: string, htmlBody: string) {
       'X-Postmark-Server-Token': process.env.POSTMARK_SERVER_TOKEN,
     },
     body: JSON.stringify({
-      From: process.env.POSTMARK_FROM_EMAIL || fromAddress,
+      From: fromAddress,
       To: to,
       Subject: subject,
       HtmlBody: htmlBody,
