@@ -49,6 +49,7 @@ import {
   ThumbsUp,
   TrendingUp,
   User,
+  UserCheck,
   UserPlus,
   Users,
   X,

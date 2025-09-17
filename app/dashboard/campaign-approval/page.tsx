@@ -34,7 +34,8 @@ import {
   BarChart3,
   FileText,
   ChevronRight,
-  History
+  History,
+  Shield
 } from 'lucide-react'
 
 interface CampaignMessage {
