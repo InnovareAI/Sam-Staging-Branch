@@ -124,31 +124,66 @@ export default function DemoSuperAdminPage() {
     return () => clearInterval(interval)
   }, [])
 
-  // Fetch real workspace data
+  // Fetch real workspace data and system stats
   useEffect(() => {
-    const fetchWorkspaces = async () => {
+    const fetchRealData = async () => {
       try {
         setWorkspacesLoading(true)
-        const response = await fetch('/api/admin/workspaces')
-        if (response.ok) {
-          const data = await response.json()
-          setWorkspaces(data.workspaces || [])
+        
+        // Fetch workspaces
+        const workspacesResponse = await fetch('/api/admin/workspaces')
+        if (workspacesResponse.ok) {
+          const workspacesData = await workspacesResponse.json()
+          setWorkspaces(workspacesData.workspaces || [])
+          
+          // Update system stats with real data
           setSystemStats(prev => ({
             ...prev,
-            totalWorkspaces: data.workspaces?.length || 0
+            totalWorkspaces: workspacesData.workspaces?.length || 0
           }))
-          console.log('📊 Loaded workspaces:', data.workspaces?.length)
-        } else {
-          console.error('Failed to fetch workspaces:', response.status)
+          
+          console.log('📊 Loaded real workspaces:', workspacesData.workspaces?.length)
         }
+        
+        // Fetch additional real stats if available
+        const statsResponse = await fetch('/api/admin/stats')
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json()
+          setSystemStats(prev => ({
+            ...prev,
+            totalUsers: statsData.totalUsers || prev.totalUsers,
+            activeUsers: statsData.activeUsers || prev.activeUsers,
+            systemHealth: statsData.systemHealth || prev.systemHealth,
+            apiCalls: statsData.apiCalls || prev.apiCalls,
+            totalRevenue: statsData.totalRevenue || prev.totalRevenue,
+            monthlyGrowth: statsData.monthlyGrowth || prev.monthlyGrowth,
+            avgResponseTime: statsData.avgResponseTime || prev.avgResponseTime,
+            uptime: statsData.uptime || prev.uptime
+          }))
+          
+          // Update animated stats with real data
+          setAnimatedStats(prev => ({
+            ...prev,
+            totalUsers: statsData.totalUsers || prev.totalUsers,
+            activeUsers: statsData.activeUsers || prev.activeUsers,
+            apiCalls: statsData.apiCalls || prev.apiCalls
+          }))
+          
+          console.log('📈 Loaded real system stats')
+        }
+        
       } catch (error) {
-        console.error('Error fetching workspaces:', error)
+        console.error('Error fetching real data:', error)
       } finally {
         setWorkspacesLoading(false)
       }
     }
 
-    fetchWorkspaces()
+    fetchRealData()
+    
+    // Refresh data every 30 seconds
+    const interval = setInterval(fetchRealData, 30000)
+    return () => clearInterval(interval)
   }, [])
 
   const StatCard = ({ title, value, change, icon: Icon, trend, color = 'blue', delay = 0 }) => (
@@ -339,161 +374,310 @@ export default function DemoSuperAdminPage() {
                 />
               </div>
 
-              {/* System Overview */}
+              {/* Three Separate Admin Boxes - Knowledge Base Style */}
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
-                className="grid gap-6 md:grid-cols-2"
+                className="grid gap-6 md:grid-cols-3"
               >
-                <Card className="bg-black/20 backdrop-blur-xl border border-white/10 shadow-2xl">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-white">
-                      <Globe className="h-5 w-5 text-blue-400" />
-                      Global Status
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {[
-                        { region: 'US East', status: 'online', latency: '12ms' },
-                        { region: 'EU West', status: 'online', latency: '8ms' },
-                        { region: 'Asia Pacific', status: 'warning', latency: '45ms' }
-                      ].map((server, index) => (
-                        <motion.div
-                          key={server.region}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.1 * index }}
-                          className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10"
-                        >
+                {/* Global Status Box */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Globe className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h3 className="text-xl font-semibold text-white">Global Status</h3>
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      { region: 'US East', status: 'online', latency: '12ms' },
+                      { region: 'EU West', status: 'online', latency: '8ms' },
+                      { region: 'Asia Pacific', status: 'warning', latency: '45ms' }
+                    ].map((server, index) => (
+                      <div key={server.region} className="bg-gray-700 border border-gray-600 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className={`w-3 h-3 rounded-full animate-pulse ${
-                              server.status === 'online' ? 'bg-green-400' : 'bg-yellow-400'
+                            <div className={`w-3 h-3 rounded-full ${
+                              server.status === 'online' ? 'bg-green-500' : 'bg-orange-500'
                             }`}></div>
-                            <span className="text-white">{server.region}</span>
+                            <span className="text-white text-sm">{server.region}</span>
                           </div>
-                          <Badge variant={server.status === 'online' ? 'default' : 'secondary'}>
-                            {server.latency}
-                          </Badge>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                          <span className="text-gray-300 text-sm">{server.latency}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-                <Card className="bg-gradient-to-br from-purple-900/50 to-pink-900/50 backdrop-blur-xl border border-purple-500/20 shadow-2xl overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 to-pink-600/10"></div>
-                  <CardHeader className="relative">
-                    <CardTitle className="flex items-center gap-2 text-white">
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                      >
-                        <Sparkles className="h-5 w-5 text-purple-400" />
-                      </motion.div>
-                      Recent Activity
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="relative">
-                    <div className="space-y-3">
-                      {[
-                        { user: 'Sarah P.', action: 'Created new campaign', time: '2 min ago' },
-                        { user: 'System', action: 'Auto-backup completed', time: '15 min ago' },
-                        { user: 'John D.', action: 'Updated user permissions', time: '1 hour ago' }
-                      ].map((activity, index) => (
-                        <motion.div
-                          key={index}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.1 * index }}
-                          className="flex items-start gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors"
-                        >
-                          <div className="w-2 h-2 bg-purple-400 rounded-full mt-2"></div>
+                {/* Recent Activity Box */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Clock className="text-green-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h3 className="text-xl font-semibold text-white">Recent Activity</h3>
+                  </div>
+                  <div className="space-y-3">
+                    {mockSystemEvents.slice(0, 3).map((event, index) => (
+                      <div key={event.id} className="bg-gray-700 border border-gray-600 rounded-lg p-3">
+                        <div className="flex items-start gap-3">
+                          <div className={`w-3 h-3 rounded-full mt-1 ${
+                            event.level === 'high' ? 'bg-red-500' : 
+                            event.level === 'medium' ? 'bg-orange-500' : 'bg-green-500'
+                          }`}></div>
                           <div className="flex-1">
-                            <p className="text-sm text-white">{activity.action}</p>
-                            <p className="text-xs text-slate-300">{activity.user} • {activity.time}</p>
+                            <p className="text-white text-sm font-medium">{event.type.charAt(0).toUpperCase() + event.type.slice(1)}</p>
+                            <p className="text-gray-300 text-xs">{new Date(event.timestamp).toLocaleTimeString()}</p>
                           </div>
-                        </motion.div>
-                      ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* System Metrics Box */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Monitor className="text-purple-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h3 className="text-xl font-semibold text-white">System Metrics</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-gray-300 text-sm">CPU Usage</span>
+                        <span className="text-white text-sm">45%</span>
+                      </div>
+                      <div className="w-full bg-gray-600 rounded-full h-2">
+                        <div className="bg-blue-500 h-2 rounded-full" style={{width: '45%'}}></div>
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
+                    <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-gray-300 text-sm">Memory</span>
+                        <span className="text-white text-sm">67%</span>
+                      </div>
+                      <div className="w-full bg-gray-600 rounded-full h-2">
+                        <div className="bg-green-500 h-2 rounded-full" style={{width: '67%'}}></div>
+                      </div>
+                    </div>
+                    <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-gray-300 text-sm">Storage</span>
+                        <span className="text-white text-sm">78%</span>
+                      </div>
+                      <div className="w-full bg-gray-600 rounded-full h-2">
+                        <div className="bg-purple-500 h-2 rounded-full" style={{width: '78%'}}></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </motion.div>
             </TabsContent>
 
-            {/* Users Tab - Origin UI Clean Style */}
+            {/* Workspaces Tab - Knowledge Base Style */}
             <TabsContent value="users">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-                className="space-y-6"
-              >
-                <Card className="bg-black/20 backdrop-blur-xl border border-white/10 shadow-2xl">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2 text-white">
-                        <Users className="h-5 w-5" />
-                        Connected Workspaces
-                      </CardTitle>
-                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                        <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
-                          <UserPlus className="h-4 w-4 mr-2" />
+              <TooltipProvider>
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="space-y-6"
+                >
+                  {/* Header Section */}
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-2xl font-semibold text-white flex items-center">
+                        <Building2 className="mr-3 text-blue-400" size={24} />
+                        Workspace Management
+                      </h2>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            placeholder="Search workspaces..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-64 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                          />
+                          <Search className="h-4 w-4 text-gray-400" />
+                        </div>
+                        <Select value={selectedFilter} onValueChange={setSelectedFilter}>
+                          <SelectTrigger className="w-32 bg-gray-700 border-gray-600 text-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-gray-700 border-gray-600">
+                            <SelectItem value="all">All</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => setIsRefreshing(!isRefreshing)}
+                              className="bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
+                            >
+                              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Refresh workspace data</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+                          <Plus className="h-4 w-4 mr-2" />
                           Add Workspace
                         </Button>
-                      </motion.div>
+                      </div>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {workspacesLoading ? (
-                        <div className="text-center text-white py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
-                          <p className="mt-2">Loading workspaces...</p>
+                    
+                    {/* Stats Overview */}
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-gray-300 text-sm">Total Workspaces</p>
+                            <p className="text-white text-2xl font-bold">{systemStats.totalWorkspaces}</p>
+                          </div>
+                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                         </div>
-                      ) : workspaces.length === 0 ? (
-                        <div className="text-center text-slate-300 py-8">
-                          <p>No workspaces found</p>
+                      </div>
+                      <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-gray-300 text-sm">Active Users</p>
+                            <p className="text-white text-2xl font-bold">{animatedStats.activeUsers}</p>
+                          </div>
+                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                         </div>
-                      ) : (
-                        workspaces.map((workspace, index) => (
-                          <motion.div
-                            key={workspace.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                            whileHover={{ scale: 1.02, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
-                            className="flex items-center justify-between p-4 rounded-lg border border-white/10 transition-all duration-300"
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
-                                <span className="text-white font-medium">
-                                  {workspace.name ? workspace.name.substring(0, 2).toUpperCase() : 'WS'}
-                                </span>
-                              </div>
-                              <div>
-                                <p className="text-white font-medium">{workspace.name || 'Unnamed Workspace'}</p>
-                                <p className="text-slate-300 text-sm">
-                                  Owner: {workspace.owner?.email || 'Unknown'} • Created: {new Date(workspace.created_at).toLocaleDateString()}
-                                </p>
+                      </div>
+                      <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-gray-300 text-sm">Monthly Revenue</p>
+                            <p className="text-white text-2xl font-bold">${(systemStats.totalRevenue / 1000).toFixed(0)}K</p>
+                          </div>
+                          <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                        </div>
+                      </div>
+                      <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-gray-300 text-sm">Growth Rate</p>
+                            <p className="text-white text-2xl font-bold">+{systemStats.monthlyGrowth}%</p>
+                          </div>
+                          <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Workspaces Grid */}
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {workspacesLoading ? (
+                      Array.from({ length: 6 }).map((_, index) => (
+                        <div key={index} className="bg-gray-800 border border-gray-700 rounded-lg p-6 animate-pulse">
+                          <div className="flex items-center gap-4 mb-4">
+                            <div className="w-12 h-12 bg-gray-600 rounded-full"></div>
+                            <div className="flex-1">
+                              <div className="h-4 bg-gray-600 rounded mb-2"></div>
+                              <div className="h-3 bg-gray-600 rounded w-2/3"></div>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="h-3 bg-gray-600 rounded"></div>
+                            <div className="h-3 bg-gray-600 rounded w-1/2"></div>
+                          </div>
+                        </div>
+                      ))
+                    ) : workspaces.length === 0 ? (
+                      <div className="col-span-full">
+                        <div className="bg-gray-800 border border-gray-700 rounded-lg p-12 text-center">
+                          <Building2 className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                          <h3 className="text-white text-lg font-medium mb-2">No workspaces found</h3>
+                          <p className="text-gray-400 mb-6">Get started by creating your first workspace</p>
+                          <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Workspace
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      workspaces.map((workspace, index) => (
+                        <motion.div
+                          key={workspace.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="bg-gray-800 border border-gray-700 rounded-lg p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-4 mb-4">
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                              <span className="text-white font-bold text-lg">
+                                {workspace.name ? workspace.name.substring(0, 2).toUpperCase() : 'WS'}
+                              </span>
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="text-white font-semibold text-lg group-hover:text-white">
+                                {workspace.name || 'Unnamed Workspace'}
+                              </h3>
+                              <p className="text-gray-400 text-sm group-hover:text-purple-100">
+                                {workspace.owner?.email || 'Unknown Owner'}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-300 text-sm">Members:</span>
+                              <Badge variant="outline" className="group-hover:bg-purple-100 group-hover:text-purple-800">
+                                {workspace.member_count || 1}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-300 text-sm">Status:</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <span className="text-green-400 text-sm">Active</span>
                               </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <Badge variant="default">
-                                {workspace.member_count} member{workspace.member_count !== 1 ? 's' : ''}
-                              </Badge>
-                              <Badge variant="secondary">
-                                Active
-                              </Badge>
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-300 text-sm">Created:</span>
+                              <span className="text-white text-sm">
+                                {new Date(workspace.created_at).toLocaleDateString()}
+                              </span>
                             </div>
-                          </motion.div>
-                        ))
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
+                          </div>
+
+                          <Separator className="my-4 group-hover:bg-purple-300" />
+
+                          <div className="flex items-center justify-between">
+                            <div className="flex gap-2">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="group-hover:bg-purple-700 group-hover:text-white">
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>View Details</p></TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="group-hover:bg-purple-700 group-hover:text-white">
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Edit Workspace</p></TooltipContent>
+                              </Tooltip>
+                            </div>
+                            <Button variant="ghost" size="sm" className="text-red-400 hover:bg-red-500/20 hover:text-red-300">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              </TooltipProvider>
             </TabsContent>
 
             {/* System Tab - SHSF UI Motion Style */}
