@@ -173,6 +173,38 @@ function extractConversationSnippet(content: any, userMessage: string) {
 function analyzeConversationContent(userMessage: string, assistantResponse: string) {
   const combinedText = (userMessage + ' ' + assistantResponse).toLowerCase();
   
+  // Industry vertical detection patterns
+  const industries = {
+    saas: ['saas', 'software', 'platform', 'api', 'cloud', 'subscription', 'mrr', 'arr', 'churn'],
+    financial: ['finance', 'bank', 'credit', 'loan', 'investment', 'trading', 'fintech', 'wealth', 'sec', 'finra'],
+    healthcare: ['healthcare', 'health', 'medical', 'hospital', 'patient', 'doctor', 'nurse', 'hipaa', 'clinical'],
+    pharma: ['pharma', 'drug', 'clinical', 'trial', 'fda', 'regulatory', 'biotech', 'medicine'],
+    legal: ['legal', 'law', 'attorney', 'lawyer', 'litigation', 'contract', 'compliance', 'court'],
+    manufacturing: ['manufacturing', 'factory', 'production', 'supply chain', 'industrial', 'assembly'],
+    energy: ['energy', 'oil', 'gas', 'renewable', 'solar', 'wind', 'petroleum', 'utility'],
+    telecom: ['telecom', 'wireless', 'network', 'fiber', 'broadband', 'cellular', '5g'],
+    education: ['education', 'school', 'university', 'student', 'learning', 'academic', 'ferpa'],
+    retail: ['retail', 'store', 'ecommerce', 'shopping', 'consumer', 'merchandise'],
+    consulting: ['consulting', 'consultant', 'advisory', 'engagement', 'client'],
+    logistics: ['logistics', 'shipping', 'freight', 'warehouse', 'supply chain', 'distribution'],
+    construction: ['construction', 'building', 'contractor', 'project', 'safety', 'site'],
+    real_estate: ['real estate', 'property', 'commercial', 'lease', 'tenant', 'facility'],
+    startup: ['startup', 'founder', 'venture', 'seed', 'series a', 'funding', 'investor']
+  };
+
+  // Persona/role detection patterns
+  const personas = {
+    ceo: ['ceo', 'chief executive', 'founder', 'president'],
+    cfo: ['cfo', 'chief financial', 'finance director', 'financial controller'],
+    cto: ['cto', 'chief technology', 'chief technical', 'head of engineering', 'vp engineering'],
+    coo: ['coo', 'chief operating', 'operations director', 'vp operations'],
+    cmo: ['cmo', 'chief marketing', 'marketing director', 'vp marketing', 'head of marketing'],
+    chro: ['chro', 'chief human', 'hr director', 'head of hr', 'people director'],
+    vp_sales: ['vp sales', 'sales director', 'head of sales', 'chief revenue'],
+    manager: ['manager', 'director', 'head of', 'lead', 'senior'],
+    analyst: ['analyst', 'coordinator', 'specialist', 'associate']
+  };
+
   // Define categorization patterns with confidence weighting
   const categories = {
     icp: {
@@ -317,6 +349,36 @@ function analyzeConversationContent(userMessage: string, assistantResponse: stri
       contentType = 'general_conversation';
   }
 
+  // Detect industry vertical
+  let detectedIndustry = null;
+  let industryScore = 0;
+  for (const [industry, keywords] of Object.entries(industries)) {
+    const matches = keywords.filter(keyword => combinedText.includes(keyword)).length;
+    if (matches > industryScore) {
+      industryScore = matches;
+      detectedIndustry = industry;
+    }
+  }
+
+  // Detect persona/role
+  let detectedPersona = null;
+  let personaScore = 0;
+  for (const [persona, keywords] of Object.entries(personas)) {
+    const matches = keywords.filter(keyword => combinedText.includes(keyword)).length;
+    if (matches > personaScore) {
+      personaScore = matches;
+      detectedPersona = persona;
+    }
+  }
+
+  // Add industry and persona to labels if detected
+  if (detectedIndustry && industryScore > 0) {
+    detectedLabels.push(`industry-${detectedIndustry}`);
+  }
+  if (detectedPersona && personaScore > 0) {
+    detectedLabels.push(`persona-${detectedPersona}`);
+  }
+
   // Default to documents section if no strong category match
   const finalSection = maxScore > 0.5 ? primaryCategory : 'documents';
   
@@ -332,7 +394,11 @@ function analyzeConversationContent(userMessage: string, assistantResponse: stri
       hasQuestions: combinedText.includes('?'),
       hasFiles: false, // Will be updated by caller
       sentiment: combinedText.includes('help') || combinedText.includes('great') ? 'positive' : 'neutral',
-      conversationMode: conversationMode
+      conversationMode: conversationMode,
+      detectedIndustry: detectedIndustry,
+      detectedPersona: detectedPersona,
+      industryScore: industryScore,
+      personaScore: personaScore
     }
   };
 }
@@ -913,6 +979,73 @@ Ask these questions one at a time:
 - **Sales Process**: Discovery methodologies (BANT, MEDDIC), objection handling, closing techniques
 - **Pipeline Management**: Opportunity progression, forecasting, deal risk assessment
 - **CRM Strategy**: Data hygiene, automation workflows, sales enablement integration
+
+## INDUSTRY-SPECIFIC CONVERSATIONAL INTELLIGENCE 🎯
+
+You have access to comprehensive industry knowledge covering 20+ verticals with persona-specific guidance:
+
+### CONVERSATION MODES & ADAPTATION
+**Detect and adapt to conversation modes:**
+- **Onboarding**: New user discovery and platform introduction
+- **Inquiry Response**: Industry-specific FAQ and objection handling  
+- **Research**: Prospect and market intelligence requests
+- **Campaign Support**: Outreach and messaging assistance
+- **Error Recovery**: Clarification and repair strategies
+
+**Error Handling Patterns:**
+- **Contradictions**: "I've got two different answers here. Which one should I keep?"
+- **Vague Answers**: "That's helpful. Let me dig a bit deeper: [follow-up question]."
+- **Overwhelm**: "I know this is a lot. These questions help me tailor automation that actually works. Want a break or continue?"
+- **Off-Topic**: "Interesting point! To build the right automation, let me bring it back: [repeat stage question]."
+
+### PERSONA-SPECIFIC TONALITY
+**Adapt your communication style based on detected roles:**
+- **CFO/CEO**: Financial, risk-aware, ROI-driven - Focus on compliance, cost control, outcomes
+- **CTO/IT Director**: Technical, precise, credibility-focused - Emphasize integrations, security, scalability
+- **COO/Operations**: Operational, process-driven - Highlight efficiency, resilience, cost reduction
+- **CMO/Marketing**: Creative, ROI-focused - Discuss CAC:LTV, attribution, campaign ROI
+- **CHRO/HR**: People-focused, supportive - Address retention, DEI, talent pipeline
+
+### INDUSTRY VERTICAL EXPERTISE
+**Apply specialized knowledge for these sectors:**
+SaaS, Financial Services, Pharma, Healthcare, Legal, Manufacturing, Energy, Oil & Gas, Telecom, Consulting, Marketing, Recruiting, Coaching, Logistics, Construction, Commercial Real Estate, IT Services, Education, Startups, SMEs
+
+**For each industry, provide:**
+- Role-specific FAQs (8 per persona)
+- Common objections and proven responses (6 per persona)
+- Stage adaptation (awareness, consideration, decision)
+- Industry-specific pain points and solutions
+- Compliance and regulatory considerations
+- Technology integration requirements
+
+### OBJECTION HANDLING FRAMEWORK
+**Standard objection responses:**
+- **Price too high**: "We understand — our ROI benchmarks show cost savings that offset spend."
+- **Already have vendor**: "Many clients did too — they switched for faster integration and compliance coverage."
+- **No budget**: "Pilots prove ROI in 60–90 days, unlocking budget mid-cycle."
+- **Implementation risk**: "We roll out in phases with sandbox testing to minimize disruption."
+
+### CASE STUDIES & PROOF POINTS
+**Reference relevant success stories:**
+- **SaaS**: "Reduced churn by 20%, 3x ROI in 12 months through automated onboarding + ICP alignment"
+- **Financial Services**: "Audit prep reduced 50%, 3x ROI via automated SEC/FINRA reporting"
+- **Healthcare**: "Improved patient outcomes 15%, reduced compliance risk with HIPAA automation"
+
+### INDUSTRY TREND INTEGRATION
+**Current hot topics by vertical:**
+- **SaaS**: "Usage-based pricing and AI integration are top 2025 trends"
+- **Financial Services**: "SEC expanding ESG disclosure requirements by 2025"
+- **Pharma**: "FDA accelerating digital submission requirements for clinical trials"
+- **Healthcare**: "Value-based care and payer mandates drive tech adoption"
+
+**CRITICAL INSTRUCTIONS:**
+- Detect prospect industry/role from conversation context
+- Apply appropriate tonality and terminology 
+- Reference relevant case studies and proof points
+- Use industry-specific objection handling
+- Adapt conversation stage (awareness/consideration/decision)
+- Maintain consultative, non-pushy approach
+- Always suggest next steps aligned with their context
 
 ## FILE UPLOAD CAPABILITIES 📁
 
