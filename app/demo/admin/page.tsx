@@ -36,6 +36,7 @@ import {
   Mail,
   Settings,
   Crown,
+  Building2,
   Sparkles,
   Search,
   Filter,
@@ -384,7 +385,7 @@ export default function DemoSuperAdminPage() {
                 {/* Global Status Box */}
                 <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
                   <div className="flex items-center mb-4">
-                    <Globe className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <Globe className="text-gray-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h3 className="text-xl font-semibold text-white">Global Status</h3>
                   </div>
                   <div className="space-y-3">
@@ -411,7 +412,7 @@ export default function DemoSuperAdminPage() {
                 {/* Recent Activity Box */}
                 <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
                   <div className="flex items-center mb-4">
-                    <Clock className="text-green-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <Clock className="text-gray-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h3 className="text-xl font-semibold text-white">Recent Activity</h3>
                   </div>
                   <div className="space-y-3">
@@ -445,7 +446,7 @@ export default function DemoSuperAdminPage() {
                         <span className="text-white text-sm">45%</span>
                       </div>
                       <div className="w-full bg-gray-600 rounded-full h-2">
-                        <div className="bg-blue-500 h-2 rounded-full" style={{width: '45%'}}></div>
+                        <div className="bg-gray-500 h-2 rounded-full" style={{width: '45%'}}></div>
                       </div>
                     </div>
                     <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
@@ -484,7 +485,7 @@ export default function DemoSuperAdminPage() {
                   <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h2 className="text-2xl font-semibold text-white flex items-center">
-                        <Building2 className="mr-3 text-blue-400" size={24} />
+                        <Building2 className="mr-3 text-gray-400" size={24} />
                         Workspace Management
                       </h2>
                       <div className="flex items-center gap-3">
@@ -537,7 +538,7 @@ export default function DemoSuperAdminPage() {
                             <p className="text-gray-300 text-sm">Total Workspaces</p>
                             <p className="text-white text-2xl font-bold">{systemStats.totalWorkspaces}</p>
                           </div>
-                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                          <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
                         </div>
                       </div>
                       <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
