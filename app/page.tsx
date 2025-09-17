@@ -1321,7 +1321,7 @@ export default function Page() {
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Sam AI</p>
-              <h2 className="text-xl font-semibold text-white">Revenue Co-pilot</h2>
+              <h2 className="text-xl font-semibold text-white">Your AI Sales Agent</h2>
             </div>
           </div>
         </div>
