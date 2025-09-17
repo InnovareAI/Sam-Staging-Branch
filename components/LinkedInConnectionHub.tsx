@@ -64,7 +64,7 @@ export default function LinkedInConnectionHub({ isOpen, onClose, onComplete }: L
     if (polling && connectionStatus.stage === 'waiting_2fa') {
       pollInterval = setInterval(async () => {
         try {
-          const response = await fetch('/api/linkedin/connect');
+          const response = await fetch('/api/linkedin/status');
           const data = await response.json();
           
           if (data.success && data.has_linkedin) {
@@ -75,7 +75,12 @@ export default function LinkedInConnectionHub({ isOpen, onClose, onComplete }: L
               timestamp: new Date()
             });
             setPolling(false);
-            setAccounts(data.associations || []);
+            setAccounts(data.associations?.map((assoc: any) => ({
+              id: assoc.unipile_account_id || assoc.id,
+              name: assoc.account_name || assoc.account_identifier,
+              status: assoc.connection_status === 'connected' ? 'active' : 'needs_auth',
+              email: assoc.account_identifier
+            })) || []);
           }
         } catch (error) {
           console.error('Polling error:', error);
@@ -90,8 +95,10 @@ export default function LinkedInConnectionHub({ isOpen, onClose, onComplete }: L
 
   const checkConnectionStatus = useCallback(async () => {
     try {
-      const response = await fetch('/api/linkedin/connect');
+      const response = await fetch('/api/linkedin/status');
       const data = await response.json();
+
+      console.log('🔍 LinkedIn status check:', data); // Debug log
 
       if (data.success) {
         if (data.has_linkedin && data.associations?.length > 0) {
@@ -101,7 +108,12 @@ export default function LinkedInConnectionHub({ isOpen, onClose, onComplete }: L
             details: `${data.associations.length} account(s) active`,
             timestamp: new Date()
           });
-          setAccounts(data.associations);
+          setAccounts(data.associations.map((assoc: any) => ({
+            id: assoc.unipile_account_id || assoc.id,
+            name: assoc.account_name || assoc.account_identifier,
+            status: assoc.connection_status === 'connected' ? 'active' : 'needs_auth',
+            email: assoc.account_identifier
+          })));
         } else {
           setConnectionStatus({
             stage: 'idle',

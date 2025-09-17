@@ -3137,7 +3137,7 @@ export default function Page() {
 
         {/* CHAT INPUT CONTAINER */}
         {activeMenuItem === 'chat' && (
-          <div className="flex-shrink-0 px-6 pb-6">
+          <div className="fixed bottom-0 left-72 right-0 z-50 px-6 pb-6 bg-background/95 backdrop-blur-sm border-t border-border/60">
             <div className="mx-auto max-w-4xl overflow-hidden rounded-3xl border border-border/60 bg-surface-highlight/60 shadow-glow">
               <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
                 <div className="flex items-center gap-3">

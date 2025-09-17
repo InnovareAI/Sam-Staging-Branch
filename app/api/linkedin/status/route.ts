@@ -318,6 +318,13 @@ if (!workspaceAccounts.length && hasAnyUnipileAccounts) {
       health_score: healthScore
     })
 
+    console.log(`📊 LinkedIn status response for ${user.email}:`, {
+      overall: overallStatus,
+      workspace_accounts: workspaceAccounts?.length || 0,
+      associations_count: workspaceAccounts?.length || 0,
+      health_score: healthScore
+    })
+
     return NextResponse.json({
       success: true,
       has_linkedin: overallStatus === 'connected',
