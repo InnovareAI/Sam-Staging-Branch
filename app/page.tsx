@@ -6,6 +6,10 @@ import CampaignHub from './components/CampaignHub';
 import LeadPipeline from './components/LeadPipeline';
 import Analytics from './components/Analytics';
 import AuditTrail from './components/AuditTrail';
+
+// Dynamic imports for approval pages
+const ProspectApprovalPage = React.lazy(() => import('./dashboard/prospect-approval/page'));
+const CampaignApprovalPage = React.lazy(() => import('./dashboard/campaign-approval/page'));
 import ConversationHistory from '../components/ConversationHistory';
 import InviteUserPopup, { InviteFormData } from '../components/InviteUserPopup';
 import AuthModal from '../components/AuthModal';
@@ -50,7 +54,8 @@ import {
   X,
   Zap,
   Grid3x3,
-  FileText
+  FileText,
+  Search
 } from 'lucide-react';
 
 // LinkedIn Logo Component (Official LinkedIn branding)
@@ -381,9 +386,15 @@ export default function Page() {
       icon: Brain,
     },
     {
-      id: 'approvals',
-      label: 'Approvals',
-      description: 'Review prospects and automate handoffs',
+      id: 'prospect-approval',
+      label: 'Prospect Approval',
+      description: 'Review enriched prospect data',
+      icon: UserCheck,
+    },
+    {
+      id: 'campaign-approval', 
+      label: 'Campaign Approval',
+      description: 'Review messaging and content',
       icon: CheckSquare,
     },
     {
@@ -1303,6 +1314,82 @@ export default function Page() {
     );
   }
 
+
+  const filteredWorkspaces = workspaces.filter((workspace) => {
+    if (selectedCompanyFilter === 'all') return true;
+
+    if (selectedCompanyFilter === 'innovareai') {
+      return workspace.slug === 'innovareai';
+    }
+
+    if (selectedCompanyFilter === '3cubed') {
+      const slug = workspace.slug;
+      const name = (workspace.name || '').toLowerCase();
+      return (
+        slug === '3cubed' ||
+        slug === 'sendingcell' ||
+        slug === 'wt-matchmaker' ||
+        name.includes('3cubed') ||
+        name.includes('sendingcell') ||
+        name.includes('wt') ||
+        name.includes('matchmaker')
+      );
+    }
+
+    return true;
+  });
+
+  const filteredWorkspaceCount = filteredWorkspaces.length;
+  const totalWorkspaceCount = workspaces.length;
+
+  const filteredWorkspaceMembers = filteredWorkspaces.reduce(
+    (sum, workspace) => sum + (workspace.member_count || workspace.workspace_members?.length || 0),
+    0
+  );
+  const filteredPendingInvites = filteredWorkspaces.reduce(
+    (sum, workspace) => sum + (workspace.pendingInvitations || 0),
+    0
+  );
+  const overallWorkspaceMembers = workspaces.reduce(
+    (sum, workspace) => sum + (workspace.member_count || workspace.workspace_members?.length || 0),
+    0
+  );
+  const overallPendingInvites = workspaces.reduce(
+    (sum, workspace) => sum + (workspace.pendingInvitations || 0),
+    0
+  );
+
+  const companyEmailMessage =
+    selectedCompany === 'All'
+      ? 'sp@innovareai.com or sophia@3cubed.ai'
+      : selectedCompany === 'InnovareAI'
+        ? 'sp@innovareai.com'
+        : 'sophia@3cubed.ai';
+
+  const companyFilterButtons = [
+    { value: 'all' as const, label: 'All' },
+    { value: 'innovareai' as const, label: 'InnovareAI' },
+    { value: '3cubed' as const, label: '3Cubed' }
+  ];
+
+  const viewModes = [
+    { value: 'list' as const, label: 'List', icon: List },
+    { value: 'card' as const, label: 'Tiles', icon: Grid3x3 },
+    { value: 'info' as const, label: 'Insights', icon: Info }
+  ];
+
+  const getWorkspaceCompanyColor = (slug?: string) => {
+    if (slug === 'innovareai') return 'bg-blue-500/20 text-blue-100';
+    if (slug === '3cubed' || slug === 'sendingcell' || slug === 'wt-matchmaker') return 'bg-orange-500/20 text-orange-100';
+    return 'bg-gray-500/20 text-gray-200';
+  };
+
+  const getWorkspaceCompanyName = (slug?: string) => {
+    if (slug === 'innovareai') return 'InnovareAI';
+    if (slug === '3cubed' || slug === 'sendingcell' || slug === 'wt-matchmaker') return '3Cubed';
+    return slug || 'Workspace';
+  };
+
   // Authenticated user - show main app
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -1726,197 +1813,19 @@ export default function Page() {
               </div>
             </div>
           </div>
+        ) : activeMenuItem === 'prospect-approval' ? (
+          <React.Suspense fallback={<div className="flex-1 bg-gray-900 p-6 overflow-y-auto flex items-center justify-center"><div className="text-white">Loading...</div></div>}>
+            <ProspectApprovalPage />
+          </React.Suspense>
+        ) : activeMenuItem === 'campaign-approval' ? (
+          <React.Suspense fallback={<div className="flex-1 bg-gray-900 p-6 overflow-y-auto flex items-center justify-center"><div className="text-white">Loading...</div></div>}>
+            <CampaignApprovalPage />
+          </React.Suspense>
         ) : activeMenuItem === 'approvals' ? (
-          /* APPROVALS PAGE - Knowledgebase Style */
-          <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-                <CheckSquare className="mr-3" size={32} />
-                Prospect Approvals
-              </h1>
-              <p className="text-gray-400">Intelligent prospect qualification and approval workflows</p>
-            </div>
-
-            {/* Overview Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-              <div className="p-6 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-750 transition-colors">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-xs uppercase text-gray-400">Current Usage</div>
-                  <Database className="w-4 h-4 text-blue-400" />
-                </div>
-                <div className="text-3xl font-semibold text-white">1,247</div>
-                <div className="text-gray-400 text-sm">of 2,000 this month</div>
-              </div>
-              <div className="p-6 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-750 transition-colors">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-xs uppercase text-gray-400">Approval Rate</div>
-                  <CheckSquare className="w-4 h-4 text-green-400" />
-                </div>
-                <div className="text-3xl font-semibold text-white">84%</div>
-                <div className="text-gray-400 text-sm">↑ 12% from last month</div>
-              </div>
-              <div className="p-6 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-750 transition-colors">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-xs uppercase text-gray-400">In Queue</div>
-                  <Clock className="w-4 h-4 text-yellow-400" />
-                </div>
-                <div className="text-3xl font-semibold text-white">108</div>
-                <div className="text-gray-400 text-sm">awaiting review</div>
-              </div>
-              <div className="p-6 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-750 transition-colors">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-xs uppercase text-gray-400">Remaining</div>
-                  <TrendingUp className="w-4 h-4 text-purple-400" />
-                </div>
-                <div className="text-3xl font-semibold text-white">753</div>
-                <div className="text-gray-400 text-sm">prospects available</div>
-              </div>
-            </div>
-
-            {/* Main Approval Tiles */}
-            <div className="max-w-6xl">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {/* Auto Approval Rules */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-                  <div className="flex items-center mb-4">
-                    <Zap className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">Auto Approval Rules</h2>
-                  </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                    Configure intelligent automation rules to approve high-quality prospects automatically based on ICP matching, company criteria, and engagement signals.
-                  </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Configure • Review • Optimize</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Manual Review Queue */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-                  <div className="flex items-center mb-4">
-                    <Eye className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">Manual Review Queue</h2>
-                  </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                    Review prospects that require human judgment, including edge cases, high-value opportunities, and prospects that don't match automatic rules.
-                  </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Review • Approve • Reject</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Batch Processing */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-                  <div className="flex items-center mb-4">
-                    <Activity className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">Batch Processing</h2>
-                  </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                    Process multiple similar prospects at once with bulk approval actions, pattern-based decisions, and efficient workflow management for high-volume scenarios.
-                  </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Select • Process • Execute</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
-                </div>
-
-                {/* ICP Matching */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-                  <div className="flex items-center mb-4">
-                    <Target className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">ICP Matching</h2>
-                  </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                    Advanced prospect scoring based on your ideal customer profiles, with multi-dimensional analysis including company size, industry, technology stack, and role fit.
-                  </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Score • Analyze • Match</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Quality Control */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-                  <div className="flex items-center mb-4">
-                    <Gauge className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">Quality Control</h2>
-                  </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                    Monitor approval quality with detailed analytics, feedback loops, and continuous improvement mechanisms to optimize prospect selection accuracy.
-                  </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Monitor • Analyze • Improve</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Archive & History */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-                  <div className="flex items-center mb-4">
-                    <Archive className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">Archive & History</h2>
-                  </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                    Access historical approval decisions, track prospect lifecycle, and maintain comprehensive records for compliance and performance analysis.
-                  </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>View • Search • Export</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Quick Actions Bar */}
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-                  <Zap className="mr-2" size={20} />
-                  Quick Actions
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <button className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
-                    <ThumbsUp size={16} />
-                    <span>Approve High Priority (23)</span>
-                  </button>
-                  <button className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
-                    <Eye size={16} />
-                    <span>Review Medium Priority (85)</span>
-                  </button>
-                  <button className="flex items-center justify-center space-x-2 bg-yellow-600 hover:bg-yellow-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
-                    <Activity size={16} />
-                    <span>Batch Process (156)</span>
-                  </button>
-                  <button className="flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
-                    <ThumbsDown size={16} />
-                    <span>Clear Low Priority</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* System Notice */}
-              <div className="mt-8">
-                <div className="bg-blue-900 border border-blue-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-blue-100 mb-2">🎯 Intelligent Approval System</h3>
-                  <p className="text-blue-200 text-sm">
-                    Advanced prospect qualification powered by AI-driven ICP matching, quality scoring, and automated workflows to maximize your outreach efficiency and success rates.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+          /* LEGACY APPROVALS PAGE - Redirect to prospect approval */
+          <React.Suspense fallback={<div className="flex-1 bg-gray-900 p-6 overflow-y-auto flex items-center justify-center"><div className="text-white">Loading...</div></div>}>
+            <ProspectApprovalPage />
+          </React.Suspense>
         ) : activeMenuItem === 'admin' ? (
           /* WORKSPACE ADMIN PAGE */
           <div className="flex-1 p-6 overflow-y-auto">
@@ -2423,607 +2332,562 @@ export default function Page() {
               </div>
             </div>
           </div>
-        ) : activeMenuItem === 'superadmin' ? (
+                ) : activeMenuItem === 'superadmin' ? (
           /* SUPER ADMIN PAGE */
-          <div className="flex-1 p-6 overflow-y-auto">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex items-center justify-between mb-8">
-                <h1 className="text-3xl font-bold text-white flex items-center">
-                  <Settings className="mr-3" size={36} />
-                  SuperAdmin Panel
-                </h1>
-                <button 
-                  onClick={() => setActiveMenuItem('chat')}
-                  className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
-                >
-                  ← Back to Chat
-                </button>
+          <div className="flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-7xl px-6 py-8 space-y-8">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/20 text-purple-300">
+                    <Settings className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-semibold leading-tight text-white tracking-tight">Super Admin Control</h1>
+                    <p className="text-sm text-gray-400">
+                      Curated to mirror the Knowledge Base experience with streamlined tenant oversight.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={() => setActiveMenuItem('chat')}
+                    className="inline-flex items-center gap-2 rounded-full border border-gray-700/70 px-4 py-2 text-sm text-gray-300 transition hover:border-purple-500 hover:text-white"
+                  >
+                    ← Back to Chat
+                  </button>
+                </div>
               </div>
 
-              {/* Super Admin Panel */}
-              {isSuperAdmin && (
-                <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-lg p-6 mb-6 border border-purple-500">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h2 className="text-2xl font-semibold text-white flex items-center">
-                        <Settings className="mr-2" size={24} />
-                        Super Admin Panel
-                      </h2>
-                      <p className="text-purple-200 text-sm">Advanced tenant and user management</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <label className="text-white text-sm font-medium">Company:</label>
-                      <select
-                        value={selectedCompany}
-                        onChange={(e) => setSelectedCompany(e.target.value as 'All' | 'InnovareAI' | '3cubedai')}
-                        className="bg-gray-700 text-white px-3 py-1 rounded border border-gray-600"
-                      >
-                        <option value="All">All Companies</option>
-                        <option value="InnovareAI">InnovareAI</option>
-                        <option value="3cubedai">3CubedAI</option>
-                      </select>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <button
-                      onClick={() => setShowCreateWorkspace(true)}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors"
-                    >
-                      <Building2 size={18} />
-                      <span>Create Workspace</span>
-                    </button>
-                    <button
-                      onClick={async () => {
-                        console.log('🔄 Refreshing workspaces before opening invite popup...');
-                        if (user) {
-                          await loadWorkspaces(user.id, isSuperAdmin);
-                        }
-                        setShowInviteUser(true);
-                      }}
-                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors"
-                    >
-                      <Mail size={18} />
-                      <span>Invite User</span>
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setShowManageUsers(true);
-                        loadUsers();
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg flex items-center justify-center space-x-2 transition-colors"
-                    >
-                      <Users size={18} />
-                      <span>Manage Users</span>
-                    </button>
-                  </div>
-
-                  <div className="text-xs text-purple-200">
-                    Company emails will be sent from: {
-                      selectedCompany === 'All' ? 'sp@innovareai.com or sophia@3cubed.ai' :
-                      selectedCompany === 'InnovareAI' ? 'sp@innovareai.com' : 'sophia@3cubed.ai'
-                    }
-                  </div>
-                </div>
-              )}
-
-              {/* Workspace Management */}
-              <div className="bg-gray-800 rounded-lg p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center space-x-4">
-                    <h2 className="text-2xl font-semibold text-white">
-                      {isSuperAdmin ? 'All Workspaces' : 'My Workspaces'}
-                    </h2>
-                    {isSuperAdmin && workspaces.length > 0 && (
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          onChange={(e) => handleSelectAllWorkspaces(e.target.checked)}
-                          checked={selectedWorkspaces.size > 0 && selectedWorkspaces.size === workspaces.filter(ws => ws.slug !== 'innovareai').length}
-                          className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span className="text-gray-400 text-sm">Select All</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center space-x-4">
-                    {/* View Mode Toggles */}
-                    {workspaces.length > 0 && (
-                      <div className="flex items-center space-x-1 bg-gray-700 rounded-lg p-1">
-                        <button
-                          onClick={() => setViewMode('list')}
-                          className={`p-2 rounded-md transition-colors ${
-                            viewMode === 'list' 
-                              ? 'bg-purple-600 text-white' 
-                              : 'text-gray-400 hover:text-white hover:bg-gray-600'
-                          }`}
-                          title="List View"
-                        >
-                          <List size={16} />
-                        </button>
-                        <button
-                          onClick={() => setViewMode('card')}
-                          className={`p-2 rounded-md transition-colors ${
-                            viewMode === 'card' 
-                              ? 'bg-purple-600 text-white' 
-                              : 'text-gray-400 hover:text-white hover:bg-gray-600'
-                          }`}
-                          title="Card View"
-                        >
-                          <Grid3x3 size={16} />
-                        </button>
-                        <button
-                          onClick={() => setViewMode('info')}
-                          className={`p-2 rounded-md transition-colors ${
-                            viewMode === 'info' 
-                              ? 'bg-purple-600 text-white' 
-                              : 'text-gray-400 hover:text-white hover:bg-gray-600'
-                          }`}
-                          title="Info View"
-                        >
-                          <Info size={16} />
-                        </button>
-                      </div>
-                    )}
-                    
-                    {/* Real-time workspace count */}
-                    <div className="text-gray-400 text-sm">
-                      {(() => {
-                        const filteredCount = workspaces.filter(workspace => {
-                          if (selectedCompanyFilter === 'all') return true;
-                          if (selectedCompanyFilter === 'innovareai') return workspace.slug === 'innovareai';
-                          if (selectedCompanyFilter === '3cubed') {
-                            return workspace.slug === '3cubed' || 
-                                   workspace.slug === 'sendingcell' || 
-                                   workspace.slug === 'wt-matchmaker' ||
-                                   workspace.name.toLowerCase().includes('3cubed') ||
-                                   workspace.name.toLowerCase().includes('sendingcell') ||
-                                   workspace.name.toLowerCase().includes('wt') || 
-                                   workspace.name.toLowerCase().includes('matchmaker');
-                          }
-                          return false;
-                        }).length;
-                        
-                        return selectedCompanyFilter === 'all' 
-                          ? `${workspaces.length} workspace${workspaces.length !== 1 ? 's' : ''}`
-                          : `${filteredCount} of ${workspaces.length} workspace${workspaces.length !== 1 ? 's' : ''}`;
-                      })()}
-                    </div>
-                  </div>
-                </div>
-
-                {workspacesLoading ? (
-                  <div className="text-center py-8">
-                    <div className="text-gray-400">Loading workspaces...</div>
-                  </div>
-                ) : workspaces.length === 0 ? (
-                  <div className="text-center py-12 bg-gray-700 rounded-lg">
-                    <Building2 className="mx-auto mb-4 text-gray-600" size={48} />
-                    <p className="text-gray-400">No workspaces created yet</p>
-                    <p className="text-gray-500 text-sm">Use "Create Workspace" in the Super Admin panel above</p>
-                  </div>
-                ) : (
-                  (() => {
-                    // Filter workspaces based on selected company
-                    const filteredWorkspaces = workspaces.filter(workspace => {
-                      if (selectedCompanyFilter === 'all') return true;
-                      
-                      if (selectedCompanyFilter === 'innovareai') {
-                        return workspace.slug === 'innovareai';
-                      }
-                      
-                      if (selectedCompanyFilter === '3cubed') {
-                        return workspace.slug === '3cubed' || 
-                               workspace.slug === 'sendingcell' || 
-                               workspace.slug === 'wt-matchmaker' ||
-                               workspace.name.toLowerCase().includes('3cubed') ||
-                               workspace.name.toLowerCase().includes('sendingcell') ||
-                               workspace.name.toLowerCase().includes('wt') || 
-                               workspace.name.toLowerCase().includes('matchmaker');
-                      }
-                      
-                      return false;
-                    });
-
-                    return filteredWorkspaces.length === 0 ? (
-                      <div className="text-center py-12 bg-gray-700 rounded-lg">
-                        <Building2 className="mx-auto mb-4 text-gray-600" size={48} />
-                        <p className="text-gray-400">No workspaces found for {selectedCompanyFilter === 'innovareai' ? 'InnovareAI' : selectedCompanyFilter === '3cubed' ? '3cubed' : 'selected company'}</p>
-                        <p className="text-gray-500 text-sm">Try selecting "All Companies" or a different company filter</p>
-                      </div>
-                    ) : (
-                  <>
-                    {/* List View */}
-                    {viewMode === 'list' && (
-                      <div className="space-y-2">
-                        {filteredWorkspaces.map((workspace) => {
-                          const getCompanyColor = (slug: string) => {
-                            if (slug === 'innovareai') return 'bg-blue-600 text-white';
-                            if (slug === '3cubed' || slug === 'sendingcell' || slug === 'wt-matchmaker') return 'bg-orange-600 text-white';
-                            return 'bg-gray-600 text-white';
-                          };
-                          
-                          const getCompanyName = (slug: string) => {
-                            if (slug === 'innovareai') return 'InnovareAI';
-                            if (slug === '3cubed') return '3cubed';
-                            if (slug === 'sendingcell' || slug === 'wt-matchmaker') return '3cubed';
-                            return slug;
-                          };
-                          
-                          return (
-                            <div 
-                              key={workspace.id} 
-                              className="bg-gray-700 hover:bg-gray-600 rounded-lg p-3 cursor-pointer transition-colors"
-                              onClick={() => setSelectedWorkspaceId(workspace.id)}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                  {isSuperAdmin && (
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedWorkspaces.has(workspace.id)}
-                                      onChange={(e) => handleWorkspaceSelect(workspace.id, e.target.checked)}
-                                      disabled={workspace.slug === 'innovareai'}
-                                      className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                      onClick={(e) => e.stopPropagation()}
-                                    />
-                                  )}
-                                  <div className="flex items-center space-x-2">
-                                    <h3 className="text-white font-semibold">
-                                      {workspace.name}
-                                    </h3>
-                                    {workspace.slug && (
-                                      <span className={`text-xs px-2 py-1 rounded ${getCompanyColor(workspace.slug)}`}>
-                                        {getCompanyName(workspace.slug)}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center space-x-3 text-gray-400 text-sm">
-                                    <span>
-                                      {workspace.member_count || workspace.workspace_members?.length || 0} members
-                                    </span>
-                                    {workspace.pendingInvitations > 0 && (
-                                      <span className="bg-amber-600 text-white text-xs px-2 py-1 rounded">
-                                        {workspace.pendingInvitations} pending
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <button
-                                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center space-x-1 transition-colors"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setInviteWorkspaceId(workspace.id);
-                                    setShowInviteUser(true);
-                                  }}
-                                >
-                                  <Mail size={14} />
-                                  <span>Invite</span>
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* Card View */}
-                    {viewMode === 'card' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredWorkspaces.map((workspace) => {
-                          const getCompanyColor = (slug: string) => {
-                            if (slug === 'innovareai') return 'bg-blue-600 text-white';
-                            if (slug === '3cubed' || slug === 'sendingcell' || slug === 'wt-matchmaker') return 'bg-orange-600 text-white';
-                            return 'bg-gray-600 text-white';
-                          };
-                          
-                          const getCompanyName = (slug: string) => {
-                            if (slug === 'innovareai') return 'InnovareAI';
-                            if (slug === '3cubed') return '3cubed';
-                            if (slug === 'sendingcell' || slug === 'wt-matchmaker') return '3cubed';
-                            return slug;
-                          };
-                          
-                          return (
-                            <div 
-                              key={workspace.id} 
-                              className="bg-gray-700 hover:bg-gray-600 rounded-lg p-4 cursor-pointer transition-colors"
-                              onClick={() => setSelectedWorkspaceId(workspace.id)}
-                            >
-                              <div className="flex items-start justify-between mb-3">
-                                <div className="flex items-center space-x-2">
-                                  {isSuperAdmin && (
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedWorkspaces.has(workspace.id)}
-                                      onChange={(e) => handleWorkspaceSelect(workspace.id, e.target.checked)}
-                                      disabled={workspace.slug === 'innovareai'}
-                                      className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                      onClick={(e) => e.stopPropagation()}
-                                    />
-                                  )}
-                                  <Building2 size={20} className="text-purple-400" />
-                                </div>
-                                <button
-                                  className="bg-green-600 hover:bg-green-700 text-white p-2 rounded text-sm transition-colors"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setInviteWorkspaceId(workspace.id);
-                                    setShowInviteUser(true);
-                                  }}
-                                  title="Invite User"
-                                >
-                                  <Mail size={14} />
-                                </button>
-                              </div>
-                              
-                              <div className="mb-3">
-                                <h3 className="text-white font-semibold mb-1">
-                                  {workspace.name}
-                                </h3>
-                                {workspace.slug && (
-                                  <span className={`text-xs px-2 py-1 rounded ${getCompanyColor(workspace.slug)}`}>
-                                    {getCompanyName(workspace.slug)}
-                                  </span>
-                                )}
-                              </div>
-                              
-                              <div className="text-sm text-gray-400">
-                                <div className="flex items-center space-x-1 mb-1">
-                                  <Users size={14} />
-                                  <span>{workspace.member_count || workspace.workspace_members?.length || 0} members</span>
-                                  {workspace.pendingInvitations > 0 && (
-                                    <span className="bg-amber-600 text-white text-xs px-2 py-1 rounded ml-2">
-                                      {workspace.pendingInvitations} pending
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  Created {new Date(workspace.created_at).toLocaleDateString()}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* Info View (Default - Full Details) */}
-                    {viewMode === 'info' && (
+              <div className="grid gap-6 lg:grid-cols-[320px,minmax(0,1fr)] xl:grid-cols-[360px,minmax(0,1fr)]">
+                <div className="space-y-6">
+                  {isSuperAdmin ? (
+                    <div className="rounded-2xl border border-gray-700/80 bg-gray-900/70 p-6 shadow-lg shadow-black/20">
                       <div className="space-y-4">
-                        {filteredWorkspaces.map((workspace) => {
-                          const getCompanyColor = (slug: string) => {
-                            if (slug === 'innovareai') return 'bg-blue-600 text-white';
-                            if (slug === '3cubed' || slug === 'sendingcell' || slug === 'wt-matchmaker') return 'bg-orange-600 text-white';
-                            return 'bg-gray-600 text-white';
-                          };
-                          
-                          const getCompanyName = (slug: string) => {
-                            if (slug === 'innovareai') return 'InnovareAI';
-                            if (slug === '3cubed') return '3cubed';
-                            if (slug === 'sendingcell' || slug === 'wt-matchmaker') return '3cubed';
-                            return slug;
-                          };
-                          
-                          return (
-                            <div 
-                              key={workspace.id} 
-                              className="bg-gray-700 hover:bg-gray-600 rounded-lg p-4 cursor-pointer transition-colors"
-                              onClick={() => setSelectedWorkspaceId(workspace.id)}
-                            >
-                              <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-start space-x-3">
-                                  {isSuperAdmin && (
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedWorkspaces.has(workspace.id)}
-                                      onChange={(e) => handleWorkspaceSelect(workspace.id, e.target.checked)}
-                                      disabled={workspace.slug === 'innovareai'}
-                                      className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed mt-1"
-                                      onClick={(e) => e.stopPropagation()}
-                                    />
-                                  )}
-                                  <div>
-                                    <div className="flex items-center space-x-2 mb-1">
-                                      <h3 className="text-white font-semibold">
-                                        {workspace.name}
-                                      </h3>
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-purple-300/80">Super Admin</p>
+                          <h2 className="text-xl font-semibold text-white">Workspace Orchestration</h2>
+                          <p className="text-sm text-gray-300">
+                            Manage tenants, create dedicated workspaces, and invite teams in seconds.
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                            Operating Company
+                          </label>
+                          <select
+                            value={selectedCompany}
+                            onChange={(e) => setSelectedCompany(e.target.value as 'All' | 'InnovareAI' | '3cubedai')}
+                            className="h-11 w-full rounded-lg border border-gray-700 bg-gray-900/60 px-3 text-sm text-white transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                          >
+                            <option value="All">All Companies</option>
+                            <option value="InnovareAI">InnovareAI</option>
+                            <option value="3cubedai">3CubedAI</option>
+                          </select>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                          <button
+                            onClick={() => setShowCreateWorkspace(true)}
+                            className="flex h-12 items-center justify-center gap-2 rounded-lg border border-purple-500/40 bg-purple-500/15 text-sm font-medium text-purple-100 transition hover:border-purple-400 hover:bg-purple-500/25"
+                          >
+                            <Building2 size={16} />
+                            <span>Create Workspace</span>
+                          </button>
+                          <button
+                            onClick={async () => {
+                              console.log('🔄 Refreshing workspaces before opening invite popup...');
+                              if (user) {
+                                await loadWorkspaces(user.id, isSuperAdmin);
+                              }
+                              setShowInviteUser(true);
+                            }}
+                            className="flex h-12 items-center justify-center gap-2 rounded-lg border border-green-500/40 bg-green-500/15 text-sm font-medium text-green-100 transition hover:border-green-400 hover:bg-green-500/25"
+                          >
+                            <Mail size={16} />
+                            <span>Invite User</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowManageUsers(true);
+                              loadUsers();
+                            }}
+                            className="flex h-12 items-center justify-center gap-2 rounded-lg border border-blue-500/40 bg-blue-500/15 text-sm font-medium text-blue-100 transition hover:border-blue-400 hover:bg-blue-500/25"
+                          >
+                            <Users size={16} />
+                            <span>Manage Users</span>
+                          </button>
+                        </div>
+
+                        <div className="rounded-xl border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-sm text-purple-100">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-purple-200">Email Routing</p>
+                          <p className="mt-1 leading-relaxed">
+                            Company emails will be sent from: {companyEmailMessage}
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                          <div className="rounded-xl border border-gray-700/80 bg-gray-900/60 px-4 py-3">
+                            <p className="text-xs uppercase tracking-wide text-gray-400">Showing</p>
+                            <p className="mt-1 text-2xl font-semibold text-white">
+                              {filteredWorkspaceCount}
+                            </p>
+                            <p className="text-xs text-gray-500">of {totalWorkspaceCount} workspaces</p>
+                          </div>
+                          <div className="rounded-xl border border-gray-700/80 bg-gray-900/60 px-4 py-3">
+                            <p className="text-xs uppercase tracking-wide text-gray-400">Active Members</p>
+                            <p className="mt-1 text-2xl font-semibold text-white">
+                              {filteredWorkspaceMembers}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {overallWorkspaceMembers} across all tenants
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-gray-700/80 bg-gray-900/60 px-4 py-3">
+                            <p className="text-xs uppercase tracking-wide text-gray-400">Pending Invites</p>
+                            <p className="mt-1 text-2xl font-semibold text-white">
+                              {filteredPendingInvites}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {overallPendingInvites} total
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-gray-700/80 bg-gray-900/60 p-6 text-sm text-gray-300">
+                      <h2 className="text-lg font-semibold text-white">Limited Access</h2>
+                      <p className="mt-2 leading-relaxed">
+                        Super admin privileges are required to access tenant-wide controls. Please contact your InnovareAI administrator if you believe this is in error.
+                      </p>
+                      <button
+                        onClick={() => setActiveMenuItem('knowledge')}
+                        className="mt-4 inline-flex items-center gap-2 rounded-lg border border-gray-700/70 px-3 py-2 text-xs uppercase tracking-wide text-gray-400 transition hover:border-purple-500 hover:text-white"
+                      >
+                        Explore Knowledge Base
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="rounded-2xl border border-gray-700/80 bg-gray-900/60 p-6 space-y-5">
+                    <div className="space-y-1">
+                      <h3 className="flex items-center gap-2 text-lg font-semibold text-white">
+                        <Search size={16} className="text-purple-300" />
+                        Workspace Focus
+                      </h3>
+                      <p className="text-sm text-gray-400">
+                        Filter by operating company and adjust the layout to match your workflow.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {companyFilterButtons.map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => setSelectedCompanyFilter(option.value)}
+                          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${
+                            selectedCompanyFilter === option.value
+                              ? 'border-purple-500 bg-purple-500/20 text-purple-100'
+                              : 'border-gray-700/80 bg-gray-800/60 text-gray-300 hover:border-purple-500/60 hover:text-white'
+                          }`}
+                        >
+                          <span>{option.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="space-y-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        View Mode
+                      </span>
+                      <div className="inline-flex items-center gap-1 rounded-full border border-gray-700/80 bg-gray-800/80 p-1">
+                        {viewModes.map(({ value, label, icon: Icon }) => (
+                          <button
+                            key={value}
+                            onClick={() => setViewMode(value)}
+                            className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                              viewMode === value
+                                ? 'bg-purple-600 text-white shadow-[0_0_30px_rgba(147,51,234,0.35)]'
+                                : 'text-gray-400 hover:text-white'
+                            }`}
+                          >
+                            <Icon size={14} />
+                            <span>{label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>Showing {filteredWorkspaceCount} of {totalWorkspaceCount} workspaces</span>
+                      {selectedWorkspaces.size > 0 && (
+                        <span>{selectedWorkspaces.size} selected</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="rounded-2xl border border-gray-700/80 bg-gray-900/50 p-6 shadow-inner shadow-black/10">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <h2 className="text-2xl font-semibold text-white">
+                          {isSuperAdmin ? 'Workspace Directory' : 'My Workspaces'}
+                        </h2>
+                        <p className="text-sm text-gray-400">
+                          {filteredWorkspaceCount > 0
+                            ? 'Select a workspace to review membership and activity.'
+                            : 'Adjust the filters to resurface workspaces.'}
+                        </p>
+                      </div>
+                      {isSuperAdmin && workspaces.length > 0 && (
+                        <label className="inline-flex items-center gap-2 rounded-full border border-gray-700/70 bg-gray-800/60 px-3 py-2 text-xs uppercase tracking-wide text-gray-300">
+                          <input
+                            type="checkbox"
+                            onChange={(e) => handleSelectAllWorkspaces(e.target.checked)}
+                            checked={selectedWorkspaces.size > 0 && selectedWorkspaces.size === workspaces.filter(ws => ws.slug !== 'innovareai').length}
+                            className="rounded border-gray-600 bg-gray-900 text-purple-500 focus:ring-purple-500"
+                          />
+                          <span>Select All (ex. InnovareAI)</span>
+                        </label>
+                      )}
+                    </div>
+
+                    <div className="mt-6">
+                      {workspacesLoading ? (
+                        <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-gray-700/70 text-gray-400">
+                          Loading workspace information...
+                        </div>
+                      ) : workspaces.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-700/70 bg-gray-900/40 py-12 text-center">
+                          <Building2 className="h-12 w-12 text-gray-600" />
+                          <div>
+                            <p className="text-base font-medium text-gray-300">No workspaces created yet</p>
+                            <p className="text-sm text-gray-500">Use "Create Workspace" to get started.</p>
+                          </div>
+                        </div>
+                      ) : filteredWorkspaces.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-700/70 bg-gray-900/40 py-12 text-center">
+                          <Search className="h-10 w-10 text-gray-600" />
+                          <div>
+                            <p className="text-base font-medium text-gray-300">No workspaces match the current filter</p>
+                            <p className="text-sm text-gray-500">Try switching to "All" or another company.</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {viewMode === 'list' && (
+                            <div className="overflow-hidden rounded-2xl border border-gray-800/80 bg-gray-900/40">
+                              <div className="divide-y divide-gray-800/80">
+                                {filteredWorkspaces.map((workspace) => (
+                                  <div
+                                    key={workspace.id}
+                                    className="group flex flex-col gap-3 px-4 py-4 transition hover:bg-gray-900/70 sm:flex-row sm:items-center sm:justify-between"
+                                    onClick={() => setSelectedWorkspaceId(workspace.id)}
+                                  >
+                                    <div className="flex items-start gap-3">
+                                      {isSuperAdmin && (
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedWorkspaces.has(workspace.id)}
+                                          onChange={(e) => handleWorkspaceSelect(workspace.id, e.target.checked)}
+                                          disabled={workspace.slug === 'innovareai'}
+                                          className="mt-1 rounded border-gray-600 bg-gray-900 text-purple-500 focus:ring-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                          onClick={(e) => e.stopPropagation()}
+                                        />
+                                      )}
+                                      <div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <span className="text-sm font-semibold text-white">{workspace.name}</span>
+                                          {workspace.slug && (
+                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${getWorkspaceCompanyColor(workspace.slug)}`}>
+                                              {getWorkspaceCompanyName(workspace.slug)}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="mt-1 text-xs text-gray-500">
+                                          Created {new Date(workspace.created_at).toLocaleDateString()}
+                                        </div>
+                                        {isSuperAdmin && workspace.owner && (
+                                          <div className="mt-1 text-xs text-gray-500">
+                                            Owner: {workspace.owner.email || 'Unknown'}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-3">
+                                      <div className="flex items-center gap-1 text-sm text-gray-300">
+                                        <Users size={14} />
+                                        <span>{workspace.member_count || workspace.workspace_members?.length || 0}</span>
+                                      </div>
+                                      {workspace.pendingInvitations > 0 && (
+                                        <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2 py-1 text-xs font-medium text-amber-200">
+                                          {workspace.pendingInvitations} pending
+                                        </span>
+                                      )}
+                                      <button
+                                        className="inline-flex items-center gap-1 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-100 transition hover:border-green-400 hover:bg-green-500/20"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setInviteWorkspaceId(workspace.id);
+                                          setShowInviteUser(true);
+                                        }}
+                                      >
+                                        <Mail size={12} />
+                                        <span>Invite</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {viewMode === 'card' && (
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                              {filteredWorkspaces.map((workspace) => (
+                                <div
+                                  key={workspace.id}
+                                  className="flex h-full flex-col justify-between rounded-2xl border border-gray-800/80 bg-gray-900/40 p-5 transition hover:border-purple-500/40 hover:bg-gray-900/60"
+                                  onClick={() => setSelectedWorkspaceId(workspace.id)}
+                                >
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                      {isSuperAdmin && (
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedWorkspaces.has(workspace.id)}
+                                          onChange={(e) => handleWorkspaceSelect(workspace.id, e.target.checked)}
+                                          disabled={workspace.slug === 'innovareai'}
+                                          className="rounded border-gray-600 bg-gray-900 text-purple-500 focus:ring-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                          onClick={(e) => e.stopPropagation()}
+                                        />
+                                      )}
+                                      <Building2 size={20} className="text-purple-300" />
+                                    </div>
+                                    <button
+                                      className="inline-flex items-center gap-1 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-100 transition hover:border-green-400 hover:bg-green-500/20"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setInviteWorkspaceId(workspace.id);
+                                        setShowInviteUser(true);
+                                      }}
+                                      title="Invite User"
+                                    >
+                                      <Mail size={12} />
+                                      <span>Invite</span>
+                                    </button>
+                                  </div>
+                                  <div className="mt-4 space-y-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <h3 className="text-lg font-semibold text-white">{workspace.name}</h3>
                                       {workspace.slug && (
-                                        <span className={`text-xs px-2 py-1 rounded ${getCompanyColor(workspace.slug)}`}>
-                                          {getCompanyName(workspace.slug)}
+                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${getWorkspaceCompanyColor(workspace.slug)}`}>
+                                          {getWorkspaceCompanyName(workspace.slug)}
                                         </span>
                                       )}
                                     </div>
-                                    <p className="text-gray-400 text-sm">
-                                      Created {new Date(workspace.created_at).toLocaleDateString()}
-                                    </p>
+                                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                                      <span>Created {new Date(workspace.created_at).toLocaleDateString()}</span>
+                                      <span className="flex items-center gap-1 text-gray-300">
+                                        <Users size={12} />
+                                        {workspace.member_count || workspace.workspace_members?.length || 0} members
+                                      </span>
+                                    </div>
+                                    {workspace.pendingInvitations > 0 && (
+                                      <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2 py-1 text-xs font-medium text-amber-200">
+                                        {workspace.pendingInvitations} pending invitation(s)
+                                      </span>
+                                    )}
                                     {isSuperAdmin && workspace.owner && (
-                                      <p className="text-gray-500 text-xs mt-1">
+                                      <p className="text-xs text-gray-500">
                                         Owner: {workspace.owner.email || 'Unknown'}
                                       </p>
                                     )}
                                   </div>
                                 </div>
-                                <div className="flex items-center space-x-2">
-                                  <button
-                                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center space-x-1 transition-colors"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setInviteWorkspaceId(workspace.id);
-                                      setShowInviteUser(true);
-                                    }}
-                                  >
-                                    <Mail size={14} />
-                                    <span>Invite</span>
-                                  </button>
-                                </div>
-                              </div>
-                              
-                              <div className="text-sm text-gray-400 flex items-center space-x-3">
-                                <div className="flex items-center">
-                                  <Users size={14} className="inline mr-1" />
-                                  {workspace.member_count || workspace.workspace_members?.length || 0} members
-                                </div>
-                                {workspace.pendingInvitations > 0 && (
-                                  <span className="bg-amber-600 text-white text-xs px-2 py-1 rounded">
-                                    {workspace.pendingInvitations} pending
-                                  </span>
-                                )}
-                              </div>
+                              ))}
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </>
-                    );
-                  })()
-                )}
+                          )}
 
-                {/* Workspace Detail Page */}
-                {selectedWorkspaceId && (
-                  (() => {
+                          {viewMode === 'info' && (
+                            <div className="space-y-4">
+                              {filteredWorkspaces.map((workspace) => (
+                                <div
+                                  key={workspace.id}
+                                  className="rounded-2xl border border-gray-800/80 bg-gray-900/45 p-5 transition hover:border-purple-500/40 hover:bg-gray-900/60"
+                                  onClick={() => setSelectedWorkspaceId(workspace.id)}
+                                >
+                                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                                    <div className="flex flex-col gap-2">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        {isSuperAdmin && (
+                                          <input
+                                            type="checkbox"
+                                            checked={selectedWorkspaces.has(workspace.id)}
+                                            onChange={(e) => handleWorkspaceSelect(workspace.id, e.target.checked)}
+                                            disabled={workspace.slug === 'innovareai'}
+                                            className="rounded border-gray-600 bg-gray-900 text-purple-500 focus:ring-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                            onClick={(e) => e.stopPropagation()}
+                                          />
+                                        )}
+                                        <h3 className="text-lg font-semibold text-white">{workspace.name}</h3>
+                                        {workspace.slug && (
+                                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${getWorkspaceCompanyColor(workspace.slug)}`}>
+                                            {getWorkspaceCompanyName(workspace.slug)}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex flex-wrap gap-4 text-sm text-gray-300">
+                                        <span className="flex items-center gap-1">
+                                          <Users size={14} />
+                                          {workspace.member_count || workspace.workspace_members?.length || 0} members
+                                        </span>
+                                        <span>Created {new Date(workspace.created_at).toLocaleDateString()}</span>
+                                        {isSuperAdmin && workspace.owner && (
+                                          <span>Owner: {workspace.owner.email || 'Unknown'}</span>
+                                        )}
+                                      </div>
+                                      {workspace.pendingInvitations > 0 && (
+                                        <span className="inline-flex w-fit items-center rounded-full bg-amber-500/20 px-2 py-1 text-xs font-medium text-amber-200">
+                                          {workspace.pendingInvitations} pending invitation(s)
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 self-start">
+                                      <button
+                                        className="inline-flex items-center gap-1 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-100 transition hover:border-green-400 hover:bg-green-500/20"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setInviteWorkspaceId(workspace.id);
+                                          setShowInviteUser(true);
+                                        }}
+                                      >
+                                        <Mail size={12} />
+                                        Invite
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {selectedWorkspaceId && (() => {
                     const selectedWorkspace = workspaces.find(ws => ws.id === selectedWorkspaceId);
                     if (!selectedWorkspace) return null;
 
-                    const getCompanyColor = (slug: string) => {
-                      if (slug === 'innovareai') return 'bg-blue-600 text-white';
-                      if (slug === '3cubed' || slug === 'sendingcell' || slug === 'wt-matchmaker') return 'bg-orange-600 text-white';
-                      return 'bg-gray-600 text-white';
-                    };
-                    
-                    const getCompanyName = (slug: string) => {
-                      if (slug === 'innovareai') return 'InnovareAI';
-                      if (slug === '3cubed') return '3cubed';
-                      if (slug === 'sendingcell' || slug === 'wt-matchmaker') return '3cubed';
-                      return slug;
-                    };
-
                     return (
-                      <div className="mt-8 bg-gray-800 rounded-lg p-6 border border-gray-600">
-                        <div className="flex items-center justify-between mb-6">
-                          <div className="flex items-center space-x-3">
-                            <h2 className="text-2xl font-bold text-white">Workspace Details</h2>
+                      <div className="rounded-2xl border border-gray-700/80 bg-gray-900/50 p-6 shadow-lg shadow-black/20">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <h2 className="text-2xl font-semibold text-white">Workspace Details</h2>
                             {selectedWorkspace.slug && (
-                              <span className={`text-sm px-3 py-1 rounded ${getCompanyColor(selectedWorkspace.slug)}`}>
-                                {getCompanyName(selectedWorkspace.slug)}
+                              <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${getWorkspaceCompanyColor(selectedWorkspace.slug)}`}>
+                                {getWorkspaceCompanyName(selectedWorkspace.slug)}
                               </span>
                             )}
                           </div>
                           <button
                             onClick={() => setSelectedWorkspaceId(null)}
-                            className="text-gray-400 hover:text-white transition-colors"
+                            className="rounded-full border border-gray-700/70 px-2 py-1 text-sm text-gray-400 transition hover:border-purple-500 hover:text-white"
                             title="Close details"
                           >
-                            <X size={24} />
+                            <X size={16} />
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                          {/* Basic Information */}
+                        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
                           <div className="space-y-4">
-                            <h3 className="text-xl font-semibold text-white border-b border-gray-600 pb-2">
-                              {selectedWorkspace.name}
-                            </h3>
-                            
-                            <div className="space-y-3 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-gray-400">Created:</span>
-                                <span className="text-white">{new Date(selectedWorkspace.created_at).toLocaleDateString()}</span>
-                              </div>
-                              
-                              <div className="flex justify-between">
-                                <span className="text-gray-400">Workspace ID:</span>
-                                <span className="text-white font-mono text-xs">{selectedWorkspace.id}</span>
-                              </div>
-                              
-                              <div className="flex justify-between">
-                                <span className="text-gray-400">Slug:</span>
-                                <span className="text-white">{selectedWorkspace.slug || 'N/A'}</span>
-                              </div>
-
-                              {isSuperAdmin && selectedWorkspace.owner && (
+                            <div className="rounded-xl border border-gray-800/80 bg-gray-900/60 p-5">
+                              <h3 className="text-lg font-semibold text-white">{selectedWorkspace.name}</h3>
+                              <dl className="mt-4 space-y-3 text-sm">
                                 <div className="flex justify-between">
-                                  <span className="text-gray-400">Owner:</span>
-                                  <span className="text-white">{selectedWorkspace.owner.email || 'Unknown'}</span>
+                                  <dt className="text-gray-400">Created</dt>
+                                  <dd className="text-white">{new Date(selectedWorkspace.created_at).toLocaleDateString()}</dd>
                                 </div>
-                              )}
-
-                              <div className="flex justify-between">
-                                <span className="text-gray-400">Total Members:</span>
-                                <span className="text-white">{selectedWorkspace.member_count || selectedWorkspace.workspace_members?.length || 0}</span>
-                              </div>
-
-                              {selectedWorkspace.pendingInvitations > 0 && (
                                 <div className="flex justify-between">
-                                  <span className="text-gray-400">Pending Invitations:</span>
-                                  <span className="bg-amber-600 text-white text-xs px-2 py-1 rounded">
-                                    {selectedWorkspace.pendingInvitations}
-                                  </span>
+                                  <dt className="text-gray-400">Workspace ID</dt>
+                                  <dd className="font-mono text-xs text-gray-200">{selectedWorkspace.id}</dd>
                                 </div>
-                              )}
+                                <div className="flex justify-between">
+                                  <dt className="text-gray-400">Slug</dt>
+                                  <dd className="text-white">{selectedWorkspace.slug || 'N/A'}</dd>
+                                </div>
+                                {isSuperAdmin && selectedWorkspace.owner && (
+                                  <div className="flex justify-between">
+                                    <dt className="text-gray-400">Owner</dt>
+                                    <dd className="text-white">{selectedWorkspace.owner.email || 'Unknown'}</dd>
+                                  </div>
+                                )}
+                                <div className="flex justify-between">
+                                  <dt className="text-gray-400">Total Members</dt>
+                                  <dd className="text-white">{selectedWorkspace.member_count || selectedWorkspace.workspace_members?.length || 0}</dd>
+                                </div>
+                                {selectedWorkspace.pendingInvitations > 0 && (
+                                  <div className="flex items-center justify-between">
+                                    <dt className="text-gray-400">Pending Invitations</dt>
+                                    <dd className="inline-flex items-center rounded-full bg-amber-500/20 px-2 py-1 text-xs font-medium text-amber-200">
+                                      {selectedWorkspace.pendingInvitations}
+                                    </dd>
+                                  </div>
+                                )}
+                              </dl>
                             </div>
 
-                            <div className="pt-4">
-                              <button
-                                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex items-center space-x-2 transition-colors"
-                                onClick={() => {
-                                  setInviteWorkspaceId(selectedWorkspace.id);
-                                  setShowInviteUser(true);
-                                }}
-                              >
-                                <Mail size={16} />
-                                <span>Invite User to Workspace</span>
-                              </button>
-                            </div>
+                            <button
+                              className="inline-flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2 text-sm font-medium text-green-100 transition hover:border-green-400 hover:bg-green-500/20"
+                              onClick={() => {
+                                setInviteWorkspaceId(selectedWorkspace.id);
+                                setShowInviteUser(true);
+                              }}
+                            >
+                              <Mail size={16} />
+                              Invite to this workspace
+                            </button>
                           </div>
 
-                          {/* Members List */}
                           <div className="space-y-4">
-                            <h3 className="text-xl font-semibold text-white border-b border-gray-600 pb-2">Members</h3>
-                            
-                            {selectedWorkspace.workspace_members && selectedWorkspace.workspace_members.length > 0 ? (
-                              <div className="space-y-2 max-h-64 overflow-y-auto">
-                                {selectedWorkspace.workspace_members.map((member: any, idx: number) => (
-                                  <div key={idx} className="bg-gray-700 rounded p-3 flex items-center justify-between">
-                                    <div>
-                                      <div className="text-white font-medium">
-                                        {member.user?.email || `User ${member.user_id.slice(0, 8)}`}
+                            <div className="rounded-xl border border-gray-800/80 bg-gray-900/60 p-5">
+                              <h3 className="text-lg font-semibold text-white">Members</h3>
+                              {selectedWorkspace.workspace_members && selectedWorkspace.workspace_members.length > 0 ? (
+                                <div className="mt-4 space-y-3">
+                                  {selectedWorkspace.workspace_members.map((member: any, idx: number) => (
+                                    <div key={idx} className="flex items-center justify-between rounded-lg border border-gray-800/60 bg-gray-900/50 px-3 py-2">
+                                      <div>
+                                        <p className="text-sm font-medium text-white">{member.users?.email || `User ${member.user_id.slice(0, 8)}`}</p>
+                                        <p className="text-xs text-gray-400">
+                                          Joined {new Date(member.joined_at).toLocaleDateString()}
+                                        </p>
                                       </div>
-                                      <div className="text-gray-400 text-sm">
-                                        Joined {new Date(member.created_at).toLocaleDateString()}
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                      <span className={`text-xs px-2 py-1 rounded ${
-                                        member.role === 'admin' 
-                                          ? 'bg-purple-600 text-white' 
-                                          : member.role === 'owner'
-                                          ? 'bg-yellow-600 text-white'
-                                          : 'bg-gray-600 text-white'
+                                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                                        member.role === 'owner'
+                                          ? 'bg-purple-500/30 text-purple-100'
+                                          : member.role === 'admin'
+                                            ? 'bg-blue-500/30 text-blue-100'
+                                            : 'bg-gray-700 text-gray-200'
                                       }`}>
                                         {member.role}
                                       </span>
                                     </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="text-center py-8 text-gray-400">
-                                <Users size={48} className="mx-auto mb-3 opacity-50" />
-                                <p>No members found</p>
-                              </div>
-                            )}
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="mt-4 rounded-lg border border-dashed border-gray-700/70 bg-gray-900/40 px-3 py-6 text-center text-sm text-gray-500">
+                                  No members yet - invite your first teammate.
+                                </div>
+                              )}
+                            </div>
 
-                            {/* Pending Invitations */}
                             {selectedWorkspace.pendingList && selectedWorkspace.pendingList.length > 0 && (
-                              <div className="mt-6">
-                                <h4 className="text-lg font-semibold text-amber-400 mb-3">Pending Invitations</h4>
-                                <div className="space-y-2">
+                              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
+                                <h4 className="text-base font-semibold text-amber-100">Pending Invitations</h4>
+                                <div className="mt-3 space-y-2">
                                   {selectedWorkspace.pendingList.map((invitation: string, idx: number) => (
-                                    <div key={idx} className="bg-amber-900/20 border border-amber-600/30 rounded p-2">
-                                      <span className="text-amber-300 text-sm">{invitation}</span>
+                                    <div key={idx} className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-50">
+                                      {invitation}
                                     </div>
                                   ))}
                                 </div>
@@ -3033,33 +2897,32 @@ export default function Page() {
                         </div>
                       </div>
                     );
-                  })()
-                )}
+                  })()}
 
-                {/* Bulk delete controls for workspaces */}
-                {isSuperAdmin && selectedWorkspaces.size > 0 && (
-                  <div className="flex justify-between items-center mt-6 pt-6 border-t border-gray-600">
-                    <div className="flex items-center space-x-4">
+                  {isSuperAdmin && selectedWorkspaces.size > 0 && (
+                    <div className="flex flex-col gap-4 rounded-2xl border border-red-500/40 bg-red-950/40 p-5 text-sm text-red-100 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-base font-semibold">
+                          Delete {selectedWorkspaces.size} workspace{selectedWorkspaces.size > 1 ? 's' : ''}
+                        </p>
+                        <p className="text-xs text-red-200/80">
+                          InnovareAI workspace is protected and cannot be deleted.
+                        </p>
+                      </div>
                       <button
                         onClick={handleBulkDeleteWorkspaces}
                         disabled={isDeletingWorkspaces}
-                        className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-6 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                        className="inline-flex items-center justify-center rounded-lg border border-red-500/60 bg-red-500/20 px-4 py-2 text-sm font-semibold text-red-100 transition hover:border-red-400 hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        <span>{isDeletingWorkspaces ? 'Deleting...' : `Delete ${selectedWorkspaces.size} Workspace${selectedWorkspaces.size > 1 ? 's' : ''}`}</span>
+                        {isDeletingWorkspaces ? 'Deleting...' : 'Confirm Delete'}
                       </button>
-                      <span className="text-gray-400 text-sm">
-                        {selectedWorkspaces.size} workspace{selectedWorkspaces.size > 1 ? 's' : ''} selected
-                      </span>
                     </div>
-                    <div className="text-gray-500 text-xs">
-                      Note: InnovareAI workspace is protected and cannot be deleted
-                    </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        ) : showStarterScreen ? (
+) : showStarterScreen ? (
           /* STARTER SCREEN */
           <div className="flex-1 flex flex-col items-center justify-end pb-32 p-6">
             <div className="mb-12">

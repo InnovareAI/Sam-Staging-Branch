@@ -29,7 +29,9 @@ import {
   Download,
   ExternalLink,
   AlertCircle,
-  Settings
+  Settings,
+  FileSpreadsheet,
+  Share
 } from 'lucide-react'
 
 interface UnipileProspectData {
@@ -245,6 +247,77 @@ export default function ProspectApprovalDashboard() {
     }
   }
 
+  const exportToCSV = () => {
+    const csvData = prospects.map(prospect => {
+      const status = getProspectDecisionStatus(prospect.id)
+      const decision = decisions[prospect.id]
+      return {
+        'Name': prospect.name,
+        'Title': prospect.title,
+        'Company': prospect.company.name,
+        'Company Size': prospect.company.size,
+        'Industry': prospect.company.industry,
+        'Email': prospect.contact.email || '',
+        'Phone': prospect.contact.phone || '',
+        'LinkedIn': prospect.contact.linkedin_url,
+        'Location': prospect.location,
+        'Connection Degree': prospect.connection_degree,
+        'Enrichment Score': prospect.enrichment_score,
+        'Status': status,
+        'Decision Date': decision?.decided_at ? new Date(decision.decided_at).toLocaleDateString() : '',
+        'Reason': decision?.reason || '',
+        'Source': prospect.source,
+        'Enriched At': new Date(prospect.enriched_at).toLocaleDateString()
+      }
+    })
+
+    const headers = Object.keys(csvData[0] || {})
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => headers.map(header => `"${(row as any)[header] || ''}"`).join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', `prospects-approval-${currentSession?.batch_number}-${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
+  }
+
+  const createGoogleSheet = async () => {
+    try {
+      const response = await fetch('/api/prospect-approval/google-sheets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          session_id: currentSession?.id,
+          prospects: prospects.map(prospect => ({
+            ...prospect,
+            status: getProspectDecisionStatus(prospect.id),
+            decision: decisions[prospect.id]
+          }))
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.sheet_url) {
+          window.open(result.sheet_url, '_blank')
+        }
+      }
+    } catch (error) {
+      console.error('Error creating Google Sheet:', error)
+    }
+  }
+
   const getProspectDecisionStatus = (prospectId: string) => {
     return decisions[prospectId]?.decision || 'pending'
   }
@@ -441,6 +514,24 @@ export default function ProspectApprovalDashboard() {
         </div>
 
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportToCSV}
+            disabled={prospects.length === 0}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={createGoogleSheet}
+            disabled={prospects.length === 0}
+          >
+            <Share className="w-4 h-4 mr-2" />
+            Google Sheets
+          </Button>
           <Button
             variant="outline"
             size="sm"
