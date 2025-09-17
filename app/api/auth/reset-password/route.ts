@@ -7,11 +7,25 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Function to determine sender based on user affiliation
+function getSenderByAffiliation(userEmail: string): string {
+  // Check if user belongs to 3cubed (adjust domain/pattern as needed)
+  if (userEmail.includes('3cubed') || userEmail.includes('cubedcapital')) {
+    return 'Sophia Caldwell <sophia@innovareai.com>';
+  }
+  
+  // Default to Sarah Powell for InnovareAI and other users
+  return 'Sarah Powell <sarah@innovareai.com>';
+}
+
 // Postmark email service
 async function sendEmail(to: string, subject: string, htmlBody: string) {
   if (!process.env.POSTMARK_SERVER_TOKEN) {
     throw new Error('Postmark not configured');
   }
+
+  // Determine sender based on user affiliation
+  const fromAddress = getSenderByAffiliation(to);
 
   const response = await fetch('https://api.postmarkapp.com/email', {
     method: 'POST',
@@ -21,7 +35,7 @@ async function sendEmail(to: string, subject: string, htmlBody: string) {
       'X-Postmark-Server-Token': process.env.POSTMARK_SERVER_TOKEN,
     },
     body: JSON.stringify({
-      From: process.env.POSTMARK_FROM_EMAIL || 'Sarah Powell <sarah@innovareai.com>',
+      From: process.env.POSTMARK_FROM_EMAIL || fromAddress,
       To: to,
       Subject: subject,
       HtmlBody: htmlBody,
