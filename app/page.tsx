@@ -128,6 +128,8 @@ export default function Page() {
   const [users, setUsers] = useState<any[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [userStats, setUserStats] = useState<any>(null);
+  const [showAssignWorkspace, setShowAssignWorkspace] = useState(false);
+  const [selectedUserForWorkspace, setSelectedUserForWorkspace] = useState<any>(null);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'card' | 'info'>('info');
@@ -1014,6 +1016,69 @@ export default function Page() {
   };
 
   // Bulk delete users function
+  const handleResetPassword = async (userEmail: string) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to send a password reset email to ${userEmail}?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch('/api/admin/users/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await getAuthToken()}`
+        },
+        body: JSON.stringify({ email: userEmail })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(`✅ Password reset email sent to ${userEmail}!`);
+      } else {
+        throw new Error(result.error || 'Failed to send password reset');
+      }
+    } catch (error) {
+      console.error('Password reset failed:', error);
+      alert(`❌ Failed to send password reset: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleAssignWorkspace = async (workspaceId: string, role: string) => {
+    if (!selectedUserForWorkspace) return;
+
+    try {
+      const response = await fetch('/api/admin/users/assign-workspace', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await getAuthToken()}`
+        },
+        body: JSON.stringify({ 
+          userId: selectedUserForWorkspace.id, 
+          workspaceId, 
+          role 
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(`✅ ${result.message}`);
+        setShowAssignWorkspace(false);
+        setSelectedUserForWorkspace(null);
+        loadUsers(); // Refresh users list to show updated workspace memberships
+      } else {
+        throw new Error(result.error || 'Failed to assign workspace');
+      }
+    } catch (error) {
+      console.error('Workspace assignment failed:', error);
+      alert(`❌ Failed to assign workspace: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
   const handleBulkDeleteUsers = async () => {
     if (selectedUsers.size === 0) {
       alert('Please select users to delete');
@@ -3343,6 +3408,7 @@ export default function Page() {
                       <th className="text-left py-3 px-4 text-gray-300">Workspaces</th>
                       <th className="text-left py-3 px-4 text-gray-300">Last Sign In</th>
                       <th className="text-left py-3 px-4 text-gray-300">Created</th>
+                      <th className="text-left py-3 px-4 text-gray-300">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3413,6 +3479,27 @@ export default function Page() {
                         <td className="py-3 px-4 text-gray-300 text-sm">
                           {new Date(user.created_at).toLocaleDateString()}
                         </td>
+                        <td className="py-3 px-4">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleResetPassword(user.email)}
+                              className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-xs transition-colors"
+                              title="Send password reset email"
+                            >
+                              Reset Password
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedUserForWorkspace(user);
+                                setShowAssignWorkspace(true);
+                              }}
+                              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs transition-colors"
+                              title="Assign user to workspace"
+                            >
+                              Assign Workspace
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -3444,6 +3531,98 @@ export default function Page() {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Workspace Modal */}
+      {showAssignWorkspace && selectedUserForWorkspace && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-white">Assign Workspace</h3>
+              <button
+                onClick={() => {
+                  setShowAssignWorkspace(false);
+                  setSelectedUserForWorkspace(null);
+                }}
+                className="text-gray-400 hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <p className="text-gray-300 mb-2">
+                Assigning workspace to: <strong className="text-white">{selectedUserForWorkspace.email}</strong>
+              </p>
+            </div>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const workspaceId = formData.get('workspace') as string;
+              const role = formData.get('role') as string;
+              
+              if (workspaceId && role) {
+                handleAssignWorkspace(workspaceId, role);
+              }
+            }}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Workspace
+                  </label>
+                  <select
+                    name="workspace"
+                    required
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  >
+                    <option value="">Select a workspace</option>
+                    {workspaces.map((workspace) => (
+                      <option key={workspace.id} value={workspace.id}>
+                        {workspace.name} ({workspace.slug})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Role
+                  </label>
+                  <select
+                    name="role"
+                    required
+                    defaultValue="member"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  >
+                    <option value="member">Member</option>
+                    <option value="admin">Admin</option>
+                    <option value="owner">Owner</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAssignWorkspace(false);
+                    setSelectedUserForWorkspace(null);
+                  }}
+                  className="px-4 py-2 text-gray-400 hover:text-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors"
+                >
+                  Assign Workspace
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
