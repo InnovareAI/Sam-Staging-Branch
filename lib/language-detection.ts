@@ -207,7 +207,7 @@ Now, what would you like to tackle first - should I give you an overview of what
       nl: 'Ik kan ook naar andere talen wisselen als je in een andere taal schrijft.'
     };
 
-    return `\n\n🌍 ${languageNames[currentLang] || languageNames.en}`;
+    return `\n\n🌍 ${languageNames[currentLang as keyof typeof languageNames] || 'English'}`;
   }
 }
 

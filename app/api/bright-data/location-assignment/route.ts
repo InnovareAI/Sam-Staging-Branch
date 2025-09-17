@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { supabaseAdmin } from '@/app/lib/supabase'
 import { AutoIPAssignmentService } from '@/lib/services/auto-ip-assignment'
 
 export async function POST(request: NextRequest) {
@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { linkedinProfileLocation, forceRegenerate = false } = body
 
-    const supabase = createClient()
+    const supabase = supabaseAdmin()
     
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = supabaseAdmin()
     
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -149,7 +149,7 @@ export async function PUT(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const supabase = createClient()
+    const supabase = supabaseAdmin()
     
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()

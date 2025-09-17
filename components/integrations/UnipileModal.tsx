@@ -1,471 +1,260 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Check, AlertCircle, Mail, Linkedin, Settings, Plus } from 'lucide-react';
-
-interface UnipileAccount {
-  id: string;
-  name: string;
-  platform: 'linkedin' | 'gmail' | 'outlook' | 'smtp';
-  status: 'connected' | 'disconnected' | 'error';
-  email?: string;
-  connection_date?: string;
-}
+import { X, ExternalLink, Loader2, CheckCircle, AlertCircle, Shield } from 'lucide-react';
 
 interface UnipileModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const PLATFORM_CONFIG = {
-  linkedin: {
-    name: 'LinkedIn',
-    icon: Linkedin,
-    color: 'bg-blue-600 hover:bg-blue-700',
-    description: 'Connect LinkedIn for professional outreach'
-  },
-  gmail: {
-    name: 'Gmail',
-    icon: Mail,
-    color: 'bg-red-600 hover:bg-red-700', 
-    description: 'Connect Gmail for email campaigns'
-  },
-  outlook: {
-    name: 'Outlook',
-    icon: Mail,
-    color: 'bg-blue-500 hover:bg-blue-600',
-    description: 'Connect Outlook for email campaigns'
-  },
-  smtp: {
-    name: 'Custom SMTP',
-    icon: Settings,
-    color: 'bg-gray-600 hover:bg-gray-700',
-    description: 'Configure custom SMTP server'
-  }
-};
-
 export function UnipileModal({ isOpen, onClose }: UnipileModalProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'connect' | 'settings'>('overview');
-  const [connectedAccounts, setConnectedAccounts] = useState<UnipileAccount[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedPlatform, setSelectedPlatform] = useState<keyof typeof PLATFORM_CONFIG | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [waitingForConfirmation, setWaitingForConfirmation] = useState(false);
+  const [pollingStatus, setPollingStatus] = useState(false);
+  const [pollError, setPollError] = useState<string | null>(null);
+  const [connectionComplete, setConnectionComplete] = useState(false);
 
-  // Load real connected accounts from API
   useEffect(() => {
-    if (isOpen) {
-      loadConnectedAccounts();
+    if (!isOpen) {
+      setIsConnecting(false);
+      setError(null);
+      setSuccess(false);
+      setWaitingForConfirmation(false);
+      setPollingStatus(false);
+      setPollError(null);
+      setConnectionComplete(false);
     }
   }, [isOpen]);
 
-  const loadConnectedAccounts = async () => {
-    setIsLoading(true);
-    try {
-      // TODO: Replace with real Unipile API call
-      // const response = await fetch('/api/unipile/accounts');
-      // const accounts = await response.json();
-      
-      // For now, start with empty state (real user experience)
-      setConnectedAccounts([]);
-    } catch (error) {
-      console.error('Failed to load accounts:', error);
-      setConnectedAccounts([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useEffect(() => {
+    if (!pollingStatus) return;
 
-  const handleConnectAccount = async (platform: keyof typeof PLATFORM_CONFIG) => {
-    setSelectedPlatform(platform);
-    setIsLoading(true);
-    
-    try {
-      console.log(`Initiating ${platform} OAuth connection...`);
-      
-      // TODO: Replace with real Unipile OAuth flow
-      // const response = await fetch('/api/unipile/oauth/initiate', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ platform })
-      // });
-      // const { authUrl } = await response.json();
-      // window.open(authUrl, '_blank', 'width=500,height=600');
-      
-      // For demo purposes, show what would happen
-      alert(`Real implementation would:\n1. Open ${PLATFORM_CONFIG[platform].name} OAuth window\n2. User grants permissions\n3. Account connects automatically\n\nThis requires actual Unipile API credentials.`);
-      
-    } catch (error) {
-      console.error(`${platform} connection failed:`, error);
-      alert(`Failed to connect ${PLATFORM_CONFIG[platform].name}. Please try again.`);
-    } finally {
-      setIsLoading(false);
-      setSelectedPlatform(null);
-    }
-  };
+    let active = true;
+    const checkStatus = async () => {
+      try {
+        const response = await fetch('/api/linkedin/status');
+        if (!response.ok) {
+          throw new Error(`Status check failed (${response.status})`);
+        }
+        const data = await response.json();
+        console.log('🔄 Status polling response:', data);
+        if (active) {
+          if (data.success && data.has_linkedin) {
+            console.log('✅ LinkedIn connection detected, completing modal');
+            setConnectionComplete(true);
+            setPollingStatus(false);
+            setWaitingForConfirmation(false);
+            setPollError(null);
+          } else {
+            console.log('⏳ Still waiting for LinkedIn connection...', { 
+              success: data.success, 
+              has_linkedin: data.has_linkedin 
+            });
+          }
+        }
+      } catch (err) {
+        if (active) {
+          setPollError(err instanceof Error ? err.message : 'Unable to verify LinkedIn status');
+        }
+      }
+    };
 
-  const handleDisconnectAccount = async (accountId: string) => {
-    setConnectedAccounts(prev => prev.filter(account => account.id !== accountId));
-  };
+    // Immediate check, then interval
+    checkStatus();
+    const interval = setInterval(checkStatus, 5000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [pollingStatus]);
+
+  useEffect(() => {
+    if (!connectionComplete) return;
+
+    setSuccess(true);
+    setIsConnecting(false);
+    setWaitingForConfirmation(false);
+    const timeout = setTimeout(() => {
+      onClose();
+      window.location.reload();
+    }, 1500);
+
+    return () => clearTimeout(timeout);
+  }, [connectionComplete, onClose]);
 
   if (!isOpen) return null;
 
+  const launchHostedAuth = async () => {
+    try {
+      setIsConnecting(true);
+      setError(null);
+      setSuccess(false);
+      setPollError(null);
+      setConnectionComplete(false);
+      setWaitingForConfirmation(false);
+      setPollingStatus(false);
+
+      const response = await fetch('/api/linkedin/hosted-auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `Failed with status ${response.status}`);
+      }
+
+      if (!data.success || !data.auth_url) {
+        throw new Error('Hosted auth link not returned.');
+      }
+
+      // Attempt to open the hosted wizard in a pop-up window first
+      const authWindow = window.open(
+        data.auth_url,
+        'linkedin_hosted_auth',
+        'width=500,height=720,scrollbars=yes,resizable=yes'
+      );
+
+      if (!authWindow) {
+        // Popup blocked – fall back to redirecting the current tab
+        window.location.href = data.auth_url;
+      } else {
+        setSuccess(true);
+        setWaitingForConfirmation(true);
+        setPollingStatus(true);
+        setPollError(null);
+      }
+    } catch (err) {
+      console.error('Hosted auth launch failed:', err);
+      setError(err instanceof Error ? err.message : 'Unable to start Hosted Auth Wizard');
+      setWaitingForConfirmation(false);
+      setPollingStatus(false);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="relative mx-4 w-full max-w-xl overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-gray-900">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-800">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Unipile Integration
-            </h2>
-            <p className="text-gray-600 dark:text-gray-300 mt-1">
-              Connect your communication channels for multi-platform outreach
-            </p>
+            <p className="text-xs uppercase tracking-wide text-blue-500">Unipile Integration</p>
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Connect LinkedIn via Hosted Auth</h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+            className="rounded-full p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+            aria-label="Close"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700">
-          {[
-            { id: 'overview', label: 'Connected Accounts' },
-            { id: 'connect', label: 'Add Account' },
-            { id: 'settings', label: 'Settings' }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`px-6 py-3 font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* Body */}
+        <div className="space-y-6 px-6 py-5">
+          <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200">
+            <p className="flex items-center gap-2 font-medium">
+              <Shield size={16} />
+              Secure OAuth handled by Unipile
+            </p>
+            <p className="mt-1 text-xs text-blue-800/80 dark:text-blue-200/80">
+              We generate a temporary Hosted Auth Wizard link. Unipile manages the full LinkedIn authentication, including 2FA, captcha, and compliance requirements.
+            </p>
+          </div>
 
-        {/* Tab Content */}
-        <div className="p-6 max-h-[60vh] overflow-y-auto">
-          {activeTab === 'overview' && (
+          <div className="space-y-4 text-sm text-gray-700 dark:text-gray-200">
             <div>
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Connected Accounts ({connectedAccounts.length})
-                </h3>
-                
-                {isLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    <span className="ml-2 text-gray-600 dark:text-gray-300">Loading accounts...</span>
-                  </div>
-                ) : connectedAccounts.length === 0 ? (
-                  <div className="text-center py-8">
-                    <AlertCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                    <p className="text-gray-500 dark:text-gray-400 mb-4">
-                      No accounts connected yet
-                    </p>
-                    <button
-                      onClick={() => setActiveTab('connect')}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-                    >
-                      Connect Your First Account
-                    </button>
-                  </div>
-                ) : (
-                  <div className="grid gap-4">
-                    {connectedAccounts.map(account => {
-                      const config = PLATFORM_CONFIG[account.platform];
-                      const IconComponent = config.icon;
-                      
-                      return (
-                        <div
-                          key={account.id}
-                          className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
-                        >
-                          <div className="flex items-center space-x-4">
-                            <div className={`p-2 rounded-lg ${config.color.split(' ')[0]}`}>
-                              <IconComponent className="h-5 w-5 text-white" />
-                            </div>
-                            <div>
-                              <h4 className="font-medium text-gray-900 dark:text-white">
-                                {account.name}
-                              </h4>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">
-                                {config.name}
-                                {account.email && ` • ${account.email}`}
-                              </p>
-                              <p className="text-xs text-gray-400">
-                                Connected {account.connection_date}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <div className="flex items-center space-x-2">
-                              <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                              <span className="text-sm text-green-600 dark:text-green-400">
-                                Connected
-                              </span>
-                            </div>
-                            <button
-                              onClick={() => handleDisconnectAccount(account.id)}
-                              className="text-red-600 hover:text-red-700 text-sm font-medium"
-                            >
-                              Disconnect
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Getting Started Guide */}
-              {connectedAccounts.length === 0 && !isLoading && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mt-6">
-                  <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
-                    🚀 Getting Started with Multi-Channel Outreach
-                  </h4>
-                  <div className="text-sm text-blue-700 dark:text-blue-200 space-y-2">
-                    <p><strong>Step 1:</strong> Connect your LinkedIn account for professional networking</p>
-                    <p><strong>Step 2:</strong> Add your email accounts (Gmail/Outlook) for follow-up sequences</p>
-                    <p><strong>Step 3:</strong> Configure SMTP if you need custom domain emails</p>
-                    <p><strong>Step 4:</strong> Create unified campaigns across all channels</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Usage Statistics - Only show when accounts are connected */}
-              {connectedAccounts.length > 0 && (
-                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mt-6">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-3">
-                    Account Activity
-                  </h4>
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      <p className="text-2xl font-bold text-blue-600">0</p>
-                      <p className="text-xs text-gray-500">Messages Sent</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-green-600">0</p>
-                      <p className="text-xs text-gray-500">Responses</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-purple-600">-</p>
-                      <p className="text-xs text-gray-500">Delivery Rate</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-2 text-center">
-                    Statistics will appear after your first campaign
-                  </p>
-                </div>
-              )}
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">What happens next?</h3>
+              <ol className="mt-2 space-y-2 text-xs leading-5 text-gray-600 dark:text-gray-300">
+                <li>1. Click the button below to generate a secure Hosted Auth link.</li>
+                <li>2. Complete LinkedIn verification in the Unipile window (supports SMS, in-app approval, OTP).</li>
+                <li>3. Once finished, you’ll return to SAM AI and we’ll sync your LinkedIn account automatically.</li>
+              </ol>
             </div>
-          )}
 
-          {activeTab === 'connect' && (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Add New Account
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-6">
-                Connect your accounts to enable multi-channel outreach campaigns
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-xs text-gray-600 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-300">
+              <p className="font-semibold text-gray-800 dark:text-gray-100">Need to reconnect?</p>
+              <p>
+                The same Hosted Auth flow handles reconnecting when LinkedIn expires credentials. We’ll detect that automatically and re-use this wizard.
               </p>
+            </div>
+          </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {Object.entries(PLATFORM_CONFIG).map(([platform, config]) => {
-                  const IconComponent = config.icon;
-                  const isConnected = connectedAccounts.some(acc => acc.platform === platform);
-                  
-                  return (
-                    <div
-                      key={platform}
-                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:border-blue-300 dark:hover:border-blue-500 transition-colors"
-                    >
-                      <div className="flex items-center space-x-3 mb-3">
-                        <div className={`p-2 rounded-lg ${config.color.split(' ')[0]}`}>
-                          <IconComponent className="h-6 w-6 text-white" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-gray-900 dark:text-white">
-                            {config.name}
-                          </h4>
-                          {isConnected && (
-                            <div className="flex items-center space-x-1">
-                              <Check className="h-4 w-4 text-green-500" />
-                              <span className="text-sm text-green-600">Connected</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-                        {config.description}
-                      </p>
-                      
-                      <button
-                        onClick={() => {
-                          if (platform === 'smtp') {
-                            alert('SMTP Configuration:\n\n1. Server: mail.yourcompany.com\n2. Port: 587 (TLS) or 465 (SSL)\n3. Username: your-email@yourcompany.com\n4. Password: your-app-password\n5. Authentication: Required\n\nThis would open a configuration form in the real implementation.');
-                          } else {
-                            handleConnectAccount(platform as keyof typeof PLATFORM_CONFIG);
-                          }
-                        }}
-                        disabled={isLoading || isConnected}
-                        className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${
-                          isConnected
-                            ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                            : `${config.color} text-white`
-                        }`}
-                      >
-                        {isLoading && selectedPlatform === platform ? (
-                          <div className="flex items-center justify-center">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            {platform === 'smtp' ? 'Configuring...' : 'Connecting...'}
-                          </div>
-                        ) : isConnected ? (
-                          'Connected'
-                        ) : (
-                          `${platform === 'smtp' ? 'Configure' : 'Connect'} ${config.name}`
-                        )}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Channel Selection Preview */}
-              <div className="mt-8 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
-                  💡 Pro Tip: Multi-Channel Campaigns
-                </h4>
-                <p className="text-sm text-blue-700 dark:text-blue-200">
-                  Connect multiple platforms to create sophisticated outreach sequences:
-                </p>
-                <ul className="text-sm text-blue-700 dark:text-blue-200 mt-2 space-y-1">
-                  <li>• Start with LinkedIn connection requests</li>
-                  <li>• Follow up with personalized emails</li>
-                  <li>• Engage with LinkedIn posts and comments</li>
-                  <li>• Track all interactions in one dashboard</li>
-                </ul>
-              </div>
+          {error && (
+            <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-900/30 dark:text-red-200">
+              <AlertCircle size={16} />
+              <span>{error}</span>
             </div>
           )}
 
-          {activeTab === 'settings' && (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Integration Settings
-              </h3>
-              
-              <div className="space-y-6">
-                {/* Default Channel Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Default Outreach Channel
-                  </label>
-                  <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-                    <option value="linkedin">LinkedIn First</option>
-                    <option value="email">Email First</option>
-                    <option value="both">Multi-Channel</option>
-                  </select>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Choose your preferred starting channel for new campaigns
-                  </p>
-                </div>
+          {success && !error && (
+            <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-xs text-green-700 dark:border-green-900/40 dark:bg-green-900/30 dark:text-green-200">
+              <CheckCircle size={16} />
+              <span>Hosted Auth Wizard opened in a new window. Complete the LinkedIn verification to finish linking.</span>
+            </div>
+          )}
 
-                {/* Rate Limiting */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Daily Message Limits
-                  </label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs text-gray-500">LinkedIn Messages</label>
-                      <input
-                        type="number"
-                        defaultValue={50}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500">Emails per Day</label>
-                      <input
-                        type="number" 
-                        defaultValue={200}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      />
-                    </div>
-                  </div>
-                </div>
+          {waitingForConfirmation && !connectionComplete && (
+            <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-700 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Waiting for LinkedIn to confirm the connection. Keep the Hosted Auth window open until it completes.</span>
+            </div>
+          )}
 
-                {/* Webhook Configuration */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Webhook URL (Optional)
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://your-app.com/webhook/unipile"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Receive real-time notifications for message responses
-                  </p>
-                </div>
+          {pollError && !connectionComplete && (
+            <div className="flex items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-xs text-yellow-700 dark:border-yellow-900/40 dark:bg-yellow-900/30 dark:text-yellow-200">
+              <AlertCircle size={16} />
+              <span>{pollError}. We will keep checking.</span>
+            </div>
+          )}
 
-                {/* API Configuration */}
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-                  <h4 className="font-medium text-yellow-800 dark:text-yellow-200 mb-2">
-                    API Configuration
-                  </h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-yellow-700 dark:text-yellow-300">API Endpoint:</span>
-                      <code className="text-yellow-800 dark:text-yellow-200">api8.unipile.com:13851</code>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-yellow-700 dark:text-yellow-300">Status:</span>
-                      <span className="text-green-600">Connected</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-yellow-700 dark:text-yellow-300">Rate Limit:</span>
-                      <span className="text-yellow-800 dark:text-yellow-200">100 req/hour</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          {connectionComplete && (
+            <div className="flex items-center gap-2 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-xs text-green-800 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-100">
+              <CheckCircle size={16} />
+              <span>LinkedIn confirmed! Refreshing your workspace…</span>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            Powered by <strong>Unipile</strong> • Multi-platform messaging
-          </div>
-          <div className="flex space-x-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-            >
-              Close
-            </button>
-            {activeTab === 'connect' && connectedAccounts.length === 0 && (
-              <button
-                onClick={() => setActiveTab('overview')}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-              >
-                Skip for Now
-              </button>
+        <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-800 dark:bg-gray-900/60">
+          <button
+            onClick={onClose}
+            className="text-sm font-medium text-gray-600 transition hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100"
+          >
+            {waitingForConfirmation && !connectionComplete ? 'Cancel & try later' : 'Cancel'}
+          </button>
+          <button
+            onClick={launchHostedAuth}
+            disabled={isConnecting || waitingForConfirmation}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
+          >
+            {isConnecting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Generating link...
+              </>
+            ) : waitingForConfirmation ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Waiting for confirmation...
+              </>
+            ) : (
+              <>
+                <ExternalLink className="h-4 w-4" />
+                Launch Hosted Auth Wizard
+              </>
             )}
-          </div>
+          </button>
         </div>
       </div>
     </div>

@@ -4,11 +4,11 @@ import { WorkspaceProspectManager } from '@/lib/workspace-prospect-manager'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { workspaceId: string } }
+  { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   try {
     const supabase = supabaseAdmin()
-    const workspaceId = params.workspaceId
+    const { workspaceId } = await params
     const body = await request.json()
 
     const { prospect_id, contact_method = 'any' } = body

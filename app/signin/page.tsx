@@ -32,9 +32,14 @@ export default function SignInPage() {
       if (error) {
         setError(error.message);
       } else if (data.user && data.session) {
-        console.log('Sign in successful:', data.user.id);
-        // Session is now set in Supabase client, redirect to home
-        window.location.href = '/';
+        console.log('✅ Sign in successful:', data.user.id);
+        setSuccess('Sign in successful! Redirecting...');
+        
+        // Wait a moment for session to be fully established
+        setTimeout(() => {
+          // Use router.push instead of window.location.href for better state management
+          router.push('/');
+        }, 1000);
       } else {
         setError('Sign-in failed - no session created');
       }

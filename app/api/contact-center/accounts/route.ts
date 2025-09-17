@@ -48,18 +48,18 @@ export async function GET(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // Get user's organization/workspace
-    const { data: userOrg } = await supabase
-      .from('user_organizations')
-      .select('organization_id')
-      .eq('user_id', user.id)
+    // Get user's current workspace
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('current_workspace_id')
+      .eq('id', user.id)
       .single()
 
     // 🚨 TEMPORARY: Allow super admins to access even without workspace association
     const userEmail = user.email?.toLowerCase() || ''
     const isSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(userEmail)
 
-    if (!userOrg && !isSuperAdmin) {
+    if (!userProfile?.current_workspace_id && !isSuperAdmin) {
       return NextResponse.json({
         success: false,
         error: 'User not associated with any workspace',
@@ -94,13 +94,17 @@ export async function GET(request: NextRequest) {
       .eq('user_id', user.id)
 
     const userAccountIds = new Set(userAccounts?.map(acc => acc.unipile_account_id) || [])
+    console.log(`🔍 Debug: User associated account IDs:`, Array.from(userAccountIds))
 
     // Filter to only show LinkedIn accounts that belong to this user's workspace
     const workspaceLinkedInAccounts = accounts.filter((account: any) => 
       account.type === 'LINKEDIN' && userAccountIds.has(account.id)
     )
 
-    console.log(`🔒 Security: User ${user.email} ${isSuperAdmin ? '(SUPER ADMIN)' : `in workspace ${userOrg?.organization_id}`} has ${workspaceLinkedInAccounts.length} LinkedIn accounts`);
+    console.log(`🔒 Security: User ${user.email} ${isSuperAdmin ? '(SUPER ADMIN)' : `in workspace ${userProfile?.current_workspace_id}`} has ${workspaceLinkedInAccounts.length} LinkedIn accounts`);
+    const allLinkedInAccounts = accounts.filter((a: any) => a.type === 'LINKEDIN')
+    console.log(`🔍 Debug: All LinkedIn accounts in Unipile: ${allLinkedInAccounts.length}`)
+    console.log(`🔍 Debug: LinkedIn account IDs in Unipile:`, allLinkedInAccounts.map(acc => acc.id))
     console.log(`✅ User accounts:`, workspaceLinkedInAccounts.map(acc => ({ 
       id: acc.id, 
       name: acc.name, 
@@ -152,7 +156,7 @@ export async function GET(request: NextRequest) {
           linkedin_accounts_found: accounts.filter((a: any) => a.type === 'LINKEDIN').length,
           all_account_types: accounts.map((a: any) => a.type),
           workspace_filtering_active: true,
-          user_workspace: userOrg?.organization_id || 'none'
+          user_workspace: userProfile?.current_workspace_id || 'none'
         },
         timestamp: new Date().toISOString()
       });
@@ -164,7 +168,7 @@ export async function GET(request: NextRequest) {
       total: formattedAccounts.length,
       connected_count: formattedAccounts.filter(a => a.status === 'connected').length,
       workspace_filtering_active: true,
-      user_workspace: userOrg?.organization_id || 'none',
+      user_workspace: userProfile?.current_workspace_id || 'none',
       timestamp: new Date().toISOString()
     });
 

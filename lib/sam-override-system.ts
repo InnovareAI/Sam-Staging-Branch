@@ -1,7 +1,7 @@
 // SAM AI System Override Authentication
 // Allows authorized users to bypass onboarding and issue direct commands
 
-import { createClient } from '@/lib/supabase/server';
+import { supabaseAdmin } from '@/app/lib/supabase';
 import crypto from 'crypto';
 
 export interface OverrideCredentials {
@@ -82,7 +82,7 @@ export async function validateOverrideCredentials(
   error?: string;
 }> {
   try {
-    const supabase = createClient();
+    const supabase = supabaseAdmin();
     
     // First, verify user has InnovareAI workspace access
     if (currentUserId) {
@@ -258,7 +258,7 @@ export async function createAdminUser(
   fullAccess: boolean = true
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = createClient();
+    const supabase = supabaseAdmin();
     
     const { error } = await supabase
       .from('sam_admin_users')
@@ -288,14 +288,14 @@ export async function createAdminUser(
  */
 export async function listAdminUsers(): Promise<AdminUser[]> {
   try {
-    const supabase = createClient();
+    const supabase = supabaseAdmin();
     
     const { data: adminUsers } = await supabase
       .from('sam_admin_users')
       .select('id, email, full_access, created_at, last_used, usage_count, is_active')
       .order('created_at', { ascending: false });
 
-    return adminUsers || [];
+    return (adminUsers || []) as unknown as AdminUser[];
 
   } catch (error) {
     console.error('List admin users error:', error);
@@ -308,7 +308,7 @@ export async function listAdminUsers(): Promise<AdminUser[]> {
  */
 export async function deactivateAdminUser(email: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = createClient();
+    const supabase = supabaseAdmin();
     
     const { error } = await supabase
       .from('sam_admin_users')

@@ -184,19 +184,19 @@ export async function GET(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // Get user's organization/workspace
-    const { data: userOrg } = await supabase
-      .from('user_organizations')
-      .select('organization_id')
-      .eq('user_id', user.id)
+    // Get user's current workspace
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('current_workspace_id')
+      .eq('id', user.id)
       .single()
 
     // Enhanced debugging for workspace association
     console.log(`🔍 Debug: User ${user.email} workspace check:`, {
       user_id: user.id,
       user_email: user.email,
-      userOrg: userOrg,
-      hasWorkspace: !!userOrg
+      userProfile: userProfile,
+      current_workspace_id: userProfile?.current_workspace_id
     })
 
     // 🚨 TEMPORARY: Allow super admins to access even without workspace association
@@ -206,17 +206,18 @@ export async function GET(request: NextRequest) {
     console.log(`🔍 User authentication check:`, {
       user_id: user.id,
       user_email: userEmail,
-      is_super_admin: isSuperAdmin
+      is_super_admin: isSuperAdmin,
+      current_workspace_id: userProfile?.current_workspace_id
     })
     
     // TEMPORARY FIX: Skip workspace check entirely for debugging production issues
-    if (!userOrg && !isSuperAdmin) {
+    if (!userProfile?.current_workspace_id && !isSuperAdmin) {
       console.log(`⚠️ User ${user.email} not associated with workspace - allowing access for debugging`)
       // Don't block access, just log the issue
-      console.log(`📝 Debug info: user_email=${userEmail}, is_super_admin=${isSuperAdmin}, has_workspace=${!!userOrg}`)
+      console.log(`📝 Debug info: user_email=${userEmail}, is_super_admin=${isSuperAdmin}, current_workspace_id=${userProfile?.current_workspace_id}`)
     }
 
-    console.log(`✅ User ${user.email} access granted - ${isSuperAdmin ? 'Super Admin' : `Workspace: ${userOrg?.organization_id || 'none'}`}`)
+    console.log(`✅ User ${user.email} access granted - ${isSuperAdmin ? 'Super Admin' : `Workspace: ${userProfile?.current_workspace_id || 'none'}`}`)
 
     // Fetch ALL accounts from Unipile (we'll filter by user associations)
     const data = await callUnipileAPI('accounts')
@@ -302,7 +303,7 @@ export async function GET(request: NextRequest) {
     )
 
     // Enhanced logging for workspace-specific accounts only
-    console.log(`LinkedIn accounts for user ${user.email} in workspace ${userOrg?.organization_id || 'none'}:`, {
+    console.log(`LinkedIn accounts for user ${user.email} in workspace ${userProfile?.current_workspace_id || 'none'}:`, {
       user_linkedin_count: userLinkedInAccounts.length,
       user_accounts: userLinkedInAccounts.map(acc => ({
         id: acc.id,
@@ -337,7 +338,8 @@ export async function GET(request: NextRequest) {
         total_accounts_in_unipile: allAccounts.length,
         linkedin_accounts_in_unipile: allLinkedInAccounts.length,
         user_associations_count: userAccountIds.size,
-        auto_association_attempted: true
+        auto_association_attempted: true,
+        current_workspace_id: userProfile?.current_workspace_id
       },
       timestamp: new Date().toISOString()
     })

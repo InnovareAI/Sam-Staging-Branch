@@ -131,7 +131,7 @@ export class EnhancedCampaignReplyDetector {
     return {
       is_campaign_reply: true,
       campaign_id: campaignMessage.campaign_id,
-      campaign_name: campaignMessage.campaigns?.name,
+      campaign_name: (campaignMessage.campaigns as any)?.name,
       campaign_message_id: campaignMessage.id,
       confidence_score: 0.95, // Very high confidence for conversation_id match
       detection_method: 'conversation_id',
@@ -171,7 +171,7 @@ export class EnhancedCampaignReplyDetector {
     return {
       is_campaign_reply: true,
       campaign_id: campaignMessage.campaign_id,
-      campaign_name: campaignMessage.campaigns?.name,
+      campaign_name: (campaignMessage.campaigns as any)?.name,
       campaign_message_id: campaignMessage.id,
       confidence_score: 0.85, // High confidence for thread_id match
       detection_method: 'thread_id',
@@ -226,7 +226,7 @@ export class EnhancedCampaignReplyDetector {
     return {
       is_campaign_reply: true,
       campaign_id: recentMessage.campaign_id,
-      campaign_name: recentMessage.campaigns?.name,
+      campaign_name: (recentMessage.campaigns as any)?.name,
       campaign_message_id: recentMessage.id,
       confidence_score: 0.75, // Medium-high confidence for prospect matching
       detection_method: 'prospect_matching',
@@ -270,7 +270,7 @@ export class EnhancedCampaignReplyDetector {
     return {
       is_campaign_reply: true,
       campaign_id: recentMessage.campaign_id,
-      campaign_name: recentMessage.campaigns?.name,
+      campaign_name: (recentMessage.campaigns as any)?.name,
       campaign_message_id: recentMessage.id,
       confidence_score: 0.55, // Lower confidence for time window matching
       detection_method: 'time_window',

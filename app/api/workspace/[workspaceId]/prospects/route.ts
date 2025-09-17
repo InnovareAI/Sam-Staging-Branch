@@ -4,11 +4,11 @@ import { WorkspaceProspectManager } from '@/lib/workspace-prospect-manager'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { workspaceId: string } }
+  { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   try {
     const supabase = supabaseAdmin()
-    const workspaceId = params.workspaceId
+    const { workspaceId } = await params
     const { searchParams } = new URL(request.url)
 
     // Get query parameters
@@ -87,10 +87,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { workspaceId: string } }
+  { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   try {
-    const workspaceId = params.workspaceId
+    const { workspaceId } = await params
     const body = await request.json()
 
     const { prospects, data_source = 'manual', options = {} } = body

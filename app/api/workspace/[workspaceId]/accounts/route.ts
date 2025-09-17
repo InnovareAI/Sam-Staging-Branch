@@ -3,11 +3,11 @@ import { supabaseAdmin } from '@/app/lib/supabase'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { workspaceId: string } }
+  { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   try {
     const supabase = supabaseAdmin()
-    const workspaceId = params.workspaceId
+    const { workspaceId } = await params
 
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -38,10 +38,8 @@ export async function GET(
       .from('user_workspace_accounts')
       .select('*')
       .eq('workspace_id', workspaceId)
-      .order([
-        { column: 'user_email', ascending: true },
-        { column: 'account_type', ascending: true }
-      ])
+      .order('user_email', { ascending: true })
+      .order('account_type', { ascending: true })
 
     if (error) {
       throw error
@@ -86,11 +84,11 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { workspaceId: string } }
+  { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   try {
     const supabase = supabaseAdmin()
-    const workspaceId = params.workspaceId
+    const { workspaceId } = await params
     const body = await request.json()
 
     const {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { supabaseAdmin } from '@/app/lib/supabase'
 import { EmailIntegrationService } from '@/lib/services/email-integration'
 
 export async function GET(request: NextRequest) {
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/inbox?error=google_auth_failed&message=missing_code_or_state`)
     }
 
-    const supabase = createClient()
+    const supabase = supabaseAdmin()
     
     // Verify the user from state parameter
     const { data: { user }, error: authError } = await supabase.auth.getUser()

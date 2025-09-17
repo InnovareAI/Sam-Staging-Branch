@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { supabaseAdmin } from '@/app/lib/supabase'
 import { EmailIntegrationService } from '@/lib/services/email-integration'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = supabaseAdmin()
     
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()

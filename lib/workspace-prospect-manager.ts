@@ -459,14 +459,16 @@ export class WorkspaceProspectManager {
       .eq('workspace_id', workspace_id)
       .gte('contacted_at', dateFilter.toISOString())
 
-    const total_contacts = contactHistory?.length || 0
+    const total_contacts = Array.isArray(contactHistory) ? contactHistory.length : 0
     const prospects_with_responses = new Set(
-      contactHistory?.filter(c => c.response_received).map(c => c.prospect_id)
+      Array.isArray(contactHistory) 
+        ? contactHistory.filter(c => (c as any).response_received).map(c => (c as any).prospect_id)
+        : []
     ).size
 
     // Group by user
-    const contactsByUser = contactHistory?.reduce((acc, contact) => {
-      const userId = contact.contacted_by
+    const contactsByUser = Array.isArray(contactHistory) ? contactHistory.reduce((acc, contact) => {
+      const userId = (contact as any).contacted_by
       const userEmail = (contact as any).users?.email || 'Unknown'
       
       if (!acc[userId]) {
@@ -474,17 +476,17 @@ export class WorkspaceProspectManager {
       }
       acc[userId].contact_count++
       return acc
-    }, {} as Record<string, any>) || {}
+    }, {} as Record<string, any>) : {}
 
     // Group by method
-    const contactsByMethod = contactHistory?.reduce((acc, contact) => {
-      const method = contact.contact_method
+    const contactsByMethod = Array.isArray(contactHistory) ? contactHistory.reduce((acc, contact) => {
+      const method = (contact as any).contact_method
       if (!acc[method]) {
         acc[method] = { contact_method: method, contact_count: 0 }
       }
       acc[method].contact_count++
       return acc
-    }, {} as Record<string, any>) || {}
+    }, {} as Record<string, any>) : {}
 
     const response_rate = contacted_prospects > 0 ? (prospects_with_responses / contacted_prospects) : 0
     const avg_contacts_per_prospect = total_prospects > 0 ? (total_contacts / total_prospects) : 0

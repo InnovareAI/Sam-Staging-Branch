@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { supabaseAdmin } from '@/app/lib/supabase'
 
 // MCP Tools for message fetching (MCP-first approach)
 declare const mcp__unipile__unipile_get_accounts: () => Promise<any[]>
@@ -14,7 +14,7 @@ declare const mcp__unipile__unipile_get_emails: (params: {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = supabaseAdmin()
     
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -27,14 +27,14 @@ export async function GET(request: NextRequest) {
 
     const allMessages: any[] = []
 
+    // Get pagination parameters from query string
+    const { searchParams } = new URL(request.url)
+    const batchSize = parseInt(searchParams.get('batch_size') || '50') // Increased default
+    const loadMore = searchParams.get('load_more') === 'true'
+
     // 1. Get LinkedIn messages using MCP Unipile (MCP-first approach)
     try {
       console.log('📨 Loading LinkedIn messages via MCP Unipile...')
-      
-      // Get pagination parameters from query string
-      const { searchParams } = new URL(request.url)
-      const batchSize = parseInt(searchParams.get('batch_size') || '50') // Increased default
-      const loadMore = searchParams.get('load_more') === 'true'
       
       // First, get accounts using MCP
       const accounts = await mcp__unipile__unipile_get_accounts()
@@ -198,9 +198,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`📊 Total unified messages loaded: ${allMessages.length}`)
 
-    const { searchParams } = new URL(request.url)
     const requestedLimit = parseInt(searchParams.get('limit') || '50')
-    const batchSize = parseInt(searchParams.get('batch_size') || '50')
 
     return NextResponse.json({
       success: true,
@@ -298,4 +296,14 @@ function parseTimeString(timeStr: string): number {
   } catch {
     return Date.now() - 3600000 // Default to 1 hour ago
   }
+}
+
+function extractSubjectFromText(text: string): string | null {
+  if (!text) return null
+  // Extract first 50 characters as subject
+  return text.substring(0, 50) + (text.length > 50 ? '...' : '')
+}
+
+function extractSenderName(msg: any): string | null {
+  return msg.sender?.name || msg.from?.name || msg.user_name || null
 }

@@ -39,16 +39,16 @@ export class EmailApprovalParser {
     ],
     
     changes: [
-      /^CHANGES?:\s*(.+)/ims,
-      /^UPDATE:\s*(.+)/ims,
-      /^MODIFY:\s*(.+)/ims,
-      /^EDIT:\s*(.+)/ims,
-      /^REVISE:\s*(.+)/ims,
-      /^SEND\s*WITH\s*CHANGES?:\s*(.+)/ims,
-      /change.*to:\s*(.+)/ims,
-      /update.*message:\s*(.+)/ims,
-      /instead.*say:\s*(.+)/ims,
-      /replace.*with:\s*(.+)/ims
+      /^CHANGES?:\s*(.+)/im,
+      /^UPDATE:\s*(.+)/im,
+      /^MODIFY:\s*(.+)/im,
+      /^EDIT:\s*(.+)/im,
+      /^REVISE:\s*(.+)/im,
+      /^SEND\s*WITH\s*CHANGES?:\s*(.+)/im,
+      /change.*to:\s*(.+)/im,
+      /update.*message:\s*(.+)/im,
+      /instead.*say:\s*(.+)/im,
+      /replace.*with:\s*(.+)/im
     ],
     
     stop: [
@@ -158,12 +158,12 @@ export class EmailApprovalParser {
     // Remove common email signatures and footers
     const signaturePatterns = [
       /^--\s*$/m, // Standard signature delimiter
-      /^Best regards,.*$/ims,
-      /^Regards,.*$/ims,
-      /^Thanks,.*$/ims,
-      /^Sent from my.*$/ims,
-      /^Get Outlook for.*$/ims,
-      /^Confidentiality Notice.*$/ims
+      /^Best regards,.*$/im,
+      /^Regards,.*$/im,
+      /^Thanks,.*$/im,
+      /^Sent from my.*$/im,
+      /^Get Outlook for.*$/im,
+      /^Confidentiality Notice.*$/im
     ];
 
     for (const pattern of signaturePatterns) {

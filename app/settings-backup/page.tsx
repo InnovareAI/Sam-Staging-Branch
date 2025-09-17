@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Settings, Users, Building2, Mail, Plus, UserCheck, Trash2 } from 'lucide-react';
+import { Settings, Users, Building2, Mail, Plus, UserCheck, Trash2, Globe } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import LocationIndicator from '@/components/LocationIndicator';
 
 interface Workspace {
   id: string;
@@ -200,6 +201,15 @@ export default function SettingsPage() {
             <UserCheck className="mr-2" size={16} />
             Profile
           </button>
+          <button
+            onClick={() => setActiveTab('location')}
+            className={`flex items-center px-4 py-2 rounded-md transition-colors ${
+              activeTab === 'location' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Globe className="mr-2" size={16} />
+            Proxy Location
+          </button>
         </div>
 
         {/* Workspaces Tab */}
@@ -321,6 +331,37 @@ export default function SettingsPage() {
               <button className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg">
                 Update Profile
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Proxy Location Tab */}
+        {activeTab === 'location' && (
+          <div className="bg-gray-800 rounded-lg p-6">
+            <div className="flex items-center mb-6">
+              <Globe className="mr-3 text-blue-400" size={24} />
+              <h2 className="text-2xl font-semibold">Proxy Location Settings</h2>
+            </div>
+            <div className="space-y-4">
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="text-lg font-medium mb-2 text-blue-400">Current Location</h3>
+                <p className="text-gray-300 text-sm mb-4">
+                  Your current Bright Data proxy location for LinkedIn scraping and web requests. 
+                  This location determines how your activity appears globally and affects compliance and performance.
+                </p>
+                <LocationIndicator />
+              </div>
+              
+              <div className="bg-blue-900/20 border border-blue-400/30 rounded-lg p-4">
+                <h4 className="text-blue-300 font-medium mb-2">About Proxy Locations</h4>
+                <ul className="text-blue-200 text-sm space-y-1">
+                  <li>• Locations are automatically assigned based on your LinkedIn profile when you first connect</li>
+                  <li>• You can manually change your location at any time using the "Change" button</li>
+                  <li>• Different locations may have varying performance and compliance requirements</li>
+                  <li>• US locations (especially California, New York, Texas) typically offer the best performance</li>
+                  <li>• Choose a location that matches your target audience or compliance needs</li>
+                </ul>
+              </div>
             </div>
           </div>
         )}

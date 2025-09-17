@@ -131,7 +131,7 @@ export class ProspectResearcher {
       console.error('❌ Prospect research failed:', error);
       
       // Return minimal fallback data
-      return this.createFallbackResult(senderName, senderEmail, originalMessage, leadSource);
+      return this.createFallbackResult(senderName, senderEmail, originalMessage);
     }
   }
 
@@ -358,7 +358,9 @@ export class ProspectResearcher {
       breakdown,
       reasoning,
       redFlags,
-      opportunities
+      opportunities,
+      leadSource: 'inbound',
+      sourceQuality: 'high'
     };
   }
 
@@ -636,7 +638,9 @@ export class ProspectResearcher {
         },
         reasoning: ['Limited information available for scoring'],
         redFlags: ['Insufficient data for proper qualification'],
-        opportunities: ['Need more research to identify opportunities']
+        opportunities: ['Need more research to identify opportunities'],
+        leadSource: 'inbound',
+        sourceQuality: 'low'
       },
       keyInsights: ['Limited prospect information available'],
       suggestedApproach: 'Gather more information before proceeding with outreach',

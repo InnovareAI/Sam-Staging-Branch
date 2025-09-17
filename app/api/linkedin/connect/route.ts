@@ -18,16 +18,67 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔗 LinkedIn connection request from user: ${user.email}`)
 
-    // CRITICAL: Check for existing LinkedIn connections first (prevents double login)
-    const { data: existingConnections } = await supabase
-      .from('user_unipile_accounts')
-      .select('unipile_account_id, connection_status, account_name')
-      .eq('user_id', user.id)
-      .eq('platform', 'LINKEDIN')
+    // Get current workspace context for proper isolation
+    const { data: { user: currentUser } } = await supabase.auth.getUser()
+    if (!currentUser) {
+      return NextResponse.json({
+        success: false,
+        error: 'User context required',
+        timestamp: new Date().toISOString()
+      }, { status: 401 })
+    }
 
-    // Determine action: 'reconnect' for existing, 'create' for new
+    // Get user's current workspace (workspace isolation)
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('current_workspace_id')
+      .eq('id', user.id)
+      .single()
+
+    if (!userProfile?.current_workspace_id) {
+      return NextResponse.json({
+        success: false,
+        error: 'No active workspace - please switch to a workspace first',
+        timestamp: new Date().toISOString()
+      }, { status: 400 })
+    }
+
+    const workspaceId = userProfile.current_workspace_id
+
+    // CRITICAL: Check for existing LinkedIn connections in THIS WORKSPACE (prevents cross-workspace leakage)
+    const { data: existingConnections } = await supabase
+      .from('workspace_accounts')
+      .select('id, account_identifier, connection_status, account_name, unipile_account_id')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .eq('account_type', 'linkedin')
+
+    // ENHANCED: Also check for global connections by this user (prevents duplicate LinkedIn accounts)
+    const { data: globalConnections } = await supabase
+      .from('workspace_accounts')
+      .select('id, account_identifier, connection_status, account_name, unipile_account_id, workspace_id')
+      .eq('user_id', user.id)
+      .eq('account_type', 'linkedin')
+
+    // Determine action: 'reconnect' for existing in current workspace, 'create' for completely new
     const hasExistingConnection = existingConnections && existingConnections.length > 0
-    const authAction = hasExistingConnection ? 'reconnect' : 'create'
+    const hasGlobalConnection = globalConnections && globalConnections.length > 0
+    
+    let authAction = 'create'
+    let existingUnipileAccountIds: string[] = []
+    
+    if (hasExistingConnection) {
+      // User has LinkedIn in THIS workspace - use reconnect
+      authAction = 'reconnect'
+      existingUnipileAccountIds = existingConnections.map(conn => conn.unipile_account_id).filter(Boolean)
+    } else if (hasGlobalConnection) {
+      // User has LinkedIn in OTHER workspace - still use reconnect to prevent duplicates
+      authAction = 'reconnect'
+      existingUnipileAccountIds = globalConnections.map(conn => conn.unipile_account_id).filter(Boolean)
+      console.log(`🔄 User has LinkedIn in other workspace(s), using reconnect to prevent duplicates`)
+    }
+
+    console.log(`🔗 LinkedIn ${authAction} initiated - existing IDs: [${existingUnipileAccountIds.join(', ')}]`)
     
     // Get Unipile configuration
     const unipileDsn = process.env.UNIPILE_DSN
@@ -41,29 +92,37 @@ export async function POST(request: NextRequest) {
       }, { status: 503 })
     }
 
-    // Generate Unipile hosted auth URL with correct action
-    const baseUrl = `https://${unipileDsn}/api/v1`
-    const authUrl = `${baseUrl}/users/${user.id}/accounts/${authAction}`
+    // Generate workspace-specific user ID to prevent cross-workspace account leakage
+    const workspaceUserId = `${workspaceId}:${user.id}`
     
-    const params = new URLSearchParams({
-      providers: 'LINKEDIN',
-      return_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/linkedin/callback`,
-      user_id: user.id
-    })
+    // Since hosted auth wizard endpoints don't exist, use regular account creation
+    // This will connect via the standard Unipile flow
+    console.log('🔗 LinkedIn connection will use standard account creation flow')
+    
+    // Force production URL for callback
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'
+    
+    // For now, return a simple success response that will trigger the credential form
+    const authUrl = null // No wizard URL available
+    
+    console.log(`🔗 Using callback URL: ${siteUrl}/api/linkedin/callback`)
 
     console.log(`🔗 LinkedIn ${authAction} initiated for user ${user.email}`)
     console.log(`📋 Found ${existingConnections?.length || 0} existing connections`)
 
     return NextResponse.json({
       success: true,
-      auth_url: `${authUrl}?${params.toString()}`,
       action: authAction,
+      use_credential_form: true, // Signal to use the credential collection form
       existing_connections: existingConnections?.length || 0,
       existing_accounts: existingConnections?.map(conn => ({
-        id: conn.unipile_account_id,
+        id: conn.id,
+        unipile_account_id: conn.unipile_account_id,
+        account_identifier: conn.account_identifier,
         name: conn.account_name,
         status: conn.connection_status
       })) || [],
+      workspace_id: workspaceId,
       timestamp: new Date().toISOString()
     })
 
@@ -91,12 +150,30 @@ export async function GET(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // Get user's LinkedIn associations
+    // Get user's current workspace for proper isolation
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('current_workspace_id')
+      .eq('id', user.id)
+      .single()
+
+    if (!userProfile?.current_workspace_id) {
+      return NextResponse.json({
+        success: false,
+        error: 'No active workspace - please switch to a workspace first',
+        timestamp: new Date().toISOString()
+      }, { status: 400 })
+    }
+
+    const workspaceId = userProfile.current_workspace_id
+
+    // Get user's LinkedIn associations from THIS WORKSPACE (workspace isolation)
     const { data: associations } = await supabase
-      .from('user_unipile_accounts')
+      .from('workspace_accounts')
       .select('*')
+      .eq('workspace_id', workspaceId)
       .eq('user_id', user.id)
-      .eq('platform', 'LINKEDIN')
+      .eq('account_type', 'linkedin')
 
     // Get Unipile configuration status
     const unipileDsn = process.env.UNIPILE_DSN
@@ -109,6 +186,7 @@ export async function GET(request: NextRequest) {
       has_linkedin: (associations && associations.length > 0),
       associations: associations || [],
       count: associations?.length || 0,
+      workspace_id: workspaceId,
       capabilities: {
         can_connect: configurationReady,
         can_reconnect: configurationReady && associations && associations.length > 0,

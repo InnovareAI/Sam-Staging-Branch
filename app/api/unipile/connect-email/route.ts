@@ -33,12 +33,12 @@ export async function POST(request: NextRequest) {
 
     // Get Unipile credentials
     const unipileApiKey = process.env.UNIPILE_API_KEY;
-    const unipileBaseUrl = process.env.UNIPILE_BASE_URL || 'https://api.unipile.com';
+    const unipileDsn = process.env.UNIPILE_DSN;
 
-    if (!unipileApiKey) {
-      console.error('❌ UNIPILE_API_KEY not configured');
+    if (!unipileApiKey || !unipileDsn) {
+      console.error('❌ UNIPILE_API_KEY or UNIPILE_DSN not configured');
       return NextResponse.json(
-        { success: false, error: 'Unipile API key not configured' },
+        { success: false, error: 'Unipile configuration not complete' },
         { status: 500 }
       );
     }
@@ -46,25 +46,46 @@ export async function POST(request: NextRequest) {
     // Map provider to Unipile platform
     const unipilePlatform = provider === 'google' ? 'GMAIL' : 'OUTLOOK';
     
-    // Create Unipile OAuth URL
-    const unipileResponse = await fetch(`${unipileBaseUrl}/v1/accounts/create`, {
+    // Create Unipile OAuth URL using DSN format
+    const unipileBaseUrl = `https://${unipileDsn}`;
+    const createAccountUrl = `${unipileBaseUrl}/api/v1/accounts/create`;
+    const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/unipile/callback`;
+    
+    console.log('🔗 Unipile API request:', {
+      url: createAccountUrl,
+      type: unipilePlatform,
+      redirect_url: redirectUrl,
+      provider,
+      platform
+    });
+
+    const unipileResponse = await fetch(createAccountUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': unipileApiKey,
+        'X-API-KEY': unipileApiKey,
       },
       body: JSON.stringify({
         type: unipilePlatform,
-        redirect_url: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/unipile/callback`,
+        redirect_url: redirectUrl,
         name: `${platform}-${Date.now()}`, // Unique account name
       }),
     });
 
     if (!unipileResponse.ok) {
       const errorText = await unipileResponse.text();
-      console.error('❌ Unipile API error:', errorText);
+      console.error('❌ Unipile API error:', {
+        status: unipileResponse.status,
+        statusText: unipileResponse.statusText,
+        error: errorText,
+        url: createAccountUrl
+      });
       return NextResponse.json(
-        { success: false, error: 'Failed to create Unipile OAuth URL' },
+        { 
+          success: false, 
+          error: `Failed to create Unipile OAuth URL: ${unipileResponse.status} ${unipileResponse.statusText}`,
+          details: errorText
+        },
         { status: 500 }
       );
     }

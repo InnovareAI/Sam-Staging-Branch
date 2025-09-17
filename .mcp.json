@@ -6,6 +6,15 @@
         "shadcn@latest",
         "mcp"
       ]
+    },
+    "directory-monitor": {
+      "command": "node",
+      "args": [
+        "/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/mcp-directory-monitor.js"
+      ],
+      "env": {
+        "NODE_ENV": "production"
+      }
     }
   }
 }

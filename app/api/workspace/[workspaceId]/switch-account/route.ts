@@ -3,11 +3,11 @@ import { supabaseAdmin } from '@/app/lib/supabase'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { workspaceId: string } }
+  { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   try {
     const supabase = supabaseAdmin()
-    const workspaceId = params.workspaceId
+    const { workspaceId } = await params
     const body = await request.json()
 
     const { account_type, account_id } = body

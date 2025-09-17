@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { AutoIPAssignmentService } from '@/lib/services/auto-ip-assignment';
 
 export async function POST(request: NextRequest) {
   try {
@@ -91,6 +92,53 @@ export async function POST(request: NextRequest) {
 
         if (profileError && !profileError.message.includes('duplicate key')) {
           console.error('Profile creation error:', profileError);
+        }
+
+        // Automatically assign Bright Data dedicated IP based on user location
+        try {
+          console.log('🌍 Assigning dedicated IP for new user...');
+          
+          const autoIPService = new AutoIPAssignmentService();
+          
+          // Detect user location from request headers
+          const userLocation = await autoIPService.detectUserLocation(request);
+          console.log('📍 Detected signup location:', userLocation);
+          
+          // Generate optimal proxy configuration for the user
+          const proxyConfig = await autoIPService.generateOptimalProxyConfig(userLocation || undefined);
+          
+          console.log('✅ Generated proxy config for new user:', {
+            country: proxyConfig.country,
+            state: proxyConfig.state,
+            confidence: proxyConfig.confidence,
+            sessionId: proxyConfig.sessionId
+          });
+          
+          // Store user's proxy preference in database
+          const { error: proxyError } = await supabaseAdmin
+            .from('user_proxy_preferences')
+            .insert({
+              user_id: data.user.id,
+              detected_location: userLocation ? `${userLocation.city}, ${userLocation.regionName}, ${userLocation.country}` : null,
+              preferred_country: proxyConfig.country,
+              preferred_state: proxyConfig.state,
+              preferred_city: proxyConfig.city,
+              confidence_score: proxyConfig.confidence,
+              session_id: proxyConfig.sessionId,
+              is_auto_assigned: true,
+              created_at: new Date().toISOString(),
+              last_updated: new Date().toISOString()
+            });
+          
+          if (proxyError) {
+            console.error('❌ Failed to store proxy preference during signup:', proxyError);
+          } else {
+            console.log('✅ Successfully assigned dedicated IP during signup');
+          }
+          
+        } catch (ipAssignmentError) {
+          console.error('⚠️ IP assignment during signup failed (non-critical):', ipAssignmentError);
+          // Don't fail the entire signup if IP assignment fails
         }
 
         // Note: Workspace creation will happen automatically in the email confirmation callback

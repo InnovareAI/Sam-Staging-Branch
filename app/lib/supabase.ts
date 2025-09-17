@@ -19,3 +19,6 @@ export const supabaseAdmin = () => {
     }
   });
 };
+
+// Export for compatibility with server routes
+export { supabase as createClient };

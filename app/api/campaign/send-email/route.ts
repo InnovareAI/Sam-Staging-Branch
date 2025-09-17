@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { auth } from '@clerk/nextjs/server';
+import { supabaseAdmin } from '@/app/lib/supabase';
 import nodemailer from 'nodemailer';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const supabase = supabaseAdmin()
+    
+    // Get current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 })
     }
 
     const body = await request.json();
@@ -28,13 +33,11 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const supabase = createClient();
-
-    // Get current user ID
+    // Get current user ID  
     const { data: userData } = await supabase
       .from('users')
       .select('id')
-      .eq('clerk_id', userId)
+      .eq('id', user.id)
       .single();
 
     if (!userData) {
@@ -93,7 +96,7 @@ export async function POST(request: NextRequest) {
     const smtpPassword = Buffer.from(emailAccount.smtp_password_encrypted, 'base64').toString();
 
     // Create nodemailer transporter
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       host: emailAccount.smtp_host,
       port: emailAccount.smtp_port,
       secure: emailAccount.smtp_use_ssl,

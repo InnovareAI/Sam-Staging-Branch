@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/app/lib/supabase';
-import { auth } from '@clerk/nextjs/server';
 import nodemailer from 'nodemailer';
 
 // GET /api/campaign/email-accounts?workspaceId=xxx - Get workspace email accounts
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = auth();
-    if (!userId) {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -24,7 +23,7 @@ export async function GET(request: NextRequest) {
     const { data: userData } = await supabase
       .from('users')
       .select('id')
-      .eq('clerk_id', userId)
+      .eq('id', user.id)
       .single();
 
     if (!userData) {
@@ -104,8 +103,8 @@ export async function GET(request: NextRequest) {
 // POST /api/campaign/email-accounts - Create new campaign email account
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = auth();
-    if (!userId) {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -141,7 +140,7 @@ export async function POST(request: NextRequest) {
     const { data: userData } = await supabase
       .from('users')
       .select('id')
-      .eq('clerk_id', userId)
+      .eq('id', user.id)
       .single();
 
     if (!userData) {
@@ -164,7 +163,7 @@ export async function POST(request: NextRequest) {
     console.log('🔧 Testing SMTP connection for', emailAddress);
     
     try {
-      const transporter = nodemailer.createTransporter({
+      const transporter = nodemailer.createTransport({
         host: smtpHost,
         port: smtpPort,
         secure: smtpUseSsl, // Use SSL
@@ -247,8 +246,8 @@ export async function POST(request: NextRequest) {
 // PUT /api/campaign/email-accounts - Update email account
 export async function PUT(request: NextRequest) {
   try {
-    const { userId } = auth();
-    if (!userId) {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -265,7 +264,7 @@ export async function PUT(request: NextRequest) {
     const { data: userData } = await supabase
       .from('users')
       .select('id')
-      .eq('clerk_id', userId)
+      .eq('id', user.id)
       .single();
 
     if (!userData) {
@@ -332,8 +331,8 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/campaign/email-accounts - Delete email account
 export async function DELETE(request: NextRequest) {
   try {
-    const { userId } = auth();
-    if (!userId) {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -350,7 +349,7 @@ export async function DELETE(request: NextRequest) {
     const { data: userData } = await supabase
       .from('users')
       .select('id')
-      .eq('clerk_id', userId)
+      .eq('id', user.id)
       .single();
 
     if (!userData) {

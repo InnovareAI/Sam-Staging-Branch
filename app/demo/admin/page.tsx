@@ -37,8 +37,11 @@ export default function DemoSuperAdminPage() {
     activeUsers: 892,
     systemHealth: 98.5,
     apiCalls: 45231,
-    storage: 78.2
+    storage: 78.2,
+    totalWorkspaces: 0
   })
+  const [workspaces, setWorkspaces] = useState([])
+  const [workspacesLoading, setWorkspacesLoading] = useState(true)
 
   // Real-time counter animation
   const [animatedStats, setAnimatedStats] = useState(systemStats)
@@ -53,6 +56,33 @@ export default function DemoSuperAdminPage() {
     }, 3000)
 
     return () => clearInterval(interval)
+  }, [])
+
+  // Fetch real workspace data
+  useEffect(() => {
+    const fetchWorkspaces = async () => {
+      try {
+        setWorkspacesLoading(true)
+        const response = await fetch('/api/admin/workspaces')
+        if (response.ok) {
+          const data = await response.json()
+          setWorkspaces(data.workspaces || [])
+          setSystemStats(prev => ({
+            ...prev,
+            totalWorkspaces: data.workspaces?.length || 0
+          }))
+          console.log('📊 Loaded workspaces:', data.workspaces?.length)
+        } else {
+          console.error('Failed to fetch workspaces:', response.status)
+        }
+      } catch (error) {
+        console.error('Error fetching workspaces:', error)
+      } finally {
+        setWorkspacesLoading(false)
+      }
+    }
+
+    fetchWorkspaces()
   }, [])
 
   const StatCard = ({ title, value, change, icon: Icon, trend, color = 'blue', delay = 0 }) => (
@@ -170,7 +200,7 @@ export default function DemoSuperAdminPage() {
             <TabsList className="grid w-full grid-cols-5 bg-black/20 backdrop-blur-xl border border-white/10 shadow-2xl">
               {[
                 { id: 'dashboard', icon: BarChart3, label: 'Dashboard' },
-                { id: 'users', icon: Users, label: 'Users' },
+                { id: 'users', icon: Users, label: 'Workspaces' },
                 { id: 'system', icon: Server, label: 'System' },
                 { id: 'security', icon: Lock, label: 'Security' },
                 { id: 'analytics', icon: PieChart, label: 'Analytics' }
@@ -227,6 +257,19 @@ export default function DemoSuperAdminPage() {
                   icon={Zap} 
                   color="purple"
                   delay={0.3}
+                />
+              </div>
+              
+              {/* Second row with workspaces */}
+              <div className="grid gap-6 md:grid-cols-4">
+                <StatCard 
+                  title="Total Workspaces" 
+                  value={systemStats.totalWorkspaces} 
+                  change={systemStats.totalWorkspaces > 0 ? "+100%" : "0%"} 
+                  trend="up" 
+                  icon={Users} 
+                  color="teal"
+                  delay={0.4}
                 />
               </div>
 
@@ -326,50 +369,61 @@ export default function DemoSuperAdminPage() {
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center gap-2 text-white">
                         <Users className="h-5 w-5" />
-                        User Management
+                        Connected Workspaces
                       </CardTitle>
                       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                         <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
                           <UserPlus className="h-4 w-4 mr-2" />
-                          Add User
+                          Add Workspace
                         </Button>
                       </motion.div>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {[
-                        { name: 'Sarah Powell', email: 'sarah@innovareai.com', role: 'Admin', status: 'active' },
-                        { name: 'John Smith', email: 'john@innovareai.com', role: 'User', status: 'active' },
-                        { name: 'Emily Chen', email: 'emily@innovareai.com', role: 'User', status: 'inactive' }
-                      ].map((user, index) => (
-                        <motion.div
-                          key={user.email}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          whileHover={{ scale: 1.02, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
-                          className="flex items-center justify-between p-4 rounded-lg border border-white/10 transition-all duration-300"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
-                              <span className="text-white font-medium">{user.name.split(' ').map(n => n[0]).join('')}</span>
+                      {workspacesLoading ? (
+                        <div className="text-center text-white py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
+                          <p className="mt-2">Loading workspaces...</p>
+                        </div>
+                      ) : workspaces.length === 0 ? (
+                        <div className="text-center text-slate-300 py-8">
+                          <p>No workspaces found</p>
+                        </div>
+                      ) : (
+                        workspaces.map((workspace, index) => (
+                          <motion.div
+                            key={workspace.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            whileHover={{ scale: 1.02, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+                            className="flex items-center justify-between p-4 rounded-lg border border-white/10 transition-all duration-300"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
+                                <span className="text-white font-medium">
+                                  {workspace.name ? workspace.name.substring(0, 2).toUpperCase() : 'WS'}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="text-white font-medium">{workspace.name || 'Unnamed Workspace'}</p>
+                                <p className="text-slate-300 text-sm">
+                                  Owner: {workspace.owner?.email || 'Unknown'} • Created: {new Date(workspace.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-white font-medium">{user.name}</p>
-                              <p className="text-slate-300 text-sm">{user.email}</p>
+                            <div className="flex items-center gap-3">
+                              <Badge variant="default">
+                                {workspace.member_count} member{workspace.member_count !== 1 ? 's' : ''}
+                              </Badge>
+                              <Badge variant="secondary">
+                                Active
+                              </Badge>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <Badge variant={user.role === 'Admin' ? 'default' : 'secondary'}>
-                              {user.role}
-                            </Badge>
-                            <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
-                              {user.status}
-                            </Badge>
-                          </div>
-                        </motion.div>
-                      ))}
+                          </motion.div>
+                        ))
+                      )}
                     </div>
                   </CardContent>
                 </Card>

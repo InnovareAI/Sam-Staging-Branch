@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { auth } from '@clerk/nextjs/server';
+import { supabaseAdmin } from '@/app/lib/supabase';
 
 // GET /api/workspace/data-sharing?workspaceId=xxx - Get user's sharing preferences and available data
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const supabase = supabaseAdmin();
+    
+    // Get current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url);
@@ -21,25 +26,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'workspaceId is required' }, { status: 400 });
     }
 
-    const supabase = createClient();
-
-    // Get current user ID
-    const { data: userData } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single();
-
-    if (!userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
+    // We already have the user from auth above
 
     // Verify workspace access
     const { data: membership } = await supabase
       .from('workspace_members')
       .select('*')
       .eq('workspace_id', workspaceId)
-      .eq('user_id', userData.id)
+      .eq('user_id', user.id)
       .single();
 
     if (!membership) {
@@ -51,14 +45,14 @@ export async function GET(request: NextRequest) {
       .from('workspace_data_sharing_preferences')
       .select('*')
       .eq('workspace_id', workspaceId)
-      .eq('user_id', userData.id)
+      .eq('user_id', user.id)
       .single();
 
     // Get available shared data
     const { data: sharedData, error: sharedDataError } = await supabase
       .rpc('get_shared_data_for_user', {
         p_workspace_id: workspaceId,
-        p_user_id: userData.id,
+        p_user_id: user.id,
         p_data_source: dataSource,
         p_data_type: dataType,
         p_min_quality_score: minQualityScore,
@@ -106,9 +100,15 @@ export async function GET(request: NextRequest) {
 // POST /api/workspace/data-sharing - Update user's sharing preferences
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const supabase = supabaseAdmin();
+    
+    // Get current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 })
     }
 
     const body = await request.json();
@@ -120,25 +120,12 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const supabase = createClient();
-
-    // Get current user ID
-    const { data: userData } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single();
-
-    if (!userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
     // Verify workspace access
     const { data: membership } = await supabase
       .from('workspace_members')
       .select('*')
       .eq('workspace_id', workspaceId)
-      .eq('user_id', userData.id)
+      .eq('user_id', user.id)
       .single();
 
     if (!membership) {
@@ -150,7 +137,7 @@ export async function POST(request: NextRequest) {
       .from('workspace_data_sharing_preferences')
       .upsert({
         workspace_id: workspaceId,
-        user_id: userData.id,
+        user_id: user.id,
         ...preferences,
         updated_at: new Date().toISOString()
       }, {
@@ -182,9 +169,15 @@ export async function POST(request: NextRequest) {
 // PUT /api/workspace/data-sharing - Track data usage
 export async function PUT(request: NextRequest) {
   try {
-    const { userId } = auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const supabase = supabaseAdmin();
+    
+    // Get current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 })
     }
 
     const body = await request.json();
@@ -196,23 +189,10 @@ export async function PUT(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const supabase = createClient();
-
-    // Get current user ID
-    const { data: userData } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', userId)
-      .single();
-
-    if (!userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
     // Track data usage
     const { error } = await supabase.rpc('track_data_usage', {
       p_shared_data_id: sharedDataId,
-      p_user_id: userData.id,
+      p_user_id: user.id,
       p_usage_context: usageContext,
       p_usage_description: usageDescription
     });
@@ -228,7 +208,7 @@ export async function PUT(request: NextRequest) {
         .from('workspace_data_usage')
         .update({ value_generated: valueGenerated })
         .eq('shared_data_id', sharedDataId)
-        .eq('used_by', userData.id)
+        .eq('used_by', user.id)
         .order('used_at', { ascending: false })
         .limit(1);
     }

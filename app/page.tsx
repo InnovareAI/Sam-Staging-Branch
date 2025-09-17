@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import KnowledgeBase from './components/KnowledgeBase';
 import ContactCenter from './components/ContactCenter';
 import CampaignHub from './components/CampaignHub';
@@ -44,7 +45,27 @@ import {
   Badge,
   ArrowLeft,
   X,
-  FileText
+  FileText,
+  Search,
+  Workspace,
+  Brain,
+  Zap,
+  Clock,
+  Filter,
+  Eye,
+  PlayCircle,
+  PauseCircle,
+  Activity,
+  Gauge,
+  Archive,
+  AlertCircle,
+  ThumbsUp,
+  ThumbsDown,
+  MoreHorizontal,
+  Globe,
+  Bell,
+  Key,
+  GitBranch
 } from 'lucide-react';
 
 // LinkedIn Logo Component (Official LinkedIn branding)
@@ -63,6 +84,7 @@ const LinkedInLogo = ({ size = 16, className = "" }: { size?: number; className?
 export default function Page() {
   // Initialize Supabase client
   const supabase = createClientComponentClient();
+  const router = useRouter();
   
   // Helper function to get auth token (cached from session state)
   const getAuthToken = async () => {
@@ -360,16 +382,16 @@ export default function Page() {
 
   const menuItems = [
     { id: 'chat', label: 'Chat with Sam', icon: MessageCircle, active: true },
-    { id: 'knowledge', label: 'Knowledge Base', icon: Book, active: false },
+    { id: 'knowledge', label: 'Knowledge Base', icon: Brain, active: false },
     { id: 'approvals', label: 'Approvals', icon: CheckSquare, active: false },
-    { id: 'contact', label: 'Inbox', icon: Mail, active: false },
     { id: 'campaign', label: 'Campaign Hub', icon: Megaphone, active: false },
     { id: 'pipeline', label: 'Lead Pipeline', icon: TrendingUp, active: false },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, active: false },
     { id: 'audit', label: 'Audit Trail', icon: FileText, active: false },
-    ...(isWorkspaceAdmin ? [{ id: 'admin', label: 'Workspace Admin', icon: Shield, active: false }] : []),
+    { id: 'settings', label: 'Settings', icon: Settings, active: false },
     { id: 'profile', label: 'Profile', icon: User, active: false },
-    ...(isSuperAdmin ? [{ id: 'superadmin', label: 'SuperAdmin', icon: Settings, active: false }] : [])
+    { id: 'workspace', label: 'Workspace', icon: Building2, active: false },
+    ...(isSuperAdmin ? [{ id: 'superadmin', label: 'Super Admin', icon: Shield, active: false }] : [])
   ];
 
   // Handle password change
@@ -483,30 +505,36 @@ export default function Page() {
   const handleLogout = async () => {
     if (confirm('Are you sure you want to sign out?')) {
       try {
+        console.log('🚪 Signing out user...');
+        
         // Sign out from Supabase completely
         await supabase.auth.signOut({ scope: 'global' });
         
-        // Clear all authentication-related storage
+        // Clear authentication-related storage but preserve conversation history
         localStorage.removeItem('supabase.auth.token');
-        localStorage.removeItem('sam_messages');
-        localStorage.removeItem('sam_active_menu');
+        // Keep: localStorage.removeItem('sam_messages'); - preserve conversation history
+        // Keep: localStorage.removeItem('sam_active_menu'); - preserve active menu state
         
         // Clear session storage as well
         sessionStorage.clear();
         
-        // Reset app state
-        setMessages([]);
-        setShowStarterScreen(true);
-        setActiveMenuItem('chat');
+        // Reset app state but preserve conversation history
         setUser(null);
         setIsAuthLoading(false);
         
-        // Force page reload to clear any cached auth state
-        window.location.reload();
+        console.log('✅ Logout complete, staying on homepage with preserved conversation history...');
+        
+        // Don't redirect - just stay on homepage and let user use the AuthModal
+        // This eliminates the redundant signin page
+        // NOTE: Conversation history is preserved for better user experience
       } catch (error) {
-        console.error('Error signing out:', error);
-        // Force reload even if signOut fails
-        window.location.reload();
+        console.error('❌ Error signing out:', error);
+        
+        // Clear auth storage but preserve conversation history
+        localStorage.removeItem('supabase.auth.token');
+        sessionStorage.clear();
+        setUser(null);
+        setIsAuthLoading(false);
       }
     }
   };
@@ -1037,9 +1065,9 @@ export default function Page() {
   }
 
   // Authentication required - redirect to sign-in if not authenticated
-  // 🚨 EMERGENCY: Bypass authentication for customer access
-  const bypassAuth = false; // Disabled bypass to fix proper login
-  const testUser = bypassAuth && !user ? { id: 'emergency-customer-access', email: 'customer@access.com' } : user;
+  // 🚨 DEV: Bypass authentication for development
+  const bypassAuth = process.env.NODE_ENV === 'development'; // Enable bypass for dev environment
+  const testUser = bypassAuth && !user ? { id: 'dev-user-access', email: 'dev@innovareai.com' } : user;
   
   if (!user && !bypassAuth) {
     return (
@@ -1216,8 +1244,6 @@ export default function Page() {
       <div className="flex-1 flex flex-col bg-gray-900">
         {activeMenuItem === 'knowledge' ? (
           <KnowledgeBase />
-        ) : activeMenuItem === 'contact' ? (
-          <ContactCenter />
         ) : activeMenuItem === 'campaign' ? (
           <CampaignHub />
         ) : activeMenuItem === 'pipeline' ? (
@@ -1226,423 +1252,431 @@ export default function Page() {
           <Analytics />
         ) : activeMenuItem === 'audit' ? (
           <AuditTrail />
-        ) : activeMenuItem === 'approvals' ? (
-          /* APPROVALS PAGE */
-          <div className="flex-1 p-6 overflow-y-auto">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex items-center justify-between mb-8">
-                <h1 className="text-3xl font-bold text-white flex items-center">
-                  <CheckSquare className="mr-3" size={36} />
-                  Prospect Approvals
-                </h1>
-                <button 
-                  onClick={() => setActiveMenuItem('chat')}
-                  className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
-                >
-                  ← Back to Chat
-                </button>
-              </div>
+        ) : activeMenuItem === 'settings' ? (
+          <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
+                <Settings className="mr-3" size={32} />
+                Settings
+              </h1>
+              <p className="text-gray-400">Configure integrations, preferences, and account settings</p>
+            </div>
 
-              {/* Monthly Data Volume Overview */}
-              <div className="bg-gray-800 rounded-lg p-6 mb-8">
-                <h2 className="text-2xl font-semibold text-white mb-6">Monthly Data Volume</h2>
+            {/* Main Settings Tiles */}
+            <div className="max-w-6xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Current Usage */}
-                  <div className="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-lg p-6 border border-blue-500">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-white text-lg font-semibold">Current Usage</h3>
-                      <Database className="text-blue-400" size={24} />
-                    </div>
-                    <div className="text-3xl font-bold text-white mb-2">1,247</div>
-                    <div className="text-blue-200 text-sm">of 2,000 prospects this month</div>
-                    <div className="mt-4 bg-blue-700 rounded-full h-2">
-                      <div className="bg-blue-400 h-2 rounded-full" style={{width: '62.35%'}}></div>
-                    </div>
+                {/* LinkedIn Integration */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <LinkedinIcon className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">LinkedIn Settings</h2>
                   </div>
-
-                  {/* Remaining Allowance */}
-                  <div className="bg-gradient-to-r from-green-900 to-emerald-900 rounded-lg p-6 border border-green-500">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-white text-lg font-semibold">Remaining</h3>
-                      <TrendingUp className="text-green-400" size={24} />
-                    </div>
-                    <div className="text-3xl font-bold text-white mb-2">753</div>
-                    <div className="text-green-200 text-sm">prospects available</div>
-                    <div className="mt-4">
-                      <span className="text-green-400 text-sm">Resets in 18 days</span>
-                    </div>
-                  </div>
-
-                  {/* Approval Rate */}
-                  <div className="bg-gradient-to-r from-purple-900 to-violet-900 rounded-lg p-6 border border-purple-500">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-white text-lg font-semibold">Approval Rate</h3>
-                      <CheckSquare className="text-purple-400" size={24} />
-                    </div>
-                    <div className="text-3xl font-bold text-white mb-2">84%</div>
-                    <div className="text-purple-200 text-sm">of prospects approved</div>
-                    <div className="mt-4">
-                      <span className="text-purple-400 text-sm">↑ 12% from last month</span>
-                    </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Configure LinkedIn account connections, automation settings, and personalization preferences for outreach campaigns.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Connect • Configure • Manage</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
                   </div>
                 </div>
+
+                {/* Email Integration */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Mail className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">Email Integration</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Set up email servers, domains, and SMTP configurations for automated email campaigns and prospect outreach.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Setup • Configure • Test</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Unipile Configuration */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Globe className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">Unipile Configuration</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Manage multi-platform social media integrations including WhatsApp, Instagram, Twitter, and Messenger connections.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Connect • Sync • Monitor</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Notification Settings */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Bell className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">Notifications</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Customize notification preferences for campaigns, approvals, responses, and system alerts across all channels.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Customize • Schedule • Manage</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* API Keys */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Key className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">API Keys</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Manage API keys for external integrations, data sources, and third-party services used in your outreach workflows.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Create • Rotate • Secure</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Data Preferences */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Database className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">Data Preferences</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Control data retention, privacy settings, compliance requirements, and data export preferences for your workspace.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Configure • Privacy • Export</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+
               </div>
+            </div>
+          </div>
+        ) : activeMenuItem === 'workspace' ? (
+          <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
+                <Building2 className="mr-3" size={32} />
+                Workspace Management
+              </h1>
+              <p className="text-gray-400">Manage team members, settings, and integrations for your workspace</p>
+            </div>
 
-              {/* ICP Setup Status */}
-              <div className="bg-gray-800 rounded-lg p-6 mb-8">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-semibold text-white">ICP Configuration</h2>
-                  <div className="flex items-center space-x-3">
-                    <span className="bg-yellow-600 text-white px-3 py-1 rounded-full text-sm">3 pending approval</span>
-                    <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-                      + New ICP from KB
-                    </button>
-                    <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-                      Sync Knowledge Base
-                    </button>
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-                      Review Pending
-                    </button>
+            {/* Main Workspace Tiles */}
+            <div className="max-w-6xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                {/* Team Management */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Users className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">Team Management</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Invite team members, manage roles and permissions, and configure workspace access for your organization.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Invite • Manage • Configure</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
                   </div>
                 </div>
 
-                {/* KB Integration Status */}
-                <div className="bg-blue-900 border border-blue-500 rounded-lg p-4 mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-3">
-                      <Database className="text-blue-400" size={20} />
-                      <h3 className="text-white font-medium">Knowledge Base Integration</h3>
-                    </div>
-                    <span className="bg-green-600 text-white px-2 py-1 rounded-full text-xs">Live Sync</span>
+                {/* Workspace Settings */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Settings className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">Workspace Settings</h2>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div className="text-blue-200">
-                      <div className="font-medium">SAM Interview Data</div>
-                      <div className="text-xs text-blue-300">27 interviews processed • Last: 2h ago</div>
-                    </div>
-                    <div className="text-blue-200">
-                      <div className="font-medium">Uploaded Documents</div>
-                      <div className="text-xs text-blue-300">43 docs analyzed • CRM exports, case studies</div>
-                    </div>
-                    <div className="text-blue-200">
-                      <div className="font-medium">Performance Feedback</div>
-                      <div className="text-xs text-blue-300">Real-time prospect response data</div>
-                    </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Configure workspace details, billing plans, and advanced settings. Manage your workspace name, branding, and subscription.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Configure • Billing • Settings</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
                   </div>
                 </div>
 
-                {/* ICP Profile Selector */}
-                <div className="flex space-x-1 mb-6 bg-gray-700 rounded-lg p-1">
-                  <button className="flex-1 py-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-md">
-                    Enterprise Tech (Primary)
-                  </button>
-                  <button className="flex-1 py-2 px-4 text-sm font-medium text-gray-300 hover:text-white rounded-md">
-                    SMB SaaS (Secondary)
-                  </button>
-                  <button className="flex-1 py-2 px-4 text-sm font-medium text-gray-300 hover:text-white rounded-md">
-                    Healthcare Startups
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Pending ICP Items */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-white mb-4">Pending Approval</h3>
-                    
-                    <div className="bg-yellow-900 border border-yellow-500 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-white font-medium">Geographic Expansion</h4>
-                        <span className="bg-yellow-600 text-white px-2 py-1 rounded text-xs">KB Analysis</span>
-                      </div>
-                      <p className="text-yellow-200 text-sm mb-2">Expand targeting to include European markets (UK, Germany, Netherlands)</p>
-                      <div className="text-yellow-300 text-xs mb-3">
-                        📊 Source: SAM interview #23 mentioned European expansion + CRM data shows EU inquiries
-                      </div>
-                      <div className="flex space-x-2">
-                        <button className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">Approve & Update KB</button>
-                        <button className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">Reject</button>
-                      </div>
-                    </div>
-
-                    <div className="bg-yellow-900 border border-yellow-500 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-white font-medium">Industry Addition</h4>
-                        <span className="bg-yellow-600 text-white px-2 py-1 rounded text-xs">Performance Data</span>
-                      </div>
-                      <p className="text-yellow-200 text-sm mb-2">Add FinTech and InsurTech to target industries based on response patterns</p>
-                      <div className="text-yellow-300 text-xs mb-3">
-                        📈 Source: 28% response rate from FinTech prospects (above avg) + 3 uploaded case studies
-                      </div>
-                      <div className="flex space-x-2">
-                        <button className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">Approve & Update KB</button>
-                        <button className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">Reject</button>
-                      </div>
-                    </div>
-
-                    <div className="bg-yellow-900 border border-yellow-500 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-white font-medium">Company Size Adjustment</h4>
-                        <span className="bg-yellow-600 text-white px-2 py-1 rounded text-xs">AI Learning</span>
-                      </div>
-                      <p className="text-yellow-200 text-sm mb-2">Adjust employee range to 25-1000 based on successful conversions</p>
-                      <div className="text-yellow-300 text-xs mb-3">
-                        🤖 Source: SAM AI analysis of 847 successful conversations + uploaded customer list
-                      </div>
-                      <div className="flex space-x-2">
-                        <button className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">Approve & Update KB</button>
-                        <button className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">Reject</button>
-                      </div>
-                    </div>
+                {/* CRM Integration */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Database className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">CRM Integration</h2>
                   </div>
-
-                  {/* Current Approved ICP */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-white">Enterprise Tech (Primary) - Active</h3>
-                      <div className="flex items-center space-x-2">
-                        <span className="bg-green-600 text-white px-2 py-1 rounded-full text-xs">85% of prospects</span>
-                        <button className="text-blue-400 text-xs hover:text-blue-300">Edit Profile</button>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-green-900 border border-green-500 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-white font-medium">Company Criteria (Sales Nav)</h4>
-                        <CheckSquare className="text-green-400" size={16} />
-                      </div>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex items-center justify-between">
-                          <span className="text-green-200">Company Headcount:</span>
-                          <span className="text-white">200 - 5,000</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-green-200">Annual Revenue:</span>
-                          <span className="text-white">$20M - $500M</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-green-200">Headcount Growth:</span>
-                          <span className="text-white">≥10% (last 12 months)</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-green-200">Company Type:</span>
-                          <span className="text-white">Private, Public</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-green-900 border border-green-500 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-white font-medium">Industry & Technology</h4>
-                        <CheckSquare className="text-green-400" size={16} />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap gap-1">
-                          <span className="bg-green-600 text-white px-2 py-1 rounded-full text-xs">Software Development</span>
-                          <span className="bg-green-600 text-white px-2 py-1 rounded-full text-xs">IT Services</span>
-                          <span className="bg-green-600 text-white px-2 py-1 rounded-full text-xs">Cybersecurity</span>
-                        </div>
-                        <div className="text-green-200 text-xs">
-                          <strong>Technologies:</strong> AWS, Azure, Salesforce, HubSpot
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-green-900 border border-green-500 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-white font-medium">Lead Criteria</h4>
-                        <CheckSquare className="text-green-400" size={16} />
-                      </div>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex items-center justify-between">
-                          <span className="text-green-200">Seniority Level:</span>
-                          <span className="text-white">VP, Director, C-Level</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-green-200">Function:</span>
-                          <span className="text-white">IT, Engineering, Security</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-green-200">Years Experience:</span>
-                          <span className="text-white">5+ years</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-green-200">Geography:</span>
-                          <span className="text-white">North America, Europe</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-green-900 border border-green-500 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-white font-medium">Timing & Signals</h4>
-                        <CheckSquare className="text-green-400" size={16} />
-                      </div>
-                      <div className="space-y-1 text-sm">
-                        <div className="text-green-200">• Changed Jobs (last 90 days)</div>
-                        <div className="text-green-200">• Posted on LinkedIn (recent activity)</div>
-                        <div className="text-green-200">• Job Opportunities posted</div>
-                        <div className="text-green-200">• Department Growth ≥15%</div>
-                      </div>
-                    </div>
-
-                    <div className="bg-blue-900 border border-blue-500 rounded-lg p-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-blue-200">ICP Performance:</span>
-                        <span className="text-blue-400 font-medium">94% match rate</span>
-                      </div>
-                    </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Connect Salesforce, HubSpot, Pipedrive, and other CRMs. Configure field mapping and sync settings for seamless data flow.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Connect • Map • Sync</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
                   </div>
                 </div>
+
+                {/* Integrations & Tools */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Zap className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">Integrations & Tools</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Manage LinkedIn Premium connections, email providers, and third-party tool integrations for your outreach stack.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Connect • Configure • Monitor</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Security & Compliance */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Shield className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">Security & Compliance</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Configure security settings, compliance requirements, audit logs, and data protection policies for your workspace.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Secure • Comply • Audit</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Analytics & Reporting */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <BarChart3 className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">Analytics & Reporting</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Access workspace-level analytics, performance metrics, and custom reporting features for team productivity insights.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Analyze • Report • Optimize</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+
               </div>
+            </div>
+          </div>
+        ) : activeMenuItem === 'approvals' ? (
+          /* APPROVALS PAGE - Knowledge Base Style */
+          <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
+                <CheckSquare className="mr-3" size={32} />
+                Prospect Approvals
+              </h1>
+              <p className="text-gray-400">Intelligent prospect qualification and approval workflows</p>
+            </div>
 
-              {/* Data Approval System */}
-              <div className="bg-gray-800 rounded-lg p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h2 className="text-2xl font-semibold text-white">Data Approval System</h2>
-                    <p className="text-gray-400 text-sm mt-1">Hybrid approval for up to 2,000 monthly prospects</p>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm">1,847 in queue</span>
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-                      Configure Rules
-                    </button>
-                  </div>
+            {/* Overview Statistics */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+              <div className="p-6 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-750 transition-colors">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs uppercase text-gray-400">Current Usage</div>
+                  <Database className="w-4 h-4 text-blue-400" />
                 </div>
-
-                {/* Approval Strategy Tabs */}
-                <div className="flex space-x-1 mb-6 bg-gray-700 rounded-lg p-1">
-                  <button className="flex-1 py-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-md">
-                    Auto Approval Rules
-                  </button>
-                  <button className="flex-1 py-2 px-4 text-sm font-medium text-gray-300 hover:text-white rounded-md">
-                    Manual Review Queue
-                  </button>
-                  <button className="flex-1 py-2 px-4 text-sm font-medium text-gray-300 hover:text-white rounded-md">
-                    Batch Processing
-                  </button>
+                <div className="text-3xl font-semibold text-white">1,247</div>
+                <div className="text-gray-400 text-sm">of 2,000 this month</div>
+              </div>
+              <div className="p-6 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-750 transition-colors">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs uppercase text-gray-400">Approval Rate</div>
+                  <CheckSquare className="w-4 h-4 text-green-400" />
                 </div>
+                <div className="text-3xl font-semibold text-white">84%</div>
+                <div className="text-gray-400 text-sm">↑ 12% from last month</div>
+              </div>
+              <div className="p-6 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-750 transition-colors">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs uppercase text-gray-400">In Queue</div>
+                  <Clock className="w-4 h-4 text-yellow-400" />
+                </div>
+                <div className="text-3xl font-semibold text-white">108</div>
+                <div className="text-gray-400 text-sm">awaiting review</div>
+              </div>
+              <div className="p-6 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-750 transition-colors">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs uppercase text-gray-400">Remaining</div>
+                  <TrendingUp className="w-4 h-4 text-purple-400" />
+                </div>
+                <div className="text-3xl font-semibold text-white">753</div>
+                <div className="text-gray-400 text-sm">prospects available</div>
+              </div>
+            </div>
 
+            {/* Main Approval Tiles */}
+            <div className="max-w-6xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 {/* Auto Approval Rules */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                  {/* Rule Configuration */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-white mb-4">Automatic Approval Rules</h3>
-                    
-                    <div className="bg-green-900 border border-green-500 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-2">
-                          <CheckSquare className="text-green-400" size={16} />
-                          <h4 className="text-white font-medium">High ICP Match (≥95%)</h4>
-                        </div>
-                        <span className="text-green-400 text-sm">Active</span>
-                      </div>
-                      <p className="text-green-200 text-sm mb-2">Auto-approve prospects with 95%+ ICP match score</p>
-                      <div className="text-green-300 text-xs">Auto-approved: 247 prospects this month</div>
-                    </div>
-
-                    <div className="bg-yellow-900 border border-yellow-500 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-2">
-                          <CheckSquare className="text-yellow-400" size={16} />
-                          <h4 className="text-white font-medium">Multi-ICP Matching</h4>
-                        </div>
-                        <span className="text-yellow-400 text-sm">Active</span>
-                      </div>
-                      <p className="text-yellow-200 text-sm mb-2">Auto-approve if matches any ICP profile (Enterprise Tech, SMB SaaS, Healthcare)</p>
-                      <div className="text-yellow-300 text-xs">Auto-approved: 892 prospects across all ICPs</div>
-                    </div>
-
-                    <div className="bg-gray-700 border border-gray-500 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-4 h-4 border-2 border-gray-500 rounded"></div>
-                          <h4 className="text-white font-medium">Revenue Range Filter</h4>
-                        </div>
-                        <span className="text-gray-400 text-sm">Disabled</span>
-                      </div>
-                      <p className="text-gray-300 text-sm mb-2">Auto-reject if revenue &lt; $1M or &gt; $100M</p>
-                      <button className="text-blue-400 text-xs hover:text-blue-300">Enable Rule</button>
-                    </div>
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Zap className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">Auto Approval Rules</h2>
                   </div>
-
-                  {/* Processing Stats */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-white mb-4">Processing Overview</h3>
-                    
-                    <div className="bg-gray-700 rounded-lg p-4">
-                      <h4 className="text-white font-medium mb-3">This Month's Processing by ICP</h4>
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-300 text-sm">Enterprise Tech</span>
-                          <div className="flex items-center space-x-2">
-                            <div className="w-32 bg-gray-600 rounded-full h-2">
-                              <div className="bg-blue-400 h-2 rounded-full" style={{width: '65%'}}></div>
-                            </div>
-                            <span className="text-white text-sm">847 (65%)</span>
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-300 text-sm">SMB SaaS</span>
-                          <div className="flex items-center space-x-2">
-                            <div className="w-32 bg-gray-600 rounded-full h-2">
-                              <div className="bg-green-400 h-2 rounded-full" style={{width: '25%'}}></div>
-                            </div>
-                            <span className="text-white text-sm">323 (25%)</span>
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-300 text-sm">Healthcare Startups</span>
-                          <div className="flex items-center space-x-2">
-                            <div className="w-32 bg-gray-600 rounded-full h-2">
-                              <div className="bg-purple-400 h-2 rounded-full" style={{width: '10%'}}></div>
-                            </div>
-                            <span className="text-white text-sm">131 (10%)</span>
-                          </div>
-                        </div>
-                        <div className="border-t border-gray-600 pt-2 mt-3">
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-300 text-sm font-medium">Total Processed</span>
-                            <span className="text-white text-sm font-medium">1,301</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-blue-900 border border-blue-500 rounded-lg p-4">
-                      <h4 className="text-white font-medium mb-2">Queue Status</h4>
-                      <div className="grid grid-cols-2 gap-4 text-center">
-                        <div>
-                          <div className="text-2xl font-bold text-blue-400">108</div>
-                          <div className="text-blue-200 text-xs">Awaiting Manual Review</div>
-                        </div>
-                        <div>
-                          <div className="text-2xl font-bold text-green-400">153</div>
-                          <div className="text-green-200 text-xs">Remaining Monthly Allowance</div>
-                        </div>
-                      </div>
-                    </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Configure intelligent automation rules to approve high-quality prospects automatically based on ICP matching, company criteria, and engagement signals.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Configure • Review • Optimize</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
                   </div>
                 </div>
 
-                {/* Quick Actions */}
-                <div className="border-t border-gray-700 pt-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <button className="bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
-                      Approve High Priority (23)
-                    </button>
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
-                      Review Medium Priority (85)
-                    </button>
-                    <button className="bg-yellow-600 hover:bg-yellow-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
-                      Batch Process Similar (156)
-                    </button>
-                    <button className="bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
-                      Clear Low Priority Queue
-                    </button>
+                {/* Manual Review Queue */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Eye className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">Manual Review Queue</h2>
                   </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Review prospects that require human judgment, including edge cases, high-value opportunities, and prospects that don't match automatic rules.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Review • Approve • Reject</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Batch Processing */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Activity className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">Batch Processing</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Process multiple similar prospects at once with bulk approval actions, pattern-based decisions, and efficient workflow management for high-volume scenarios.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Select • Process • Execute</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* ICP Matching */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Target className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">ICP Matching</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Advanced prospect scoring based on your ideal customer profiles, with multi-dimensional analysis including company size, industry, technology stack, and role fit.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Score • Analyze • Match</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Quality Control */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Gauge className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">Quality Control</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Monitor approval quality with detailed analytics, feedback loops, and continuous improvement mechanisms to optimize prospect selection accuracy.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Monitor • Analyze • Improve</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Archive & History */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <Archive className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">Archive & History</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Access historical approval decisions, track prospect lifecycle, and maintain comprehensive records for compliance and performance analysis.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>View • Search • Export</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Quick Actions Bar */}
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                  <Zap className="mr-2" size={20} />
+                  Quick Actions
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <button className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
+                    <ThumbsUp size={16} />
+                    <span>Approve High Priority (23)</span>
+                  </button>
+                  <button className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
+                    <Eye size={16} />
+                    <span>Review Medium Priority (85)</span>
+                  </button>
+                  <button className="flex items-center justify-center space-x-2 bg-yellow-600 hover:bg-yellow-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
+                    <Activity size={16} />
+                    <span>Batch Process (156)</span>
+                  </button>
+                  <button className="flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
+                    <ThumbsDown size={16} />
+                    <span>Clear Low Priority</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* System Notice */}
+              <div className="mt-8">
+                <div className="bg-blue-900 border border-blue-700 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-blue-100 mb-2">🎯 Intelligent Approval System</h3>
+                  <p className="text-blue-200 text-sm">
+                    Advanced prospect qualification powered by AI-driven ICP matching, quality scoring, and automated workflows to maximize your outreach efficiency and success rates.
+                  </p>
                 </div>
               </div>
             </div>
@@ -1798,7 +1832,6 @@ export default function Page() {
             </div>
           </div>
         ) : activeMenuItem === 'profile' ? (
-          /* USER PROFILE PAGE */
           <div className="flex-1 p-6 overflow-y-auto">
             <div className="max-w-4xl mx-auto">
               <div className="flex items-center justify-between mb-8">
@@ -1834,6 +1867,7 @@ export default function Page() {
                       <input
                         type="text"
                         value={user?.user_metadata?.first_name || ''}
+                        readOnly
                         className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
                         placeholder="Enter first name"
                       />
@@ -1843,6 +1877,7 @@ export default function Page() {
                       <input
                         type="text"
                         value={user?.user_metadata?.last_name || ''}
+                        readOnly
                         className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
                         placeholder="Enter last name"
                       />
@@ -1973,53 +2008,118 @@ export default function Page() {
                 </div>
               </div>
 
-              {/* Campaign Management - Simplified */}
+              {/* Campaign Management - Knowledge Base UI Style */}
               <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">🚀 Campaign Management</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <h3 className="text-white font-medium">Smart Campaign Builder</h3>
-                      </div>
-                      <p className="text-gray-300 text-sm">
-                        Let SAM guide you through campaign setup and handle account connections automatically
-                      </p>
+                <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
+                  <Zap className="mr-3 text-blue-400" size={28} />
+                  Campaign Management
+                </h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Smart Campaign Builder */}
+                  <button
+                    onClick={() => {
+                      alert('SAM: "I can help you set up a campaign! What type of outreach are you planning - LinkedIn prospecting, email campaigns, or both? I\'ll guide you through the process and connect the necessary accounts when needed."')
+                    }}
+                    className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  >
+                    <div className="flex items-center mb-4">
+                      <MessageCircle className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                      <h3 className="text-xl font-semibold text-white">Smart Campaign Builder</h3>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <button 
-                        onClick={() => {
-                          // TODO: Replace with actual SAM conversation trigger
-                          alert('SAM: "I can help you set up a campaign! What type of outreach are you planning - LinkedIn prospecting, email campaigns, or both? I\'ll guide you through the process and connect the necessary accounts when needed."')
-                        }}
-                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                      >
-                        <MessageCircle size={16} className="text-white" />
-                        <span>Ask SAM to Help</span>
-                      </button>
+                    <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                      Let SAM guide you through campaign setup and handle account connections automatically
+                    </p>
+                    <div className="mt-4 flex items-center text-gray-400 text-xs">
+                      <span>Click to start • AI-guided setup • Auto-connect accounts</span>
+                      <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="m9 18 6-6-6-6"/>
+                      </svg>
+                    </div>
+                  </button>
+
+                  {/* Campaign Templates */}
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                    <div className="flex items-center mb-4">
+                      <FileText className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                      <h3 className="text-xl font-semibold text-white">Campaign Templates</h3>
+                    </div>
+                    <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                      Pre-built campaign templates for common outreach scenarios and industry verticals
+                    </p>
+                    <div className="mt-4 flex items-center text-gray-400 text-xs">
+                      <span>Browse templates • Industry-specific • Quick setup</span>
+                      <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="m9 18 6-6-6-6"/>
+                      </svg>
                     </div>
                   </div>
-                  
-                  {/* Simple workflow indicator */}
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h4 className="text-white font-medium mb-3">How it works:</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs">1</div>
-                        <span className="text-gray-300">Tell SAM what you want to achieve</span>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-white text-xs">2</div>
-                        <span className="text-gray-300">SAM suggests the best approach and tools</span>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center text-white text-xs">3</div>
-                        <span className="text-gray-300">Connect accounts only when needed</span>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-6 h-6 bg-orange-600 rounded-full flex items-center justify-center text-white text-xs">4</div>
-                        <span className="text-gray-300">SAM executes and manages your campaign</span>
-                      </div>
+
+                  {/* Active Campaigns */}
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                    <div className="flex items-center mb-4">
+                      <TrendingUp className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                      <h3 className="text-xl font-semibold text-white">Active Campaigns</h3>
+                    </div>
+                    <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                      Monitor and manage your currently running campaigns with real-time performance metrics
+                    </p>
+                    <div className="mt-4 flex items-center text-gray-400 text-xs">
+                      <span>View campaigns • Performance metrics • Real-time updates</span>
+                      <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="m9 18 6-6-6-6"/>
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Campaign Analytics */}
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                    <div className="flex items-center mb-4">
+                      <BarChart3 className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                      <h3 className="text-xl font-semibold text-white">Campaign Analytics</h3>
+                    </div>
+                    <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                      Deep dive into campaign performance with detailed analytics and optimization recommendations
+                    </p>
+                    <div className="mt-4 flex items-center text-gray-400 text-xs">
+                      <span>View analytics • Performance insights • Optimization tips</span>
+                      <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="m9 18 6-6-6-6"/>
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* A/B Testing */}
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                    <div className="flex items-center mb-4">
+                      <GitBranch className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                      <h3 className="text-xl font-semibold text-white">A/B Testing</h3>
+                    </div>
+                    <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                      Test different message variations and approaches to optimize your campaign performance
+                    </p>
+                    <div className="mt-4 flex items-center text-gray-400 text-xs">
+                      <span>Create tests • Compare variants • Optimize performance</span>
+                      <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="m9 18 6-6-6-6"/>
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Campaign Automation */}
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                    <div className="flex items-center mb-4">
+                      <Zap className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                      <h3 className="text-xl font-semibold text-white">Campaign Automation</h3>
+                    </div>
+                    <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                      Set up automated workflows, triggers, and follow-up sequences for maximum efficiency
+                    </p>
+                    <div className="mt-4 flex items-center text-gray-400 text-xs">
+                      <span>Build workflows • Set triggers • Automate follow-ups</span>
+                      <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="m9 18 6-6-6-6"/>
+                      </svg>
                     </div>
                   </div>
                 </div>

@@ -17,7 +17,7 @@ import {
   Clock,
   Bell
 } from 'lucide-react'
-import LinkedInOnboarding from '@/components/LinkedInOnboarding'
+import LocationIndicator from '@/components/LocationIndicator'
 import { LinkedInLogo } from '@/components/ui/LinkedInLogo'
 import { WhatsAppLogo } from '@/components/ui/WhatsAppLogo'
 import { TelegramLogo } from '@/components/ui/TelegramLogo'
@@ -52,8 +52,7 @@ export default function UnipileIntegrationPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [duplicates, setDuplicates] = useState<any[]>([])
   const [autoCleanupInProgress, setAutoCleanupInProgress] = useState(false)
-  const [showLinkedInModal, setShowLinkedInModal] = useState(false)
-
+  const [connecting, setConnecting] = useState(false)
   const fetchAccounts = async () => {
     try {
       setError(null)
@@ -71,14 +70,25 @@ export default function UnipileIntegrationPage() {
         })
         
         if (data.has_linkedin) {
+          console.log('✅ Unipile reports LinkedIn is connected')
           // If user has LinkedIn via Unipile, try to get detailed account list
           try {
-            const contactResponse = await fetch('/api/contact-center/accounts')
+            console.log('🔄 Attempting to fetch detailed account list from contact center...')
+            
+            // Add timeout to prevent hanging
+            const contactResponse = await Promise.race([
+              fetch('/api/contact-center/accounts'),
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Contact center request timeout')), 5000)
+              )
+            ]) as Response
+            
             if (contactResponse.ok) {
               const contactData = await contactResponse.json()
               setAccounts(contactData.accounts || [])
               console.log('✅ LinkedIn accounts loaded from contact center')
             } else {
+              console.log(`⚠️ Contact center returned ${contactResponse.status}, using fallback`)
               // Fallback: show generic connection status
               setAccounts([{
                 id: 'linkedin-unipile-detected',
@@ -91,7 +101,7 @@ export default function UnipileIntegrationPage() {
               console.log('✅ LinkedIn connection detected via Unipile (fallback display)')
             }
           } catch (contactError) {
-            console.log('⚠️ Contact center failed, using fallback display')
+            console.log('⚠️ Contact center failed, using fallback display:', contactError instanceof Error ? contactError.message : 'Unknown error')
             setAccounts([{
               id: 'linkedin-unipile-fallback',
               name: 'LinkedIn Account',
@@ -102,12 +112,15 @@ export default function UnipileIntegrationPage() {
             }])
           }
         } else {
-          console.log('❌ No LinkedIn connections found')
+          console.log('❌ Unipile reports no LinkedIn connections found')
           setAccounts([])
         }
         setDuplicates([])
       } else {
         const errorText = await response.text()
+        if (response.status === 401) {
+          throw new Error('Please sign in to access LinkedIn integration. You need to be logged into SAM AI first.')
+        }
         throw new Error(`Unable to connect LinkedIn at this time. Please try again.`)
       }
     } catch (error) {
@@ -125,13 +138,71 @@ export default function UnipileIntegrationPage() {
     await fetchAccounts()
   }
 
+  const handleConnectLinkedIn = async () => {
+    try {
+      setConnecting(true)
+      setError(null)
+      
+      console.log('🔗 Initiating LinkedIn hosted auth connection...')
+      
+      // Call our hosted auth endpoint to generate the auth link
+      const response = await fetch('/api/linkedin/hosted-auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to generate authentication link')
+      }
+
+      const data = await response.json()
+      
+      if (!data.success || !data.auth_url) {
+        throw new Error('Invalid response from authentication service')
+      }
+
+      console.log(`✅ Generated hosted auth URL: ${data.auth_url}`)
+      console.log(`🔗 Action: ${data.action}, Existing connections: ${data.existing_connections}`)
+      
+      // Redirect to Unipile's hosted auth page
+      // This will handle all authentication, 2FA, CAPTCHA, etc.
+      window.location.href = data.auth_url
+      
+    } catch (error) {
+      console.error('❌ Error initiating LinkedIn connection:', error)
+      setError(error instanceof Error ? error.message : 'Failed to connect LinkedIn')
+      setConnecting(false)
+    }
+  }
+
 
   useEffect(() => {
+    // Check for hosted auth status in URL parameters
+    const urlParams = new URLSearchParams(window.location.search)
+    const status = urlParams.get('status')
+    
+    if (status === 'success') {
+      console.log('✅ Hosted auth successful - refreshing accounts')
+      // Clear the URL parameter
+      const newUrl = window.location.pathname
+      window.history.replaceState({}, '', newUrl)
+    } else if (status === 'failed') {
+      console.log('❌ Hosted auth failed')
+      setError('LinkedIn connection failed. Please try again.')
+      // Clear the URL parameter
+      const newUrl = window.location.pathname
+      window.history.replaceState({}, '', newUrl)
+    }
+    
     fetchAccounts()
   }, [])
 
   const linkedInAccounts = accounts.filter(account => account.type === 'LINKEDIN')
   const hasLinkedInConnections = linkedInAccounts.length > 0
+
 
   return (
     <div className="container mx-auto p-6 max-w-4xl space-y-6">
@@ -167,9 +238,19 @@ export default function UnipileIntegrationPage() {
       ) : error ? (
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-              <p className="text-red-800">Error: {error}</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+                <p className="text-red-800">Error: {error}</p>
+              </div>
+              {error.includes('sign in') && (
+                <Button 
+                  onClick={() => window.location.href = '/signin'}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Sign In
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -196,10 +277,15 @@ export default function UnipileIntegrationPage() {
                 </p>
               </div>
               <Button 
-                onClick={() => setShowLinkedInModal(true)}
+                onClick={handleConnectLinkedIn}
+                disabled={connecting}
                 className="bg-[#0A66C2] hover:bg-[#084d94] text-white"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                {connecting ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4 mr-2" />
+                )}
                 Connect LinkedIn
               </Button>
             </div>
@@ -281,10 +367,15 @@ export default function UnipileIntegrationPage() {
                 Click the button below to connect your LinkedIn account and unlock SAM AI's full potential.
               </p>
               <Button 
-                onClick={() => setShowLinkedInModal(true)}
+                onClick={handleConnectLinkedIn}
+                disabled={connecting}
                 className="bg-[#0A66C2] hover:bg-[#084d94] text-white"
               >
-                <LinkedInLogo size={16} className="mr-2" />
+                {connecting ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <LinkedInLogo size={16} className="mr-2" />
+                )}
                 Connect LinkedIn Account
               </Button>
             </div>
@@ -294,185 +385,64 @@ export default function UnipileIntegrationPage() {
 
       {/* Connected Accounts */}
       {linkedInAccounts.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-[#0A66C2]">Connected LinkedIn Accounts</CardTitle>
-            <CardDescription>
-              Your active LinkedIn accounts integrated with SAM AI
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {linkedInAccounts.map((account) => (
-                <div key={account.id} className="flex items-center justify-between p-4 border border-[#0A66C2]/20 rounded-lg bg-[#0A66C2]/5">
-                  <div className="flex items-center gap-3">
-                    <LinkedInLogo size={32} className="text-[#0A66C2]" />
-                    <div>
-                      <div className="font-medium text-[#0A66C2]">{account.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        @{account.connection_params?.im?.publicIdentifier || account.connection_params?.im?.username}
-                      </div>
-                      {account.connection_params?.im?.premiumFeatures && (
-                        <div className="flex gap-1 mt-1">
-                          {account.connection_params.im.premiumFeatures.map((feature) => (
-                            <Badge key={feature} className="text-xs bg-[#0A66C2] text-white">
-                              {feature.replace('_', ' ')}
-                            </Badge>
-                          ))}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-[#0A66C2]">Connected LinkedIn Accounts</CardTitle>
+              <CardDescription>
+                Your active LinkedIn accounts integrated with SAM AI
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {linkedInAccounts.map((account) => (
+                  <div key={account.id} className="flex items-center justify-between p-4 border border-[#0A66C2]/20 rounded-lg bg-[#0A66C2]/5">
+                    <div className="flex items-center gap-3">
+                      <LinkedInLogo size={32} className="text-[#0A66C2]" />
+                      <div>
+                        <div className="font-medium text-[#0A66C2]">{account.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          @{account.connection_params?.im?.publicIdentifier || account.connection_params?.im?.username}
                         </div>
-                      )}
+                        {account.connection_params?.im?.premiumFeatures && (
+                          <div className="flex gap-1 mt-1">
+                            {account.connection_params.im.premiumFeatures.map((feature) => (
+                              <Badge key={feature} className="text-xs bg-[#0A66C2] text-white">
+                                {feature.replace('_', ' ')}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Badge 
+                        variant={account.sources[0]?.status === 'OK' ? 'default' : 'secondary'}
+                        className={account.sources[0]?.status === 'OK' ? 'bg-green-500 text-white' : ''}
+                      >
+                        {account.sources[0]?.status === 'OK' ? 'Active' : account.sources[0]?.status || 'Unknown'}
+                      </Badge>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Connected {new Date(account.created_at).toLocaleDateString()}
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <Badge 
-                      variant={account.sources[0]?.status === 'OK' ? 'default' : 'secondary'}
-                      className={account.sources[0]?.status === 'OK' ? 'bg-green-500 text-white' : ''}
-                    >
-                      {account.sources[0]?.status === 'OK' ? 'Active' : account.sources[0]?.status || 'Unknown'}
-                    </Badge>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Connected {new Date(account.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Proxy Location Indicator */}
+          <div>
+            <h3 className="text-lg font-semibold text-[#0A66C2] mb-2">Proxy Location</h3>
+            <p className="text-sm text-muted-foreground mb-3">
+              Your current Bright Data proxy location for LinkedIn scraping and messaging
+            </p>
+            <LocationIndicator />
+          </div>
+        </div>
       )}
 
-      {/* Coming Soon: Messaging Platforms */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-gray-600" />
-            Coming Soon: Multi-Platform Messaging
-          </CardTitle>
-          <CardDescription>
-            Connect your messaging accounts for unified prospect communication across all channels
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-3 gap-4">
-            {/* WhatsApp Coming Soon */}
-            <div className="relative p-4 border border-green-200 rounded-lg bg-green-50/50 opacity-75">
-              <div className="absolute top-2 right-2">
-                <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
-                  <Clock className="h-3 w-3 mr-1" />
-                  Coming Soon
-                </Badge>
-              </div>
-              <div className="flex items-center gap-3 mb-3">
-                <WhatsAppLogo size={32} className="text-green-600" />
-                <div>
-                  <h4 className="font-medium text-green-800">WhatsApp</h4>
-                  <p className="text-xs text-green-600">Most Requested Feature</p>
-                </div>
-              </div>
-              <div className="space-y-2 text-sm text-green-700">
-                <p>• Personal & Business messaging</p>
-                <p>• Voice notes & media support</p>
-                <p>• Group chat integration</p>
-                <p>• Global reach (2.8B users)</p>
-              </div>
-              <Button 
-                disabled 
-                className="w-full mt-3 bg-green-200 text-green-700 cursor-not-allowed"
-                size="sm"
-              >
-                <Bell className="h-4 w-4 mr-2" />
-                Notify Me
-              </Button>
-            </div>
-
-            {/* Telegram Coming Soon */}
-            <div className="relative p-4 border border-blue-200 rounded-lg bg-blue-50/50 opacity-75">
-              <div className="absolute top-2 right-2">
-                <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-xs">
-                  <Clock className="h-3 w-3 mr-1" />
-                  Coming Soon
-                </Badge>
-              </div>
-              <div className="flex items-center gap-3 mb-3">
-                <TelegramLogo size={32} className="text-blue-600" />
-                <div>
-                  <h4 className="font-medium text-blue-800">Telegram</h4>
-                  <p className="text-xs text-blue-600">Tech Community Focus</p>
-                </div>
-              </div>
-              <div className="space-y-2 text-sm text-blue-700">
-                <p>• Channel & bot integration</p>
-                <p>• Crypto/tech communities</p>
-                <p>• Secure messaging</p>
-                <p>• Developer-friendly APIs</p>
-              </div>
-              <Button 
-                disabled 
-                className="w-full mt-3 bg-blue-200 text-blue-700 cursor-not-allowed"
-                size="sm"
-              >
-                <Bell className="h-4 w-4 mr-2" />
-                Notify Me
-              </Button>
-            </div>
-
-            {/* Twitter Coming Soon */}
-            <div className="relative p-4 border border-sky-200 rounded-lg bg-sky-50/50 opacity-75">
-              <div className="absolute top-2 right-2">
-                <Badge variant="secondary" className="bg-sky-100 text-sky-700 text-xs">
-                  <Clock className="h-3 w-3 mr-1" />
-                  Coming Soon
-                </Badge>
-              </div>
-              <div className="flex items-center gap-3 mb-3">
-                <TwitterLogo size={32} className="text-sky-600" />
-                <div>
-                  <h4 className="font-medium text-sky-800">Twitter</h4>
-                  <p className="text-xs text-sky-600">Professional Networking</p>
-                </div>
-              </div>
-              <div className="space-y-2 text-sm text-sky-700">
-                <p>• Direct messaging</p>
-                <p>• Tweet monitoring</p>
-                <p>• B2B networking</p>
-                <p>• Real-time engagement</p>
-              </div>
-              <Button 
-                disabled 
-                className="w-full mt-3 bg-sky-200 text-sky-700 cursor-not-allowed"
-                size="sm"
-              >
-                <Bell className="h-4 w-4 mr-2" />
-                Notify Me
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <MessageSquare className="h-4 w-4 text-blue-600" />
-              </div>
-              <div>
-                <h5 className="font-medium text-gray-900 mb-2">Unified Messaging Hub</h5>
-                <p className="text-sm text-gray-700 mb-3">
-                  SAM AI will soon connect all your messaging platforms for seamless prospect communication. 
-                  Manage LinkedIn, WhatsApp, Telegram, and Twitter conversations in one unified inbox.
-                </p>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  <Badge variant="outline" className="text-xs">Cross-platform context</Badge>
-                  <Badge variant="outline" className="text-xs">AI-powered responses</Badge>
-                  <Badge variant="outline" className="text-xs">Unified contact management</Badge>
-                  <Badge variant="outline" className="text-xs">Global market reach</Badge>
-                </div>
-                <p className="text-xs text-gray-600">
-                  <strong>Early Access:</strong> Sign up to be notified when messaging integrations become available.
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Help & Support */}
       <Card>
@@ -505,15 +475,6 @@ export default function UnipileIntegrationPage() {
         </CardContent>
       </Card>
 
-      {/* LinkedIn Onboarding Modal */}
-      <LinkedInOnboarding
-        isOpen={showLinkedInModal}
-        onClose={() => setShowLinkedInModal(false)}
-        onComplete={() => {
-          setShowLinkedInModal(false)
-          fetchAccounts() // Refresh the accounts after connection
-        }}
-      />
     </div>
   )
 }
