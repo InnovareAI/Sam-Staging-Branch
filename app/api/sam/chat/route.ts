@@ -38,6 +38,446 @@ async function callOpenRouter(messages: any[], systemPrompt: string) {
   return data.choices[0]?.message?.content || 'I apologize, but I had trouble processing that request.';
 }
 
+// RAG Knowledge Retrieval function
+async function retrieveRelevantKnowledge(userMessage: string, currentUser: any, supabase: any) {
+  try {
+    // Get user's current workspace
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('current_workspace_id')
+      .eq('id', currentUser.id)
+      .single();
+
+    const workspaceId = userProfile?.current_workspace_id;
+    if (!workspaceId) {
+      return [];
+    }
+
+    // Extract keywords from user message for search
+    const searchTerms = extractSearchKeywords(userMessage);
+    if (searchTerms.length === 0) {
+      return [];
+    }
+
+    // Build search query for Knowledge Base content
+    const searchQuery = searchTerms.join(' | '); // OR search across terms
+    
+    // Search Knowledge Base content using PostgreSQL full-text search
+    const { data: kbResults, error: kbError } = await supabase
+      .rpc('search_knowledge_base_sections', {
+        p_workspace_id: workspaceId,
+        p_search_query: searchQuery,
+        p_section_filter: null
+      });
+
+    if (kbError) {
+      console.error('Knowledge Base search error:', kbError);
+      return [];
+    }
+
+    // Also search saved conversations for similar discussions
+    const { data: conversationResults, error: convError } = await supabase
+      .from('knowledge_base_content')
+      .select('id, title, content, section_id, tags, metadata')
+      .eq('workspace_id', workspaceId)
+      .eq('is_active', true)
+      .contains('tags', ['sam-conversation'])
+      .textSearch('content', searchTerms.join(' & '), {
+        type: 'websearch',
+        config: 'english'
+      })
+      .limit(3);
+
+    if (convError) {
+      console.error('Conversation search error:', convError);
+    }
+
+    // Combine and rank results
+    const allResults = [];
+    
+    // Add KB results
+    if (kbResults && kbResults.length > 0) {
+      allResults.push(...kbResults.slice(0, 5).map(item => ({
+        title: item.title,
+        snippet: item.content_snippet,
+        section_id: item.section_id,
+        tags: [],
+        source: 'knowledge_base',
+        rank: item.rank || 0
+      })));
+    }
+
+    // Add conversation results
+    if (conversationResults && conversationResults.length > 0) {
+      allResults.push(...conversationResults.map(item => ({
+        title: item.title,
+        snippet: extractConversationSnippet(item.content, userMessage),
+        section_id: item.section_id,
+        tags: item.tags || [],
+        source: 'conversation',
+        rank: 0.8 // Slightly lower rank for conversations
+      })));
+    }
+
+    // Sort by relevance and return top results
+    return allResults
+      .sort((a, b) => b.rank - a.rank)
+      .slice(0, 4); // Return top 4 most relevant items
+
+  } catch (error) {
+    console.error('Error in retrieveRelevantKnowledge:', error);
+    return [];
+  }
+}
+
+// Helper function to extract search keywords from user message
+function extractSearchKeywords(message: string) {
+  const lowerMessage = message.toLowerCase();
+  
+  // Remove common stop words
+  const stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'about', 'how', 'what', 'when', 'where', 'why', 'who'];
+  
+  // Extract meaningful words (3+ characters)
+  const words = lowerMessage
+    .replace(/[^\w\s]/g, ' ') // Remove punctuation
+    .split(/\s+/)
+    .filter(word => word.length >= 3 && !stopWords.includes(word))
+    .slice(0, 10); // Limit to top 10 terms
+  
+  return words;
+}
+
+// Helper function to extract relevant snippet from conversation content
+function extractConversationSnippet(content: any, userMessage: string) {
+  try {
+    if (typeof content === 'string') {
+      return content.substring(0, 200) + '...';
+    }
+    
+    if (content && typeof content === 'object') {
+      if (content.user_message && content.assistant_response) {
+        return `Q: ${content.user_message.substring(0, 100)}... A: ${content.assistant_response.substring(0, 100)}...`;
+      }
+      if (content.title) {
+        return content.title;
+      }
+    }
+    
+    return 'Relevant conversation found';
+  } catch (error) {
+    return 'Knowledge base content';
+  }
+}
+
+// Enhanced conversation analysis and labeling system
+function analyzeConversationContent(userMessage: string, assistantResponse: string) {
+  const combinedText = (userMessage + ' ' + assistantResponse).toLowerCase();
+  
+  // Define categorization patterns with confidence weighting
+  const categories = {
+    icp: {
+      keywords: ['icp', 'ideal customer', 'target audience', 'buyer persona', 'customer profile', 'target market'],
+      phrases: ['who should we target', 'ideal customer profile', 'target demographic'],
+      weight: 1.0
+    },
+    products: {
+      keywords: ['product', 'feature', 'solution', 'offering', 'service', 'tool', 'platform'],
+      phrases: ['our product', 'product features', 'what we offer', 'our solution'],
+      weight: 0.9
+    },
+    competition: {
+      keywords: ['competitor', 'compete', 'rival', 'alternative', 'vs', 'compared to', 'better than'],
+      phrases: ['competitive advantage', 'against competitors', 'competitive analysis'],
+      weight: 0.95
+    },
+    pricing: {
+      keywords: ['price', 'cost', 'budget', 'pricing', 'expensive', 'cheap', 'roi', 'value'],
+      phrases: ['how much', 'pricing model', 'cost structure', 'return on investment'],
+      weight: 0.9
+    },
+    messaging: {
+      keywords: ['message', 'communicate', 'outreach', 'email', 'linkedin', 'pitch', 'template'],
+      phrases: ['how to say', 'messaging strategy', 'communication approach'],
+      weight: 0.85
+    },
+    objections: {
+      keywords: ['objection', 'concern', 'hesitation', 'doubt', 'worry', 'risk', 'challenge'],
+      phrases: ['what if they say', 'common objections', 'handle objections'],
+      weight: 0.9
+    },
+    process: {
+      keywords: ['process', 'workflow', 'steps', 'stages', 'pipeline', 'methodology'],
+      phrases: ['sales process', 'how to', 'step by step'],
+      weight: 0.8
+    },
+    company: {
+      keywords: ['company', 'team', 'organization', 'culture', 'values', 'mission'],
+      phrases: ['about us', 'our company', 'our team'],
+      weight: 0.7
+    }
+  };
+
+  // Calculate scores for each category
+  const scores = {};
+  const detectedLabels = [];
+  
+  for (const [category, config] of Object.entries(categories)) {
+    let score = 0;
+    
+    // Check keywords
+    for (const keyword of config.keywords) {
+      if (combinedText.includes(keyword)) {
+        score += config.weight * 0.5;
+        detectedLabels.push(keyword);
+      }
+    }
+    
+    // Check phrases (higher weight)
+    for (const phrase of config.phrases) {
+      if (combinedText.includes(phrase)) {
+        score += config.weight * 1.0;
+        detectedLabels.push(phrase.replace(/\s+/g, '-'));
+      }
+    }
+    
+    scores[category] = score;
+  }
+
+  // Find primary category
+  const primaryCategory = Object.keys(scores).reduce((a, b) => scores[a] > scores[b] ? a : b);
+  const maxScore = scores[primaryCategory];
+  const confidence = Math.min(maxScore / 2.0, 1.0); // Normalize confidence
+  
+  // Detect conversation mode based on SAM's design patterns
+  let conversationMode = 'general';
+  const modeLabels = [];
+  
+  if (combinedText.includes('hey') || combinedText.includes('hello') || combinedText.includes('how are') || 
+      combinedText.includes('business') || combinedText.includes('tell me about')) {
+    conversationMode = 'onboarding';
+    modeLabels.push('onboarding-mode');
+  } else if (combinedText.includes('what makes') || combinedText.includes('different') || combinedText.includes('apollo') ||
+             combinedText.includes('vs') || combinedText.includes('compare') || combinedText.includes('features')) {
+    conversationMode = 'product-qa';
+    modeLabels.push('product-qa-mode');
+  } else if (combinedText.includes('launch') || combinedText.includes('campaign') || combinedText.includes('readiness') ||
+             combinedText.includes('setup') || combinedText.includes('start')) {
+    conversationMode = 'campaign';
+    modeLabels.push('campaign-mode');
+  } else if (combinedText.includes('too many') || combinedText.includes('overwhelmed') || combinedText.includes('confused') ||
+             combinedText.includes('reset') || combinedText.includes('contradictory')) {
+    conversationMode = 'repair';
+    modeLabels.push('repair-mode');
+  }
+
+  // Generate additional contextual labels
+  const contextLabels = [];
+  if (combinedText.includes('linkedin')) contextLabels.push('linkedin');
+  if (combinedText.includes('email')) contextLabels.push('email');
+  if (combinedText.includes('prospecting')) contextLabels.push('prospecting');
+  if (combinedText.includes('outreach')) contextLabels.push('outreach');
+  if (combinedText.includes('sales')) contextLabels.push('sales');
+  if (combinedText.includes('lead')) contextLabels.push('lead');
+  if (combinedText.includes('qualify')) contextLabels.push('qualification');
+  if (combinedText.includes('demo')) contextLabels.push('demo');
+  if (combinedText.includes('proposal')) contextLabels.push('proposal');
+  if (combinedText.includes('follow up') || combinedText.includes('follow-up')) contextLabels.push('follow-up');
+  
+  // Add error handling detection labels
+  if (combinedText.includes('contradiction') || combinedText.includes('different answer')) contextLabels.push('contradiction');
+  if (combinedText.includes('vague') || combinedText.includes('unclear')) contextLabels.push('vague-answer');
+  if (combinedText.includes('overwhelm') || combinedText.includes('too much')) contextLabels.push('overwhelm');
+  if (combinedText.includes('off topic') || combinedText.includes('different subject')) contextLabels.push('off-topic');
+
+  // Determine content type based on primary category
+  let contentType = 'conversation';
+  switch (primaryCategory) {
+    case 'icp':
+      contentType = 'icp_discussion';
+      break;
+    case 'products':
+      contentType = 'product_discussion';
+      break;
+    case 'competition':
+      contentType = 'competitive_discussion';
+      break;
+    case 'pricing':
+      contentType = 'pricing_discussion';
+      break;
+    case 'messaging':
+      contentType = 'messaging_discussion';
+      break;
+    case 'objections':
+      contentType = 'objection_handling';
+      break;
+    case 'process':
+      contentType = 'process_discussion';
+      break;
+    default:
+      contentType = 'general_conversation';
+  }
+
+  // Default to documents section if no strong category match
+  const finalSection = maxScore > 0.5 ? primaryCategory : 'documents';
+  
+  return {
+    primarySection: finalSection,
+    contentType: contentType,
+    confidence: confidence,
+    conversationMode: conversationMode,
+    labels: [...new Set([...detectedLabels, ...contextLabels, ...modeLabels])], // Remove duplicates
+    categoryScores: scores,
+    analysis: {
+      messageLength: userMessage.length + assistantResponse.length,
+      hasQuestions: combinedText.includes('?'),
+      hasFiles: false, // Will be updated by caller
+      sentiment: combinedText.includes('help') || combinedText.includes('great') ? 'positive' : 'neutral',
+      conversationMode: conversationMode
+    }
+  };
+}
+
+// Helper function to save important conversations to Knowledge Base
+async function saveConversationToKnowledgeBase(
+  currentUser: any,
+  userMessage: string,
+  assistantResponse: string,
+  knowledgeClassification: any,
+  uploadResults: any[],
+  supabase: any
+) {
+  try {
+    // Only save conversations with meaningful content to KB
+    const messageLength = userMessage.length + assistantResponse.length;
+    const hasSignificantContent = messageLength > 50; // Basic filter
+    const hasKnowledgeValue = knowledgeClassification?.classification_confidence > 0.3;
+    const hasFiles = uploadResults.length > 0;
+    
+    if (!hasSignificantContent && !hasKnowledgeValue && !hasFiles) {
+      console.log('🚫 Skipping KB save: conversation lacks significant content');
+      return;
+    }
+
+    // Get user's current workspace
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('current_workspace_id')
+      .eq('id', currentUser.id)
+      .single();
+
+    const workspaceId = userProfile?.current_workspace_id;
+    if (!workspaceId) {
+      console.log('🚫 No workspace found for user, skipping KB save');
+      return;
+    }
+
+    // Enhanced conversation categorization system
+    const conversationLabeler = analyzeConversationContent(userMessage, assistantResponse);
+    let sectionId = conversationLabeler.primarySection;
+    let contentType = conversationLabeler.contentType;
+    
+    // Get additional labels and confidence scores
+    const labels = conversationLabeler.labels;
+    const confidence = conversationLabeler.confidence;
+
+    // Create conversation title from first few words of user message
+    const words = userMessage.split(' ').slice(0, 8);
+    const title = words.length > 7 ? `${words.join(' ')}...` : words.join(' ');
+
+    // Format conversation content as JSONB structure
+    const conversationContent = {
+      type: 'conversation',
+      title: title,
+      user_message: userMessage,
+      assistant_response: assistantResponse,
+      timestamp: new Date().toISOString(),
+      files_uploaded: uploadResults.map(result => ({
+        filename: result.originalName,
+        category: result.category,
+        size: result.size || 0
+      })),
+      categorization: {
+        primary_section: sectionId,
+        content_type: contentType,
+        labels: labels,
+        confidence: confidence,
+        auto_categorized: true
+      },
+      metadata: {
+        conversation_length: userMessage.length + assistantResponse.length,
+        has_files: uploadResults.length > 0,
+        classification_confidence: knowledgeClassification?.classification_confidence || 0
+      }
+    };
+
+    // Enhanced tag generation system
+    const baseTags = ['sam-conversation', 'auto-saved'];
+    
+    // Add file-related tags
+    if (hasFiles) baseTags.push('has-files');
+    
+    // Add privacy/security tags
+    if (knowledgeClassification?.personal_data && Object.keys(knowledgeClassification.personal_data).length > 0) {
+      baseTags.push('contains-personal-data');
+    }
+    if (knowledgeClassification?.team_shareable && Object.keys(knowledgeClassification.team_shareable).length > 0) {
+      baseTags.push('team-shareable');
+    }
+
+    // Add all detected labels as tags
+    if (labels && labels.length > 0) {
+      baseTags.push(...labels);
+    }
+
+    // Add confidence-based tags
+    if (confidence > 0.8) baseTags.push('high-confidence');
+    else if (confidence > 0.5) baseTags.push('medium-confidence');
+    else baseTags.push('low-confidence');
+
+    // Save to Knowledge Base
+    const { data: kbContent, error: kbError } = await supabase
+      .from('knowledge_base_content')
+      .insert({
+        workspace_id: workspaceId,
+        section_id: sectionId,
+        content_type: contentType,
+        title: title || 'SAM Conversation',
+        content: conversationContent,
+        metadata: {
+          conversation_type: 'sam_chat',
+          user_id: currentUser.id,
+          user_email: currentUser.email,
+          message_length: messageLength,
+          files_uploaded: uploadResults.length,
+          classification_confidence: knowledgeClassification?.classification_confidence || 0,
+          auto_saved: true,
+          saved_at: new Date().toISOString()
+        },
+        tags: baseTags,
+        is_active: true,
+        created_by: currentUser.id
+      })
+      .select()
+      .single();
+
+    if (kbError) {
+      console.error('❌ Error saving conversation to KB:', kbError);
+    } else {
+      console.log(`✅ Conversation saved to Knowledge Base:`, {
+        title: title,
+        section: sectionId,
+        content_type: contentType,
+        kb_id: kbContent.id,
+        tags: baseTags.length
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Error in saveConversationToKnowledgeBase:', error);
+    // Don't throw - this should not break the main conversation flow
+  }
+}
+
 // Use shared supabase admin client
 
 export async function POST(req: NextRequest) {
@@ -74,14 +514,162 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    const body = await req.json();
-    const { message, conversationHistory = [], loadMemory = true } = body;
+    // Check if this is a file upload request
+    const contentType = req.headers.get('content-type');
+    let message, conversationHistory = [], loadMemory = true, files = [];
+    
+    if (contentType?.includes('multipart/form-data')) {
+      // Handle file upload
+      const formData = await req.formData();
+      message = formData.get('message') as string;
+      const conversationHistoryStr = formData.get('conversationHistory') as string;
+      const loadMemoryStr = formData.get('loadMemory') as string;
+      
+      if (conversationHistoryStr) {
+        try {
+          conversationHistory = JSON.parse(conversationHistoryStr);
+        } catch (e) {
+          console.error('Failed to parse conversation history:', e);
+        }
+      }
+      
+      loadMemory = loadMemoryStr !== 'false';
+      
+      // Extract uploaded files
+      for (const [key, value] of formData.entries()) {
+        if (key.startsWith('file_') && value instanceof File) {
+          files.push(value);
+        }
+      }
+    } else {
+      // Handle regular JSON request
+      const body = await req.json();
+      ({ message, conversationHistory = [], loadMemory = true } = body);
+    }
 
-    if (!message) {
+    if (!message && files.length === 0) {
       return NextResponse.json(
-        { error: 'Message is required' }, 
+        { error: 'Message or file is required' }, 
         { status: 400 }
       );
+    }
+
+    // Process uploaded files if any
+    let uploadResults = [];
+    if (files.length > 0 && currentUser) {
+      console.log(`📁 Processing ${files.length} uploaded files for user ${currentUser.email}`);
+      
+      // Get user's current workspace for file uploads
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('current_workspace_id')
+        .eq('id', currentUser.id)
+        .single();
+
+      const workspaceId = userProfile?.current_workspace_id;
+      
+      if (workspaceId) {
+        for (const file of files) {
+          try {
+            const text = await file.text();
+            const fileName = file.name;
+            const fileSize = file.size;
+            
+            // Determine section based on file type or name
+            let sectionId = null;
+            let contentType = 'document';
+            
+            // Smart categorization based on filename
+            const lowerName = fileName.toLowerCase();
+            if (lowerName.includes('price') || lowerName.includes('cost')) {
+              contentType = 'pricing';
+            } else if (lowerName.includes('product') || lowerName.includes('feature')) {
+              contentType = 'product';
+            } else if (lowerName.includes('competitor') || lowerName.includes('compete')) {
+              contentType = 'competitive';
+            } else if (lowerName.includes('case') || lowerName.includes('success')) {
+              contentType = 'success_story';
+            } else if (lowerName.includes('company') || lowerName.includes('about')) {
+              contentType = 'company_info';
+            } else if (lowerName.includes('message') || lowerName.includes('template')) {
+              contentType = 'messaging';
+            }
+
+            // Get section ID for the content type
+            const { data: section } = await supabase
+              .from('knowledge_base_sections')
+              .select('id')
+              .eq('workspace_id', workspaceId)
+              .eq('slug', contentType)
+              .single();
+
+            sectionId = section?.id;
+
+            // If no specific section found, use documents section
+            if (!sectionId) {
+              const { data: documentsSection } = await supabase
+                .from('knowledge_base_sections')
+                .select('id')
+                .eq('workspace_id', workspaceId)
+                .eq('slug', 'documents')
+                .single();
+              sectionId = documentsSection?.id;
+            }
+
+            if (sectionId) {
+              // Save to Knowledge Base
+              const { data: content, error: insertError } = await supabase
+                .from('knowledge_base_content')
+                .insert({
+                  workspace_id: workspaceId,
+                  section_id: sectionId,
+                  content_type: contentType,
+                  title: fileName.replace(/\.[^/.]+$/, ''), // Remove extension
+                  content: text,
+                  metadata: {
+                    filename: fileName,
+                    file_size: fileSize,
+                    uploaded_at: new Date().toISOString(),
+                    uploaded_by: currentUser.id,
+                    uploaded_via: 'sam_chat',
+                    tags: ['chat_uploaded', contentType]
+                  },
+                  tags: ['chat_uploaded', contentType],
+                  is_active: true,
+                  created_by: currentUser.id
+                })
+                .select()
+                .single();
+
+              if (!insertError) {
+                uploadResults.push({
+                  filename: fileName,
+                  size: fileSize,
+                  contentType: contentType,
+                  saved: true,
+                  id: content.id
+                });
+                console.log(`✅ Saved ${fileName} to Knowledge Base section: ${contentType}`);
+              } else {
+                console.error(`❌ Failed to save ${fileName}:`, insertError);
+                uploadResults.push({
+                  filename: fileName,
+                  size: fileSize,
+                  saved: false,
+                  error: insertError.message
+                });
+              }
+            }
+          } catch (error) {
+            console.error(`❌ Error processing file ${file.name}:`, error);
+            uploadResults.push({
+              filename: file.name,
+              saved: false,
+              error: error.message
+            });
+          }
+        }
+      }
     }
 
     // Load previous conversation history if user is authenticated and memory is requested
@@ -118,6 +706,26 @@ export async function POST(req: NextRequest) {
       } catch (error) {
         console.error('Error loading conversation memory:', error);
         // Continue without memory if there's an error
+      }
+    }
+
+    // 🔍 RAG KNOWLEDGE RETRIEVAL: Search Knowledge Base for relevant context
+    let knowledgeContext = '';
+    if (currentUser && message) {
+      const ragContext = await retrieveRelevantKnowledge(message, currentUser, supabase);
+      if (ragContext.length > 0) {
+        knowledgeContext = `
+
+=== RELEVANT KNOWLEDGE BASE CONTEXT ===
+${ragContext.map(item => `**${item.title}** (${item.section_id}):
+${item.snippet}
+Tags: ${item.tags.join(', ')}
+`).join('\n')}
+=== END KNOWLEDGE BASE CONTEXT ===
+
+Use this knowledge to provide more accurate, contextual responses. Reference specific information when relevant.`;
+        
+        console.log(`🔍 Retrieved ${ragContext.length} relevant KB items for context`);
       }
     }
 
@@ -305,6 +913,31 @@ Ask these questions one at a time:
 - **Sales Process**: Discovery methodologies (BANT, MEDDIC), objection handling, closing techniques
 - **Pipeline Management**: Opportunity progression, forecasting, deal risk assessment
 - **CRM Strategy**: Data hygiene, automation workflows, sales enablement integration
+
+## FILE UPLOAD CAPABILITIES 📁
+
+You can now receive and process file uploads directly in chat! When users upload files:
+
+**Automatic Processing:**
+- Files are automatically saved to the Knowledge Base
+- Smart categorization based on filename (pricing, products, competitive, etc.)
+- Content is indexed for future retrieval and context
+
+**File Types Supported:**
+- Text documents (.txt, .md)
+- PDF files (content extracted)
+- Word documents (.docx)
+- Spreadsheets (.csv, .xlsx)
+- Any text-based file
+
+**How to Respond to File Uploads:**
+- Acknowledge the upload with enthusiasm
+- Summarize what was uploaded and where it was categorized
+- Offer to help analyze, organize, or use the content
+- Suggest next steps based on the file type
+
+**Example Responses:**
+"Great! I've saved your pricing guide to the Knowledge Base under the Pricing section. This will help me provide accurate pricing information in future conversations. Would you like me to analyze the pricing structure or help create talking points from this document?"
 
 ## REAL-TIME RESEARCH CAPABILITIES 🔍
 
@@ -521,10 +1154,36 @@ This way you can build a comprehensive ICP database over time without losing any
       content: msg.content
     }));
 
+    // Build user message content including file upload information
+    let userMessageContent = message || '';
+    
+    if (uploadResults.length > 0) {
+      const successfulUploads = uploadResults.filter(r => r.saved);
+      const failedUploads = uploadResults.filter(r => !r.saved);
+      
+      if (successfulUploads.length > 0) {
+        userMessageContent += `\n\n📁 Files uploaded to Knowledge Base:\n`;
+        successfulUploads.forEach(upload => {
+          userMessageContent += `• ${upload.filename} → ${upload.contentType} section\n`;
+        });
+      }
+      
+      if (failedUploads.length > 0) {
+        userMessageContent += `\n⚠️ Failed uploads:\n`;
+        failedUploads.forEach(upload => {
+          userMessageContent += `• ${upload.filename}: ${upload.error}\n`;
+        });
+      }
+      
+      if (!message) {
+        userMessageContent = `I uploaded ${uploadResults.length} file(s) to the Knowledge Base.`;
+      }
+    }
+
     // Add current message
     messages.push({
       role: 'user',
-      content: message
+      content: userMessageContent
     });
 
     // Check for LinkedIn URLs and trigger prospect intelligence if found
@@ -564,6 +1223,11 @@ This way you can build a comprehensive ICP database over time without losing any
     try {
       // Enhanced system prompt with prospect intelligence and ICP context if available
       let enhancedSystemPrompt = systemPrompt;
+      
+      // Add Knowledge Base context if available
+      if (knowledgeContext) {
+        enhancedSystemPrompt += knowledgeContext;
+      }
       
       // Add ICP research context if transitioning
       if (scriptPosition === 'icpResearchTransition') {
@@ -727,14 +1391,16 @@ Acknowledge this naturally and offer to help with prospect research and outreach
         .insert({
           user_id: currentUser ? currentUser.id : null,
           organization_id: organizationId,
-          message: message,
+          message: userMessageContent,
           response: response,
           metadata: {
             scriptPosition,
             scriptProgress,
             timestamp: new Date().toISOString(),
             userType: currentUser ? 'authenticated' : 'anonymous',
-            sessionId: currentUser ? currentUser.id : `anonymous_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            sessionId: currentUser ? currentUser.id : `anonymous_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            filesUploaded: uploadResults.length,
+            uploadResults: uploadResults
           },
           knowledge_classification: knowledgeClassification,
           privacy_tags: privacyTags,
@@ -765,6 +1431,17 @@ Acknowledge this naturally and offer to help with prospect research and outreach
             } else {
               console.log(`⚠️ Knowledge extraction failed for conversation ${conversationId}:`, extractionResult.error);
             }
+
+            // 📚 SAVE CONVERSATION TO KNOWLEDGE BASE: Auto-save important conversations
+            await saveConversationToKnowledgeBase(
+              currentUser,
+              userMessageContent,
+              response,
+              knowledgeClassification,
+              uploadResults,
+              supabase
+            );
+
           } catch (asyncError) {
             console.log(`❌ Async knowledge extraction error for conversation ${conversationId}:`, asyncError);
           }
