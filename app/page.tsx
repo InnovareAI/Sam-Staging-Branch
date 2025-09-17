@@ -381,6 +381,12 @@ export default function Page() {
       icon: Brain,
     },
     {
+      id: 'approvals',
+      label: 'Approvals',
+      description: 'Review prospects and automate handoffs',
+      icon: CheckSquare,
+    },
+    {
       id: 'campaign',
       label: 'Campaign Hub',
       description: 'Plan multi-channel outreach with Sam',
@@ -421,12 +427,6 @@ export default function Page() {
       label: 'Workspaces',
       description: 'Organize teams, tenants, and invitations',
       icon: Building2,
-    },
-    {
-      id: 'approvals',
-      label: 'Approvals',
-      description: 'Review prospects and automate handoffs',
-      icon: CheckSquare,
     },
     ...(isSuperAdmin
       ? [

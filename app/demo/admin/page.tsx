@@ -7,6 +7,15 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
+import { Progress } from '@/components/ui/progress'
 import { 
   Shield, 
   Users, 
@@ -27,21 +36,78 @@ import {
   Mail,
   Settings,
   Crown,
-  Sparkles
+  Sparkles,
+  Search,
+  Filter,
+  Download,
+  Upload,
+  Eye,
+  Edit,
+  Trash2,
+  Plus,
+  RefreshCw,
+  Calendar,
+  Clock,
+  DollarSign,
+  MessageSquare,
+  Briefcase,
+  Shield as ShieldIcon,
+  AlertCircle,
+  Info,
+  FileText,
+  HardDrive,
+  Cpu,
+  Wifi,
+  Smartphone,
+  Monitor
 } from 'lucide-react'
 
 export default function DemoSuperAdminPage() {
   const [activeTab, setActiveTab] = useState('dashboard')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedFilter, setSelectedFilter] = useState('all')
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  
   const [systemStats, setSystemStats] = useState({
     totalUsers: 1247,
     activeUsers: 892,
     systemHealth: 98.5,
     apiCalls: 45231,
     storage: 78.2,
-    totalWorkspaces: 0
+    totalWorkspaces: 0,
+    totalRevenue: 127500,
+    monthlyGrowth: 23.5,
+    avgResponseTime: 150,
+    uptime: 99.97
   })
+  
   const [workspaces, setWorkspaces] = useState([])
   const [workspacesLoading, setWorkspacesLoading] = useState(true)
+  
+  // Enhanced mock data for demonstrations
+  const [mockUsers] = useState([
+    { id: 1, name: 'John Smith', email: 'john@acme.com', workspace: 'Acme Corp', plan: 'Enterprise', status: 'active', lastActive: '2 hours ago', joinDate: '2024-01-15' },
+    { id: 2, name: 'Sarah Johnson', email: 'sarah@techstart.io', workspace: 'TechStart', plan: 'SME', status: 'active', lastActive: '5 minutes ago', joinDate: '2024-02-20' },
+    { id: 3, name: 'Mike Chen', email: 'mike@innovate.co', workspace: 'Innovate Co', plan: 'Startup', status: 'inactive', lastActive: '3 days ago', joinDate: '2024-03-10' },
+    { id: 4, name: 'Emily Davis', email: 'emily@globaltech.com', workspace: 'GlobalTech', plan: 'Enterprise', status: 'active', lastActive: '1 hour ago', joinDate: '2024-01-05' },
+    { id: 5, name: 'Alex Rodriguez', email: 'alex@startup.io', workspace: 'Startup Hub', plan: 'Startup', status: 'active', lastActive: '30 minutes ago', joinDate: '2024-03-25' }
+  ])
+  
+  const [mockSystemEvents] = useState([
+    { id: 1, type: 'security', level: 'high', message: 'Failed login attempts detected from IP 192.168.1.100', timestamp: '2024-09-17 14:30:00', status: 'resolved' },
+    { id: 2, type: 'system', level: 'medium', message: 'Database backup completed successfully', timestamp: '2024-09-17 13:45:00', status: 'completed' },
+    { id: 3, type: 'user', level: 'low', message: 'New workspace created: TechVenture Inc', timestamp: '2024-09-17 12:20:00', status: 'active' },
+    { id: 4, type: 'performance', level: 'medium', message: 'API response time above threshold: 250ms', timestamp: '2024-09-17 11:15:00', status: 'monitoring' },
+    { id: 5, type: 'billing', level: 'high', message: 'Payment failed for Enterprise customer', timestamp: '2024-09-17 10:30:00', status: 'pending' }
+  ])
+  
+  const [mockAuditLogs] = useState([
+    { id: 1, user: 'admin@innovareai.com', action: 'User deleted', target: 'user:12345', ip: '192.168.1.50', timestamp: '2024-09-17 15:20:00' },
+    { id: 2, user: 'john@acme.com', action: 'Workspace settings updated', target: 'workspace:acme-corp', ip: '203.0.113.45', timestamp: '2024-09-17 14:45:00' },
+    { id: 3, user: 'system', action: 'Automated backup', target: 'database:primary', ip: 'localhost', timestamp: '2024-09-17 13:00:00' },
+    { id: 4, user: 'sarah@techstart.io', action: 'Plan upgraded', target: 'subscription:ts-001', ip: '198.51.100.25', timestamp: '2024-09-17 12:30:00' },
+    { id: 5, user: 'admin@innovareai.com', action: 'Security scan initiated', target: 'system:security', ip: '192.168.1.50', timestamp: '2024-09-17 11:00:00' }
+  ])
 
   // Real-time counter animation
   const [animatedStats, setAnimatedStats] = useState(systemStats)
