@@ -21,7 +21,7 @@ async function sendEmail(to: string, subject: string, htmlBody: string) {
       'X-Postmark-Server-Token': process.env.POSTMARK_SERVER_TOKEN,
     },
     body: JSON.stringify({
-      From: process.env.POSTMARK_FROM_EMAIL || 'noreply@innovareai.com',
+      From: process.env.POSTMARK_FROM_EMAIL || 'Sarah Powell <sarah@innovareai.com>',
       To: to,
       Subject: subject,
       HtmlBody: htmlBody,

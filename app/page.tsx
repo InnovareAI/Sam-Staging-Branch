@@ -381,12 +381,6 @@ export default function Page() {
       icon: Brain,
     },
     {
-      id: 'approvals',
-      label: 'Approvals',
-      description: 'Review prospects and automate handoffs',
-      icon: CheckSquare,
-    },
-    {
       id: 'campaign',
       label: 'Campaign Hub',
       description: 'Plan multi-channel outreach with Sam',
@@ -427,6 +421,12 @@ export default function Page() {
       label: 'Workspaces',
       description: 'Organize teams, tenants, and invitations',
       icon: Building2,
+    },
+    {
+      id: 'approvals',
+      label: 'Approvals',
+      description: 'Review prospects and automate handoffs',
+      icon: CheckSquare,
     },
     ...(isSuperAdmin
       ? [
@@ -1467,7 +1467,16 @@ export default function Page() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
                 {/* LinkedIn Integration */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer relative">
+                  <button 
+                    className="absolute top-3 right-3 text-gray-400 hover:text-gray-200 transition-colors opacity-0 group-hover:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Handle close/exit logic here
+                    }}
+                  >
+                    <X size={16} />
+                  </button>
                   <div className="flex items-center mb-4">
                     <LinkedinIcon className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">LinkedIn Settings</h2>
@@ -1484,7 +1493,16 @@ export default function Page() {
                 </div>
 
                 {/* Email Integration */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer relative">
+                  <button 
+                    className="absolute top-3 right-3 text-gray-400 hover:text-gray-200 transition-colors opacity-0 group-hover:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Handle close/exit logic here
+                    }}
+                  >
+                    <X size={16} />
+                  </button>
                   <div className="flex items-center mb-4">
                     <Mail className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">Email Integration</h2>
@@ -1501,7 +1519,16 @@ export default function Page() {
                 </div>
 
                 {/* Unipile Configuration */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer relative">
+                  <button 
+                    className="absolute top-3 right-3 text-gray-400 hover:text-gray-200 transition-colors opacity-0 group-hover:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Handle close/exit logic here
+                    }}
+                  >
+                    <X size={16} />
+                  </button>
                   <div className="flex items-center mb-4">
                     <Globe className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">Unipile Configuration</h2>
@@ -1518,7 +1545,16 @@ export default function Page() {
                 </div>
 
                 {/* Notification Settings */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer relative">
+                  <button 
+                    className="absolute top-3 right-3 text-gray-400 hover:text-gray-200 transition-colors opacity-0 group-hover:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Handle close/exit logic here
+                    }}
+                  >
+                    <X size={16} />
+                  </button>
                   <div className="flex items-center mb-4">
                     <Bell className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">Notifications</h2>

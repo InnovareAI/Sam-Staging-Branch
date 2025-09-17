@@ -11,6 +11,8 @@ const nextConfig = {
   },
   // For Netlify deployment with standalone output
   output: 'standalone',
+  // Set correct workspace root to silence warning
+  outputFileTracingRoot: __dirname,
   eslint: {
     ignoreDuringBuilds: true,
   },
