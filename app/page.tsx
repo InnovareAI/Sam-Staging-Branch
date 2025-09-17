@@ -370,13 +370,13 @@ export default function Page() {
   const menuItems = [
     {
       id: 'chat',
-      label: 'Assistant',
+      label: 'Agent',
       description: 'Collaborate with Sam in real time',
       icon: MessageCircle,
     },
     {
       id: 'knowledge',
-      label: 'Knowledge Base',
+      label: 'Knowledgebase',
       description: 'Curate training assets and product intel',
       icon: Brain,
     },
@@ -1251,7 +1251,7 @@ export default function Page() {
               style={{ objectPosition: 'center 30%' }}
             />
             <h1 className="text-3xl font-bold text-white mb-4">Welcome to SAM AI</h1>
-            <p className="text-gray-400 mb-8">Your AI-powered Sales Assistant Platform</p>
+            <p className="text-gray-400 mb-8">Your AI-powered Sales Agent Platform</p>
             <div className="space-y-4">
               <button 
                 onClick={() => {
@@ -1437,30 +1437,6 @@ export default function Page() {
               <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Workspace</p>
               <h1 className="mt-2 text-2xl font-semibold text-white">{activeSection.label}</h1>
               <p className="text-sm text-muted-foreground/90 lg:max-w-xl">{activeSection.description}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              {isSuperAdmin && (
-                <button
-                  type="button"
-                  onClick={() => setShowCreateWorkspace(true)}
-                  className="hidden items-center gap-2 rounded-lg border border-border/60 bg-surface-highlight/60 px-4 py-2 text-sm font-medium text-muted-foreground transition hover:border-border hover:text-white lg:flex"
-                >
-                  <Building2 size={16} />
-                  New Workspace
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  setInviteEmail('');
-                  setInviteWorkspaceId(null);
-                  setShowInviteUser(true);
-                }}
-                className="flex items-center gap-2 rounded-lg bg-primary/80 px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary"
-              >
-                <UserPlus size={16} />
-                Invite
-              </button>
             </div>
           </div>
         </div>
@@ -1715,7 +1691,7 @@ export default function Page() {
             </div>
           </div>
         ) : activeMenuItem === 'approvals' ? (
-          /* APPROVALS PAGE - Knowledge Base Style */
+          /* APPROVALS PAGE - Knowledgebase Style */
           <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
@@ -2232,7 +2208,7 @@ export default function Page() {
                 </div>
               </div>
 
-              {/* Campaign Management - Knowledge Base UI Style */}
+              {/* Campaign Management - Knowledgebase UI Style */}
               <div className="bg-gray-800 rounded-lg p-6 mb-6">
                 <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
                   <Zap className="mr-3 text-blue-400" size={28} />
@@ -3049,7 +3025,7 @@ export default function Page() {
           </div>
         ) : showStarterScreen ? (
           /* STARTER SCREEN */
-          <div className="flex-1 flex flex-col items-center justify-start pt-24 p-6">
+          <div className="flex-1 flex flex-col items-center justify-end pb-32 p-6">
             <div className="mb-12">
               <img 
                 src="/SAM.jpg" 

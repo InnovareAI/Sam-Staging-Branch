@@ -197,7 +197,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
               {showPasswordReset 
                 ? 'Enter your email to receive a password reset link'
                 : (mode === 'signin' 
-                  ? 'Sign in to your Sales Assistant Platform' 
+                  ? 'Sign in to your Sales Agent Platform' 
                   : 'Create your SAM AI account'
                 )
               }

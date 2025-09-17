@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
                 
                 <div class="footer">
                     <p>Best regards,<br><strong>The SAM AI Team</strong></p>
-                    <p style="color: #999; font-size: 12px;">SAM AI - Your AI-powered Sales Assistant Platform</p>
+                    <p style="color: #999; font-size: 12px;">SAM AI - Your AI-powered Sales Agent Platform</p>
                 </div>
             </div>
         </body>

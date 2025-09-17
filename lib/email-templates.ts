@@ -139,13 +139,13 @@ export function generateInvitationEmail(data: InvitationEmailData) {
       <div class="header">
         <img src="https://app.meet-sam.com/SAM.jpg" alt="SAM AI" class="logo">
         <h1>🎉 Welcome to SAM AI!</h1>
-        <p>You've been invited to join <strong class="company-signature">${branding.name}</strong>'s Sales Assistant Platform</p>
+        <p>You've been invited to join <strong class="company-signature">${branding.name}</strong>'s Sales Agent Platform</p>
       </div>
       
       <div class="content">
         <h2>Your SAM AI Account is Ready!</h2>
         <p>${greeting}</p>
-        <p>You've been invited to join <strong>${branding.name}</strong> on the SAM AI platform. SAM is your intelligent sales assistant that helps streamline your sales processes and boost productivity.</p>
+        <p>You've been invited to join <strong>${branding.name}</strong> on the SAM AI platform. SAM is your intelligent sales agent that helps streamline your sales processes and boost productivity.</p>
         ${data.workspaceName ? `<p><strong>Workspace:</strong> ${data.workspaceName}</p>` : ''}
         ${data.inviterName ? `<p><strong>Invited by:</strong> ${data.inviterName}</p>` : ''}
         
@@ -165,7 +165,7 @@ export function generateInvitationEmail(data: InvitationEmailData) {
           <a href="${data.invitationLink}" class="button">Accept Invitation & Get Started</a>
         </div>
         
-        <p><small>💡 <strong>Pro tip:</strong> Bookmark SAM AI for quick access to your sales assistant anytime.</small></p>
+        <p><small>💡 <strong>Pro tip:</strong> Bookmark SAM AI for quick access to your sales agent anytime.</small></p>
         <p><small>⏰ ${expirationText} If you have any questions, please contact your team administrator or reply to this email.</small></p>
       </div>
       
@@ -175,7 +175,7 @@ export function generateInvitationEmail(data: InvitationEmailData) {
         ${branding.name}</p>
         <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
         <p><small>This email was sent from SAM AI Platform. If you believe this was sent in error, please ignore this email.</small></p>
-        <p><small>SAM AI - Intelligent Sales Assistant Platform</small></p>
+        <p><small>SAM AI - Intelligent Sales Agent Platform</small></p>
       </div>
     </div>
   </div>
@@ -211,7 +211,7 @@ ${branding.name}
 
 ---
 This email was sent from SAM AI Platform.
-SAM AI - Intelligent Sales Assistant Platform
+SAM AI - Intelligent Sales Agent Platform
   `.trim();
 
   return {
@@ -489,7 +489,7 @@ export function generateWelcomeEmail(data: WelcomeEmailData) {
         <strong class="company-signature">${branding.fromName}</strong><br>
         ${branding.name}</p>
         <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
-        <p><small>SAM AI - Intelligent Sales Assistant Platform</small></p>
+        <p><small>SAM AI - Intelligent Sales Agent Platform</small></p>
       </div>
     </div>
   </div>
