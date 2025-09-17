@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
           .from('users')
           .insert({
             id: data.user.id,
-            clerk_id: data.user.id, // Use Supabase user ID as clerk_id for compatibility
+            supabase_id: data.user.id, // Supabase user ID
             email: data.user.email,
             first_name: firstName,
             last_name: lastName,

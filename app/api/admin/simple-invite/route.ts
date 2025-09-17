@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
       .from('users')
       .upsert({
         id: userId,
-        clerk_id: userId, // Use Supabase user ID as clerk_id to satisfy NOT NULL constraint
+        supabase_id: userId, // Supabase user ID
         email: email,
         first_name: firstName || '',
         last_name: lastName || '',

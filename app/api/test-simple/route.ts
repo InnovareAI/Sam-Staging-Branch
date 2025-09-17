@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
       nodeEnv: process.env.NODE_ENV,
       hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
       hasSupabaseServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      hasClerkSecret: !!process.env.CLERK_SECRET_KEY
+      hasSupabaseKeys: !!process.env.SUPABASE_SERVICE_ROLE_KEY && !!process.env.NEXT_PUBLIC_SUPABASE_URL
     });
   } catch (error) {
     return NextResponse.json(

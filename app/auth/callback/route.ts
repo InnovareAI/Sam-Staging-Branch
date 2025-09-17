@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
             .from('users')
             .upsert({
               id: data.user.id,
-              clerk_id: data.user.id, // Use Supabase user ID as clerk_id for compatibility
+              supabase_id: data.user.id, // Supabase user ID
               email: data.user.email,
               first_name: data.user.user_metadata?.first_name,
               last_name: data.user.user_metadata?.last_name,

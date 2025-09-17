@@ -228,22 +228,22 @@ async function checkAuth(): Promise<HealthStatus> {
   const start = Date.now();
   
   try {
-    // Verify Clerk configuration
-    const clerkPublicKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-    const clerkSecretKey = process.env.CLERK_SECRET_KEY;
+    // Verify Supabase configuration
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     
-    if (!clerkPublicKey || !clerkSecretKey) {
+    if (!supabaseUrl || !supabaseKey) {
       return {
         status: 'fail',
         responseTime: Date.now() - start,
-        error: 'Clerk authentication keys not configured'
+        error: 'Supabase authentication keys not configured'
       };
     }
 
     return {
       status: 'pass',
       responseTime: Date.now() - start,
-      details: { provider: 'Clerk', configured: true }
+      details: { provider: 'Supabase', configured: true }
     };
 
   } catch (error) {
