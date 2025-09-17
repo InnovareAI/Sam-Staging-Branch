@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
         // Try to find user by LinkedIn email or known email patterns
         if (linkedInEmail) {
           const { data: userByEmail } = await supabase.auth.admin.listUsers()
-          const matchingUser = userByEmail.users.find(u => u.email === linkedInEmail)
+          const matchingUser = userByEmail?.users?.find((u: any) => u.email === linkedInEmail)
           
           if (matchingUser) {
             resolvedUserId = matchingUser.id
