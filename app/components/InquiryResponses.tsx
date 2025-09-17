@@ -536,9 +536,9 @@ const InquiryResponses: React.FC<InquiryResponsesProps> = ({ onResponseSelect })
   const filteredContent = () => {
     if (!currentRoleData) return [];
     
-    const content = activeTab === 'stage_adaptation' && currentRoleData.stage_adaptation 
-      ? Object.values(currentRoleData.stage_adaptation).flat()
-      : currentRoleData[activeTab] || [];
+    const content = activeTab === 'stage_adaptation' && (currentRoleData as any).stage_adaptation 
+      ? Object.values((currentRoleData as any).stage_adaptation).flat()
+      : (currentRoleData as any)[activeTab] || [];
     
     if (!searchQuery) return content;
     
@@ -679,7 +679,7 @@ const InquiryResponses: React.FC<InquiryResponsesProps> = ({ onResponseSelect })
           </div>
           <div>
             <div className="text-lg font-semibold text-white">
-              {currentRoleData?.stage_adaptation ? Object.values(currentRoleData.stage_adaptation).flat().length : 0}
+              {(currentRoleData as any)?.stage_adaptation ? Object.values((currentRoleData as any).stage_adaptation).flat().length : 0}
             </div>
             <div className="text-xs text-gray-400">Stage Responses</div>
           </div>

@@ -4,8 +4,7 @@ import { cookies } from 'next/headers'
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const supabase = createRouteHandlerClient({ cookies })
     
     // Verify authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -215,8 +214,7 @@ export async function GET(request: NextRequest) {
 // POST endpoint for generating custom analytics queries
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const supabase = createRouteHandlerClient({ cookies })
     
     // Verify authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()

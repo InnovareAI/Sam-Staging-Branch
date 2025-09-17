@@ -1,9 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import KnowledgeBase from './components/KnowledgeBase';
-import ContactCenter from './components/ContactCenter';
 import CampaignHub from './components/CampaignHub';
 import LeadPipeline from './components/LeadPipeline';
 import Analytics from './components/Analytics';
@@ -15,57 +13,44 @@ import LinkedInOnboarding from '../components/LinkedInOnboarding';
 import { UnipileModal } from '../components/integrations/UnipileModal';
 import { ChannelSelectionModal } from '../components/campaign/ChannelSelectionModal';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { 
-  MessageCircle, 
-  Book, 
-  GraduationCap, 
-  Users, 
-  Megaphone, 
-  TrendingUp,
+import {
+  Activity,
+  Archive,
   BarChart3,
-  Settings,
-  Send,
-  Paperclip,
-  LogOut,
-  History,
-  Plus,
+  Bell,
+  Brain,
   Building2,
+  CheckSquare,
+  Clock,
+  Database,
+  Eye,
+  Gauge,
+  GitBranch,
+  Globe,
+  History,
+  Info,
+  Key,
+  Linkedin as LinkedinIcon,
+  List,
+  LogOut,
   Mail,
+  Megaphone,
+  MessageCircle,
+  Paperclip,
+  Send,
+  Settings,
+  Shield,
+  Target,
+  ThumbsDown,
+  ThumbsUp,
+  TrendingUp,
   User,
   UserPlus,
-  Shield,
-  Linkedin as LinkedinIcon,
-  Target,
-  MessageSquare,
-  CheckSquare,
-  Database,
-  Grid3x3,
-  List,
-  Info,
-  Badge,
-  ArrowLeft,
+  Users,
   X,
-  FileText,
-  Search,
-  Workspace,
-  Brain,
   Zap,
-  Clock,
-  Filter,
-  Eye,
-  PlayCircle,
-  PauseCircle,
-  Activity,
-  Gauge,
-  Archive,
-  AlertCircle,
-  ThumbsUp,
-  ThumbsDown,
-  MoreHorizontal,
-  Globe,
-  Bell,
-  Key,
-  GitBranch
+  Grid3x3,
+  FileText
 } from 'lucide-react';
 
 // LinkedIn Logo Component (Official LinkedIn branding)
@@ -84,7 +69,6 @@ const LinkedInLogo = ({ size = 16, className = "" }: { size?: number; className?
 export default function Page() {
   // Initialize Supabase client
   const supabase = createClientComponentClient();
-  const router = useRouter();
   
   // Helper function to get auth token (cached from session state)
   const getAuthToken = async () => {
@@ -381,18 +365,79 @@ export default function Page() {
   }, [messages, isSending]);
 
   const menuItems = [
-    { id: 'chat', label: 'Chat with Sam', icon: MessageCircle, active: true },
-    { id: 'knowledge', label: 'Knowledge Base', icon: Brain, active: false },
-    { id: 'approvals', label: 'Approvals', icon: CheckSquare, active: false },
-    { id: 'campaign', label: 'Campaign Hub', icon: Megaphone, active: false },
-    { id: 'pipeline', label: 'Lead Pipeline', icon: TrendingUp, active: false },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3, active: false },
-    { id: 'audit', label: 'Audit Trail', icon: FileText, active: false },
-    { id: 'settings', label: 'Settings', icon: Settings, active: false },
-    { id: 'profile', label: 'Profile', icon: User, active: false },
-    { id: 'workspace', label: 'Workspace', icon: Building2, active: false },
-    ...(isSuperAdmin ? [{ id: 'superadmin', label: 'Super Admin', icon: Shield, active: false }] : [])
+    {
+      id: 'chat',
+      label: 'Assistant',
+      description: 'Collaborate with Sam in real time',
+      icon: MessageCircle,
+    },
+    {
+      id: 'knowledge',
+      label: 'Knowledge Base',
+      description: 'Curate training assets and product intel',
+      icon: Brain,
+    },
+    {
+      id: 'approvals',
+      label: 'Approvals',
+      description: 'Review prospects and automate handoffs',
+      icon: CheckSquare,
+    },
+    {
+      id: 'campaign',
+      label: 'Campaign Hub',
+      description: 'Plan multi-channel outreach with Sam',
+      icon: Megaphone,
+    },
+    {
+      id: 'pipeline',
+      label: 'Lead Pipeline',
+      description: 'Track momentum across stages and owners',
+      icon: TrendingUp,
+    },
+    {
+      id: 'analytics',
+      label: 'Analytics',
+      description: 'Monitor performance and coverage metrics',
+      icon: BarChart3,
+    },
+    {
+      id: 'audit',
+      label: 'Audit Trail',
+      description: 'Keep every interaction compliant and auditable',
+      icon: FileText,
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
+      description: 'Configure integrations, channels, and preferences',
+      icon: Settings,
+    },
+    {
+      id: 'profile',
+      label: 'Profile',
+      description: 'Manage connected accounts and identity',
+      icon: User,
+    },
+    {
+      id: 'workspace',
+      label: 'Workspaces',
+      description: 'Organize teams, tenants, and invitations',
+      icon: Building2,
+    },
+    ...(isSuperAdmin
+      ? [
+          {
+            id: 'superadmin',
+            label: 'Super Admin',
+            description: 'Advanced controls for InnovareAI leadership',
+            icon: Shield,
+          },
+        ]
+      : []),
   ];
+
+  const activeSection = menuItems.find((item) => item.id === activeMenuItem) ?? menuItems[0];
 
   // Handle password change
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -1135,46 +1180,64 @@ export default function Page() {
 
   // Authenticated user - show main app
   return (
-    <div className="flex h-screen bg-gray-800">
+    <div className="flex min-h-screen bg-background text-foreground">
       {/* Left Sidebar */}
-      <div className="w-64 bg-gray-700 flex flex-col">
+      <div className="hidden w-72 flex-col border-r border-border/60 bg-surface-muted/70 backdrop-blur lg:flex">
         {/* Sidebar Header */}
-        <div className="p-4 border-b border-gray-600">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <img 
-                src="/SAM.jpg" 
-                alt="Sam AI" 
-                className="w-10 h-10 rounded-full object-cover"
+        <div className="border-b border-border/60 px-6 py-6">
+          <div className="flex items-center gap-3">
+            <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary/30 via-primary/10 to-transparent">
+              <img
+                src="/SAM.jpg"
+                alt="Sam AI"
+                className="h-11 w-11 rounded-2xl object-cover"
                 style={{ objectPosition: 'center 30%' }}
               />
-              <div>
-                <h2 className="text-white font-bold text-base">SAM AI ✨</h2>
-                <p className="text-gray-400 text-sm">Sales Assistant</p>
-              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Sam AI</p>
+              <h2 className="text-xl font-semibold text-white">Revenue Co-pilot</h2>
             </div>
           </div>
         </div>
 
         {/* Navigation Menu */}
-        <div className="flex-1 py-2">
-          <nav className="space-y-1 px-3">
+        <div className="flex-1 overflow-y-auto py-4">
+          <nav className="space-y-2 px-4">
             {menuItems.map((item) => {
               const IconComponent = item.icon;
               const isActive = item.id === activeMenuItem;
-              
+
               return (
                 <button
                   key={item.id}
+                  type="button"
                   onClick={() => setActiveMenuItem(item.id)}
-                  className={`w-full flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors ${
+                  className={`group w-full rounded-xl border border-transparent px-4 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
                     isActive
-                     ? 'bg-purple-600 text-white'
-                      : 'text-gray-400 hover:bg-gray-600 hover:text-gray-300'
+                      ? 'bg-primary/15 text-white shadow-glow ring-1 ring-primary/35'
+                      : 'text-muted-foreground hover:border-border/60 hover:bg-surface-highlight/60 hover:text-foreground'
                   }`}
                 >
-                  <IconComponent size={18} />
-                  <span>{item.label}</span>
+                  <div className="flex items-start gap-3">
+                    <span
+                      className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
+                        isActive
+                          ? 'bg-primary/25 text-white'
+                          : 'bg-surface-highlight text-muted-foreground group-hover:text-foreground'
+                      }`}
+                    >
+                      <IconComponent size={18} />
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold leading-tight text-foreground group-hover:text-white">
+                        {item.label}
+                      </p>
+                      <p className="mt-1 text-xs leading-snug text-muted-foreground group-hover:text-muted-foreground/90">
+                        {item.description}
+                      </p>
+                    </div>
+                  </div>
                 </button>
               );
             })}
@@ -1182,8 +1245,9 @@ export default function Page() {
         </div>
 
         {/* Sidebar Bottom */}
-        <div className="border-t border-gray-600">
-          <button 
+        <div className="space-y-4 border-t border-border/60 px-5 py-5">
+          <button
+            type="button"
             onClick={() => {
               if (confirm('Clear all conversation history? This cannot be undone.')) {
                 setMessages([]);
@@ -1193,46 +1257,46 @@ export default function Page() {
                 localStorage.removeItem('sam_active_menu');
               }
             }}
-            className="w-full flex items-center space-x-3 px-6 py-3 text-gray-400 hover:bg-gray-600 hover:text-gray-300 transition-colors"
+            className="flex w-full items-center justify-between rounded-xl border border-border/60 bg-surface-highlight/50 px-4 py-3 text-sm font-medium text-muted-foreground transition hover:border-border hover:bg-surface-highlight hover:text-foreground"
           >
-            <Settings size={18} />
-            <span className="text-sm font-medium">Clear History</span>
+            <span className="flex items-center gap-2">
+              <Settings size={16} />
+              Clear Session
+            </span>
+            <span className="text-xs text-muted-foreground/80">⌘⇧⌫</span>
           </button>
-          
-          <div className="p-4">
+
+          <div className="rounded-xl border border-border/60 bg-surface-highlight/40 px-4 py-4">
             {testUser ? (
-              <div>
-                <div className="flex items-center space-x-3 mb-3">
-                  <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">
-                      {testUser.email ? testUser.email.charAt(0).toUpperCase() : 'U'}
-                    </span>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/25 text-sm font-semibold text-white">
+                    {testUser.email ? testUser.email.charAt(0).toUpperCase() : 'U'}
                   </div>
                   <div className="flex-1">
-                    <p className="text-white text-sm font-medium truncate">
+                    <p className="truncate text-sm font-medium text-white">
                       {testUser.email || 'Authenticated User'}
                     </p>
-                    <p className="text-gray-400 text-xs">Authenticated</p>
+                    <p className="text-xs text-muted-foreground">Active session</p>
                   </div>
                 </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg text-gray-200 hover:text-white text-sm font-medium transition-colors"
-                  >
-                    <LogOut size={16} />
-                    <span>Sign Out</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-surface text-sm font-medium text-muted-foreground transition hover:bg-surface-highlight hover:text-white"
+                >
+                  <LogOut size={16} />
+                  Sign Out
+                </button>
               </div>
             ) : (
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">A</span>
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-white">
+                  A
                 </div>
                 <div>
-                  <p className="text-white text-sm font-medium">Anonymous User</p>
-                  <p className="text-gray-400 text-xs">No Authentication</p>
+                  <p className="text-sm font-medium text-white">Anonymous User</p>
+                  <p className="text-xs text-muted-foreground">No authentication</p>
                 </div>
               </div>
             )}
@@ -1241,7 +1305,42 @@ export default function Page() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col bg-gray-900">
+      <div className="flex-1 flex flex-col bg-surface">
+        <div className="border-b border-border/60 px-6 py-5 backdrop-blur">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Workspace</p>
+              <h1 className="mt-2 text-2xl font-semibold text-white">{activeSection.label}</h1>
+              <p className="text-sm text-muted-foreground/90 lg:max-w-xl">{activeSection.description}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setShowCreateWorkspace(true)}
+                  className="hidden items-center gap-2 rounded-lg border border-border/60 bg-surface-highlight/60 px-4 py-2 text-sm font-medium text-muted-foreground transition hover:border-border hover:text-white lg:flex"
+                >
+                  <Building2 size={16} />
+                  New Workspace
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setInviteEmail('');
+                  setInviteWorkspaceId(null);
+                  setShowInviteUser(true);
+                }}
+                className="flex items-center gap-2 rounded-lg bg-primary/80 px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary"
+              >
+                <UserPlus size={16} />
+                Invite
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-6">
         {activeMenuItem === 'knowledge' ? (
           <KnowledgeBase />
         ) : activeMenuItem === 'campaign' ? (
@@ -2901,33 +3000,30 @@ export default function Page() {
 
         {/* CHAT INPUT CONTAINER */}
         {activeMenuItem === 'chat' && (
-          <div className="flex-shrink-0 p-6">
-            <div className="bg-black text-white px-4 py-3 rounded-t-lg max-w-4xl mx-auto">
-              <div className="flex items-center space-x-3">
-                <span className="text-sm">
-                  {isSending ? 'Processing...' : 'Ready'}
-                </span>
-                <div className="flex space-x-1">
-                  <div className={`w-2 h-2 rounded-full ${isSending ? 'bg-purple-400 animate-pulse' : 'bg-green-400'}`}></div>
-                  <div className={`w-2 h-2 rounded-full ${isSending ? 'bg-purple-500 animate-pulse' : 'bg-green-500'}`} style={{animationDelay: '0.2s'}}></div>
-                  <div className={`w-2 h-2 rounded-full ${isSending ? 'bg-purple-600 animate-pulse' : 'bg-green-600'}`} style={{animationDelay: '0.4s'}}></div>
+          <div className="flex-shrink-0 px-6 pb-6">
+            <div className="mx-auto max-w-4xl overflow-hidden rounded-3xl border border-border/60 bg-surface-highlight/60 shadow-glow">
+              <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`flex h-2.5 w-2.5 rounded-full ${
+                      isSending ? 'bg-primary/80 animate-pulse' : 'bg-emerald-400'
+                    }`}
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {isSending ? 'Processing…' : 'Ready'}
+                  </span>
                 </div>
+                <span className="text-xs text-muted-foreground">Sam keeps your context synced</span>
               </div>
-              <div className="text-xs text-gray-400 mt-1">
-                {isSending ? 'Sam is thinking...' : 'Ready to chat with Sam AI'}
-              </div>
-            </div>
-            
-            <div className="bg-gray-700 p-4 rounded-b-lg max-w-4xl mx-auto">
-              <div className="flex items-end bg-gray-600 rounded-lg px-4 py-2">
-                <button 
+              <div className="flex items-end gap-3 px-5 py-4">
+                <button
                   onClick={() => setShowConversationHistory(true)}
-                  className="text-gray-400 hover:text-gray-200 transition-colors p-1 mr-2"
+                  className="hidden rounded-full bg-surface px-3 py-2 text-muted-foreground transition hover:text-foreground sm:flex"
                   title="Conversation History"
                 >
                   <History size={18} />
                 </button>
-                <button className="text-gray-400 hover:text-gray-200 transition-colors p-1 mr-2">
+                <button className="hidden rounded-full bg-surface px-3 py-2 text-muted-foreground transition hover:text-foreground sm:flex">
                   <Paperclip size={18} />
                 </button>
                 <textarea
@@ -2935,18 +3031,15 @@ export default function Page() {
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="What do you want to get done?"
-                  className="flex-1 bg-transparent text-white placeholder-gray-400 text-base pl-3 pr-3 py-2 outline-none resize-vertical min-h-[96px] max-h-48"
-                  style={{ textAlign: 'left' }}
+                  className="flex-1 resize-vertical bg-transparent text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
                   rows={4}
                 />
                 <button
                   onClick={handleSendMessage}
                   disabled={isSending || !inputMessage.trim()}
-                  className="text-gray-400 hover:text-gray-200 disabled:text-gray-600 disabled:cursor-not-allowed transition-colors ml-2 px-3 py-1 flex items-center space-x-1"
+                  className="inline-flex items-center gap-2 rounded-full bg-primary/80 px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary disabled:bg-primary/30 disabled:text-primary-foreground/60"
                 >
-                  <span className="text-sm font-medium">
-                    {isSending ? 'Sending...' : 'Send'}
-                  </span>
+                  <span>{isSending ? 'Sending…' : 'Send'}</span>
                   <Send size={16} />
                 </button>
               </div>
@@ -2954,6 +3047,7 @@ export default function Page() {
           </div>
         )}
 
+        </div>
       </div>
 
       {/* Conversation History */}

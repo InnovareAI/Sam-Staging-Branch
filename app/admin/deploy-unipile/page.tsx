@@ -90,7 +90,7 @@ export default function DeployUnipilePage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Target Tenants
                 </label>
-                <Select value={targetTenants} onValueChange={setTargetTenants}>
+                <Select value={targetTenants} onValueChange={(value: string) => setTargetTenants(value as 'all' | 'new_only' | 'specific')}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -106,7 +106,7 @@ export default function DeployUnipilePage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Deployment Mode
                 </label>
-                <Select value={deploymentMode} onValueChange={setDeploymentMode}>
+                <Select value={deploymentMode} onValueChange={(value: string) => setDeploymentMode(value as 'test' | 'production')}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
