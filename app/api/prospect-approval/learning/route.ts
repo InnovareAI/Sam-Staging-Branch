@@ -21,8 +21,15 @@ interface LearningModelWeights {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('user_id') || 'default-user'
-    const workspaceId = searchParams.get('workspace_id') || 'default-workspace'
+    const userId = searchParams.get('user_id')
+    const workspaceId = searchParams.get('workspace_id')
+    
+    if (!userId || !workspaceId) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'user_id and workspace_id are required' 
+      }, { status: 400 });
+    }
 
     // Get current learning model
     const { data: model, error } = await supabase

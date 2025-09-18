@@ -7,9 +7,6 @@ import LeadPipeline from './components/LeadPipeline';
 import Analytics from './components/Analytics';
 import AuditTrail from './components/AuditTrail';
 
-// Dynamic imports for approval pages
-const ProspectApprovalPage = React.lazy(() => import('./dashboard/prospect-approval/page'));
-const CampaignApprovalPage = React.lazy(() => import('./dashboard/campaign-approval/page'));
 import ConversationHistory from '../components/ConversationHistory';
 import InviteUserPopup, { InviteFormData } from '../components/InviteUserPopup';
 import AuthModal from '../components/AuthModal';
@@ -385,18 +382,6 @@ export default function Page() {
       label: 'Knowledgebase',
       description: 'Curate training assets and product intel',
       icon: Brain,
-    },
-    {
-      id: 'prospect-approval',
-      label: 'Prospect Approval',
-      description: 'Review enriched prospect data',
-      icon: UserCheck,
-    },
-    {
-      id: 'campaign-approval', 
-      label: 'Campaign Approval',
-      description: 'Review messaging and content',
-      icon: CheckSquare,
     },
     {
       id: 'campaign',
@@ -1020,8 +1005,8 @@ export default function Page() {
 
   const handleSelectAllWorkspaces = (checked: boolean) => {
     if (checked) {
-      // Select all workspaces except InnovareAI (protect the main workspace)
-      const allWorkspaceIds = workspaces.filter(ws => ws.slug !== 'innovareai').map(ws => ws.id);
+      // Select all workspaces for bulk operations
+      const allWorkspaceIds = workspaces.map(ws => ws.id);
       setSelectedWorkspaces(new Set(allWorkspaceIds));
     } else {
       setSelectedWorkspaces(new Set());
@@ -1320,7 +1305,8 @@ export default function Page() {
     if (selectedCompanyFilter === 'all') return true;
 
     if (selectedCompanyFilter === 'innovareai') {
-      return workspace.slug === 'innovareai';
+      // Allow all workspaces in multi-tenant system
+    return false;
     }
 
     if (selectedCompanyFilter === '3cubed') {
@@ -1814,19 +1800,6 @@ export default function Page() {
               </div>
             </div>
           </div>
-        ) : activeMenuItem === 'prospect-approval' ? (
-          <React.Suspense fallback={<div className="flex-1 bg-gray-900 p-6 overflow-y-auto flex items-center justify-center"><div className="text-white">Loading...</div></div>}>
-            <ProspectApprovalPage />
-          </React.Suspense>
-        ) : activeMenuItem === 'campaign-approval' ? (
-          <React.Suspense fallback={<div className="flex-1 bg-gray-900 p-6 overflow-y-auto flex items-center justify-center"><div className="text-white">Loading...</div></div>}>
-            <CampaignApprovalPage />
-          </React.Suspense>
-        ) : activeMenuItem === 'approvals' ? (
-          /* LEGACY APPROVALS PAGE - Redirect to prospect approval */
-          <React.Suspense fallback={<div className="flex-1 bg-gray-900 p-6 overflow-y-auto flex items-center justify-center"><div className="text-white">Loading...</div></div>}>
-            <ProspectApprovalPage />
-          </React.Suspense>
         ) : activeMenuItem === 'admin' ? (
           /* WORKSPACE ADMIN PAGE */
           <div className="flex-1 p-6 overflow-y-auto">
@@ -2544,10 +2517,10 @@ export default function Page() {
                           <input
                             type="checkbox"
                             onChange={(e) => handleSelectAllWorkspaces(e.target.checked)}
-                            checked={selectedWorkspaces.size > 0 && selectedWorkspaces.size === workspaces.filter(ws => ws.slug !== 'innovareai').length}
+                            checked={selectedWorkspaces.size > 0 && selectedWorkspaces.size === workspaces.length}
                             className="rounded border-gray-600 bg-gray-900 text-purple-500 focus:ring-purple-500"
                           />
-                          <span>Select All (ex. InnovareAI)</span>
+                          <span>Select All Workspaces</span>
                         </label>
                       )}
                     </div>

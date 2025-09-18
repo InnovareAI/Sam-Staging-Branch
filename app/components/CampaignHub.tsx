@@ -190,10 +190,10 @@ const CampaignHub: React.FC = () => {
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
             <div className="flex items-center mb-4">
               <Send className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-              <h3 className="text-lg font-semibold text-white group-hover:text-white">Bulk Campaign Launch</h3>
+              <h3 className="text-lg font-semibold text-white group-hover:text-white">Campaign Messaging Approval</h3>
             </div>
-            <p className="text-gray-400 group-hover:text-purple-100 mb-4">Launch multiple campaigns simultaneously across channels</p>
-            <div className="text-xs text-purple-300 group-hover:text-purple-200">Multi-channel deployment</div>
+            <p className="text-gray-400 group-hover:text-purple-100 mb-4">Review and approve campaign messaging before launch</p>
+            <div className="text-xs text-purple-300 group-hover:text-purple-200">Message approval workflow</div>
           </div>
           
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
