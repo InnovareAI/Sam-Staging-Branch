@@ -10,13 +10,13 @@ import { useDemoMode } from '@/lib/contexts/DemoContext'
 
 interface DemoModeToggleProps {
   variant?: 'switch' | 'button' | 'badge'
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'lg'
   showLabel?: boolean
 }
 
 export function DemoModeToggle({ 
   variant = 'switch', 
-  size = 'md',
+  size = 'sm',
   showLabel = true 
 }: DemoModeToggleProps) {
   const { isDemoMode, toggleDemoMode } = useDemoMode()
