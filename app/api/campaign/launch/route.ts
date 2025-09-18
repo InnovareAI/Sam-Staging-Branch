@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
     const n8nPayload = {
       // Workspace identification
       workspace_id: workspaceId,
-      workspace_name: workspaceMember.workspaces?.name,
+      workspace_name: (workspaceMember.workspaces as any)?.name,
       
       // Campaign configuration
       campaign: {
@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Add campaign execution ID to N8N payload
-    n8nPayload.campaign_execution_id = campaignExecution.id;
+    (n8nPayload as any).campaign_execution_id = campaignExecution.id;
 
     // Send to N8N orchestration webhook
     const n8nWebhookUrl = process.env.N8N_CAMPAIGN_WEBHOOK_URL;

@@ -409,7 +409,7 @@ const Analytics: React.FC = () => {
                     cy="50%"
                     outerRadius={80}
                     dataKey="value"
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%`}
                   >
                     {channelDistributionData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
