@@ -54,7 +54,7 @@ export function DemoModeToggle({
           <TooltipTrigger asChild>
             <Button
               variant={isDemoMode ? 'default' : 'outline'}
-              size={size}
+              size={size === 'sm' ? 'sm' : 'lg'}
               onClick={toggleDemoMode}
               className={`flex items-center space-x-2 ${
                 isDemoMode 
