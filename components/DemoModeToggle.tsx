@@ -36,7 +36,7 @@ export function DemoModeToggle({
               onClick={toggleDemoMode}
             >
               {isDemoMode ? <TestTube className="h-3 w-3 mr-1" /> : <Database className="h-3 w-3 mr-1" />}
-              {isDemoMode ? 'Demo Mode' : 'Live Data'}
+  {!isDemoMode ? 'Live Data' : 'Demo Mode'}
             </Badge>
           </TooltipTrigger>
           <TooltipContent>
@@ -89,7 +89,7 @@ export function DemoModeToggle({
           <span className={`text-sm font-medium ${
             isDemoMode ? 'text-orange-800' : 'text-gray-700'
           }`}>
-            {isDemoMode ? 'Demo Mode' : 'Live Data'}
+{!isDemoMode ? 'Live Data' : 'Demo Mode'}
           </span>
         </div>
       )}
