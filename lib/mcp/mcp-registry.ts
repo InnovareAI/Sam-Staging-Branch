@@ -11,6 +11,7 @@ import { WebSearchMCPServer, WebSearchMCPConfig } from './websearch-mcp'
 import { UnipileMCPServer } from './unipile-mcp'
 import { N8NMCPServer } from './n8n-mcp'
 import { ReplyAgentMCPServer } from './reply-agent-mcp'
+import { DatabaseMCPServer } from './database-mcp'
 import { 
   MCPTool, 
   MCPCallToolRequest, 
@@ -21,7 +22,8 @@ import {
   UnipileMCPConfig,
   N8NMCPConfig,
   ApolloMCPConfig,
-  ReplyAgentMCPConfig
+  ReplyAgentMCPConfig,
+  DatabaseMCPConfig
 } from './types'
 
 export interface MCPServerConfig {
@@ -33,6 +35,7 @@ export interface MCPServerConfig {
   n8n?: N8NMCPConfig
   apollo?: ApolloMCPConfig
   replyAgent?: ReplyAgentMCPConfig
+  database?: DatabaseMCPConfig
 }
 
 export class MCPRegistry {
@@ -43,6 +46,7 @@ export class MCPRegistry {
   private unipileServer?: UnipileMCPServer
   private n8nServer?: N8NMCPServer
   private replyAgentServer?: ReplyAgentMCPServer
+  private databaseServer?: DatabaseMCPServer
   private isInitialized = false
 
   async initialize(config: MCPServerConfig): Promise<{ success: boolean; message: string; servers: string[] }> {

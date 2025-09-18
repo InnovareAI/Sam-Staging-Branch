@@ -197,6 +197,54 @@ export interface ProspectIntelligence {
   }
 }
 
+// Database specific types
+export interface DatabaseMCPConfig {
+  connectionString: string
+  databaseType: 'postgresql' | 'mysql' | 'sqlite' | 'supabase'
+  organizationId: string
+  userId: string
+  readOnly?: boolean
+  allowedTables?: string[]
+  maxRows?: number
+  queryTimeout?: number
+}
+
+export interface DatabaseQueryRequest {
+  query: string
+  parameters?: Record<string, any>
+  table?: string
+  operation?: 'select' | 'insert' | 'update' | 'delete' | 'raw'
+  conditions?: Record<string, any>
+  limit?: number
+  offset?: number
+}
+
+export interface DatabaseSchemaInfo {
+  tables: Array<{
+    name: string
+    columns: Array<{
+      name: string
+      type: string
+      nullable: boolean
+      primaryKey: boolean
+      foreignKey?: {
+        table: string
+        column: string
+      }
+    }>
+    description?: string
+  }>
+  views?: Array<{
+    name: string
+    definition: string
+  }>
+  functions?: Array<{
+    name: string
+    parameters: string[]
+    returnType: string
+  }>
+}
+
 export interface MCPIntelligenceRequest {
   type: 'profile_research' | 'company_intelligence' | 'social_selling_prep'
   source: 'bright_data' | 'apify'
