@@ -13,6 +13,7 @@ import AuthModal from '../components/AuthModal';
 import LinkedInOnboarding from '../components/LinkedInOnboarding';
 import { UnipileModal } from '../components/integrations/UnipileModal';
 import { ChannelSelectionModal } from '../components/campaign/ChannelSelectionModal';
+import { DemoModeToggle } from '../components/DemoModeToggle';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import {
   Activity,
@@ -1464,6 +1465,10 @@ export default function Page() {
             </span>
             <span className="text-xs text-muted-foreground/80">⌘⇧⌫</span>
           </button>
+
+          <div className="px-1">
+            <DemoModeToggle variant="switch" size="sm" />
+          </div>
 
           <div className="rounded-xl border border-border/60 bg-surface-highlight/40 px-4 py-4">
             {testUser ? (

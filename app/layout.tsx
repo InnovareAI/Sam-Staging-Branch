@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { DemoProvider } from '@/lib/contexts/DemoContext'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
@@ -17,7 +18,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body className="bg-background text-foreground antialiased">
-        {children}
+        <DemoProvider>
+          {children}
+        </DemoProvider>
       </body>
     </html>
   )
