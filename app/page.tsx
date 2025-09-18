@@ -147,6 +147,19 @@ export default function Page() {
   const [showLinkedInOnboarding, setShowLinkedInOnboarding] = useState(false);
   const [showUnipileModal, setShowUnipileModal] = useState(false); // Only show when user clicks Advanced Setup
   const [showChannelSelectionModal, setShowChannelSelectionModal] = useState(false);
+  const [showLinkedInSettingsModal, setShowLinkedInSettingsModal] = useState(false);
+  
+  // Detail modal states
+  const [showEmailIntegrationModal, setShowEmailIntegrationModal] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showApiKeysModal, setShowApiKeysModal] = useState(false);
+  const [showDataPreferencesModal, setShowDataPreferencesModal] = useState(false);
+  const [showTeamManagementModal, setShowTeamManagementModal] = useState(false);
+  const [showWorkspaceSettingsModal, setShowWorkspaceSettingsModal] = useState(false);
+  const [showCrmIntegrationModal, setShowCrmIntegrationModal] = useState(false);
+  const [showIntegrationsToolsModal, setShowIntegrationsToolsModal] = useState(false);
+  const [showSecurityComplianceModal, setShowSecurityComplianceModal] = useState(false);
+  const [showAnalyticsReportingModal, setShowAnalyticsReportingModal] = useState(false);
   
   // Mock connected accounts for demonstration (in production, fetch from API)
   const [connectedAccounts] = useState([
@@ -348,9 +361,9 @@ export default function Page() {
     }
   }, [activeMenuItem, isLoaded]);
 
-  // Check LinkedIn connection when user accesses profile
+  // Check LinkedIn connection when user accesses profile/settings
   useEffect(() => {
-    if (activeMenuItem === 'profile' && user) {
+    if (activeMenuItem === 'settings' && user) {
       checkLinkedInConnection();
     }
   }, [activeMenuItem, user]);
@@ -403,28 +416,22 @@ export default function Page() {
       icon: BarChart3,
     },
     {
-      id: 'audit',
-      label: 'Audit Trail',
-      description: 'Keep every interaction compliant and auditable',
-      icon: FileText,
-    },
-    {
       id: 'settings',
-      label: 'Settings',
-      description: 'Configure integrations, channels, and preferences',
+      label: 'Settings & Profile',
+      description: 'Configure integrations, channels, preferences, and manage your account',
       icon: Settings,
-    },
-    {
-      id: 'profile',
-      label: 'Profile',
-      description: 'Manage connected accounts and identity',
-      icon: User,
     },
     {
       id: 'workspace',
       label: 'Workspaces',
       description: 'Organize teams, tenants, and invitations',
       icon: Building2,
+    },
+    {
+      id: 'audit',
+      label: 'Audit Trail',
+      description: 'Keep every interaction compliant and auditable',
+      icon: FileText,
     },
     ...(isSuperAdmin
       ? [
@@ -1536,9 +1543,9 @@ export default function Page() {
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
                 <Settings className="mr-3" size={32} />
-                Settings
+                Settings & Profile
               </h1>
-              <p className="text-gray-400">Configure integrations, preferences, and account settings</p>
+              <p className="text-gray-400">Configure integrations, preferences, account settings, and manage your profile</p>
             </div>
 
             {/* Main Settings Tiles */}
@@ -1546,7 +1553,10 @@ export default function Page() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
                 {/* LinkedIn Integration */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer relative">
+                <div 
+                  onClick={() => setShowLinkedInSettingsModal(true)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer relative"
+                >
                   <button 
                     className="absolute top-3 right-3 text-gray-400 hover:text-gray-200 transition-colors opacity-0 group-hover:opacity-100"
                     onClick={(e) => {
@@ -1572,7 +1582,10 @@ export default function Page() {
                 </div>
 
                 {/* Email Integration */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer relative">
+                <div 
+                  onClick={() => setShowEmailIntegrationModal(true)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer relative"
+                >
                   <button 
                     className="absolute top-3 right-3 text-gray-400 hover:text-gray-200 transition-colors opacity-0 group-hover:opacity-100"
                     onClick={(e) => {
@@ -1598,7 +1611,10 @@ export default function Page() {
                 </div>
 
                 {/* Unipile Configuration */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer relative">
+                <div 
+                  onClick={() => setShowUnipileModal(true)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer relative"
+                >
                   <button 
                     className="absolute top-3 right-3 text-gray-400 hover:text-gray-200 transition-colors opacity-0 group-hover:opacity-100"
                     onClick={(e) => {
@@ -1624,7 +1640,10 @@ export default function Page() {
                 </div>
 
                 {/* Notification Settings */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer relative">
+                <div 
+                  onClick={() => setShowNotificationsModal(true)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer relative"
+                >
                   <button 
                     className="absolute top-3 right-3 text-gray-400 hover:text-gray-200 transition-colors opacity-0 group-hover:opacity-100"
                     onClick={(e) => {
@@ -1650,7 +1669,10 @@ export default function Page() {
                 </div>
 
                 {/* API Keys */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                <div 
+                  onClick={() => setShowApiKeysModal(true)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                >
                   <div className="flex items-center mb-4">
                     <Key className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">API Keys</h2>
@@ -1667,7 +1689,10 @@ export default function Page() {
                 </div>
 
                 {/* Data Preferences */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                <div 
+                  onClick={() => setShowDataPreferencesModal(true)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                >
                   <div className="flex items-center mb-4">
                     <Database className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">Data Preferences</h2>
@@ -1701,7 +1726,10 @@ export default function Page() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
                 {/* Team Management */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                <div 
+                  onClick={() => setShowTeamManagementModal(true)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                >
                   <div className="flex items-center mb-4">
                     <Users className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">Team Management</h2>
@@ -1718,7 +1746,10 @@ export default function Page() {
                 </div>
 
                 {/* Workspace Settings */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                <div 
+                  onClick={() => setShowWorkspaceSettingsModal(true)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                >
                   <div className="flex items-center mb-4">
                     <Settings className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">Workspace Settings</h2>
@@ -1735,7 +1766,10 @@ export default function Page() {
                 </div>
 
                 {/* CRM Integration */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                <div 
+                  onClick={() => setShowCrmIntegrationModal(true)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                >
                   <div className="flex items-center mb-4">
                     <Database className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">CRM Integration</h2>
@@ -1752,7 +1786,10 @@ export default function Page() {
                 </div>
 
                 {/* Integrations & Tools */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                <div 
+                  onClick={() => setShowIntegrationsToolsModal(true)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                >
                   <div className="flex items-center mb-4">
                     <Zap className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">Integrations & Tools</h2>
@@ -1769,7 +1806,10 @@ export default function Page() {
                 </div>
 
                 {/* Security & Compliance */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                <div 
+                  onClick={() => setShowSecurityComplianceModal(true)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                >
                   <div className="flex items-center mb-4">
                     <Shield className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">Security & Compliance</h2>
@@ -1786,7 +1826,10 @@ export default function Page() {
                 </div>
 
                 {/* Analytics & Reporting */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                <div 
+                  onClick={() => setShowAnalyticsReportingModal(true)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                >
                   <div className="flex items-center mb-4">
                     <BarChart3 className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">Analytics & Reporting</h2>
@@ -1802,6 +1845,67 @@ export default function Page() {
                   </div>
                 </div>
 
+                {/* Profile Management */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-center mb-4">
+                    <User className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">Profile Management</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Manage your account information, update profile details, change password, and configure personal preferences.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Edit • Update • Configure</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+
+              </div>
+
+                {/* Integration Status */}
+                <div className="mt-12 max-w-4xl">
+                <div className="bg-gray-800 rounded-lg p-6">
+                  <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
+                    <Paperclip className="mr-3" size={20} />
+                    Connected Services
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <h4 className="text-white font-medium">Smart Integration</h4>
+                          <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">Intelligent</span>
+                        </div>
+                        <p className="text-gray-300 text-sm">
+                          SAM will prompt you to connect accounts only when needed for specific tasks
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button 
+                          onClick={() => setShowUnipileModal(true)}
+                          className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                        >
+                          <Settings size={16} className="text-white" />
+                          <span>Advanced Setup</span>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Status indicators */}
+                    <div className="bg-gray-700 rounded-lg p-4">
+                      <h5 className="text-white font-medium mb-3">Current Status:</h5>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-300">LinkedIn Data Access</span>
+                          <span className="bg-green-600 text-white px-2 py-1 rounded text-xs">Connected</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                </div>
               </div>
             </div>
           </div>
@@ -2022,66 +2126,6 @@ export default function Page() {
                 </div>
               </div>
 
-              {/* LinkedIn Integration */}
-              <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">LinkedIn Integration</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center space-x-2 mb-2">
-                        <h3 className="text-white font-medium">LinkedIn Account Connection</h3>
-                        {linkedInLoading ? (
-                          <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                        ) : (
-                          <div className={`w-3 h-3 rounded-full ${hasLinkedInConnection ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                        )}
-                      </div>
-                      <p className="text-gray-400 text-sm">
-                        {linkedInLoading ? 'Checking connection status...' : 
-                         hasLinkedInConnection ? 'LinkedIn account connected - prospect features enabled' :
-                         'Connect your LinkedIn account to enable prospect research and enrichment'}
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button 
-                        onClick={checkLinkedInConnection}
-                        disabled={linkedInLoading}
-                        className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white px-3 py-2 rounded-lg transition-colors text-sm"
-                      >
-                        {linkedInLoading ? 'Checking...' : 'Refresh'}
-                      </button>
-                      
-                      {hasLinkedInConnection ? (
-                        <>
-                          <button 
-                            onClick={() => window.location.href = '/integrations/linkedin'}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                          >
-                            <LinkedInLogo size={16} className="text-white" />
-                            <span>Manage LinkedIn</span>
-                          </button>
-                          <button 
-                            onClick={disconnectLinkedIn}
-                            disabled={isDisconnectingLinkedIn}
-                            className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                          >
-                            <LinkedInLogo size={16} className="text-white" />
-                            <span>{isDisconnectingLinkedIn ? 'Disconnecting...' : 'Disconnect'}</span>
-                          </button>
-                        </>
-                      ) : (
-                        <button 
-                          onClick={requireLinkedInConnection}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                        >
-                          <LinkedInLogo size={16} className="text-white" />
-                          <span>Connect LinkedIn</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               {/* Integration Status - Simplified */}
               <div className="bg-gray-800 rounded-lg p-6 mb-6">
@@ -2132,122 +2176,6 @@ export default function Page() {
                 </div>
               </div>
 
-              {/* Campaign Management - Knowledgebase UI Style */}
-              <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-                  <Zap className="mr-3 text-blue-400" size={28} />
-                  Campaign Management
-                </h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Smart Campaign Builder */}
-                  <button
-                    onClick={() => {
-                      showNotification('success', 'SAM: "I can help you set up a campaign! What type of outreach are you planning - LinkedIn prospecting, email campaigns, or both? I\'ll guide you through the process and connect the necessary accounts when needed."')
-                    }}
-                    className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
-                  >
-                    <div className="flex items-center mb-4">
-                      <MessageCircle className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                      <h3 className="text-xl font-semibold text-white">Smart Campaign Builder</h3>
-                    </div>
-                    <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                      Let SAM guide you through campaign setup and handle account connections automatically
-                    </p>
-                    <div className="mt-4 flex items-center text-gray-400 text-xs">
-                      <span>Click to start • AI-guided setup • Auto-connect accounts</span>
-                      <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="m9 18 6-6-6-6"/>
-                      </svg>
-                    </div>
-                  </button>
-
-                  {/* Campaign Templates */}
-                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-                    <div className="flex items-center mb-4">
-                      <FileText className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                      <h3 className="text-xl font-semibold text-white">Campaign Templates</h3>
-                    </div>
-                    <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                      Pre-built campaign templates for common outreach scenarios and industry verticals
-                    </p>
-                    <div className="mt-4 flex items-center text-gray-400 text-xs">
-                      <span>Browse templates • Industry-specific • Quick setup</span>
-                      <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="m9 18 6-6-6-6"/>
-                      </svg>
-                    </div>
-                  </div>
-
-                  {/* Active Campaigns */}
-                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-                    <div className="flex items-center mb-4">
-                      <TrendingUp className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                      <h3 className="text-xl font-semibold text-white">Active Campaigns</h3>
-                    </div>
-                    <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                      Monitor and manage your currently running campaigns with real-time performance metrics
-                    </p>
-                    <div className="mt-4 flex items-center text-gray-400 text-xs">
-                      <span>View campaigns • Performance metrics • Real-time updates</span>
-                      <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="m9 18 6-6-6-6"/>
-                      </svg>
-                    </div>
-                  </div>
-
-                  {/* Campaign Analytics */}
-                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-                    <div className="flex items-center mb-4">
-                      <BarChart3 className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                      <h3 className="text-xl font-semibold text-white">Campaign Analytics</h3>
-                    </div>
-                    <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                      Deep dive into campaign performance with detailed analytics and optimization recommendations
-                    </p>
-                    <div className="mt-4 flex items-center text-gray-400 text-xs">
-                      <span>View analytics • Performance insights • Optimization tips</span>
-                      <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="m9 18 6-6-6-6"/>
-                      </svg>
-                    </div>
-                  </div>
-
-                  {/* A/B Testing */}
-                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-                    <div className="flex items-center mb-4">
-                      <GitBranch className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                      <h3 className="text-xl font-semibold text-white">A/B Testing</h3>
-                    </div>
-                    <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                      Test different message variations and approaches to optimize your campaign performance
-                    </p>
-                    <div className="mt-4 flex items-center text-gray-400 text-xs">
-                      <span>Create tests • Compare variants • Optimize performance</span>
-                      <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="m9 18 6-6-6-6"/>
-                      </svg>
-                    </div>
-                  </div>
-
-                  {/* Campaign Automation */}
-                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-                    <div className="flex items-center mb-4">
-                      <Zap className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                      <h3 className="text-xl font-semibold text-white">Campaign Automation</h3>
-                    </div>
-                    <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                      Set up automated workflows, triggers, and follow-up sequences for maximum efficiency
-                    </p>
-                    <div className="mt-4 flex items-center text-gray-400 text-xs">
-                      <span>Build workflows • Set triggers • Automate follow-ups</span>
-                      <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="m9 18 6-6-6-6"/>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               {/* App Settings */}
               <div className="bg-gray-800 rounded-lg p-6 mb-6">
@@ -3600,6 +3528,278 @@ export default function Page() {
         onConfirm={handleChannelSelectionConfirm}
         connectedAccounts={connectedAccounts}
       />
+
+      {/* LinkedIn Settings Modal */}
+      {showLinkedInSettingsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-semibold text-white flex items-center">
+                <LinkedinIcon className="mr-3 text-blue-400" size={28} />
+                LinkedIn Integration
+              </h2>
+              <button 
+                onClick={() => setShowLinkedInSettingsModal(false)}
+                className="text-gray-400 hover:text-gray-200 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <h3 className="text-white font-medium">LinkedIn Account Connection</h3>
+                    {linkedInLoading ? (
+                      <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <div className={`w-3 h-3 rounded-full ${hasLinkedInConnection ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    )}
+                  </div>
+                  <p className="text-gray-400 text-sm">
+                    {linkedInLoading ? 'Checking connection status...' : 
+                     hasLinkedInConnection ? 'LinkedIn account connected - prospect features enabled' :
+                     'Connect your LinkedIn account to enable prospect research and enrichment'}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button 
+                    onClick={checkLinkedInConnection}
+                    disabled={linkedInLoading}
+                    className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white px-3 py-2 rounded-lg transition-colors text-sm"
+                  >
+                    {linkedInLoading ? 'Checking...' : 'Refresh'}
+                  </button>
+                  
+                  {hasLinkedInConnection ? (
+                    <>
+                      <button 
+                        onClick={() => window.location.href = '/integrations/linkedin'}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                      >
+                        <LinkedInLogo size={16} className="text-white" />
+                        <span>Manage LinkedIn</span>
+                      </button>
+                      <button 
+                        onClick={disconnectLinkedIn}
+                        disabled={isDisconnectingLinkedIn}
+                        className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                      >
+                        <LinkedInLogo size={16} className="text-white" />
+                        <span>{isDisconnectingLinkedIn ? 'Disconnecting...' : 'Disconnect'}</span>
+                      </button>
+                    </>
+                  ) : (
+                    <button 
+                      onClick={requireLinkedInConnection}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                    >
+                      <LinkedInLogo size={16} className="text-white" />
+                      <span>Connect LinkedIn</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Email Integration Modal */}
+      {showEmailIntegrationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-semibold text-white flex items-center">
+                <Mail className="mr-3 text-blue-400" size={28} />
+                Email Integration Settings
+              </h2>
+              <button 
+                onClick={() => setShowEmailIntegrationModal(false)}
+                className="text-gray-400 hover:text-gray-200 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-3">SMTP Configuration</h3>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">SMTP Server</label>
+                      <input
+                        type="text"
+                        placeholder="smtp.gmail.com"
+                        className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Port</label>
+                      <input
+                        type="number"
+                        placeholder="587"
+                        className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">From Email</label>
+                    <input
+                      type="email"
+                      placeholder="your-email@domain.com"
+                      className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Username</label>
+                      <input
+                        type="text"
+                        placeholder="Email username"
+                        className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                      <input
+                        type="password"
+                        placeholder="App password"
+                        className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-3">Email Templates</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300">Default Follow-up Template</span>
+                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+                      Edit
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300">Cold Outreach Template</span>
+                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+                      Edit
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button 
+                  onClick={() => setShowEmailIntegrationModal(false)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                  Save Configuration
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notifications Settings Modal */}
+      {showNotificationsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-semibold text-white flex items-center">
+                <Bell className="mr-3 text-blue-400" size={28} />
+                Notification Settings
+              </h2>
+              <button 
+                onClick={() => setShowNotificationsModal(false)}
+                className="text-gray-400 hover:text-gray-200 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4">Campaign Notifications</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-white font-medium">Campaign Started</div>
+                      <div className="text-gray-400 text-sm">Get notified when campaigns begin execution</div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" defaultChecked className="sr-only peer" />
+                      <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-white font-medium">Campaign Completed</div>
+                      <div className="text-gray-400 text-sm">Receive summary when campaigns finish</div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" defaultChecked className="sr-only peer" />
+                      <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-white font-medium">Response Received</div>
+                      <div className="text-gray-400 text-sm">Immediate alerts for prospect responses</div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" defaultChecked className="sr-only peer" />
+                      <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4">Delivery Preferences</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Email Notifications</label>
+                    <select className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white">
+                      <option>All notifications</option>
+                      <option>Important only</option>
+                      <option>Daily digest</option>
+                      <option>Disabled</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Notification Email</label>
+                    <input
+                      type="email"
+                      placeholder="notifications@yourdomain.com"
+                      className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button 
+                  onClick={() => setShowNotificationsModal(false)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                  Save Settings
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Custom Notification Modal */}
       {notification && (

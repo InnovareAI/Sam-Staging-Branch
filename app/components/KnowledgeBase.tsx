@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Brain, CheckSquare, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, FileText, Search, Package, Award, MessageSquare, Cpu, Clock, AlertCircle, Mic, Briefcase, Trophy, GitBranch, Mail, Shield, UserCheck, MessageCircle, DollarSign, Zap, BarChart, UserPlus, Bot, HelpCircle } from 'lucide-react';
+import { Brain, CheckSquare, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, FileText, Search, Package, Award, MessageSquare, Cpu, Clock, AlertCircle, Mic, Briefcase, Trophy, GitBranch, Mail, Shield, UserCheck, MessageCircle, DollarSign, Zap, BarChart, UserPlus, Bot, HelpCircle, X } from 'lucide-react';
 import SAMOnboarding from './SAMOnboarding';
 import InquiryResponses from './InquiryResponses';
 
@@ -9,6 +9,8 @@ import InquiryResponses from './InquiryResponses';
 function DocumentUpload({ section }: { section: string }) {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<'idle' | 'uploading' | 'processing' | 'done'>('idle');
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   
   const handleUpload = async () => {
     if (!file) return;
@@ -17,43 +19,181 @@ function DocumentUpload({ section }: { section: string }) {
     setTimeout(() => setStatus('processing'), 1000);
     setTimeout(() => setStatus('done'), 3000);
   };
-  
+
+  const handleFileSelect = (selectedFile: File) => {
+    setFile(selectedFile);
+    setShowUploadModal(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (droppedFile && (droppedFile.type === 'application/pdf' || droppedFile.type === 'text/plain' || droppedFile.name.endsWith('.md'))) {
+      handleFileSelect(droppedFile);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
   return (
-    <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-      <div className="border-2 border-dashed border-gray-500 rounded p-4 text-center">
-        <Upload className="mx-auto mb-2 text-gray-400" size={24} />
-        <input 
-          type="file" 
-          accept=".pdf,.txt,.md"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)} 
-          className="text-gray-300 text-sm w-full"
-        />
-        <p className="text-xs text-gray-400 mt-2">Supported: PDF, TXT, MD files only</p>
-      </div>
-      {file && (
-        <div className="mt-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-300">{file.name}</span>
-            <button
-              onClick={handleUpload}
-              disabled={status !== 'idle'}
-              className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded transition-colors disabled:opacity-50"
-            >
-              {status === 'idle' && 'Upload & Process'}
-              {status === 'uploading' && 'Uploading...'}
-              {status === 'processing' && 'Processing with LLM...'}
-              {status === 'done' && 'Processed ✓'}
-            </button>
+    <>
+      <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+        <div 
+          className={`border-2 border-dashed rounded p-6 text-center transition-colors cursor-pointer ${
+            isDragOver ? 'border-blue-400 bg-blue-50/5' : 'border-gray-500 hover:border-gray-400'
+          }`}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onClick={() => setShowUploadModal(true)}
+        >
+          <Upload className={`mx-auto mb-3 transition-colors ${isDragOver ? 'text-blue-400' : 'text-gray-400'}`} size={32} />
+          <p className={`text-lg font-medium transition-colors ${isDragOver ? 'text-blue-300' : 'text-gray-300'}`}>
+            {isDragOver ? 'Drop your file here' : 'Upload Document'}
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            Drag & drop or click to select • PDF, TXT, MD files
+          </p>
+        </div>
+        
+        {file && (
+          <div className="mt-4 p-3 bg-gray-600 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <FileText size={20} className="text-blue-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-200">{file.name}</p>
+                  <p className="text-xs text-gray-400">{(file.size / 1024).toFixed(1)} KB</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setFile(null)}
+                  className="text-gray-400 hover:text-white transition-colors p-1"
+                  title="Remove file"
+                >
+                  <X size={16} />
+                </button>
+                <button
+                  onClick={handleUpload}
+                  disabled={status !== 'idle'}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-500 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {status === 'idle' && 'Upload & Process'}
+                  {status === 'uploading' && 'Uploading...'}
+                  {status === 'processing' && 'Processing...'}
+                  {status === 'done' && 'Processed ✓'}
+                </button>
+              </div>
+            </div>
+            {status === 'processing' && (
+              <p className="text-xs text-yellow-400 mt-2">🤖 SAM is analyzing and tagging this document...</p>
+            )}
+            {status === 'done' && (
+              <p className="text-xs text-green-400 mt-2">✅ Document processed and ready for SAM conversations</p>
+            )}
           </div>
-          {status === 'processing' && (
-            <p className="text-xs text-yellow-400">🤖 SAM is analyzing and tagging this document...</p>
-          )}
-          {status === 'done' && (
-            <p className="text-xs text-green-400">✅ Document processed and ready for SAM conversations</p>
-          )}
+        )}
+      </div>
+
+      {/* Custom Upload Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-600 relative">
+            <button
+              onClick={() => setShowUploadModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors z-10"
+            >
+              <X size={24} />
+            </button>
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-white pr-8">Select Document</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <p className="text-gray-300 text-sm">
+                Choose a document to upload to the <span className="font-medium text-blue-400">{section}</span> section of your Knowledge Base.
+              </p>
+              
+              {/* File Type Options */}
+              <div className="grid grid-cols-1 gap-3">
+                <label className="relative cursor-pointer">
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => {
+                      const selectedFile = e.target.files?.[0];
+                      if (selectedFile) handleFileSelect(selectedFile);
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="flex items-center p-4 bg-gray-700 border border-gray-600 rounded-lg hover:bg-gray-600 transition-colors">
+                    <FileText className="text-red-400 mr-3" size={24} />
+                    <div>
+                      <p className="text-white font-medium">PDF Document</p>
+                      <p className="text-gray-400 text-sm">Portable Document Format</p>
+                    </div>
+                  </div>
+                </label>
+                
+                <label className="relative cursor-pointer">
+                  <input
+                    type="file"
+                    accept=".txt"
+                    onChange={(e) => {
+                      const selectedFile = e.target.files?.[0];
+                      if (selectedFile) handleFileSelect(selectedFile);
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="flex items-center p-4 bg-gray-700 border border-gray-600 rounded-lg hover:bg-gray-600 transition-colors">
+                    <FileText className="text-blue-400 mr-3" size={24} />
+                    <div>
+                      <p className="text-white font-medium">Text File</p>
+                      <p className="text-gray-400 text-sm">Plain text document</p>
+                    </div>
+                  </div>
+                </label>
+                
+                <label className="relative cursor-pointer">
+                  <input
+                    type="file"
+                    accept=".md"
+                    onChange={(e) => {
+                      const selectedFile = e.target.files?.[0];
+                      if (selectedFile) handleFileSelect(selectedFile);
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="flex items-center p-4 bg-gray-700 border border-gray-600 rounded-lg hover:bg-gray-600 transition-colors">
+                    <FileText className="text-green-400 mr-3" size={24} />
+                    <div>
+                      <p className="text-white font-medium">Markdown File</p>
+                      <p className="text-gray-400 text-sm">Markdown document</p>
+                    </div>
+                  </div>
+                </label>
+              </div>
+              
+              <div className="text-center pt-4 border-t border-gray-600">
+                <p className="text-gray-400 text-xs">
+                  Maximum file size: 10MB
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -61,6 +201,80 @@ function DocumentUpload({ section }: { section: string }) {
 function ICPConfiguration() {
   const [selectedICP, setSelectedICP] = useState<string | null>(null);
   const [icpProfiles, setIcpProfiles] = useState<{[key: string]: any}>({});
+  const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  
+  // Fetch ICP configurations on component mount
+  React.useEffect(() => {
+    async function fetchICPConfigurations() {
+      try {
+        setLoading(true);
+        console.log('Fetching ICP configurations...');
+        const response = await fetch('/api/sam/icp-configurations');
+        console.log('Response status:', response.status);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Response data:', data);
+        
+        if (data.success && data.configurations) {
+          // Transform API data to match the component's expected format
+          const profiles: {[key: string]: any} = {};
+          data.configurations.forEach((config: any) => {
+            profiles[config.id] = {
+              id: config.id,
+              name: config.title,
+              market_niche: config.market_niche,
+              industry_vertical: config.industry_vertical,
+              description: config.description,
+              // Transform structured data to match the display format
+              criteria: {
+                headcount: config.structured_data.target_profile?.company_size || 'Not specified',
+                revenue: config.structured_data.target_profile?.revenue_range || 'Not specified',
+                growth: config.structured_data.target_profile?.growth_stage || 'Not specified',
+                type: config.structured_data.target_profile?.business_model || 'Not specified'
+              },
+              industries: config.tags || [],
+              technologies: config.structured_data.target_profile?.technology_focus || 'Not specified',
+              leads: {
+                seniority: config.structured_data.decision_makers?.primary?.join(', ') || 'Not specified',
+                function: config.structured_data.decision_makers?.budget_authority || 'Not specified',
+                experience: config.structured_data.decision_makers?.decision_timeline || 'Not specified',
+                geography: 'Global' // Default since not specified in our data
+              },
+              signals: config.structured_data.pain_points?.main_triggers || []
+            };
+          });
+          
+          setIcpProfiles(profiles);
+          
+          // Auto-select the first ICP if none is selected
+          if (!selectedICP && Object.keys(profiles).length > 0) {
+            setSelectedICP(Object.keys(profiles)[0]);
+          }
+          console.log('Transformed profiles:', profiles);
+        } else {
+          console.log('API call succeeded but no configurations found:', data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch ICP configurations:', error);
+        // For debugging: also show the error type
+        if (error instanceof Error) {
+          console.error('Error message:', error.message);
+          console.error('Error stack:', error.stack);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchICPConfigurations();
+  }, []);
   
   const currentICP = selectedICP && icpProfiles[selectedICP] ? icpProfiles[selectedICP] : null;
 
@@ -71,31 +285,50 @@ function ICPConfiguration() {
         ICP Configuration
       </h2>
 
-      {/* ICP Profile Selector */}
-      {Object.keys(icpProfiles).length > 0 ? (
-        <div className="flex space-x-1 mb-6 bg-gray-700 rounded-lg p-1">
-          {Object.entries(icpProfiles).map(([key, profile]) => (
-            <button
-              key={key}
-              onClick={() => setSelectedICP(key)}
-              className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
-                selectedICP === key
-                  ? 'text-white bg-gray-600'
-                  : 'text-gray-300 hover:text-white'
-              }`}
-            >
-              {profile.name}
-            </button>
-          ))}
+      {/* Loading State */}
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="text-gray-400 mb-4">
+            <Target size={48} className="mx-auto mb-4 opacity-50 animate-pulse" />
+            <h3 className="text-lg font-medium text-gray-300 mb-2">Loading ICP Configurations...</h3>
+            <p className="text-sm max-w-md mx-auto">
+              Fetching your 20 B2B market niche profiles from the knowledge base.
+            </p>
+          </div>
+        </div>
+      ) : Object.keys(icpProfiles).length > 0 ? (
+        <div className="mb-6 bg-gray-700 rounded-lg p-3">
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(icpProfiles).map(([key, profile]) => (
+              <button
+                key={key}
+                onClick={() => setSelectedICP(key)}
+                className={`py-2 px-3 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+                  selectedICP === key
+                    ? 'text-white bg-gray-600'
+                    : 'text-gray-300 hover:text-white hover:bg-gray-600'
+                }`}
+                title={profile.description}
+              >
+                {profile.name}
+              </button>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="text-center py-12">
           <div className="text-gray-400 mb-4">
             <Target size={48} className="mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-medium text-gray-300 mb-2">No ICP Profiles Configured</h3>
+            <h3 className="text-lg font-medium text-gray-300 mb-2">No ICP Profiles Found</h3>
             <p className="text-sm max-w-md mx-auto">
-              Create your first Ideal Customer Profile to help SAM understand your target market and ideal prospects.
+              Unable to load the 20 B2B market niche ICP configurations. Check the browser console for debugging information.
             </p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+            >
+              Refresh Page
+            </button>
           </div>
         </div>
       )}
@@ -135,11 +368,11 @@ function ICPConfiguration() {
               <Cpu className="mr-2" size={16} />
               Industry & Technology
             </h3>
-            <div className="space-y-2">
-              <div className="flex flex-wrap gap-1">
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2 leading-relaxed">
                 {currentICP.industries?.length > 0 ? (
                   currentICP.industries.map((industry: string, index: number) => (
-                    <span key={index} className="bg-gray-600 text-white px-2 py-1 rounded-full text-xs">
+                    <span key={index} className="bg-gray-600 text-white px-3 py-1.5 rounded-full text-xs whitespace-nowrap">
                       {industry}
                     </span>
                   ))
@@ -203,21 +436,353 @@ function ICPConfiguration() {
       )}
 
       {/* Actions */}
-      <div className="flex space-x-3 pt-4">
-        <button className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+      <div className="flex flex-wrap gap-3 pt-4">
+        <button 
+          onClick={() => setShowCreateModal(true)}
+          className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+        >
           Create New ICP Profile
         </button>
         {currentICP && (
-          <button className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-            Edit Current Profile
-          </button>
+          <>
+            <button 
+              onClick={() => setShowEditModal(true)}
+              className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+            >
+              Edit Current Profile
+            </button>
+            <button 
+              onClick={() => {
+                // Create PDF content for current ICP
+                const pdfContent = `
+ICP Profile: ${currentICP.name}
+Industry: ${currentICP.industry_vertical}
+Description: ${currentICP.description}
+
+Company Criteria:
+- Size: ${currentICP.criteria?.headcount || 'Not specified'}
+- Revenue: ${currentICP.criteria?.revenue || 'Not specified'}
+- Type: ${currentICP.criteria?.type || 'Not specified'}
+
+Decision Makers:
+- Seniority: ${currentICP.leads?.seniority || 'Not specified'}
+- Function: ${currentICP.leads?.function || 'Not specified'}
+
+Generated on: ${new Date().toLocaleDateString()}
+                `.trim();
+                
+                const blob = new Blob([pdfContent], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${currentICP.name.replace(/\s+/g, '_')}_ICP_Profile.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              }}
+              className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+            >
+              Download as PDF
+            </button>
+            <button 
+              onClick={() => {
+                alert(`Assign "${currentICP.name}" ICP Profile to Campaign\n\nThis would:\n- Open campaign selection modal\n- Apply ICP criteria to prospect targeting\n- Set messaging strategy for the campaign\n- Configure decision maker filters\n\nFeature coming soon!`);
+              }}
+              className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+            >
+              Assign to Campaign
+            </button>
+          </>
         )}
         {Object.keys(icpProfiles).length > 0 && (
-          <button className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-            Export Configuration
+          <button 
+            onClick={() => {
+              const configData = {
+                timestamp: new Date().toISOString(),
+                total_profiles: Object.keys(icpProfiles).length,
+                profiles: icpProfiles
+              };
+              const blob = new Blob([JSON.stringify(configData, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `icp-configurations-${new Date().toISOString().split('T')[0]}.json`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }}
+            className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+          >
+            Export All Configurations
           </button>
         )}
       </div>
+
+      {/* Create ICP Profile Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-white">Create New ICP Profile</h3>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Profile Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Custom Tech Startups"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Industry Vertical</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Technology"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                <textarea
+                  rows={3}
+                  placeholder="Brief description of this ICP profile..."
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* Company Criteria */}
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h4 className="text-white font-medium mb-3">Company Criteria</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-300 mb-1">Company Size</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., 50-500 employees"
+                      className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-300 mb-1">Revenue Range</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., $10M-$100M revenue"
+                      className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Decision Makers */}
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h4 className="text-white font-medium mb-3">Decision Makers</h4>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1">Primary Decision Makers</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., CTO, VP Engineering, Technical Director"
+                    className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Pain Points */}
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h4 className="text-white font-medium mb-3">Key Pain Points</h4>
+                <textarea
+                  rows={3}
+                  placeholder="Describe the main challenges this ICP faces..."
+                  className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* Tags */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Tags (comma-separated)</label>
+                <input
+                  type="text"
+                  placeholder="e.g., technology, startups, b2b, saas"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-600">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  alert('ICP Profile creation functionality will be implemented to save to the database. This would create a new custom profile alongside the 20 pre-configured ones.');
+                  setShowCreateModal(false);
+                }}
+                className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg transition-colors"
+              >
+                Create Profile
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit ICP Profile Modal */}
+      {showEditModal && currentICP && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-white">Edit ICP Profile: {currentICP.name}</h3>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Profile Name</label>
+                  <input
+                    type="text"
+                    defaultValue={currentICP.name}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Industry Vertical</label>
+                  <input
+                    type="text"
+                    defaultValue={currentICP.industry_vertical}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                <textarea
+                  rows={3}
+                  defaultValue={currentICP.description}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* Company Criteria */}
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h4 className="text-white font-medium mb-3">Company Criteria</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-300 mb-1">Company Size</label>
+                    <input
+                      type="text"
+                      defaultValue={currentICP.criteria?.headcount || ''}
+                      className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-300 mb-1">Revenue Range</label>
+                    <input
+                      type="text"
+                      defaultValue={currentICP.criteria?.revenue || ''}
+                      className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Decision Makers */}
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h4 className="text-white font-medium mb-3">Decision Makers</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-300 mb-1">Seniority Level</label>
+                    <input
+                      type="text"
+                      defaultValue={currentICP.leads?.seniority || ''}
+                      className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-300 mb-1">Function</label>
+                    <input
+                      type="text"
+                      defaultValue={currentICP.leads?.function || ''}
+                      className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Technologies */}
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h4 className="text-white font-medium mb-3">Technologies & Stack</h4>
+                <textarea
+                  rows={2}
+                  defaultValue={currentICP.technologies || ''}
+                  placeholder="Technologies, tools, and platforms this ICP typically uses..."
+                  className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* Industries/Tags */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Industry Tags</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {currentICP.industries?.map((tag: string, index: number) => (
+                    <span key={index} className="bg-gray-600 text-white px-2 py-1 rounded text-xs">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  placeholder="Add new tags (comma-separated)"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-600">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  alert('ICP Profile editing functionality will be implemented to save changes to the database. This would update the selected profile with the new values.');
+                  setShowEditModal(false);
+                }}
+                className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg transition-colors"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -508,31 +1073,7 @@ const KnowledgeBase: React.FC = () => {
         {activeSection === 'icp' && <ICPConfiguration />}
         
         {activeSection === 'products' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <Package className="mr-2" size={24} />
-              Products & Services
-            </h2>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="products" />
-                <p className="text-sm text-gray-400 mt-3">
-                  📄 Product sheets, service descriptions, feature specs, pricing guides, demo scripts
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Current Documents</h3>
-                <div className="text-center py-8">
-                  <FileText size={48} className="mx-auto text-gray-500 mb-4" />
-                  <div className="text-gray-400 mb-2">No product documents uploaded</div>
-                  <div className="text-gray-500 text-sm">Upload product sheets, feature specs, and pricing guides to get started</div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <KnowledgeBaseSection category="product" title="Products & Services" icon={Package} onClose={() => setActiveSection('overview')} />
         )}
 
         {activeSection === 'competition' && (
@@ -662,31 +1203,7 @@ const KnowledgeBase: React.FC = () => {
         )}
 
         {activeSection === 'company' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <Briefcase className="mr-2" size={24} />
-              Company Information & Brand Guidelines
-            </h2>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="company-info" />
-                <p className="text-sm text-gray-400 mt-3">
-                  🏢 Company overview, team bios, achievements, partnerships, brand guidelines
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Current Documents</h3>
-                <div className="text-center py-8">
-                  <Briefcase size={48} className="mx-auto text-gray-500 mb-4" />
-                  <div className="text-gray-400 mb-2">No company documents uploaded</div>
-                  <div className="text-gray-500 text-sm">Upload company overview, team profiles, and brand guidelines</div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <KnowledgeBaseSection category="company" title="Company Information & Brand Guidelines" icon={Briefcase} onClose={() => setActiveSection('overview')} />
         )}
 
         {activeSection === 'success' && (
@@ -718,38 +1235,7 @@ const KnowledgeBase: React.FC = () => {
         )}
 
         {activeSection === 'buying' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <GitBranch className="mr-2" size={24} />
-              Buying Process & Decision Framework
-            </h2>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="buying-process" />
-                <p className="text-sm text-gray-400 mt-3">
-                  🔄 Buying journey maps, decision criteria, approval processes, stakeholder analysis, procurement guides
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Current Frameworks</h3>
-                <div className="text-center py-8">
-                  <GitBranch size={48} className="mx-auto text-gray-500 mb-4" />
-                  <div className="text-gray-400 mb-2">No buying process documents uploaded</div>
-                  <div className="text-gray-500 text-sm">Upload buying journey maps, decision frameworks, and procurement guides</div>
-                </div>
-                
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mt-4">
-                  <h4 className="text-white font-medium mb-3">Decision Framework Summary</h4>
-                  <div className="text-center py-4">
-                    <div className="text-gray-400 text-sm">No decision framework data available</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <KnowledgeBaseSection category="buying-process" title="Buying Process & Decision Framework" icon={GitBranch} onClose={() => setActiveSection('overview')} />
         )}
 
         {activeSection === 'compliance' && (
@@ -789,267 +1275,20 @@ const KnowledgeBase: React.FC = () => {
         )}
 
         {activeSection === 'personas' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <UserCheck className="mr-2" size={24} />
-              Personas & Roles
-            </h2>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="personas" />
-                <p className="text-sm text-gray-400 mt-3">
-                  👥 Role profiles, pain points, motivations, communication preferences, decision-making patterns
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Persona Library</h3>
-                <div className="space-y-2">
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
-                    <div className="text-white text-sm font-medium">Founder/Co-Founder Persona.pdf</div>
-                    <div className="text-gray-400 text-xs">Vision-driven, time-pressed • ROI focused</div>
-                  </div>
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
-                    <div className="text-white text-sm font-medium">VP Sales/Revenue Persona.pdf</div>
-                    <div className="text-gray-400 text-xs">Performance-driven, competitive • Metrics focused</div>
-                  </div>
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
-                    <div className="text-white text-sm font-medium">Agency Owner Persona.pdf</div>
-                    <div className="text-gray-400 text-xs">Client-focused, efficiency-driven • Scaling challenges</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-2">Leadership Roles</h4>
-                <div className="space-y-1 text-sm text-gray-300">
-                  <div>• Founder/Co-Founder</div>
-                  <div>• CEO/C-Suite</div>
-                  <div>• VP Sales/Revenue</div>
-                  <div>• Head of Growth</div>
-                </div>
-              </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-2">Operational Roles</h4>
-                <div className="space-y-1 text-sm text-gray-300">
-                  <div>• Sales Manager</div>
-                  <div>• SDR/BDR Lead</div>
-                  <div>• Marketing Director</div>
-                  <div>• Operations Manager</div>
-                </div>
-              </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-2">Service Providers</h4>
-                <div className="space-y-1 text-sm text-gray-300">
-                  <div>• Agency Owner</div>
-                  <div>• Consultant</div>
-                  <div>• Recruiter</div>
-                  <div>• Financial Advisor</div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <KnowledgeBaseSection category="personas" title="Personas & Roles" icon={UserCheck} onClose={() => setActiveSection('overview')} />
         )}
 
         {activeSection === 'objections' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <MessageCircle className="mr-2" size={24} />
-              Objections & Responses
-            </h2>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="objections" />
-                <p className="text-sm text-gray-400 mt-3">
-                  💬 Common objections, proven rebuttals, redirect strategies, conversation frameworks
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Objection Handlers</h3>
-                <div className="text-center py-8">
-                  <MessageCircle size={48} className="mx-auto text-gray-500 mb-4" />
-                  <div className="text-gray-400 mb-2">No objection handling scripts uploaded</div>
-                  <div className="text-gray-500 text-sm">Upload common objections and proven rebuttals</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-              <h4 className="text-white font-medium mb-3 flex items-center">
-                <TrendingUp className="mr-2" size={16} />
-                Objection Analysis
-              </h4>
-              <div className="text-center py-4">
-                <div className="text-gray-400 text-sm">No objection data available</div>
-                <div className="text-gray-500 text-xs mt-1">Upload objection handling documents to see category analysis</div>
-              </div>
-            </div>
-          </div>
+          <KnowledgeBaseSection category="strategy" title="Objections & Responses" icon={MessageCircle} onClose={() => setActiveSection('overview')} />
         )}
 
         {activeSection === 'pricing' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <DollarSign className="mr-2" size={24} />
-              Pricing & Packages
-            </h2>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="pricing" />
-                <p className="text-sm text-gray-400 mt-3">
-                  💰 Pricing tiers, package details, ROI calculators, cost justification materials
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Pricing Materials</h3>
-                <div className="text-center py-8">
-                  <DollarSign size={48} className="mx-auto text-gray-500 mb-4" />
-                  <div className="text-gray-400 mb-2">No pricing documents uploaded</div>
-                  <div className="text-gray-500 text-sm">Upload pricing tiers, ROI calculators, and cost justification materials</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="text-center py-8 mb-6">
-              <div className="text-gray-400 mb-2">No pricing packages configured</div>
-              <div className="text-gray-500 text-sm">Upload pricing documentation to display package information</div>
-            </div>
-
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-              <h4 className="text-white font-medium mb-3">ROI Analysis</h4>
-              <div className="text-center py-4">
-                <div className="text-gray-400 text-sm">No ROI data available</div>
-                <div className="text-gray-500 text-xs mt-1">Upload cost comparison documents to display ROI analysis</div>
-              </div>
-            </div>
-          </div>
+          <KnowledgeBaseSection category="pricing" title="Pricing & Packages" icon={DollarSign} onClose={() => setActiveSection('overview')} />
         )}
 
 
         {activeSection === 'metrics' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <BarChart className="mr-2" size={24} />
-              Success Metrics
-            </h2>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="metrics" />
-                <p className="text-sm text-gray-400 mt-3">
-                  📊 Success benchmarks, industry improvements, ROI studies, timeline examples
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Success Studies</h3>
-                <div className="space-y-2">
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
-                    <div className="text-white text-sm font-medium">Industry Benchmark Report 2024.pdf</div>
-                    <div className="text-gray-400 text-xs">Cross-industry success metrics • 500+ companies</div>
-                  </div>
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
-                    <div className="text-white text-sm font-medium">90-Day Success Timeline.pdf</div>
-                    <div className="text-gray-400 text-xs">Typical implementation milestones • ROI progression</div>
-                  </div>
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
-                    <div className="text-white text-sm font-medium">ROI Case Studies Collection.pdf</div>
-                    <div className="text-gray-400 text-xs">10x ROI examples in 3 months • Detailed analysis</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-center">
-                <div className="text-3xl font-bold text-green-400 mb-2">35%</div>
-                <div className="text-white font-medium">Avg. Lead Engagement Increase</div>
-                <div className="text-gray-400 text-sm">First 30 days</div>
-              </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-center">
-                <div className="text-3xl font-bold text-blue-400 mb-2">50%</div>
-                <div className="text-white font-medium">Faster Outreach Cycle</div>
-                <div className="text-gray-400 text-sm">vs Manual SDRs</div>
-              </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-center">
-                <div className="text-3xl font-bold text-purple-400 mb-2">10x</div>
-                <div className="text-white font-medium">ROI Within 3 Months</div>
-                <div className="text-gray-400 text-sm">Typical customer</div>
-              </div>
-            </div>
-
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mb-6">
-              <h4 className="text-white font-medium mb-3">Success Timeline</h4>
-              <div className="space-y-4">
-                <div className="flex items-center">
-                  <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-4">30</div>
-                  <div>
-                    <div className="text-white font-medium">Days 1-30: Foundation</div>
-                    <div className="text-gray-400 text-sm">Setup, training, initial campaigns • 15-25% improvement</div>
-                  </div>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white font-bold mr-4">60</div>
-                  <div>
-                    <div className="text-white font-medium">Days 31-60: Optimization</div>
-                    <div className="text-gray-400 text-sm">AI learning, message refinement • 35-45% improvement</div>
-                  </div>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold mr-4">90</div>
-                  <div>
-                    <div className="text-white font-medium">Days 61-90: Scale</div>
-                    <div className="text-gray-400 text-sm">Full automation, team expansion • 50%+ improvement</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-              <h4 className="text-white font-medium mb-3">Benchmarks by Industry</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">SaaS/Tech:</span>
-                    <span className="text-green-400">45% response improvement</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Professional Services:</span>
-                    <span className="text-green-400">38% response improvement</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Financial Services:</span>
-                    <span className="text-green-400">32% response improvement</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Healthcare:</span>
-                    <span className="text-green-400">29% response improvement</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Manufacturing:</span>
-                    <span className="text-green-400">34% response improvement</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Real Estate:</span>
-                    <span className="text-green-400">41% response improvement</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <KnowledgeBaseSection category="success-metrics" title="Success Metrics" icon={BarChart} onClose={() => setActiveSection('overview')} />
         )}
 
         {activeSection === 'setup' && (
@@ -1267,5 +1506,182 @@ const KnowledgeBase: React.FC = () => {
     </div>
   );
 };
+
+// KnowledgeBaseSection Component
+interface KnowledgeBaseSectionProps {
+  category: string;
+  title: string;
+  icon: React.ElementType;
+  onClose?: () => void;
+}
+
+function KnowledgeBaseSection({ category, title, icon: Icon, onClose }: KnowledgeBaseSectionProps) {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/knowledge-base/data?category=${category}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch knowledge base data');
+        }
+        const result = await response.json();
+        setData(result.content || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [category]);
+
+  if (loading) {
+    return (
+      <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-semibold text-white flex items-center">
+            <Icon className="mr-2" size={24} />
+            {title}
+          </h2>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+              title="Back to overview"
+            >
+              <X size={20} />
+            </button>
+          )}
+        </div>
+        <div className="text-center py-8">
+          <div className="animate-pulse">
+            <div className="h-4 bg-gray-600 rounded w-3/4 mx-auto mb-4"></div>
+            <div className="h-4 bg-gray-600 rounded w-1/2 mx-auto"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-semibold text-white flex items-center">
+            <Icon className="mr-2" size={24} />
+            {title}
+          </h2>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+              title="Back to overview"
+            >
+              <X size={20} />
+            </button>
+          )}
+        </div>
+        <div className="text-center py-8">
+          <AlertCircle size={48} className="mx-auto text-red-500 mb-4" />
+          <div className="text-red-400 mb-2">Error loading {title.toLowerCase()}</div>
+          <div className="text-gray-500 text-sm">{error}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-semibold text-white flex items-center">
+            <Icon className="mr-2" size={24} />
+            {title}
+          </h2>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+              title="Back to overview"
+            >
+              <X size={20} />
+            </button>
+          )}
+        </div>
+        <div className="text-center py-8">
+          <Icon size={48} className="mx-auto text-gray-500 mb-4" />
+          <div className="text-gray-400 mb-2">No {title.toLowerCase()} information available</div>
+          <div className="text-gray-500 text-sm">Knowledge base entries for this category will appear here</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-semibold text-white flex items-center">
+          <Icon className="mr-2" size={24} />
+          {title}
+        </h2>
+        {onClose && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="text-sm text-gray-400 hover:text-white transition-colors"
+              title="Back to overview"
+            >
+              ← Back
+            </button>
+            <button
+              onClick={onClose}
+              className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+              title="Close and back to overview"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        )}
+      </div>
+      
+      <div className="space-y-6">
+        {data.map((item) => (
+          <div key={item.id} className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+            <div className="flex justify-between items-start mb-3">
+              <h3 className="text-lg font-medium text-white">{item.title}</h3>
+              {item.subcategory && (
+                <span className="px-2 py-1 bg-blue-600 text-blue-100 text-xs rounded-full">
+                  {item.subcategory}
+                </span>
+              )}
+            </div>
+            
+            <div className="text-gray-300 mb-4 whitespace-pre-wrap">
+              {item.content}
+            </div>
+            
+            {item.tags && item.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {item.tags.map((tag: string, index: number) => (
+                  <span
+                    key={index}
+                    className="px-2 py-1 bg-gray-600 text-gray-300 text-xs rounded"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default KnowledgeBase;

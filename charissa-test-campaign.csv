@@ -1,0 +1,5 @@
+first_name,last_name,company_name,job_title,linkedin_profile_url,email_address,location,industry
+Ajay,Verma,Pixalrity,CEO,https://linkedin.com/in/ajayverma,ajay@pixalrity.com,San Francisco,SaaS
+Sarah,Martinez,TechFlow Solutions,VP of Marketing,https://linkedin.com/in/sarahmartinez,sarah@techflow.com,New York,Technology
+David,Chen,Growth Labs,Head of Partnerships,https://linkedin.com/in/davidchen,david@growthlabs.io,Austin,Marketing
+Lisa,Anderson,DataCorp,Chief Technology Officer,https://linkedin.com/in/lisaanderson,lisa@datacorp.com,Seattle,Data Analytics
