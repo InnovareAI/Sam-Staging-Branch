@@ -1905,7 +1905,6 @@ export default function Page() {
                     </div>
                   </div>
                 </div>
-                </div>
               </div>
             </div>
           </div>
@@ -2829,7 +2828,7 @@ export default function Page() {
               </div>
             </div>
           </div>
-) : showStarterScreen ? (
+        ) : showStarterScreen ? (
           /* STARTER SCREEN */
           <div className="flex-1 flex flex-col items-center justify-end pb-32 p-6">
             <div className="mb-12">
@@ -2904,6 +2903,7 @@ export default function Page() {
             <div ref={messagesEndRef} />
           </div>
         )}
+        </div>
 
         {/* CHAT INPUT CONTAINER */}
         {activeMenuItem === 'chat' && (
@@ -2953,9 +2953,6 @@ export default function Page() {
             </div>
           </div>
         )}
-
-        </div>
-      </div>
 
       {/* Conversation History */}
       <ConversationHistory
@@ -3830,5 +3827,6 @@ export default function Page() {
         </div>
       )}
     </div>
+  </div>
   );
 }
