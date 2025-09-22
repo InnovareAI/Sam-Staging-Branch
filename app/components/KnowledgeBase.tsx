@@ -219,7 +219,7 @@ function ICPConfiguration() {
                         : 'text-gray-300 hover:text-white'
                     }`}
                   >
-                    {profile.name || profile.icp_name}
+                    {profile?.name || profile?.icp_name || 'Unnamed Profile'}
                   </button>
                 ))}
               </div>
@@ -301,8 +301,6 @@ function ICPConfiguration() {
             </div>
           </div>
         </div>
-      )}
-        </>
       )}
 
       {/* Category Content */}

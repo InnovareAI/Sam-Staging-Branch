@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     // Get user's workspace
     const { data: workspaceUser, error: workspaceError } = await supabase
-      .from('workspace_users')
+      .from('workspace_members')
       .select('workspace_id')
       .eq('user_id', user.id)
       .single();
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     // Get user's workspace
     const { data: workspaceUser, error: workspaceError } = await supabase
-      .from('workspace_users')
+      .from('workspace_members')
       .select('workspace_id')
       .eq('user_id', user.id)
       .single();
@@ -90,15 +90,17 @@ export async function POST(request: NextRequest) {
       .from('icp_configurations')
       .insert({
         workspace_id: workspaceUser.workspace_id,
-        icp_name: name.trim(),
-        overview,
+        name: name.trim(),
+        display_name: name.trim(),
+        market_niche: 'general',
+        industry_vertical: 'technology',
         target_profile,
         decision_makers,
         pain_points,
         buying_process,
-        messaging,
+        messaging_strategy: messaging,
         success_metrics,
-        advanced
+        advanced_classification: advanced
       })
       .select()
       .single();
