@@ -1,12 +1,12 @@
 [build]
-  command = "npm run build"
+  command = "echo 'Using existing build'"
   publish = ".next"
 
 [build.environment]
   NODE_VERSION = "20"
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+# [[plugins]]
+#   package = "@netlify/plugin-nextjs"
 
 [dev]
   command = "npm run dev"

@@ -12,11 +12,14 @@ import {
   Paperclip, 
   Hash, 
   Calendar,
-  Filter
+  Filter,
+  Clock,
+  ArrowUpFromLine
 } from 'lucide-react'
 import ThreadSidebar from './ThreadSidebar'
 import TagFilterPanel from './TagFilterPanel'
 import DataApprovalPanel from './DataApprovalPanel'
+import { LinkedInLimitsInfobox } from './LinkedInLimitsInfobox'
 import { SamConversationThread, useSamThreadedChat } from '@/lib/hooks/useSamThreadedChat'
 
 interface Message {
@@ -45,6 +48,9 @@ export default function ThreadedChatInterface() {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [showDataApproval, setShowDataApproval] = useState(false)
   const [pendingProspectData, setPendingProspectData] = useState<any[]>([])
+  const [showMemorySnapshots, setShowMemorySnapshots] = useState(false)
+  const [memorySnapshots, setMemorySnapshots] = useState<any[]>([])
+  const [isLoadingMemory, setIsLoadingMemory] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Load threads on mount
@@ -88,11 +94,91 @@ export default function ThreadedChatInterface() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
+  // Load memory snapshots
+  const loadMemorySnapshots = async () => {
+    setIsLoadingMemory(true)
+    try {
+      const response = await fetch('/api/sam/memory?action=snapshots')
+      if (!response.ok) {
+        throw new Error('Failed to load memory snapshots')
+      }
+      
+      const data = await response.json()
+      setMemorySnapshots(data.snapshots || [])
+    } catch (error) {
+      console.error('Failed to load memory snapshots:', error)
+      setMemorySnapshots([])
+    } finally {
+      setIsLoadingMemory(false)
+    }
+  }
+
+  // Restore memory snapshot
+  const restoreMemorySnapshot = async (snapshotId: string) => {
+    setIsLoadingMemory(true)
+    try {
+      const response = await fetch('/api/sam/memory', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'restore_snapshot',
+          snapshot_id: snapshotId
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to restore memory snapshot')
+      }
+
+      const data = await response.json()
+      
+      if (data.success) {
+        // Reload threads to show restored conversations
+        await loadThreads()
+        setShowMemorySnapshots(false)
+        
+        // Add system message to current thread about memory restoration
+        if (currentThread) {
+          const systemMessage = {
+            id: `system-${Date.now()}`,
+            role: 'assistant' as const,
+            content: `✅ **Memory Restored Successfully**\n\nI've restored my memory from ${new Date(data.snapshot_date || Date.now()).toLocaleDateString()}. I now have access to ${data.conversations?.length || 0} previous conversations and can continue our work with full context.\n\n*Previous conversation history has been restored to help maintain continuity.*`,
+            created_at: new Date().toISOString(),
+          }
+          setMessages(prev => [...prev, systemMessage])
+        }
+      }
+    } catch (error) {
+      console.error('Failed to restore memory:', error)
+      // Add error message
+      if (currentThread) {
+        const errorMessage = {
+          id: `error-${Date.now()}`,
+          role: 'assistant' as const,
+          content: `❌ **Memory Restore Failed**\n\nSorry, I couldn't restore the memory snapshot. Please try again or contact support if the issue persists.`,
+          created_at: new Date().toISOString(),
+        }
+        setMessages(prev => [...prev, errorMessage])
+      }
+    } finally {
+      setIsLoadingMemory(false)
+    }
+  }
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || !currentThread || isSending) return
 
-    // Check for Unipile commands before sending
     const trimmedInput = inputMessage.trim()
+
+    // Check for template library save commands
+    if (await handleTemplateLibraryCommands(trimmedInput)) {
+      setInputMessage('')
+      return
+    }
+
+    // Check for Unipile commands before sending
     if (await handleUnipileCommands(trimmedInput)) {
       setInputMessage('')
       return
@@ -118,8 +204,193 @@ export default function ThreadedChatInterface() {
     }
   }
 
+  const handleTemplateLibraryCommands = async (input: string): Promise<boolean> => {
+    const command = input.toLowerCase()
+
+    // Template library save commands
+    if (command.includes('save') && (command.includes('template') || command.includes('library')) ||
+        command.includes('yes, save') ||
+        command.includes('save to library') ||
+        command.includes('save them')) {
+      await executeTemplateLibrarySave(input)
+      return true
+    }
+
+    // Template library list/search commands
+    if (command.includes('show templates') ||
+        command.includes('list templates') ||
+        command.includes('my templates') ||
+        command.startsWith('/templates')) {
+      await executeTemplateLibraryList(input)
+      return true
+    }
+
+    return false
+  }
+
+  const executeTemplateLibrarySave = async (input: string) => {
+    if (!currentThread) return
+
+    setIsSending(true)
+    try {
+      // Find the most recent message with template data
+      const recentTemplateMessage = messages
+        .slice()
+        .reverse()
+        .find(msg => msg.has_prospect_intelligence && msg.prospect_intelligence_data?.templates)
+
+      if (!recentTemplateMessage?.prospect_intelligence_data?.templates) {
+        const errorMessage = {
+          id: `temp-${Date.now()}-error`,
+          role: 'assistant' as const,
+          content: `I don't see any recent templates to save. Please create or paste templates first, then ask me to save them.`,
+          created_at: new Date().toISOString(),
+        }
+        setMessages(prev => [...prev, errorMessage])
+        return
+      }
+
+      const templates = recentTemplateMessage.prospect_intelligence_data.templates
+      let savedCount = 0
+
+      // Save each template to the library
+      for (const template of templates) {
+        try {
+          const response = await fetch('/api/sam/template-library', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              action: 'create',
+              template: {
+                name: `${template.type.replace('_', ' ')} - ${new Date().toLocaleDateString()}`,
+                type: template.type,
+                content: template.content,
+                variables: template.variables,
+                industry: currentThread.prospect_company || 'General',
+                campaign_type: currentThread.sales_methodology || 'General',
+                target_audience: currentThread.prospect_name || 'General',
+                tags: ['sam-created', 'auto-parsed']
+              }
+            })
+          })
+
+          if (response.ok) {
+            savedCount++
+          }
+        } catch (error) {
+          console.error('Failed to save template:', error)
+        }
+      }
+
+      // Create success message
+      const successMessage = {
+        id: `temp-${Date.now()}-success`,
+        role: 'assistant' as const,
+        content: `✅ **Templates Saved Successfully!**\n\nSaved ${savedCount} of ${templates.length} templates to your library.\n\n**What's Next:**\n• Access them in Campaign Hub → Templates\n• Use them in new campaigns\n• Edit and optimize based on performance\n• Share with your team\n\n**Template Library Commands:**\n• "Show my templates" - View all saved templates\n• "List sales templates" - Filter by type\n• "Search templates for [industry]" - Find specific templates\n\nYour templates are now ready to use across all campaigns! 🚀`,
+        created_at: new Date().toISOString(),
+        has_prospect_intelligence: true,
+      }
+
+      setMessages(prev => [...prev, successMessage])
+
+      // Update thread tags
+      await updateThreadContext({
+        tags: [...(currentThread.tags || []), 'template-saved', 'library-updated'],
+      })
+
+    } catch (error) {
+      console.error('Template library save failed:', error)
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  const executeTemplateLibraryList = async (input: string) => {
+    if (!currentThread) return
+
+    setIsSending(true)
+    try {
+      // Parse search parameters from input
+      const searchParams: any = {}
+      
+      if (input.includes('sales')) searchParams.campaign_type = 'sales'
+      if (input.includes('recruitment')) searchParams.campaign_type = 'recruitment'
+      if (input.includes('connection')) searchParams.type = 'connection_request'
+      if (input.includes('follow')) searchParams.type = 'follow_up_1'
+
+      const response = await fetch('/api/sam/template-library', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        let libraryResponse = `📚 **Your Template Library**\n\n`
+        
+        if (result.templates.length === 0) {
+          libraryResponse += `No templates found in your library yet.\n\n**Getting Started:**\n• Paste message templates and I'll parse them\n• Use existing templates from campaigns\n• Import templates from CSV files\n\nWould you like me to help you create your first template?`
+        } else {
+          libraryResponse += `Found **${result.templates.length}** templates:\n\n`
+          
+          // Group by type
+          Object.entries(result.grouped_templates).forEach(([type, templates]: [string, any]) => {
+            const typeLabel = type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+            libraryResponse += `**${typeLabel}** (${templates.length}):\n`
+            
+            templates.slice(0, 3).forEach((template: any, index: number) => {
+              libraryResponse += `${index + 1}. ${template.name} (${template.content.length} chars)\n`
+              if (template.usage_count > 0) {
+                libraryResponse += `   📊 Used ${template.usage_count} times\n`
+              }
+            })
+            
+            if (templates.length > 3) {
+              libraryResponse += `   ... and ${templates.length - 3} more\n`
+            }
+            libraryResponse += `\n`
+          })
+
+          libraryResponse += `**Commands:**\n• "Use template [name]" - Apply to current campaign\n• "Edit template [name]" - Modify template\n• "Delete template [name]" - Remove from library\n• "Show template performance" - View analytics`
+        }
+
+        const libraryMessage = {
+          id: `temp-${Date.now()}-library`,
+          role: 'assistant' as const,
+          content: libraryResponse,
+          created_at: new Date().toISOString(),
+          has_prospect_intelligence: true,
+          prospect_intelligence_data: {
+            library_data: result
+          }
+        }
+
+        setMessages(prev => [...prev, libraryMessage])
+      }
+    } catch (error) {
+      console.error('Template library list failed:', error)
+    } finally {
+      setIsSending(false)
+    }
+  }
+
   const handleUnipileCommands = async (input: string): Promise<boolean> => {
     const command = input.toLowerCase()
+
+    // Template Creation Commands
+    if (command.startsWith('/template') || 
+        command.includes('create template') || 
+        command.includes('parse template') ||
+        command.includes('message template') ||
+        command.includes('template sequence') ||
+        detectTemplateInput(input)) {
+      await executeTemplateCreation(input)
+      return true
+    }
 
     // ICP Research Commands
     if (command.startsWith('/icp') || command.includes('research icp') || command.includes('ideal customer profile')) {
@@ -142,6 +413,20 @@ export default function ThreadedChatInterface() {
     // LinkedIn Automation Commands
     if (command.startsWith('/linkedin') || command.includes('linkedin automation')) {
       await executeLinkedInAutomation(input)
+      return true
+    }
+
+    // Campaign Management Commands
+    if (command.startsWith('/campaign') || 
+        command.includes('create campaign') || 
+        command.includes('new campaign') ||
+        command.includes('launch campaign') ||
+        command.includes('add prospects') ||
+        command.includes('upload prospects') ||
+        command.includes('review message') ||
+        command.includes('campaign status') ||
+        command.includes('my campaigns')) {
+      await executeCampaignManagement(input)
       return true
     }
 
@@ -332,6 +617,115 @@ export default function ThreadedChatInterface() {
     }
   }
 
+  const executeTemplateCreation = async (input: string) => {
+    if (!currentThread) return
+
+    setIsSending(true)
+    try {
+      // Call template parsing API
+      const response = await fetch('/api/sam/parse-templates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_input: input,
+          conversation_context: {
+            thread_id: currentThread.id,
+            campaign_type: currentThread.sales_methodology,
+            target_audience: currentThread.prospect_name || currentThread.prospect_company
+          },
+          parse_options: {
+            auto_optimize: true,
+            suggest_improvements: true,
+            include_performance_data: true
+          }
+        })
+      })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        // Create user message
+        const userMessage = {
+          id: `temp-${Date.now()}-user`,
+          role: 'user' as const,
+          content: input,
+          created_at: new Date().toISOString(),
+        }
+
+        // Create assistant response with parsed templates
+        const assistantMessage = {
+          id: `temp-${Date.now()}-assistant`,
+          role: 'assistant' as const,
+          content: result.sam_response,
+          created_at: new Date().toISOString(),
+          has_prospect_intelligence: true,
+          prospect_intelligence_data: {
+            templates: result.parsed_templates,
+            template_sequence: result.template_sequence,
+            suggestions: result.suggestions
+          }
+        }
+
+        setMessages(prev => [...prev, userMessage, assistantMessage])
+        
+        // Update thread with template creation context
+        await updateThreadContext({
+          tags: [...(currentThread.tags || []), 'template-creation', 'messaging'],
+          thread_type: 'template_builder'
+        })
+
+        // Optionally save templates to library
+        if (result.parsed_templates.length > 0) {
+          await promptTemplateLibrarySave(result.parsed_templates)
+        }
+      }
+    } catch (error) {
+      console.error('Template creation failed:', error)
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  const detectTemplateInput = (input: string): boolean => {
+    // Detect if user is pasting template content based on patterns
+    const indicators = [
+      /Hi \{[^}]+\}/, // Template variables like {first_name}
+      /Message \d+:/i, // Message 1: Message 2:
+      /Follow[-\s]?up/i, // Follow-up patterns
+      /Connection request/i,
+      /---+/, // Separator lines
+      input.length > 200 && input.includes('\n'), // Multi-line content
+      /Dear|Hi|Hello.*,.*\n/i // Email/message pattern
+    ]
+
+    return indicators.some(pattern => {
+      if (pattern instanceof RegExp) {
+        return pattern.test(input)
+      }
+      return pattern
+    })
+  }
+
+  const promptTemplateLibrarySave = async (templates: any[]) => {
+    if (!currentThread) return
+
+    // Create a follow-up message offering to save templates
+    const savePromptMessage = {
+      id: `temp-${Date.now()}-save-prompt`,
+      role: 'assistant' as const,
+      content: `💾 **Save to Template Library?**\n\nI can save these ${templates.length} template${templates.length > 1 ? 's' : ''} to your library for future use. This will make them available across all your campaigns.\n\n**Benefits:**\n• Quick access in Campaign Hub\n• Performance tracking over time\n• A/B testing variations\n• Team sharing (if applicable)\n\nWould you like me to save these templates? Just say "Yes, save them" or "Save to library".`,
+      created_at: new Date().toISOString(),
+      has_prospect_intelligence: true,
+    }
+
+    // Add after a short delay for better UX
+    setTimeout(() => {
+      setMessages(prev => [...prev, savePromptMessage])
+    }, 1500)
+  }
+
   const executeLinkedInAutomation = async (input: string) => {
     if (!currentThread) return
 
@@ -356,6 +750,78 @@ export default function ThreadedChatInterface() {
       setMessages(prev => [...prev, userMessage, assistantMessage])
     } catch (error) {
       console.error('LinkedIn automation command failed:', error)
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  const executeCampaignManagement = async (input: string) => {
+    if (!currentThread) return
+
+    setIsSending(true)
+    try {
+      const userMessage = {
+        id: `temp-${Date.now()}-user`,
+        role: 'user' as const,
+        content: input,
+        created_at: new Date().toISOString(),
+      }
+
+      // Determine campaign action based on input
+      const action = determineCampaignAction(input)
+      const campaignData = parseCampaignData(input)
+
+      // Call the campaign manager API
+      const response = await fetch('/api/sam/campaign-manager', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          ...campaignData
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Campaign management failed')
+      }
+
+      const result = await response.json()
+
+      const assistantMessage = {
+        id: `temp-${Date.now()}-assistant`,
+        role: 'assistant' as const,
+        content: result.message,
+        created_at: new Date().toISOString(),
+        has_prospect_intelligence: true,
+        prospect_intelligence_data: {
+          campaign_action: action,
+          campaign_data: result.data,
+          suggested_actions: result.suggested_actions,
+          next_steps: result.next_steps
+        }
+      }
+
+      setMessages(prev => [...prev, userMessage, assistantMessage])
+
+      // Update thread context if campaign was created
+      if (action === 'create_campaign' && result.success && result.data?.campaign_id) {
+        await updateThreadContext({
+          campaign_id: result.data.campaign_id,
+          campaign_name: result.data.campaign?.name
+        })
+      }
+
+    } catch (error) {
+      console.error('Campaign management failed:', error)
+      const errorMessage = {
+        id: `temp-${Date.now()}-error`,
+        role: 'assistant' as const,
+        content: `Sorry, I encountered an error with campaign management: ${error.message}. Please try again or contact support if the issue persists.`,
+        created_at: new Date().toISOString(),
+      }
+      setMessages(prev => [...prev, errorMessage])
     } finally {
       setIsSending(false)
     }
@@ -693,8 +1159,19 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                 
                 <div className="flex items-center space-x-2">
                   <button
+                    onClick={() => {
+                      loadMemorySnapshots()
+                      setShowMemorySnapshots(true)
+                    }}
+                    className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Restore Memory"
+                  >
+                    <Clock size={20} />
+                  </button>
+                  <button
                     onClick={() => setShowTagFilter(!showTagFilter)}
                     className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Filter Tags"
                   >
                     <Filter size={20} />
                   </button>
@@ -833,6 +1310,13 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
               </div>
               
               <div className="bg-gray-700 p-4 rounded-b-lg max-w-4xl mx-auto">
+                {/* LinkedIn Character Limits Infobox */}
+                <LinkedInLimitsInfobox 
+                  messageLength={inputMessage.length}
+                  isTemplateContext={detectTemplateInput(inputMessage)}
+                  messageContent={inputMessage}
+                />
+                
                 <div className="flex items-end bg-gray-600 rounded-lg px-4 py-2">
                   <button className="text-gray-400 hover:text-gray-200 transition-colors p-1 mr-2">
                     <Paperclip size={18} />
@@ -920,6 +1404,202 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
         onApprove={handleDataApproval}
         onReject={handleDataRejection}
       />
+
+      {/* Memory Snapshots Panel */}
+      {showMemorySnapshots && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="max-w-2xl w-full mx-4 bg-gray-800 rounded-lg shadow-xl">
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Clock size={24} className="text-purple-400" />
+                  <h2 className="text-xl font-semibold text-white">
+                    Restore Memory Snapshots
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setShowMemorySnapshots(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-gray-400 text-sm mt-2">
+                Restore conversation history from previous 7-day periods. This helps maintain context and continuity.
+              </p>
+            </div>
+
+            <div className="p-6 max-h-96 overflow-y-auto">
+              {isLoadingMemory ? (
+                <div className="flex justify-center py-8">
+                  <div className="text-gray-400">Loading memory snapshots...</div>
+                </div>
+              ) : memorySnapshots.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-gray-400 mb-4">No memory snapshots available</div>
+                  <p className="text-sm text-gray-500">
+                    Memory snapshots are created automatically every 7 days. 
+                    Come back later to see your conversation history.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {memorySnapshots.map((snapshot) => (
+                    <div
+                      key={snapshot.id}
+                      className="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <ArrowUpFromLine size={16} className="text-purple-400" />
+                            <span className="text-white font-medium">
+                              {new Date(snapshot.snapshot_date).toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-300 mb-2">
+                            {snapshot.memory_summary || `${snapshot.conversation_count} conversations, ${snapshot.total_messages} messages`}
+                          </div>
+                          <div className="flex items-center space-x-4 text-xs text-gray-400">
+                            <span>📊 {snapshot.conversation_count} conversations</span>
+                            <span>💬 {snapshot.total_messages} messages</span>
+                            <span>⭐ {snapshot.importance_score}/10 importance</span>
+                            {snapshot.restore_count > 0 && (
+                              <span>🔄 Restored {snapshot.restore_count} times</span>
+                            )}
+                          </div>
+                          {snapshot.user_notes && (
+                            <div className="mt-2 text-sm text-gray-300 italic">
+                              "{snapshot.user_notes}"
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => restoreMemorySnapshot(snapshot.id)}
+                          disabled={isLoadingMemory}
+                          className="ml-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white rounded-lg transition-colors text-sm font-medium"
+                        >
+                          {isLoadingMemory ? 'Restoring...' : 'Restore'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-700 bg-gray-750 rounded-b-lg">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-400">
+                  💡 Tip: Memory snapshots help SAM maintain context across different time periods
+                </div>
+                <button
+                  onClick={() => setShowMemorySnapshots(false)}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
+}
+
+// Helper functions for campaign management
+const determineCampaignAction = (input: string): string => {
+  const lowerInput = input.toLowerCase()
+  
+  if (lowerInput.includes('upload') || lowerInput.includes('csv') || lowerInput.includes('import')) {
+    return 'upload_prospects'
+  }
+  if (lowerInput.includes('create campaign') || lowerInput.includes('new campaign')) {
+    return 'create_campaign'
+  }
+  if (lowerInput.includes('generate template') || lowerInput.includes('message template')) {
+    return 'generate_templates'
+  }
+  if (lowerInput.includes('review') || lowerInput.includes('approve')) {
+    return 'review_message'
+  }
+  if (lowerInput.includes('execute') || lowerInput.includes('send') || lowerInput.includes('launch')) {
+    return 'execute_campaign'
+  }
+  if (lowerInput.includes('status') || lowerInput.includes('progress')) {
+    return 'get_campaign_status'
+  }
+  
+  return 'create_campaign' // default
+}
+
+const parseCampaignData = (input: string): any => {
+  const data: any = {}
+  
+  // Check for CSV data
+  if (input.includes(',') && (input.includes('\n') || input.includes('first_name') || input.includes('email'))) {
+    data.prospects_data = parseCSVData(input)
+  }
+  
+  // Extract campaign name
+  const nameMatch = input.match(/campaign.*?["']([^"']+)["']/i) || input.match(/name.*?["']([^"']+)["']/i)
+  if (nameMatch) {
+    data.campaign_data = { name: nameMatch[1] }
+  }
+  
+  // Extract message template
+  const templateMatch = input.match(/template.*?["']([^"']+)["']/i) || input.match(/message.*?["']([^"']+)["']/i)
+  if (templateMatch) {
+    data.template_data = { user_input: templateMatch[1] }
+  }
+  
+  return data
+}
+
+const parseCSVData = (input: string): any => {
+  try {
+    // Extract CSV content from the input
+    const csvMatch = input.match(/([^\n]*(?:first_name|email|company|linkedin)[^\n]*(?:\n[^\n]*)*)/i)
+    const csvContent = csvMatch ? csvMatch[1] : input
+    
+    const lines = csvContent.split('\n').filter(line => line.trim())
+    if (lines.length < 2) return null
+    
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+    const prospects = lines.slice(1).map(line => {
+      const values = line.split(',').map(v => v.trim())
+      const prospect: any = {}
+      
+      headers.forEach((header, index) => {
+        if (values[index]) {
+          // Map common field variations
+          if (header.includes('first') || header.includes('fname')) prospect.first_name = values[index]
+          else if (header.includes('last') || header.includes('lname')) prospect.last_name = values[index]
+          else if (header.includes('company')) prospect.company_name = values[index]
+          else if (header.includes('title') || header.includes('job')) prospect.job_title = values[index]
+          else if (header.includes('linkedin')) prospect.linkedin_profile_url = values[index]
+          else if (header.includes('email')) prospect.email_address = values[index]
+          else if (header.includes('location')) prospect.location = values[index]
+          else if (header.includes('industry')) prospect.industry = values[index]
+          else prospect[header] = values[index]
+        }
+      })
+      
+      return prospect
+    }).filter(p => p.first_name || p.email_address) // Filter out invalid rows
+    
+    return {
+      prospects,
+      source: 'csv'
+    }
+  } catch (error) {
+    console.error('CSV parsing error:', error)
+    return null
+  }
 }
