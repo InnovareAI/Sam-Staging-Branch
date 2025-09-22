@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Brain, CheckSquare, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, FileText, Search, Package, Award, MessageSquare, Cpu, Clock, AlertCircle, Mic, Briefcase, Trophy, GitBranch, Mail, Shield, UserCheck, MessageCircle, DollarSign, Zap, BarChart, UserPlus, Bot, HelpCircle } from 'lucide-react';
+import { Brain, CheckSquare, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, FileText, Search, Package, Award, MessageSquare, Cpu, Clock, AlertCircle, Mic, Briefcase, Trophy, GitBranch, Mail, Shield, UserCheck, MessageCircle, DollarSign, Zap, BarChart, UserPlus, Bot, HelpCircle, Globe } from 'lucide-react';
 import SAMOnboarding from './SAMOnboarding';
 import InquiryResponses from './InquiryResponses';
 
@@ -57,165 +57,994 @@ function DocumentUpload({ section }: { section: string }) {
   );
 }
 
-// ICP Configuration Component
+// Comprehensive ICP Configuration Component
 function ICPConfiguration() {
   const [selectedICP, setSelectedICP] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>('overview');
   const [icpProfiles, setIcpProfiles] = useState<{[key: string]: any}>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   
   const currentICP = selectedICP && icpProfiles[selectedICP] ? icpProfiles[selectedICP] : null;
 
+  // Fetch ICP profiles on component mount
+  React.useEffect(() => {
+    const fetchICPProfiles = async () => {
+      try {
+        const response = await fetch('/api/knowledge-base/icp-profiles');
+        if (response.ok) {
+          const profiles = await response.json();
+          setIcpProfiles(profiles || {});
+          
+          // Auto-select first profile if none selected
+          if (!selectedICP && Object.keys(profiles || {}).length > 0) {
+            setSelectedICP(Object.keys(profiles)[0]);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch ICP profiles:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchICPProfiles();
+  }, []);
+
+  const handleCreateICP = () => {
+    setShowCreateForm(true);
+  };
+
+  const handleCreateICPSubmit = async (icpName: string) => {
+    try {
+      const response = await fetch('/api/knowledge-base/icp-profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name: icpName,
+          overview: {},
+          target_profile: {},
+          decision_makers: {},
+          pain_points: {},
+          buying_process: {},
+          messaging: {},
+          success_metrics: {},
+          advanced: {}
+        })
+      });
+      
+      if (response.ok) {
+        const newProfile = await response.json();
+        setIcpProfiles(prev => ({ ...prev, [newProfile.id]: newProfile }));
+        setSelectedICP(newProfile.id);
+        setShowCreateForm(false);
+      }
+    } catch (error) {
+      console.error('Failed to create ICP profile:', error);
+    }
+  };
+
+  // Comprehensive ICP Categories
+  const icpCategories = [
+    { id: 'overview', label: 'Overview', icon: Target, description: 'ICP summary and key metrics' },
+    { id: 'target_profile', label: 'Target Profile', icon: Building2, description: 'Company size, industry, geography, technology requirements' },
+    { id: 'decision_makers', label: 'Decision Makers', icon: Users, description: 'Authority levels, influence patterns, stakeholder hierarchies' },
+    { id: 'pain_points', label: 'Pain Points & Signals', icon: AlertCircle, description: 'Operational challenges, buying signals, growth pressures' },
+    { id: 'buying_process', label: 'Buying Process', icon: GitBranch, description: 'Stakeholder analysis, approval workflows, evaluation stages' },
+    { id: 'messaging', label: 'Messaging Strategy', icon: MessageSquare, description: 'Value propositions, competitive positioning, role-based communication' },
+    { id: 'success_metrics', label: 'Success Metrics', icon: BarChart, description: 'Industry KPIs, ROI models, performance benchmarks' },
+    { id: 'advanced', label: 'Advanced Classification', icon: Settings, description: 'Technology adoption, compliance, market trends, culture' }
+  ];
+
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-        <Target className="mr-2" size={24} />
-        ICP Configuration
-      </h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-semibold text-white flex items-center">
+          <Target className="mr-2" size={24} />
+          ICP Configuration
+        </h2>
+        <div className="flex space-x-2">
+          <button 
+            onClick={handleCreateICP}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center"
+          >
+            <Plus className="mr-1" size={16} />
+            New ICP
+          </button>
+          <button className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
+            <Upload className="mr-1" size={16} />
+            Import
+          </button>
+        </div>
+      </div>
 
-      {/* ICP Profile Selector */}
-      {Object.keys(icpProfiles).length > 0 ? (
-        <div className="flex space-x-1 mb-6 bg-gray-700 rounded-lg p-1">
-          {Object.entries(icpProfiles).map(([key, profile]) => (
-            <button
-              key={key}
-              onClick={() => setSelectedICP(key)}
-              className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
-                selectedICP === key
-                  ? 'text-white bg-gray-600'
-                  : 'text-gray-300 hover:text-white'
-              }`}
-            >
-              {profile.name}
-            </button>
-          ))}
+      {/* Create ICP Form Modal */}
+      {showCreateForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 w-96">
+            <h3 className="text-xl font-semibold text-white mb-4">Create New ICP Profile</h3>
+            <input 
+              type="text" 
+              placeholder="Enter ICP profile name..."
+              className="w-full bg-gray-700 border border-gray-600 px-3 py-2 rounded text-white placeholder-gray-400 mb-4"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                  handleCreateICPSubmit(e.currentTarget.value.trim());
+                }
+              }}
+              autoFocus
+            />
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => {
+                  const input = document.querySelector('input[placeholder="Enter ICP profile name..."]') as HTMLInputElement;
+                  if (input?.value.trim()) {
+                    handleCreateICPSubmit(input.value.trim());
+                  }
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
+              >
+                Create
+              </button>
+              <button 
+                onClick={() => setShowCreateForm(false)}
+                className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {isLoading ? (
+        <div className="text-center py-12">
+          <div className="text-gray-400 mb-4">Loading ICP profiles...</div>
         </div>
       ) : (
+        <>
+          {/* Category Navigation - Always Show */}
+          <div className="mb-6">
+            {/* ICP Profile Selector - Only if profiles exist */}
+            {Object.keys(icpProfiles).length > 0 && (
+              <div className="flex space-x-1 mb-4 bg-gray-700 rounded-lg p-1">
+                {Object.entries(icpProfiles).map(([key, profile]) => (
+                  <button
+                    key={key}
+                    onClick={() => setSelectedICP(key)}
+                    className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
+                      selectedICP === key
+                        ? 'text-white bg-gray-600'
+                        : 'text-gray-300 hover:text-white'
+                    }`}
+                  >
+                    {profile.name || profile.icp_name}
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            {/* Category Navigation - Always Visible */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
+              {icpCategories.map((category) => {
+                const IconComponent = category.icon;
+                return (
+                  <button
+                    key={category.id}
+                    onClick={() => setActiveCategory(category.id)}
+                    className={`p-3 rounded-lg text-left transition-all ${
+                      activeCategory === category.id
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center mb-2">
+                      <IconComponent size={16} className="mr-2" />
+                      <span className="text-sm font-medium">{category.label}</span>
+                    </div>
+                    <p className="text-xs opacity-80">{category.description}</p>
+                  </button>
+                );
+              })}
+            </div>
+            
+            {/* No Profiles Message - Only if no profiles */}
+            {Object.keys(icpProfiles).length === 0 && (
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mb-6">
+                <div className="text-center">
+                  <Target size={32} className="mx-auto text-gray-500 mb-2" />
+                  <h3 className="text-lg font-medium text-gray-300 mb-2">No ICP Profiles Created Yet</h3>
+                  <p className="text-gray-400 text-sm mb-4">
+                    Create your first ICP profile or explore the category structure below.
+                  </p>
+                  <button 
+                    onClick={handleCreateICP}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                  >
+                    <Plus className="mr-1 inline" size={16} />
+                    Create Your First ICP Profile
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Remove the old no-profiles section since we moved it above */}
+      {false && (
         <div className="text-center py-12">
-          <div className="text-gray-400 mb-4">
-            <Target size={48} className="mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-medium text-gray-300 mb-2">No ICP Profiles Configured</h3>
-            <p className="text-sm max-w-md mx-auto">
-              Create your first Ideal Customer Profile to help SAM understand your target market and ideal prospects.
-            </p>
+          <Target size={64} className="mx-auto text-gray-500 mb-4" />
+          <h3 className="text-xl font-medium text-gray-300 mb-2">No ICP Profiles Configured</h3>
+          <p className="text-gray-400 mb-6 max-w-md mx-auto">
+            Create comprehensive Ideal Customer Profiles with detailed targeting criteria, decision maker analysis, 
+            and strategic messaging frameworks to help SAM identify and engage your best prospects.
+          </p>
+          <div className="space-y-3">
+            <button 
+              onClick={handleCreateICP}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center mx-auto"
+            >
+              <Plus className="mr-2" size={16} />
+              Create Your First ICP Profile
+            </button>
+            <div className="flex justify-center space-x-4 text-sm">
+              <button className="text-gray-400 hover:text-gray-300 flex items-center">
+                <Upload className="mr-1" size={14} />
+                Import from Template
+              </button>
+              <button className="text-gray-400 hover:text-gray-300 flex items-center">
+                <Search className="mr-1" size={14} />
+                Browse Examples
+              </button>
+            </div>
           </div>
         </div>
       )}
-
-      {/* Current ICP Details */}
-      {currentICP ? (
-        <div className="space-y-4">
-          {/* Company Criteria */}
-          <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-            <h3 className="text-white font-medium mb-3 flex items-center">
-              <Building2 className="mr-2" size={16} />
-              Company Criteria
-            </h3>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-300">Headcount:</span>
-                <span className="text-white">{currentICP.criteria?.headcount || 'Not specified'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Revenue:</span>
-                <span className="text-white">{currentICP.criteria?.revenue || 'Not specified'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Growth:</span>
-                <span className="text-white">{currentICP.criteria?.growth || 'Not specified'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Type:</span>
-                <span className="text-white">{currentICP.criteria?.type || 'Not specified'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Industry & Technology */}
-          <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-            <h3 className="text-white font-medium mb-3 flex items-center">
-              <Cpu className="mr-2" size={16} />
-              Industry & Technology
-            </h3>
-            <div className="space-y-2">
-              <div className="flex flex-wrap gap-1">
-                {currentICP.industries?.length > 0 ? (
-                  currentICP.industries.map((industry: string, index: number) => (
-                    <span key={index} className="bg-gray-600 text-white px-2 py-1 rounded-full text-xs">
-                      {industry}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-gray-400 text-xs">No industries specified</span>
-                )}
-              </div>
-              <div className="text-gray-300 text-xs">
-                <strong>Technologies:</strong> {currentICP.technologies || 'Not specified'}
-              </div>
-            </div>
-          </div>
-
-          {/* Lead Criteria */}
-          <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-            <h3 className="text-white font-medium mb-3 flex items-center">
-              <Users className="mr-2" size={16} />
-              Lead Criteria
-            </h3>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-300">Seniority:</span>
-                <span className="text-white">{currentICP.leads?.seniority || 'Not specified'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Function:</span>
-                <span className="text-white">{currentICP.leads?.function || 'Not specified'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Experience:</span>
-                <span className="text-white">{currentICP.leads?.experience || 'Not specified'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-300">Geography:</span>
-                <span className="text-white">{currentICP.leads?.geography || 'Not specified'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Timing & Signals */}
-          <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-            <h3 className="text-white font-medium mb-3 flex items-center">
-              <Clock className="mr-2" size={16} />
-              Timing & Signals
-            </h3>
-            <div className="space-y-1 text-sm">
-              {currentICP.signals?.length > 0 ? (
-                currentICP.signals.map((signal: string, index: number) => (
-                  <div key={index} className="text-gray-300">• {signal}</div>
-                ))
-              ) : (
-                <div className="text-gray-400">No signals configured</div>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : Object.keys(icpProfiles).length > 0 && (
-        <div className="text-center py-8">
-          <p className="text-gray-400">Select an ICP profile to view details</p>
-        </div>
+        </>
       )}
 
-      {/* Actions */}
-      <div className="flex space-x-3 pt-4">
-        <button className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-          Create New ICP Profile
-        </button>
-        {currentICP && (
-          <button className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-            Edit Current Profile
-          </button>
-        )}
-        {Object.keys(icpProfiles).length > 0 && (
-          <button className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-            Export Configuration
-          </button>
+      {/* Category Content */}
+      <div className="space-y-6">
+        {/* Show content for current ICP if available, otherwise show structure */}
+        {(currentICP || Object.keys(icpProfiles).length === 0) && (
+          <>
+            {activeCategory === 'overview' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* ICP Performance Card */}
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-3 flex items-center">
+                  <BarChart className="mr-2" size={16} />
+                  Performance Metrics
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">Response Rate:</span>
+                    <span className="text-green-400 font-medium">8.5% ↗️</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">Meeting Rate:</span>
+                    <span className="text-blue-400 font-medium">3.2% ↗️</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">Conversion:</span>
+                    <span className="text-purple-400 font-medium">12% ↗️</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">ROI Score:</span>
+                    <span className="text-yellow-400 font-medium">⭐⭐⭐⭐⭐</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Market Size Card */}
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-3 flex items-center">
+                  <Target className="mr-2" size={16} />
+                  Market Opportunity
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">TAM:</span>
+                    <span className="text-white">~45,000 companies</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">SAM:</span>
+                    <span className="text-white">~12,000 companies</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">Confidence:</span>
+                    <span className="text-green-400">92%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">Last Updated:</span>
+                    <span className="text-gray-400">2 days ago</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Actions Card */}
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-3 flex items-center">
+                  <Zap className="mr-2" size={16} />
+                  Quick Actions
+                </h3>
+                <div className="space-y-2">
+                  <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded text-sm transition-colors">
+                    Create Campaign
+                  </button>
+                  <button className="w-full bg-gray-600 hover:bg-gray-500 text-white py-2 px-3 rounded text-sm transition-colors">
+                    Validate Prospects
+                  </button>
+                  <button className="w-full bg-gray-600 hover:bg-gray-500 text-white py-2 px-3 rounded text-sm transition-colors">
+                    Export Data
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeCategory === 'target_profile' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Company Demographics */}
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <Building2 className="mr-2" size={16} />
+                  Company Demographics
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Employee Count</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['50-100', '100-500', '500-1000', '1000+'].map(range => (
+                        <span key={range} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
+                          {range}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Revenue Range</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['$10M-$50M', '$50M-$100M'].map(range => (
+                        <span key={range} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
+                          {range}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Growth Stage</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['Series A', 'Series B', 'Growth'].map(stage => (
+                        <span key={stage} className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">
+                          {stage}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Geographic Focus */}
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <Globe className="mr-2" size={16} />
+                  Geographic Focus
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Primary Markets</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['United States', 'Canada'].map(market => (
+                        <span key={market} className="bg-green-600 text-white px-3 py-1 rounded-full text-xs">
+                          {market}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Regional Preferences</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['East Coast', 'West Coast', 'Major Metro'].map(region => (
+                        <span key={region} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
+                          {region}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Expansion Markets</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['United Kingdom', 'Australia'].map(market => (
+                        <span key={market} className="bg-yellow-600 text-white px-3 py-1 rounded-full text-xs">
+                          {market}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Industry Segmentation */}
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <Briefcase className="mr-2" size={16} />
+                  Industry & Market Segmentation
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Primary Industries</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['SaaS', 'FinTech', 'HealthTech'].map(industry => (
+                        <span key={industry} className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">
+                          {industry}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Secondary Industries</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['MarTech', 'EdTech', 'PropTech'].map(industry => (
+                        <span key={industry} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
+                          {industry}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Technology Requirements */}
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <Cpu className="mr-2" size={16} />
+                  Technology & Infrastructure
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Required Tech Stack</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['Salesforce', 'HubSpot', 'AWS'].map(tech => (
+                        <span key={tech} className="bg-green-600 text-white px-3 py-1 rounded-full text-xs">
+                          {tech}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Preferred Platforms</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['Azure', 'React', 'API-First'].map(tech => (
+                        <span key={tech} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
+                          {tech}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Security Requirements</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['SOC2', 'GDPR', 'API Security'].map(req => (
+                        <span key={req} className="bg-red-600 text-white px-3 py-1 rounded-full text-xs">
+                          {req}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* DECISION MAKERS Category */}
+          {activeCategory === 'decision_makers' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <Users className="mr-2" size={16} />
+                  Executive Level
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Identified Roles</label>
+                    <div className="text-gray-400 text-sm">
+                      {currentICP?.decision_makers?.identified_roles?.length > 0 ? 
+                        currentICP.decision_makers.identified_roles.join(', ') : 
+                        'No executive roles identified yet'
+                      }
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Authority Level</label>
+                    <div className="text-gray-400 text-sm">
+                      {currentICP?.decision_makers?.authority_level?.length > 0 ? 
+                        currentICP.decision_makers.authority_level.join(', ') : 
+                        'Authority level to be determined'
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <UserCheck className="mr-2" size={16} />
+                  Primary Contact
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Contact Information</label>
+                    <div className="text-gray-400 text-sm">
+                      <div>Name: {currentICP?.decision_makers?.primary_contact?.name || 'Unknown'}</div>
+                      <div>Company: {currentICP?.decision_makers?.primary_contact?.company || 'Unknown'}</div>
+                      <div>Engagement: {currentICP?.decision_makers?.primary_contact?.engagement_level || 'Unknown'}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <Users className="mr-2" size={16} />
+                  Stakeholder Subcategories
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Executive Level</h4>
+                    <div className="text-gray-400 text-sm">
+                      Authority: {currentICP?.decision_makers?.subcategories?.executive_level?.authority || 'Unknown'}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Operational Level</h4>
+                    <div className="text-gray-400 text-sm">
+                      Influence: {currentICP?.decision_makers?.subcategories?.operational_level?.influence || 'Unknown'}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Technical Stakeholders</h4>
+                    <div className="text-gray-400 text-sm">
+                      Involvement: {currentICP?.decision_makers?.subcategories?.technical_stakeholders?.involvement || 'Unknown'}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Purchasing Authority</h4>
+                    <div className="text-gray-400 text-sm">
+                      Process: {currentICP?.decision_makers?.subcategories?.purchasing_authority?.approval_process || 'Unknown'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PAIN POINTS & SIGNALS Category */}
+          {activeCategory === 'pain_points' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <AlertCircle className="mr-2" size={16} />
+                  Current Challenges
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Operational Challenges</label>
+                    <div className="text-gray-400 text-sm max-h-32 overflow-y-auto">
+                      {currentICP?.pain_points?.operational_challenges?.length > 0 ? 
+                        currentICP.pain_points.operational_challenges.map((challenge: string, i: number) => (
+                          <div key={i} className="mb-1">• {challenge}</div>
+                        )) : 
+                        'No operational challenges identified yet'
+                      }
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Growth Pressures</label>
+                    <div className="text-gray-400 text-sm">
+                      {currentICP?.pain_points?.growth_pressures?.length > 0 ? 
+                        currentICP.pain_points.growth_pressures.join(', ') : 
+                        'No growth pressures identified yet'
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <TrendingUp className="mr-2" size={16} />
+                  Buying Signals
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Detected Signals</label>
+                    <div className="text-gray-400 text-sm">
+                      {currentICP?.pain_points?.buying_signals?.length > 0 ? 
+                        currentICP.pain_points.buying_signals.join(', ') : 
+                        'No buying signals detected yet'
+                      }
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Urgency Indicators</label>
+                    <div className="text-gray-400 text-sm">
+                      {currentICP?.pain_points?.urgency_indicators?.length > 0 ? 
+                        currentICP.pain_points.urgency_indicators.join(', ') : 
+                        'No urgency indicators identified'
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <AlertCircle className="mr-2" size={16} />
+                  Pain Points Subcategories
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Current Challenges</h4>
+                    <div className="text-gray-400 text-sm space-y-1">
+                      <div>Operational: {currentICP?.pain_points?.subcategories?.current_challenges?.operational?.length || 0}</div>
+                      <div>Technical: {currentICP?.pain_points?.subcategories?.current_challenges?.technical?.length || 0}</div>
+                      <div>Business: {currentICP?.pain_points?.subcategories?.current_challenges?.business?.length || 0}</div>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Buying Indicators</h4>
+                    <div className="text-gray-400 text-sm space-y-1">
+                      <div>Budget: {currentICP?.pain_points?.subcategories?.buying_indicators?.budget ? '✓' : '✗'}</div>
+                      <div>Timeline: {currentICP?.pain_points?.subcategories?.buying_indicators?.timeline ? '✓' : '✗'}</div>
+                      <div>Authority: {currentICP?.pain_points?.subcategories?.buying_indicators?.authority ? '✓' : '✗'}</div>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Competitive Pressures</h4>
+                    <div className="text-gray-400 text-sm">
+                      Urgency: {currentICP?.pain_points?.subcategories?.competitive_pressures?.urgency || 'Unknown'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* BUYING PROCESS Category */}
+          {activeCategory === 'buying_process' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <GitBranch className="mr-2" size={16} />
+                  Evaluation Stages
+                </h3>
+                <div className="space-y-3">
+                  {currentICP?.buying_process?.evaluation_stages?.length > 0 ? 
+                    currentICP.buying_process.evaluation_stages.map((stage: string, i: number) => (
+                      <div key={i} className="flex items-center text-gray-300">
+                        <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs mr-3">
+                          {i + 1}
+                        </div>
+                        {stage}
+                      </div>
+                    )) : 
+                    <div className="text-gray-400 text-sm">No evaluation stages identified yet</div>
+                  }
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <Clock className="mr-2" size={16} />
+                  Timeline & Stakeholders
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Timeline Indicators</label>
+                    <div className="text-gray-400 text-sm">
+                      {currentICP?.buying_process?.timeline?.length > 0 ? 
+                        currentICP.buying_process.timeline.join(', ') : 
+                        'No timeline indicators identified'
+                      }
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-gray-300 text-sm font-medium block mb-1">Stakeholder Involvement</label>
+                    <div className="text-gray-400 text-sm">
+                      {currentICP?.buying_process?.stakeholder_involvement?.length > 0 ? 
+                        currentICP.buying_process.stakeholder_involvement.join(', ') : 
+                        'No stakeholder involvement mapped'
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <GitBranch className="mr-2" size={16} />
+                  Buying Process Subcategories
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Evaluation Framework</h4>
+                    <div className="text-gray-400 text-sm">
+                      Stages: {currentICP?.buying_process?.subcategories?.evaluation_framework?.stages?.length || 0}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Approval Workflow</h4>
+                    <div className="text-gray-400 text-sm">
+                      Steps: {currentICP?.buying_process?.subcategories?.approval_workflow?.steps?.length || 0}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Vendor Evaluation</h4>
+                    <div className="text-gray-400 text-sm">
+                      Process: {currentICP?.buying_process?.subcategories?.vendor_evaluation?.process || 'Unknown'}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Implementation Planning</h4>
+                    <div className="text-gray-400 text-sm">
+                      Timeline: {currentICP?.buying_process?.subcategories?.implementation_planning?.timeline || 'Unknown'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MESSAGING STRATEGY Category */}
+          {activeCategory === 'messaging' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <MessageSquare className="mr-2" size={16} />
+                  Value Propositions
+                </h3>
+                <div className="space-y-2">
+                  {currentICP?.messaging?.value_propositions?.length > 0 ? 
+                    currentICP.messaging.value_propositions.map((prop: string, i: number) => (
+                      <div key={i} className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">
+                        {prop}
+                      </div>
+                    )) : 
+                    <div className="text-gray-400 text-sm">No value propositions identified yet</div>
+                  }
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <MessageCircle className="mr-2" size={16} />
+                  Communication Preferences
+                </h3>
+                <div className="space-y-2">
+                  {currentICP?.messaging?.communication_preferences?.length > 0 ? 
+                    currentICP.messaging.communication_preferences.map((pref: string, i: number) => (
+                      <div key={i} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
+                        {pref}
+                      </div>
+                    )) : 
+                    <div className="text-gray-400 text-sm">No communication preferences identified</div>
+                  }
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <TrendingUp className="mr-2" size={16} />
+                  Competitive Mentions
+                </h3>
+                <div className="space-y-2">
+                  {currentICP?.messaging?.competitive_mentions?.length > 0 ? 
+                    currentICP.messaging.competitive_mentions.map((mention: string, i: number) => (
+                      <div key={i} className="text-gray-300 text-sm p-2 bg-gray-600 rounded">
+                        {mention}
+                      </div>
+                    )) : 
+                    <div className="text-gray-400 text-sm">No competitive mentions identified</div>
+                  }
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <MessageSquare className="mr-2" size={16} />
+                  Messaging Subcategories
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Communication Style</h4>
+                    <div className="text-gray-400 text-sm">
+                      Preference: {currentICP?.messaging?.subcategories?.communication_style?.preference || 'Unknown'}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Channel Preferences</h4>
+                    <div className="text-gray-400 text-sm space-y-1">
+                      <div>Email: {currentICP?.messaging?.subcategories?.channel_preferences?.email || 'Unknown'}</div>
+                      <div>LinkedIn: {currentICP?.messaging?.subcategories?.channel_preferences?.linkedin || 'Unknown'}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SUCCESS METRICS Category */}
+          {activeCategory === 'success_metrics' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <BarChart className="mr-2" size={16} />
+                  Relevant KPIs
+                </h3>
+                <div className="space-y-2">
+                  {currentICP?.success_metrics?.relevant_kpis?.length > 0 ? 
+                    currentICP.success_metrics.relevant_kpis.map((kpi: string, i: number) => (
+                      <div key={i} className="bg-green-600 text-white px-3 py-1 rounded-full text-xs">
+                        {kpi}
+                      </div>
+                    )) : 
+                    <div className="text-gray-400 text-sm">No KPIs identified yet</div>
+                  }
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <Trophy className="mr-2" size={16} />
+                  Performance Benchmarks
+                </h3>
+                <div className="space-y-2">
+                  {currentICP?.success_metrics?.performance_benchmarks?.length > 0 ? 
+                    currentICP.success_metrics.performance_benchmarks.map((benchmark: string, i: number) => (
+                      <div key={i} className="text-gray-300 text-sm">
+                        • {benchmark}
+                      </div>
+                    )) : 
+                    <div className="text-gray-400 text-sm">No benchmarks identified yet</div>
+                  }
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <Clock className="mr-2" size={16} />
+                  Success Timeline & ROI
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Success Timeline</h4>
+                    <div className="text-gray-400 text-sm">
+                      {currentICP?.success_metrics?.success_timeline?.length > 0 ? 
+                        currentICP.success_metrics.success_timeline.join(', ') : 
+                        'No timeline defined'
+                      }
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">ROI Expectations</h4>
+                    <div className="text-gray-400 text-sm">
+                      {currentICP?.success_metrics?.roi_expectations || 'Unknown'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ADVANCED CLASSIFICATION Category */}
+          {activeCategory === 'advanced' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <Cpu className="mr-2" size={16} />
+                  Technology Adoption
+                </h3>
+                <div className="space-y-2">
+                  {currentICP?.advanced?.technology_adoption?.length > 0 ? 
+                    currentICP.advanced.technology_adoption.map((adoption: string, i: number) => (
+                      <div key={i} className="bg-purple-600 text-white px-3 py-1 rounded-full text-xs">
+                        {adoption}
+                      </div>
+                    )) : 
+                    <div className="text-gray-400 text-sm">No technology adoption patterns identified</div>
+                  }
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <Shield className="mr-2" size={16} />
+                  Compliance Requirements
+                </h3>
+                <div className="space-y-2">
+                  {currentICP?.advanced?.compliance_requirements?.length > 0 ? 
+                    currentICP.advanced.compliance_requirements.map((req: string, i: number) => (
+                      <div key={i} className="bg-red-600 text-white px-3 py-1 rounded-full text-xs">
+                        {req}
+                      </div>
+                    )) : 
+                    <div className="text-gray-400 text-sm">No compliance requirements identified</div>
+                  }
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <TrendingUp className="mr-2" size={16} />
+                  Market Trends
+                </h3>
+                <div className="space-y-2">
+                  {currentICP?.advanced?.market_trends?.length > 0 ? 
+                    currentICP.advanced.market_trends.map((trend: string, i: number) => (
+                      <div key={i} className="bg-yellow-600 text-white px-3 py-1 rounded-full text-xs">
+                        {trend}
+                      </div>
+                    )) : 
+                    <div className="text-gray-400 text-sm">No market trends identified</div>
+                  }
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <Users className="mr-2" size={16} />
+                  Company Culture
+                </h3>
+                <div className="space-y-2">
+                  {currentICP?.advanced?.company_culture?.length > 0 ? 
+                    currentICP.advanced.company_culture.map((culture: string, i: number) => (
+                      <div key={i} className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs">
+                        {culture}
+                      </div>
+                    )) : 
+                    <div className="text-gray-400 text-sm">No company culture insights identified</div>
+                  }
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                <h3 className="text-white font-medium mb-4 flex items-center">
+                  <Settings className="mr-2" size={16} />
+                  Advanced Classification Subcategories
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Tech Maturity</h4>
+                    <div className="text-gray-400 text-sm">
+                      Stage: {currentICP?.advanced?.subcategories?.tech_maturity?.adoption_stage || 'Unknown'}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Innovation Readiness</h4>
+                    <div className="text-gray-400 text-sm">
+                      {currentICP?.advanced?.innovation_readiness || 'Unknown'}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Market Positioning</h4>
+                    <div className="text-gray-400 text-sm">
+                      Landscape: {currentICP?.advanced?.subcategories?.market_positioning?.competitive_landscape || 'Unknown'}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-gray-300 font-medium mb-2">Organizational Culture</h4>
+                    <div className="text-gray-400 text-sm">
+                      Style: {currentICP?.advanced?.subcategories?.organizational_culture?.decision_style || 'Unknown'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          </>
         )}
       </div>
     </div>

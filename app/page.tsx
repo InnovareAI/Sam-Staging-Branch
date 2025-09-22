@@ -255,15 +255,7 @@ export default function Page() {
       }
     };
 
-    // Add timeout to prevent infinite loading
-    const timeout = setTimeout(() => {
-      console.warn('Auth check timeout - proceeding without authentication');
-      setIsAuthLoading(false);
-    }, 5000); // 5 second timeout
-
-    getUser().finally(() => {
-      clearTimeout(timeout);
-    });
+    getUser();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -300,7 +292,6 @@ export default function Page() {
 
     return () => {
       subscription.unsubscribe();
-      clearTimeout(timeout);
     };
   }, []);
 
