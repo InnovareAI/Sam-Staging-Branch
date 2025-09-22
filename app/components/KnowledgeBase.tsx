@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Brain, CheckSquare, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, FileText, Search, Package, Award, MessageSquare, Cpu, Clock, AlertCircle, Mic, Briefcase, Trophy, GitBranch, Mail, Shield, UserCheck, MessageCircle, DollarSign, Zap, BarChart, UserPlus, Bot, HelpCircle, Globe } from 'lucide-react';
+import { Brain, CheckSquare, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, FileText, Search, Package, Award, MessageSquare, Cpu, Clock, AlertCircle, Mic, Briefcase, Trophy, GitBranch, Mail, Shield, UserCheck, MessageCircle, DollarSign, Zap, BarChart, UserPlus, Bot, HelpCircle, Globe, ArrowLeft, X } from 'lucide-react';
 import SAMOnboarding from './SAMOnboarding';
 import InquiryResponses from './InquiryResponses';
 
@@ -58,11 +58,11 @@ function DocumentUpload({ section }: { section: string }) {
 }
 
 // Comprehensive ICP Configuration Component
-function ICPConfiguration() {
+function ICPConfiguration({ onBack }: { onBack?: () => void }) {
   const [selectedICP, setSelectedICP] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('overview');
   const [icpProfiles, setIcpProfiles] = useState<{[key: string]: any}>({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   
   const currentICP = selectedICP && icpProfiles[selectedICP] ? icpProfiles[selectedICP] : null;
@@ -139,10 +139,21 @@ function ICPConfiguration() {
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-semibold text-white flex items-center">
-          <Target className="mr-2" size={24} />
-          ICP Configuration
-        </h2>
+        <div className="flex items-center">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+              title="Back to Knowledge Base"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
+          <h2 className="text-2xl font-semibold text-white flex items-center">
+            <Target className="mr-2" size={24} />
+            ICP Configuration
+          </h2>
+        </div>
         <div className="flex space-x-2">
           <button 
             onClick={handleCreateICP}
@@ -197,36 +208,36 @@ function ICPConfiguration() {
         </div>
       )}
 
-      {/* Loading State */}
-      {isLoading ? (
-        <div className="text-center py-12">
-          <div className="text-gray-400 mb-4">Loading ICP profiles...</div>
-        </div>
-      ) : (
-        <>
-          {/* Category Navigation - Always Show */}
-          <div className="mb-6">
-            {/* ICP Profile Selector - Only if profiles exist */}
-            {Object.keys(icpProfiles).length > 0 && (
-              <div className="flex space-x-1 mb-4 bg-gray-700 rounded-lg p-1">
-                {Object.entries(icpProfiles).map(([key, profile]) => (
-                  <button
-                    key={key}
-                    onClick={() => setSelectedICP(key)}
-                    className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
-                      selectedICP === key
-                        ? 'text-white bg-gray-600'
-                        : 'text-gray-300 hover:text-white'
-                    }`}
-                  >
-                    {profile?.name || profile?.icp_name || 'Unnamed Profile'}
-                  </button>
-                ))}
-              </div>
-            )}
-            
-            {/* Category Navigation - Always Visible */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
+      {/* Category Navigation - Always Show (Box Design) */}
+      <div className="mb-6">
+        {/* Loading indicator - small and non-blocking */}
+        {isLoading && (
+          <div className="text-center mb-4">
+            <div className="text-gray-400 text-sm">Loading ICP profiles...</div>
+          </div>
+        )}
+        
+        {/* ICP Profile Selector - Only if profiles exist */}
+        {Object.keys(icpProfiles).length > 0 && (
+          <div className="flex space-x-1 mb-4 bg-gray-700 rounded-lg p-1">
+            {Object.entries(icpProfiles).map(([key, profile]) => (
+              <button
+                key={key}
+                onClick={() => setSelectedICP(key)}
+                className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
+                  selectedICP === key
+                    ? 'text-white bg-gray-600'
+                    : 'text-gray-300 hover:text-white'
+                }`}
+              >
+                {profile?.name || profile?.icp_name || 'Unnamed Profile'}
+              </button>
+            ))}
+          </div>
+        )}
+        
+        {/* Category Navigation - Always Visible (Box Design) */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
               {icpCategories.map((category) => {
                 const IconComponent = category.icon;
                 return (
@@ -256,7 +267,7 @@ function ICPConfiguration() {
                   <Target size={32} className="mx-auto text-gray-500 mb-2" />
                   <h3 className="text-lg font-medium text-gray-300 mb-2">No ICP Profiles Created Yet</h3>
                   <p className="text-gray-400 text-sm mb-4">
-                    Create your first ICP profile or explore the category structure below.
+                    Create your first ICP profile to define your ideal customers. Use the categories below to see the fields you'll be able to configure once you create a profile.
                   </p>
                   <button 
                     onClick={handleCreateICP}
@@ -269,8 +280,6 @@ function ICPConfiguration() {
               </div>
             )}
           </div>
-        </>
-      )}
 
       {/* Remove the old no-profiles section since we moved it above */}
       {false && (
@@ -548,19 +557,19 @@ function ICPConfiguration() {
                 <div className="space-y-3">
                   <div>
                     <label className="text-gray-300 text-sm font-medium block mb-1">Identified Roles</label>
-                    <div className="text-gray-400 text-sm">
+                    <div className="text-gray-400 text-sm border border-gray-600 rounded p-2 bg-gray-800">
                       {currentICP?.decision_makers?.identified_roles?.length > 0 ? 
                         currentICP.decision_makers.identified_roles.join(', ') : 
-                        'No executive roles identified yet'
+                        'e.g., CEO, CTO, Head of Sales, VP Marketing, Operations Director...'
                       }
                     </div>
                   </div>
                   <div>
                     <label className="text-gray-300 text-sm font-medium block mb-1">Authority Level</label>
-                    <div className="text-gray-400 text-sm">
+                    <div className="text-gray-400 text-sm border border-gray-600 rounded p-2 bg-gray-800">
                       {currentICP?.decision_makers?.authority_level?.length > 0 ? 
                         currentICP.decision_makers.authority_level.join(', ') : 
-                        'Authority level to be determined'
+                        'e.g., Final Decision Maker, Budget Approver, Technical Evaluator, Influencer...'
                       }
                     </div>
                   </div>
@@ -575,10 +584,10 @@ function ICPConfiguration() {
                 <div className="space-y-3">
                   <div>
                     <label className="text-gray-300 text-sm font-medium block mb-1">Contact Information</label>
-                    <div className="text-gray-400 text-sm">
-                      <div>Name: {currentICP?.decision_makers?.primary_contact?.name || 'Unknown'}</div>
-                      <div>Company: {currentICP?.decision_makers?.primary_contact?.company || 'Unknown'}</div>
-                      <div>Engagement: {currentICP?.decision_makers?.primary_contact?.engagement_level || 'Unknown'}</div>
+                    <div className="text-gray-400 text-sm border border-gray-600 rounded p-2 bg-gray-800 space-y-1">
+                      <div>Name: {currentICP?.decision_makers?.primary_contact?.name || 'e.g., John Smith'}</div>
+                      <div>Company: {currentICP?.decision_makers?.primary_contact?.company || 'e.g., TechCorp Inc.'}</div>
+                      <div>Engagement: {currentICP?.decision_makers?.primary_contact?.engagement_level || 'e.g., High interest, active evaluator'}</div>
                     </div>
                   </div>
                 </div>
@@ -630,21 +639,27 @@ function ICPConfiguration() {
                 <div className="space-y-3">
                   <div>
                     <label className="text-gray-300 text-sm font-medium block mb-1">Operational Challenges</label>
-                    <div className="text-gray-400 text-sm max-h-32 overflow-y-auto">
+                    <div className="text-gray-400 text-sm max-h-32 overflow-y-auto border border-gray-600 rounded p-2 bg-gray-800">
                       {currentICP?.pain_points?.operational_challenges?.length > 0 ? 
                         currentICP.pain_points.operational_challenges.map((challenge: string, i: number) => (
                           <div key={i} className="mb-1">• {challenge}</div>
                         )) : 
-                        'No operational challenges identified yet'
+                        <div className="space-y-1">
+                          <div>• Manual processes eating up team time</div>
+                          <div>• Difficulty scaling current systems</div>
+                          <div>• Integration challenges between tools</div>
+                          <div>• Data silos preventing insights</div>
+                          <div>• Compliance and security concerns</div>
+                        </div>
                       }
                     </div>
                   </div>
                   <div>
                     <label className="text-gray-300 text-sm font-medium block mb-1">Growth Pressures</label>
-                    <div className="text-gray-400 text-sm">
+                    <div className="text-gray-400 text-sm border border-gray-600 rounded p-2 bg-gray-800">
                       {currentICP?.pain_points?.growth_pressures?.length > 0 ? 
                         currentICP.pain_points.growth_pressures.join(', ') : 
-                        'No growth pressures identified yet'
+                        'e.g., Need to expand market share, Pressure to reduce costs, Requirements for faster time-to-market, Board demands for digital transformation'
                       }
                     </div>
                   </div>
@@ -811,7 +826,12 @@ function ICPConfiguration() {
                         {prop}
                       </div>
                     )) : 
-                    <div className="text-gray-400 text-sm">No value propositions identified yet</div>
+                    <div className="border border-gray-600 rounded p-2 bg-gray-800 space-y-1">
+                      <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Save 40% on operational costs</div>
+                      <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Reduce time-to-market by 60%</div>
+                      <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Enterprise-grade security & compliance</div>
+                      <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Seamless integration with existing tools</div>
+                    </div>
                   }
                 </div>
               </div>
@@ -1332,14 +1352,25 @@ const KnowledgeBase: React.FC = () => {
           </div>
         )}
         
-        {activeSection === 'icp' && <ICPConfiguration />}
+        {activeSection === 'icp' && <ICPConfiguration onBack={() => setActiveSection('overview')} />}
         
         {activeSection === 'products' && (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <Package className="mr-2" size={24} />
-              Products & Services
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Back to Knowledge Base"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <Package className="mr-2" size={24} />
+                  Products & Services
+                </h2>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
@@ -1364,10 +1395,21 @@ const KnowledgeBase: React.FC = () => {
 
         {activeSection === 'competition' && (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <TrendingUp className="mr-2" size={24} />
-              Competition Analysis
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Back to Knowledge Base"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <TrendingUp className="mr-2" size={24} />
+                  Competition Analysis
+                </h2>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
@@ -1392,10 +1434,21 @@ const KnowledgeBase: React.FC = () => {
 
         {activeSection === 'messaging' && (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <MessageSquare className="mr-2" size={24} />
-              Proven Messaging Templates
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Back to Knowledge Base"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <MessageSquare className="mr-2" size={24} />
+                  Proven Messaging Templates
+                </h2>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
@@ -1420,10 +1473,21 @@ const KnowledgeBase: React.FC = () => {
 
         {activeSection === 'tone' && (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <Mic className="mr-2" size={24} />
-              Tone of Voice Documents
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Back to Knowledge Base"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <Mic className="mr-2" size={24} />
+                  Tone of Voice Documents
+                </h2>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
@@ -1490,10 +1554,21 @@ const KnowledgeBase: React.FC = () => {
 
         {activeSection === 'company' && (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <Briefcase className="mr-2" size={24} />
-              Company Information & Brand Guidelines
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Back to Knowledge Base"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <Briefcase className="mr-2" size={24} />
+                  Company Information & Brand Guidelines
+                </h2>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
@@ -1518,10 +1593,21 @@ const KnowledgeBase: React.FC = () => {
 
         {activeSection === 'success' && (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <Trophy className="mr-2" size={24} />
-              Customer Success Stories & Case Studies
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Back to Knowledge Base"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <Trophy className="mr-2" size={24} />
+                  Customer Success Stories & Case Studies
+                </h2>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
@@ -1546,10 +1632,21 @@ const KnowledgeBase: React.FC = () => {
 
         {activeSection === 'buying' && (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <GitBranch className="mr-2" size={24} />
-              Buying Process & Decision Framework
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Back to Knowledge Base"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <GitBranch className="mr-2" size={24} />
+                  Buying Process & Decision Framework
+                </h2>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
@@ -1581,10 +1678,21 @@ const KnowledgeBase: React.FC = () => {
 
         {activeSection === 'compliance' && (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <Shield className="mr-2" size={24} />
-              Compliance & Restrictions
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Back to Knowledge Base"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <Shield className="mr-2" size={24} />
+                  Compliance & Restrictions
+                </h2>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
@@ -1617,10 +1725,21 @@ const KnowledgeBase: React.FC = () => {
 
         {activeSection === 'personas' && (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <UserCheck className="mr-2" size={24} />
-              Personas & Roles
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Back to Knowledge Base"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <UserCheck className="mr-2" size={24} />
+                  Personas & Roles
+                </h2>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
@@ -1684,10 +1803,21 @@ const KnowledgeBase: React.FC = () => {
 
         {activeSection === 'objections' && (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <MessageCircle className="mr-2" size={24} />
-              Objections & Responses
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Back to Knowledge Base"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <MessageCircle className="mr-2" size={24} />
+                  Objections & Responses
+                </h2>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
@@ -1723,10 +1853,21 @@ const KnowledgeBase: React.FC = () => {
 
         {activeSection === 'pricing' && (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <DollarSign className="mr-2" size={24} />
-              Pricing & Packages
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Back to Knowledge Base"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <DollarSign className="mr-2" size={24} />
+                  Pricing & Packages
+                </h2>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
@@ -1765,10 +1906,21 @@ const KnowledgeBase: React.FC = () => {
 
         {activeSection === 'metrics' && (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <BarChart className="mr-2" size={24} />
-              Success Metrics
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Back to Knowledge Base"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <BarChart className="mr-2" size={24} />
+                  Success Metrics
+                </h2>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
@@ -1881,10 +2033,21 @@ const KnowledgeBase: React.FC = () => {
 
         {activeSection === 'setup' && (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <Settings className="mr-2" size={24} />
-              CRM Settings & Integration
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Back to Knowledge Base"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <Settings className="mr-2" size={24} />
+                  CRM Settings & Integration
+                </h2>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
@@ -2051,10 +2214,21 @@ const KnowledgeBase: React.FC = () => {
 
         {activeSection === 'sam_onboarding' && (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <Bot className="mr-2" size={24} />
-              SAM Onboarding Experience
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Back to Knowledge Base"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <Bot className="mr-2" size={24} />
+                  SAM Onboarding Experience
+                </h2>
+              </div>
+            </div>
             <p className="text-gray-400 mb-6">Interactive conversational onboarding to collect company data and build your knowledge base</p>
             <SAMOnboarding onComplete={(data) => console.log('Onboarding completed:', data)} />
           </div>
@@ -2062,10 +2236,21 @@ const KnowledgeBase: React.FC = () => {
 
         {activeSection === 'inquiry_responses' && (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <HelpCircle className="mr-2" size={24} />
-              Industry-Specific Inquiry Responses
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Back to Knowledge Base"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <HelpCircle className="mr-2" size={24} />
+                  Industry-Specific Inquiry Responses
+                </h2>
+              </div>
+            </div>
             <p className="text-gray-400 mb-6">Role-based FAQ and objection handling for different industries and decision makers</p>
             <InquiryResponses />
           </div>
@@ -2073,10 +2258,21 @@ const KnowledgeBase: React.FC = () => {
 
         {activeSection === 'documents' && (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-              <FileText className="mr-2" size={24} />
-              Document Management
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Back to Knowledge Base"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <FileText className="mr-2" size={24} />
+                  Document Management
+                </h2>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <DocumentUpload section="general" />
