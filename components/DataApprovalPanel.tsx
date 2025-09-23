@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Check, X, Eye, Download, AlertTriangle } from 'lucide-react'
+import { Check, X, Eye, Download, AlertTriangle, Users, CheckSquare } from 'lucide-react'
+import Modal from './ui/Modal'
 
 interface ProspectData {
   id: string
@@ -35,8 +36,6 @@ export default function DataApprovalPanel({
 }: DataApprovalPanelProps) {
   const [selectedProspects, setSelectedProspects] = useState<Set<string>>(new Set())
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
-
-  if (!isVisible) return null
 
   const toggleProspectSelection = (prospectId: string) => {
     const newSelected = new Set(selectedProspects)
@@ -92,187 +91,180 @@ export default function DataApprovalPanel({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className={`bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden ${className}`}>
-        {/* Header */}
-        <div className="bg-gray-700 px-6 py-4 border-b border-gray-600">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">
-              Data Approval - Review Prospect Information
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              <X size={24} />
-            </button>
+    <Modal
+      isVisible={isVisible}
+      onClose={onClose}
+      title="Prospect Data Approval"
+      subtitle="Review and approve incoming prospect data"
+      icon={<Users size={20} />}
+      size="6xl"
+      className={className}
+    >
+      {/* Controls Bar */}
+      <div className="bg-surface-highlight/30 px-6 py-4 border-b border-border/60">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-6">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">
+                {prospectData.length} prospects found
+              </span>
+              <span className="text-xs px-2 py-1 bg-primary/20 text-primary rounded-lg font-medium">
+                {selectedProspects.size} selected
+              </span>
+            </div>
+            
+            <div className="flex space-x-2">
+              <button
+                onClick={selectAll}
+                className="text-xs px-3 py-1.5 bg-surface-highlight hover:bg-surface border border-border/60 text-foreground rounded-lg transition-colors font-medium"
+              >
+                Select All
+              </button>
+              <button
+                onClick={selectNone}
+                className="text-xs px-3 py-1.5 bg-surface-highlight hover:bg-surface border border-border/60 text-foreground rounded-lg transition-colors font-medium"
+              >
+                Select None
+              </button>
+            </div>
           </div>
           
-          <div className="flex items-center justify-between mt-4">
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-300">
-                {prospectData.length} prospects found • {selectedProspects.size} selected
-              </span>
-              
-              <div className="flex space-x-2">
-                <button
-                  onClick={selectAll}
-                  className="text-xs px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
-                >
-                  Select All
-                </button>
-                <button
-                  onClick={selectNone}
-                  className="text-xs px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
-                >
-                  Select None
-                </button>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={exportData}
-                disabled={selectedProspects.size === 0}
-                className="flex items-center space-x-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition-colors text-sm"
-              >
-                <Download size={16} />
-                <span>Export</span>
-              </button>
-            </div>
-          </div>
+          <button
+            onClick={exportData}
+            disabled={selectedProspects.size === 0}
+            className="flex items-center space-x-2 px-4 py-2 bg-primary/20 hover:bg-primary/30 disabled:bg-surface-highlight disabled:cursor-not-allowed text-primary disabled:text-muted-foreground rounded-lg transition-colors text-sm font-medium border border-primary/40 disabled:border-border/60"
+          >
+            <Download size={16} />
+            <span>Export CSV</span>
+          </button>
         </div>
+      </div>
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-          <div className="space-y-4">
-            {prospectData.map((prospect) => (
-              <div
-                key={prospect.id}
-                className={`p-4 rounded-lg border transition-colors cursor-pointer ${
+      {/* Content */}
+      <div className="p-6 space-y-4 max-h-[50vh] overflow-y-auto">
+        {prospectData.map((prospect) => (
+          <div
+            key={prospect.id}
+            className={`group p-5 rounded-xl border transition-all duration-200 cursor-pointer ${
+              selectedProspects.has(prospect.id)
+                ? 'border-primary/60 bg-primary/10 shadow-glow ring-1 ring-primary/30'
+                : 'border-border/60 bg-surface-highlight/50 hover:border-border hover:bg-surface-highlight'
+            }`}
+            onClick={() => toggleProspectSelection(prospect.id)}
+          >
+            <div className="flex items-start gap-4">
+              <div className="flex items-center justify-center w-6 h-6 mt-0.5">
+                <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors ${
                   selectedProspects.has(prospect.id)
-                    ? 'border-purple-500 bg-purple-600 bg-opacity-10'
-                    : 'border-gray-600 bg-gray-700 hover:border-gray-500'
-                }`}
-                onClick={() => toggleProspectSelection(prospect.id)}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-4 flex-1">
-                    <div className="flex items-center justify-center w-6 h-6 mt-1">
-                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-                        selectedProspects.has(prospect.id)
-                          ? 'border-purple-500 bg-purple-500'
-                          : 'border-gray-400'
-                      }`}>
-                        {selectedProspects.has(prospect.id) && (
-                          <Check size={12} className="text-white" />
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-lg font-medium text-white">
-                          {prospect.name}
-                        </h3>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          prospect.source === 'unipile' ? 'bg-green-600 text-green-100' :
-                          prospect.source === 'bright-data' ? 'bg-blue-600 text-blue-100' :
-                          'bg-purple-600 text-purple-100'
-                        }`}>
-                          {prospect.source}
-                        </span>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          prospect.confidence >= 0.8 ? 'bg-green-600 text-green-100' :
-                          prospect.confidence >= 0.6 ? 'bg-yellow-600 text-yellow-100' :
-                          'bg-red-600 text-red-100'
-                        }`}>
-                          {Math.round(prospect.confidence * 100)}% confidence
-                        </span>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-400">Title:</span>
-                          <span className="text-white ml-2">{prospect.title}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Company:</span>
-                          <span className="text-white ml-2">{prospect.company}</span>
-                        </div>
-                        {prospect.email && (
-                          <div>
-                            <span className="text-gray-400">Email:</span>
-                            <span className="text-white ml-2">{prospect.email}</span>
-                          </div>
-                        )}
-                        {prospect.phone && (
-                          <div>
-                            <span className="text-gray-400">Phone:</span>
-                            <span className="text-white ml-2">{prospect.phone}</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {prospect.linkedinUrl && (
-                        <div className="mt-2">
-                          <a
-                            href={prospect.linkedinUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-400 hover:text-blue-300 text-sm"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            View LinkedIn Profile →
-                          </a>
-                        </div>
-                      )}
-                      
-                      {prospect.complianceFlags && prospect.complianceFlags.length > 0 && (
-                        <div className="mt-3 flex items-center space-x-2">
-                          <AlertTriangle size={16} className="text-yellow-500" />
-                          <div className="text-xs text-yellow-400">
-                            Compliance flags: {prospect.complianceFlags.join(', ')}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                    ? 'border-primary bg-primary'
+                    : 'border-border/60 group-hover:border-primary/60'
+                }`}>
+                  {selectedProspects.has(prospect.id) && (
+                    <Check size={12} className="text-white" />
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="bg-gray-700 px-6 py-4 border-t border-gray-600">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-300">
-              {selectedProspects.size} prospects selected for action
-            </div>
-            
-            <div className="flex space-x-3">
-              <button
-                onClick={handleReject}
-                disabled={selectedProspects.size === 0}
-                className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition-colors"
-              >
-                <X size={16} />
-                <span>Reject Selected</span>
-              </button>
               
-              <button
-                onClick={handleApprove}
-                disabled={selectedProspects.size === 0}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded transition-colors"
-              >
-                <Check size={16} />
-                <span>Approve Selected</span>
-              </button>
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-3">
+                  <h3 className="text-lg font-semibold text-foreground">
+                    {prospect.name}
+                  </h3>
+                  <span className={`px-2 py-1 rounded-lg text-xs font-medium border ${
+                    prospect.source === 'unipile' ? 'bg-green-500/20 text-green-400 border-green-500/40' :
+                    prospect.source === 'bright-data' ? 'bg-blue-500/20 text-blue-400 border-blue-500/40' :
+                    'bg-purple-500/20 text-purple-400 border-purple-500/40'
+                  }`}>
+                    {prospect.source}
+                  </span>
+                  <span className={`px-2 py-1 rounded-lg text-xs font-medium border ${
+                    prospect.confidence >= 0.8 ? 'bg-green-500/20 text-green-400 border-green-500/40' :
+                    prospect.confidence >= 0.6 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40' :
+                    'bg-red-500/20 text-red-400 border-red-500/40'
+                  }`}>
+                    {Math.round(prospect.confidence * 100)}% confidence
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Title:</span>
+                    <span className="text-foreground ml-2 font-medium">{prospect.title}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Company:</span>
+                    <span className="text-foreground ml-2 font-medium">{prospect.company}</span>
+                  </div>
+                  {prospect.email && (
+                    <div>
+                      <span className="text-muted-foreground">Email:</span>
+                      <span className="text-foreground ml-2 font-medium">{prospect.email}</span>
+                    </div>
+                  )}
+                  {prospect.phone && (
+                    <div>
+                      <span className="text-muted-foreground">Phone:</span>
+                      <span className="text-foreground ml-2 font-medium">{prospect.phone}</span>
+                    </div>
+                  )}
+                </div>
+                
+                {prospect.linkedinUrl && (
+                  <div className="mt-3">
+                    <a
+                      href={prospect.linkedinUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:text-primary/80 text-sm font-medium transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      View LinkedIn Profile →
+                    </a>
+                  </div>
+                )}
+                
+                {prospect.complianceFlags && prospect.complianceFlags.length > 0 && (
+                  <div className="mt-3 flex items-center space-x-2 p-3 bg-yellow-500/10 border border-yellow-500/40 rounded-lg">
+                    <AlertTriangle size={16} className="text-yellow-400" />
+                    <div className="text-xs text-yellow-400 font-medium">
+                      Compliance flags: {prospect.complianceFlags.join(', ')}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div className="bg-surface-highlight/30 px-6 py-4 border-t border-border/60">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            {selectedProspects.size} prospects selected for action
+          </div>
+          
+          <div className="flex space-x-3">
+            <button
+              onClick={handleReject}
+              disabled={selectedProspects.size === 0}
+              className="flex items-center space-x-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 disabled:bg-surface-highlight disabled:cursor-not-allowed text-red-400 disabled:text-muted-foreground rounded-lg transition-colors font-medium border border-red-500/40 disabled:border-border/60"
+            >
+              <X size={16} />
+              <span>Reject Selected</span>
+            </button>
+            
+            <button
+              onClick={handleApprove}
+              disabled={selectedProspects.size === 0}
+              className="flex items-center space-x-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 disabled:bg-surface-highlight disabled:cursor-not-allowed text-green-400 disabled:text-muted-foreground rounded-lg transition-colors font-medium border border-green-500/40 disabled:border-border/60"
+            >
+              <CheckSquare size={16} />
+              <span>Approve Selected</span>
+            </button>
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }
