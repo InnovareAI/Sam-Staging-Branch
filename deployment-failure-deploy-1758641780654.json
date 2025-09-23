@@ -1,0 +1,9 @@
+{
+  "deploymentId": "deploy-1758641780654",
+  "timestamp": "2025-09-23T15:36:57.093Z",
+  "error": "Critical build file missing: .next/server/app/layout.js",
+  "stack": "Error: Critical build file missing: .next/server/app/layout.js\n    at ProductionDeployer.buildAndValidate (file:///Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/docs/scripts/deployment/production-deploy.js:149:15)\n    at async ProductionDeployer.deploy (file:///Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/docs/scripts/deployment/production-deploy.js:36:7)\n    at async file:///Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/docs/scripts/deployment/production-deploy.js:338:5",
+  "backup": "backup-2025-09-23T15-36-21-665Z-pre-deploy-1758641780654",
+  "rollbackRequired": false,
+  "nodeVersion": "v22.16.0"
+}

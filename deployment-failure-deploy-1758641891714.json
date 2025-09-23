@@ -1,0 +1,9 @@
+{
+  "deploymentId": "deploy-1758641891714",
+  "timestamp": "2025-09-23T15:38:47.234Z",
+  "error": "Staging deployment failed: Command failed: npm run deploy:staging\ncp: .env.staging: No such file or directory\n",
+  "stack": "Error: Staging deployment failed: Command failed: npm run deploy:staging\ncp: .env.staging: No such file or directory\n\n    at ProductionDeployer.deployToStaging (file:///Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/docs/scripts/deployment/production-deploy.js:169:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async ProductionDeployer.deploy (file:///Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/docs/scripts/deployment/production-deploy.js:39:7)\n    at async file:///Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/docs/scripts/deployment/production-deploy.js:337:5",
+  "backup": "backup-2025-09-23T15-38-12-435Z-pre-deploy-1758641891714",
+  "rollbackRequired": false,
+  "nodeVersion": "v22.16.0"
+}

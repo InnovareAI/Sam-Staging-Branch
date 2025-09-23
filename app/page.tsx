@@ -13,6 +13,8 @@ import AuthModal from '../components/AuthModal';
 // LinkedIn integration now handled via dedicated page at /linkedin-integration
 import { UnipileModal } from '../components/integrations/UnipileModal';
 import { ChannelSelectionModal } from '../components/campaign/ChannelSelectionModal';
+import DataCollectionHub from '../components/DataCollectionHub';
+import ApprovedProspectsDashboard from '../components/ApprovedProspectsDashboard';
 import { DemoModeToggle } from '../components/DemoModeToggle';
 import ConnectionStatusBar from '../components/ConnectionStatusBar';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -480,7 +482,11 @@ export default function Page() {
     setProspectReviewData(updatedData);
     setSelectedProspects([]);
     
-    alert(`${status === 'approved' ? '✅ Approved' : '❌ Rejected'} ${selectedProspects.length} prospects`);
+    if (status === 'approved') {
+      alert(`✅ Approved ${selectedProspects.length} prospects!\n\n🎯 Next Steps:\n1. View all approved prospects in "Approved Prospects" section\n2. Create campaigns using your approved data\n3. Launch outreach campaigns with confidence`);
+    } else {
+      alert(`❌ Rejected ${selectedProspects.length} prospects`);
+    }
   };
 
   const handleUseInCampaign = () => {
@@ -774,6 +780,12 @@ export default function Page() {
       label: 'Data Approval',
       description: 'Review and approve prospect data quality',
       icon: CheckSquare,
+    },
+    {
+      id: 'approved-prospects',
+      label: 'Approved Prospects',
+      description: 'View and manage your approved prospect data',
+      icon: Users,
     },
     {
       id: 'campaign',
@@ -1924,6 +1936,9 @@ export default function Page() {
         ) : activeMenuItem === 'data-approval' ? (
           /* Data Approval System */
           <div className="space-y-6">
+            {/* Data Collection Hub - Upload CSV, LinkedIn Search, etc */}
+            <DataCollectionHub />
+            
             {/* Data Approval System */}
             <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
               <div className="flex items-center justify-between mb-6">
@@ -2262,6 +2277,15 @@ export default function Page() {
               </div>
             </div>
           </div>
+        ) : activeMenuItem === 'approved-prospects' ? (
+          <ApprovedProspectsDashboard 
+            onCreateCampaign={(prospects) => {
+              // Switch to campaign hub and pre-fill with selected prospects
+              setActiveMenuItem('campaign');
+              // Note: This would require updating CampaignHub to accept pre-selected prospects
+              console.log('Creating campaign with', prospects.length, 'prospects');
+            }}
+          />
         ) : activeMenuItem === 'campaign' ? (
           <CampaignHub />
         ) : activeMenuItem === 'pipeline' ? (

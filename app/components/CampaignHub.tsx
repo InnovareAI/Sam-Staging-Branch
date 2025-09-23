@@ -431,6 +431,12 @@ function CampaignBuilder({ onClose }: { onClose?: () => void }) {
   const [isGeneratingTemplates, setIsGeneratingTemplates] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   
+  // Approved prospects state
+  const [dataSource, setDataSource] = useState<'approved' | 'upload'>('upload');
+  const [approvedProspects, setApprovedProspects] = useState<any[]>([]);
+  const [selectedProspects, setSelectedProspects] = useState<any[]>([]);
+  const [loadingApprovedProspects, setLoadingApprovedProspects] = useState(false);
+  
   // Message templates
   const [connectionMessage, setConnectionMessage] = useState('');
   const [alternativeMessage, setAlternativeMessage] = useState('');
@@ -471,6 +477,33 @@ function CampaignBuilder({ onClose }: { onClose?: () => void }) {
     { key: '{industry}', description: 'Industry information' },
     { key: '{location}', description: 'Geographic location' }
   ];
+
+  // Load approved prospects when data source changes to 'approved'
+  useEffect(() => {
+    if (dataSource === 'approved') {
+      loadApprovedProspects();
+    }
+  }, [dataSource]);
+
+  const loadApprovedProspects = async () => {
+    setLoadingApprovedProspects(true);
+    try {
+      const response = await fetch('/api/sam/approved-prospects');
+      const result = await response.json();
+      
+      if (result.success) {
+        setApprovedProspects(result.data.prospects);
+      } else {
+        console.error('Failed to load approved prospects:', result.error);
+        setApprovedProspects([]);
+      }
+    } catch (error) {
+      console.error('Error loading approved prospects:', error);
+      setApprovedProspects([]);
+    } finally {
+      setLoadingApprovedProspects(false);
+    }
+  };
 
   const addFollowUpMessage = () => {
     setFollowUpMessages([...followUpMessages, '']);
@@ -655,8 +688,12 @@ Would you like me to adjust these or create more variations?`
   };
   
   const submit = async () => {
-    if (!csvData.length) {
-      alert('Please upload prospect data before creating campaign');
+    // Validate prospect data based on source
+    const hasProspectData = dataSource === 'upload' ? csvData.length > 0 : selectedProspects.length > 0;
+    if (!hasProspectData) {
+      alert(dataSource === 'upload' 
+        ? 'Please upload prospect data before creating campaign' 
+        : 'Please select approved prospects before creating campaign');
       return;
     }
     if (campaignType === 'connector' && !connectionMessage.trim()) {
@@ -685,12 +722,21 @@ Would you like me to adjust these or create more variations?`
       const campaign = await campaignResponse.json();
 
       // Step 2: Upload prospects with LinkedIn ID resolution
+      const prospects = dataSource === 'upload' ? csvData : selectedProspects.map(prospect => ({
+        name: prospect.name,
+        email: prospect.email,
+        company: prospect.company,
+        title: prospect.title,
+        linkedin_url: prospect.linkedin_url,
+        linkedin_user_id: prospect.linkedin_user_id // Include existing LinkedIn ID if available
+      }));
+
       const uploadResponse = await fetch('/api/campaigns/upload-with-resolution', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaign_id: campaign.id,
-          prospects: csvData
+          prospects: prospects
         })
       });
 
@@ -822,10 +868,123 @@ Would you like me to adjust these or create more variations?`
       {/* Step 2: Prospect Data */}
       {currentStep === 2 && (
         <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">
-              Prospect Data (CSV Upload)
-            </label>
+          {/* Data Source Selection */}
+          <div className="bg-gray-700 rounded-lg p-4 mb-6">
+            <h4 className="text-white font-medium mb-3">Choose Prospect Data Source</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                onClick={() => setDataSource('approved')}
+                className={`p-4 rounded-lg border-2 transition-colors ${
+                  dataSource === 'approved' 
+                    ? 'border-purple-500 bg-purple-600/20 text-purple-300' 
+                    : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500'
+                }`}
+              >
+                <Users className="mb-2" size={24} />
+                <div className="font-medium">Use Approved Prospects</div>
+                <div className="text-xs text-gray-400 mt-1">Select from previously approved prospect data</div>
+              </button>
+              <button
+                onClick={() => setDataSource('upload')}
+                className={`p-4 rounded-lg border-2 transition-colors ${
+                  dataSource === 'upload' 
+                    ? 'border-purple-500 bg-purple-600/20 text-purple-300' 
+                    : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500'
+                }`}
+              >
+                <Upload className="mb-2" size={24} />
+                <div className="font-medium">Upload New CSV</div>
+                <div className="text-xs text-gray-400 mt-1">Upload fresh prospect data from CSV file</div>
+              </button>
+            </div>
+          </div>
+
+          {/* Approved Prospects Selection */}
+          {dataSource === 'approved' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-2">
+                Select Approved Prospects
+              </label>
+              <div className="bg-gray-700 rounded-lg p-4">
+                {loadingApprovedProspects ? (
+                  <div className="text-center py-8 text-gray-400">Loading approved prospects...</div>
+                ) : approvedProspects.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    No approved prospects found. Use the Data Approval section to approve some prospects first.
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="text-white font-medium">{approvedProspects.length} Approved Prospects Available</span>
+                      <button
+                        onClick={() => {
+                          const allSelected = selectedProspects.length === approvedProspects.length;
+                          setSelectedProspects(allSelected ? [] : [...approvedProspects]);
+                        }}
+                        className="text-purple-400 hover:text-purple-300 text-sm"
+                      >
+                        {selectedProspects.length === approvedProspects.length ? 'Deselect All' : 'Select All'}
+                      </button>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto space-y-2">
+                      {approvedProspects.map((prospect) => (
+                        <div
+                          key={prospect.id}
+                          className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                            selectedProspects.find(p => p.id === prospect.id)
+                              ? 'border-purple-500 bg-purple-600/20'
+                              : 'border-gray-600 bg-gray-800 hover:border-gray-500'
+                          }`}
+                          onClick={() => {
+                            const isSelected = selectedProspects.find(p => p.id === prospect.id);
+                            if (isSelected) {
+                              setSelectedProspects(selectedProspects.filter(p => p.id !== prospect.id));
+                            } else {
+                              setSelectedProspects([...selectedProspects, prospect]);
+                            }
+                          }}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="text-white font-medium">{prospect.name}</div>
+                              <div className="text-gray-300 text-sm">{prospect.title} at {prospect.company}</div>
+                              <div className="text-gray-400 text-xs mt-1">
+                                Confidence: {Math.round(prospect.confidence_score * 100)}% • 
+                                Source: {prospect.source_platform}
+                              </div>
+                            </div>
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                              selectedProspects.find(p => p.id === prospect.id)
+                                ? 'border-purple-500 bg-purple-500'
+                                : 'border-gray-500'
+                            }`}>
+                              {selectedProspects.find(p => p.id === prospect.id) && (
+                                <div className="w-2 h-2 bg-white rounded-full"></div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {selectedProspects.length > 0 && (
+                      <div className="mt-4 p-3 bg-purple-600/20 rounded-lg">
+                        <span className="text-purple-300">
+                          {selectedProspects.length} prospect{selectedProspects.length !== 1 ? 's' : ''} selected for campaign
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* CSV Upload (existing code) */}
+          {dataSource === 'upload' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-2">
+                Prospect Data (CSV Upload)
+              </label>
             <div 
               className={`border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 ${
                 isDragOver 
@@ -867,9 +1026,8 @@ Would you like me to adjust these or create more variations?`
             {isUploading && (
               <div className="mt-3 text-center text-purple-400">Processing CSV...</div>
             )}
-          </div>
 
-          {showPreview && csvData.length > 0 && (
+            {showPreview && csvData.length > 0 && (
             <div className="bg-gray-700 rounded-lg p-4">
               <h4 className="text-white font-medium mb-3">Data Preview ({csvData.length} prospects)</h4>
               <div className="overflow-x-auto">
@@ -903,6 +1061,8 @@ Would you like me to adjust these or create more variations?`
                 )}
               </div>
             </div>
+          )}
+          </div>
           )}
         </div>
       )}
@@ -1130,7 +1290,7 @@ Would you like me to adjust these or create more variations?`
           {currentStep < 3 ? (
             <button 
               onClick={() => setCurrentStep(currentStep + 1)}
-              disabled={currentStep === 2 && !csvData.length}
+              disabled={currentStep === 2 && (dataSource === 'upload' ? !csvData.length : !selectedProspects.length)}
               className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:text-gray-400 text-white rounded-lg transition-colors"
             >
               Next Step
