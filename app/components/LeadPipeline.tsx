@@ -4,13 +4,8 @@ import { useState } from 'react';
 import { TrendingUp } from 'lucide-react';
 
 // Pipeline Board Component - Updated for SAM AI sales stages
-const COLUMNS = ['Prospects', 'Positive Replies', 'Demos', 'Closed', 'Lost'] as const;
+const COLUMNS = ['Positive Replies', 'Demos', 'Closed', 'Lost'] as const;
 const MOCK_PIPELINE = {
-  Prospects: [
-    { id: 'p1', name: 'Acme Inc.', email: 'john@acme.com', status: 'Outbound sent' }, 
-    { id: 'p2', name: 'Beta LLC', email: 'sarah@beta.com', status: 'Follow-up #2' },
-    { id: 'p3', name: 'Gamma Corp', email: 'mike@gamma.com', status: 'Initial outreach' }
-  ],
   'Positive Replies': [
     { id: 'pr1', name: 'CoreTech', email: 'david@coretech.com', status: 'Interested - scheduling' },
     { id: 'pr2', name: 'InnovateCo', email: 'lisa@innovate.com', status: 'Budget confirmed' }
@@ -45,8 +40,6 @@ function PipelineBoard() {
   // Column color scheme: replies=orange, demos=blue, closed=green, lost=red
   const getColumnColor = (column: string) => {
     switch (column) {
-      case 'Prospects':
-        return 'border-gray-500 bg-gray-800';
       case 'Positive Replies':
         return 'border-orange-500 bg-orange-900/20';
       case 'Demos':
@@ -62,8 +55,6 @@ function PipelineBoard() {
 
   const getColumnHeaderColor = (column: string) => {
     switch (column) {
-      case 'Prospects':
-        return 'text-gray-300';
       case 'Positive Replies':
         return 'text-orange-400';
       case 'Demos':
@@ -78,7 +69,7 @@ function PipelineBoard() {
   };
   
   return (
-    <div className="grid grid-cols-5 gap-4">
+    <div className="grid grid-cols-4 gap-4">
       {COLUMNS.map(col => (
         <div key={col} className={`${getColumnColor(col)} border-2 rounded-lg p-4`}>
           <div className={`font-semibold mb-4 ${getColumnHeaderColor(col)} text-center`}>{col}</div>
@@ -117,7 +108,7 @@ const LeadPipeline: React.FC = () => {
           <TrendingUp className="mr-3" size={32} />
           Lead Pipeline
         </h1>
-        <p className="text-gray-400">Track prospects through outreach, replies, demos, and closure</p>
+        <p className="text-gray-400">Track leads through replies, demos, and closure</p>
       </div>
 
       {/* Pipeline Board */}
