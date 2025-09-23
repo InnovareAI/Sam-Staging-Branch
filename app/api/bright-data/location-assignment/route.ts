@@ -7,10 +7,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { linkedinProfileLocation, forceRegenerate = false } = body
 
+    // Get Authorization header
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 })
+    }
+
     const supabase = supabaseAdmin()
     
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // Get current user from Authorization header
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
     if (authError || !user) {
       return NextResponse.json({
         success: false,
@@ -89,10 +98,19 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Get Authorization header
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 })
+    }
+
     const supabase = supabaseAdmin()
     
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // Get current user from Authorization header
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
     if (authError || !user) {
       return NextResponse.json({
         success: false,
@@ -149,10 +167,19 @@ export async function PUT(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Get Authorization header
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 })
+    }
+
     const supabase = supabaseAdmin()
     
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // Get current user from Authorization header
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
     if (authError || !user) {
       return NextResponse.json({
         success: false,

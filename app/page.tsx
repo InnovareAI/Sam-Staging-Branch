@@ -183,10 +183,19 @@ export default function Page() {
   const handleTestConnection = async () => {
     setProxyTestLoading(true);
     try {
+      // Get current session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('❌ Authentication required. Please sign in.');
+        setProxyTestLoading(false);
+        return;
+      }
+
       const response = await fetch('/api/bright-data/location-assignment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           linkedinProfileLocation: 'Current Location',
@@ -225,10 +234,19 @@ export default function Page() {
 
     setProxySaveLoading(true);
     try {
+      // Get current session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('❌ Authentication required. Please sign in.');
+        setProxySaveLoading(false);
+        return;
+      }
+
       const response = await fetch('/api/bright-data/location-assignment', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           country: selectedProxyCountry,

@@ -1,0 +1,65 @@
+{
+  "backupId": "backup-2025-09-23T14-32-46-095Z-pre-deploy-1758637965086",
+  "timestamp": "2025-09-23T14:32:48.233Z",
+  "version": "1.0",
+  "files": [
+    {
+      "name": "app-state.json",
+      "size": 96,
+      "modified": "2025-09-23T14:32:46.512Z"
+    },
+    {
+      "name": "config-middleware.ts",
+      "size": 555,
+      "modified": "2025-09-23T14:32:46.516Z"
+    },
+    {
+      "name": "config-netlify.toml",
+      "size": 237,
+      "modified": "2025-09-23T14:32:46.513Z"
+    },
+    {
+      "name": "config-next.config.mjs",
+      "size": 1791,
+      "modified": "2025-09-23T14:32:46.513Z"
+    },
+    {
+      "name": "config-tailwind.config.js",
+      "size": 3260,
+      "modified": "2025-09-23T14:32:46.515Z"
+    },
+    {
+      "name": "config-tsconfig.json",
+      "size": 897,
+      "modified": "2025-09-23T14:32:46.515Z"
+    },
+    {
+      "name": "configuration.json",
+      "size": 11628,
+      "modified": "2025-09-23T14:32:46.517Z"
+    },
+    {
+      "name": "database.json",
+      "size": 15711,
+      "modified": "2025-09-23T14:32:46.508Z"
+    },
+    {
+      "name": "deployment-state.json",
+      "size": 572,
+      "modified": "2025-09-23T14:32:48.233Z"
+    },
+    {
+      "name": "package-lock.json",
+      "size": 433358,
+      "modified": "2025-09-23T14:32:46.511Z"
+    },
+    {
+      "name": "package.json",
+      "size": 3301,
+      "modified": "2025-09-23T14:32:46.509Z"
+    }
+  ],
+  "environment": "production",
+  "nodeVersion": "v22.16.0",
+  "platform": "darwin"
+}
