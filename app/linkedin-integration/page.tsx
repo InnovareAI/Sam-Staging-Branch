@@ -165,7 +165,7 @@ function LinkedInIntegrationContent() {
           provider: 'LINKEDIN',
           redirect_url: window.location.hostname === 'localhost' 
             ? `${window.location.origin}/api/unipile/hosted-auth/callback`
-            : `https://au.app.meet-sam.com/api/unipile/hosted-auth/callback`
+            : `https://app.meet-sam.com/api/unipile/hosted-auth/callback`
         })
       });
       

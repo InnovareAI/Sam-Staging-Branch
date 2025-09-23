@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     // Get the current domain for callback URL
     // Always use correct production URL for LinkedIn authentication
     const origin = process.env.NODE_ENV === 'production' 
-      ? 'https://au.app.meet-sam.com'
+      ? 'https://app.meet-sam.com'
       : (request.headers.get('origin') || 'http://localhost:3001')
     const callbackUrl = redirect_url || `${origin}/api/unipile/hosted-auth/callback`
     
