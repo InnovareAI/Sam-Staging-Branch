@@ -8,6 +8,12 @@ interface ConnectionStatus {
     connected: boolean;
     loading: boolean;
     accountCount?: number;
+    details?: {
+      total: number;
+      functional: number;
+      status: string;
+      lastChecked: string;
+    };
   };
   email: {
     connected: boolean;
@@ -28,8 +34,9 @@ export default function ConnectionStatusBar() {
 
   const checkConnectionStatus = async () => {
     try {
-      // Check LinkedIn connection status
-      const linkedinResponse = await fetch('/api/unipile/accounts', {
+      // Test actual LinkedIn functionality (not just account existence)
+      const linkedinResponse = await fetch('/api/linkedin/test-connection', {
+        method: 'POST',
         credentials: 'include'
       });
       const linkedinData = await linkedinResponse.json();
@@ -42,9 +49,15 @@ export default function ConnectionStatusBar() {
 
       setStatus({
         linkedin: {
-          connected: linkedinResponse.ok && linkedinData.success && linkedinData.has_linkedin,
+          connected: linkedinData.functional || false, // Only show connected if actually functional
           loading: false,
-          accountCount: linkedinData.user_account_count || 0
+          accountCount: linkedinData.functional_count || 0,
+          details: linkedinData.success ? {
+            total: linkedinData.account_count || 0,
+            functional: linkedinData.functional_count || 0,
+            status: linkedinData.overall_status,
+            lastChecked: linkedinData.last_checked
+          } : null
         },
         email: {
           connected: emailResponse.ok && emailData.success && (emailData.providers?.length > 0),
@@ -66,39 +79,75 @@ export default function ConnectionStatusBar() {
     icon: Icon, 
     connected, 
     loading, 
-    accountCount 
+    accountCount,
+    details 
   }: {
     service: string;
     icon: React.ComponentType<any>;
     connected: boolean;
     loading: boolean;
     accountCount?: number;
-  }) => (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800/50 border border-gray-700/50">
-      <Icon className="w-4 h-4 text-gray-400" />
-      <span className="text-sm font-medium text-gray-300">{service}</span>
-      {loading ? (
-        <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
-      ) : (
-        <div className="flex items-center gap-1">
-          {connected ? (
-            <>
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-xs text-green-400 font-medium">Connected</span>
-              {accountCount && accountCount > 0 && (
-                <span className="text-xs text-gray-400">({accountCount})</span>
-              )}
-            </>
-          ) : (
-            <>
-              <div className="w-2 h-2 rounded-full bg-red-500" />
-              <span className="text-xs text-red-400 font-medium">Disconnected</span>
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
+    details?: any;
+  }) => {
+    // For LinkedIn, show more detailed status
+    const getLinkedInStatus = () => {
+      if (!details) return { text: 'Disconnected', color: 'red', dot: 'bg-red-500' };
+      
+      switch (details.status) {
+        case 'fully_functional':
+          return { text: 'Functional', color: 'green', dot: 'bg-green-500 animate-pulse' };
+        case 'partially_functional':
+          return { text: 'Partial', color: 'yellow', dot: 'bg-yellow-500' };
+        case 'all_non_functional':
+          return { text: 'Auth Required', color: 'orange', dot: 'bg-orange-500' };
+        case 'no_accounts':
+          return { text: 'No Accounts', color: 'red', dot: 'bg-red-500' };
+        default:
+          return { text: 'Unknown', color: 'gray', dot: 'bg-gray-500' };
+      }
+    };
+
+    const linkedInStatus = service === 'LinkedIn' ? getLinkedInStatus() : null;
+
+    return (
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800/50 border border-gray-700/50">
+        <Icon className="w-4 h-4 text-gray-400" />
+        <span className="text-sm font-medium text-gray-300">{service}</span>
+        {loading ? (
+          <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
+        ) : (
+          <div className="flex items-center gap-1">
+            {service === 'LinkedIn' && linkedInStatus ? (
+              <>
+                <div className={`w-2 h-2 rounded-full ${linkedInStatus.dot}`} />
+                <span className={`text-xs text-${linkedInStatus.color}-400 font-medium`}>
+                  {linkedInStatus.text}
+                </span>
+                {details && details.total > 0 && (
+                  <span className="text-xs text-gray-400">
+                    ({details.functional}/{details.total})
+                  </span>
+                )}
+              </>
+            ) : connected ? (
+              <>
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-xs text-green-400 font-medium">Connected</span>
+                {accountCount && accountCount > 0 && (
+                  <span className="text-xs text-gray-400">({accountCount})</span>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="w-2 h-2 rounded-full bg-red-500" />
+                <span className="text-xs text-red-400 font-medium">Disconnected</span>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="border-b border-border/60 bg-gray-900/50 backdrop-blur px-6 py-3">
@@ -114,6 +163,7 @@ export default function ConnectionStatusBar() {
               connected={status.linkedin.connected}
               loading={status.linkedin.loading}
               accountCount={status.linkedin.accountCount}
+              details={status.linkedin.details}
             />
             <StatusIndicator
               service="Email"

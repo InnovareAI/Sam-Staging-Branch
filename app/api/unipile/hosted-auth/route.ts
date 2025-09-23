@@ -109,9 +109,13 @@ export async function POST(request: NextRequest) {
     })
 
     // Call Unipile's hosted auth API with create or reconnect flow
+    // Generate proper expiration date (2 hours from now) in correct ISO format
+    const expirationDate = new Date(Date.now() + 2 * 60 * 60 * 1000)
+    const expiresOn = expirationDate.toISOString().replace(/\.\d{3}Z$/, '.000Z') // Ensure .000Z format
+    
     let hostedAuthPayload: any = {
       type: authType,
-      expiresOn: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours from now
+      expiresOn: expiresOn,
       api_url: `https://${process.env.UNIPILE_DSN}`,
       success_redirect_url: `${callbackUrl}?status=success`,
       failure_redirect_url: `${callbackUrl}?status=error`,
