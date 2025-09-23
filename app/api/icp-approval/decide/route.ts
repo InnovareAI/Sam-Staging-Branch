@@ -23,8 +23,8 @@ export async function POST(request: NextRequest) {
       
       // Get session data
       const { data: session } = await supabase
-        .from('data_approval_sessions')
-        .select('total_count, raw_data')
+        .from('icp_approval_sessions')
+        .select('total_count, icp_data')
         .eq('session_id', sessionId)
         .eq('user_id', user.id)
         .single()
@@ -35,36 +35,35 @@ export async function POST(request: NextRequest) {
 
       // Bulk update session
       await supabase
-        .from('data_approval_sessions')
+        .from('icp_approval_sessions')
         .update({
           status,
           [count]: session.total_count,
           approved_at: status === 'approved' ? new Date().toISOString() : null,
-          rejected_at: status === 'rejected' ? new Date().toISOString() : null,
-          approved_by: user.id,
+          completed_at: new Date().toISOString(),
           approval_notes: notes
         })
         .eq('session_id', sessionId)
 
       // Create bulk prospect decisions
-      const prospects = session.raw_data || []
+      const prospects = session.icp_data.prospects || []
       const decisions = prospects.map((prospect: any, index: number) => ({
         session_id: sessionId,
-        record_index: index,
-        record_data: prospect,
+        prospect_index: index,
+        prospect_data: prospect,
         decision: status === 'approved' ? 'approved' : 'rejected',
         decision_reason: notes || `Bulk ${status}`,
         auto_decision: false
       }))
 
-      await supabase.from('data_record_decisions').insert(decisions)
+      await supabase.from('icp_prospect_decisions').insert(decisions)
 
       // Consume quota if approved
       if (status === 'approved') {
         await supabase.rpc('consume_approval_quota', {
           p_user_id: user.id,
           p_workspace_id: user.id, // TODO: Get actual workspace
-          p_quota_type: 'campaign_data',
+          p_quota_type: 'icp_building',
           p_amount: session.total_count
         })
       }
@@ -81,19 +80,19 @@ export async function POST(request: NextRequest) {
     if (prospectIndexes && Array.isArray(prospectIndexes)) {
       const decisions = prospectIndexes.map((index: number) => ({
         session_id: sessionId,
-        record_index: index,
+        prospect_index: index,
         decision,
         decision_reason: notes
       }))
 
-      await supabase.from('data_record_decisions').upsert(decisions)
+      await supabase.from('icp_prospect_decisions').upsert(decisions)
 
       // Update session counts
       const approved = prospectIndexes.length * (decision === 'approved' ? 1 : 0)
       const rejected = prospectIndexes.length * (decision === 'rejected' ? 1 : 0)
 
       await supabase
-        .from('data_approval_sessions')
+        .from('icp_approval_sessions')
         .update({
           approved_count: supabase.sql`approved_count + ${approved}`,
           rejected_count: supabase.sql`rejected_count + ${rejected}`
@@ -116,4 +115,3 @@ export async function POST(request: NextRequest) {
     }, { status: 500 })
   }
 }
-

@@ -26,6 +26,11 @@ export default function DataApprovalDemo() {
   
   const supabase = createClientComponentClient()
 
+  // Auto-generate test data on page load
+  useEffect(() => {
+    generateTestData(25, 'linkedin')
+  }, [])
+
   const generateTestData = async (count: number = 25, source: string = 'linkedin') => {
     setLoading(true)
     try {
@@ -53,7 +58,8 @@ export default function DataApprovalDemo() {
           setProspectData(data.prospects)
           setSessionInfo(data.session)
           setStats({ approved: 0, rejected: 0, total: data.prospects.length })
-          setIsVisible(true)
+          // Automatically show the popup
+          setTimeout(() => setIsVisible(true), 500)
         } else {
           throw new Error(data.error || 'Failed to create approval session')
         }
@@ -65,7 +71,8 @@ export default function DataApprovalDemo() {
         if (data.success) {
           setProspectData(data.prospects)
           setStats({ approved: 0, rejected: 0, total: data.prospects.length })
-          setIsVisible(true)
+          // Automatically show the popup for demo data too
+          setTimeout(() => setIsVisible(true), 500)
         }
       }
     } catch (error) {
