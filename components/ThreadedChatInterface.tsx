@@ -1122,9 +1122,9 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
   }, {} as Record<string, number>)
 
   return (
-    <div className="flex h-full bg-gray-900">
+    <div className="flex h-full bg-gray-900 overflow-hidden">
       {/* Thread Sidebar */}
-      <div className="w-80 border-r border-gray-700">
+      <div className="w-80 border-r border-gray-700 flex-shrink-0 overflow-hidden">
         <ThreadSidebar
           onThreadSelect={handleThreadSelect}
           currentThreadId={currentThread?.id}
@@ -1133,7 +1133,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {currentThread ? (
           <>
             {/* Chat Header */}
@@ -1195,7 +1195,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 pb-8 space-y-4">
               {isLoadingMessages ? (
                 <div className="flex justify-center py-8">
                   <div className="text-gray-400">Loading messages...</div>

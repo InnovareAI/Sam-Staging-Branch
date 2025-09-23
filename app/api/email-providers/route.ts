@@ -6,6 +6,18 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = supabaseAdmin()
     
+    // In development mode, bypass auth for testing
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    
+    if (isDevelopment) {
+      // Return simulated email provider status for development
+      return NextResponse.json({
+        success: true,
+        providers: [], // No email providers configured in dev
+        message: 'Development mode - no email providers configured'
+      })
+    }
+    
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {

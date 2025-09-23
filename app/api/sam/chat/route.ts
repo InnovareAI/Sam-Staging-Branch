@@ -26,7 +26,7 @@ async function callOpenRouter(messages: any[], systemPrompt: string) {
         ...messages
       ],
       temperature: 0.7,
-      max_tokens: 1000
+      max_tokens: 150
     })
   });
 
@@ -1361,6 +1361,9 @@ This way you can build a comprehensive ICP database over time without losing any
       if (knowledgeContext) {
         enhancedSystemPrompt += knowledgeContext;
       }
+      
+      // Add length constraint
+      enhancedSystemPrompt += "\n\nIMPORTANT: Keep responses under 3 sentences. Be concise and direct.";
       
       // Add ICP research context if transitioning
       if (scriptPosition === 'icpResearchTransition') {
