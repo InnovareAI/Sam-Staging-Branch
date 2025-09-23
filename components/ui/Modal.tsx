@@ -1,7 +1,8 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import { X } from 'lucide-react'
+import { createPortal } from 'react-dom'
 
 interface ModalProps {
   isVisible: boolean
@@ -26,6 +27,30 @@ export default function Modal({
   size = '2xl',
   showCloseButton = true
 }: ModalProps) {
+  // Handle escape key
+  useEffect(() => {
+    if (!isVisible) return
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [isVisible, onClose])
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isVisible) {
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = 'unset'
+      }
+    }
+  }, [isVisible])
+
   if (!isVisible) return null
 
   const sizeClasses = {
@@ -38,9 +63,16 @@ export default function Modal({
     '6xl': 'max-w-6xl'
   }
 
-  return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`bg-surface border border-border/60 rounded-xl shadow-2xl ${sizeClasses[size]} w-full max-h-[90vh] overflow-hidden ${className}`}>
+  const modalContent = (
+    <div 
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
+      onClick={onClose}
+      style={{ zIndex: 99999 }}
+    >
+      <div 
+        className={`bg-surface border border-border/60 rounded-xl shadow-2xl ${sizeClasses[size]} w-full max-h-[90vh] overflow-hidden ${className}`}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="bg-surface-highlight/50 px-6 py-5 border-b border-border/60">
           <div className="flex items-center justify-between">
@@ -79,4 +111,11 @@ export default function Modal({
       </div>
     </div>
   )
+
+  // Use portal to render modal at the end of the body
+  if (typeof window !== 'undefined') {
+    return createPortal(modalContent, document.body)
+  }
+
+  return modalContent
 }
