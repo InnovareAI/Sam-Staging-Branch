@@ -201,25 +201,25 @@ export async function GET(request: NextRequest) {
       current_workspace_id: userProfile?.current_workspace_id
     })
 
-    // 🚨 TEMPORARY: Allow super admins to access even without workspace association
+    // 🚨 MANAGEMENT TEAM: Allow InnovareAI team to access all workspaces for management
     const userEmail = user.email?.toLowerCase() || ''
-    const isSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com', 'thorsten@innovareai.com', 'thorsten.linz@gmail.com'].includes(userEmail)
+    const isInnovareAIManager = ['tl@innovareai.com', 'cl@innovareai.com', 'cs@innovareai.com', 'thorsten@innovareai.com', 'thorsten.linz@gmail.com'].includes(userEmail)
     
     console.log(`🔍 User authentication check:`, {
       user_id: user.id,
       user_email: userEmail,
-      is_super_admin: isSuperAdmin,
+      is_innovareai_manager: isInnovareAIManager,
       current_workspace_id: userProfile?.current_workspace_id
     })
     
     // TEMPORARY FIX: Skip workspace check entirely for debugging production issues
-    if (!userProfile?.current_workspace_id && !isSuperAdmin) {
+    if (!userProfile?.current_workspace_id && !isInnovareAIManager) {
       console.log(`⚠️ User ${user.email} not associated with workspace - allowing access for debugging`)
       // Don't block access, just log the issue
-      console.log(`📝 Debug info: user_email=${userEmail}, is_super_admin=${isSuperAdmin}, current_workspace_id=${userProfile?.current_workspace_id}`)
+      console.log(`📝 Debug info: user_email=${userEmail}, is_innovareai_manager=${isInnovareAIManager}, current_workspace_id=${userProfile?.current_workspace_id}`)
     }
 
-    console.log(`✅ User ${user.email} access granted - ${isSuperAdmin ? 'Super Admin' : `Workspace: ${userProfile?.current_workspace_id || 'none'}`}`)
+    console.log(`✅ User ${user.email} access granted - ${isInnovareAIManager ? 'InnovareAI Manager' : `Workspace: ${userProfile?.current_workspace_id || 'none'}`}`)
 
     // Fetch ALL accounts from Unipile (we'll filter by user associations)
     const data = await callUnipileAPI('accounts')
@@ -277,15 +277,33 @@ export async function GET(request: NextRequest) {
         user_email: userEmailLower,
         exact_match: exactEmailMatch,
         domain_match: accountDomainMatches && userDomain,
-        will_associate: exactEmailMatch
+        will_associate: exactEmailMatch || (accountDomainMatches && isDomainTrusted),
+        association_type: exactEmailMatch ? 'exact_email' : (accountDomainMatches && isDomainTrusted ? 'trusted_domain' : 'none')
       })
       
-      // For now, only auto-associate on exact email matches to prevent false positives
-      // Domain matching could be enabled later with additional verification
-      if (exactEmailMatch) {
-        console.log(`🔗 Auto-associating LinkedIn account ${linkedInAccount.id} with user ${user.email}`)
+      // Trusted corporate domains for domain-based association
+      const trustedDomains = ['innovareai.com', '3cubed.ai', 'sendingcell.com']
+      const isDomainTrusted = userDomain && trustedDomains.includes(userDomain)
+      
+      // Auto-associate on exact email matches OR trusted domain matches
+      if (exactEmailMatch || (accountDomainMatches && isDomainTrusted)) {
+        const associationType = exactEmailMatch ? 'exact email match' : 'trusted domain match'
+        console.log(`🔗 Auto-associating LinkedIn account ${linkedInAccount.id} with user ${user.email} (${associationType})`)
         
-        // Store the association
+        // Check for existing associations of this account to other users (duplicate prevention)
+        const { data: existingAssociations } = await supabase
+          .from('user_unipile_accounts')
+          .select('user_id')
+          .eq('unipile_account_id', linkedInAccount.id)
+
+        if (existingAssociations && existingAssociations.length > 0) {
+          const existingUserId = existingAssociations[0].user_id
+          if (existingUserId !== user.id) {
+            console.log(`⚠️ Account ${linkedInAccount.id} already associated with user ${existingUserId}, updating to current user ${user.id}`)
+          }
+        }
+        
+        // Store the association (will update if already exists due to UPSERT)
         const associationStored = await storeUserAccountAssociation(user.id, linkedInAccount)
         if (associationStored) {
           userAccountIds.add(linkedInAccount.id)
