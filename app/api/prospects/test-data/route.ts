@@ -167,15 +167,34 @@ async function generateCampaignData(supabase: any, userId: string, count: number
 
 async function createTestApprovalSession(supabase: any, userId: string, count: number, dataType: string) {
   try {
-    // Get user's workspace
-    const { data: workspaces } = await supabase
+    // Get user's workspace or create one if it doesn't exist
+    let { data: workspaces } = await supabase
       .from('workspaces')
       .select('id')
       .eq('user_id', userId)
       .single()
 
     if (!workspaces) {
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
+      // Create a default workspace for the user
+      const { data: newWorkspace, error: createError } = await supabase
+        .from('workspaces')
+        .insert({
+          user_id: userId,
+          name: 'Default Workspace',
+          slug: `workspace-${userId.slice(0, 8)}`,
+          settings: {},
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select('id')
+        .single()
+      
+      if (createError) {
+        console.error('Error creating workspace:', createError)
+        return NextResponse.json({ error: 'Failed to create workspace' }, { status: 500 })
+      }
+      
+      workspaces = newWorkspace
     }
 
     // Generate test prospects
