@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/app/lib/supabase'
 
 // Super admin emails
@@ -157,5 +159,150 @@ export async function GET(request: NextRequest) {
       { error: 'Internal server error' },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    
+    const { data: { session }, error: authError } = await supabase.auth.getSession()
+    if (authError || !session) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    // Check if user is admin
+    if (!SUPER_ADMIN_EMAILS.includes(session.user.email || '')) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { action, targetWorkspaceId, originalWorkspaceId, userId, role, workspaceId, permissionType } = body
+
+    switch (action) {
+      case 'switch_workspace':
+        return await switchToWorkspace(supabase, session.user.id, targetWorkspaceId, originalWorkspaceId)
+      
+      case 'grant_permission':
+        return await grantWorkspacePermission(supabase, session.user.id, userId, workspaceId, permissionType)
+      
+      case 'get_accessible_workspaces':
+        return await getAccessibleWorkspaces(supabase, session.user.id)
+      
+      default:
+        return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+    }
+
+  } catch (error) {
+    console.error('Admin workspaces POST error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+async function switchToWorkspace(supabase: any, adminUserId: string, targetWorkspaceId: string, originalWorkspaceId: string) {
+  try {
+    // Get workspace details
+    const { data: workspace, error: workspaceError } = await supabase
+      .from('workspaces')
+      .select('id, name, slug, user_id')
+      .eq('id', targetWorkspaceId)
+      .single()
+
+    if (workspaceError || !workspace) {
+      // Try organizations table
+      const { data: orgWorkspace, error: orgError } = await supabase
+        .from('organizations')
+        .select('id, name, slug, created_by')
+        .eq('id', targetWorkspaceId)
+        .single()
+      
+      if (orgError || !orgWorkspace) {
+        return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
+      }
+      
+      // Map organization to workspace format
+      workspace.id = orgWorkspace.id
+      workspace.name = orgWorkspace.name
+      workspace.slug = orgWorkspace.slug
+      workspace.user_id = orgWorkspace.created_by
+    }
+
+    // Get campaigns in this workspace
+    const { data: campaigns } = await supabase
+      .from('campaigns')
+      .select('id, name, status, created_at')
+      .eq('workspace_id', targetWorkspaceId)
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    return NextResponse.json({
+      success: true,
+      workspace,
+      campaigns: campaigns || [],
+      message: `Switched to workspace: ${workspace?.name}`,
+      adminNote: `You are now managing ${workspace?.name} on behalf of the workspace owner`
+    })
+  } catch (error) {
+    console.error('Error switching workspace:', error)
+    return NextResponse.json({ error: 'Failed to switch workspace' }, { status: 500 })
+  }
+}
+
+async function grantWorkspacePermission(supabase: any, adminUserId: string, userId: string, workspaceId: string, permissionType: string) {
+  // For now, just return success - this would normally update a permissions table
+  return NextResponse.json({
+    success: true,
+    message: `Would grant ${permissionType} permission to workspace ${workspaceId} for user ${userId}`
+  })
+}
+
+async function getAccessibleWorkspaces(supabase: any, userId: string) {
+  try {
+    // Admin users can access all workspaces
+    let workspaces = []
+    
+    // Try workspaces table first
+    const { data: workspacesData, error: workspacesError } = await supabase
+      .from('workspaces')
+      .select('id, name, slug, user_id, created_at')
+      .order('created_at', { ascending: false })
+    
+    if (workspacesError) {
+      // Try organizations table
+      const { data: orgsData, error: orgsError } = await supabase
+        .from('organizations')
+        .select('id, name, slug, created_by as user_id, created_at')
+        .order('created_at', { ascending: false })
+      
+      if (!orgsError && orgsData) {
+        workspaces = orgsData
+      }
+    } else {
+      workspaces = workspacesData || []
+    }
+
+    // Get user info for workspace owners
+    const { data: users } = await supabase.auth.admin.listUsers()
+    const userMap = new Map()
+    users?.users?.forEach((user: any) => {
+      userMap.set(user.id, { email: user.email, id: user.id })
+    })
+
+    const enrichedWorkspaces = workspaces.map((workspace: any) => ({
+      ...workspace,
+      owner: userMap.get(workspace.user_id),
+      access_type: 'admin',
+      permission_level: 'admin'
+    }))
+
+    return NextResponse.json({
+      success: true,
+      workspaces: enrichedWorkspaces,
+      userRole: 'admin'
+    })
+  } catch (error) {
+    console.error('Error getting accessible workspaces:', error)
+    return NextResponse.json({ error: 'Failed to get workspaces' }, { status: 500 })
   }
 }
