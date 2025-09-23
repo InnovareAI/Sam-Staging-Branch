@@ -18,25 +18,11 @@ export async function GET(request: NextRequest) {
     let workspaces = null;
     let error = null;
 
-    // First try 'workspaces' table
+    // First try 'workspaces' table without JOINs (relationships may not be configured)
     console.log('🔍 Trying workspaces table...');
     const workspacesResult = await adminSupabase
       .from('workspaces')
-      .select(`
-        id,
-        name,
-        slug,
-        owner_id,
-        created_at,
-        updated_at,
-        settings,
-        workspace_members (
-          id,
-          user_id,
-          role,
-          joined_at
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (workspacesResult.error) {
@@ -87,6 +73,23 @@ export async function GET(request: NextRequest) {
     } else {
       workspaces = workspacesResult.data;
       console.log(`✅ Found ${workspaces?.length || 0} workspaces`);
+      
+      // Manually fetch workspace members since JOINs may not work
+      if (workspaces && workspaces.length > 0) {
+        console.log('🔍 Fetching workspace members manually...');
+        const { data: allMembers } = await adminSupabase
+          .from('workspace_members')
+          .select('*');
+          
+        // Add workspace_members array to each workspace
+        workspaces = workspaces.map(workspace => ({
+          ...workspace,
+          workspace_members: allMembers?.filter(member => member.workspace_id === workspace.id) || [],
+          member_count: allMembers?.filter(member => member.workspace_id === workspace.id).length || 0
+        }));
+        
+        console.log(`✅ Enhanced workspaces with member data`);
+      }
     }
 
     if (error && !workspaces) {

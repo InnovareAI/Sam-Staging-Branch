@@ -1,0 +1,182 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
+
+// Helper function to check existing LinkedIn accounts for user
+async function checkExistingLinkedInAccounts(userId: string) {
+  try {
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    
+    const { data, error } = await supabase
+      .from('user_unipile_accounts')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('platform', 'LINKEDIN')
+      .eq('connection_status', 'active')
+    
+    if (error) {
+      console.error('Error checking existing LinkedIn accounts:', error)
+      return []
+    }
+    
+    return data || []
+  } catch (error) {
+    console.error('Exception checking existing LinkedIn accounts:', error)
+    return []
+  }
+}
+
+// Helper function to make Unipile API calls
+async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: any) {
+  const unipileDsn = process.env.UNIPILE_DSN
+  const unipileApiKey = process.env.UNIPILE_API_KEY
+
+  if (!unipileDsn || !unipileApiKey) {
+    throw new Error('Unipile API credentials not configured')
+  }
+
+  const url = `https://${unipileDsn}/api/v1/${endpoint}`
+  const options: RequestInit = {
+    method,
+    headers: {
+      'X-API-KEY': unipileApiKey,
+      'Accept': 'application/json',
+      ...(body && { 'Content-Type': 'application/json' })
+    },
+    ...(body && { body: JSON.stringify(body) })
+  }
+
+  const response = await fetch(url, options)
+  
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error(`Unipile API error: ${response.status} ${response.statusText}`, {
+      url,
+      method,
+      body: body ? JSON.stringify(body, null, 2) : undefined,
+      errorResponse: errorText
+    })
+    throw new Error(`Unipile API error: ${response.status} ${response.statusText} - ${errorText}`)
+  }
+
+  return await response.json()
+}
+
+// POST - Generate hosted auth link for LinkedIn
+export async function POST(request: NextRequest) {
+  try {
+    // Authenticate user first
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const { data: { session }, error: authError } = await supabase.auth.getSession()
+    
+    if (authError || !session || !session.user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required to generate hosted auth link',
+        timestamp: new Date().toISOString()
+      }, { status: 401 })
+    }
+
+    const user = session.user
+
+    console.log(`🔗 User ${user.email} (${user.id}) requesting hosted auth link`)
+
+    const body = await request.json()
+    const { provider = 'LINKEDIN', redirect_url } = body
+    
+    // Check if user already has LinkedIn accounts to prevent duplicates
+    const existingAccounts = await checkExistingLinkedInAccounts(user.id)
+    console.log(`📊 User has ${existingAccounts.length} existing LinkedIn accounts`)
+    
+    // If user has existing accounts, use reconnect flow instead of create
+    const authType = existingAccounts.length > 0 ? 'reconnect' : 'create'
+    const reconnectAccountId = existingAccounts.length > 0 ? existingAccounts[0].unipile_account_id : null
+    
+    // Get the current domain for callback URL
+    // Always use correct production URL for LinkedIn authentication
+    const origin = process.env.NODE_ENV === 'production' 
+      ? 'https://au.app.meet-sam.com'
+      : (request.headers.get('origin') || 'http://localhost:3001')
+    const callbackUrl = redirect_url || `${origin}/api/unipile/hosted-auth/callback`
+    
+    console.log('🔧 Generating hosted auth link:', {
+      provider,
+      callbackUrl,
+      userId: user.id,
+      userEmail: user.email
+    })
+
+    // Call Unipile's hosted auth API with create or reconnect flow
+    let hostedAuthPayload: any = {
+      type: authType,
+      expiresOn: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours from now
+      api_url: `https://${process.env.UNIPILE_DSN}`,
+      success_redirect_url: `${callbackUrl}?status=success`,
+      failure_redirect_url: `${callbackUrl}?status=error`,
+      notify_url: callbackUrl,
+      name: user.id, // User ID for matching in callback
+      bypass_success_screen: true // Skip success screen and redirect directly
+    }
+    
+    if (authType === 'create') {
+      hostedAuthPayload.providers = [provider.toUpperCase()]
+    } else {
+      hostedAuthPayload.reconnect_account = reconnectAccountId
+    }
+    
+    console.log(`🔧 Using ${authType} flow for LinkedIn auth`, {
+      authType,
+      reconnectAccountId: authType === 'reconnect' ? reconnectAccountId : 'N/A'
+    })
+    
+    const hostedAuthResponse = await callUnipileAPI('hosted/accounts/link', 'POST', hostedAuthPayload)
+
+    console.log('✅ Hosted auth link generated:', {
+      url: hostedAuthResponse.url?.substring(0, 100) + '...',
+      object: hostedAuthResponse.object
+    })
+
+    return NextResponse.json({
+      success: true,
+      auth_url: hostedAuthResponse.url, // Unipile returns 'url' not 'auth_url'
+      session_id: null, // Unipile embeds session in URL, no separate session_id
+      expires_at: null, // Not provided in response
+      provider: provider,
+      callback_url: callbackUrl,
+      auth_type: authType, // Indicate if this is create or reconnect flow
+      existing_accounts: existingAccounts.length,
+      instructions: {
+        step1: 'Click the auth_url to open LinkedIn authentication',
+        step2: 'Complete LinkedIn login and authorization',
+        step3: 'You will be redirected back to SAM AI automatically',
+        step4: 'Your LinkedIn account will be connected and ready to use'
+      },
+      timestamp: new Date().toISOString()
+    })
+
+  } catch (error) {
+    console.error('Hosted auth link generation error:', error)
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const isCredentialsError = errorMessage.includes('credentials not configured') || 
+                               errorMessage.includes('401') || 
+                               errorMessage.includes('403')
+    
+    return NextResponse.json({
+      success: false,
+      error: isCredentialsError ? 
+        'LinkedIn integration not configured. Please check environment variables.' : 
+        'Failed to generate authentication link',
+      debug_info: {
+        error_message: errorMessage,
+        error_type: error instanceof Error ? error.constructor.name : typeof error,
+        has_dsn: !!process.env.UNIPILE_DSN,
+        has_api_key: !!process.env.UNIPILE_API_KEY,
+        environment: process.env.NODE_ENV || 'unknown'
+      },
+      timestamp: new Date().toISOString()
+    }, { status: isCredentialsError ? 503 : 500 })
+  }
+}

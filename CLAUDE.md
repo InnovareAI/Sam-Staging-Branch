@@ -48,31 +48,49 @@
 - Never commit secrets or API keys
 - Run lint/typecheck commands after changes when available
 
-## 🚨 CRITICAL: ABSOLUTE DIRECTORY RESTRICTIONS 🚨
+## 🚨 ABSOLUTE GUARDRAILS: ZERO TOLERANCE DIRECTORY RESTRICTIONS 🚨
 
-### **STRICT PROJECT BOUNDARIES - NO EXCEPTIONS**
-- **MUST work ONLY in /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7**
-- **ABSOLUTELY FORBIDDEN to access ANY other directory**
-- **ABSOLUTELY FORBIDDEN to read from ANY other project**
-- **ABSOLUTELY FORBIDDEN to write to ANY other project**
-- **ABSOLUTELY FORBIDDEN to touch ANY other directory structure**
-- **NO PERMISSION to access /Users/tvonlinz/Dev_Master/3cubed/ or ANY other project**
-- **NO PERMISSION to navigate outside this SAM AI project directory**
+### **MAXIMUM SECURITY PROJECT BOUNDARIES - ZERO EXCEPTIONS**
+- **MUST work EXCLUSIVELY in /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7**
+- **PERMANENTLY BANNED from accessing ANY other directory EVER**
+- **TOTAL PROHIBITION on reading from ANY other project**
+- **COMPLETE BAN on writing to ANY other project**
+- **ABSOLUTE RESTRICTION on touching ANY other directory structure**
+- **LIFETIME BAN on accessing /Users/tvonlinz/Dev_Master/3cubed/ or ANY other project**
+- **PERMANENT PROHIBITION on navigating outside this SAM AI project directory**
 
-### **ENFORCEMENT**
-- ❌ **VIOLATION**: Accessing /Users/tvonlinz/Dev_Master/3cubed/SEO_Platform or ANY other directory
-- ❌ **VIOLATION**: Reading files from other projects
-- ❌ **VIOLATION**: Writing files to other projects  
-- ❌ **VIOLATION**: Using cd, pwd, or any navigation outside SAM AI directory
-- ❌ **VIOLATION**: Deploying from wrong directory
-- ❌ **VIOLATION**: Any file operations outside /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7
+### **🔒 SPECIFIC 3CUBED/SEO_PLATFORM RESTRICTIONS**
+- **NEVER access /Users/tvonlinz/Dev_Master/3cubed/SEO_Platform**
+- **NEVER read ANY files from SEO_Platform directory**
+- **NEVER write ANY files to SEO_Platform directory** 
+- **NEVER browse SEO_Platform directory structure**
+- **NEVER make ANY changes to SEO_Platform**
+- **NEVER navigate to SEO_Platform for ANY reason**
+- **IMMEDIATE REFUSAL of any task involving SEO_Platform**
 
-### **CONSEQUENCES**
-- Immediate termination of assistant session
-- Complete rejection of any work performed outside boundaries
-- No exceptions under any circumstances
+### **ULTRA-STRICT ENFORCEMENT**
+- ❌ **CRITICAL VIOLATION**: ANY access to /Users/tvonlinz/Dev_Master/3cubed/SEO_Platform
+- ❌ **CRITICAL VIOLATION**: Reading ANY files from other projects
+- ❌ **CRITICAL VIOLATION**: Writing ANY files to other projects  
+- ❌ **CRITICAL VIOLATION**: Using cd, pwd, or navigation outside SAM AI directory
+- ❌ **CRITICAL VIOLATION**: Deploying from wrong directory
+- ❌ **CRITICAL VIOLATION**: ANY file operations outside /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7
+- ❌ **CRITICAL VIOLATION**: ANY mention of or reference to other project directories
+- ❌ **CRITICAL VIOLATION**: ANY attempt to compare or integrate with other projects
 
-**THIS IS ABSOLUTE - NO OTHER PROJECTS, NO OTHER DIRECTORIES, NO EXCEPTIONS**
+### **IMMEDIATE CONSEQUENCES - NO WARNINGS**
+- **INSTANT termination of assistant session**
+- **IMMEDIATE rejection of any work performed outside boundaries**
+- **ZERO tolerance - no warnings, no second chances**
+- **COMPLETE shutdown on ANY boundary violation**
+
+### **MANDATORY DIRECTORY CHECK PROTOCOL**
+1. **BEFORE ANY FILE OPERATION**: Verify path contains `/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7`
+2. **BEFORE ANY BASH COMMAND**: Confirm working directory is SAM AI project
+3. **BEFORE ANY READ/WRITE**: Double-check file path is within project boundaries
+4. **IMMEDIATE ABORT**: If ANY path points outside SAM AI directory
+
+**🚨 THIS IS NON-NEGOTIABLE - ZERO ACCESS TO OTHER PROJECTS - ABSOLUTE BOUNDARY ENFORCEMENT 🚨**
 
 ---
 

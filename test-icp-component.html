@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICP Component Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { margin: 0; padding: 20px; background: #1f2937; color: white; font-family: Arial, sans-serif; }
+        .grid { display: grid; }
+        .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+        .gap-2 { gap: 0.5rem; }
+        .p-3 { padding: 0.75rem; }
+        .rounded-lg { border-radius: 0.5rem; }
+        .bg-gray-700 { background-color: #374151; }
+        .text-gray-300 { color: #d1d5db; }
+        .hover\:bg-gray-600:hover { background-color: #4b5563; }
+        .hover\:text-white:hover { color: white; }
+        .bg-blue-600 { background-color: #2563eb; }
+        .text-white { color: white; }
+        .text-sm { font-size: 0.875rem; }
+        .font-medium { font-weight: 500; }
+        .text-xs { font-size: 0.75rem; }
+        .opacity-80 { opacity: 0.8; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mr-2 { margin-right: 0.5rem; }
+        .transition-all { transition: all 0.3s; }
+        .cursor-pointer { cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState } = React;
+        
+        // Mock icons
+        const Target = () => <span>🎯</span>;
+        const Building2 = () => <span>🏢</span>;
+        const Users = () => <span>👥</span>;
+        const AlertCircle = () => <span>⚠️</span>;
+        const GitBranch = () => <span>🌿</span>;
+        const MessageSquare = () => <span>💬</span>;
+        const BarChart = () => <span>📊</span>;
+        const Settings = () => <span>⚙️</span>;
+        
+        function ICPTest() {
+            const [activeCategory, setActiveCategory] = useState('overview');
+            const [icpProfiles, setIcpProfiles] = useState({});
+            const [isLoading, setIsLoading] = useState(false);
+            
+            const icpCategories = [
+                { id: 'overview', label: 'Overview', icon: Target, description: 'ICP summary and key metrics' },
+                { id: 'target_profile', label: 'Target Profile', icon: Building2, description: 'Company size, industry, geography, technology requirements' },
+                { id: 'decision_makers', label: 'Decision Makers', icon: Users, description: 'Authority levels, influence patterns, stakeholder hierarchies' },
+                { id: 'pain_points', label: 'Pain Points & Signals', icon: AlertCircle, description: 'Operational challenges, buying signals, growth pressures' },
+                { id: 'buying_process', label: 'Buying Process', icon: GitBranch, description: 'Stakeholder analysis, approval workflows, evaluation stages' },
+                { id: 'messaging', label: 'Messaging Strategy', icon: MessageSquare, description: 'Value propositions, competitive positioning, role-based communication' },
+                { id: 'success_metrics', label: 'Success Metrics', icon: BarChart, description: 'Industry KPIs, ROI models, performance benchmarks' },
+                { id: 'advanced', label: 'Advanced Classification', icon: Settings, description: 'Technology adoption, compliance, market trends, culture' }
+            ];
+            
+            return (
+                <div>
+                    <h1>ICP Component Test</h1>
+                    <p>Loading: {isLoading ? 'true' : 'false'}</p>
+                    <p>Profiles count: {Object.keys(icpProfiles).length}</p>
+                    
+                    {/* Test the same logic as the real component */}
+                    {isLoading ? (
+                        <div>Loading...</div>
+                    ) : (
+                        <>
+                            <div className="mb-6">
+                                {/* Category Navigation - Always Visible */}
+                                <div className="grid grid-cols-2 gap-2 mb-6">
+                                    {icpCategories.map((category) => {
+                                        const IconComponent = category.icon;
+                                        return (
+                                            <button
+                                                key={category.id}
+                                                onClick={() => setActiveCategory(category.id)}
+                                                className={`p-3 rounded-lg text-left transition-all cursor-pointer ${
+                                                    activeCategory === category.id
+                                                        ? 'bg-blue-600 text-white'
+                                                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                                                }`}
+                                            >
+                                                <div className="flex items-center mb-2">
+                                                    <IconComponent />
+                                                    <span className="text-sm font-medium ml-2">{category.label}</span>
+                                                </div>
+                                                <p className="text-xs opacity-80">{category.description}</p>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                
+                                {/* No Profiles Message - Only if no profiles */}
+                                {Object.keys(icpProfiles).length === 0 && (
+                                    <div className="bg-gray-700 rounded-lg p-4 mb-6">
+                                        <div>
+                                            <Target />
+                                            <h3>No ICP Profiles Created Yet</h3>
+                                            <p>Create your first ICP profile or explore the category structure below.</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
+                    
+                    <p>Active category: {activeCategory}</p>
+                </div>
+            );
+        }
+        
+        ReactDOM.render(<ICPTest />, document.getElementById('root'));
+    </script>
+</body>
+</html>

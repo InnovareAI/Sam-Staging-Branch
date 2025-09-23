@@ -1,0 +1,288 @@
+{
+  "profiles": {
+    "error": "relation \"public.profiles\" does not exist",
+    "data": []
+  },
+  "workspaces": {
+    "data": [
+      {
+        "id": "ecb08e55-2b7e-4d49-8f50-d38e39ce2482",
+        "name": "3cubed Workspace",
+        "slug": "3cubed-workspace",
+        "owner_id": "6c823b89-52a9-45ff-a74b-46bc2f981e5b",
+        "organization_id": "714fc10b-762d-44e1-9239-6dc3c4f95622",
+        "settings": {
+          "theme": "dark",
+          "timezone": "America/New_York",
+          "email_domain": "3cubed.ai"
+        },
+        "created_at": "2025-09-01T00:00:00+00:00",
+        "updated_at": "2025-09-23T04:25:55.115+00:00"
+      },
+      {
+        "id": "edea7143-6987-458d-8dfe-7e3a6c7a4e6e",
+        "name": "WT Matchmaker Workspace",
+        "slug": "wt-matchmaker-workspace",
+        "owner_id": "6c823b89-52a9-45ff-a74b-46bc2f981e5b",
+        "organization_id": "2dbd8ab1-0af4-405e-8be1-b2e25df6b68f",
+        "settings": {
+          "theme": "dark",
+          "timezone": "America/New_York",
+          "email_domain": "example.com"
+        },
+        "created_at": "2025-09-01T00:00:00+00:00",
+        "updated_at": "2025-09-23T04:25:55.381+00:00"
+      },
+      {
+        "id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+        "name": "InnovareAI Workspace",
+        "slug": "innovareai-workspace",
+        "owner_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+        "organization_id": "91768a00-35cf-4633-ae4c-092585dd67fb",
+        "settings": {
+          "theme": "dark",
+          "timezone": "America/New_York",
+          "email_domain": "innovareai.com"
+        },
+        "created_at": "2025-09-01T00:00:00+00:00",
+        "updated_at": "2025-09-23T04:25:55.202+00:00"
+      },
+      {
+        "id": "b070d94f-11e2-41d4-a913-cc5a8c017208",
+        "name": "Sendingcell Workspace",
+        "slug": "sendingcell-workspace",
+        "owner_id": "6c823b89-52a9-45ff-a74b-46bc2f981e5b",
+        "organization_id": "07786cc4-e0aa-42df-ab73-b303c4eac5ae",
+        "settings": {
+          "theme": "dark",
+          "timezone": "America/New_York",
+          "email_domain": "sendingcell.com"
+        },
+        "created_at": "2025-09-01T00:00:00+00:00",
+        "updated_at": "2025-09-23T04:25:55.29+00:00"
+      },
+      {
+        "id": "58f28be0-7049-487c-b9db-4cdf80221453",
+        "name": "ChillMine Workspace",
+        "slug": "chillmine-workspace",
+        "owner_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+        "organization_id": null,
+        "settings": {},
+        "created_at": "2025-09-01T00:00:00+00:00",
+        "updated_at": "2025-09-23T07:02:58.329+00:00"
+      }
+    ],
+    "count": 5
+  },
+  "invitations": {
+    "error": "relation \"public.invitations\" does not exist",
+    "data": []
+  },
+  "organizations": {
+    "data": [
+      {
+        "id": "07786cc4-e0aa-42df-ab73-b303c4eac5ae",
+        "clerk_org_id": "1f54866a-3783-45ed-b523-da61fa7bbb8b",
+        "name": "Sendingcell",
+        "slug": "sendingcell",
+        "logo_url": null,
+        "created_at": "2025-09-22T22:07:38.184698+00:00",
+        "updated_at": "2025-09-22T22:07:38.184698+00:00"
+      },
+      {
+        "id": "714fc10b-762d-44e1-9239-6dc3c4f95622",
+        "clerk_org_id": "2a5235dc-6935-49a6-8df3-22c5d91e1fd8",
+        "name": "3cubed",
+        "slug": "3cubed",
+        "logo_url": null,
+        "created_at": "2025-09-22T22:07:38.25219+00:00",
+        "updated_at": "2025-09-22T22:07:38.25219+00:00"
+      },
+      {
+        "id": "91768a00-35cf-4633-ae4c-092585dd67fb",
+        "clerk_org_id": "c3a67ed5-b806-4c72-b860-63463b496164",
+        "name": "InnovareAI",
+        "slug": "innovareai",
+        "logo_url": null,
+        "created_at": "2025-09-22T22:07:38.300243+00:00",
+        "updated_at": "2025-09-22T22:07:38.300243+00:00"
+      },
+      {
+        "id": "2dbd8ab1-0af4-405e-8be1-b2e25df6b68f",
+        "clerk_org_id": "3f358eba-09da-4e2d-8692-a5b79e2dbad1",
+        "name": "WT Matchmaker",
+        "slug": "wt-matchmaker",
+        "logo_url": null,
+        "created_at": "2025-09-22T22:09:46.33569+00:00",
+        "updated_at": "2025-09-22T22:09:46.33569+00:00"
+      }
+    ],
+    "count": 4
+  },
+  "workspace_members": {
+    "data": [
+      {
+        "id": "1e965e15-a2d2-4715-9069-ea79034c483e",
+        "workspace_id": "ecb08e55-2b7e-4d49-8f50-d38e39ce2482",
+        "user_id": "6c823b89-52a9-45ff-a74b-46bc2f981e5b",
+        "role": "owner",
+        "joined_at": "2025-09-23T06:39:16.756617+00:00"
+      },
+      {
+        "id": "4bd615e3-4a4d-4879-bf8b-be4b6223f101",
+        "workspace_id": "ecb08e55-2b7e-4d49-8f50-d38e39ce2482",
+        "user_id": "567ba664-812c-4bed-8c2f-96113b99f899",
+        "role": "admin",
+        "joined_at": "2025-09-23T06:40:23.580771+00:00"
+      },
+      {
+        "id": "53706c16-a1f5-42f9-99e9-bf5b5c3ac3aa",
+        "workspace_id": "edea7143-6987-458d-8dfe-7e3a6c7a4e6e",
+        "user_id": "882dadd1-e44c-4bb5-b089-842ac073b2d5",
+        "role": "admin",
+        "joined_at": "2025-09-23T06:42:05.354442+00:00"
+      },
+      {
+        "id": "c2e577a4-aa16-4ce2-9c98-b981389efb55",
+        "workspace_id": "edea7143-6987-458d-8dfe-7e3a6c7a4e6e",
+        "user_id": "6c823b89-52a9-45ff-a74b-46bc2f981e5b",
+        "role": "owner",
+        "joined_at": "2025-09-23T06:42:05.471913+00:00"
+      },
+      {
+        "id": "572bda3a-47e9-4c57-8f1b-0b82d69cee89",
+        "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+        "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+        "role": "owner",
+        "joined_at": "2025-09-23T06:43:29.758537+00:00"
+      },
+      {
+        "id": "4a69cecd-fa62-4805-980a-902a35856dac",
+        "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+        "user_id": "dbbddc37-8740-4614-b448-53e0bfff2290",
+        "role": "admin",
+        "joined_at": "2025-09-23T06:20:34.271439+00:00"
+      },
+      {
+        "id": "72a3e2b6-01aa-41d9-884a-cdcf53465ac1",
+        "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+        "user_id": "744649a8-d015-4ff7-9e41-983cc9ca7b79",
+        "role": "admin",
+        "joined_at": "2025-09-23T06:43:30.113365+00:00"
+      },
+      {
+        "id": "ec888d8e-dabe-462c-9146-a9227dafe380",
+        "workspace_id": "b070d94f-11e2-41d4-a913-cc5a8c017208",
+        "user_id": "6c823b89-52a9-45ff-a74b-46bc2f981e5b",
+        "role": "owner",
+        "joined_at": "2025-09-23T06:49:43.813539+00:00"
+      },
+      {
+        "id": "a61f547b-80e6-4ef7-aeab-21d462c873f7",
+        "workspace_id": "b070d94f-11e2-41d4-a913-cc5a8c017208",
+        "user_id": "def9309e-c631-456b-a0aa-99f9be253952",
+        "role": "admin",
+        "joined_at": "2025-09-23T06:39:16.305764+00:00"
+      },
+      {
+        "id": "df67331b-321f-4470-b97c-d790d5001115",
+        "workspace_id": "b070d94f-11e2-41d4-a913-cc5a8c017208",
+        "user_id": "7ca2fb4e-469e-464f-84b6-62171dd90eaf",
+        "role": "user",
+        "joined_at": "2025-09-23T06:39:16.112553+00:00"
+      },
+      {
+        "id": "6f06b410-3499-48c3-abcf-417196ac1615",
+        "workspace_id": "b070d94f-11e2-41d4-a913-cc5a8c017208",
+        "user_id": "c9be4bd2-a560-4707-9d05-74a32d41ca18",
+        "role": "user",
+        "joined_at": "2025-09-23T06:39:16.571156+00:00"
+      },
+      {
+        "id": "5367f5a8-6d06-42e5-926f-ff2c63d53c49",
+        "workspace_id": "58f28be0-7049-487c-b9db-4cdf80221453",
+        "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+        "role": "owner",
+        "joined_at": "2025-09-23T07:15:20.606+00:00"
+      },
+      {
+        "id": "e61ccd06-6c71-4976-8451-bf81d9515b16",
+        "workspace_id": "ecb08e55-2b7e-4d49-8f50-d38e39ce2482",
+        "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+        "role": "admin",
+        "joined_at": "2025-09-23T07:15:20.705+00:00"
+      },
+      {
+        "id": "95500be3-9e11-412a-9c1d-bd189363b4ad",
+        "workspace_id": "edea7143-6987-458d-8dfe-7e3a6c7a4e6e",
+        "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+        "role": "admin",
+        "joined_at": "2025-09-23T07:15:20.813+00:00"
+      },
+      {
+        "id": "1208ad74-b4ce-4c0e-a6ea-6323c44e65ae",
+        "workspace_id": "b070d94f-11e2-41d4-a913-cc5a8c017208",
+        "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+        "role": "admin",
+        "joined_at": "2025-09-23T07:15:20.916+00:00"
+      },
+      {
+        "id": "90857af5-48fd-4ae5-ad65-69f64f82b0bc",
+        "workspace_id": "58f28be0-7049-487c-b9db-4cdf80221453",
+        "user_id": "dbbddc37-8740-4614-b448-53e0bfff2290",
+        "role": "admin",
+        "joined_at": "2025-09-23T07:15:21.049+00:00"
+      },
+      {
+        "id": "b99e2c98-c774-4182-b4f5-ff198ea29bc0",
+        "workspace_id": "ecb08e55-2b7e-4d49-8f50-d38e39ce2482",
+        "user_id": "dbbddc37-8740-4614-b448-53e0bfff2290",
+        "role": "admin",
+        "joined_at": "2025-09-23T07:31:49.913+00:00"
+      },
+      {
+        "id": "2d2a3ecc-6a90-43de-93e3-cef550499906",
+        "workspace_id": "edea7143-6987-458d-8dfe-7e3a6c7a4e6e",
+        "user_id": "dbbddc37-8740-4614-b448-53e0bfff2290",
+        "role": "admin",
+        "joined_at": "2025-09-23T07:31:50.028+00:00"
+      },
+      {
+        "id": "61d40747-8e61-4381-9fa1-8a7f006a009c",
+        "workspace_id": "b070d94f-11e2-41d4-a913-cc5a8c017208",
+        "user_id": "dbbddc37-8740-4614-b448-53e0bfff2290",
+        "role": "admin",
+        "joined_at": "2025-09-23T07:31:50.147+00:00"
+      },
+      {
+        "id": "8ca061da-a3ee-4819-b072-9e31486e578b",
+        "workspace_id": "58f28be0-7049-487c-b9db-4cdf80221453",
+        "user_id": "744649a8-d015-4ff7-9e41-983cc9ca7b79",
+        "role": "admin",
+        "joined_at": "2025-09-23T07:31:50.373+00:00"
+      },
+      {
+        "id": "7e09187e-8b65-4622-a08d-bbaa85d867e8",
+        "workspace_id": "ecb08e55-2b7e-4d49-8f50-d38e39ce2482",
+        "user_id": "744649a8-d015-4ff7-9e41-983cc9ca7b79",
+        "role": "admin",
+        "joined_at": "2025-09-23T07:31:50.485+00:00"
+      },
+      {
+        "id": "eef03fa8-97fc-483b-b23a-05a058a5d773",
+        "workspace_id": "edea7143-6987-458d-8dfe-7e3a6c7a4e6e",
+        "user_id": "744649a8-d015-4ff7-9e41-983cc9ca7b79",
+        "role": "admin",
+        "joined_at": "2025-09-23T07:31:50.616+00:00"
+      },
+      {
+        "id": "513ed4c8-323f-4020-a420-1560a1b9ec84",
+        "workspace_id": "b070d94f-11e2-41d4-a913-cc5a8c017208",
+        "user_id": "744649a8-d015-4ff7-9e41-983cc9ca7b79",
+        "role": "admin",
+        "joined_at": "2025-09-23T07:31:50.713+00:00"
+      }
+    ],
+    "count": 23
+  }
+}

@@ -5,51 +5,236 @@ import { Brain, CheckSquare, Target, Users, Building2, TrendingUp, Plus, Setting
 import SAMOnboarding from './SAMOnboarding';
 import InquiryResponses from './InquiryResponses';
 
-// Document Upload Component
+// Enhanced AI-Powered Document Upload Component
 function DocumentUpload({ section }: { section: string }) {
   const [file, setFile] = useState<File | null>(null);
-  const [status, setStatus] = useState<'idle' | 'uploading' | 'processing' | 'done'>('idle');
+  const [url, setUrl] = useState<string>('');
+  const [uploadMode, setUploadMode] = useState<'file' | 'url'>('file');
+  const [status, setStatus] = useState<'idle' | 'uploading' | 'processing' | 'extracting' | 'tagging' | 'vectorizing' | 'done' | 'error'>('idle');
+  const [progress, setProgress] = useState(0);
+  const [extractedContent, setExtractedContent] = useState<any>(null);
+  const [aiTags, setAiTags] = useState<string[]>([]);
+  const [error, setError] = useState<string>('');
   
-  const handleUpload = async () => {
-    if (!file) return;
+  const handleFileUpload = async () => {
+    if (!file && !url) return;
+    
     setStatus('uploading');
-    // Simulate upload and processing
-    setTimeout(() => setStatus('processing'), 1000);
-    setTimeout(() => setStatus('done'), 3000);
+    setProgress(10);
+    setError('');
+    
+    try {
+      const formData = new FormData();
+      if (file) {
+        formData.append('file', file);
+      }
+      formData.append('section', section);
+      formData.append('uploadMode', uploadMode);
+      if (url) {
+        formData.append('url', url);
+      }
+      
+      // Step 1: Upload and extract content
+      setStatus('extracting');
+      setProgress(30);
+      
+      const uploadResponse = await fetch('/api/knowledge-base/upload-document', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!uploadResponse.ok) {
+        throw new Error('Upload failed');
+      }
+      
+      const uploadResult = await uploadResponse.json();
+      setExtractedContent(uploadResult.content);
+      setProgress(50);
+      
+      // Step 2: AI Processing and Tagging
+      setStatus('tagging');
+      setProgress(70);
+      
+      const processingResponse = await fetch('/api/knowledge-base/process-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          documentId: uploadResult.documentId,
+          content: uploadResult.content,
+          section: section,
+          filename: file?.name || url
+        })
+      });
+      
+      if (!processingResponse.ok) {
+        throw new Error('AI processing failed');
+      }
+      
+      const processingResult = await processingResponse.json();
+      setAiTags(processingResult.tags);
+      setProgress(85);
+      
+      // Step 3: Vectorization and RAG Integration
+      setStatus('vectorizing');
+      setProgress(95);
+      
+      const vectorResponse = await fetch('/api/knowledge-base/vectorize-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          documentId: uploadResult.documentId,
+          content: uploadResult.content,
+          tags: processingResult.tags,
+          section: section,
+          metadata: processingResult.metadata
+        })
+      });
+      
+      if (!vectorResponse.ok) {
+        throw new Error('Vectorization failed');
+      }
+      
+      setProgress(100);
+      setStatus('done');
+      
+      // Reset form after success
+      setTimeout(() => {
+        setFile(null);
+        setUrl('');
+        setStatus('idle');
+        setProgress(0);
+        setExtractedContent(null);
+        setAiTags([]);
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Document processing error:', error);
+      setError(error instanceof Error ? error.message : 'Processing failed');
+      setStatus('error');
+    }
   };
   
   return (
     <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-      <div className="border-2 border-dashed border-gray-500 rounded p-4 text-center">
-        <Upload className="mx-auto mb-2 text-gray-400" size={24} />
-        <input 
-          type="file" 
-          accept=".pdf,.txt,.md"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)} 
-          className="text-gray-300 text-sm w-full"
-        />
-        <p className="text-xs text-gray-400 mt-2">Supported: PDF, TXT, MD files only</p>
+      {/* Upload Mode Toggle */}
+      <div className="flex mb-4 space-x-2">
+        <button
+          onClick={() => setUploadMode('file')}
+          className={`px-3 py-1 text-xs rounded transition-colors ${
+            uploadMode === 'file' 
+              ? 'bg-blue-600 text-white' 
+              : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+          }`}
+        >
+          📄 File Upload
+        </button>
+        <button
+          onClick={() => setUploadMode('url')}
+          className={`px-3 py-1 text-xs rounded transition-colors ${
+            uploadMode === 'url' 
+              ? 'bg-blue-600 text-white' 
+              : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+          }`}
+        >
+          🔗 URL/Link
+        </button>
       </div>
-      {file && (
+      
+      {/* File Upload Mode */}
+      {uploadMode === 'file' && (
+        <div className="border-2 border-dashed border-gray-500 rounded p-4 text-center">
+          <Upload className="mx-auto mb-2 text-gray-400" size={24} />
+          <input 
+            type="file" 
+            accept=".pdf,.txt,.md,.docx,.pptx,.csv,.xlsx"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)} 
+            className="text-gray-300 text-sm w-full"
+          />
+          <p className="text-xs text-gray-400 mt-2">
+            Supported: PDF, DOC, PPT, TXT, MD, CSV, Excel files
+          </p>
+        </div>
+      )}
+      
+      {/* URL Upload Mode */}
+      {uploadMode === 'url' && (
+        <div className="border-2 border-dashed border-gray-500 rounded p-4">
+          <Globe className="mx-auto mb-2 text-gray-400" size={24} />
+          <input 
+            type="url" 
+            value={url}
+            onChange={(e) => setUrl(e.target.value)} 
+            placeholder="https://example.com/document-or-page"
+            className="w-full bg-gray-600 text-gray-300 text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p className="text-xs text-gray-400 mt-2">
+            Web pages, Google Docs, presentations, PDFs, articles
+          </p>
+        </div>
+      )}
+      
+      {/* Upload Status and Actions */}
+      {(file || url) && (
         <div className="mt-3 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-300">{file.name}</span>
+            <span className="text-sm text-gray-300">
+              {file ? file.name : url}
+            </span>
             <button
-              onClick={handleUpload}
-              disabled={status !== 'idle'}
-              className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded transition-colors disabled:opacity-50"
+              onClick={handleFileUpload}
+              disabled={status !== 'idle' && status !== 'error'}
+              className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {status === 'idle' && 'Upload & Process'}
-              {status === 'uploading' && 'Uploading...'}
-              {status === 'processing' && 'Processing with LLM...'}
-              {status === 'done' && 'Processed ✓'}
+              {status === 'idle' && '🚀 Process with AI'}
+              {status === 'uploading' && '📤 Uploading...'}
+              {status === 'extracting' && '📄 Extracting Content...'}
+              {status === 'processing' && '🤖 AI Processing...'}
+              {status === 'tagging' && '🏷️ AI Tagging...'}
+              {status === 'vectorizing' && '🧠 Adding to Knowledgebase...'}
+              {status === 'done' && '✅ Complete'}
+              {status === 'error' && '🔄 Retry'}
             </button>
           </div>
-          {status === 'processing' && (
-            <p className="text-xs text-yellow-400">🤖 SAM is analyzing and tagging this document...</p>
+          
+          {/* Progress Bar */}
+          {(status !== 'idle' && status !== 'error') && (
+            <div className="w-full bg-gray-600 rounded-full h-2">
+              <div 
+                className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+          )}
+          
+          {/* Status Messages */}
+          {status === 'extracting' && (
+            <p className="text-xs text-blue-400">📄 Extracting text content and metadata...</p>
+          )}
+          {status === 'tagging' && (
+            <p className="text-xs text-purple-400">🤖 AI analyzing content for smart categorization...</p>
+          )}
+          {status === 'vectorizing' && (
+            <p className="text-xs text-green-400">🧠 Creating embeddings for SAM AI knowledge access...</p>
           )}
           {status === 'done' && (
-            <p className="text-xs text-green-400">✅ Document processed and ready for SAM conversations</p>
+            <div className="space-y-1">
+              <p className="text-xs text-green-400">✅ Document processed and integrated into Knowledgebase</p>
+              {aiTags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {aiTags.slice(0, 4).map((tag, i) => (
+                    <span key={i} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
+                      {tag}
+                    </span>
+                  ))}
+                  {aiTags.length > 4 && (
+                    <span className="text-xs text-gray-400">+{aiTags.length - 4} more</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          {status === 'error' && error && (
+            <p className="text-xs text-red-400">❌ {error}</p>
           )}
         </div>
       )}
@@ -144,7 +329,7 @@ function ICPConfiguration({ onBack }: { onBack?: () => void }) {
             <button
               onClick={onBack}
               className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-              title="Back to Knowledge Base"
+              title="Back to Knowledgebase"
             >
               <ArrowLeft size={20} />
             </button>
@@ -1093,7 +1278,7 @@ function VectorTest() {
 
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-      <h3 className="font-semibold mb-2 text-white">Test Knowledge Retrieval</h3>
+      <h3 className="font-semibold mb-2 text-white">Test Knowledgebase Retrieval</h3>
       <div className="flex gap-2">
         <input 
           className="bg-gray-700 border border-gray-600 px-3 py-2 rounded text-white placeholder-gray-400 w-full focus:border-purple-500 focus:outline-none" 
@@ -1276,79 +1461,317 @@ const KnowledgeBase: React.FC = () => {
   const [activeSection, setActiveSection] = useState('overview');
 
   const sections = [
-    { id: 'sam_onboarding', label: 'SAM Onboarding', icon: Bot },
-    { id: 'inquiry_responses', label: 'Inquiry Responses', icon: HelpCircle },
     { id: 'overview', label: 'Overview', icon: Brain },
-    { id: 'icp', label: 'ICP Config', icon: Target },
-    { id: 'products', label: 'Products', icon: Package },
-    { id: 'competition', label: 'Competition', icon: TrendingUp },
-    { id: 'messaging', label: 'Messaging', icon: MessageSquare },
-    { id: 'tone', label: 'Tone of Voice', icon: Mic },
-    { id: 'company', label: 'Company Info', icon: Briefcase },
-    { id: 'success', label: 'Success Stories', icon: Trophy },
     { id: 'buying', label: 'Buying Process', icon: GitBranch },
+    { id: 'company', label: 'Company Info', icon: Briefcase },
+    { id: 'competition', label: 'Competition', icon: TrendingUp },
     { id: 'compliance', label: 'Compliance', icon: Shield },
-    { id: 'personas', label: 'Personas & Roles', icon: UserCheck },
-    { id: 'objections', label: 'Objections', icon: MessageCircle },
-    { id: 'pricing', label: 'Pricing', icon: DollarSign },
+    { id: 'documents', label: 'Documents', icon: FileText },
+    { id: 'icp', label: 'ICP Config', icon: Target },
+    { id: 'inquiry_responses', label: 'Inquiry Responses', icon: HelpCircle },
+    { id: 'messaging', label: 'Messaging', icon: MessageSquare },
     { id: 'metrics', label: 'Success Metrics', icon: BarChart },
-    { id: 'documents', label: 'Documents', icon: FileText }
+    { id: 'objections', label: 'Objections', icon: MessageCircle },
+    { id: 'personas', label: 'Personas & Roles', icon: UserCheck },
+    { id: 'pricing', label: 'Pricing', icon: DollarSign },
+    { id: 'products', label: 'Products', icon: Package },
+    { id: 'sam_onboarding', label: 'SAM Onboarding', icon: Bot },
+    { id: 'setup', label: 'Setup', icon: Settings },
+    { id: 'success', label: 'Success Stories', icon: Trophy },
+    { id: 'tone', label: 'Tone of Voice', icon: Mic }
   ];
 
   return (
     <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-          <Brain className="mr-3" size={32} />
-          Knowledge Base
-        </h1>
-        <p className="text-gray-400">Centralized intelligence hub for SAM's conversational AI</p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
+              <Brain className="mr-3" size={32} />
+              Knowledgebase
+            </h1>
+            <p className="text-gray-400">Centralized intelligence hub for SAM's conversational AI</p>
+          </div>
+          
+          {/* Knowledgebase Completion Meter */}
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 min-w-[300px]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-white text-sm font-medium">Knowledgebase Completeness</span>
+              <span className="text-white text-lg font-bold">73%</span>
+            </div>
+            
+            {/* Temperature-style completion bar */}
+            <div className="relative">
+              <div className="w-full bg-gray-600 rounded-full h-4 overflow-hidden">
+                <div 
+                  className="h-4 rounded-full transition-all duration-1000 ease-out"
+                  style={{ 
+                    width: '73%',
+                    background: 'linear-gradient(90deg, #3B82F6 0%, #10B981 50%, #F59E0B 75%, #EF4444 100%)'
+                  }}
+                ></div>
+              </div>
+              
+              {/* Temperature markers */}
+              <div className="absolute -bottom-5 w-full flex justify-between text-xs text-gray-400">
+                <span>0%</span>
+                <span>25%</span>
+                <span>50%</span>
+                <span>75%</span>
+                <span>100%</span>
+              </div>
+            </div>
+            
+            <div className="mt-6 flex items-center justify-between text-xs">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-1"></div>
+                  <span className="text-gray-300">Basic</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
+                  <span className="text-gray-300">Good</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full mr-1"></div>
+                  <span className="text-gray-300">Excellent</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-red-500 rounded-full mr-1"></div>
+                  <span className="text-gray-300">Expert</span>
+                </div>
+              </div>
+            </div>
+            
+            <p className="text-xs text-gray-400 mt-2">
+              Based on content volume, quality, and coverage across all sections
+            </p>
+          </div>
+        </div>
       </div>
 
 
       {/* Main Content */}
       <div className="max-w-7xl">
         {activeSection === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sections.slice(1).map((section) => {
-              const IconComponent = section.icon;
-              return (
-                <button
-                  key={section.id}
-                  onClick={() => setActiveSection(section.id)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
-                >
-                  <div className="flex items-center mb-4">
-                    <IconComponent className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">{section.label}</h2>
+          <div className="space-y-6">
+            {/* Knowledgebase Status Dashboard */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Total Documents */}
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">Total Documents</p>
+                    <p className="text-white text-2xl font-bold">247</p>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                    {section.id === 'icp' && 'Define your ideal customer profiles with detailed targeting criteria, industry specifics, and qualification frameworks to help SAM identify the best prospects.'}
-                    {section.id === 'products' && 'Upload comprehensive product documentation, feature sheets, pricing guides, and technical specifications to help SAM articulate your value proposition effectively.'}
-                    {section.id === 'competition' && 'Store competitive battlecards, market positioning documents, win/loss analysis, and differentiation strategies to help SAM handle competitive conversations.'}
-                    {section.id === 'messaging' && 'Build a library of proven email templates, LinkedIn message sequences, objection handling scripts, and conversation frameworks for consistent outreach.'}
-                    {section.id === 'tone' && 'Establish your brand voice guidelines, communication style preferences, and approved messaging frameworks to ensure SAM maintains your authentic voice.'}
-                    {section.id === 'company' && 'Centralize company background, team member bios, partnership information, and corporate messaging for accurate representation in conversations.'}
-                    {section.id === 'success' && 'Compile customer success stories, case studies, testimonials, and ROI data to provide SAM with social proof for prospect conversations.'}
-                    {section.id === 'buying' && 'Document typical buying processes, decision-maker hierarchies, procurement workflows, and stakeholder analysis frameworks for strategic engagement.'}
-                    {section.id === 'compliance' && 'Manage industry-specific compliance requirements, regulatory guidelines, approved language, and human-in-the-loop review checkpoints.'}
-                    {section.id === 'personas' && 'Create detailed buyer personas with role-specific pain points, motivations, preferred communication styles, and decision-making criteria.'}
-                    {section.id === 'objections' && 'Develop comprehensive objection handling playbooks with common pushbacks, proven rebuttals, and conversation redirection strategies.'}
-                    {section.id === 'pricing' && 'Structure pricing information, package comparisons, ROI calculators, and cost justification materials for effective pricing conversations.'}
-                    {section.id === 'metrics' && 'Define success benchmarks, performance indicators, industry improvement metrics, and example timelines for goal-setting conversations.'}
-                    {section.id === 'setup' && 'Configure CRM integration settings, field mapping configurations, automation rules, and workflow triggers for seamless data management.'}
-                    {section.id === 'documents' && 'Access general document processing tools, search functionality, and file management utilities for organizing your knowledge assets.'}
-                  </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Click to manage • Upload documents • Configure settings</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
+                  <FileText className="text-blue-400" size={24} />
+                </div>
+                <p className="text-green-400 text-xs mt-2">+12 this week</p>
+              </div>
+
+              {/* ICP Profiles */}
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">ICP Profiles</p>
+                    <p className="text-white text-2xl font-bold">8</p>
                   </div>
-                </button>
-              );
-            })}
+                  <Target className="text-purple-400" size={24} />
+                </div>
+                <p className="text-blue-400 text-xs mt-2">3 active campaigns</p>
+              </div>
+
+              {/* Knowledgebase Completion */}
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">KB Completion</p>
+                    <p className="text-white text-2xl font-bold">73%</p>
+                  </div>
+                  <BarChart className="text-green-400" size={24} />
+                </div>
+                <p className="text-yellow-400 text-xs mt-2">3 sections pending</p>
+              </div>
+
+              {/* SAM Conversations */}
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">SAM Insights</p>
+                    <p className="text-white text-2xl font-bold">156</p>
+                  </div>
+                  <Brain className="text-orange-400" size={24} />
+                </div>
+                <p className="text-green-400 text-xs mt-2">+23 today</p>
+              </div>
+            </div>
+
+            {/* Recent SAM Insights from Conversations */}
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-white text-lg font-semibold flex items-center">
+                  <Brain className="mr-2 text-orange-400" size={20} />
+                  Recent SAM Insights
+                </h3>
+                <button className="text-blue-400 hover:text-blue-300 text-sm">View All</button>
+              </div>
+              <div className="space-y-3">
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-white text-sm font-medium">Pricing Objection Pattern Detected</p>
+                      <p className="text-gray-300 text-xs mt-1">SAM identified recurring concerns about implementation costs in 8 recent conversations with SaaS prospects.</p>
+                    </div>
+                    <span className="text-yellow-400 text-xs bg-yellow-400/10 px-2 py-1 rounded">Action Needed</span>
+                  </div>
+                  <div className="mt-2 flex items-center text-gray-400 text-xs">
+                    <Clock size={12} className="mr-1" />
+                    2 hours ago • Auto-extracted from conversations
+                  </div>
+                </div>
+                
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-white text-sm font-medium">New Competitor Mentioned</p>
+                      <p className="text-gray-300 text-xs mt-1">"TechFlow Solutions" was mentioned in 3 prospect conversations as an alternative. Consider adding to competition knowledge.</p>
+                    </div>
+                    <span className="text-blue-400 text-xs bg-blue-400/10 px-2 py-1 rounded">Insight</span>
+                  </div>
+                  <div className="mt-2 flex items-center text-gray-400 text-xs">
+                    <Clock size={12} className="mr-1" />
+                    5 hours ago • From LinkedIn & Email conversations
+                  </div>
+                </div>
+
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-white text-sm font-medium">Successful Value Prop Identified</p>
+                      <p className="text-gray-300 text-xs mt-1">The "30% time savings" message generated positive responses in 12/15 manufacturing prospect conversations.</p>
+                    </div>
+                    <span className="text-green-400 text-xs bg-green-400/10 px-2 py-1 rounded">Success</span>
+                  </div>
+                  <div className="mt-2 flex items-center text-gray-400 text-xs">
+                    <Clock size={12} className="mr-1" />
+                    1 day ago • Cross-campaign analysis
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions & Navigation */}
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+              <h3 className="text-white text-lg font-semibold mb-4">Quick Actions</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                {sections.slice(1, 17).map((section) => {
+                  const IconComponent = section.icon;
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => setActiveSection(section.id)}
+                      className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-left transition-all hover:bg-purple-600 hover:border-purple-500 group cursor-pointer"
+                    >
+                      <div className="flex items-center mb-2">
+                        <IconComponent className="text-blue-400 mr-2 group-hover:scale-110 transition-transform" size={18} />
+                        <span className="text-white text-sm font-medium">{section.label}</span>
+                      </div>
+                      <p className="text-gray-300 text-xs">
+                        {section.id === 'buying' && 'Map customer journey'}
+                        {section.id === 'company' && 'Update company info'}
+                        {section.id === 'competition' && 'Update battlecards'}
+                        {section.id === 'compliance' && 'Manage regulations'}
+                        {section.id === 'documents' && 'Upload files'}
+                        {section.id === 'icp' && 'Manage customer profiles'}
+                        {section.id === 'inquiry_responses' && 'Handle questions'}
+                        {section.id === 'messaging' && 'Update templates'}
+                        {section.id === 'metrics' && 'Track success KPIs'}
+                        {section.id === 'objections' && 'Handle concerns'}
+                        {section.id === 'personas' && 'Define user roles'}
+                        {section.id === 'pricing' && 'Manage pricing info'}
+                        {section.id === 'products' && 'Add documentation'}
+                        {section.id === 'sam_onboarding' && 'Train SAM AI'}
+                        {section.id === 'setup' && 'Configure system'}
+                        {section.id === 'success' && 'Share case studies'}
+                        {section.id === 'tone' && 'Set voice guidelines'}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Knowledgebase Health */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                <h3 className="text-white text-lg font-semibold mb-4">Knowledgebase Health</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300 text-sm">ICP Configuration</span>
+                    <div className="flex items-center">
+                      <div className="w-20 bg-gray-700 rounded-full h-2 mr-2">
+                        <div className="bg-green-400 h-2 rounded-full" style={{width: '85%'}}></div>
+                      </div>
+                      <span className="text-green-400 text-xs">85%</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300 text-sm">Product Knowledgebase</span>
+                    <div className="flex items-center">
+                      <div className="w-20 bg-gray-700 rounded-full h-2 mr-2">
+                        <div className="bg-yellow-400 h-2 rounded-full" style={{width: '60%'}}></div>
+                      </div>
+                      <span className="text-yellow-400 text-xs">60%</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300 text-sm">Messaging Templates</span>
+                    <div className="flex items-center">
+                      <div className="w-20 bg-gray-700 rounded-full h-2 mr-2">
+                        <div className="bg-blue-400 h-2 rounded-full" style={{width: '90%'}}></div>
+                      </div>
+                      <span className="text-blue-400 text-xs">90%</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300 text-sm">Competition Data</span>
+                    <div className="flex items-center">
+                      <div className="w-20 bg-gray-700 rounded-full h-2 mr-2">
+                        <div className="bg-red-400 h-2 rounded-full" style={{width: '30%'}}></div>
+                      </div>
+                      <span className="text-red-400 text-xs">30%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                <h3 className="text-white text-lg font-semibold mb-4">Recent Activity</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center text-sm">
+                    <div className="w-2 h-2 bg-green-400 rounded-full mr-3"></div>
+                    <span className="text-gray-300 flex-1">Product spec uploaded</span>
+                    <span className="text-gray-400 text-xs">2h ago</span>
+                  </div>
+                  <div className="flex items-center text-sm">
+                    <div className="w-2 h-2 bg-blue-400 rounded-full mr-3"></div>
+                    <span className="text-gray-300 flex-1">ICP profile updated</span>
+                    <span className="text-gray-400 text-xs">4h ago</span>
+                  </div>
+                  <div className="flex items-center text-sm">
+                    <div className="w-2 h-2 bg-yellow-400 rounded-full mr-3"></div>
+                    <span className="text-gray-300 flex-1">Message template added</span>
+                    <span className="text-gray-400 text-xs">1d ago</span>
+                  </div>
+                  <div className="flex items-center text-sm">
+                    <div className="w-2 h-2 bg-purple-400 rounded-full mr-3"></div>
+                    <span className="text-gray-300 flex-1">Case study processed</span>
+                    <span className="text-gray-400 text-xs">2d ago</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
         
@@ -1361,7 +1784,7 @@ const KnowledgeBase: React.FC = () => {
                 <button
                   onClick={() => setActiveSection('overview')}
                   className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledge Base"
+                  title="Back to Knowledgebase"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -1400,7 +1823,7 @@ const KnowledgeBase: React.FC = () => {
                 <button
                   onClick={() => setActiveSection('overview')}
                   className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledge Base"
+                  title="Back to Knowledgebase"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -1439,7 +1862,7 @@ const KnowledgeBase: React.FC = () => {
                 <button
                   onClick={() => setActiveSection('overview')}
                   className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledge Base"
+                  title="Back to Knowledgebase"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -1478,7 +1901,7 @@ const KnowledgeBase: React.FC = () => {
                 <button
                   onClick={() => setActiveSection('overview')}
                   className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledge Base"
+                  title="Back to Knowledgebase"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -1559,7 +1982,7 @@ const KnowledgeBase: React.FC = () => {
                 <button
                   onClick={() => setActiveSection('overview')}
                   className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledge Base"
+                  title="Back to Knowledgebase"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -1598,7 +2021,7 @@ const KnowledgeBase: React.FC = () => {
                 <button
                   onClick={() => setActiveSection('overview')}
                   className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledge Base"
+                  title="Back to Knowledgebase"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -1637,7 +2060,7 @@ const KnowledgeBase: React.FC = () => {
                 <button
                   onClick={() => setActiveSection('overview')}
                   className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledge Base"
+                  title="Back to Knowledgebase"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -1683,7 +2106,7 @@ const KnowledgeBase: React.FC = () => {
                 <button
                   onClick={() => setActiveSection('overview')}
                   className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledge Base"
+                  title="Back to Knowledgebase"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -1730,7 +2153,7 @@ const KnowledgeBase: React.FC = () => {
                 <button
                   onClick={() => setActiveSection('overview')}
                   className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledge Base"
+                  title="Back to Knowledgebase"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -1808,7 +2231,7 @@ const KnowledgeBase: React.FC = () => {
                 <button
                   onClick={() => setActiveSection('overview')}
                   className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledge Base"
+                  title="Back to Knowledgebase"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -1858,7 +2281,7 @@ const KnowledgeBase: React.FC = () => {
                 <button
                   onClick={() => setActiveSection('overview')}
                   className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledge Base"
+                  title="Back to Knowledgebase"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -1911,7 +2334,7 @@ const KnowledgeBase: React.FC = () => {
                 <button
                   onClick={() => setActiveSection('overview')}
                   className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledge Base"
+                  title="Back to Knowledgebase"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -2038,7 +2461,7 @@ const KnowledgeBase: React.FC = () => {
                 <button
                   onClick={() => setActiveSection('overview')}
                   className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledge Base"
+                  title="Back to Knowledgebase"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -2219,7 +2642,7 @@ const KnowledgeBase: React.FC = () => {
                 <button
                   onClick={() => setActiveSection('overview')}
                   className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledge Base"
+                  title="Back to Knowledgebase"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -2241,7 +2664,7 @@ const KnowledgeBase: React.FC = () => {
                 <button
                   onClick={() => setActiveSection('overview')}
                   className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledge Base"
+                  title="Back to Knowledgebase"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -2263,7 +2686,7 @@ const KnowledgeBase: React.FC = () => {
                 <button
                   onClick={() => setActiveSection('overview')}
                   className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledge Base"
+                  title="Back to Knowledgebase"
                 >
                   <ArrowLeft size={20} />
                 </button>

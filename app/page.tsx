@@ -10,10 +10,11 @@ import AuditTrail from './components/AuditTrail';
 import ConversationHistory from '../components/ConversationHistory';
 import InviteUserPopup, { InviteFormData } from '../components/InviteUserPopup';
 import AuthModal from '../components/AuthModal';
-import LinkedInOnboarding from '../components/LinkedInOnboarding';
+// LinkedIn integration now handled via dedicated page at /linkedin-integration
 import { UnipileModal } from '../components/integrations/UnipileModal';
 import { ChannelSelectionModal } from '../components/campaign/ChannelSelectionModal';
 import { DemoModeToggle } from '../components/DemoModeToggle';
+import ConnectionStatusBar from '../components/ConnectionStatusBar';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import {
   Activity,
@@ -144,7 +145,7 @@ export default function Page() {
   // LinkedIn connection state
   const [hasLinkedInConnection, setHasLinkedInConnection] = useState(false);
   const [linkedInLoading, setLinkedInLoading] = useState(false);
-  const [showLinkedInOnboarding, setShowLinkedInOnboarding] = useState(false);
+  // LinkedIn onboarding moved to dedicated /linkedin-integration page
   const [showUnipileModal, setShowUnipileModal] = useState(false); // Only show when user clicks Advanced Setup
   const [showChannelSelectionModal, setShowChannelSelectionModal] = useState(false);
   const [showLinkedInSettingsModal, setShowLinkedInSettingsModal] = useState(false);
@@ -160,6 +161,16 @@ export default function Page() {
   const [showIntegrationsToolsModal, setShowIntegrationsToolsModal] = useState(false);
   const [showSecurityComplianceModal, setShowSecurityComplianceModal] = useState(false);
   const [showAnalyticsReportingModal, setShowAnalyticsReportingModal] = useState(false);
+  const [showProxyCountryModal, setShowProxyCountryModal] = useState(false);
+  const [proxyEditMode, setProxyEditMode] = useState(false);
+  const [currentProxySettings, setCurrentProxySettings] = useState({
+    country: 'Germany',
+    state: 'Bavaria', 
+    city: 'Munich',
+    status: 'active',
+    sessionId: 'auto_123456789',
+    lastUpdated: '2025-09-23T12:28:45Z'
+  });
   
   // Mock connected accounts for demonstration (in production, fetch from API)
   const [connectedAccounts] = useState([
@@ -206,30 +217,18 @@ export default function Page() {
   }, []);
 
   // Handle LinkedIn onboarding completion
-  const handleLinkedInOnboardingComplete = () => {
-    setShowLinkedInOnboarding(false);
-    setHasLinkedInConnection(true);
-    localStorage.removeItem('linkedin-onboarding-skipped'); // Clear skip preference on successful connection
-    checkLinkedInConnection();
-  };
+  // LinkedIn integration moved to dedicated page
 
   // Handle LinkedIn onboarding skip
-  const handleLinkedInOnboardingSkip = () => {
-    setShowLinkedInOnboarding(false);
-    setLinkedInSkipped(true);
-    localStorage.setItem('linkedin-onboarding-skipped', 'true');
+  // Redirect to LinkedIn integration page
+  const handleLinkedInIntegration = () => {
+    window.location.href = '/linkedin-integration';
   };
 
   // Function to show LinkedIn modal when needed (e.g., when user tries to use LinkedIn features)
   const requireLinkedInConnection = () => {
-    if (!hasLinkedInConnection && !linkedInSkipped) {
-      setShowLinkedInOnboarding(true);
-    } else if (!hasLinkedInConnection && linkedInSkipped) {
-      // User previously skipped but now needs LinkedIn - show modal again
-      setShowLinkedInOnboarding(true);
-      setLinkedInSkipped(false);
-      localStorage.removeItem('linkedin-onboarding-skipped');
-    }
+    // Redirect to dedicated LinkedIn integration page
+    window.location.href = '/linkedin-integration';
   };
 
   // Check if user is super admin
@@ -398,6 +397,12 @@ export default function Page() {
       icon: Brain,
     },
     {
+      id: 'data-approval',
+      label: 'Data Approval',
+      description: 'Review and approve prospect data quality',
+      icon: CheckSquare,
+    },
+    {
       id: 'campaign',
       label: 'Campaign Hub',
       description: 'Plan multi-channel outreach with Sam',
@@ -427,12 +432,6 @@ export default function Page() {
       description: 'Organize teams, tenants, and invitations',
       icon: Building2,
     },
-    {
-      id: 'audit',
-      label: 'Audit Trail',
-      description: 'Keep every interaction compliant and auditable',
-      icon: FileText,
-    },
     ...(isSuperAdmin
       ? [
           {
@@ -440,6 +439,18 @@ export default function Page() {
             label: 'Super Admin',
             description: 'Advanced controls for InnovareAI leadership',
             icon: Shield,
+          },
+          {
+            id: 'sam-analytics',
+            label: 'SAM Analytics',
+            description: 'Deep insights into SAM performance and optimization',
+            icon: Activity,
+          },
+          {
+            id: 'audit',
+            label: 'Audit Trail',
+            description: 'Keep every interaction compliant and auditable',
+            icon: FileText,
           },
         ]
       : []),
@@ -599,7 +610,9 @@ export default function Page() {
       setWorkspacesLoading(true);
       
       // 🚨 SECURITY: Force strict tenant separation - only explicit super admins can see all workspaces
-      const userEmail = user?.email?.toLowerCase() || '';
+      // Get email from Supabase session since user object may not have email
+      const { data: { session } } = await supabase.auth.getSession();
+      const userEmail = session?.user?.email?.toLowerCase() || user?.email?.toLowerCase() || '';
       const isTrueSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(userEmail);
       const shouldLoadAllWorkspaces = isTrueSuperAdmin && (isAdmin ?? isSuperAdmin);
       
@@ -819,7 +832,9 @@ export default function Page() {
       setUsersLoading(true);
       
       // 🚨 SECURITY: Only allow true super admins to load ALL users
-      const userEmail = user?.email?.toLowerCase() || '';
+      // Get email from Supabase session since user object may not have email
+      const { data: { session } } = await supabase.auth.getSession();
+      const userEmail = session?.user?.email?.toLowerCase() || user?.email?.toLowerCase() || '';
       const isTrueSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(userEmail);
       
       console.log('🛡️ USER LOADING SECURITY CHECK:');
@@ -1527,9 +1542,165 @@ export default function Page() {
           </div>
         </div>
 
+        {/* Connection Status Bar */}
+        <ConnectionStatusBar />
+
         <div className="flex-1 overflow-y-auto px-6 py-6">
         {activeMenuItem === 'knowledge' ? (
           <KnowledgeBase />
+        ) : activeMenuItem === 'data-approval' ? (
+          /* Data Approval System */
+          <div className="space-y-6">
+            {/* Data Approval System */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-semibold text-white">Data Approval System</h2>
+                  <p className="text-gray-400 text-sm mt-1">Hybrid approval for up to 2,000 monthly prospects</p>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm">1,847 in queue</span>
+                  <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                    Configure Rules
+                  </button>
+                </div>
+              </div>
+
+              {/* Approval Strategy Tabs */}
+              <div className="flex space-x-1 mb-6 bg-gray-700 rounded-lg p-1">
+                <button className="flex-1 py-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-md">
+                  Auto Approval Rules
+                </button>
+                <button className="flex-1 py-2 px-4 text-sm font-medium text-gray-300 hover:text-white rounded-md">
+                  Manual Review Queue
+                </button>
+                <button className="flex-1 py-2 px-4 text-sm font-medium text-gray-300 hover:text-white rounded-md">
+                  Batch Processing
+                </button>
+              </div>
+
+              {/* Auto Approval Rules */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {/* Rule Configuration */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-white mb-4">Automatic Approval Rules</h3>
+                  
+                  <div className="bg-green-900 border border-green-500 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-2">
+                        <CheckSquare className="text-green-400" size={16} />
+                        <h4 className="text-white font-medium">High ICP Match (≥95%)</h4>
+                      </div>
+                      <span className="text-green-400 text-sm">Active</span>
+                    </div>
+                    <p className="text-green-200 text-sm mb-2">Auto-approve prospects with 95%+ ICP match score</p>
+                    <div className="text-green-300 text-xs">Auto-approved: 247 prospects this month</div>
+                  </div>
+
+                  <div className="bg-yellow-900 border border-yellow-500 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-2">
+                        <CheckSquare className="text-yellow-400" size={16} />
+                        <h4 className="text-white font-medium">Multi-ICP Matching</h4>
+                      </div>
+                      <span className="text-yellow-400 text-sm">Active</span>
+                    </div>
+                    <p className="text-yellow-200 text-sm mb-2">Auto-approve if matches any ICP profile (Enterprise Tech, SMB SaaS, Healthcare)</p>
+                    <div className="text-yellow-300 text-xs">Auto-approved: 892 prospects across all ICPs</div>
+                  </div>
+
+                  <div className="bg-gray-700 border border-gray-500 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 border-2 border-gray-500 rounded"></div>
+                        <h4 className="text-white font-medium">Revenue Range Filter</h4>
+                      </div>
+                      <span className="text-gray-400 text-sm">Disabled</span>
+                    </div>
+                    <p className="text-gray-300 text-sm mb-2">Auto-reject if revenue &lt; $1M or &gt; $100M</p>
+                    <button className="text-blue-400 text-xs hover:text-blue-300">Enable Rule</button>
+                  </div>
+                </div>
+
+                {/* Processing Stats */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-white mb-4">Processing Overview</h3>
+                  
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h4 className="text-white font-medium mb-3">This Month's Processing by ICP</h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-300 text-sm">Enterprise Tech</span>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-32 bg-gray-600 rounded-full h-2">
+                            <div className="bg-blue-400 h-2 rounded-full" style={{width: '65%'}}></div>
+                          </div>
+                          <span className="text-white text-sm">847 (65%)</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-300 text-sm">SMB SaaS</span>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-32 bg-gray-600 rounded-full h-2">
+                            <div className="bg-green-400 h-2 rounded-full" style={{width: '25%'}}></div>
+                          </div>
+                          <span className="text-white text-sm">323 (25%)</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-300 text-sm">Healthcare Startups</span>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-32 bg-gray-600 rounded-full h-2">
+                            <div className="bg-purple-400 h-2 rounded-full" style={{width: '10%'}}></div>
+                          </div>
+                          <span className="text-white text-sm">131 (10%)</span>
+                        </div>
+                      </div>
+                      <div className="border-t border-gray-600 pt-2 mt-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-300 text-sm font-medium">Total Processed</span>
+                          <span className="text-white text-sm font-medium">1,301</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-900 border border-blue-500 rounded-lg p-4">
+                    <h4 className="text-white font-medium mb-2">Queue Status</h4>
+                    <div className="grid grid-cols-2 gap-4 text-center">
+                      <div>
+                        <div className="text-2xl font-bold text-blue-400">108</div>
+                        <div className="text-blue-200 text-xs">Awaiting Manual Review</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-green-400">153</div>
+                        <div className="text-green-200 text-xs">Remaining Monthly Allowance</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="border-t border-gray-700 pt-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <button className="bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
+                    Approve High Priority (23)
+                  </button>
+                  <button className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
+                    Review Medium Priority (85)
+                  </button>
+                  <button className="bg-yellow-600 hover:bg-yellow-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
+                    Batch Process Similar (156)
+                  </button>
+                  <button className="bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
+                    Clear Low Priority Queue
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : activeMenuItem === 'campaign' ? (
           <CampaignHub />
         ) : activeMenuItem === 'pipeline' ? (
@@ -1702,6 +1873,26 @@ export default function Page() {
                   </p>
                   <div className="mt-4 flex items-center text-gray-400 text-xs">
                     <span>Configure • Privacy • Export</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* BrightData Proxy Country */}
+                <div 
+                  onClick={() => setShowProxyCountryModal(true)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                >
+                  <div className="flex items-center mb-4">
+                    <Globe className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">Proxy Country</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Manually select your preferred country for proxy IP assignment. Override automatic detection for LinkedIn and email campaigns.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Select • Configure • Test</span>
                     <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="m9 18 6-6-6-6"/>
                     </svg>
@@ -2376,6 +2567,106 @@ export default function Page() {
                     </div>
                   )}
 
+                  {/* MCP Tool Status */}
+                  {isSuperAdmin && (
+                    <div className="rounded-2xl border border-gray-700/80 bg-gray-900/70 p-6 shadow-lg shadow-black/20">
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-blue-300/80">System Status</p>
+                          <h2 className="text-xl font-semibold text-white">MCP Tool Status</h2>
+                          <p className="text-sm text-gray-300">
+                            Monitor the availability and health of all Model Context Protocol (MCP) integrations.
+                          </p>
+                        </div>
+
+                        <div className="space-y-3">
+                          {/* Unipile */}
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-green-900/20 border border-green-500/30">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                              <div>
+                                <h4 className="text-white font-medium">Unipile</h4>
+                                <p className="text-xs text-gray-400">Messaging accounts (LinkedIn, WhatsApp, etc.)</p>
+                              </div>
+                            </div>
+                            <span className="text-green-400 text-sm font-medium">Online</span>
+                          </div>
+
+                          {/* N8N Self-Hosted */}
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-green-900/20 border border-green-500/30">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                              <div>
+                                <h4 className="text-white font-medium">N8N Self-Hosted</h4>
+                                <p className="text-xs text-gray-400">Workflow management and automation</p>
+                              </div>
+                            </div>
+                            <span className="text-green-400 text-sm font-medium">Online</span>
+                          </div>
+
+                          {/* Airtable */}
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-green-900/20 border border-green-500/30">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                              <div>
+                                <h4 className="text-white font-medium">Airtable</h4>
+                                <p className="text-xs text-gray-400">Database operations and data management</p>
+                              </div>
+                            </div>
+                            <span className="text-green-400 text-sm font-medium">Online</span>
+                          </div>
+
+                          {/* Airtable Enhanced */}
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-green-900/20 border border-green-500/30">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                              <div>
+                                <h4 className="text-white font-medium">Airtable Enhanced</h4>
+                                <p className="text-xs text-gray-400">Advanced database operations</p>
+                              </div>
+                            </div>
+                            <span className="text-green-400 text-sm font-medium">Online</span>
+                          </div>
+
+                          {/* ActiveCampaign */}
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-green-900/20 border border-green-500/30">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                              <div>
+                                <h4 className="text-white font-medium">ActiveCampaign</h4>
+                                <p className="text-xs text-gray-400">Email marketing automation</p>
+                              </div>
+                            </div>
+                            <span className="text-green-400 text-sm font-medium">Online</span>
+                          </div>
+
+                          {/* N8N Docs */}
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-green-900/20 border border-green-500/30">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                              <div>
+                                <h4 className="text-white font-medium">N8N Docs</h4>
+                                <p className="text-xs text-gray-400">Documentation and workflow templates</p>
+                              </div>
+                            </div>
+                            <span className="text-green-400 text-sm font-medium">Online</span>
+                          </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-gray-600">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-400">Last updated:</span>
+                            <span className="text-white">{new Date().toLocaleString()}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm mt-1">
+                            <span className="text-gray-400">All systems operational:</span>
+                            <span className="text-green-400 font-medium">6/6 tools online</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="rounded-2xl border border-gray-700/80 bg-gray-900/60 p-6 space-y-5">
                     <div className="space-y-1">
                       <h3 className="flex items-center gap-2 text-lg font-semibold text-white">
@@ -2825,6 +3116,43 @@ export default function Page() {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+        ) : activeMenuItem === 'sam-analytics' ? (
+          /* SAM ANALYTICS PAGE */
+          <div className="flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-7xl px-6 py-8 space-y-8">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/20 text-blue-300">
+                    <Activity className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-semibold leading-tight text-white tracking-tight">SAM Analytics</h1>
+                    <p className="text-sm text-gray-400">
+                      Deep insights into SAM performance and optimization opportunities.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={() => setActiveMenuItem('chat')}
+                    className="inline-flex items-center gap-2 rounded-full border border-gray-700/70 px-4 py-2 text-sm text-gray-300 transition hover:border-purple-500 hover:text-white"
+                  >
+                    ← Back to Chat
+                  </button>
+                </div>
+              </div>
+              
+              {/* SAM Analytics Content */}
+              <div className="w-full h-[calc(100vh-200px)] border border-gray-700/80 rounded-2xl overflow-hidden">
+                <iframe
+                  src="/admin/sam-analytics"
+                  className="w-full h-full"
+                  style={{ border: 'none' }}
+                  title="SAM Analytics Dashboard"
+                />
               </div>
             </div>
           </div>
@@ -3505,12 +3833,7 @@ export default function Page() {
       />
 
 
-      {/* LinkedIn Onboarding Modal */}
-      <LinkedInOnboarding
-        isOpen={showLinkedInOnboarding}
-        onClose={handleLinkedInOnboardingSkip}
-        onComplete={handleLinkedInOnboardingComplete}
-      />
+      {/* LinkedIn integration moved to dedicated /linkedin-integration page */}
 
       {/* Unipile Multi-Channel Integration Modal */}
       <UnipileModal
@@ -3572,7 +3895,7 @@ export default function Page() {
                   {hasLinkedInConnection ? (
                     <>
                       <button 
-                        onClick={() => window.location.href = '/integrations/linkedin'}
+                        onClick={() => window.location.href = '/linkedin-integration'}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
                       >
                         <LinkedInLogo size={16} className="text-white" />
@@ -3793,6 +4116,202 @@ export default function Page() {
                   Save Settings
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Proxy Country Modal */}
+      {showProxyCountryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-semibold text-white flex items-center">
+                <Globe className="mr-3 text-blue-400" size={28} />
+                Proxy Country Selection
+              </h2>
+              <button 
+                onClick={() => setShowProxyCountryModal(false)}
+                className="text-gray-400 hover:text-gray-200 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              {!proxyEditMode ? (
+                /* Current Proxy Settings View */
+                <>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="text-lg font-medium text-white mb-4">Current Proxy Settings</h3>
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between py-3 border-b border-gray-600">
+                        <span className="text-gray-300 font-medium">Country:</span>
+                        <span className="text-white">{currentProxySettings.country}</span>
+                      </div>
+                      
+                      {currentProxySettings.state && (
+                        <div className="flex items-center justify-between py-3 border-b border-gray-600">
+                          <span className="text-gray-300 font-medium">State/Region:</span>
+                          <span className="text-white">{currentProxySettings.state}</span>
+                        </div>
+                      )}
+                      
+                      {currentProxySettings.city && (
+                        <div className="flex items-center justify-between py-3 border-b border-gray-600">
+                          <span className="text-gray-300 font-medium">City:</span>
+                          <span className="text-white">{currentProxySettings.city}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center justify-between py-3 border-b border-gray-600">
+                        <span className="text-gray-300 font-medium">Status:</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          currentProxySettings.status === 'active' 
+                            ? 'bg-green-900 text-green-300' 
+                            : 'bg-red-900 text-red-300'
+                        }`}>
+                          {currentProxySettings.status === 'active' ? '✓ Active' : '✗ Inactive'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between py-3 border-b border-gray-600">
+                        <span className="text-gray-300 font-medium">Session ID:</span>
+                        <span className="text-gray-400 font-mono text-sm">{currentProxySettings.sessionId}</span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between py-3">
+                        <span className="text-gray-300 font-medium">Last Updated:</span>
+                        <span className="text-gray-400 text-sm">
+                          {new Date(currentProxySettings.lastUpdated).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 pt-4 border-t border-gray-600">
+                      <button 
+                        onClick={() => setProxyEditMode(true)}
+                        className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                      >
+                        <span>Change Proxy Country Selection</span>
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* Edit Mode - Country Selection Form */
+                <>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h3 className="text-lg font-medium text-white mb-2">Change Proxy Country</h3>
+                    <p className="text-gray-300 text-sm mb-4">
+                      Select your preferred country for proxy IP assignment. This will be used for LinkedIn campaigns and email outreach to appear local to your target markets.
+                    </p>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Country *
+                        </label>
+                        <select 
+                          defaultValue={currentProxySettings.country === 'Germany' ? 'DE' : ''}
+                          className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        >
+                          <option value="">Select Country</option>
+                          <option value="US">United States</option>
+                          <option value="CA">Canada</option>
+                          <option value="GB">United Kingdom</option>
+                          <option value="DE">Germany</option>
+                          <option value="FR">France</option>
+                          <option value="AU">Australia</option>
+                          <option value="NL">Netherlands</option>
+                          <option value="CH">Switzerland</option>
+                          <option value="AT">Austria</option>
+                          <option value="PH">Philippines</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          State/Region (Optional)
+                        </label>
+                        <input 
+                          type="text" 
+                          defaultValue={currentProxySettings.state}
+                          placeholder="e.g., California, Bavaria, etc."
+                          className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          City (Optional)
+                        </label>
+                        <input 
+                          type="text" 
+                          defaultValue={currentProxySettings.city}
+                          placeholder="e.g., Los Angeles, Munich, etc."
+                          className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+              
+              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <Info className="text-blue-400 mt-0.5" size={16} />
+                  <div>
+                    <h4 className="text-blue-400 font-medium text-sm">Geographic Targeting</h4>
+                    <p className="text-gray-300 text-sm mt-1">
+                      {!proxyEditMode 
+                        ? "Your proxy location is automatically configured based on your LinkedIn account registration. You can change it using the button below if needed."
+                        : "Selecting a country that matches your LinkedIn account registration and target market increases campaign effectiveness and reduces the risk of restrictions."
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              {!proxyEditMode ? (
+                /* View Mode Buttons */
+                <>
+                  <button 
+                    onClick={() => setShowProxyCountryModal(false)}
+                    className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    Close
+                  </button>
+                  <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    Test Connection
+                  </button>
+                </>
+              ) : (
+                /* Edit Mode Buttons */
+                <>
+                  <button 
+                    onClick={() => setProxyEditMode(false)}
+                    className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    Test Connection
+                  </button>
+                  <button 
+                    onClick={() => {
+                      // TODO: Save the proxy settings
+                      setProxyEditMode(false);
+                    }}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    Save Settings
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

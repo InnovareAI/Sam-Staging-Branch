@@ -25,8 +25,14 @@ function getSenderByAffiliation(userEmail: string): string {
 
 // Postmark email service
 async function sendEmail(to: string, subject: string, htmlBody: string) {
-  if (!process.env.POSTMARK_SERVER_TOKEN) {
-    throw new Error('Postmark not configured');
+  // Use the correct Postmark API key based on user affiliation
+  const is3Cubed = to.includes('3cubed') || to.includes('cubedcapital') || to.includes('sendingcell.com');
+  const postmarkApiKey = is3Cubed 
+    ? process.env.POSTMARK_3CUBEDAI_API_KEY 
+    : process.env.POSTMARK_INNOVAREAI_API_KEY;
+
+  if (!postmarkApiKey) {
+    throw new Error('Postmark not configured for this domain');
   }
 
   // Determine sender based on user affiliation
@@ -37,7 +43,7 @@ async function sendEmail(to: string, subject: string, htmlBody: string) {
     headers: {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      'X-Postmark-Server-Token': process.env.POSTMARK_SERVER_TOKEN,
+      'X-Postmark-Server-Token': postmarkApiKey,
     },
     body: JSON.stringify({
       From: fromAddress,
@@ -88,8 +94,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Use Postmark for reliable email delivery
-    if (process.env.POSTMARK_SERVER_TOKEN) {
-      const currentSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com';
+    const is3Cubed = email.includes('3cubed') || email.includes('cubedcapital') || email.includes('sendingcell.com');
+    const postmarkApiKey = is3Cubed 
+      ? process.env.POSTMARK_3CUBEDAI_API_KEY 
+      : process.env.POSTMARK_INNOVAREAI_API_KEY;
+
+    if (postmarkApiKey) {
+      const currentSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://sam.innovareai.com';
       
       // Generate a password reset token using Supabase admin
       const { data, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
