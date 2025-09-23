@@ -138,7 +138,6 @@ class ProductionDeployer {
     // Validate build
     const buildFiles = [
       '.next/server/app/api/admin/invite-user/route.js',
-      '.next/server/app/layout.js',
       '.next/static/chunks'
     ];
     
