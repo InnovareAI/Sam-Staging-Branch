@@ -163,38 +163,133 @@ export default function Page() {
   const [showAnalyticsReportingModal, setShowAnalyticsReportingModal] = useState(false);
   const [showProxyCountryModal, setShowProxyCountryModal] = useState(false);
   const [proxyEditMode, setProxyEditMode] = useState(false);
+  const [selectedProxyCountry, setSelectedProxyCountry] = useState('');
+  const [selectedProxyState, setSelectedProxyState] = useState('');
+  const [selectedProxyCity, setSelectedProxyCity] = useState('');
+  const [proxyTestLoading, setProxyTestLoading] = useState(false);
+  const [proxySaveLoading, setProxySaveLoading] = useState(false);
+  const [activeApprovalTab, setActiveApprovalTab] = useState('auto-rules');
+  const [approvalLoading, setApprovalLoading] = useState(false);
   const [currentProxySettings, setCurrentProxySettings] = useState({
-    country: 'Germany',
-    state: 'Bavaria', 
-    city: 'Munich',
-    status: 'active',
-    sessionId: 'auto_123456789',
-    lastUpdated: '2025-09-23T12:28:45Z'
+    country: '',
+    state: '', 
+    city: '',
+    status: 'inactive',
+    sessionId: '',
+    lastUpdated: ''
   });
-  
-  // Mock connected accounts for demonstration (in production, fetch from API)
-  const [connectedAccounts] = useState([
-    {
-      id: 'gmail-1',
-      platform: 'gmail' as const,
-      email: 'user@company.com',
-      name: 'Primary Gmail',
-      status: 'active' as const
-    },
-    {
-      id: 'outlook-1', 
-      platform: 'outlook' as const,
-      email: 'user@outlook.com',
-      name: 'Outlook Account',
-      status: 'active' as const
-    },
-    {
-      id: 'linkedin-1',
-      platform: 'linkedin' as const,
-      name: 'LinkedIn Professional',
-      status: 'active' as const
+
+  // Handle test connection
+  const handleTestConnection = async () => {
+    setProxyTestLoading(true);
+    try {
+      const response = await fetch('/api/bright-data/location-assignment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          linkedinProfileLocation: 'Current Location',
+          forceRegenerate: true
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setCurrentProxySettings(prev => ({
+          ...prev,
+          country: data.proxyConfig.country,
+          state: data.proxyConfig.state || '',
+          city: data.proxyConfig.city || '',
+          confidence: Math.round(data.proxyConfig.confidence * 100)
+        }));
+        alert(`✅ Connection test successful!\nProxy: ${data.proxyConfig.country}${data.proxyConfig.state ? ` (${data.proxyConfig.state})` : ''}\nConfidence: ${Math.round(data.proxyConfig.confidence * 100)}%`);
+      } else {
+        alert(`❌ Connection test failed: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Test connection failed:', error);
+      alert('❌ Connection test failed. Please try again.');
+    } finally {
+      setProxyTestLoading(false);
     }
-  ]);
+  };
+
+  // Handle save proxy settings
+  const handleSaveProxySettings = async () => {
+    if (!selectedProxyCountry) {
+      alert('Please select a country before saving.');
+      return;
+    }
+
+    setProxySaveLoading(true);
+    try {
+      const response = await fetch('/api/bright-data/location-assignment', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          country: selectedProxyCountry,
+          state: selectedProxyState || null,
+          city: selectedProxyCity || null
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setCurrentProxySettings(prev => ({
+          ...prev,
+          country: data.proxyConfig.country,
+          state: data.proxyConfig.state || '',
+          city: data.proxyConfig.city || '',
+          confidence: Math.round(data.proxyConfig.confidence * 100)
+        }));
+        setProxyEditMode(false);
+        alert(`✅ Proxy settings saved successfully!\nLocation: ${data.proxyConfig.country}${data.proxyConfig.state ? ` (${data.proxyConfig.state})` : ''}`);
+      } else {
+        alert(`❌ Failed to save proxy settings: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Save proxy settings failed:', error);
+      alert('❌ Failed to save proxy settings. Please try again.');
+    } finally {
+      setProxySaveLoading(false);
+    }
+  };
+
+  // Data Approval System handlers
+  const handleConfigureRules = () => {
+    alert('Configure Rules clicked - This would open the rules configuration modal.');
+  };
+
+  const handleEnableRule = (ruleType: string) => {
+    alert(`Enable ${ruleType} rule clicked - This would enable the rule via API.`);
+  };
+
+  const handleQuickAction = async (actionType: string, count: number) => {
+    setApprovalLoading(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      alert(`${actionType} action completed for ${count} prospects.`);
+    } catch (error) {
+      alert(`Failed to execute ${actionType} action.`);
+    } finally {
+      setApprovalLoading(false);
+    }
+  };
+
+  // Check if user is InnovareAI
+  const isInnovareAIUser = () => {
+    const userEmail = session?.user?.email?.toLowerCase() || user?.email?.toLowerCase() || '';
+    return userEmail.includes('innovareai.com');
+  };
+  
+  // Mock connected accounts - will be set based on user type
+  const [connectedAccounts, setConnectedAccounts] = useState<any[]>([]);
 
   const [linkedInSkipped, setLinkedInSkipped] = useState(false);
   const [isDisconnectingLinkedIn, setIsDisconnectingLinkedIn] = useState(false);
@@ -359,6 +454,60 @@ export default function Page() {
       localStorage.setItem('sam_active_menu', activeMenuItem);
     }
   }, [activeMenuItem, isLoaded]);
+
+  // Set mock data based on user type (InnovareAI gets demo data, others get empty)
+  useEffect(() => {
+    if (session || user) {
+      const userEmail = session?.user?.email?.toLowerCase() || user?.email?.toLowerCase() || '';
+      const isInnovareAI = userEmail.includes('innovareai.com');
+      
+      if (isInnovareAI) {
+        // Set demo data for InnovareAI users
+        setConnectedAccounts([
+          {
+            id: 'gmail-1',
+            platform: 'gmail' as const,
+            email: 'user@company.com',
+            name: 'Primary Gmail',
+            status: 'active' as const
+          },
+          {
+            id: 'outlook-1', 
+            platform: 'outlook' as const,
+            email: 'user@outlook.com',
+            name: 'Outlook Account',
+            status: 'active' as const
+          },
+          {
+            id: 'linkedin-1',
+            platform: 'linkedin' as const,
+            name: 'LinkedIn Professional',
+            status: 'active' as const
+          }
+        ]);
+        
+        setCurrentProxySettings({
+          country: 'Germany',
+          state: 'Bavaria', 
+          city: 'Munich',
+          status: 'active',
+          sessionId: 'auto_123456789',
+          lastUpdated: '2025-09-23T12:28:45Z'
+        });
+      } else {
+        // Keep empty data for non-InnovareAI tenants
+        setConnectedAccounts([]);
+        setCurrentProxySettings({
+          country: '',
+          state: '', 
+          city: '',
+          status: 'inactive',
+          sessionId: '',
+          lastUpdated: ''
+        });
+      }
+    }
+  }, [session, user]);
 
   // Check LinkedIn connection when user accesses profile/settings
   useEffect(() => {
@@ -1552,15 +1701,18 @@ export default function Page() {
           /* Data Approval System */
           <div className="space-y-6">
             {/* Data Approval System */}
-            <div className="bg-gray-800 rounded-lg p-6">
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-2xl font-semibold text-white">Data Approval System</h2>
                   <p className="text-gray-400 text-sm mt-1">Hybrid approval for up to 2,000 monthly prospects</p>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm">1,847 in queue</span>
-                  <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                  <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-sm">1,847 in queue</span>
+                  <button 
+                    onClick={handleConfigureRules}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                  >
                     Configure Rules
                   </button>
                 </div>
@@ -1568,13 +1720,34 @@ export default function Page() {
 
               {/* Approval Strategy Tabs */}
               <div className="flex space-x-1 mb-6 bg-gray-700 rounded-lg p-1">
-                <button className="flex-1 py-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-md">
+                <button 
+                  onClick={() => setActiveApprovalTab('auto-rules')}
+                  className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
+                    activeApprovalTab === 'auto-rules' 
+                      ? 'text-white bg-purple-600' 
+                      : 'text-gray-300 hover:text-white hover:bg-gray-600'
+                  }`}
+                >
                   Auto Approval Rules
                 </button>
-                <button className="flex-1 py-2 px-4 text-sm font-medium text-gray-300 hover:text-white rounded-md">
+                <button 
+                  onClick={() => setActiveApprovalTab('manual-queue')}
+                  className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
+                    activeApprovalTab === 'manual-queue' 
+                      ? 'text-white bg-purple-600' 
+                      : 'text-gray-300 hover:text-white hover:bg-gray-600'
+                  }`}
+                >
                   Manual Review Queue
                 </button>
-                <button className="flex-1 py-2 px-4 text-sm font-medium text-gray-300 hover:text-white rounded-md">
+                <button 
+                  onClick={() => setActiveApprovalTab('batch-processing')}
+                  className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
+                    activeApprovalTab === 'batch-processing' 
+                      ? 'text-white bg-purple-600' 
+                      : 'text-gray-300 hover:text-white hover:bg-gray-600'
+                  }`}
+                >
                   Batch Processing
                 </button>
               </div>
@@ -1585,40 +1758,45 @@ export default function Page() {
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-white mb-4">Automatic Approval Rules</h3>
                   
-                  <div className="bg-green-900 border border-green-500 rounded-lg p-4">
+                  <div className="bg-gray-700 border border-purple-500 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
-                        <CheckSquare className="text-green-400" size={16} />
+                        <CheckSquare className="text-purple-400" size={16} />
                         <h4 className="text-white font-medium">High ICP Match (≥95%)</h4>
                       </div>
-                      <span className="text-green-400 text-sm">Active</span>
+                      <span className="bg-purple-600 text-white px-2 py-1 rounded-full text-xs">Active</span>
                     </div>
-                    <p className="text-green-200 text-sm mb-2">Auto-approve prospects with 95%+ ICP match score</p>
-                    <div className="text-green-300 text-xs">Auto-approved: 247 prospects this month</div>
+                    <p className="text-gray-300 text-sm mb-2">Auto-approve prospects with 95%+ ICP match score</p>
+                    <div className="text-purple-300 text-xs">Auto-approved: 247 prospects this month</div>
                   </div>
 
-                  <div className="bg-yellow-900 border border-yellow-500 rounded-lg p-4">
+                  <div className="bg-gray-700 border border-purple-500 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
-                        <CheckSquare className="text-yellow-400" size={16} />
+                        <CheckSquare className="text-purple-400" size={16} />
                         <h4 className="text-white font-medium">Multi-ICP Matching</h4>
                       </div>
-                      <span className="text-yellow-400 text-sm">Active</span>
+                      <span className="bg-purple-600 text-white px-2 py-1 rounded-full text-xs">Active</span>
                     </div>
-                    <p className="text-yellow-200 text-sm mb-2">Auto-approve if matches any ICP profile (Enterprise Tech, SMB SaaS, Healthcare)</p>
-                    <div className="text-yellow-300 text-xs">Auto-approved: 892 prospects across all ICPs</div>
+                    <p className="text-gray-300 text-sm mb-2">Auto-approve if matches any ICP profile (Enterprise Tech, SMB SaaS, Healthcare)</p>
+                    <div className="text-purple-300 text-xs">Auto-approved: 892 prospects across all ICPs</div>
                   </div>
 
-                  <div className="bg-gray-700 border border-gray-500 rounded-lg p-4">
+                  <div className="bg-gray-800 border border-gray-600 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
                         <div className="w-4 h-4 border-2 border-gray-500 rounded"></div>
                         <h4 className="text-white font-medium">Revenue Range Filter</h4>
                       </div>
-                      <span className="text-gray-400 text-sm">Disabled</span>
+                      <span className="bg-gray-600 text-gray-300 px-2 py-1 rounded-full text-xs">Disabled</span>
                     </div>
                     <p className="text-gray-300 text-sm mb-2">Auto-reject if revenue &lt; $1M or &gt; $100M</p>
-                    <button className="text-blue-400 text-xs hover:text-blue-300">Enable Rule</button>
+                    <button 
+                      onClick={() => handleEnableRule('Revenue Range Filter')}
+                      className="text-purple-400 text-xs hover:text-purple-300 transition-colors"
+                    >
+                      Enable Rule
+                    </button>
                   </div>
                 </div>
 
@@ -1633,7 +1811,7 @@ export default function Page() {
                         <span className="text-gray-300 text-sm">Enterprise Tech</span>
                         <div className="flex items-center space-x-2">
                           <div className="w-32 bg-gray-600 rounded-full h-2">
-                            <div className="bg-blue-400 h-2 rounded-full" style={{width: '65%'}}></div>
+                            <div className="bg-purple-400 h-2 rounded-full" style={{width: '65%'}}></div>
                           </div>
                           <span className="text-white text-sm">847 (65%)</span>
                         </div>
@@ -1642,7 +1820,7 @@ export default function Page() {
                         <span className="text-gray-300 text-sm">SMB SaaS</span>
                         <div className="flex items-center space-x-2">
                           <div className="w-32 bg-gray-600 rounded-full h-2">
-                            <div className="bg-green-400 h-2 rounded-full" style={{width: '25%'}}></div>
+                            <div className="bg-purple-500 h-2 rounded-full" style={{width: '25%'}}></div>
                           </div>
                           <span className="text-white text-sm">323 (25%)</span>
                         </div>
@@ -1665,16 +1843,16 @@ export default function Page() {
                     </div>
                   </div>
 
-                  <div className="bg-blue-900 border border-blue-500 rounded-lg p-4">
+                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
                     <h4 className="text-white font-medium mb-2">Queue Status</h4>
                     <div className="grid grid-cols-2 gap-4 text-center">
                       <div>
-                        <div className="text-2xl font-bold text-blue-400">108</div>
-                        <div className="text-blue-200 text-xs">Awaiting Manual Review</div>
+                        <div className="text-2xl font-bold text-purple-400">108</div>
+                        <div className="text-gray-300 text-xs">Awaiting Manual Review</div>
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-green-400">153</div>
-                        <div className="text-green-200 text-xs">Remaining Monthly Allowance</div>
+                        <div className="text-2xl font-bold text-purple-300">153</div>
+                        <div className="text-gray-300 text-xs">Remaining Monthly Allowance</div>
                       </div>
                     </div>
                   </div>
@@ -1685,17 +1863,33 @@ export default function Page() {
               <div className="border-t border-gray-700 pt-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <button className="bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
-                    Approve High Priority (23)
+                  <button 
+                    onClick={() => handleQuickAction('Approve High Priority', 23)}
+                    disabled={approvalLoading}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white py-3 px-4 rounded-lg text-sm transition-colors"
+                  >
+                    {approvalLoading ? 'Processing...' : 'Approve High Priority (23)'}
                   </button>
-                  <button className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
-                    Review Medium Priority (85)
+                  <button 
+                    onClick={() => handleQuickAction('Review Medium Priority', 85)}
+                    disabled={approvalLoading}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white py-3 px-4 rounded-lg text-sm transition-colors"
+                  >
+                    {approvalLoading ? 'Processing...' : 'Review Medium Priority (85)'}
                   </button>
-                  <button className="bg-yellow-600 hover:bg-yellow-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
-                    Batch Process Similar (156)
+                  <button 
+                    onClick={() => handleQuickAction('Batch Process Similar', 156)}
+                    disabled={approvalLoading}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white py-3 px-4 rounded-lg text-sm transition-colors"
+                  >
+                    {approvalLoading ? 'Processing...' : 'Batch Process Similar (156)'}
                   </button>
-                  <button className="bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg text-sm transition-colors">
-                    Clear Low Priority Queue
+                  <button 
+                    onClick={() => handleQuickAction('Clear Low Priority Queue', 0)}
+                    disabled={approvalLoading}
+                    className="bg-gray-700 border border-red-500 hover:bg-red-600 disabled:bg-gray-600 text-red-400 hover:text-white py-3 px-4 rounded-lg text-sm transition-all"
+                  >
+                    {approvalLoading ? 'Processing...' : 'Clear Low Priority Queue'}
                   </button>
                 </div>
               </div>
@@ -4214,7 +4408,8 @@ export default function Page() {
                           Country *
                         </label>
                         <select 
-                          defaultValue={currentProxySettings.country === 'Germany' ? 'DE' : ''}
+                          value={selectedProxyCountry}
+                          onChange={(e) => setSelectedProxyCountry(e.target.value)}
                           className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         >
                           <option value="">Select Country</option>
@@ -4237,7 +4432,8 @@ export default function Page() {
                         </label>
                         <input 
                           type="text" 
-                          defaultValue={currentProxySettings.state}
+                          value={selectedProxyState}
+                          onChange={(e) => setSelectedProxyState(e.target.value)}
                           placeholder="e.g., California, Bavaria, etc."
                           className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         />
@@ -4249,7 +4445,8 @@ export default function Page() {
                         </label>
                         <input 
                           type="text" 
-                          defaultValue={currentProxySettings.city}
+                          value={selectedProxyCity}
+                          onChange={(e) => setSelectedProxyCity(e.target.value)}
                           placeholder="e.g., Los Angeles, Munich, etc."
                           className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         />
@@ -4285,8 +4482,12 @@ export default function Page() {
                   >
                     Close
                   </button>
-                  <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
-                    Test Connection
+                  <button 
+                    onClick={handleTestConnection}
+                    disabled={proxyTestLoading}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    {proxyTestLoading ? 'Testing...' : 'Test Connection'}
                   </button>
                 </>
               ) : (
@@ -4298,17 +4499,19 @@ export default function Page() {
                   >
                     Cancel
                   </button>
-                  <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
-                    Test Connection
+                  <button 
+                    onClick={handleTestConnection}
+                    disabled={proxyTestLoading}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    {proxyTestLoading ? 'Testing...' : 'Test Connection'}
                   </button>
                   <button 
-                    onClick={() => {
-                      // TODO: Save the proxy settings
-                      setProxyEditMode(false);
-                    }}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+                    onClick={handleSaveProxySettings}
+                    disabled={proxySaveLoading}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white px-4 py-2 rounded-lg transition-colors"
                   >
-                    Save Settings
+                    {proxySaveLoading ? 'Saving...' : 'Save Settings'}
                   </button>
                 </>
               )}
