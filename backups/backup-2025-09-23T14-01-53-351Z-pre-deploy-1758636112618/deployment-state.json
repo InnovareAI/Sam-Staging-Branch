@@ -1,0 +1,21 @@
+{
+  "timestamp": "2025-09-23T14:01:53.674Z",
+  "platform": "netlify",
+  "status": "connected",
+  "netlify": {
+    "account": {
+      "Name": "Thorsten Linz",
+      "Email": "tl@innovareai.com",
+      "Teams": [
+        "InnovareAI"
+      ]
+    },
+    "siteData": {
+      "site-name": "sam-new-sep-7",
+      "config-path": "/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/netlify.toml",
+      "admin-url": "https://app.netlify.com/projects/sam-new-sep-7",
+      "site-url": "https://app.meet-sam.com",
+      "site-id": "1ccdcd44-18e5-4248-aaed-ed1f653fbac5"
+    }
+  }
+}
