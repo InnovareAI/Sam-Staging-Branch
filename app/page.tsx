@@ -1787,7 +1787,7 @@ export default function Page() {
 
   // Authenticated user - show main app
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
       {/* Left Sidebar */}
       <div className="hidden w-72 flex-col border-r border-border/60 bg-surface-muted/70 backdrop-blur lg:flex">
         {/* Sidebar Header */}
@@ -1930,7 +1930,7 @@ export default function Page() {
         {/* Connection Status Bar */}
         <ConnectionStatusBar />
 
-        <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="flex-1 overflow-hidden px-6 py-6">
         {activeMenuItem === 'knowledge' ? (
           <KnowledgeBase />
         ) : activeMenuItem === 'data-approval' ? (
