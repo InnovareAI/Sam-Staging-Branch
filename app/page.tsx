@@ -110,7 +110,7 @@ export default function Page() {
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [passwordChangeData, setPasswordChangeData] = useState({ password: '', confirmPassword: '', loading: false });
   const [showConversationHistory, setShowConversationHistory] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   
   // Workspace state
   const [workspaces, setWorkspaces] = useState<any[]>([]);
@@ -753,20 +753,15 @@ export default function Page() {
     }
   }, [user, isAuthLoading]);
 
-  // Auto-scroll to bottom when messages change or when sending
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      // Force immediate scroll to bottom
-      messagesEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
-      // Smooth scroll after a brief delay for better UX
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      }, 50);
+  // Keep newest messages visible by anchoring scroll to the top
+  const scrollToTop = () => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = 0;
     }
   };
 
   useEffect(() => {
-    scrollToBottom();
+    scrollToTop();
   }, [messages, isSending]);
 
   const menuItems = [
@@ -3770,8 +3765,12 @@ export default function Page() {
           </div>
         ) : (
           /* CHAT MESSAGES */
-          <div className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth pb-40" style={{ maxHeight: 'calc(100vh - 240px)' }}>
-            {messages.map((message) => (
+          <div
+            ref={messagesContainerRef}
+            className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth pb-40"
+            style={{ maxHeight: 'calc(100vh - 240px)' }}
+          >
+            {messages.slice().reverse().map((message) => (
               <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[70%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
                   {message.role === 'assistant' && (
@@ -3822,7 +3821,6 @@ export default function Page() {
                 </div>
               </div>
             )}
-            <div ref={messagesEndRef} className="h-4 w-full" style={{ scrollMarginTop: '1rem' }} />
           </div>
         )}
         </div>
