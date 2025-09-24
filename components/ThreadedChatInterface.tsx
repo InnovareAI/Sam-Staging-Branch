@@ -1298,7 +1298,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 pb-8 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 pb-20 space-y-4">
               {isLoadingMessages ? (
                 <div className="flex justify-center py-8">
                   <div className="text-gray-400">Loading messages...</div>
@@ -1384,7 +1384,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
             </div>
 
             {/* Chat Input */}
-            <div className="flex-shrink-0 p-6">
+            <div className="flex-shrink-0 p-6 bg-gray-900 border-t border-gray-700">
               {pendingProspectData.length > 0 && (
                 <div className="mb-4 max-w-4xl mx-auto">
                   <button
@@ -1429,7 +1429,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Continue the conversation..."
-                    className="flex-1 bg-transparent text-white placeholder-gray-400 text-base pl-3 pr-3 py-2 outline-none resize-vertical min-h-[96px] max-h-48"
+                    className="flex-1 bg-transparent text-white placeholder-gray-400 text-base pl-3 pr-3 py-3 outline-none resize-vertical min-h-[80px] max-h-48 leading-5"
                     style={{ textAlign: 'left' }}
                     rows={4}
                   />
