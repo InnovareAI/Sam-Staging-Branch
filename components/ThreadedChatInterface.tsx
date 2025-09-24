@@ -1293,13 +1293,12 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
             {/* Messages Area - Fixed Layout */}
             <div 
               ref={messagesContainerRef} 
-              className="flex-1 overflow-y-auto"
+              className="flex-1 overflow-y-auto p-6 space-y-4"
               style={{ 
                 maxHeight: 'calc(100vh - 300px)',
                 minHeight: '400px'
               }}
             >
-              <div className="p-6">
               {isLoadingMessages ? (
                 <div className="flex justify-center py-8">
                   <div className="text-gray-400">Loading messages...</div>
@@ -1320,10 +1319,48 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                   </p>
                 </div>
               ) : (
-                messages.map((message) => (
-                  <div key={message.id} className={`flex items-start ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4`}>
-                    <div className={`max-w-[70%]`}>
-                      {message.role === 'assistant' && (
+                <>
+                  {messages.map((message) => (
+                    <div key={message.id} className={`flex items-start ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[70%]`}>
+                        {message.role === 'assistant' && (
+                          <div className="flex items-start space-x-3">
+                            <img 
+                              src="/SAM.jpg" 
+                              alt="Sam AI" 
+                              className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1"
+                              style={{ objectPosition: 'center 30%' }}
+                            />
+                            <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl">
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                              {message.has_prospect_intelligence && (
+                                <div className="mt-2 p-2 bg-purple-600 bg-opacity-20 rounded-lg border border-purple-600 border-opacity-30">
+                                  <div className="flex items-center space-x-1 text-xs text-purple-300">
+                                    <Calendar size={12} />
+                                    <span>Prospect intelligence gathered</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {message.role === 'user' && (
+                          <>
+                            <div className="flex items-center justify-end space-x-2 mb-1">
+                              <span className="text-gray-400 text-sm font-medium">You</span>
+                            </div>
+                            <div className="bg-gray-800 text-white px-4 py-3 rounded-2xl">
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {isSending && (
+                    <div className="flex items-start justify-start">
+                      <div className="max-w-[70%]">
                         <div className="flex items-start space-x-3">
                           <img 
                             src="/SAM.jpg" 
@@ -1332,56 +1369,19 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                             style={{ objectPosition: 'center 30%' }}
                           />
                           <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl">
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                            {message.has_prospect_intelligence && (
-                              <div className="mt-2 p-2 bg-purple-600 bg-opacity-20 rounded-lg border border-purple-600 border-opacity-30">
-                                <div className="flex items-center space-x-1 text-xs text-purple-300">
-                                  <Calendar size={12} />
-                                  <span>Prospect intelligence gathered</span>
-                                </div>
-                              </div>
-                            )}
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                              <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                              <span className="text-sm text-gray-300 ml-2">Sam is thinking...</span>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                      {message.role === 'user' && (
-                        <>
-                          <div className="flex items-center justify-end space-x-2 mb-1">
-                            <span className="text-gray-400 text-sm font-medium">You</span>
-                          </div>
-                          <div className="bg-gray-800 text-white px-4 py-3 rounded-2xl">
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-              
-              {isSending && (
-                <div className="flex items-start justify-start mb-4">
-                  <div className="max-w-[70%]">
-                    <div className="flex items-start space-x-3">
-                      <img 
-                        src="/SAM.jpg" 
-                        alt="Sam AI" 
-                        className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1"
-                        style={{ objectPosition: 'center 30%' }}
-                      />
-                      <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                          <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-                          <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
-                          <span className="text-sm text-gray-300 ml-2">Sam is thinking...</span>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
+                  )}
+                </>
               )}
-              </div>
             </div>
 
             {/* Chat Input */}
