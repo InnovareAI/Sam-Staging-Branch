@@ -3770,7 +3770,7 @@ export default function Page() {
           </div>
         ) : (
           /* CHAT MESSAGES */
-          <div className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth" style={{ maxHeight: 'calc(100vh - 240px)' }}>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth pb-40" style={{ maxHeight: 'calc(100vh - 240px)' }}>
             {messages.map((message) => (
               <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[70%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
