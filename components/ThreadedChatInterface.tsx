@@ -67,10 +67,18 @@ export default function ThreadedChatInterface() {
     }
   }, [currentThread])
 
-  // Ensure messages always start at top
+  // Auto-scroll to bottom for new messages (natural chat behavior)
   useEffect(() => {
     if (messagesContainerRef.current && messages.length > 0) {
-      messagesContainerRef.current.scrollTop = 0
+      // Use setTimeout to ensure DOM has updated after message rendering
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTo({
+            top: messagesContainerRef.current.scrollHeight,
+            behavior: 'smooth'
+          })
+        }
+      }, 50)
     }
   }, [messages])
   
@@ -1296,7 +1304,11 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
             </div>
 
             {/* Messages Area */}
-            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 pb-6 space-y-4">
+            <div 
+              ref={messagesContainerRef} 
+              className="flex-1 overflow-y-auto p-6 pb-32 space-y-4"
+              style={{ scrollBehavior: 'smooth' }}
+            >
               {isLoadingMessages ? (
                 <div className="flex justify-center py-8">
                   <div className="text-gray-400">Loading messages...</div>
