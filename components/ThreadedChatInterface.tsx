@@ -1236,7 +1236,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col h-full relative">
         {currentThread ? (
           <>
             {/* Chat Header */}
@@ -1298,7 +1298,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 pb-40 space-y-4">
+            <div className="overflow-y-auto p-6 space-y-4" style={{ height: 'calc(100vh - 200px)' }}>
               {isLoadingMessages ? (
                 <div className="flex justify-center py-8">
                   <div className="text-gray-400">Loading messages...</div>
@@ -1384,7 +1384,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
             </div>
 
             {/* Chat Input */}
-            <div className="flex-shrink-0 p-6 bg-gray-900 border-t border-gray-700">
+            <div className="absolute bottom-0 left-80 right-0 p-6 bg-gray-900 border-t border-gray-700">
               {pendingProspectData.length > 0 && (
                 <div className="mb-4 max-w-4xl mx-auto">
                   <button
