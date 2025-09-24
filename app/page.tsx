@@ -756,12 +756,12 @@ export default function Page() {
   // Auto-scroll to bottom when messages change or when sending
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
-      // Use immediate scroll for better reliability
-      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
-      // Alternative: use setTimeout for smooth scroll after DOM update
+      // Force immediate scroll to bottom
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+      // Smooth scroll after a brief delay for better UX
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }, 50);
     }
   };
 
@@ -891,6 +891,9 @@ export default function Page() {
       setInputMessage('');
       setIsSending(true);
       
+      // Immediate scroll after adding user message
+      setTimeout(() => scrollToBottom(), 100);
+      
       if (showStarterScreen) {
         setShowStarterScreen(false);
       }
@@ -917,6 +920,8 @@ export default function Page() {
             content: data.response
           };
           setMessages(prev => [...prev, aiMessage]);
+          // Scroll after AI response
+          setTimeout(() => scrollToBottom(), 100);
         } else {
           const errorMessage = {
             id: Date.now() + 1,
@@ -924,6 +929,7 @@ export default function Page() {
             content: "I apologize, but I'm having trouble processing your request right now. Please try again."
           };
           setMessages(prev => [...prev, errorMessage]);
+          setTimeout(() => scrollToBottom(), 100);
         }
       } catch (error) {
         console.error('Chat API error:', error);
@@ -933,6 +939,7 @@ export default function Page() {
           content: "I'm experiencing technical difficulties. Please try again in a moment."
         };
         setMessages(prev => [...prev, errorMessage]);
+        setTimeout(() => scrollToBottom(), 100);
       } finally {
         setIsSending(false);
       }
@@ -3763,7 +3770,7 @@ export default function Page() {
           </div>
         ) : (
           /* CHAT MESSAGES */
-          <div className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth" style={{ maxHeight: 'calc(100vh - 240px)' }}>
             {messages.map((message) => (
               <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[70%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
@@ -3815,7 +3822,7 @@ export default function Page() {
                 </div>
               </div>
             )}
-            <div ref={messagesEndRef} className="h-1" />
+            <div ref={messagesEndRef} className="h-4 w-full" style={{ scrollMarginTop: '1rem' }} />
           </div>
         )}
         </div>
