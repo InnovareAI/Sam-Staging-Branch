@@ -10,25 +10,33 @@ export async function POST(req: NextRequest) {
 
     console.log('🤖 SAM ULTRAHARD: Processing:', message);
 
-    // ULTRAHARD FIX: Direct OpenRouter call
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com'}/api/sam/openrouter`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: `You are Sam, a helpful sales AI assistant. User says: "${message}". Reply as Sam - friendly, helpful, focused on sales. Be brief.`,
-        use_case: 'message_personalization'
-      })
-    });
+    // ULTRAHARD: Direct fallback response (bypass broken OpenRouter for now)
+    const samResponses = {
+      'sales strategy': "I'd love to help with your sales strategy! Let's start with your target market - who are your ideal customers and what challenges are they facing?",
+      'prospecting': "Great choice! Prospecting is the foundation of sales success. Are you looking to expand into new industries, target specific roles, or improve your current outreach?",
+      'outreach': "Outreach is my specialty! Are you focusing on email campaigns, LinkedIn messaging, or a multi-channel approach? I can help optimize your messaging for better response rates.",
+      'pipeline': "Pipeline management is crucial for predictable revenue. Are you looking to improve lead qualification, track deal progression, or optimize your sales process?",
+      'lead generation': "Lead generation is where it all starts! What's your current approach - are you using content marketing, paid ads, referrals, or direct outreach?",
+      'default': "Hi! I'm Sam, your AI sales assistant. I specialize in helping with sales strategy, prospecting, outreach, and pipeline management. What specific challenge can I help you tackle today?"
+    };
 
-    const result = await response.json();
-    const samResponse = result.success ? result.message : "Hi! I'm Sam, your AI sales assistant. I can help with prospecting, outreach, and pipeline management. What would you like to work on?";
+    // Simple keyword matching for immediate responses
+    const lowerMessage = message.toLowerCase();
+    let samResponse = samResponses.default;
+    
+    if (lowerMessage.includes('strategy')) samResponse = samResponses['sales strategy'];
+    else if (lowerMessage.includes('prospect')) samResponse = samResponses.prospecting;
+    else if (lowerMessage.includes('outreach') || lowerMessage.includes('email') || lowerMessage.includes('linkedin')) samResponse = samResponses.outreach;
+    else if (lowerMessage.includes('pipeline') || lowerMessage.includes('deal')) samResponse = samResponses.pipeline;
+    else if (lowerMessage.includes('lead') || lowerMessage.includes('generation')) samResponse = samResponses['lead generation'];
 
-    console.log('✅ SAM ULTRAHARD: Response generated');
+    console.log('✅ SAM ULTRAHARD: Response generated (fallback mode)');
 
     return NextResponse.json({
       response: samResponse,
       timestamp: new Date().toISOString(),
-      aiPowered: result.success,
+      aiPowered: false, // Using smart fallback for now
+      fallback_mode: true,
       user: { authenticated: false, anonymous: true }
     });
 
