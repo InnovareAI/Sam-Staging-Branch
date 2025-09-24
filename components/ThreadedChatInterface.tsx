@@ -1302,27 +1302,15 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                 </div>
               ) : messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center flex-grow">
-                  <img 
-                    src="/SAM.jpg" 
-                    alt="Sam AI" 
-                    className="w-24 h-24 rounded-full object-cover mb-4"
-                    style={{ objectPosition: 'center 30%' }}
-                  />
-                  <h3 className="text-white text-lg font-medium mb-2">
-                    Start a conversation with Sam
-                  </h3>
-                  <p className="text-gray-400 text-sm">
-                    Ask about prospects, strategies, or anything sales-related.
-                  </p>
+                  <img src="/SAM.jpg" alt="Sam AI" className="w-24 h-24 rounded-full object-cover mb-4" />
+                  <h3 className="text-white text-lg font-medium mb-2">Start a conversation with Sam</h3>
+                  <p className="text-gray-400 text-sm">Ask about prospects, strategies, or anything sales-related.</p>
                 </div>
               ) : (
                 <div className="flex flex-col space-y-4 flex-grow">
                   {messages.map((message) => (
-                    <div 
-                      key={message.id} 
-                      className={`flex items-start ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      {/* Avatar for assistant */}
+                    <div key={message.id} className={`flex items-start ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      {/* Avatar for assistant messages only */}
                       {message.role === 'assistant' && (
                         <img 
                           src="/SAM.jpg" 
@@ -1333,8 +1321,12 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                       )}
 
                       {/* Message bubble */}
-                      <div className="max-w-[70%] flex-1">
-                        <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl flex-1">
+                      <div className={`max-w-[70%] ${message.role === 'user' ? 'ml-auto' : 'flex-1'}`}>
+                        <div className={`px-4 py-3 rounded-2xl ${
+                          message.role === 'user' 
+                            ? 'bg-purple-600 text-white' 
+                            : 'bg-gray-700 text-white'
+                        }`}>
                           <p className="text-sm leading-relaxed whitespace-pre-wrap m-0">
                             {message.content}
                           </p>
@@ -1350,7 +1342,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                     </div>
                   ))}
 
-                  {/* Sending state */}
+                  {/* Sending state - styled like a real message */}
                   {isSending && (
                     <div className="flex items-start justify-start">
                       <img 
@@ -1359,7 +1351,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                         className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1 mr-2"
                         style={{ objectPosition: 'center 30%' }}
                       />
-                      <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl">
+                      <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl max-w-[70%] flex-1">
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
                           <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
@@ -1386,23 +1378,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                 </div>
               )}
               
-              <div className="bg-black text-white px-4 py-3 rounded-t-lg max-w-4xl mx-auto">
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm">
-                    {isSending ? 'Processing...' : 'Ready'}
-                  </span>
-                  <div className="flex space-x-1">
-                    <div className={`w-2 h-2 rounded-full ${isSending ? 'bg-purple-400 animate-pulse' : 'bg-green-400'}`}></div>
-                    <div className={`w-2 h-2 rounded-full ${isSending ? 'bg-purple-500 animate-pulse' : 'bg-green-500'}`} style={{animationDelay: '0.2s'}}></div>
-                    <div className={`w-2 h-2 rounded-full ${isSending ? 'bg-purple-600 animate-pulse' : 'bg-green-600'}`} style={{animationDelay: '0.4s'}}></div>
-                  </div>
-                </div>
-                <div className="text-xs text-gray-400 mt-1">
-                  {isSending ? 'Sam is thinking...' : 'Ready to chat with Sam AI'}
-                </div>
-              </div>
-              
-              <div className="bg-gray-700 p-4 rounded-b-lg max-w-4xl mx-auto mt-2">
+              <div className="bg-gray-700 p-4 rounded-lg max-w-4xl mx-auto">
                 {/* LinkedIn Character Limits Infobox */}
                 <LinkedInLimitsInfobox 
                   messageLength={inputMessage.length}
