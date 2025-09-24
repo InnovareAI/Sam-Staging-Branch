@@ -54,12 +54,19 @@ export async function POST(request: NextRequest) {
     console.log('🚀 ULTRAHARD: Cost-optimized LLM request processing...');
     
     const { 
-      messages, 
+      messages = [], 
+      prompt,
       use_case = 'message_personalization',
       workspace_id,
       max_tokens,
       temperature = 0.3  // Lower creativity = lower cost
     } = await request.json();
+
+    // Handle prompt-only requests (convert to messages format)
+    let finalMessages = messages;
+    if (prompt && !messages.length) {
+      finalMessages = [{ role: 'user', content: prompt }];
+    }
 
     // ULTRAHARD: Instant model selection based on use case
     const modelConfig = COST_OPTIMIZED_MODELS[use_case];
@@ -78,9 +85,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Template optimization for message personalization
-    let optimizedMessages = messages;
+    let optimizedMessages = finalMessages;
     if (use_case === 'message_personalization') {
-      optimizedMessages = await optimizeWithTemplates(messages);
+      optimizedMessages = await optimizeWithTemplates(finalMessages);
       console.log(`💡 Template optimization: Reduced tokens by ~65%`);
     }
 
@@ -169,6 +176,11 @@ async function checkBudgetLimits(workspace_id: string, cost_per_token: number) {
  * ULTRAHARD: Template-based optimization for 65% token reduction
  */
 async function optimizeWithTemplates(messages: any[]) {
+  // ULTRAHARD FIX: Handle undefined messages
+  if (!messages || !Array.isArray(messages)) {
+    return [];
+  }
+  
   // Template optimization logic - reduce verbose prompts to templates
   const optimizedMessages = messages.map(msg => {
     if (msg.role === 'user' && msg.content.includes('personalize')) {
