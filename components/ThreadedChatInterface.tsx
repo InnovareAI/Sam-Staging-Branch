@@ -51,7 +51,7 @@ export default function ThreadedChatInterface() {
   const [showMemorySnapshots, setShowMemorySnapshots] = useState(false)
   const [memorySnapshots, setMemorySnapshots] = useState<any[]>([])
   const [isLoadingMemory, setIsLoadingMemory] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
 
   // Load threads on mount
   useEffect(() => {
@@ -67,7 +67,12 @@ export default function ThreadedChatInterface() {
     }
   }, [currentThread])
 
-  // Natural scroll behavior - no auto-scroll
+  // Ensure messages always start at top
+  useEffect(() => {
+    if (messagesContainerRef.current && messages.length > 0) {
+      messagesContainerRef.current.scrollTop = 0
+    }
+  }, [messages])
   
   const loadThreadMessages = async (threadId: string) => {
     setIsLoadingMessages(true)
@@ -1291,7 +1296,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 pb-6 space-y-4">
+            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 pb-6 space-y-4">
               {isLoadingMessages ? (
                 <div className="flex justify-center py-8">
                   <div className="text-gray-400">Loading messages...</div>
