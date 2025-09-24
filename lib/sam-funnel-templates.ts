@@ -124,7 +124,7 @@ export const SAM_FUNNEL_TEMPLATES: SamFunnelTemplate[] = [
         day_offset: 1,
         week: 1,
         weekday: 'Monday',
-        subject: 'The {industry} catch-22 that's limiting {company_name}',
+        subject: 'The {industry} catch-22 that is limiting {company_name}',
         message_template: "Hi {first_name},\n\nI spend a lot of time talking with {target_role} about the {industry} challenge: you need {desired_outcome} to show traction, but you can't afford to {current_limitation}.\n\nWe recently helped {similar_company} overcome this exact challenge and achieve {specific_result} in just {time_frame}.\n\nDoes this sound familiar for {company_name}?\n\nBest regards,\n{sender_name}",
         mandatory_element: 'competence_validation'
       },

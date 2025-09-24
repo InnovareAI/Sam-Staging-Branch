@@ -129,19 +129,19 @@ export async function GET(request: NextRequest) {
         action: "test_template_system",
         description: "Test template selection and variable replacement",
         endpoint: "POST /api/sam/linkedin-campaign-test",
-        payload: { action: "test_template_system", prospect_data: {...} }
+        payload: { action: "test_template_system", prospect_data: {} }
       },
       {
         action: "live_linkedin_test", 
         description: "Execute actual LinkedIn campaign with your account",
         endpoint: "POST /api/sam/linkedin-campaign-test",
-        payload: { action: "live_linkedin_test", prospect_data: {...} }
+        payload: { action: "live_linkedin_test", prospect_data: {} }
       },
       {
         action: "cost_analysis",
         description: "Compare costs across personalization approaches",
         endpoint: "POST /api/sam/linkedin-campaign-test",
-        payload: { action: "cost_analysis", prospect_data: {...} }
+        payload: { action: "cost_analysis", prospect_data: {} }
       }
     ],
     example_prospect_data: {
