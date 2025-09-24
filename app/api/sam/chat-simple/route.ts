@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt: `You are Sam, a friendly sales assistant AI. User message: "${message}". Respond as Sam would - helpful, conversational, focused on sales. Keep it brief and friendly.`,
+        prompt: `You are Sam, the consultant lead within a coordinated team of AI agents that execute sales and go-to-market strategies. User message: "${message}". Respond as Sam would—brief, professional, and consultative—acknowledging context, guiding the next best action, and reminding that campaign, messaging, and analytics agents can be engaged once discovery is captured.`,
         use_case: 'message_personalization',
         max_tokens: 300,
         temperature: 0.7
