@@ -67,11 +67,8 @@ export default function ThreadedChatInterface() {
     }
   }, [currentThread])
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages, isSending])
-
+  // Natural scroll behavior - no auto-scroll
+  
   const loadThreadMessages = async (threadId: string) => {
     setIsLoadingMessages(true)
     try {
@@ -88,10 +85,6 @@ export default function ThreadedChatInterface() {
     } finally {
       setIsLoadingMessages(false)
     }
-  }
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
   // Load memory snapshots
@@ -1236,7 +1229,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col h-full relative">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {currentThread ? (
           <>
             {/* Chat Header */}
@@ -1298,7 +1291,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
             </div>
 
             {/* Messages Area */}
-            <div className="overflow-y-auto p-6 space-y-4" style={{ height: 'calc(100vh - 200px)' }}>
+            <div className="flex-1 overflow-y-auto p-6 pb-6 space-y-4">
               {isLoadingMessages ? (
                 <div className="flex justify-center py-8">
                   <div className="text-gray-400">Loading messages...</div>
@@ -1380,11 +1373,10 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                   </div>
                 </div>
               )}
-              <div ref={messagesEndRef} className="h-32" />
             </div>
 
             {/* Chat Input */}
-            <div className="absolute bottom-0 left-80 right-0 p-6 bg-gray-900 border-t border-gray-700">
+            <div className="flex-shrink-0 p-6 bg-gray-900 border-t border-gray-700">
               {pendingProspectData.length > 0 && (
                 <div className="mb-4 max-w-4xl mx-auto">
                   <button
