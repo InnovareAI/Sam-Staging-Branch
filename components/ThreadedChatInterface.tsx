@@ -67,8 +67,13 @@ export default function ThreadedChatInterface() {
     }
   }, [currentThread])
 
-  // No auto-scroll - let it behave naturally
-  
+  // Keep newest-first layout visible by pinning scroll to top when messages update
+  useEffect(() => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = 0
+    }
+  }, [messages])
+
   const loadThreadMessages = async (threadId: string) => {
     setIsLoadingMessages(true)
     try {
@@ -1307,8 +1312,8 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                   <p className="text-gray-400 text-sm">Ask about prospects, strategies, or anything sales-related.</p>
                 </div>
               ) : (
-                <div className="flex flex-col-reverse gap-4">
-                  {messages.map((message) => (
+                <div className="flex flex-col space-y-4">
+                  {messages.slice().reverse().map((message) => (
                     <div key={message.id} className={`flex items-start ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                       {/* Avatar for assistant messages only */}
                       {message.role === 'assistant' && (
