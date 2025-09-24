@@ -1298,7 +1298,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 pb-20 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 pb-40 space-y-4">
               {isLoadingMessages ? (
                 <div className="flex justify-center py-8">
                   <div className="text-gray-400">Loading messages...</div>
@@ -1380,7 +1380,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                   </div>
                 </div>
               )}
-              <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} className="h-32" />
             </div>
 
             {/* Chat Input */}
