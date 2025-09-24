@@ -1307,8 +1307,8 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                   <p className="text-gray-400 text-sm">Ask about prospects, strategies, or anything sales-related.</p>
                 </div>
               ) : (
-                <div className="flex flex-col space-y-4 flex-grow">
-                  {messages.slice().reverse().map((message) => (
+                <div className="flex flex-col-reverse space-y-4 space-y-reverse flex-grow">
+                  {messages.map((message) => (
                     <div key={message.id} className={`flex items-start ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                       {/* Avatar for assistant messages only */}
                       {message.role === 'assistant' && (
