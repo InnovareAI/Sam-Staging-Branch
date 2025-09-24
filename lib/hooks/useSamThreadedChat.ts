@@ -110,7 +110,9 @@ export function useSamThreadedChat() {
       }
 
       const data = await response.json();
-      setMessages(data.messages || []);
+      const fetchedMessages: SamThreadMessage[] = data.messages || [];
+      const sortedMessages = [...fetchedMessages].sort((a, b) => b.message_order - a.message_order);
+      setMessages(sortedMessages);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -230,7 +232,16 @@ export function useSamThreadedChat() {
       
       // Add messages to current thread
       if (data.userMessage && data.samMessage) {
-        setMessages(prev => [...prev, data.userMessage, data.samMessage]);
+        setMessages(prev => {
+          const newMessages: SamThreadMessage[] = [];
+          if (data.userMessage) {
+            newMessages.push(data.userMessage);
+          }
+          if (data.samMessage) {
+            newMessages.push(data.samMessage);
+          }
+          return [...newMessages, ...prev];
+        });
         
         // Update thread in list
         setThreads(prev => 
