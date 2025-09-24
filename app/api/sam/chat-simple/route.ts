@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await response.json();
-    const samResponse = result.message || "Hello! I'm Sam, your AI-powered sales assistant. I help with prospecting, personalized outreach, and managing your sales pipeline. What would you like to work on today?";
+    const samResponse = result.message || "Hello, I'm Sam. I'm your consultant within a team of AI agents that execute sales and go-to-market strategies. I'll guide you through discovery, capture your ICP and business knowledge, then coordinate campaign, messaging, and analytics agents to act. What would you like us to tackle first?";
 
     console.log('✅ SAM Simple: Response generated successfully');
 
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ SAM Simple error:', error);
     return NextResponse.json({
-      response: "Hello! I'm Sam, your AI-powered sales assistant. I help with prospecting, personalized outreach, and managing your sales pipeline. What would you like to work on today?",
+      response: "Hello, I'm Sam. I'm your consultant within a team of AI agents that execute sales and go-to-market strategies. I'll guide you through discovery, capture your ICP and business knowledge, then coordinate campaign, messaging, and analytics agents to act. What would you like us to tackle first?",
       timestamp: new Date().toISOString(),
       aiPowered: false,
       fallback: true,

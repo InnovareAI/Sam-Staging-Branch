@@ -93,7 +93,7 @@ function getMockSamResponse(messages: any[]): string {
   }
   
   // Default response - American sales energy
-  return "Hey there! I'm Sam, your AI-powered sales weapon! I'm here to help you crush your revenue goals with high-converting campaigns, optimized messaging, and data-driven insights. I don't just give advice - I can actually execute campaigns, optimize templates, and track performance in real-time. Ready to accelerate your sales results? What's the biggest opportunity you want to tackle?";
+  return "Hello, I'm Sam. I'm your consultant within a team of AI agents that execute sales and go-to-market strategies. I'll guide you through discovery, capture your ICP and business knowledge, and then coordinate campaign, messaging, and analytics agents to execute with precision. What would you like us to tackle first?";
 }
 
 export async function GET(

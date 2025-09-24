@@ -47,8 +47,8 @@ export async function POST(req: NextRequest) {
       'outreach': "Outreach is my specialty! Are you focusing on email campaigns, LinkedIn messaging, or a multi-channel approach? I can help optimize your messaging for better response rates.",
       'pipeline': "Pipeline management is crucial for predictable revenue. Are you looking to improve lead qualification, track deal progression, or optimize your sales process?",
       'lead generation': "Lead generation is where it all starts! What's your current approach - are you using content marketing, paid ads, referrals, or direct outreach?",
-      'greeting': "Hello! I'm Sam, your AI-powered sales assistant. I help with prospecting, personalized outreach, and managing your sales pipeline. What would you like to work on today?",
-      'default': "Hello! I'm Sam, your AI-powered sales assistant. I help with prospecting, personalized outreach, and managing your sales pipeline. What would you like to work on today?"
+      'greeting': "Hello, I'm Sam. I'm your consultant within a team of AI agents that execute sales and go-to-market strategies. I'll guide you through discovery, capture your ICP and business knowledge, then coordinate campaign, messaging, and analytics agents to take action. What would you like us to tackle first?",
+      'default': "Hello, I'm Sam. I'm your consultant within a team of AI agents that execute sales and go-to-market strategies. I'll guide you through discovery, capture your ICP and business knowledge, then coordinate campaign, messaging, and analytics agents to take action. What would you like us to tackle first?"
     };
 
     // Improved keyword matching
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('❌ SAM AI Error:', error);
     return NextResponse.json({
-      response: "Hello! I'm Sam, your AI-powered sales assistant. I help with prospecting, personalized outreach, and managing your sales pipeline. What would you like to work on today?",
+      response: "Hello, I'm Sam. I'm your consultant within a team of AI agents that execute sales and go-to-market strategies. I'll guide you through discovery, capture your ICP and business knowledge, then coordinate campaign, messaging, and analytics agents to take action. What would you like us to tackle first?",
       timestamp: new Date().toISOString(),
       aiPowered: false,
       user: { authenticated: false, anonymous: true }
