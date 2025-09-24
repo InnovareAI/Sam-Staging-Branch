@@ -755,7 +755,14 @@ export default function Page() {
 
   // Auto-scroll to bottom when messages change or when sending
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current) {
+      // Use immediate scroll for better reliability
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+      // Alternative: use setTimeout for smooth scroll after DOM update
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
   };
 
   useEffect(() => {
@@ -3756,7 +3763,7 @@ export default function Page() {
           </div>
         ) : (
           /* CHAT MESSAGES */
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth">
             {messages.map((message) => (
               <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[70%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
@@ -3808,7 +3815,7 @@ export default function Page() {
                 </div>
               </div>
             )}
-            <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} className="h-1" />
           </div>
         )}
         </div>
@@ -3817,19 +3824,6 @@ export default function Page() {
         {activeMenuItem === 'chat' && (
           <div className="fixed bottom-0 left-72 right-0 z-50 px-6 pb-6 bg-background/95 backdrop-blur-sm border-t border-border/60">
             <div className="mx-auto max-w-4xl overflow-hidden rounded-3xl border border-border/60 bg-surface-highlight/60 shadow-glow">
-              <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`flex h-2.5 w-2.5 rounded-full ${
-                      isSending ? 'bg-primary/80 animate-pulse' : 'bg-emerald-400'
-                    }`}
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    {isSending ? 'Processing…' : 'Ready'}
-                  </span>
-                </div>
-                <span className="text-xs text-muted-foreground">Sam keeps your context synced</span>
-              </div>
               <div className="flex items-end gap-3 px-5 py-4">
                 <button
                   onClick={() => setShowConversationHistory(true)}
