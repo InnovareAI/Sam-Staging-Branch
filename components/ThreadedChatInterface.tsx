@@ -67,20 +67,7 @@ export default function ThreadedChatInterface() {
     }
   }, [currentThread])
 
-  // Auto-scroll to bottom for new messages (natural chat behavior)
-  useEffect(() => {
-    if (messagesContainerRef.current && messages.length > 0) {
-      // Use setTimeout to ensure DOM has updated after message rendering
-      setTimeout(() => {
-        if (messagesContainerRef.current) {
-          messagesContainerRef.current.scrollTo({
-            top: messagesContainerRef.current.scrollHeight,
-            behavior: 'smooth'
-          })
-        }
-      }, 50)
-    }
-  }, [messages])
+  // No auto-scroll - let it behave naturally
   
   const loadThreadMessages = async (threadId: string) => {
     setIsLoadingMessages(true)
@@ -1303,12 +1290,16 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
               )}
             </div>
 
-            {/* Messages Area */}
+            {/* Messages Area - Fixed Layout */}
             <div 
               ref={messagesContainerRef} 
-              className="flex-1 overflow-y-auto p-6 pb-32 space-y-4"
-              style={{ scrollBehavior: 'smooth' }}
+              className="flex-1 overflow-y-auto"
+              style={{ 
+                maxHeight: 'calc(100vh - 300px)',
+                minHeight: '400px'
+              }}
             >
+              <div className="p-6">
               {isLoadingMessages ? (
                 <div className="flex justify-center py-8">
                   <div className="text-gray-400">Loading messages...</div>
@@ -1330,8 +1321,8 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                 </div>
               ) : (
                 messages.map((message) => (
-                  <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[70%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
+                  <div key={message.id} className={`flex items-start ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4`}>
+                    <div className={`max-w-[70%]`}>
                       {message.role === 'assistant' && (
                         <div className="flex items-start space-x-3">
                           <img 
@@ -1369,7 +1360,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
               )}
               
               {isSending && (
-                <div className="flex justify-start">
+                <div className="flex items-start justify-start mb-4">
                   <div className="max-w-[70%]">
                     <div className="flex items-start space-x-3">
                       <img 
@@ -1390,6 +1381,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                   </div>
                 </div>
               )}
+              </div>
             </div>
 
             {/* Chat Input */}
