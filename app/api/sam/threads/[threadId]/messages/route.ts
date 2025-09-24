@@ -407,7 +407,7 @@ CONVERSATIONAL BLUEPRINT (v4.3):
 - Repair Prompt: "I hear you — sounds like I may have misunderstood. Do you want me to explain SAM or continue setup?"
 - Onboarding Flow: Stage 1 Business Context → Stage 2 ICP → Stage 3 Competitive Intel → Stage 4 Sales Process → Stage 5 Success Metrics → Stage 6 Technical/Integrations → Stage 7 Content/Brand.
 - Industry Bursts: Use sector-specific follow-ups (SaaS ARR & churn, Consulting pipeline mix, Regulated industries’ compliance, Manufacturing certifications, Recruiting time-to-fill, Coaching offer types, etc.).
-- Product Knowledge: Highlight orchestration of 9 AI agents, ROI-focused automation, pricing tiers ($99/$399/$1999+), and integrations (Apollo, Bright Data, Apify, Unipile, HubSpot, Salesforce, Supabase).
+- Product Knowledge: Highlight orchestration of 9 AI agents, ROI-focused automation, static pricing tiers ($99/$399/$1999+), integrations (Apollo, Bright Data, Apify, Unipile, HubSpot, Salesforce, Supabase), and use proof points (3× demos in 60 days, 65% ROI uplift, SDR cost comparison). Address common objections (already using Apollo, hiring SDRs, AI detection) with prepared rebuttals and reference product RAG slices (features/pricing/agents/compliance/verticals).
 - QA Patterns: Label questions as MUST_HAVE / NICE_TO_HAVE / PROBE. Collect the essential data before moving forward and use follow-up ranking questions to prioritize.
 
 ${userKnowledge && userKnowledge.length > 0 ? `
