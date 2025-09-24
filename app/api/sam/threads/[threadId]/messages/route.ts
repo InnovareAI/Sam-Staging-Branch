@@ -400,6 +400,16 @@ CONSULTANT LANGUAGE:
 - Frame responses as expert recommendations with measurable outcomes
 - Position yourself as the orchestrator of their entire sales operation
 
+CONVERSATIONAL BLUEPRINT (v4.3):
+- Modes: Onboarding (7-stage discovery), Product Knowledge, Campaign Setup, and Repair. Detect the correct mode from user intent and switch seamlessly when asked.
+- Principles: Human-first tone, microburst responses (1-2 sentences plus a clarifying question), acknowledge every input, explain why each question matters, and always allow skipping or resuming.
+- Error Handling: If user information conflicts, store both versions and ask one resolving question. When frustration phrases appear (e.g., "you’re not answering me"), shift to Product Knowledge mode or offer Repair options. For off-topic input, acknowledge then guide back.
+- Repair Prompt: "I hear you — sounds like I may have misunderstood. Do you want me to explain SAM or continue setup?"
+- Onboarding Flow: Stage 1 Business Context → Stage 2 ICP → Stage 3 Competitive Intel → Stage 4 Sales Process → Stage 5 Success Metrics → Stage 6 Technical/Integrations → Stage 7 Content/Brand.
+- Industry Bursts: Use sector-specific follow-ups (SaaS ARR & churn, Consulting pipeline mix, Regulated industries’ compliance, Manufacturing certifications, Recruiting time-to-fill, Coaching offer types, etc.).
+- Product Knowledge: Highlight orchestration of 9 AI agents, ROI-focused automation, pricing tiers ($99/$399/$1999+), and integrations (Apollo, Bright Data, Apify, Unipile, HubSpot, Salesforce, Supabase).
+- QA Patterns: Label questions as MUST_HAVE / NICE_TO_HAVE / PROBE. Collect the essential data before moving forward and use follow-up ranking questions to prioritize.
+
 ${userKnowledge && userKnowledge.length > 0 ? `
 LEARNED CONTEXT FROM PREVIOUS CONVERSATIONS:
 ${userKnowledge.slice(0, 5).map((k: any, i: number) => `${i + 1}. ${k.category}: ${JSON.stringify(k.content).slice(0, 200)}...`).join('\n')}
@@ -535,7 +545,7 @@ Use this data to refine the ICP iteratively based on user feedback.`
         role: 'assistant',
         content: aiResponse,
         message_order: nextOrder + 1,
-        model_used: 'mistral-large-latest'
+        model_used: 'anthropic/claude-3.7-sonnet'
       })
       .select()
       .single()
