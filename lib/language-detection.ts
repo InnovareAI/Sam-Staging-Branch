@@ -32,7 +32,7 @@ export const SUPPORTED_LANGUAGES: Record<SupportedLanguage, LanguageConfig> = {
     nativeName: 'English',
     flag: '🇺🇸',
     patterns: [/\b(hello|hi|hey|good|morning|afternoon|thanks|please|yes|no)\b/i],
-    greeting: "Hi there! I'm Sam, your AI Sales Assistant."
+    greeting: "Hello, I'm Sam. I'm your consultant within a team of AI agents that execute sales and go-to-market strategies."
   },
   es: {
     code: 'es', 
