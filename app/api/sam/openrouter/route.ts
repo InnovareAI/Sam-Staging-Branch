@@ -30,9 +30,9 @@ const COST_OPTIMIZED_MODELS = {
   
   // Premium for complex reasoning (limited usage)
   'sam_reasoning': {
-    model: 'anthropic/claude-3-haiku',
+    model: 'anthropic/claude-3.7-sonnet',
     max_tokens: 800,
-    cost_per_1k_tokens: 0.0025,
+    cost_per_1k_tokens: 0.0035,
     use_case: 'Complex campaign strategy only'
   }
 };
@@ -233,4 +233,3 @@ async function trackUsage(usage: any) {
   // In production, would save to Supabase mcp_usage_tracking table
   console.log('📊 Usage tracked:', usage);
 }
-

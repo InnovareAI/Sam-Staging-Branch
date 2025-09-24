@@ -27,7 +27,7 @@ async function callOpenRouterAPI(messages: any[], systemPrompt: string) {
         'X-Title': 'Sam AI Sales Consultant'
       },
       body: JSON.stringify({
-        model: 'mistralai/mistral-large-2407',
+        model: 'anthropic/claude-3.7-sonnet',
         messages: [
           { role: 'system', content: systemPrompt },
           ...messages.map((msg: any) => ({
