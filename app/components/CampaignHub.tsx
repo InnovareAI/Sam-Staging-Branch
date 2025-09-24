@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Play, Pause, BarChart3, Users, Mail, Megaphone, Target, TrendingUp, Calendar, Settings, Eye, MessageSquare, Zap, FileText, Edit, Copy, Send, Clock, CheckCircle, XCircle, Upload, X } from 'lucide-react';
+import { Plus, Play, Pause, BarChart3, Users, Mail, Megaphone, Target, TrendingUp, Calendar, Settings, Eye, MessageSquare, Zap, FileText, Edit, Copy, Send, Clock, CheckCircle, XCircle, Upload, X, Brain } from 'lucide-react';
 
 function CampaignList() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
@@ -419,6 +419,7 @@ function CampaignList() {
 function CampaignBuilder({ onClose }: { onClose?: () => void }) {
   const [name, setName] = useState('Outbound – VP Sales (SaaS, NA)');
   const [campaignType, setCampaignType] = useState('connector');
+  const [executionType, setExecutionType] = useState('direct_linkedin');
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvData, setCsvData] = useState<any[]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
@@ -441,6 +442,8 @@ function CampaignBuilder({ onClose }: { onClose?: () => void }) {
   const [connectionMessage, setConnectionMessage] = useState('');
   const [alternativeMessage, setAlternativeMessage] = useState('');
   const [followUpMessages, setFollowUpMessages] = useState<string[]>(['']);
+  const [activeField, setActiveField] = useState<{type: 'connection' | 'alternative' | 'followup', index?: number}>({type: 'connection'});
+  const [activeTextarea, setActiveTextarea] = useState<HTMLTextAreaElement | null>(null);
   
   const campaignTypes = [
     { 
@@ -469,6 +472,73 @@ function CampaignBuilder({ onClose }: { onClose?: () => void }) {
     }
   ];
 
+  // V1 Campaign Orchestration - Sophisticated Execution Types
+  const [workspaceTier, setWorkspaceTier] = useState('startup'); // Default to startup
+  const [workspaceFeatures, setWorkspaceFeatures] = useState({
+    unipile_only: true,
+    reachinbox_enabled: false,
+    advanced_hitl: false,
+    custom_workflows: false,
+    advanced_analytics: false
+  });
+
+  const executionTypes = [
+    { 
+      value: 'intelligence', 
+      label: 'SAM Intelligence Campaign', 
+      description: 'Complete intelligence pipeline with data discovery, enrichment, and personalized outreach',
+      icon: Brain,
+      duration: workspaceTier === 'enterprise' ? '2 min per prospect' : '3 min per prospect',
+      features: ['AI-powered prospect discovery', 'Advanced data enrichment', 'Personalized messaging', 'Cross-channel coordination'],
+      tierRequirements: {
+        startup: 'LinkedIn + Email via Unipile',
+        sme: 'LinkedIn (Unipile) + Email (ReachInbox)',
+        enterprise: 'Full multi-channel with advanced analytics'
+      },
+      channels: {
+        startup: ['LinkedIn', 'Basic Email'],
+        sme: ['LinkedIn', 'Professional Email', 'Reply Monitoring'],
+        enterprise: ['LinkedIn', 'Enterprise Email', 'Advanced Analytics', 'Custom Workflows']
+      }
+    },
+    { 
+      value: 'event_invitation', 
+      label: 'Event Invitation Campaign', 
+      description: 'Event-focused prospect discovery and invitation orchestration with targeted messaging',
+      icon: Calendar,
+      duration: workspaceTier === 'enterprise' ? '1.5 min per prospect' : '2 min per prospect',
+      features: ['Event-specific targeting', 'Registration tracking', 'Follow-up sequences', 'RSVP management'],
+      tierRequirements: {
+        startup: 'Event invites via LinkedIn',
+        sme: 'Multi-channel event promotion',
+        enterprise: 'Advanced event analytics & tracking'
+      },
+      channels: {
+        startup: ['LinkedIn Events', 'Basic Invitations'],
+        sme: ['LinkedIn Events', 'Email Campaigns', 'Calendar Integration'],
+        enterprise: ['Full Event Platform', 'Advanced Tracking', 'Custom Landing Pages']
+      }
+    },
+    { 
+      value: 'direct_linkedin', 
+      label: 'Direct LinkedIn Campaign', 
+      description: 'Fast direct LinkedIn messaging to existing prospects (classic mode)',
+      icon: MessageSquare,
+      duration: workspaceTier === 'enterprise' ? '0.5 min per prospect' : '1 min per prospect',
+      features: ['Direct LinkedIn messaging', 'Connection requests', 'Follow-up sequences', 'Response tracking'],
+      tierRequirements: {
+        startup: 'Basic LinkedIn messaging (50/day)',
+        sme: 'Professional LinkedIn messaging (100/day)',
+        enterprise: 'Enterprise LinkedIn messaging (200/day)'
+      },
+      channels: {
+        startup: ['LinkedIn Basic'],
+        sme: ['LinkedIn Professional', 'Enhanced Targeting'],
+        enterprise: ['LinkedIn Enterprise', 'Advanced Analytics', 'Custom Sequences']
+      }
+    }
+  ];
+
   const placeholders = [
     { key: '{first_name}', description: 'Contact\'s first name' },
     { key: '{last_name}', description: 'Contact\'s last name' },
@@ -478,12 +548,51 @@ function CampaignBuilder({ onClose }: { onClose?: () => void }) {
     { key: '{location}', description: 'Geographic location' }
   ];
 
-  // Load approved prospects when data source changes to 'approved'
+  // Load workspace tier and approved prospects
   useEffect(() => {
+    loadWorkspaceTier();
     if (dataSource === 'approved') {
       loadApprovedProspects();
     }
   }, [dataSource]);
+
+  const loadWorkspaceTier = async () => {
+    try {
+      // In production, this would fetch from /api/workspace/tier
+      // For now, simulate different tiers for demo
+      const simulatedTier = 'startup'; // Can be 'startup', 'sme', 'enterprise'
+      setWorkspaceTier(simulatedTier);
+      
+      // Set features based on tier
+      const tierFeatures = {
+        startup: {
+          unipile_only: true,
+          reachinbox_enabled: false,
+          advanced_hitl: false,
+          custom_workflows: false,
+          advanced_analytics: false
+        },
+        sme: {
+          unipile_only: false,
+          reachinbox_enabled: true,
+          advanced_hitl: false,
+          custom_workflows: false,
+          advanced_analytics: false
+        },
+        enterprise: {
+          unipile_only: false,
+          reachinbox_enabled: true,
+          advanced_hitl: true,
+          custom_workflows: true,
+          advanced_analytics: true
+        }
+      };
+      
+      setWorkspaceFeatures(tierFeatures[simulatedTier] || tierFeatures.startup);
+    } catch (error) {
+      console.error('Error loading workspace tier:', error);
+    }
+  };
 
   const loadApprovedProspects = async () => {
     setLoadingApprovedProspects(true);
@@ -521,13 +630,82 @@ function CampaignBuilder({ onClose }: { onClose?: () => void }) {
     }
   };
 
-  const insertPlaceholder = (placeholder: string, messageType: 'connection' | 'alternative' | 'followup', index?: number) => {
+  const insertPlaceholder = (placeholder: string, messageType?: 'connection' | 'alternative' | 'followup', index?: number) => {
+    // If no messageType specified, use the currently focused textarea
+    if (!messageType && activeTextarea) {
+      const start = activeTextarea.selectionStart;
+      const end = activeTextarea.selectionEnd;
+      
+      // Determine which field this textarea belongs to and update accordingly
+      if (activeTextarea.placeholder.includes('Hi {first_name}')) {
+        const currentValue = connectionMessage;
+        const newValue = currentValue.substring(0, start) + placeholder + currentValue.substring(end);
+        setConnectionMessage(newValue);
+      } else if (activeTextarea.placeholder.includes('Would love to connect')) {
+        const currentValue = alternativeMessage;
+        const newValue = currentValue.substring(0, start) + placeholder + currentValue.substring(end);
+        setAlternativeMessage(newValue);
+      } else if (activeTextarea.dataset.followupIndex !== undefined) {
+        const followupIndex = parseInt(activeTextarea.dataset.followupIndex);
+        const currentValue = followUpMessages[followupIndex];
+        const newValue = currentValue.substring(0, start) + placeholder + currentValue.substring(end);
+        updateFollowUpMessage(followupIndex, newValue);
+      }
+      
+      // Restore cursor position after the inserted placeholder
+      setTimeout(() => {
+        activeTextarea.focus();
+        activeTextarea.setSelectionRange(start + placeholder.length, start + placeholder.length);
+      }, 0);
+      return;
+    }
+
+    // Fallback to original logic if messageType is explicitly provided
     if (messageType === 'connection') {
-      setConnectionMessage(prev => prev + placeholder);
+      const textarea = document.querySelector('textarea[placeholder*="Hi {first_name}"]') as HTMLTextAreaElement;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const currentValue = connectionMessage;
+        const newValue = currentValue.substring(0, start) + placeholder + currentValue.substring(end);
+        setConnectionMessage(newValue);
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(start + placeholder.length, start + placeholder.length);
+        }, 0);
+      } else {
+        setConnectionMessage(prev => prev + placeholder);
+      }
     } else if (messageType === 'alternative') {
-      setAlternativeMessage(prev => prev + placeholder);
+      const textarea = document.querySelector('textarea[placeholder*="Would love to connect"]') as HTMLTextAreaElement;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const currentValue = alternativeMessage;
+        const newValue = currentValue.substring(0, start) + placeholder + currentValue.substring(end);
+        setAlternativeMessage(newValue);
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(start + placeholder.length, start + placeholder.length);
+        }, 0);
+      } else {
+        setAlternativeMessage(prev => prev + placeholder);
+      }
     } else if (messageType === 'followup' && index !== undefined) {
-      updateFollowUpMessage(index, followUpMessages[index] + placeholder);
+      const textarea = document.querySelector(`textarea[data-followup-index="${index}"]`) as HTMLTextAreaElement;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const currentValue = followUpMessages[index];
+        const newValue = currentValue.substring(0, start) + placeholder + currentValue.substring(end);
+        updateFollowUpMessage(index, newValue);
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(start + placeholder.length, start + placeholder.length);
+        }, 0);
+      } else {
+        updateFollowUpMessage(index, followUpMessages[index] + placeholder);
+      }
     }
   };
 
@@ -748,16 +926,24 @@ Would you like me to adjust these or create more variations?`
 
       // Step 3: Auto-execute if LinkedIn IDs found
       if (uploadResult.prospects_with_linkedin_ids > 0) {
-        const executeResponse = await fetch('/api/campaigns/linkedin/execute', {
+        const executeResponse = await fetch('/api/campaigns/linkedin/execute-via-n8n', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            campaign_id: campaign.id
+            campaignId: campaign.id,
+            executionType: executionType
           })
         });
 
         if (executeResponse.ok) {
-          alert(`✅ Campaign "${name}" created and launched!\n\n📊 Results:\n• ${csvData.length} prospects uploaded\n• ${uploadResult.prospects_with_linkedin_ids} ready for messaging\n• ${uploadResult.prospects_with_linkedin_ids} messages queued\n\nCampaign is now running automatically!`);
+          const executionResult = await executeResponse.json();
+          const selectedExecType = executionTypes.find(t => t.value === executionType);
+          // V1 Sophisticated Success Message
+          const tierInfo = workspaceTier.toUpperCase();
+          const channels = selectedExecType?.channels[workspaceTier]?.join(', ') || 'LinkedIn';
+          const hitlMethod = workspaceFeatures.advanced_hitl ? 'UI-based' : 'Email-based';
+          
+          alert(`🎉 V1 Campaign Orchestration Launched!\n\n📊 CAMPAIGN DETAILS:\n• Campaign: "${name}"\n• Execution Mode: ${selectedExecType?.label}\n• Workspace Tier: ${tierInfo}\n• Prospects Uploaded: ${csvData.length}\n• Ready for Messaging: ${uploadResult.prospects_with_linkedin_ids}\n\n🔄 EXECUTION CONFIGURATION:\n• Channels: ${channels}\n• HITL Approval: ${hitlMethod} (Required)\n• Rate Limits: ${selectedExecType?.tierRequirements[workspaceTier]}\n• Estimated Processing: ${selectedExecType?.duration}\n\n⏰ TIMING:\n• HITL Approval: ${executionResult.estimated_times?.hitl_approval_time ? new Date(executionResult.estimated_times.hitl_approval_time).toLocaleString() : '~15-30 minutes'}\n• Campaign Completion: ${executionResult.estimated_times?.approval_to_completion ? new Date(executionResult.estimated_times.approval_to_completion).toLocaleString() : 'calculating...'}\n\n📬 NEXT STEPS:\n• Approval email sent to ${executionResult.hitl_approval?.approver_email || 'workspace admin'}\n• Campaign will start after message approval\n• Real-time status updates via N8N Master Funnel\n• Monitor progress in campaign dashboard\n\n🚀 SAM AI V1 Campaign Orchestration is now active!`);
         } else {
           alert(`✅ Campaign "${name}" created!\n\n📊 Upload Results:\n• ${csvData.length} prospects uploaded\n• ${uploadResult.prospects_with_linkedin_ids} with LinkedIn IDs\n• Ready for manual launch`);
         }
@@ -857,6 +1043,131 @@ Would you like me to adjust these or create more variations?`
                       <h4 className="text-white font-medium">{type.label}</h4>
                     </div>
                     <p className="text-gray-400 text-sm">{type.description}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Execution Type Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-3">
+              Execution Mode
+            </label>
+            {/* Workspace Tier Badge */}
+            <div className="mb-6 p-4 bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-white font-medium capitalize">
+                    {workspaceTier} Tier Workspace
+                  </h4>
+                  <p className="text-gray-300 text-sm">
+                    {workspaceTier === 'startup' && 'Unipile integration for LinkedIn + basic email'}
+                    {workspaceTier === 'sme' && 'Unipile + ReachInbox for professional campaigns'}
+                    {workspaceTier === 'enterprise' && 'Full multi-channel with advanced HITL approval'}
+                  </p>
+                </div>
+                <div className="text-xs text-purple-300 bg-purple-500/20 px-3 py-1 rounded-full uppercase">
+                  {workspaceTier}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {executionTypes.map((type) => {
+                const IconComponent = type.icon;
+                const tierChannels = type.channels[workspaceTier] || type.channels.startup;
+                const tierRequirement = type.tierRequirements[workspaceTier] || type.tierRequirements.startup;
+                
+                return (
+                  <div
+                    key={type.value}
+                    onClick={() => setExecutionType(type.value)}
+                    className={`p-5 border rounded-lg cursor-pointer transition-all ${
+                      executionType === type.value
+                        ? 'border-purple-500 bg-purple-600/20 ring-2 ring-purple-500/30'
+                        : 'border-gray-600 bg-gray-700 hover:border-gray-500 hover:bg-gray-600/50'
+                    }`}
+                  >
+                    <div className="flex items-start">
+                      <IconComponent className="text-purple-400 mr-4 mt-1 flex-shrink-0" size={24} />
+                      <div className="flex-1">
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-white font-medium">{type.label}</h4>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-purple-400 bg-purple-500/20 px-2 py-1 rounded">
+                              {type.duration}
+                            </span>
+                            {workspaceFeatures.advanced_hitl && (
+                              <span className="text-xs text-green-400 bg-green-500/20 px-2 py-1 rounded">
+                                HITL
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Description */}
+                        <p className="text-gray-400 text-sm mb-3">{type.description}</p>
+
+                        {/* Tier-specific requirements */}
+                        <div className="mb-3 p-3 bg-gray-800/50 rounded-lg">
+                          <div className="text-xs text-gray-300 font-medium mb-1">
+                            {workspaceTier.toUpperCase()} TIER CONFIGURATION:
+                          </div>
+                          <div className="text-xs text-purple-300">
+                            {tierRequirement}
+                          </div>
+                        </div>
+
+                        {/* Available channels for this tier */}
+                        <div className="mb-3">
+                          <div className="text-xs text-gray-400 font-medium mb-2">Available Channels:</div>
+                          <div className="flex flex-wrap gap-1">
+                            {tierChannels.map((channel, index) => (
+                              <span 
+                                key={index}
+                                className="text-xs text-blue-300 bg-blue-500/20 px-2 py-1 rounded"
+                              >
+                                {channel}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Features */}
+                        <div className="grid grid-cols-2 gap-2">
+                          {type.features.map((feature, index) => (
+                            <div key={index} className="flex items-center text-xs text-gray-300">
+                              <CheckCircle size={12} className="text-green-400 mr-1 flex-shrink-0" />
+                              {feature}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* HITL Approval Info */}
+                        {executionType === type.value && (
+                          <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                            <div className="flex items-start">
+                              <Clock size={16} className="text-yellow-400 mr-2 mt-0.5 flex-shrink-0" />
+                              <div>
+                                <div className="text-sm text-yellow-300 font-medium">HITL Approval Required</div>
+                                <div className="text-xs text-yellow-200 mt-1">
+                                  Campaign messages will be sent for approval before execution.
+                                  {workspaceFeatures.advanced_hitl 
+                                    ? ' Advanced UI-based approval available.'
+                                    : ' Email-based approval process.'
+                                  }
+                                </div>
+                                <div className="text-xs text-yellow-200 mt-1">
+                                  Estimated approval time: {type.value === 'intelligence' ? '30' : type.value === 'event_invitation' ? '20' : '15'} minutes
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
@@ -1183,6 +1494,10 @@ Would you like me to adjust these or create more variations?`
               rows={4}
               value={connectionMessage}
               onChange={e => setConnectionMessage(e.target.value)}
+              onFocus={(e) => {
+                setActiveField({type: 'connection'});
+                setActiveTextarea(e.target as HTMLTextAreaElement);
+              }}
               placeholder="Hi {first_name}, I saw your profile and would love to connect..."
               maxLength={275}
             />
@@ -1205,6 +1520,10 @@ Would you like me to adjust these or create more variations?`
               rows={2}
               value={alternativeMessage}
               onChange={e => setAlternativeMessage(e.target.value)}
+              onFocus={(e) => {
+                setActiveField({type: 'alternative'});
+                setActiveTextarea(e.target as HTMLTextAreaElement);
+              }}
               placeholder="Would love to connect with you on LinkedIn!"
               maxLength={115}
             />
@@ -1249,7 +1568,12 @@ Would you like me to adjust these or create more variations?`
                   rows={3}
                   value={message}
                   onChange={e => updateFollowUpMessage(index, e.target.value)}
+                  onFocus={(e) => {
+                    setActiveField({type: 'followup', index});
+                    setActiveTextarea(e.target as HTMLTextAreaElement);
+                  }}
                   placeholder={`Follow-up message ${index + 1}...`}
+                  data-followup-index={index}
                 />
               </div>
             ))}
@@ -1261,7 +1585,7 @@ Would you like me to adjust these or create more variations?`
               {placeholders.map((placeholder) => (
                 <button
                   key={placeholder.key}
-                  onClick={() => insertPlaceholder(placeholder.key, 'connection')}
+                  onClick={() => insertPlaceholder(placeholder.key)}
                   className="text-xs px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
                   title={placeholder.description}
                 >

@@ -95,15 +95,33 @@ export async function POST(request: NextRequest) {
     // Generate workspace-specific user ID to prevent cross-workspace account leakage
     const workspaceUserId = `${workspaceId}:${user.id}`
     
-    // Since hosted auth wizard endpoints don't exist, use regular account creation
-    // This will connect via the standard Unipile flow
-    console.log('🔗 LinkedIn connection will use standard account creation flow')
+    // Use the existing hosted auth wizard endpoint
+    console.log('🔗 LinkedIn connection will use hosted auth wizard')
     
     // Force production URL for callback
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'
     
-    // For now, return a simple success response that will trigger the credential form
-    const authUrl = null // No wizard URL available
+    // Call the existing hosted auth endpoint to get wizard URL
+    let authUrl = null;
+    try {
+      const hostedAuthResponse = await fetch(`${siteUrl}/api/linkedin/hosted-auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': request.headers.get('cookie') || ''
+        }
+      });
+
+      if (hostedAuthResponse.ok) {
+        const hostedAuthData = await hostedAuthResponse.json();
+        authUrl = hostedAuthData.auth_url;
+        console.log('✅ Got hosted auth URL:', authUrl);
+      } else {
+        console.warn('⚠️ Hosted auth failed, falling back to credential form');
+      }
+    } catch (error) {
+      console.warn('⚠️ Hosted auth error, falling back to credential form:', error);
+    }
     
     console.log(`🔗 Using callback URL: ${siteUrl}/api/linkedin/callback`)
 
@@ -113,7 +131,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       action: authAction,
-      use_credential_form: true, // Signal to use the credential collection form
+      auth_url: authUrl, // Will be null if wizard failed, triggering credential form
+      use_credential_form: !authUrl, // Use credential form only if wizard URL failed
+      use_hosted_auth: !!authUrl, // Use hosted auth if wizard URL available
       existing_connections: existingConnections?.length || 0,
       existing_accounts: existingConnections?.map(conn => ({
         id: conn.id,

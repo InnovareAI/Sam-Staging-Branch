@@ -1,3 +1,17 @@
+# 🚨 NEW ASSISTANT? READ THIS FIRST! 🚨
+
+## **FOR NEW CLAUDE ASSISTANTS - MANDATORY ONBOARDING**
+
+**STOP! READ THESE FILES BEFORE DOING ANYTHING:**
+
+1. **`QUICK_START_GUIDE.md`** ← Read this first (5 minutes)
+2. **`NEW_ASSISTANT_ONBOARDING.md`** ← Complete onboarding guide (30 minutes)
+3. **`CLAUDE.md`** ← Project bible with all instructions and architecture
+
+**🎯 You are working on SAM AI - $100M ARR target by 2027. Every decision matters.**
+
+---
+
 # SAM AI Platform
 
 SAM is an intelligent AI-powered Sales Assistant platform built for multi-tenant B2B operations. It provides intelligent sales automation, customer engagement, and pipeline management with enterprise-grade security.

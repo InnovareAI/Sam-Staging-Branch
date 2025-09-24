@@ -174,7 +174,7 @@ export default function DataCollectionHub({
   const handleApprove = (approvedData: ProspectData[]) => {
     console.log('Approved prospects:', approvedData)
     onApprovalComplete?.(approvedData)
-    alert(`✅ Approved ${approvedData.length} prospects!\n\n🎯 What's Next:\n1. Go to "Approved Prospects" to view all your approved data\n2. Select prospects and create campaigns\n3. Launch outreach with confidence\n\nYour approved prospects are now saved and ready to use!`)
+    alert(`✅ Approved ${approvedData.length} prospects!\n\n🎯 What's Next:\n1. Scroll down to view your approved data in the "Approved Prospects" section\n2. Select prospects and create campaigns\n3. Launch outreach with confidence\n\nYour approved prospects are now saved and ready to use!`)
   }
 
   const handleReject = (rejectedData: ProspectData[]) => {

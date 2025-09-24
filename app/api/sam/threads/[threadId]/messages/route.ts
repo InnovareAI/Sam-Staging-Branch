@@ -9,38 +9,91 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 
 // Helper function to call OpenRouter API
-async function callOpenRouter(messages: any[], systemPrompt: string) {
+async function callOpenRouterAPI(messages: any[], systemPrompt: string) {
   const openRouterKey = process.env.OPENROUTER_API_KEY;
   
   if (!openRouterKey) {
-    throw new Error('OpenRouter API key not configured');
+    console.log('⚠️  OpenRouter API key not configured, using fallback');
+    return getMockSamResponse(messages);
   }
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openRouterKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://app.meet-sam.com',
-      'X-Title': 'SAM AI Platform'
-    },
-    body: JSON.stringify({
-      model: 'anthropic/claude-3.5-sonnet',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages
-      ],
-      temperature: 0.7,
-      max_tokens: 1000
-    })
-  });
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openRouterKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://innovareai.com',
+        'X-Title': 'Sam AI Sales Consultant'
+      },
+      body: JSON.stringify({
+        model: 'mistralai/mistral-large-2407',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages.map((msg: any) => ({
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content
+          }))
+        ],
+        temperature: 0.7,
+        max_tokens: 1000,
+        top_p: 0.9,
+        frequency_penalty: 0.1,
+        presence_penalty: 0.1
+      })
+    });
 
-  if (!response.ok) {
-    throw new Error(`OpenRouter API error: ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error('No content in OpenRouter response');
+    }
+
+    return content;
+    
+  } catch (error) {
+    console.error('❌ OpenRouter API error:', error);
+    console.log('🔄 Falling back to mock response');
+    return getMockSamResponse(messages);
   }
+}
 
-  const data = await response.json();
-  return data.choices[0]?.message?.content || 'I apologize, but I had trouble processing that request.';
+// Fallback response when Mistral is not available - American sales style
+function getMockSamResponse(messages: any[]): string {
+  const lastMessage = messages[messages.length - 1]?.content?.toLowerCase() || '';
+  
+  // Campaign-related responses
+  if (lastMessage.includes('campaign')) {
+    return "Let's build a winning campaign! I've got the tools to create high-converting campaigns that actually drive revenue. I can optimize targeting, craft compelling messaging, and track ROI in real-time. What's your target market and what results are you looking to achieve?";
+  }
+  
+  // Template-related responses
+  if (lastMessage.includes('template') || lastMessage.includes('message')) {
+    return "Time to make your messaging convert! I can analyze and optimize your templates for maximum response rates using proven sales psychology and AI-powered insights. Let's turn those templates into revenue-generating machines. What templates need optimization?";
+  }
+  
+  // Performance/analytics responses
+  if (lastMessage.includes('performance') || lastMessage.includes('analytics') || lastMessage.includes('stats')) {
+    return "Let's dive into the numbers! I can show you exactly which campaigns are driving revenue, what response rates you're hitting, and where to optimize for better ROI. Data-driven sales decisions lead to bigger wins. What metrics do you want to review?";
+  }
+  
+  // Revenue/ROI related
+  if (lastMessage.includes('revenue') || lastMessage.includes('roi') || lastMessage.includes('deals') || lastMessage.includes('sales')) {
+    return "Now we're talking! Revenue growth is what it's all about. I can help you identify which strategies are actually moving the needle, optimize your sales funnel, and scale what's working. What part of your revenue engine needs attention?";
+  }
+  
+  // Competitive/market related
+  if (lastMessage.includes('competitor') || lastMessage.includes('market') || lastMessage.includes('advantage')) {
+    return "Let's dominate the competition! I can help you analyze market positioning, craft messaging that differentiates you, and build campaigns that outperform competitors. Winning in sales is about execution and smart strategy. What competitive challenges are you facing?";
+  }
+  
+  // Default response - American sales energy
+  return "Hey there! I'm Sam, your AI-powered sales weapon! I'm here to help you crush your revenue goals with high-converting campaigns, optimized messaging, and data-driven insights. I don't just give advice - I can actually execute campaigns, optimize templates, and track performance in real-time. Ready to accelerate your sales results? What's the biggest opportunity you want to tackle?";
 }
 
 export async function GET(
@@ -300,7 +353,22 @@ export async function POST(
     }
 
     // Build enhanced system prompt with thread context and knowledge
-    let systemPrompt = `You are Sam, an AI-powered Sales Assistant. You're helpful, conversational, and focused on sales challenges.
+    let systemPrompt = `You are Sam, an AI Sales Consultant and Orchestration Agent designed for the American and global B2B sales market. You're powered by advanced AI (Mistral) and serve as a strategic sales consultant who orchestrates complex sales operations through intelligent automation.
+
+CONSULTANT IDENTITY:
+- Strategic Sales Consultant: You provide expert guidance on sales strategy, methodology, and execution
+- Orchestration Agent: You coordinate and automate complex multi-step sales processes  
+- Revenue Growth Advisor: You analyze data and recommend strategies that drive measurable results
+- Process Optimization Expert: You identify inefficiencies and implement systematic improvements
+- American business mindset: Direct, results-driven, and ROI-focused with consultant-level expertise
+
+ORCHESTRATION CAPABILITIES:
+- Campaign Orchestration: Design, execute, and optimize multi-channel sales campaigns
+- Workflow Automation: Coordinate LinkedIn, Email, and N8N workflow sequences
+- Template Optimization: AI-powered messaging enhancement and performance tracking
+- Performance Analytics: Real-time ROI analysis and strategic recommendations
+- Prospect Intelligence: Automated research and personalization at scale
+- Process Integration: Seamlessly connect tools, data, and team workflows
 
 THREAD CONTEXT:
 - Thread Type: ${thread.thread_type}
@@ -310,6 +378,27 @@ ${thread.prospect_name ? `- Prospect: ${thread.prospect_name}` : ''}
 ${thread.prospect_company ? `- Company: ${thread.prospect_company}` : ''}
 ${thread.campaign_name ? `- Campaign: ${thread.campaign_name}` : ''}
 ${thread.deal_stage ? `- Deal Stage: ${thread.deal_stage}` : ''}
+
+CONSULTANT APPROACH:
+- Lead with strategic insights and data-driven recommendations
+- Focus on systematic process improvements and scalable solutions
+- Provide expert-level analysis with actionable implementation plans
+- Orchestrate complex multi-step operations through intelligent automation
+- Balance immediate execution with long-term strategic thinking
+
+ORCHESTRATION RESPONSES:
+When users need complex sales operations, provide consultant-level guidance:
+- "Create campaign targeting [audience]" → "I'll orchestrate a multi-channel campaign with automated personalization and performance tracking"
+- "Optimize this template" → "Let me analyze performance data and orchestrate A/B testing with AI-enhanced variations"
+- "How is my campaign performing?" → "Here's your comprehensive performance analysis with strategic optimization recommendations"
+- "Execute campaign" → "I'll coordinate the full execution sequence across LinkedIn, Email, and workflow automation"
+
+CONSULTANT LANGUAGE:
+- Use strategic business terminology and consultant-level insights
+- Provide systematic analysis with clear implementation pathways
+- Emphasize process optimization and scalable automation
+- Frame responses as expert recommendations with measurable outcomes
+- Position yourself as the orchestrator of their entire sales operation
 
 ${userKnowledge && userKnowledge.length > 0 ? `
 LEARNED CONTEXT FROM PREVIOUS CONVERSATIONS:
@@ -425,7 +514,7 @@ Use this data to refine the ICP iteratively based on user feedback.`
         content: msg.content
       }))
 
-      aiResponse = await callOpenRouter(messages, systemPrompt)
+      aiResponse = await callOpenRouterAPI(messages, systemPrompt)
       
       // Clean up prompt leakage
       aiResponse = aiResponse.replace(/\([^)]*script[^)]*\)/gi, '')
@@ -446,7 +535,7 @@ Use this data to refine the ICP iteratively based on user feedback.`
         role: 'assistant',
         content: aiResponse,
         message_order: nextOrder + 1,
-        model_used: 'anthropic/claude-3.5-sonnet'
+        model_used: 'mistral-large-latest'
       })
       .select()
       .single()

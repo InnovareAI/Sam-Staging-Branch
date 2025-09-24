@@ -12,6 +12,9 @@ import { UnipileMCPServer } from './unipile-mcp'
 import { N8NMCPServer } from './n8n-mcp'
 import { ReplyAgentMCPServer } from './reply-agent-mcp'
 import { DatabaseMCPServer } from './database-mcp'
+import * as TemplateMCP from './template-mcp'
+import * as MistralMCP from './mistral-mcp'
+import * as CampaignOrchestrationMCP from './campaign-orchestration-mcp'
 import { 
   MCPTool, 
   MCPCallToolRequest, 
@@ -163,6 +166,40 @@ export class MCPRegistry {
       })
     }
 
+    // Add Sam AI tools (always available)
+    const samAITools = [
+      // Template tools
+      { name: 'mcp__template__create', description: 'Create a new messaging template' },
+      { name: 'mcp__template__get_by_criteria', description: 'Get templates by search criteria' },
+      { name: 'mcp__template__get_by_id', description: 'Get specific template by ID' },
+      { name: 'mcp__template__update', description: 'Update existing template' },
+      { name: 'mcp__template__delete', description: 'Delete template (soft delete)' },
+      { name: 'mcp__template__track_performance', description: 'Track template performance metrics' },
+      { name: 'mcp__template__get_performance', description: 'Get template performance data' },
+      { name: 'mcp__template__clone', description: 'Clone existing template with modifications' },
+      { name: 'mcp__template__get_top_performers', description: 'Get top performing templates' },
+      
+      // Mistral tools
+      { name: 'mcp__mistral__optimize_template', description: 'Optimize template using Mistral AI' },
+      { name: 'mcp__mistral__analyze_performance', description: 'Analyze template performance with AI insights' },
+      { name: 'mcp__mistral__generate_variations', description: 'Generate A/B test variations' },
+      { name: 'mcp__mistral__personalize_for_prospect', description: 'Personalize template for specific prospect' },
+      
+      // Campaign orchestration tools
+      { name: 'mcp__sam__create_campaign', description: 'Sam creates campaign from conversation' },
+      { name: 'mcp__sam__execute_campaign', description: 'Sam executes campaign with personalization' },
+      { name: 'mcp__sam__get_campaign_status', description: 'Sam monitors campaign progress' }
+    ]
+
+    samAITools.forEach(tool => {
+      allTools.push({ 
+        name: tool.name,
+        description: tool.description,
+        inputSchema: { type: 'object', properties: {} },
+        server: 'sam-ai'
+      })
+    })
+
     return { tools: allTools }
   }
 
@@ -282,6 +319,9 @@ export class MCPRegistry {
         }
         return await this.replyAgentServer.callTool(effectiveRequest)
 
+      case 'sam-ai':
+        return await this.callSamAITool(effectiveRequest)
+
       default:
         return {
           content: [{
@@ -335,6 +375,32 @@ export class MCPRegistry {
     // Reply Agent tools prefix
     const isReply = toolName.startsWith('reply_agent_')
 
+    // Sam AI tools (template, mistral, campaign orchestration)
+    const samTemplateTools = [
+      'mcp__template__create',
+      'mcp__template__get_by_criteria', 
+      'mcp__template__get_by_id',
+      'mcp__template__update',
+      'mcp__template__delete',
+      'mcp__template__track_performance',
+      'mcp__template__get_performance',
+      'mcp__template__clone',
+      'mcp__template__get_top_performers'
+    ]
+
+    const samMistralTools = [
+      'mcp__mistral__optimize_template',
+      'mcp__mistral__analyze_performance',
+      'mcp__mistral__generate_variations',
+      'mcp__mistral__personalize_for_prospect'
+    ]
+
+    const samCampaignTools = [
+      'mcp__sam__create_campaign',
+      'mcp__sam__execute_campaign',
+      'mcp__sam__get_campaign_status'
+    ]
+
     if (brightDataTools.includes(toolName)) {
       return 'bright-data'
     }
@@ -363,7 +429,163 @@ export class MCPRegistry {
       return 'reply-agent'
     }
 
+    if (samTemplateTools.includes(toolName) || samMistralTools.includes(toolName) || samCampaignTools.includes(toolName)) {
+      return 'sam-ai'
+    }
+
     return 'unknown'
+  }
+
+  private async callSamAITool(request: MCPCallToolRequest): Promise<MCPCallToolResult> {
+    const toolName = request.params.name
+    const args = request.params.arguments || {}
+
+    try {
+      // Template MCP tools
+      if (toolName === 'mcp__template__create') {
+        const result = await TemplateMCP.mcp__template__create(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      if (toolName === 'mcp__template__get_by_criteria') {
+        const result = await TemplateMCP.mcp__template__get_by_criteria(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      if (toolName === 'mcp__template__get_by_id') {
+        const result = await TemplateMCP.mcp__template__get_by_id(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      if (toolName === 'mcp__template__update') {
+        const result = await TemplateMCP.mcp__template__update(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      if (toolName === 'mcp__template__delete') {
+        const result = await TemplateMCP.mcp__template__delete(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      if (toolName === 'mcp__template__track_performance') {
+        const result = await TemplateMCP.mcp__template__track_performance(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      if (toolName === 'mcp__template__get_performance') {
+        const result = await TemplateMCP.mcp__template__get_performance(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      if (toolName === 'mcp__template__clone') {
+        const result = await TemplateMCP.mcp__template__clone(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      if (toolName === 'mcp__template__get_top_performers') {
+        const result = await TemplateMCP.mcp__template__get_top_performers(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      // Mistral MCP tools
+      if (toolName === 'mcp__mistral__optimize_template') {
+        const result = await MistralMCP.mcp__mistral__optimize_template(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      if (toolName === 'mcp__mistral__analyze_performance') {
+        const result = await MistralMCP.mcp__mistral__analyze_performance(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      if (toolName === 'mcp__mistral__generate_variations') {
+        const result = await MistralMCP.mcp__mistral__generate_variations(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      if (toolName === 'mcp__mistral__personalize_for_prospect') {
+        const result = await MistralMCP.mcp__mistral__personalize_for_prospect(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      // Campaign Orchestration MCP tools
+      if (toolName === 'mcp__sam__create_campaign') {
+        const result = await CampaignOrchestrationMCP.mcp__sam__create_campaign(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      if (toolName === 'mcp__sam__execute_campaign') {
+        const result = await CampaignOrchestrationMCP.mcp__sam__execute_campaign(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      if (toolName === 'mcp__sam__get_campaign_status') {
+        const result = await CampaignOrchestrationMCP.mcp__sam__get_campaign_status(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      return {
+        content: [{ type: 'text', text: `Unknown Sam AI tool: ${toolName}` }],
+        isError: true
+      }
+
+    } catch (error) {
+      return {
+        content: [{ 
+          type: 'text', 
+          text: `Sam AI tool error: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        }],
+        isError: true
+      }
+    }
   }
 
   private getAvailableServers(): string[] {
@@ -392,6 +614,9 @@ export class MCPRegistry {
     if (this.replyAgentServer) {
       servers.push('reply-agent')
     }
+
+    // Sam AI tools are always available (built-in)
+    servers.push('sam-ai')
     
     return servers
   }
@@ -404,6 +629,7 @@ export class MCPRegistry {
     unipile: { available: boolean; tools: number }
     n8n: { available: boolean; tools: number }
     replyAgent: { available: boolean; tools: number }
+    samAI: { available: boolean; tools: number }
     total: { servers: number; tools: number }
   }> {
     const brightDataTools = this.brightDataServer ? (await this.brightDataServer.listTools()).tools.length : 0
@@ -413,6 +639,7 @@ export class MCPRegistry {
     const unipileTools = this.unipileServer ? (await this.unipileServer.listTools()).tools.length : 0
     const n8nTools = this.n8nServer ? (await this.n8nServer.listTools()).tools.length : 0
     const replyTools = this.replyAgentServer ? (await this.replyAgentServer.listTools()).tools.length : 0
+    const samAITools = 16 // 9 template + 4 mistral + 3 campaign tools
 
     return {
       brightData: { available: !!this.brightDataServer, tools: brightDataTools },
@@ -422,9 +649,10 @@ export class MCPRegistry {
       unipile: { available: !!this.unipileServer, tools: unipileTools },
       n8n: { available: !!this.n8nServer, tools: n8nTools },
       replyAgent: { available: !!this.replyAgentServer, tools: replyTools },
+      samAI: { available: true, tools: samAITools },
       total: {
         servers: this.getAvailableServers().length,
-        tools: brightDataTools + apifyTools + googleSearchTools + webSearchTools + unipileTools + n8nTools + replyTools
+        tools: brightDataTools + apifyTools + googleSearchTools + webSearchTools + unipileTools + n8nTools + replyTools + samAITools
       }
     }
   }

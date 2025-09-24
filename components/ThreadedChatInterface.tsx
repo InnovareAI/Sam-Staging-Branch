@@ -184,6 +184,12 @@ export default function ThreadedChatInterface() {
       return
     }
 
+    // Check for Sam MCP tool commands
+    if (await handleSamMCPCommands(trimmedInput)) {
+      setInputMessage('')
+      return
+    }
+
     setIsSending(true)
     try {
       const response = await sendMessage(currentThread.id, trimmedInput)
@@ -431,6 +437,103 @@ export default function ThreadedChatInterface() {
     }
 
     return false
+  }
+
+  const handleSamMCPCommands = async (input: string): Promise<boolean> => {
+    const command = input.toLowerCase()
+
+    // Campaign creation commands
+    if (command.includes('create campaign') || 
+        command.includes('start campaign') ||
+        command.includes('new campaign') ||
+        command.includes('campaign for') ||
+        command.includes('target campaign')) {
+      await executeSamMCPCommand(input, 'campaign')
+      return true
+    }
+
+    // Template optimization commands
+    if (command.includes('optimize template') ||
+        command.includes('improve template') ||
+        command.includes('analyze template') ||
+        command.includes('template performance')) {
+      await executeSamMCPCommand(input, 'template')
+      return true
+    }
+
+    // Campaign execution commands
+    if (command.includes('execute campaign') ||
+        command.includes('run campaign') ||
+        command.includes('start execution') ||
+        command.includes('campaign status')) {
+      await executeSamMCPCommand(input, 'execution')
+      return true
+    }
+
+    return false
+  }
+
+  const executeSamMCPCommand = async (input: string, type: 'campaign' | 'template' | 'execution') => {
+    if (!currentThread) return
+
+    setIsSending(true)
+    try {
+      const response = await fetch('/api/sam/mcp-tools', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          input,
+          workspaceId: currentThread.workspace_id || 'default',
+          conversationContext: {
+            threadId: currentThread.id,
+            prospectName: currentThread.prospect_name,
+            prospectCompany: currentThread.prospect_company,
+            tags: currentThread.tags,
+            recentMessages: messages.slice(-5)
+          }
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to process MCP command')
+      }
+
+      const result = await response.json()
+
+      if (result.success) {
+        const mcpMessage = {
+          id: `temp-${Date.now()}-mcp`,
+          role: 'assistant' as const,
+          content: result.response,
+          created_at: new Date().toISOString(),
+          has_prospect_intelligence: true,
+          prospect_intelligence_data: result.data || {}
+        }
+
+        setMessages(prev => [...prev, mcpMessage])
+      } else {
+        const errorMessage = {
+          id: `temp-${Date.now()}-error`,
+          role: 'assistant' as const,
+          content: `❌ MCP Command Failed: ${result.error || 'Unknown error occurred'}`,
+          created_at: new Date().toISOString(),
+        }
+        setMessages(prev => [...prev, errorMessage])
+      }
+    } catch (error) {
+      console.error('Sam MCP command failed:', error)
+      const errorMessage = {
+        id: `temp-${Date.now()}-error`,
+        role: 'assistant' as const,
+        content: `❌ Failed to execute MCP command. Please try again.`,
+        created_at: new Date().toISOString(),
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsSending(false)
+    }
   }
 
   const executeICPResearch = async (input: string) => {
@@ -1309,7 +1412,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                 </div>
               </div>
               
-              <div className="bg-gray-700 p-4 rounded-b-lg max-w-4xl mx-auto">
+              <div className="bg-gray-700 p-4 rounded-b-lg max-w-4xl mx-auto mt-2">
                 {/* LinkedIn Character Limits Infobox */}
                 <LinkedInLimitsInfobox 
                   messageLength={inputMessage.length}
@@ -1317,7 +1420,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                   messageContent={inputMessage}
                 />
                 
-                <div className="flex items-end bg-gray-600 rounded-lg px-4 py-2">
+                <div className="flex items-end bg-gray-600 rounded-lg px-4 py-2 mt-6">
                   <button className="text-gray-400 hover:text-gray-200 transition-colors p-1 mr-2">
                     <Paperclip size={18} />
                   </button>

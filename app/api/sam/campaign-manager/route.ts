@@ -596,12 +596,15 @@ async function handleExecuteCampaign(
     };
   }
 
-  // Call the LinkedIn execute API internally
+  // Call the N8N LinkedIn execute API internally
   try {
-    const executeResponse = await fetch('/api/campaigns/linkedin/execute', {
+    const executeResponse = await fetch('/api/campaigns/linkedin/execute-via-n8n', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ campaignId: campaign_id })
+      body: JSON.stringify({ 
+        campaignId: campaign_id,
+        executionType: 'direct_linkedin'
+      })
     });
 
     if (!executeResponse.ok) {

@@ -20,13 +20,13 @@ async function callOpenRouter(messages: any[], systemPrompt: string) {
       'X-Title': 'SAM AI Platform'
     },
     body: JSON.stringify({
-      model: 'mistralai/mistral-large',
+      model: 'mistralai/mistral-medium', // Cost-optimized: $4/1M tokens
       messages: [
         { role: 'system', content: systemPrompt },
         ...messages
       ],
       temperature: 0.7,
-      max_tokens: 150
+      max_tokens: 150 // Optimized for cost control
     })
   });
 
@@ -167,6 +167,185 @@ function extractConversationSnippet(content: any, userMessage: string) {
   } catch (error) {
     return 'Knowledge base content';
   }
+}
+
+// Prospect search processing system
+async function processProspectSearchRequest(userMessage: string, workspaceId: string) {
+  const lowerMessage = userMessage.toLowerCase();
+  
+  // Prospect search indicators
+  const searchIndicators = [
+    'find prospects',
+    'search for',
+    'find people',
+    'look for prospects',
+    'get contacts',
+    'scrape linkedin',
+    'search linkedin',
+    'find vp sales',
+    'find ceos',
+    'find decision makers',
+    'prospect research',
+    'lead generation'
+  ];
+  
+  const isProspectSearch = searchIndicators.some(indicator => 
+    lowerMessage.includes(indicator)
+  );
+  
+  if (isProspectSearch) {
+    // Extract search criteria from message
+    const criteria = extractSearchCriteria(userMessage);
+    
+    // Determine search type
+    let searchType = 'brightdata'; // Default to premium
+    if (lowerMessage.includes('google')) searchType = 'google_search';
+    if (lowerMessage.includes('network') || lowerMessage.includes('connections')) searchType = 'unipile_network';
+    
+    // Check for auto-send request
+    const autoSend = lowerMessage.includes('and send') || lowerMessage.includes('send them');
+    
+    return {
+      isProspectSearch: true,
+      searchType: searchType,
+      criteria: criteria,
+      autoSend: autoSend,
+      campaignConfig: autoSend ? { template_message: extractTemplateFromMessage(userMessage) } : null
+    };
+  }
+  
+  return {
+    isProspectSearch: false,
+    searchType: null,
+    criteria: null,
+    autoSend: false,
+    campaignConfig: null
+  };
+}
+
+// Extract search criteria from natural language
+function extractSearchCriteria(message: string) {
+  const criteria: any = {
+    max_results: 50 // Default
+  };
+  
+  // Extract job titles
+  const titlePatterns = [
+    /vp sales|vice president.*sales|vp of sales/gi,
+    /director.*sales|sales director/gi,
+    /ceo|chief executive/gi,
+    /cto|chief technology/gi,
+    /cfo|chief financial/gi,
+    /head of sales|sales manager/gi
+  ];
+  
+  criteria.job_titles = [];
+  titlePatterns.forEach(pattern => {
+    const matches = message.match(pattern);
+    if (matches) {
+      criteria.job_titles.push(...matches.map(m => m.trim()));
+    }
+  });
+  
+  // Extract industries
+  const industryPatterns = [
+    /saas/gi, /software/gi, /technology/gi, /tech/gi,
+    /fintech/gi, /healthcare/gi, /manufacturing/gi,
+    /consulting/gi, /ecommerce/gi, /retail/gi
+  ];
+  
+  criteria.industries = [];
+  industryPatterns.forEach(pattern => {
+    const matches = message.match(pattern);
+    if (matches) {
+      criteria.industries.push(...matches.map(m => m.trim()));
+    }
+  });
+  
+  // Extract company size
+  if (message.match(/startup|small/gi)) criteria.company_size = 'small';
+  if (message.match(/medium|mid-size|growing/gi)) criteria.company_size = 'medium';  
+  if (message.match(/enterprise|large|fortune/gi)) criteria.company_size = 'large';
+  
+  // Extract locations
+  if (message.match(/united states|usa|us/gi)) criteria.locations = ['United States'];
+  if (message.match(/canada/gi)) criteria.locations = ['Canada'];
+  if (message.match(/europe|eu/gi)) criteria.locations = ['Europe'];
+  
+  // Extract number of results
+  const numberMatch = message.match(/find (\d+)|get (\d+)|(\d+) prospects/i);
+  if (numberMatch) {
+    criteria.max_results = parseInt(numberMatch[1] || numberMatch[2] || numberMatch[3]);
+  }
+  
+  // Generate keywords from criteria
+  criteria.keywords = [
+    ...criteria.job_titles,
+    ...criteria.industries
+  ].join(' ');
+  
+  return criteria;
+}
+
+// Extract template message if included in search request
+function extractTemplateFromMessage(message: string) {
+  const templatePatterns = [
+    /send them[:\s]+"([^"]+)"/i,
+    /send this message[:\s]+"([^"]+)"/i,
+    /with this template[:\s]+"([^"]+)"/i
+  ];
+  
+  for (const pattern of templatePatterns) {
+    const match = message.match(pattern);
+    if (match) return match[1];
+  }
+  
+  return null;
+}
+
+// Template message processing system
+async function processTemplateMessage(userMessage: string, workspaceId: string) {
+  // Check if user is providing a message template
+  const templateIndicators = [
+    'use this message',
+    'send this message', 
+    'template:',
+    'message template',
+    'personalize this',
+    'send to prospects',
+    'linkedin message',
+    'outreach message'
+  ];
+  
+  const isTemplateMessage = templateIndicators.some(indicator => 
+    userMessage.toLowerCase().includes(indicator)
+  );
+  
+  if (isTemplateMessage) {
+    // Extract the actual message content
+    let messageContent = userMessage;
+    
+    // Remove template indicators
+    templateIndicators.forEach(indicator => {
+      const regex = new RegExp(indicator, 'gi');
+      messageContent = messageContent.replace(regex, '').trim();
+    });
+    
+    // Clean up the message
+    messageContent = messageContent.replace(/^[:\-\s]+/, '').trim();
+    
+    return {
+      isTemplate: true,
+      messageContent: messageContent,
+      action: 'process_template_message'
+    };
+  }
+  
+  return {
+    isTemplate: false,
+    messageContent: userMessage,
+    action: 'regular_chat'
+  };
 }
 
 // Enhanced conversation analysis and labeling system
@@ -618,6 +797,123 @@ export async function POST(req: NextRequest) {
         { error: 'Message or file is required' }, 
         { status: 400 }
       );
+    }
+
+    // Get user's workspace for template processing
+    let workspaceId = null;
+    if (currentUser) {
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('current_workspace_id')
+        .eq('id', currentUser.id)
+        .single();
+      workspaceId = userProfile?.current_workspace_id;
+    }
+
+    // Check for prospect search requests
+    const prospectSearchRequest = await processProspectSearchRequest(message, workspaceId);
+    
+    if (prospectSearchRequest.isProspectSearch && workspaceId) {
+      try {
+        // Use MCP tools for prospect finding
+        const prospectResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/sam/find-prospects`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          },
+          body: JSON.stringify({
+            search_type: prospectSearchRequest.searchType,
+            search_criteria: prospectSearchRequest.criteria,
+            campaign_config: prospectSearchRequest.campaignConfig,
+            auto_send: prospectSearchRequest.autoSend
+          })
+        });
+
+        const prospectData = await prospectResponse.json();
+        
+        if (prospectData.success) {
+          return NextResponse.json({
+            response: `🎯 **Prospect Search Complete!**
+
+**Found:** ${prospectData.prospects_found} prospects using ${prospectData.search_type}
+**Search Criteria:** ${JSON.stringify(prospectData.search_criteria, null, 2)}
+
+${prospectData.campaign_created ? 
+  `✅ **Templates Sent!** Messages delivered to all prospects` : 
+  `📋 **Ready to Send:** Use these prospects for your LinkedIn campaigns`}
+
+**Next Steps:**
+${prospectData.campaign_created ? 
+  '• Monitor responses in your LinkedIn\n• Track engagement metrics\n• Follow up based on responses' :
+  '• Review prospect list\n• Choose template to send\n• Launch LinkedIn campaign'}`,
+            prospects_found: prospectData.prospects_found,
+            prospects: prospectData.prospects,
+            search_type: prospectData.search_type,
+            campaign_created: prospectData.campaign_created
+          });
+        } else {
+          return NextResponse.json({
+            response: `❌ Prospect search failed: ${prospectData.error}. Please try with different criteria or search type.`
+          });
+        }
+
+      } catch (prospectError) {
+        console.error('Prospect search error:', prospectError);
+        // Fall through to regular chat
+      }
+    }
+
+    // Check if this is a template message
+    const templateResult = await processTemplateMessage(message, workspaceId);
+    
+    if (templateResult.isTemplate && workspaceId) {
+      // Process as template message for LinkedIn outreach
+      try {
+        // Call template processing API
+        const templateResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/sam/process-user-template`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            template_message: templateResult.messageContent,
+            workspace_id: workspaceId,
+            user_id: currentUser?.id
+          })
+        });
+
+        const templateData = await templateResponse.json();
+        
+        return NextResponse.json({
+          response: `I've processed your template message! Here's what I can help you with:
+
+**Template Message:**
+"${templateResult.messageContent}"
+
+**Next Steps:**
+• I can personalize this message for specific prospects
+• Send it to your LinkedIn connections 
+• Track response rates and performance
+• Optimize based on results
+
+Would you like me to:
+1. **Send to specific prospects** - Provide prospect names/companies
+2. **Test with sample data** - See how personalization works
+3. **Send immediately** - Use existing prospect list
+
+Just tell me which option you'd prefer!`,
+          template_processed: true,
+          template_content: templateResult.messageContent,
+          actions_available: [
+            "send_to_prospects",
+            "test_personalization", 
+            "send_immediately"
+          ]
+        });
+
+      } catch (templateError) {
+        console.error('Template processing error:', templateError);
+        // Fall through to regular chat if template processing fails
+      }
     }
 
     // Process uploaded files if any

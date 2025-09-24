@@ -483,7 +483,7 @@ export default function Page() {
     setSelectedProspects([]);
     
     if (status === 'approved') {
-      alert(`✅ Approved ${selectedProspects.length} prospects!\n\n🎯 Next Steps:\n1. View all approved prospects in "Approved Prospects" section\n2. Create campaigns using your approved data\n3. Launch outreach campaigns with confidence`);
+      alert(`✅ Approved ${selectedProspects.length} prospects!\n\n🎯 Next Steps:\n1. View all approved prospects in the "Data Approval" section below\n2. Create campaigns using your approved data\n3. Launch outreach campaigns with confidence`);
     } else {
       alert(`❌ Rejected ${selectedProspects.length} prospects`);
     }
@@ -778,14 +778,8 @@ export default function Page() {
     {
       id: 'data-approval',
       label: 'Data Approval',
-      description: 'Review and approve prospect data quality',
+      description: 'Review, approve and manage prospect data',
       icon: CheckSquare,
-    },
-    {
-      id: 'approved-prospects',
-      label: 'Approved Prospects',
-      description: 'View and manage your approved prospect data',
-      icon: Users,
     },
     {
       id: 'campaign',
@@ -2276,16 +2270,17 @@ export default function Page() {
                 )}
               </div>
             </div>
+            
+            {/* Approved Prospects Management */}
+            <ApprovedProspectsDashboard 
+              onCreateCampaign={(prospects) => {
+                // Switch to campaign hub and pre-fill with selected prospects
+                setActiveMenuItem('campaign');
+                // Note: This would require updating CampaignHub to accept pre-selected prospects
+                console.log('Creating campaign with', prospects.length, 'prospects');
+              }}
+            />
           </div>
-        ) : activeMenuItem === 'approved-prospects' ? (
-          <ApprovedProspectsDashboard 
-            onCreateCampaign={(prospects) => {
-              // Switch to campaign hub and pre-fill with selected prospects
-              setActiveMenuItem('campaign');
-              // Note: This would require updating CampaignHub to accept pre-selected prospects
-              console.log('Creating campaign with', prospects.length, 'prospects');
-            }}
-          />
         ) : activeMenuItem === 'campaign' ? (
           <CampaignHub />
         ) : activeMenuItem === 'pipeline' ? (

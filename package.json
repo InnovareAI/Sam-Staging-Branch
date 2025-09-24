@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "next lint",
     "deploy:staging": "npm run build:staging && netlify deploy --dir=.next --alias=staging",
-    "deploy:production": "node docs/scripts/deployment/production-deploy.js",
+    "deploy:production": "bash scripts/shell/deploy-all-tenants.sh",
+    "deploy:all-tenants": "bash scripts/shell/deploy-all-tenants.sh",
     "validate:staging": "node docs/scripts/deployment/staging-validation.js",
     "backup:create": "node docs/scripts/deployment/backup-rollback.js backup",
     "backup:list": "node docs/scripts/deployment/backup-rollback.js list",
@@ -20,9 +21,13 @@
     "monitoring:metrics": "curl -s https://app.meet-sam.com/api/monitoring/metrics | jq .",
     "monitoring:alerts": "curl -s https://app.meet-sam.com/api/monitoring/alerts | jq .",
     "test:integration": "node test-integration.js",
-    "test:email": "node test-complete-flow.js"
+    "test:email": "node test-complete-flow.js",
+    "update-docs": "node scripts/js/auto-update-documentation.cjs",
+    "post-deploy": "npm run update-docs && echo 'Documentation updated automatically'",
+    "pre-commit": "npm run lint && npm run update-docs"
   },
   "dependencies": {
+    "@mistralai/mistralai": "^1.10.0",
     "@modelcontextprotocol/sdk": "^1.18.0",
     "@modelcontextprotocol/server-brave-search": "^0.6.2",
     "@radix-ui/react-avatar": "^1.1.10",
