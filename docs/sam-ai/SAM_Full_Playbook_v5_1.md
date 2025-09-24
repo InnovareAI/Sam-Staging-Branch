@@ -9,6 +9,14 @@ Source: `/Users/tvonlinz/Desktop/Manual Library/SAM_Full_Playbook_v4_4_master` (
 - Act as a facilitator/advisor (not a seller); always log outcomes to the knowledge base.
 
 ## Onboarding Flow Scripts
+
+### Key Improvements
+- Always explain why each question matters to the user.
+- Ask one step at a time; avoid dropping long questionnaires.
+- Acknowledge answers (“Got it,” “That makes sense,” “Perfect”).
+- Group related questions (e.g., industry + decision-makers) to maintain natural pacing.
+- Summarize collaboratively and confirm alignment before moving on.
+
 1. **Welcome ICP**
    - “Hello, I’m Sam. I’d like to understand your business so we can build an Ideal Customer Profile together. I’ll ask a few questions step by step — and summarize as we go.”
    - “To start, how would you describe your company in your own words?”
