@@ -21,7 +21,7 @@ This runbook provides comprehensive operational procedures for the SAM AI Platfo
 - **Frontend**: Next.js application with invitation UI
 - **Backend**: Next.js API routes for invitation logic
 - **Database**: Supabase PostgreSQL with RLS policies
-- **Authentication**: Clerk for user management
+- **Authentication**: Supabase Auth for user management
 - **Email Service**: Postmark for invitation delivery
 - **Hosting**: Netlify with edge functions
 
@@ -147,15 +147,15 @@ curl -w "@curl-format.txt" -s -o /dev/null https://app.meet-sam.com/api/admin/in
 
 **Diagnosis:**
 ```bash
-# Check Clerk status
+# Check Supabase Auth status
 curl https://app.meet-sam.com/api/monitoring/health | jq '.checks.auth'
 ```
 
 **Resolution Steps:**
-1. Verify Clerk configuration
-2. Check API key validity
-3. Review webhook configurations
-4. Validate redirect URLs
+1. Verify Supabase Auth configuration
+2. Check service role/anon key validity
+3. Review redirect URLs in Supabase dashboard
+4. Confirm session cookie settings
 
 ## Emergency Procedures
 
@@ -373,7 +373,6 @@ curl https://app.meet-sam.com/api/admin/stats
 - Netlify Support: https://support.netlify.com
 - Supabase Support: https://supabase.com/support
 - Postmark Support: https://postmarkapp.com/support
-- Clerk Support: https://clerk.com/support
 
 ## Useful Commands
 

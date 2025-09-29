@@ -49,13 +49,13 @@ The LinkedIn integration for SAM AI Platform provides seamless connection with u
 │  External Services                                             │
 │  ├── Unipile API                   (LinkedIn proxy)           │
 │  ├── LinkedIn OAuth                (Authentication)           │
-│  └── Clerk Authentication          (User management)          │
+│  └── Supabase Auth                 (User management)          │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Integration Flow
 
-1. **User Authentication**: User logs into SAM AI via Clerk
+1. **User Authentication**: User logs into SAM AI via Supabase Auth
 2. **Workspace Assignment**: User is assigned to organization/workspace
 3. **LinkedIn Connection**: User initiates LinkedIn connection via Unipile
 4. **Account Association**: System creates user-account association
