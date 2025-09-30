@@ -57,71 +57,43 @@ export default function UnipileIntegrationPage() {
     try {
       setError(null)
       
-      console.log('🔍 Checking LinkedIn connections via Unipile API...')
+      console.log('🔍 Checking LinkedIn connections via simplified API...')
       
-      // Check Unipile API for LinkedIn connection status
-      const response = await fetch('/api/unipile/accounts')
+      // Use simplified status endpoint that bypasses Supabase auth
+      const response = await fetch('/api/linkedin/status-simple')
       if (response.ok) {
         const data = await response.json()
-        console.log('📊 Unipile API result:', {
+        console.log('📊 LinkedIn status result:', {
           has_linkedin: data.has_linkedin,
           connection_status: data.connection_status,
-          debug_info: data.debug_info
+          accounts: data.accounts
         })
         
-        if (data.has_linkedin) {
-          console.log('✅ Unipile reports LinkedIn is connected')
-          // If user has LinkedIn via Unipile, try to get detailed account list
-          try {
-            console.log('🔄 Attempting to fetch detailed account list from contact center...')
-            
-            // Add timeout to prevent hanging
-            const contactResponse = await Promise.race([
-              fetch('/api/contact-center/accounts'),
-              new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Contact center request timeout')), 5000)
-              )
-            ]) as Response
-            
-            if (contactResponse.ok) {
-              const contactData = await contactResponse.json()
-              setAccounts(contactData.accounts || [])
-              console.log('✅ LinkedIn accounts loaded from contact center')
-            } else {
-              console.log(`⚠️ Contact center returned ${contactResponse.status}, using fallback`)
-              // Fallback: show generic connection status
-              setAccounts([{
-                id: 'linkedin-unipile-detected',
-                name: 'LinkedIn Account',
-                type: 'LINKEDIN',
-                created_at: new Date().toISOString(),
-                sources: [{ id: 'unipile', status: 'OK' }],
-                connection_params: { im: { username: 'LinkedIn Connected' } }
-              }])
-              console.log('✅ LinkedIn connection detected (fallback display)')
+        if (data.has_linkedin && data.accounts && data.accounts.length > 0) {
+          console.log('✅ LinkedIn is connected')
+          // Map the accounts to the expected format
+          const mappedAccounts = data.accounts.map((acc: any) => ({
+            id: acc.id,
+            name: acc.name,
+            type: 'LINKEDIN',
+            created_at: acc.created_at,
+            sources: [{ id: 'unipile', status: acc.status }],
+            connection_params: { 
+              im: { 
+                username: acc.email || acc.name,
+                email: acc.email
+              } 
             }
-          } catch (contactError) {
-            console.log('⚠️ Contact center failed, using fallback display:', contactError instanceof Error ? contactError.message : 'Unknown error')
-            setAccounts([{
-              id: 'linkedin-unipile-fallback',
-              name: 'LinkedIn Account',
-              type: 'LINKEDIN',
-              created_at: new Date().toISOString(),
-              sources: [{ id: 'unipile', status: 'OK' }],
-              connection_params: { im: { username: 'LinkedIn Connected' } }
-            }])
-          }
+          }))
+          setAccounts(mappedAccounts)
         } else {
           console.log('❌ No LinkedIn connections found')
           setAccounts([])
         }
         setDuplicates([])
       } else {
-        const errorText = await response.text()
-        if (response.status === 401) {
-          throw new Error('Please sign in to access LinkedIn integration. You need to be logged into SAM AI first.')
-        }
-        throw new Error(`Unable to connect LinkedIn at this time. Please try again.`)
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || 'Unable to check LinkedIn connection status. Please try again.')
       }
     } catch (error) {
       console.error('Error fetching accounts:', error)
