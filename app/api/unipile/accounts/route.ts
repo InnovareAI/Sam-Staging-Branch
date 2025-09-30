@@ -380,7 +380,7 @@ export async function GET(request: NextRequest) {
     )
 
     // Enhanced logging for workspace-specific accounts only
-    console.log(`LinkedIn accounts for user ${user.email} in workspace ${userProfile?.current_workspace_id || 'none'}:`, {
+    console.log(`LinkedIn accounts for user ${user.email} in workspace ${workspaceId}:`, {
       user_linkedin_count: userLinkedInAccounts.length,
       user_accounts: userLinkedInAccounts.map(acc => ({
         id: acc.id,
