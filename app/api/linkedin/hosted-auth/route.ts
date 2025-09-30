@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
     console.log(`📋 Creating hosted auth link with request:`, hostedAuthRequest)
 
     // Use official Unipile SDK to create Hosted Auth link
-    const baseUrl = `https://${process.env.UNIPILE_DSN}/api/v1`
+    const baseUrl = `https://${process.env.UNIPILE_DSN}`
     const apiKey = process.env.UNIPILE_API_KEY as string
     if (!baseUrl || !apiKey) {
       throw new Error('Unipile API credentials not configured')
