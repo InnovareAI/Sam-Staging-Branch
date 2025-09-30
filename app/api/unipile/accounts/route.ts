@@ -438,7 +438,7 @@ export async function GET(request: NextRequest) {
       connection_status: 'error',
       error: isCredentialsError ? 
         'Unipile integration not configured. Please check environment variables.' : 
-        'Unable to verify LinkedIn connection status',
+        errorMessage,
       debug_info: {
         error_message: errorMessage,
         error_type: error instanceof Error ? error.constructor.name : typeof error,

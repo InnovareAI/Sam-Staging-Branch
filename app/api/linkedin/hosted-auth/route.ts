@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
       reconnect_account: reconnectAccountId // Required for reconnect
     } : {
       ...baseRequest,
-      providers: ['LINKEDIN'] // Required for create
+      providers: '*'
     }
 
     console.log(`📋 Creating hosted auth link with request:`, hostedAuthRequest)
