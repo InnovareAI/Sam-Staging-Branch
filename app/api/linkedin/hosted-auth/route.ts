@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { UnipileClient } from 'unipile-node-sdk'
 
-// Helper function to make Unipile API calls
+// Helper function to make Unipile API calls (kept for ancillary checks)
 async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: any) {
   const unipileDsn = process.env.UNIPILE_DSN
   const unipileApiKey = process.env.UNIPILE_API_KEY
@@ -22,27 +23,14 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
     ...(body && { body: JSON.stringify(body) })
   }
 
-  console.log(`🌐 Calling Unipile API: ${method} ${url}`)
-  if (body) {
-    console.log(`📤 Request body:`, JSON.stringify(body, null, 2))
-  }
-
   const response = await fetch(url, options)
   
   if (!response.ok) {
     const errorText = await response.text()
-    console.error(`❌ Unipile API error: ${response.status} ${response.statusText}`, {
-      url,
-      method,
-      body: body ? JSON.stringify(body, null, 2) : undefined,
-      errorResponse: errorText
-    })
     throw new Error(`Unipile API error: ${response.status} ${response.statusText} - ${errorText}`)
   }
 
-  const result = await response.json()
-  console.log(`✅ Unipile API response:`, result)
-  return result
+  return await response.json()
 }
 
 export async function POST(request: NextRequest) {
@@ -187,18 +175,35 @@ export async function POST(request: NextRequest) {
 
     console.log(`📋 Creating hosted auth link with request:`, hostedAuthRequest)
 
-    const hostedAuthResponse = await callUnipileAPI('hosted/accounts/link', 'POST', hostedAuthRequest)
-    
-    // The response should contain the hosted auth link according to documentation
-    const authUrl = hostedAuthResponse.link || hostedAuthResponse.url || hostedAuthResponse.auth_url
-    
-    if (!authUrl) {
-      console.error('❌ No auth URL in response:', hostedAuthResponse)
-      throw new Error('Hosted auth link not received from Unipile')
+    // Use official Unipile SDK to create Hosted Auth link
+    const baseUrl = `https://${process.env.UNIPILE_DSN}/api/v1`
+    const apiKey = process.env.UNIPILE_API_KEY as string
+    if (!baseUrl || !apiKey) {
+      throw new Error('Unipile API credentials not configured')
     }
 
-    console.log(`✅ Generated hosted auth link for user ${user.email}`)
-    console.log(`🔗 Auth URL: ${authUrl}`)
+    const client = new UnipileClient(baseUrl, apiKey)
+
+    const sdkPayload: any = {
+      type: authAction,
+      api_url: `https://${process.env.UNIPILE_DSN}`,
+      expiresOn: expirationTime.toISOString(),
+      providers: '*',
+      success_redirect_url: `${siteUrl}/integrations/linkedin?status=success`,
+      failure_redirect_url: `${siteUrl}/integrations/linkedin?status=failed`,
+      notify_url: callbackUrl,
+      name: workspaceUserId
+    }
+    if (authAction === 'reconnect' && reconnectAccountId) {
+      sdkPayload.reconnect_account = reconnectAccountId
+    }
+
+    const hostedAuthResponse = await client.account.createHostedAuthLink(sdkPayload)
+    const authUrl = hostedAuthResponse?.url || hostedAuthResponse?.link || hostedAuthResponse?.auth_url
+
+    if (!authUrl) {
+      throw new Error('Hosted auth link not received from Unipile')
+    }
 
     return NextResponse.json({
       success: true,
