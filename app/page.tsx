@@ -3894,10 +3894,10 @@ export default function Page() {
                       style={{ objectPosition: 'center 30%' }}
                     />
                     <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-                        <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+              <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                        <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
                         <span className="text-sm text-gray-300 ml-2">Sam is thinking...</span>
                       </div>
                     </div>
@@ -3925,6 +3925,9 @@ export default function Page() {
                             content={message.display_content ?? message.content} 
                             animate={isNewestAssistantMessage}
                           />
+                          <div className="text-xs text-gray-400 mt-2">
+                            Max 6 lines, 2 paragraphs
+                          </div>
                         </div>
                       </div>
                     )}
@@ -3934,7 +3937,10 @@ export default function Page() {
                           <span className="text-gray-400 text-sm font-medium">You</span>
                         </div>
                         <div className="bg-gray-800 text-white px-4 py-3 rounded-2xl">
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.display_content ?? message.content}</p>
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap line-clamp-6">{message.display_content ?? message.content}</p>
+                          <div className="text-xs text-gray-400 mt-2">
+                            Max 6 lines, 2 paragraphs
+                          </div>
                         </div>
                       </>
                     )}
