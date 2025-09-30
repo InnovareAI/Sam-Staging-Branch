@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
       type: authAction,
       api_url: `https://${process.env.UNIPILE_DSN}`,
       expiresOn: expirationTime.toISOString(),
-      providers: '*',
+      providers: ['LINKEDIN'],
       success_redirect_url: `${siteUrl}/integrations/linkedin?status=success`,
       failure_redirect_url: `${siteUrl}/integrations/linkedin?status=failed`,
       notify_url: callbackUrl,
@@ -198,8 +198,16 @@ export async function POST(request: NextRequest) {
       sdkPayload.reconnect_account = reconnectAccountId
     }
 
-    const hostedAuthResponse = await client.account.createHostedAuthLink(sdkPayload)
-    const authUrl = hostedAuthResponse?.url || hostedAuthResponse?.link || hostedAuthResponse?.auth_url
+    let authUrl: string | null = null
+    try {
+      const hostedAuthResponse = await client.account.createHostedAuthLink(sdkPayload)
+      authUrl = hostedAuthResponse?.url || hostedAuthResponse?.link || hostedAuthResponse?.auth_url || null
+    } catch (sdkError) {
+      console.warn('SDK createHostedAuthLink failed, falling back to HTTP:', sdkError instanceof Error ? sdkError.message : sdkError)
+      // Fallback to direct HTTP call
+      const fallbackResp = await callUnipileAPI('hosted/accounts/link', 'POST', sdkPayload)
+      authUrl = fallbackResp?.url || fallbackResp?.link || fallbackResp?.auth_url || null
+    }
 
     if (!authUrl) {
       throw new Error('Hosted auth link not received from Unipile')
