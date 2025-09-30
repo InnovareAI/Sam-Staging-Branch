@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/app/lib/supabase'
 
+// In-memory lock to prevent race conditions when webhook is called multiple times
+const processingLocks = new Map<string, Promise<any>>()
+
 // LinkedIn connection callback with workspace isolation - Unipile hosted auth webhook
 export async function POST(request: NextRequest) {
   try {
@@ -11,6 +14,64 @@ export async function POST(request: NextRequest) {
     
     // Extract fields according to Unipile hosted auth documentation
     const { account_id, name: workspaceUserId, status } = body
+    
+    // RACE CONDITION PROTECTION: Check if we're already processing this account
+    if (processingLocks.has(account_id)) {
+      console.log(`⏳ Account ${account_id} is already being processed, waiting for completion...`)
+      try {
+        await processingLocks.get(account_id)
+        return NextResponse.json({ 
+          success: true, 
+          message: 'Account already processed by concurrent request',
+          account_id,
+          duplicate_prevented: true
+        })
+      } catch (error) {
+        console.log(`⚠️ Concurrent processing failed, will retry this request`)
+        // Continue with processing if the other request failed
+      }
+    }
+    
+    // Create a promise for this processing operation
+    let resolveLock: (value: any) => void
+    let rejectLock: (error: any) => void
+    const lockPromise = new Promise((resolve, reject) => {
+      resolveLock = resolve
+      rejectLock = reject
+    })
+    processingLocks.set(account_id, lockPromise)
+    
+    try {
+      // Process the webhook
+      const result = await processLinkedInCallback(supabase, account_id, workspaceUserId, status, body)
+      resolveLock!(result)
+      return result
+    } catch (error) {
+      rejectLock!(error)
+      throw error
+    } finally {
+      // Clean up lock after processing (or after timeout)
+      setTimeout(() => processingLocks.delete(account_id), 5000)
+    }
+    
+  } catch (error) {
+    console.error('❌ Error in LinkedIn callback:', error)
+    return NextResponse.json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unexpected error' 
+    }, { status: 500 })
+  }
+}
+
+// Extracted processing logic
+async function processLinkedInCallback(
+  supabase: any,
+  account_id: string,
+  workspaceUserId: string,
+  status: string,
+  body: any
+): Promise<NextResponse> {
+  try {
 
     // Validate webhook format
     if (!account_id || !workspaceUserId || !status) {
@@ -166,6 +227,63 @@ export async function POST(request: NextRequest) {
       .eq('provider', 'linkedin')
 
     console.log(`🔍 Found ${existingAccounts?.length || 0} existing LinkedIn accounts in workspace`)
+    
+    // CRITICAL: Check if this exact account already exists to prevent duplicates
+    const accountAlreadyExists = existingAccounts?.some(
+      acc => acc.credentials?.unipile_account_id === account_id
+    )
+    
+    if (accountAlreadyExists) {
+      console.log(`⚠️ Account ${account_id} already exists in database - skipping duplicate insert`)
+      return NextResponse.json({ 
+        success: true, 
+        message: 'LinkedIn account already connected (duplicate prevented)',
+        account_id,
+        workspace_id: resolvedWorkspaceId,
+        duplicate_prevented: true
+      })
+    }
+    
+    // Also check if same LinkedIn profile (by email/identifier) already connected with different Unipile ID
+    const linkedInEmail = accountDetails.connection_params?.im?.email
+    const linkedInIdentifier = accountDetails.connection_params?.im?.public_identifier
+    
+    const sameProfileExists = existingAccounts?.some(acc => {
+      const existingEmail = acc.credentials?.account_email
+      const existingIdentifier = acc.credentials?.linkedin_public_identifier
+      
+      return (linkedInEmail && existingEmail && linkedInEmail === existingEmail) ||
+             (linkedInIdentifier && existingIdentifier && linkedInIdentifier === existingIdentifier)
+    })
+    
+    if (sameProfileExists) {
+      console.log(`⚠️ LinkedIn profile already connected with different Unipile account - cleaning up duplicate`)
+      
+      // Delete the new duplicate from Unipile since the user already has this LinkedIn connected
+      try {
+        const deleteResponse = await fetch(`${baseUrl}/accounts/${account_id}`, {
+          method: 'DELETE',
+          headers: { 'X-API-KEY': unipileApiKey }
+        })
+        
+        if (deleteResponse.ok) {
+          console.log(`✅ Deleted duplicate Unipile account: ${account_id}`)
+        } else {
+          console.error(`❌ Failed to delete duplicate: ${deleteResponse.status}`)
+        }
+      } catch (deleteError) {
+        console.error(`❌ Error deleting duplicate:`, deleteError)
+      }
+      
+      return NextResponse.json({ 
+        success: true, 
+        message: 'LinkedIn profile already connected (duplicate cleaned up)',
+        account_id,
+        workspace_id: resolvedWorkspaceId,
+        duplicate_prevented: true,
+        duplicate_deleted: true
+      })
+    }
 
     // Determine LinkedIn experience type from connection params
     let linkedinExperience = 'classic' // default
@@ -407,12 +525,12 @@ export async function POST(request: NextRequest) {
       success: true, 
       message: 'LinkedIn account connected successfully',
       account_id,
-      workspace_id: workspaceId,
+      workspace_id: resolvedWorkspaceId,
       linkedin_experience: linkedinExperience
     })
 
   } catch (error) {
-    console.error('❌ Error in LinkedIn callback:', error)
+    console.error('❌ Error in processLinkedInCallback:', error)
     return NextResponse.json({ 
       success: false, 
       error: error instanceof Error ? error.message : 'Unexpected error' 
