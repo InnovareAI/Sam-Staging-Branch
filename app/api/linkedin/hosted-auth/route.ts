@@ -48,10 +48,11 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
 export async function POST(request: NextRequest) {
   try {
     // Authenticate user first
-    const supabase = createRouteHandlerClient({ cookies })
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const { data: { session }, error: authError } = await supabase.auth.getSession()
     
-    if (authError || !user) {
+    if (authError || !session || !session.user) {
       return NextResponse.json({
         success: false,
         error: 'Authentication required to generate LinkedIn auth link',
@@ -59,24 +60,51 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
+    const user = session.user
     console.log(`🔗 Generating hosted auth link for user ${user.email} (${user.id})`)
 
-    // Get user's current workspace for proper isolation
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single()
-
-    if (!userProfile?.current_workspace_id) {
-      return NextResponse.json({
-        success: false,
-        error: 'No active workspace - please switch to a workspace first',
-        timestamp: new Date().toISOString()
-      }, { status: 400 })
+    // Get workspace - try users table first, fall back to workspace_members
+    let workspaceId: string | null = null
+    
+    try {
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('current_workspace_id')
+        .eq('id', user.id)
+        .maybeSingle()
+      
+      if (userProfile?.current_workspace_id) {
+        workspaceId = userProfile.current_workspace_id
+        console.log('✅ Workspace from users table:', workspaceId)
+      }
+    } catch (userTableError) {
+      console.log('⚠️ Users table not available, using fallback')
     }
-
-    const workspaceId = userProfile.current_workspace_id
+    
+    if (!workspaceId) {
+      try {
+        // Fallback: get first workspace from memberships
+        const { data: memberships } = await supabase
+          .from('workspace_members')
+          .select('workspace_id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .maybeSingle()
+        
+        if (memberships?.workspace_id) {
+          workspaceId = memberships.workspace_id
+          console.log('✅ Workspace from memberships:', workspaceId)
+        }
+      } catch (membershipError) {
+        console.log('⚠️ Workspace_members table error, using user ID')
+      }
+    }
+    
+    if (!workspaceId) {
+      // Last resort: use user ID as workspace ID
+      workspaceId = user.id
+      console.log('⚠️ Using user ID as workspace ID:', workspaceId)
+    }
 
     // Check for existing LinkedIn connections in this workspace
     const { data: existingConnections } = await supabase
