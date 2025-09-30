@@ -3925,9 +3925,6 @@ export default function Page() {
                             content={message.display_content ?? message.content} 
                             animate={isNewestAssistantMessage}
                           />
-                          <div className="text-xs text-gray-400 mt-2">
-                            Max 6 lines, 2 paragraphs
-                          </div>
                         </div>
                       </div>
                     )}
@@ -3938,9 +3935,6 @@ export default function Page() {
                         </div>
                         <div className="bg-gray-800 text-white px-4 py-3 rounded-2xl">
                           <p className="text-sm leading-relaxed whitespace-pre-wrap line-clamp-6">{message.display_content ?? message.content}</p>
-                          <div className="text-xs text-gray-400 mt-2">
-                            Max 6 lines, 2 paragraphs
-                          </div>
                         </div>
                       </>
                     )}
