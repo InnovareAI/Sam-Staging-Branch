@@ -5,7 +5,8 @@ import { cookies } from 'next/headers'
 // Enhanced LinkedIn connection status with comprehensive diagnostics
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
@@ -367,7 +368,8 @@ if (!workspaceAccounts.length && hasAnyUnipileAccounts) {
 // POST method for status-based actions
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
