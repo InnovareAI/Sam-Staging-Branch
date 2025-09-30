@@ -68,7 +68,7 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 
 ### 2. MCP Template Tools Migration
 
-**File**: `/lib/mcp/mistral-mcp.ts`
+**File**: `/lib/mcp/sonnet-mcp.ts`
 
 **Changes Made**:
 - Removed Mistral SDK dependency
@@ -77,10 +77,10 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 - Preserved intelligent fallback responses
 
 **Affected MCP Tools**:
-- `mcp__mistral__optimize_template` - Template optimization
-- `mcp__mistral__analyze_performance` - Performance analysis
-- `mcp__mistral__generate_variations` - A/B test variations
-- `mcp__mistral__personalize_for_prospect` - Prospect personalization
+- `mcp__sonnet__optimize_template` - Template optimization
+- `mcp__sonnet__analyze_performance` - Performance analysis
+- `mcp__sonnet__generate_variations` - A/B test variations
+- `mcp__sonnet__personalize_for_prospect` - Prospect personalization
 
 ### 3. Environment Configuration
 
@@ -176,7 +176,7 @@ ORCHESTRATION CAPABILITIES:
 
 OpenRouter provides access to multiple AI providers through a single API:
 
-#### **Claude 3.5 Sonnet** (`anthropic/claude-3.5-sonnet`)
+#### **Claude 4.5 Sonnet** (`anthropic/claude-4.5-sonnet`)
 - **Best For**: Sophisticated conversation flows, complex reasoning
 - **Use Cases**: Strategic planning, detailed prospect research
 - **Advantages**: Superior context understanding, nuanced responses
@@ -205,7 +205,7 @@ Easy model switching through configuration:
 const model = 'mistralai/mistral-large-2407'
 
 // Switch to Claude for sophisticated reasoning
-const model = 'anthropic/claude-3.5-sonnet'
+const model = 'anthropic/claude-4.5-sonnet'
 
 // Switch to GPT-4o for general intelligence
 const model = 'openai/gpt-4o'
@@ -286,7 +286,7 @@ graph TD
     B --> C[handleSamMCPCommands]
     C --> D[/api/sam/mcp-tools]
     D --> E[sam-mcp-handler.ts]
-    E --> F[mcp__mistral__optimize_template]
+    E --> F[mcp__sonnet__optimize_template]
     F --> G[OpenRouter API Call]
     G --> H[Mistral Large 2407]
     H --> I[Optimized Template Response]
@@ -391,7 +391,7 @@ Current model: `mistralai/mistral-large-2407`
 
 To change models, update in both files:
 - `/app/api/sam/threads/[threadId]/messages/route.ts`
-- `/lib/mcp/mistral-mcp.ts`
+- `/lib/mcp/sonnet-mcp.ts`
 
 ### 4. Testing in Production
 
@@ -445,7 +445,7 @@ console.log('🔄 Falling back to mock response')
 ```typescript
 const modelConfig = {
   conversation: 'mistralai/mistral-large-2407',
-  optimization: 'anthropic/claude-3.5-sonnet',
+  optimization: 'anthropic/claude-4.5-sonnet',
   analysis: 'openai/gpt-4o',
   fallback: 'meta-llama/llama-3.1-405b'
 }
@@ -486,7 +486,7 @@ const modelConfig = {
 
 **Issue**: MCP tools not working with OpenRouter
 **Solution**:
-1. Verify `/lib/mcp/mistral-mcp.ts` has been updated
+1. Verify `/lib/mcp/sonnet-mcp.ts` has been updated
 2. Check environment variable name changed from MISTRAL_API_KEY to OPENROUTER_API_KEY
 3. Test fallback responses are working when API key is missing
 

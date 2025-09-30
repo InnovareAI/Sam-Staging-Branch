@@ -52,7 +52,7 @@ SAM AI now operates in **DUAL-MODE** providing the best user experience for diff
 - **Auth Callback**: `/app/auth/callback/page.tsx` - Post-verification handling
 
 ### **Backend APIs**
-- **SAM AI Chat**: `/api/sam/chat` - OpenRouter + Claude 3.5 Sonnet
+- **SAM AI Chat**: `/api/sam/chat` - OpenRouter + Claude 4.5 Sonnet
 - **Authentication**: `/api/auth/*` - Supabase auth endpoints
 - **Organization**: `/api/organization/create` - Workspace creation
 - **Admin**: `/api/admin/*` - User and organization management
@@ -68,7 +68,7 @@ SAM AI now operates in **DUAL-MODE** providing the best user experience for diff
 ## 🌟 KEY FEATURES
 
 ### **Anonymous Mode Features**
-✅ **Full SAM AI Chat** - OpenRouter Claude 3.5 Sonnet integration  
+✅ **Full SAM AI Chat** - OpenRouter Claude 4.5 Sonnet integration  
 ✅ **Knowledge Base** - Information repository access  
 ✅ **Contact Center** - CRM functionality  
 ✅ **Campaign Hub** - Marketing campaign tools  

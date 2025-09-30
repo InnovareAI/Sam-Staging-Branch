@@ -12,8 +12,10 @@ import { UnipileMCPServer } from './unipile-mcp'
 import { N8NMCPServer } from './n8n-mcp'
 import { ReplyAgentMCPServer } from './reply-agent-mcp'
 import { DatabaseMCPServer } from './database-mcp'
+import { ReachInboxMCPServer } from './reachinbox-mcp'
 import * as TemplateMCP from './template-mcp'
-import * as MistralMCP from './mistral-mcp'
+import * as GPT5MCP from './gpt5-mcp'
+import { GPT5MCPServer } from './gpt5-mcp'
 import * as CampaignOrchestrationMCP from './campaign-orchestration-mcp'
 import { 
   MCPTool, 
@@ -24,10 +26,11 @@ import {
   GoogleSearchMCPConfig,
   UnipileMCPConfig,
   N8NMCPConfig,
-  ApolloMCPConfig,
+  ReachInboxMCPConfig,
   ReplyAgentMCPConfig,
   DatabaseMCPConfig
 } from './types'
+import { GPT5MCPConfig } from './gpt5-mcp'
 
 export interface MCPServerConfig {
   brightData?: BrightDataMCPConfig
@@ -36,9 +39,10 @@ export interface MCPServerConfig {
   webSearch?: WebSearchMCPConfig
   unipile?: UnipileMCPConfig
   n8n?: N8NMCPConfig
-  apollo?: ApolloMCPConfig
+  reachInbox?: ReachInboxMCPConfig
   replyAgent?: ReplyAgentMCPConfig
   database?: DatabaseMCPConfig
+  gpt5?: GPT5MCPConfig
 }
 
 export class MCPRegistry {
@@ -48,8 +52,10 @@ export class MCPRegistry {
   private webSearchServer?: WebSearchMCPServer
   private unipileServer?: UnipileMCPServer
   private n8nServer?: N8NMCPServer
+  private reachInboxServer?: ReachInboxMCPServer
   private replyAgentServer?: ReplyAgentMCPServer
   private databaseServer?: DatabaseMCPServer
+  private gpt5Server?: GPT5MCPServer
   private isInitialized = false
 
   async initialize(config: MCPServerConfig): Promise<{ success: boolean; message: string; servers: string[] }> {
@@ -92,10 +98,22 @@ export class MCPRegistry {
         initializedServers.push('N8N MCP')
       }
 
+      // Initialize ReachInbox MCP Server
+      if (config.reachInbox) {
+        this.reachInboxServer = new ReachInboxMCPServer(config.reachInbox)
+        initializedServers.push('ReachInbox MCP')
+      }
+
       // Initialize Reply Agent MCP Server
       if (config.replyAgent) {
         this.replyAgentServer = new ReplyAgentMCPServer(config.replyAgent)
         initializedServers.push('Reply Agent MCP')
+      }
+
+      // Initialize GPT5 MCP Server
+      if (config.gpt5) {
+        this.gpt5Server = new GPT5MCPServer(config.gpt5)
+        initializedServers.push('GPT-5 MCP')
       }
 
       this.isInitialized = true
@@ -159,10 +177,24 @@ export class MCPRegistry {
       })
     }
 
+    if (this.reachInboxServer) {
+      const reachInboxTools = await this.reachInboxServer.listTools()
+      reachInboxTools.tools.forEach(tool => {
+        allTools.push({ ...tool, server: 'reachinbox' })
+      })
+    }
+
     if (this.replyAgentServer) {
       const replyTools = await this.replyAgentServer.listTools()
       replyTools.tools.forEach(tool => {
         allTools.push({ ...tool, server: 'reply-agent' })
+      })
+    }
+
+    if (this.gpt5Server) {
+      const gpt5Tools = await this.gpt5Server.listTools()
+      gpt5Tools.tools.forEach(tool => {
+        allTools.push({ ...tool, server: 'gpt5' })
       })
     }
 
@@ -179,11 +211,11 @@ export class MCPRegistry {
       { name: 'mcp__template__clone', description: 'Clone existing template with modifications' },
       { name: 'mcp__template__get_top_performers', description: 'Get top performing templates' },
       
-      // Mistral tools
-      { name: 'mcp__mistral__optimize_template', description: 'Optimize template using Mistral AI' },
-      { name: 'mcp__mistral__analyze_performance', description: 'Analyze template performance with AI insights' },
-      { name: 'mcp__mistral__generate_variations', description: 'Generate A/B test variations' },
-      { name: 'mcp__mistral__personalize_for_prospect', description: 'Personalize template for specific prospect' },
+      // GPT-5 tools
+      { name: 'mcp__gpt5__optimize_template', description: 'Optimize template using GPT-5 AI' },
+      { name: 'mcp__gpt5__analyze_performance', description: 'Analyze template performance with GPT-5 insights' },
+      { name: 'mcp__gpt5__generate_variations', description: 'Generate A/B test variations with GPT-5' },
+      { name: 'mcp__gpt5__personalize_for_prospect', description: 'Personalize template for specific prospect using GPT-5' },
       
       // Campaign orchestration tools
       { name: 'mcp__sam__create_campaign', description: 'Sam creates campaign from conversation' },
@@ -310,6 +342,15 @@ export class MCPRegistry {
         }
         return await this.n8nServer.callTool(effectiveRequest)
 
+      case 'reachinbox':
+        if (!this.reachInboxServer) {
+          return {
+            content: [{ type: 'text', text: 'ReachInbox MCP server not available' }],
+            isError: true
+          }
+        }
+        return await this.reachInboxServer.callTool(effectiveRequest)
+
       case 'reply-agent':
         if (!this.replyAgentServer) {
           return {
@@ -375,7 +416,10 @@ export class MCPRegistry {
     // Reply Agent tools prefix
     const isReply = toolName.startsWith('reply_agent_')
 
-    // Sam AI tools (template, mistral, campaign orchestration)
+    // ReachInbox tools prefix
+    const isReachInbox = toolName.startsWith('reachinbox_')
+
+    // Sam AI tools (template, GPT-5, campaign orchestration)
     const samTemplateTools = [
       'mcp__template__create',
       'mcp__template__get_by_criteria', 
@@ -388,11 +432,11 @@ export class MCPRegistry {
       'mcp__template__get_top_performers'
     ]
 
-    const samMistralTools = [
-      'mcp__mistral__optimize_template',
-      'mcp__mistral__analyze_performance',
-      'mcp__mistral__generate_variations',
-      'mcp__mistral__personalize_for_prospect'
+    const samGPT5Tools = [
+      'mcp__gpt5__optimize_template',
+      'mcp__gpt5__analyze_performance',
+      'mcp__gpt5__generate_variations',
+      'mcp__gpt5__personalize_for_prospect'
     ]
 
     const samCampaignTools = [
@@ -429,7 +473,11 @@ export class MCPRegistry {
       return 'reply-agent'
     }
 
-    if (samTemplateTools.includes(toolName) || samMistralTools.includes(toolName) || samCampaignTools.includes(toolName)) {
+    if (isReachInbox) {
+      return 'reachinbox'
+    }
+
+    if (samTemplateTools.includes(toolName) || samGPT5Tools.includes(toolName) || samCampaignTools.includes(toolName)) {
       return 'sam-ai'
     }
 
@@ -514,33 +562,33 @@ export class MCPRegistry {
         }
       }
 
-      // Mistral MCP tools
-      if (toolName === 'mcp__mistral__optimize_template') {
-        const result = await MistralMCP.mcp__mistral__optimize_template(args)
+      // GPT-5 MCP tools
+      if (toolName === 'mcp__gpt5__optimize_template') {
+        const result = await GPT5MCP.mcp__gpt5__optimize_template(args)
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
           isError: !result.success
         }
       }
 
-      if (toolName === 'mcp__mistral__analyze_performance') {
-        const result = await MistralMCP.mcp__mistral__analyze_performance(args)
+      if (toolName === 'mcp__gpt5__analyze_performance') {
+        const result = await GPT5MCP.mcp__gpt5__analyze_performance(args)
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
           isError: !result.success
         }
       }
 
-      if (toolName === 'mcp__mistral__generate_variations') {
-        const result = await MistralMCP.mcp__mistral__generate_variations(args)
+      if (toolName === 'mcp__gpt5__generate_variations') {
+        const result = await GPT5MCP.mcp__gpt5__generate_variations(args)
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
           isError: !result.success
         }
       }
 
-      if (toolName === 'mcp__mistral__personalize_for_prospect') {
-        const result = await MistralMCP.mcp__mistral__personalize_for_prospect(args)
+      if (toolName === 'mcp__gpt5__personalize_for_prospect') {
+        const result = await GPT5MCP.mcp__gpt5__personalize_for_prospect(args)
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
           isError: !result.success
@@ -611,6 +659,9 @@ export class MCPRegistry {
     if (this.n8nServer) {
       servers.push('n8n')
     }
+    if (this.reachInboxServer) {
+      servers.push('reachinbox')
+    }
     if (this.replyAgentServer) {
       servers.push('reply-agent')
     }
@@ -628,6 +679,7 @@ export class MCPRegistry {
     webSearch: { available: boolean; tools: number }
     unipile: { available: boolean; tools: number }
     n8n: { available: boolean; tools: number }
+    reachInbox: { available: boolean; tools: number }
     replyAgent: { available: boolean; tools: number }
     samAI: { available: boolean; tools: number }
     total: { servers: number; tools: number }
@@ -638,6 +690,7 @@ export class MCPRegistry {
     const webSearchTools = this.webSearchServer ? (await this.webSearchServer.listTools()).tools.length : 0
     const unipileTools = this.unipileServer ? (await this.unipileServer.listTools()).tools.length : 0
     const n8nTools = this.n8nServer ? (await this.n8nServer.listTools()).tools.length : 0
+    const reachInboxTools = this.reachInboxServer ? (await this.reachInboxServer.listTools()).tools.length : 0
     const replyTools = this.replyAgentServer ? (await this.replyAgentServer.listTools()).tools.length : 0
     const samAITools = 16 // 9 template + 4 mistral + 3 campaign tools
 
@@ -648,11 +701,12 @@ export class MCPRegistry {
       webSearch: { available: !!this.webSearchServer, tools: webSearchTools },
       unipile: { available: !!this.unipileServer, tools: unipileTools },
       n8n: { available: !!this.n8nServer, tools: n8nTools },
+      reachInbox: { available: !!this.reachInboxServer, tools: reachInboxTools },
       replyAgent: { available: !!this.replyAgentServer, tools: replyTools },
       samAI: { available: true, tools: samAITools },
       total: {
         servers: this.getAvailableServers().length,
-        tools: brightDataTools + apifyTools + googleSearchTools + webSearchTools + unipileTools + n8nTools + replyTools + samAITools
+        tools: brightDataTools + apifyTools + googleSearchTools + webSearchTools + unipileTools + n8nTools + reachInboxTools + replyTools + samAITools
       }
     }
   }
@@ -660,7 +714,7 @@ export class MCPRegistry {
   // Intelligence orchestration methods
   async researchProspectWithBestSource(request: {
     profileUrls?: string[]
-    searchCriteria?: any
+    searchCriteria?: Record<string, unknown>
     maxResults?: number
     budget?: number
     urgency?: 'low' | 'medium' | 'high'
@@ -765,7 +819,8 @@ export class MCPRegistry {
     }
   }
 
-  async generateIntelligenceReport(prospects: any[], methodology: 'challenger' | 'spin' | 'meddic' = 'meddic'): Promise<MCPCallToolResult> {
+  async generateIntelligenceReport(prospects: unknown[], _methodology: 'challenger' | 'spin' | 'meddic' = 'meddic'): Promise<MCPCallToolResult> {
+    void _methodology
     // if (!this.brightDataServer) {
     //   return {
     //     content: [{
@@ -835,6 +890,30 @@ export function createMCPConfig(): MCPServerConfig {
       userId: process.env.USER_ID || 'default-user',
       maxResults: 20,
       searchTimeout: 30000
-    }
+    },
+
+    unipile: process.env.UNIPILE_DSN && process.env.UNIPILE_API_KEY ? {
+      dsn: process.env.UNIPILE_DSN,
+      apiKey: process.env.UNIPILE_API_KEY,
+      clientId: process.env.UNIPILE_CLIENT_ID,
+      clientSecret: process.env.UNIPILE_CLIENT_SECRET,
+      webhookSecret: process.env.UNIPILE_WEBHOOK_SECRET,
+      organizationId: process.env.ORGANIZATION_ID || 'default-org',
+      userId: process.env.USER_ID || 'default-user'
+    } : undefined,
+
+    n8n: process.env.N8N_API_BASE_URL && process.env.N8N_API_KEY ? {
+      baseUrl: process.env.N8N_API_BASE_URL,
+      apiKey: process.env.N8N_API_KEY,
+      organizationId: process.env.ORGANIZATION_ID || 'default-org',
+      userId: process.env.USER_ID || 'default-user'
+    } : undefined,
+
+    reachInbox: process.env.REACHINBOX_API_KEY ? {
+      apiKey: process.env.REACHINBOX_API_KEY,
+      baseUrl: process.env.REACHINBOX_API_URL,
+      organizationId: process.env.ORGANIZATION_ID || 'default-org',
+      userId: process.env.USER_ID || 'default-user'
+    } : undefined
   }
 }

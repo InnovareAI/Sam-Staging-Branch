@@ -8,7 +8,7 @@
 - **Git**: bee63d8 - "Make Sam AI more human and conversational" (main branch)
 
 ## 🚀 FEATURES COMPLETED
-- ✅ Human conversational AI with OpenRouter Claude 3.5 Sonnet integration
+- ✅ Human conversational AI with OpenRouter Claude 4.5 Sonnet integration
 - ✅ Balanced script adherence with natural conversation flexibility
 - ✅ Complete training data script integration for RAG system
 - ✅ Sticky memory with localStorage persistence across sessions
@@ -447,7 +447,7 @@ async function callOpenRouter(messages: any[], systemPrompt: string) {
       'X-Title': 'SAM AI Platform'
     },
     body: JSON.stringify({
-      model: 'anthropic/claude-3.5-sonnet',
+      model: 'anthropic/claude-4.5-sonnet',
       messages: [
         { role: 'system', content: systemPrompt },
         ...messages
@@ -710,12 +710,12 @@ NEXT_PUBLIC_ENVIRONMENT=development
 - **Build Status**: ✅ Successful
 - **Test Status**: ✅ All features working
 - **Performance**: Fast loading, responsive UI
-- **AI Integration**: ✅ OpenRouter + Claude 3.5 Sonnet working
+- **AI Integration**: ✅ OpenRouter + Claude 4.5 Sonnet working
 
 ## 🎯 UNIQUE FEATURES
 
 ### Human Conversational AI
-- Natural conversation flow with Claude 3.5 Sonnet
+- Natural conversation flow with Claude 4.5 Sonnet
 - Balanced script adherence with flexibility to answer any questions
 - Graceful handling of interruptions during guided flow
 

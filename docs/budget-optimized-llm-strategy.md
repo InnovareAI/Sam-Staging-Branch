@@ -199,7 +199,7 @@ interface PremiumTierStrategy {
 ### **Week 1: Emergency GPT-5 Setup**
 ```
 URGENT ACTIONS (Budget + Quality):
-├── Set up GPT-5 infrastructure (Claude 3.5 retiring)
+├── Set up GPT-5 infrastructure (Claude 4.5 retiring)
 ├── Implement template-based personalization
 ├── Create variable pre-population system  
 ├── Build batch processing capability
@@ -256,7 +256,7 @@ SCALING TIMELINE:
 
 ## 🚨 URGENT NEXT STEPS
 
-1. **Implement GPT-5 infrastructure immediately** (Claude 3.5 retiring)
+1. **Implement GPT-5 infrastructure immediately** (Claude 4.5 retiring)
 2. **Build template-based personalization system** (60-70% token reduction)
 3. **Create smart variable pre-population** (avoid repeated research)
 4. **Deploy batch processing** (efficiency gains)

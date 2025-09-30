@@ -66,12 +66,22 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
 // POST - Generate hosted auth link for LinkedIn
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔑 POST /api/unipile/hosted-auth called')
+    
     // Authenticate user first
     const cookieStore = await cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const { data: { session }, error: authError } = await supabase.auth.getSession()
     
+    console.log('🔍 Auth check:', { 
+      hasSession: !!session, 
+      hasUser: !!session?.user,
+      userId: session?.user?.id,
+      authError: authError?.message 
+    })
+    
     if (authError || !session || !session.user) {
+      console.error('❌ Authentication failed:', authError)
       return NextResponse.json({
         success: false,
         error: 'Authentication required to generate hosted auth link',
@@ -82,6 +92,49 @@ export async function POST(request: NextRequest) {
     const user = session.user
 
     console.log(`🔗 User ${user.email} (${user.id}) requesting hosted auth link`)
+
+    // Get workspace - try users table first, fall back to workspace_members
+    let workspaceId: string | null = null
+    
+    try {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('current_workspace_id')
+        .eq('id', user.id)
+        .maybeSingle()
+      
+      if (profile?.current_workspace_id) {
+        workspaceId = profile.current_workspace_id
+        console.log('✅ Workspace from users table:', workspaceId)
+      }
+    } catch (userTableError) {
+      console.log('⚠️ Users table not available, using fallback')
+    }
+    
+    if (!workspaceId) {
+      try {
+        // Fallback: get first workspace from memberships
+        const { data: memberships } = await supabase
+          .from('workspace_members')
+          .select('workspace_id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .maybeSingle()
+        
+        if (memberships?.workspace_id) {
+          workspaceId = memberships.workspace_id
+          console.log('✅ Workspace from memberships:', workspaceId)
+        }
+      } catch (membershipError) {
+        console.log('⚠️ Workspace_members table error, using user ID')
+      }
+    }
+    
+    if (!workspaceId) {
+      // Last resort: use user ID as workspace ID
+      workspaceId = user.id
+      console.log('⚠️ Using user ID as workspace ID:', workspaceId)
+    }
 
     const body = await request.json()
     const { provider = 'LINKEDIN', redirect_url } = body
@@ -100,12 +153,23 @@ export async function POST(request: NextRequest) {
       ? 'https://app.meet-sam.com'
       : (request.headers.get('origin') || 'http://localhost:3001')
     const callbackUrl = redirect_url || `${origin}/api/unipile/hosted-auth/callback`
+
+    const userContextPayload = {
+      user_id: user.id,
+      user_email: user.email,
+      workspace_id: workspaceId
+    }
+    const encodedContext = encodeURIComponent(JSON.stringify(userContextPayload))
+    const successRedirectUrl = `${callbackUrl}?status=success&user_context=${encodedContext}`
+    const failureRedirectUrl = `${callbackUrl}?status=error&user_context=${encodedContext}`
+    const notifyUrl = `${callbackUrl}?user_context=${encodedContext}`
     
     console.log('🔧 Generating hosted auth link:', {
       provider,
       callbackUrl,
       userId: user.id,
-      userEmail: user.email
+      userEmail: user.email,
+      workspaceId
     })
 
     // Call Unipile's hosted auth API with create or reconnect flow
@@ -117,10 +181,10 @@ export async function POST(request: NextRequest) {
       type: authType,
       expiresOn: expiresOn,
       api_url: `https://${process.env.UNIPILE_DSN}`,
-      success_redirect_url: `${callbackUrl}?status=success`,
-      failure_redirect_url: `${callbackUrl}?status=error`,
-      notify_url: callbackUrl,
-      name: user.id, // User ID for matching in callback
+      success_redirect_url: successRedirectUrl,
+      failure_redirect_url: failureRedirectUrl,
+      notify_url: notifyUrl,
+      name: JSON.stringify(userContextPayload),
       bypass_success_screen: true // Skip success screen and redirect directly
     }
     
@@ -151,6 +215,7 @@ export async function POST(request: NextRequest) {
       callback_url: callbackUrl,
       auth_type: authType, // Indicate if this is create or reconnect flow
       existing_accounts: existingAccounts.length,
+      workspace_id: workspaceId,
       instructions: {
         step1: 'Click the auth_url to open LinkedIn authentication',
         step2: 'Complete LinkedIn login and authorization',

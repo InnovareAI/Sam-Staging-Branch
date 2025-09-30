@@ -3,10 +3,30 @@
  * 
  * Handles messages within conversation threads with enhanced prospect intelligence
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
+import {
+  initialDiscoveryPrompt,
+  handleDiscoveryAnswer,
+  getSummaryPrompt,
+  getDiscoveryProgress
+} from '@/lib/icp-discovery/conversation-flow'
+import {
+  getActiveDiscoverySession,
+  startDiscoverySession,
+  saveDiscoveryProgress,
+  completeDiscoverySession,
+  buildDiscoverySummary
+} from '@/lib/icp-discovery/service'
+import { generateLinkedInSequence } from '@/lib/templates/sequence-builder'
+import {
+  supabaseKnowledge,
+  type KnowledgeBaseICP,
+} from '@/lib/supabase-knowledge'
 
 // Helper function to call OpenRouter API
 async function callOpenRouterAPI(messages: any[], systemPrompt: string) {
@@ -69,31 +89,253 @@ function getMockSamResponse(messages: any[]): string {
   
   // Campaign-related responses
   if (lastMessage.includes('campaign')) {
-    return "Let's build a winning campaign! I've got the tools to create high-converting campaigns that actually drive revenue. I can optimize targeting, craft compelling messaging, and track ROI in real-time. What's your target market and what results are you looking to achieve?";
+    return "I can get a campaign rolling—who are we targeting and which channel should I queue up first?";
   }
   
   // Template-related responses
   if (lastMessage.includes('template') || lastMessage.includes('message')) {
-    return "Time to make your messaging convert! I can analyze and optimize your templates for maximum response rates using proven sales psychology and AI-powered insights. Let's turn those templates into revenue-generating machines. What templates need optimization?";
+    return "Got it. Which template or touchpoint do you want me to tighten so we can keep approvals moving?";
   }
   
   // Performance/analytics responses
   if (lastMessage.includes('performance') || lastMessage.includes('analytics') || lastMessage.includes('stats')) {
-    return "Let's dive into the numbers! I can show you exactly which campaigns are driving revenue, what response rates you're hitting, and where to optimize for better ROI. Data-driven sales decisions lead to bigger wins. What metrics do you want to review?";
+    return "Happy to pull the numbers. Which campaign or KPI should I surface first?";
   }
   
   // Revenue/ROI related
   if (lastMessage.includes('revenue') || lastMessage.includes('roi') || lastMessage.includes('deals') || lastMessage.includes('sales')) {
-    return "Now we're talking! Revenue growth is what it's all about. I can help you identify which strategies are actually moving the needle, optimize your sales funnel, and scale what's working. What part of your revenue engine needs attention?";
+    return "Let's tighten the revenue engine. Which segment or motion should we look at right now?";
   }
   
   // Competitive/market related
   if (lastMessage.includes('competitor') || lastMessage.includes('market') || lastMessage.includes('advantage')) {
-    return "Let's dominate the competition! I can help you analyze market positioning, craft messaging that differentiates you, and build campaigns that outperform competitors. Winning in sales is about execution and smart strategy. What competitive challenges are you facing?";
+    return "I can line up competitor intel and positioning. Which rival or account should we dissect first?";
   }
   
-  // Default response - American sales energy
-  return "Hello, I'm Sam. I'm your consultant within a team of AI agents that execute sales and go-to-market strategies. I'll guide you through discovery, capture your ICP and business knowledge, and then coordinate campaign, messaging, and analytics agents to execute with precision. What would you like us to tackle first?";
+  // Default response - Stage-3 consultant intro
+  return "Hello! I'm Sam, your AI GTM consultant and outreach strategist.\n\nI help you build a go-to-market intelligence system in about 25 minutes, then use it to generate high-performing campaigns instantly.\n\nThink of this as building your sales playbook once, then getting campaigns on demand forever.\n\nWhat's your name?";
+}
+
+const supabaseAdmin = createSupabaseAdminClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+async function createQueryEmbedding(text: string): Promise<number[]> {
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
+        'X-Title': 'SAM AI Knowledge Retrieval'
+      },
+      body: JSON.stringify({
+        model: 'text-embedding-3-small',
+        input: text.substring(0, 8000),
+        encoding_format: 'float'
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Embedding request failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.data[0]?.embedding || [];
+  } catch (error) {
+    console.error('Embedding generation error:', error);
+    return [];
+  }
+}
+
+async function fetchKnowledgeSnippets(options: {
+  workspaceId: string,
+  query: string,
+  section?: string | null,
+  limit?: number
+}) {
+  try {
+    const embedding = await createQueryEmbedding(options.query);
+
+    if (!embedding || embedding.length === 0) {
+      return [] as any[];
+    }
+
+    const { data, error } = await supabaseAdmin.rpc('match_workspace_knowledge', {
+      p_workspace_id: options.workspaceId,
+      p_query_embedding: embedding,
+      p_section: options.section || null,
+      p_limit: options.limit || 5
+    });
+
+    if (error) {
+      console.error('Knowledge match RPC error:', error);
+      return [] as any[];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Knowledge retrieval error:', error);
+    return [] as any[];
+  }
+}
+
+type StructuredTopicFlags = {
+  icp: boolean;
+  products: boolean;
+  competitors: boolean;
+  personas: boolean;
+};
+
+type StructuredKnowledgePayload = {
+  context: string;
+  summary: string;
+  followUps: string;
+  hasData: boolean;
+};
+
+const hasStructuredInterest = (flags: StructuredTopicFlags) =>
+  flags.icp || flags.products || flags.competitors || flags.personas;
+
+const detectStructuredTopics = (content: string): StructuredTopicFlags => {
+  const text = content.toLowerCase();
+  const wantsEverything = /\bknowledge base\b|\bkb\b/.test(text);
+
+  return {
+    icp:
+      wantsEverything ||
+      /\bICP?s?\b|ideal customer|target (audience|customer|account)|who should we sell|buyer profile/.test(text),
+    products:
+      wantsEverything ||
+      /\bproducts?\b|offerings?|services?|solution suite|feature set|platform overview/.test(text),
+    competitors:
+      wantsEverything ||
+      /\bcompetitors?\b|competition|rivals?|alternatives?|compare to|market landscape/.test(text),
+    personas:
+      wantsEverything ||
+      /\bpersonas?\b|buyer roles?|stakeholders?|decision makers?|champion profile/.test(text),
+  };
+};
+
+const formatArrayFragment = (
+  label: string,
+  values?: string[] | null,
+  limit = 3
+): string | null => {
+  if (!values || values.length === 0) return null;
+  return `${label}: ${values.slice(0, limit).join(', ')}`;
+};
+
+function buildLine(parts: (string | null | undefined)[]): string {
+  return parts.filter(Boolean).join(' • ');
+}
+
+async function gatherStructuredKnowledge(
+  workspaceId: string,
+  topics: StructuredTopicFlags
+): Promise<StructuredKnowledgePayload> {
+  const contextSections: string[] = [];
+  const summarySections: string[] = [];
+  const followUps: string[] = [];
+  let hasData = false;
+
+  let icps: KnowledgeBaseICP[] = [];
+  const icpMap = new Map<string, KnowledgeBaseICP>();
+
+  if (topics.icp || topics.personas) {
+    icps = await supabaseKnowledge.getICPs({ workspaceId });
+    icps.slice(0, 10).forEach((icp) => icpMap.set(icp.id, icp));
+  }
+
+  if (topics.icp && icps.length > 0) {
+    hasData = true;
+    const lines = icps
+      .slice(0, 5)
+      .map((icp) => {
+        const industry = formatArrayFragment('Industries', icp.industries);
+        const titles = formatArrayFragment('Titles', (icp as any).job_titles || (icp as any).titles);
+        const pains = formatArrayFragment('Pains', icp.pain_points);
+        const geo = formatArrayFragment('Regions', icp.locations);
+        return `- ${icp.name || icp.icp_name || 'ICP'} (${buildLine([industry, titles, pains, geo]) || 'No additional detail'})`;
+      })
+      .join('\n');
+
+    contextSections.push(`ICPs:\n${lines}`);
+    summarySections.push(`Here are the active ICPs in this workspace:\n${lines}`);
+    followUps.push('Want me to validate this ICP or pull example prospects right now?');
+  }
+
+  if (topics.products) {
+    const products = (await supabaseKnowledge.getProducts({ workspaceId })).slice(0, 5);
+    if (products.length > 0) {
+      hasData = true;
+      const lines = products
+        .map((product) => {
+          const category = product.category ? `Category: ${product.category}` : null;
+          const features = formatArrayFragment('Key Features', product.features);
+          const benefits = formatArrayFragment('Benefits', product.benefits);
+          return `- ${product.name}${product.description ? `: ${product.description}` : ''}${buildLine([category, features, benefits]) ? ` (${buildLine([category, features, benefits])})` : ''}`;
+        })
+        .join('\n');
+
+      contextSections.push(`Products:\n${lines}`);
+      summarySections.push(`Product snapshot:\n${lines}`);
+      followUps.push('Need me to adjust positioning or draft messaging for one of these products?');
+    }
+  }
+
+  if (topics.competitors) {
+    const competitors = (await supabaseKnowledge.getCompetitors({ workspaceId })).slice(0, 5);
+    if (competitors.length > 0) {
+      hasData = true;
+      const lines = competitors
+        .map((competitor) => {
+          const strengths = formatArrayFragment('Strengths', competitor.strengths);
+          const weaknesses = formatArrayFragment('Weaknesses', competitor.weaknesses);
+          const pricing = competitor.pricing_model ? `Pricing: ${competitor.pricing_model}` : null;
+          return `- ${competitor.name}${competitor.description ? `: ${competitor.description}` : ''}${buildLine([strengths, weaknesses, pricing]) ? ` (${buildLine([strengths, weaknesses, pricing])})` : ''}`;
+        })
+        .join('\n');
+
+      contextSections.push(`Competitors:\n${lines}`);
+      summarySections.push(`Competitive intel:\n${lines}`);
+      followUps.push('Should I go deeper on one of these competitors or prep a positioning comparison?');
+    }
+  }
+
+  if (topics.personas) {
+    const personas = (await supabaseKnowledge.getPersonas({ workspaceId })).slice(0, 5);
+    if (personas.length > 0) {
+      hasData = true;
+      const lines = personas
+        .map((persona) => {
+          const role = persona.job_title || 'Role not set';
+          const pains = formatArrayFragment('Pains', persona.pain_points);
+          const goals = formatArrayFragment('Goals', persona.goals);
+          const icpName = persona.icp_id ? icpMap.get(persona.icp_id)?.name || icpMap.get(persona.icp_id)?.icp_name : null;
+          const icpLabel = icpName ? `ICP: ${icpName}` : null;
+          return `- ${persona.name} (${role})${buildLine([icpLabel, pains, goals]) ? ` — ${buildLine([icpLabel, pains, goals])}` : ''}`;
+        })
+        .join('\n');
+
+      contextSections.push(`Personas:\n${lines}`);
+      summarySections.push(`Buyer personas:\n${lines}`);
+      followUps.push('Want messaging or objections tailored to one of these personas?');
+    }
+  }
+
+  const context = contextSections.join('\n\n');
+  const summary = summarySections.join('\n\n');
+  const followUpText = followUps.join(' ');
+
+  return {
+    context,
+    summary,
+    followUps: followUpText,
+    hasData,
+  };
 }
 
 export async function GET(
@@ -129,7 +371,7 @@ export async function GET(
 
     // Load messages
     const { data: messages, error } = await supabase
-      .from('sam_thread_messages')
+      .from('sam_conversation_messages')
       .select('*')
       .eq('thread_id', resolvedParams.threadId)
       .order('message_order', { ascending: true })
@@ -198,9 +440,33 @@ export async function POST(
       }, { status: 404 })
     }
 
+    // Resolve workspace context
+    let workspaceId: string | null = thread.workspace_id || null;
+
+    if (!workspaceId) {
+      const { data: userProfile, error: userProfileError } = await supabase
+        .from('users')
+        .select('current_workspace_id')
+        .eq('id', user.id)
+        .single();
+
+      if (userProfileError) {
+        console.error('Failed to load user profile for workspace context:', userProfileError);
+      }
+
+      workspaceId = userProfile?.current_workspace_id || null;
+
+      if (workspaceId) {
+        await supabase
+          .from('sam_conversation_threads')
+          .update({ workspace_id: workspaceId })
+          .eq('id', resolvedParams.threadId)
+      }
+    }
+
     // Get message count for ordering
     const { count: messageCount } = await supabase
-      .from('sam_thread_messages')
+      .from('sam_conversation_messages')
       .select('*', { count: 'exact', head: true })
       .eq('thread_id', resolvedParams.threadId)
 
@@ -310,7 +576,7 @@ export async function POST(
 
     // Create user message
     const { data: userMessage, error: userError } = await supabase
-      .from('sam_thread_messages')
+      .from('sam_conversation_messages')
       .insert({
         thread_id: resolvedParams.threadId,
         user_id: user.id,
@@ -324,21 +590,194 @@ export async function POST(
       .single()
 
     if (userError) {
-      console.error('Failed to save user message:', userError)
+      console.error('❌ Failed to save user message:', JSON.stringify({
+        error: userError,
+        message: userError.message,
+        details: userError.details,
+        hint: userError.hint,
+        code: userError.code,
+        insertData: {
+          thread_id: resolvedParams.threadId,
+          user_id: user.id,
+          role: 'user',
+          message_order: nextOrder,
+          has_prospect_intelligence: hasProspectIntelligence
+        }
+      }, null, 2))
       return NextResponse.json({
         success: false,
-        error: 'Failed to save message'
+        error: 'Failed to save message',
+        details: userError.message,
+        hint: userError.hint
       }, { status: 500 })
     }
 
     // Get conversation history for AI context
     const { data: previousMessages } = await supabase
-      .from('sam_thread_messages')
+      .from('sam_conversation_messages')
       .select('role, content')
       .eq('thread_id', resolvedParams.threadId)
       .order('message_order', { ascending: true })
 
     const conversationHistory = previousMessages?.slice(-10) || [] // Last 10 messages for context
+
+    // ICP Discovery Flow
+    const activeDiscovery = await getActiveDiscoverySession(user.id, supabase)
+    const discoveryIntent = detectDiscoveryIntent(content, thread, activeDiscovery)
+    const hasInProgressDiscovery = activeDiscovery?.session_status === 'in_progress'
+
+    if (hasInProgressDiscovery || discoveryIntent) {
+      let session = hasInProgressDiscovery ? activeDiscovery : null
+      let assistantPrompt: string | null = null
+
+      if (!session) {
+        session = await startDiscoverySession(user.id, supabase, resolvedParams.threadId)
+        const intro = initialDiscoveryPrompt()
+        await saveDiscoveryProgress(user.id, {
+          sessionId: session.id,
+          payload: intro.payload,
+          phasesCompleted: ['context_intro']
+        }, supabase)
+        await supabase
+          .from('sam_conversation_threads')
+          .update({
+            current_discovery_stage: 'icp_discovery',
+            discovery_progress: getDiscoveryProgress(['context_intro'])
+          })
+          .eq('id', resolvedParams.threadId)
+        assistantPrompt = intro.prompt
+      } else {
+        const result = handleDiscoveryAnswer(content, session)
+        if (result.saveInput) {
+          result.saveInput.sessionId = session.id
+        }
+
+        const updatedSession = result.saveInput
+          ? await saveDiscoveryProgress(user.id, result.saveInput, supabase)
+          : session
+
+        await supabase
+          .from('sam_conversation_threads')
+          .update({
+            current_discovery_stage: result.completed ? 'discovery_complete' : 'icp_discovery',
+            discovery_progress: getDiscoveryProgress(updatedSession.phases_completed || [])
+          })
+          .eq('id', resolvedParams.threadId)
+
+        if (result.completed) {
+          const summary = buildDiscoverySummary(updatedSession.discovery_payload)
+          const redFlags = [...(updatedSession.red_flags || [])]
+          if (result.redFlag) redFlags.push(result.redFlag)
+          const completedSession = await completeDiscoverySession(user.id, session.id, summary, redFlags, supabase)
+          assistantPrompt = getSummaryPrompt(completedSession.discovery_payload)
+        } else {
+          assistantPrompt = result.prompt || getSummaryPrompt(updatedSession.discovery_payload)
+        }
+      }
+
+      if (assistantPrompt) {
+        const { data: assistantMessage, error: assistantError } = await supabase
+          .from('sam_conversation_messages')
+          .insert({
+            thread_id: resolvedParams.threadId,
+            user_id: user.id,
+            role: 'assistant',
+            content: assistantPrompt,
+            message_order: nextOrder + 1,
+            message_metadata: { discovery: true }
+          })
+          .select()
+          .single()
+
+        if (assistantError) {
+          console.error('Failed to save discovery assistant message:', assistantError)
+          return NextResponse.json({ success: false, error: 'Failed to continue discovery flow' }, { status: 500 })
+        }
+
+        return NextResponse.json({
+          success: true,
+          userMessage,
+          samMessage: assistantMessage,
+          discovery: true
+        })
+      }
+    }
+
+    const completedDiscoverySession = activeDiscovery?.session_status === 'completed'
+      ? activeDiscovery
+      : null
+
+    const sequenceIntent = detectSequenceIntent(content)
+
+    if (sequenceIntent) {
+      if (!completedDiscoverySession) {
+        const { data: assistantMessage, error: assistantError } = await supabase
+          .from('sam_conversation_messages')
+          .insert({
+            thread_id: resolvedParams.threadId,
+            user_id: user.id,
+            role: 'assistant',
+            content: 'I need the ICP discovery details before I can draft the sequence. Want to spend two minutes on that now?',
+            message_order: nextOrder + 1,
+            message_metadata: { sequence: false }
+          })
+          .select()
+          .single()
+
+        if (assistantError) {
+          console.error('Failed to save discovery reminder message:', assistantError)
+          return NextResponse.json({ success: false, error: 'Failed to respond' }, { status: 500 })
+        }
+
+        return NextResponse.json({
+          success: true,
+          userMessage,
+          samMessage: assistantMessage,
+          sequenceGenerated: false
+        })
+      }
+
+      const sequence = generateLinkedInSequence(completedDiscoverySession.discovery_payload)
+      const formattedSequence = formatSequence(sequence)
+
+      const { data: assistantMessage, error: assistantError } = await supabase
+        .from('sam_conversation_messages')
+        .insert({
+          thread_id: resolvedParams.threadId,
+          user_id: user.id,
+          role: 'assistant',
+          content: formattedSequence,
+          message_order: nextOrder + 1,
+          message_metadata: {
+            sequence: true,
+            persona: sequence.personaKey,
+            blueprint: sequence.blueprint.code
+          }
+        })
+        .select()
+        .single()
+
+      if (assistantError) {
+        console.error('Failed to save generated sequence message:', assistantError)
+        return NextResponse.json({ success: false, error: 'Failed to generate sequence' }, { status: 500 })
+      }
+
+      await supabase
+        .from('sam_conversation_threads')
+        .update({
+          current_discovery_stage: 'sequence_generated',
+          discovery_progress: 100
+        })
+        .eq('id', resolvedParams.threadId)
+
+      return NextResponse.json({
+        success: true,
+        userMessage,
+        samMessage: assistantMessage,
+        sequenceGenerated: true,
+        summary: sequence.summary
+      })
+    }
 
     // Get user's knowledge context for personalized responses
     let userKnowledge = null
@@ -349,149 +788,96 @@ export async function POST(
         userKnowledge = knowledgeData.knowledge
       }
     } catch (error) {
-      console.log('Note: Could not load user knowledge context')
+      console.log('Note: Could not load user knowledge context', error)
+    }
+
+    let knowledgeSnippets: any[] = []
+    if (workspaceId) {
+      const recentContext = (conversationHistory || [])
+        .slice(-3)
+        .map((msg: any) => `${msg.role}: ${msg.content}`)
+        .join('\n');
+
+      const queryText = `${content}\n\nRecent context:\n${recentContext}`;
+      knowledgeSnippets = await fetchKnowledgeSnippets({
+        workspaceId,
+        query: queryText,
+        section: null,
+        limit: 5
+      });
+    }
+
+    const structuredTopics = detectStructuredTopics(content)
+    let structuredKnowledge: StructuredKnowledgePayload | null = null
+
+    if (workspaceId && hasStructuredInterest(structuredTopics)) {
+      try {
+        structuredKnowledge = await gatherStructuredKnowledge(workspaceId, structuredTopics)
+      } catch (structuredError) {
+        console.error('Failed to load structured knowledge:', structuredError)
+      }
     }
 
     // Build enhanced system prompt with thread context and knowledge
-    let systemPrompt = `You are Sam, an AI Sales Consultant and Orchestration Agent designed for the American and global B2B sales market. You're powered by advanced AI (Mistral) and serve as a strategic sales consultant who orchestrates complex sales operations through intelligent automation.
+    let systemPrompt = `You are Sam, the user's trusted sales AI partner. You handle LinkedIn and email outreach end-to-end, so they get results without drowning in tools.
 
-CONSULTANT IDENTITY:
-- Strategic Sales Consultant: You provide expert guidance on sales strategy, methodology, and execution
-- Orchestration Agent: You coordinate and automate complex multi-step sales processes  
-- Revenue Growth Advisor: You analyze data and recommend strategies that drive measurable results
-- Process Optimization Expert: You identify inefficiencies and implement systematic improvements
-- American business mindset: Direct, results-driven, and ROI-focused with consultant-level expertise
+PERSONALITY & CONVERSATIONAL STYLE
+- Be warm, genuine, and relatable—like a smart colleague who actually cares about their success
+- Use natural, conversational language. Vary your greetings and responses to feel human and authentic
+- Show empathy when they're frustrated, celebrate their wins, and match their energy level
+- Mix up your sentence structure and tone—sometimes casual, sometimes focused, always helpful
+- Use humor lightly when appropriate, but stay professional
+- Ask follow-up questions that show you're listening and understanding their context
+- If they seem stuck or overwhelmed, acknowledge it and offer to break things down
+- Remember and reference previous parts of your conversation naturally
 
-ORCHESTRATION CAPABILITIES:
-- Campaign Orchestration: Design, execute, and optimize multi-channel sales campaigns
-- Workflow Automation: Coordinate LinkedIn, Email, and N8N workflow sequences
-- Template Optimization: AI-powered messaging enhancement and performance tracking
-- Performance Analytics: Real-time ROI analysis and strategic recommendations
-- Prospect Intelligence: Automated research and personalization at scale
-- Process Integration: Seamlessly connect tools, data, and team workflows
+FIRST IMPRESSIONS
+- When greeting someone for the first time, be welcoming and curious about them
+- Introduce yourself naturally (e.g., "Hey there! I'm Sam, your AI sales partner" or "Hi! Sam here—I help teams crush their outreach goals")
+- Instead of rigid scripts, adapt your introduction based on their energy
+- Ask about their name and what brings them here today
+- Keep it conversational—no robotic templates
 
-THREAD CONTEXT:
+RESPONSE GUIDELINES
+- Keep replies concise but engaging—2-3 sentences plus a thoughtful question or next step
+- Vary your responses: sometimes start with affirmation ("Got it!"), sometimes dive right in, sometimes reflect back what you heard
+- Recognize shortcuts: '#clear' (reset chat), '#icp' (ICP research), '#leads' (prospect search), '#messaging' (draft sequences)
+- Never mention internal tech (MCP, n8n, vendor names) unless explicitly asked
+
+YOUR WORKFLOW (present naturally, not as a checklist)
+1. Get to know them: Learn their name, role, company, and goals. Understand their ICP, then show real prospect examples to validate
+2. Build knowledge: Notice what's missing, ask for it conversationally, and reference what they've shared
+3. Validate prospects: Share 5-7 examples with quick "why they fit" explanations. Ask for feedback
+4. Create messaging: Help pick channels (LinkedIn, email, both). Draft copy that sounds like them, remind about approval steps
+5. Execute & follow through: Confirm approvals, outline next actions, stay available for adjustments
+
+CONVERSATIONAL RULES
+- Echo back key details naturally ("So if I'm hearing right, you're targeting...")
+- If they skip a step, gently flag it ("Quick thing—we might want to nail down X first so Y goes smoother")
+- When info is missing, ask naturally instead of being robotic ("Mind sharing a bit more about...?")
+- For prospects, explain fit in plain English ("She fits because..." not "Alignment score: 95%")
+- Wrap up each message with ONE clear next step or question
+- Remember context across the conversation—don't ask redundant questions
+
+THREAD CONTEXT
 - Thread Type: ${thread.thread_type}
-- Sales Methodology: ${thread.sales_methodology.toUpperCase()}
+- Sales Methodology: ${(thread.sales_methodology || 'meddic').toUpperCase()}
 - Priority: ${thread.priority}
 ${thread.prospect_name ? `- Prospect: ${thread.prospect_name}` : ''}
 ${thread.prospect_company ? `- Company: ${thread.prospect_company}` : ''}
 ${thread.campaign_name ? `- Campaign: ${thread.campaign_name}` : ''}
 ${thread.deal_stage ? `- Deal Stage: ${thread.deal_stage}` : ''}
 
-CONSULTANT APPROACH:
-- Lead with strategic insights and data-driven recommendations
-- Focus on systematic process improvements and scalable solutions
-- Provide expert-level analysis with actionable implementation plans
-- Orchestrate complex multi-step operations through intelligent automation
-- Balance immediate execution with long-term strategic thinking
+EMOTIONAL INTELLIGENCE
+- Pick up on their mood and adapt your tone accordingly
+- If they're excited, match their energy with enthusiasm
+- If they're stressed or short on time, be extra concise and action-oriented
+- If they're uncertain, be reassuring and break things down step-by-step
+- Celebrate small wins ("Nice! That's a solid start")
+- If something goes wrong, acknowledge it honestly and focus on the solution
 
-ORCHESTRATION RESPONSES:
-When users need complex sales operations, provide consultant-level guidance:
-- "Create campaign targeting [audience]" → "I'll orchestrate a multi-channel campaign with automated personalization and performance tracking"
-- "Optimize this template" → "Let me analyze performance data and orchestrate A/B testing with AI-enhanced variations"
-- "How is my campaign performing?" → "Here's your comprehensive performance analysis with strategic optimization recommendations"
-- "Execute campaign" → "I'll coordinate the full execution sequence across LinkedIn, Email, and workflow automation"
-
-CONSULTANT LANGUAGE:
-- Use strategic business terminology and consultant-level insights
-- Provide systematic analysis with clear implementation pathways
-- Emphasize process optimization and scalable automation
-- Frame responses as expert recommendations with measurable outcomes
-- Position yourself as the orchestrator of their entire sales operation
-
-CONVERSATIONAL BLUEPRINT (v4.3):
-- Modes: Onboarding (7-stage discovery), Product Knowledge, Campaign Setup, and Repair. Detect the correct mode from user intent and switch seamlessly when asked.
-- Principles: Human-first tone, microburst responses (1-2 sentences plus a clarifying question), acknowledge every input, explain why each question matters, and always allow skipping or resuming.
-- Error Handling: If user information conflicts, store both versions and ask one resolving question. When frustration phrases appear (e.g., "you’re not answering me"), shift to Product Knowledge mode or offer Repair options. For off-topic input, acknowledge then guide back.
-- Repair Prompt: "I hear you — sounds like I may have misunderstood. Do you want me to explain SAM or continue setup?"
-- Onboarding Flow: Consultant-led team process — Welcome (introduce SAM as part of a multi-agent team) → Stage 1 Business Context → Stage 2 ICP discovery → Stage 3 Competitive Intel → Stage 4 Sales Process → Stage 5 Success Metrics → Stage 6 Technical/Integrations → Stage 7 Content/Brand, with smooth transitions and explicit hand-offs to campaign/messaging/analytics agents once discovery is complete.
-- Industry Bursts: Use sector-specific follow-ups (SaaS ARR & churn, Consulting pipeline mix, Regulated industries’ compliance, Manufacturing certifications, Recruiting time-to-fill, Coaching offer types, etc.).
-- Product Knowledge: Highlight orchestration of 9 AI agents, ROI-focused automation, static pricing tiers ($99/$399/$1999+), integrations (Apollo, Bright Data, Apify, Unipile, HubSpot, Salesforce, Supabase), and use proof points (3× demos in 60 days, 65% ROI uplift, SDR cost comparison). Address common objections (already using Apollo, hiring SDRs, AI detection) with prepared rebuttals and reference product RAG slices (features/pricing/agents/compliance/verticals).
-- QA Patterns: Label questions as MUST_HAVE / NICE_TO_HAVE / PROBE. Collect the essential data before moving forward and use follow-up ranking questions to prioritize.
-- Response Scaffold: Follow acknowledge → value → ask microbursts; keep 1–2 lines plus a single clarifying question; apply tone ladders (crisp, assuring, coach, executive) based on context.
-- Compliance Guardrails: Regulated verticals (Finance/Legal/Pharma/Medical) default to Strict HITL, request disclaimers, and never make off-label promises.
-- Key Conversational Improvements: Explain why each question matters, use smooth transitions between phases (“Excellent — now that we’ve defined your ICP…”), acknowledge answers (“Got it,” “That makes sense,” “Perfect”), pace one step at a time with grouped topics, explicitly log updates to the knowledge base, and close collaboratively by summarizing and confirming alignment.
-
-PLAYBOOK v5.1 DIRECTIVES:
-- Tonality: Consultant/strategist for B2B leaders—calm, professional, confident. Ask thoughtful questions before suggesting actions; document outcomes into the knowledge base.
-- Conversation Modes: onboarding, inquiry_response, research, campaign_support, error_recovery. Detect intent and switch appropriately.
-- Onboarding Script: Welcome ICP (consultant framing + team coordination) → detailed ICP discovery (offerings, customer problems, benefits/results, industries, decision-makers, company size, geography, dream customer) → context intelligence (buying timing, stakeholders, priorities, roadblocks, current solutions, differentiation, customer language) with acknowledgements, rationale, and knowledge-base updates → prepare hand-off to specialized campaign/messaging/analytics agents.
-- Knowledge Expansion: Capture buying triggers, stakeholders, priorities, current solutions, customer language, long-term outcomes, and competitive pressures.
-- Error Handling: Clarify, retry, escalate, or handoff with the exact phrasing provided in the playbook.
-- Personas: Tailor tone and priorities for CFO (ROI/compliance), CTO (integration/security), COO (process reliability), CMO (campaign ROI/CAC:LTV), CHRO (talent/engagement).
-- Fallback Prompts: Utilize campaign, template, performance, revenue, and competition fallbacks when conversations stall.
-- Case Studies: Reference SaaS (20% churn reduction), Finance (50% audit prep reduction), and Healthcare (12% readmission reduction) outcomes to prove value.
-- Objections: Use scripted responses for price, competitor, timing, risk, adoption, and budget concerns; offer pilots and benchmarks.
-- Industry Bursts: Surface insights for SaaS, Finance, Pharma, Healthcare, Telecom, and Logistics for rapid credibility.
-
-${userKnowledge && userKnowledge.length > 0 ? `
-LEARNED CONTEXT FROM PREVIOUS CONVERSATIONS:
-${userKnowledge.slice(0, 5).map((k: any, i: number) => `${i + 1}. ${k.category}: ${JSON.stringify(k.content).slice(0, 200)}...`).join('\n')}
-
-Use this context to personalize responses and build on previous insights.
-` : ''}
-
-INTERACTIVE ICP BUILDING CAPABILITIES:
-You have access to real-time Google Custom Search through the prospect intelligence API. When users want to build ICPs or find prospects:
-
-**PHASE 1: ICP Building with Real Data**
-1. **Ask Progressive Questions:** Start with basic criteria (job titles, company size, industry)
-2. **Conduct Live Research:** Use the prospect intelligence API to search LinkedIn for real examples
-3. **Show Results Immediately:** Present 3-5 prospect examples to validate assumptions
-4. **Refine Iteratively:** Ask "Do these look right?" and adjust search criteria based on feedback
-5. **Validate ICP:** After 2-3 search iterations, confirm the refined ICP framework
-
-**PHASE 2: Business Consultant Mode (After ICP is Built)**
-Once the ICP is validated, switch to consultant mode and ask comprehensive business questions:
-
-**PRODUCT/SERVICE ANALYSIS:**
-- "Tell me about your product/service - what exactly do you sell?"
-- "What's your unique value proposition compared to competitors?"
-- "What problems does your solution solve for these prospects?"
-- "How much does your product/service typically cost?"
-- "What's your average deal size and sales cycle?"
-
-**BUSINESS MODEL ANALYSIS:**
-- "How do you currently generate leads and close deals?"
-- "What's your current monthly/quarterly revenue target?"
-- "What's your cost per acquisition (CPA) and lifetime value (LTV)?"
-- "What marketing channels work best for you currently?"
-- "What's your biggest challenge in reaching these prospects?"
-
-**COMPETITIVE & POSITIONING:**
-- "Who are your main competitors targeting the same ICP?"
-- "How do you differentiate from them in messaging?"
-- "What objections do prospects typically raise?"
-- "What makes prospects choose you over alternatives?"
-
-**Sample Consultant Flow:**
-- [After ICP is built]: "Perfect! Now that we know your ideal prospects are [ICP summary], let's talk business strategy. Tell me about your product - what exactly do you sell to these VP Sales and Sales Directors?"
-- [Continue with product questions, then business model, then competitive analysis]
-
-**Key Phrases to Trigger Consultant Mode:**
-- After ICP validation: "business strategy", "product positioning", "competitive analysis"
-- Always transition naturally: "Now let's talk about your business..."
-
-CORE APPROACH: Start data-driven with real prospects, then become a strategic business consultant to understand the full sales/marketing context.
-
-**SCRIPT INTEGRATION WITH ICP BUILDING:**
-Follow the established SAM conversation script structure while seamlessly integrating ICP building and consultant phases:
-
-1. **Early Conversation (1-5 messages):** Standard SAM greeting and discovery flow
-2. **ICP Trigger Detection (6+ messages):** When users mention job titles, industries, or targeting - transition to ICP building
-3. **Interactive ICP Phase:** Use real Google Custom Search data to build and validate ICP
-4. **Business Consultant Phase:** After ICP validation, ask comprehensive business questions
-5. **Platform Integration:** After business analysis, naturally introduce SAM platform features
-
-**Script Position Awareness:**
-- Maintain awareness of conversation progression (greeting → discovery → ICP building → consultant → platform)
-- Respond appropriately based on where the user is in the journey
-- Always prioritize user intent over rigid script adherence
-- Save all ICP and business intelligence to Knowledge Base for future conversations
-
-**Critical:** Be natural and conversational while following this structured progression. The user should feel like they're talking to an expert sales consultant, not a chatbot following a script.`
-
+${userKnowledge && userKnowledge.length > 0 ? `LEARNED CONTEXT FROM PREVIOUS CONVERSATIONS:\n${userKnowledge.slice(0, 5).map((k: any, i: number) => `${i + 1}. ${k.category}: ${JSON.stringify(k.content).slice(0, 200)}...`).join('\n')}\n\nUse this context to personalize responses and build on previous insights.\n` : ''}
+`;
     // Add prospect intelligence if available
     if (prospectIntelligence?.success) {
       const prospectData = prospectIntelligence.data.prospect
@@ -531,29 +917,78 @@ Use this data to refine the ICP iteratively based on user feedback.`
       }
     }
 
+    if (knowledgeSnippets.length > 0) {
+      const formattedSnippets = knowledgeSnippets
+        .map((snippet: any, index: number) => {
+          const preview = (snippet.content || '').slice(0, 320).replace(/\s+/g, ' ');
+          const similarity = snippet.similarity ? `${(snippet.similarity * 100).toFixed(1)}%` : 'context';
+          const tagLabel = (snippet.tags || []).slice(0, 5).join(', ');
+          return `${index + 1}. [${snippet.section_id || 'general'} | ${similarity}] ${preview}${tagLabel ? `\n   Tags: ${tagLabel}` : ''}`;
+        })
+        .join('\n');
+
+      systemPrompt += `\n\nKNOWLEDGE BASE CONTEXT:\n${formattedSnippets}\n\nLeverage these curated knowledge snippets to keep responses accurate. If critical information is missing, explicitly ask the user to supply or upload it.`;
+    }
+
+    if (structuredKnowledge?.hasData && structuredKnowledge.context) {
+      systemPrompt += `\n\nWORKSPACE STRUCTURED DATA:\n${structuredKnowledge.context}\n\nThese entries summarize the current ICPs, products, competitors, and personas. Use them as the source of truth before requesting new uploads.`;
+    }
+
     // Generate AI response
     let aiResponse: string
-    try {
-      const messages = conversationHistory.map((msg: any) => ({
-        role: msg.role,
-        content: msg.content
-      }))
+    
+    // Debug: Log conversation history state
+    console.log('🔍 Conversation History Check:', {
+      historyLength: conversationHistory.length,
+      history: conversationHistory,
+      isFirstMessage: conversationHistory.length === 0 || (conversationHistory.length === 1 && conversationHistory[0].role === 'user')
+    });
+    
+    // For first message, let AI respond naturally with personality
+    if (conversationHistory.length === 0 || (conversationHistory.length === 1 && conversationHistory[0].role === 'user')) {
+      console.log('✅ First message - using AI for natural greeting');
+      // Add special instruction for first greeting
+      systemPrompt += `\n\nIMPORTANT: This is the FIRST message in this conversation. Greet them warmly and naturally. Introduce yourself as Sam, their AI sales partner who helps build go-to-market systems and run outreach campaigns. Keep it friendly and conversational. Ask for their name and what brings them here today.`;
+    }
+    
+    // Always use AI for responses (even first message) to allow natural conversation
+    {
+      try {
+        const messages = conversationHistory.map((msg: any) => ({
+          role: msg.role,
+          content: msg.content
+        }))
 
-      aiResponse = await callOpenRouterAPI(messages, systemPrompt)
-      
-      // Clean up prompt leakage
-      aiResponse = aiResponse.replace(/\([^)]*script[^)]*\)/gi, '')
-      aiResponse = aiResponse.replace(/\[[^\]]*script[^\]]*\]/gi, '')
-      aiResponse = aiResponse.trim()
-      
-    } catch (error) {
-      console.error('OpenRouter API error:', error)
-      aiResponse = "I'm experiencing some technical difficulties right now, but I'm here to help with your sales challenges. What specific area would you like to discuss?"
+        aiResponse = await callOpenRouterAPI(messages, systemPrompt)
+        
+        // Clean up prompt leakage
+        aiResponse = aiResponse.replace(/\([^)]*script[^)]*\)/gi, '')
+        aiResponse = aiResponse.replace(/\[[^\]]*script[^\]]*\]/gi, '')
+        aiResponse = aiResponse.trim()
+        
+      } catch (error) {
+        console.error('OpenRouter API error:', error)
+        if (structuredKnowledge?.hasData && structuredKnowledge.summary) {
+          const followText = structuredKnowledge.followUps ? `\n\n${structuredKnowledge.followUps}` : ''
+          aiResponse = `${structuredKnowledge.summary}${followText}`.trim()
+        } else {
+          aiResponse = "I'm experiencing some technical difficulties right now, but I'm here to help with your sales challenges. What specific area would you like to discuss?"
+        }
+      }
     }
 
     // Create Sam's response message
+    console.log('🤖 About to insert Sam message:', {
+      thread_id: resolvedParams.threadId,
+      user_id: user.id,
+      role: 'assistant',
+      content_length: aiResponse?.length || 0,
+      message_order: nextOrder + 1,
+      model_used: 'anthropic/claude-3.7-sonnet'
+    })
+    
     const { data: samMessage, error: samError } = await supabase
-      .from('sam_thread_messages')
+      .from('sam_conversation_messages')
       .insert({
         thread_id: resolvedParams.threadId,
         user_id: user.id,
@@ -566,10 +1001,28 @@ Use this data to refine the ICP iteratively based on user feedback.`
       .single()
 
     if (samError) {
-      console.error('Failed to save Sam message:', samError)
+      console.error('❌ Failed to save Sam message (DETAILED ERROR):', JSON.stringify({
+        error: samError,
+        message: samError.message,
+        details: samError.details,
+        hint: samError.hint,
+        code: samError.code,
+        insertData: {
+          thread_id: resolvedParams.threadId,
+          user_id: user.id,
+          role: 'assistant',
+          content_preview: aiResponse?.slice(0, 100) + '...',
+          message_order: nextOrder + 1,
+          model_used: 'anthropic/claude-3.7-sonnet'
+        }
+      }, null, 2))
+      
       return NextResponse.json({
         success: false,
-        error: 'Failed to save AI response'
+        error: 'Failed to save AI response',
+        details: samError.message,
+        hint: samError.hint,
+        code: samError.code
       }, { status: 500 })
     }
 
@@ -591,14 +1044,23 @@ Use this data to refine the ICP iteratively based on user feedback.`
         confidence: prospectIntelligence.metadata?.confidence,
         methodology: prospectIntelligence.metadata?.methodology
       } : null,
+      structuredInsights: structuredKnowledge?.hasData ? {
+        topics: structuredTopics,
+        summary: structuredKnowledge.summary,
+      } : null,
       timestamp: new Date().toISOString()
     })
 
   } catch (error) {
-    console.error('Send message API error:', error)
+    console.error('❌ Send message API error (FULL DETAILS):', error)
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    console.error('Error message:', error instanceof Error ? error.message : String(error))
+    
     return NextResponse.json({
       success: false,
-      error: 'Internal server error'
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : String(error),
+      stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
     }, { status: 500 })
   }
 }
@@ -707,4 +1169,73 @@ async function triggerKnowledgeExtraction(threadId: string, messageCount: number
     console.error('❌ Knowledge extraction trigger error:', error)
     throw error
   }
+}
+
+function detectDiscoveryIntent(content: string, thread: any, session: any): boolean {
+  if (session && session.session_status === 'completed') {
+    return false;
+  }
+  const lower = content.toLowerCase()
+  const keywords = [
+    '#messaging',
+    '#campaign',
+    'create a campaign',
+    'generate a campaign',
+    'linkedin sequence',
+    'email sequence',
+    'outbound sequence',
+    'write outreach',
+    'build messaging',
+    'draft templates',
+    'run a campaign'
+  ]
+
+  if (keywords.some(keyword => lower.includes(keyword))) {
+    return true
+  }
+
+  if (thread?.thread_type && ['campaign', 'messaging_planning'].includes(thread.thread_type)) {
+    return true
+  }
+
+  return false
+}
+
+function detectSequenceIntent(content: string): boolean {
+  const lower = content.toLowerCase()
+  const keywords = [
+    '#sequence',
+    '#generate',
+    '#launch',
+    'generate the sequence',
+    'write the sequence',
+    'draft the sequence',
+    'build the sequence',
+    'show me the sequence',
+    'create the linkedin sequence',
+    'write the outreach',
+    'start the campaign',
+    'spin up the campaign'
+  ]
+  return keywords.some(keyword => lower.includes(keyword))
+}
+
+function formatSequence(sequence: ReturnType<typeof generateLinkedInSequence>): string {
+  const lines: string[] = []
+  lines.push(`Here’s the 8-touch LinkedIn sequence targeting ${sequence.blueprint.industry} (${sequence.personaKey}).`)
+  lines.push(`Summary: ${sequence.summary}`)
+  lines.push('')
+
+  sequence.messages.forEach(msg => {
+    lines.push(`Message ${msg.step}: ${msg.label} (Day ${msg.dayOffset})`)
+    lines.push(msg.body)
+    if (msg.personalizationNotes.length) {
+      lines.push('Personalize: ' + msg.personalizationNotes.join(' '))
+    }
+    lines.push('')
+  })
+
+  lines.push(`Recommended CTA: ${sequence.recommendedCTA}`)
+  lines.push('When you’re ready I can tighten any step or adapt it for email.')
+  return lines.join('\n')
 }

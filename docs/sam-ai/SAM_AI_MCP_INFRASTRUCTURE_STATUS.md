@@ -30,10 +30,10 @@ mcp__template__get_top_performers     // Get best performing templates
 
 #### **Mistral AI Integration Tools (4 tools)**
 ```typescript
-mcp__mistral__optimize_template        // AI-powered template optimization
-mcp__mistral__analyze_performance      // AI performance analysis with insights
-mcp__mistral__generate_variations      // Generate A/B test variations
-mcp__mistral__personalize_for_prospect // Dynamic prospect personalization
+mcp__sonnet__optimize_template        // AI-powered template optimization
+mcp__sonnet__analyze_performance      // AI performance analysis with insights
+mcp__sonnet__generate_variations      // Generate A/B test variations
+mcp__sonnet__personalize_for_prospect // Dynamic prospect personalization
 ```
 
 #### **Campaign Orchestration Tools (3 tools)**
@@ -133,7 +133,7 @@ User: "Execute this campaign with advanced personalization to 100 prospects dail
 
 Sam Process:
 1. mcp__sam__execute_campaign(campaign_id, execution_mode='scheduled', batch_size=100)
-2. For each prospect: mcp__mistral__personalize_for_prospect(template, prospect_data)
+2. For each prospect: mcp__sonnet__personalize_for_prospect(template, prospect_data)
 3. Integrates with N8N workflows for actual delivery
 ```
 
@@ -143,8 +143,8 @@ User: "How can we improve the response rate on our tech CEO campaign?"
 
 Sam Process:
 1. mcp__template__get_performance(template_id)
-2. mcp__mistral__analyze_performance(template, performance_data)
-3. mcp__mistral__generate_variations(base_template, variation_type='tone')
+2. mcp__sonnet__analyze_performance(template, performance_data)
+3. mcp__sonnet__generate_variations(base_template, variation_type='tone')
 4. Returns actionable optimization recommendations
 ```
 

@@ -132,7 +132,7 @@
 ### ✅ Working Systems
 - **Frontend**: Next.js 15.5.2 with React 18.3.1 and TypeScript
 - **Backend**: Supabase with PostgreSQL and RLS policies
-- **AI Integration**: OpenRouter + Claude 3.5 Sonnet via Sam knowledge base
+- **AI Integration**: OpenRouter + Claude 4.5 Sonnet via Sam knowledge base
 - **Authentication**: Clerk (partially working, needs fixes)
 - **Deployment**: Netlify with proper Next.js configuration
 - **Knowledge Management**: Comprehensive markdown-based system with dynamic loading

@@ -1,31 +1,43 @@
 {
+  "description": "Application MCP servers for SAM AI",
   "mcpServers": {
-    "shadcn": {
+    "brightdata": {
+      "command": "curl",
+      "args": ["https://mcp.brightdata.com/sse?token=e8*****************************************42"],
+      "description": "Bright Data managed MCP"
+    },
+    "apify": {
       "command": "npx",
-      "args": [
-        "shadcn@latest",
-        "mcp"
-      ]
-    },
-    "directory-monitor": {
-      "command": "node",
-      "args": [
-        "/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/mcp-directory-monitor.js"
-      ],
+      "args": ["@apify/mcp-server-apify@latest"],
       "env": {
-        "NODE_ENV": "production"
-      }
+        "APIFY_API_TOKEN": "${APIFY_API_TOKEN}"
+      },
+      "description": "Apify MCP server"
     },
-    "qa-agent": {
-      "command": "node",
-      "args": [
-        "/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/mcp-qa-agent.js"
-      ],
+    "unipile": {
+      "command": "npx",
+      "args": ["@unipile/mcp-server-unipile@latest"],
       "env": {
-        "NODE_ENV": "development",
-        "QA_AUTO_FIX_ENABLED": "true",
-        "QA_BACKUP_ENABLED": "true"
-      }
+        "UNIPILE_API_KEY": "${UNIPILE_API_KEY}",
+        "UNIPILE_DSN": "${UNIPILE_DSN}"
+      },
+      "description": "LinkedIn + messaging MCP"
+    },
+    "postmark": {
+      "command": "npx",
+      "args": ["@postmarkapp/mcp-server-postmark@latest"],
+      "env": {
+        "POSTMARK_SERVER_TOKEN": "${POSTMARK_SERVER_TOKEN}"
+      },
+      "description": "Postmark MCP"
+    },
+    "stripe": {
+      "command": "npx",
+      "args": ["@stripe/mcp-server-stripe@latest"],
+      "env": {
+        "STRIPE_API_KEY": "${STRIPE_API_KEY}"
+      },
+      "description": "Stripe MCP"
     }
   }
 }

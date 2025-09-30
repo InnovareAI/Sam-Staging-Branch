@@ -351,13 +351,13 @@ function LinkedInIntegrationContent() {
             <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-6">
               <h3 className="text-white font-medium mb-3">Connect LinkedIn Account</h3>
               <p className="text-gray-400 mb-4">
-                Connect your LinkedIn account through Unipile's secure platform.
+                Connect your LinkedIn account securely using LinkedIn's official OAuth.
               </p>
               
               <div className="space-y-3 mb-6">
                 <div className="flex items-center space-x-3 text-gray-300">
                   <Shield className="w-5 h-5 text-green-400" />
-                  <span>Secure Unipile authentication</span>
+                  <span>Secure LinkedIn authentication</span>
                 </div>
                 <div className="flex items-center space-x-3 text-gray-300">
                   <Shield className="w-5 h-5 text-green-400" />
@@ -377,7 +377,7 @@ function LinkedInIntegrationContent() {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Opening Unipile...</span>
+                    <span>Connecting to LinkedIn...</span>
                   </>
                 ) : (
                   <>
@@ -389,7 +389,7 @@ function LinkedInIntegrationContent() {
               </button>
               
               <p className="text-xs text-gray-500 mt-3 text-center">
-                After connecting on Unipile, refresh this page to see your LinkedIn accounts
+                After completing authentication, your LinkedIn account will be connected automatically
               </p>
             </div>
 

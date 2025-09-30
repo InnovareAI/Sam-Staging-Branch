@@ -2,18 +2,52 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 
-// Test LinkedIn account functionality by trying to fetch messages
+async function callUnipileAPI(endpoint: string) {
+  const unipileDsn = process.env.UNIPILE_DSN
+  const unipileApiKey = process.env.UNIPILE_API_KEY
+
+  if (!unipileDsn || !unipileApiKey) {
+    throw new Error('Unipile API credentials not configured')
+  }
+
+  const response = await fetch(`https://${unipileDsn}/api/v1/${endpoint}`, {
+    headers: {
+      'X-API-KEY': unipileApiKey,
+      Accept: 'application/json'
+    }
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(`Unipile API error: ${response.status} ${response.statusText} - ${text}`)
+  }
+
+  return response.json()
+}
+
+function evaluateAccountStatus(account: any) {
+  const sources = account?.sources || []
+  const primary = sources[0]
+  const status = primary?.status || 'UNKNOWN'
+  const functional = status === 'OK' || status === 'RUNNING' || status === 'HEALTHY'
+
+  return {
+    account_id: account.id,
+    name: account.name,
+    raw_status: status,
+    functional,
+    last_test: new Date().toISOString(),
+    error: functional ? null : 'Re-authentication required'
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate user
     const cookieStore = await cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const { data: { session }, error: authError } = await supabase.auth.getSession()
-    
-    // In development mode, bypass auth for testing
-    const isDevelopment = process.env.NODE_ENV === 'development'
-    
-    if (!isDevelopment && (authError || !session?.user)) {
+
+    if (authError || !session?.user) {
       return NextResponse.json({
         success: false,
         error: 'Authentication required',
@@ -21,124 +55,95 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // For development testing, return simulated LinkedIn status based on our known accounts
-    if (isDevelopment) {
-      // We know we have 6 LinkedIn accounts from our MCP testing
-      const simulatedLinkedInAccounts = [
-        { id: 'NLsTJRfCSg-WZAXCBo8w7A', name: 'Thorsten Linz', status: 'OK' },
-        { id: 'osKDIRFtTtqzmfULiWGTEg', name: 'Noriko Yokoi', status: 'STOPPED' },
-        { id: 'he3RXnROSLuhONxgNle7dw', name: 'Charissa Saniel', status: 'OK' },
-        { id: '3Zj8ks8aSrKg0ySaLQo_8A', name: 'Irish Cita De Ade', status: 'OK' },
-        { id: 'MlV8PYD1SXG783XbJRraLQ', name: 'Martin Schechtner', status: 'OK' },
-        { id: 'eCvuVstGTfCedKsrzAKvZA', name: 'Peter Noble', status: 'OK' }
-      ]
-      
-      const linkedinAccounts = simulatedLinkedInAccounts
-      console.log('Development mode: Using simulated LinkedIn accounts:', linkedinAccounts.length)
-    } else {
-      // Production mode - use actual MCP call (would need server-side MCP integration)
+    const user = session.user
+
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('current_workspace_id')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError || !profile?.current_workspace_id) {
       return NextResponse.json({
-        success: false,
-        error: 'Production MCP integration not implemented yet',
+        success: true,
         functional: false,
-        accounts: []
+        overall_status: 'no_workspace',
+        account_count: 0,
+        functional_count: 0,
+        accounts: [],
+        last_checked: new Date().toISOString()
       })
     }
-    
-    const linkedinAccounts = isDevelopment ? [
-      { id: 'NLsTJRfCSg-WZAXCBo8w7A', name: 'Thorsten Linz', sources: [{ status: 'OK' }] },
-      { id: 'osKDIRFtTtqzmfULiWGTEg', name: 'Noriko Yokoi', sources: [{ status: 'STOPPED' }] },
-      { id: 'he3RXnROSLuhONxgNle7dw', name: 'Charissa Saniel', sources: [{ status: 'OK' }] },
-      { id: '3Zj8ks8aSrKg0ySaLQo_8A', name: 'Irish Cita De Ade', sources: [{ status: 'OK' }] },
-      { id: 'MlV8PYD1SXG783XbJRraLQ', name: 'Martin Schechtner', sources: [{ status: 'OK' }] },
-      { id: 'eCvuVstGTfCedKsrzAKvZA', name: 'Peter Noble', sources: [{ status: 'OK' }] }
-    ] : []
 
-    // Test each LinkedIn account functionality
-    const accountStatus = []
-    let anyFunctional = false
+    const workspaceId = profile.current_workspace_id as string
 
-    for (const account of linkedinAccounts) {
-      const status = {
-        account_id: account.id,
-        name: account.name,
-        raw_status: account.sources?.[0]?.status || 'UNKNOWN',
+    const { data: workspaceAccounts } = await supabase
+      .from('workspace_accounts')
+      .select('unipile_account_id, connection_status')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .eq('account_type', 'linkedin')
+
+    if (!workspaceAccounts || workspaceAccounts.length === 0) {
+      return NextResponse.json({
+        success: true,
         functional: false,
-        last_test: new Date().toISOString(),
-        error: null
-      }
-
-      try {
-        // Test actual functionality by trying to fetch recent messages
-        const messagesResponse = await fetch(`https://${unipileDsn}/api/v1/chats`, {
-          method: 'POST',
-          headers: {
-            'X-API-KEY': unipileApiKey,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            account_id: account.sources?.[0]?.id,
-            limit: 1 // Just test with 1 message to minimize load
-          })
-        })
-
-        if (messagesResponse.ok) {
-          status.functional = true
-          anyFunctional = true
-        } else {
-          const errorText = await messagesResponse.text()
-          status.error = `API Error: ${messagesResponse.status} - ${errorText}`
-          
-          // Check for specific error types
-          if (errorText.includes('credentials') || errorText.includes('auth') || messagesResponse.status === 401) {
-            status.error = 'Authentication required - please reconnect account'
-          } else if (messagesResponse.status === 429) {
-            status.error = 'Rate limited - account is functional but temporarily restricted'
-            // Rate limiting means the account is actually working, just throttled
-            status.functional = true
-            anyFunctional = true
-          }
-        }
-      } catch (testError) {
-        status.error = `Connection failed: ${testError instanceof Error ? testError.message : 'Unknown error'}`
-      }
-
-      accountStatus.push(status)
+        overall_status: 'no_accounts',
+        account_count: 0,
+        functional_count: 0,
+        accounts: [],
+        last_checked: new Date().toISOString()
+      })
     }
 
-    // Determine overall status
-    let overallStatus = 'disconnected'
-    if (linkedinAccounts.length === 0) {
+    const unipileAccountsData = await callUnipileAPI('accounts')
+    const allAccounts = Array.isArray(unipileAccountsData)
+      ? unipileAccountsData
+      : (unipileAccountsData.items || unipileAccountsData.accounts || [])
+
+    const targetIds = new Set(
+      workspaceAccounts
+        .map(acc => acc.unipile_account_id)
+        .filter(Boolean)
+    )
+
+    const matchedAccounts = allAccounts.filter((account: any) => targetIds.has(account.id))
+
+    const accountStatus = matchedAccounts.map(evaluateAccountStatus)
+    const functionalAccounts = accountStatus.filter(acc => acc.functional)
+
+    let overallStatus: 'no_accounts' | 'fully_functional' | 'partially_functional' | 'all_non_functional'
+    if (accountStatus.length === 0) {
       overallStatus = 'no_accounts'
-    } else if (anyFunctional) {
-      overallStatus = accountStatus.every(acc => acc.functional) ? 'fully_functional' : 'partially_functional'
-    } else {
+    } else if (functionalAccounts.length === 0) {
       overallStatus = 'all_non_functional'
+    } else if (functionalAccounts.length === accountStatus.length) {
+      overallStatus = 'fully_functional'
+    } else {
+      overallStatus = 'partially_functional'
     }
 
     return NextResponse.json({
       success: true,
-      functional: anyFunctional,
+      functional: functionalAccounts.length > 0,
       overall_status: overallStatus,
-      account_count: linkedinAccounts.length,
-      functional_count: accountStatus.filter(acc => acc.functional).length,
+      account_count: accountStatus.length,
+      functional_count: functionalAccounts.length,
       accounts: accountStatus,
       summary: {
-        total_accounts: linkedinAccounts.length,
-        functional_accounts: accountStatus.filter(acc => acc.functional).length,
-        credential_issues: accountStatus.filter(acc => acc.error?.includes('auth')).length,
-        rate_limited: accountStatus.filter(acc => acc.error?.includes('rate')).length
+        total_accounts: accountStatus.length,
+        functional_accounts: functionalAccounts.length,
+        credential_issues: accountStatus.length - functionalAccounts.length,
+        rate_limited: 0
       },
       last_checked: new Date().toISOString()
     })
-
   } catch (error) {
     console.error('LinkedIn connection test failed:', error)
-    
+
     return NextResponse.json({
       success: false,
-      error: 'LinkedIn connection test failed',
+      error: error instanceof Error ? error.message : 'LinkedIn connection test failed',
       functional: false,
       debug_error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })

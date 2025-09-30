@@ -39,11 +39,7 @@ SAM is an intelligent AI-powered Sales Assistant platform built for multi-tenant
 3. **Environment Configuration**
    Copy `.env.local.example` to `.env.local` and configure:
    ```bash
-   # Clerk Authentication
-   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_publishable_key
-   CLERK_SECRET_KEY=your_secret_key
-   
-   # Supabase Database
+   # Supabase Authentication
    NEXT_PUBLIC_SUPABASE_URL=https://latxadqrvrrrcvkktrog.supabase.co
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
    SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
@@ -65,8 +61,8 @@ SAM is an intelligent AI-powered Sales Assistant platform built for multi-tenant
 
 - **Frontend**: Next.js 15.5.2, React 18, TypeScript, Tailwind CSS
 - **Backend**: Next.js API Routes, Supabase PostgreSQL
-- **Authentication**: Clerk with multi-tenant workspaces
-- **AI Integration**: OpenRouter + Claude 3.5 Sonnet
+- **Authentication**: Supabase Auth with multi-tenant workspaces
+- **AI Integration**: OpenRouter + Claude 4.5 Sonnet
 - **Email**: Postmark for invitations and notifications
 - **Deployment**: Netlify with custom domain
 - **Database**: Supabase with Row Level Security (RLS)
@@ -88,8 +84,6 @@ netlify deploy --prod
 
 #### Environment Variables
 Configure these in Netlify dashboard or via CLI:
-- `CLERK_SECRET_KEY`
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `OPENROUTER_API_KEY`
@@ -131,7 +125,7 @@ The project uses the following Netlify configuration (`netlify.toml`):
 #### 3. Authentication Issues
 **Signs in successfully but no data loads:**
 - Check environment variables are set correctly
-- Verify Clerk webhook endpoints are configured
+- Verify Supabase Auth callback URLs are configured
 - Ensure Supabase RLS policies allow workspace access
 
 #### 4. Sam AI Not Responding
@@ -172,7 +166,7 @@ npm install
 ## 🔒 Security
 
 - Multi-tenant data isolation via Supabase RLS
-- Clerk authentication with workspace-based access control  
+- Supabase authentication with workspace-based access control  
 - API routes protected by middleware
 - Environment variables for sensitive data
 - HTTPS enforced on production
@@ -180,7 +174,7 @@ npm install
 ## 📊 Features
 
 ### Core Modules
-- **Chat with Sam** - AI-powered sales conversations with Claude 3.5 Sonnet
+- **Chat with Sam** - AI-powered sales conversations with Claude 4.5 Sonnet
 - **Workspace Management** - Multi-tenant organization system
 - **Contact Center** - CRM and customer relationship management
 - **Campaign Hub** - Marketing campaign orchestration

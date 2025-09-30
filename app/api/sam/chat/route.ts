@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: `You are Sam, the lead consultant within a coordinated team of AI agents that execute B2B sales and go-to-market strategies. The user says: "${message}". Respond as Sam would—strategic, consultative, focused on discovery, ICP refinement, campaign orchestration, and measurable outcomes. Keep the tone professional, acknowledge context, and suggest next steps while reminding the user that specialist agents (campaign, messaging, analytics) can be engaged once discovery is complete.`,
+          prompt: `You are Sam, the sales AI agent who runs LinkedIn and email automations for the user. Keep replies to two sentences max plus one question. Stay personable, mention your orchestration role, and always steer toward ICP clarity, knowledge uploads, approvals, and messaging sign-off. The user says: "${message}" — respond in that style.`,
           use_case: 'sam_reasoning',
           max_tokens: 300,
           temperature: 0.7
@@ -36,19 +36,19 @@ export async function POST(req: NextRequest) {
           });
         }
       }
-    } catch (openrouterError) {
+    } catch {
       console.log('⚠️ OpenRouter unavailable, using smart fallback');
     }
 
     // Smart fallback responses with improved keyword matching
     const samResponses = {
-      'sales strategy': "I'd love to help with your sales strategy! Let's start with your target market - who are your ideal customers and what challenges are they facing?",
-      'prospecting': "Great choice! Prospecting is the foundation of sales success. Are you looking to expand into new industries, target specific roles, or improve your current outreach?",
-      'outreach': "Outreach is my specialty! Are you focusing on email campaigns, LinkedIn messaging, or a multi-channel approach? I can help optimize your messaging for better response rates.",
-      'pipeline': "Pipeline management is crucial for predictable revenue. Are you looking to improve lead qualification, track deal progression, or optimize your sales process?",
-      'lead generation': "Lead generation is where it all starts! What's your current approach - are you using content marketing, paid ads, referrals, or direct outreach?",
-      'greeting': "Hello, I'm Sam. I'm your consultant within a team of AI agents that execute sales and go-to-market strategies. I'll guide you through discovery, capture your ICP and business knowledge, then coordinate campaign, messaging, and analytics agents to take action. What would you like us to tackle first?",
-      'default': "Hello, I'm Sam. I'm your consultant within a team of AI agents that execute sales and go-to-market strategies. I'll guide you through discovery, capture your ICP and business knowledge, then coordinate campaign, messaging, and analytics agents to take action. What would you like us to tackle first?"
+      'sales strategy': "Let's tighten the strategy. Who's the ICP and what roadblock are we trying to solve?",
+      'prospecting': "Ready to hunt. Are we expanding ICP, refreshing filters, or grabbing a new sample list?",
+      'outreach': "Got it. Should I prep LinkedIn, email, or a combo touch so we can ship copy for approval?",
+      'pipeline': "Tell me which stage is stuck and I'll surface the right actions or reporting for you.",
+      'lead generation': "I can pull fresh leads fast. Are we validating ICP or building a new list for approval?",
+      'greeting': "Hello! I'm Sam, your AI GTM consultant and outreach strategist.\n\nI help you build a go-to-market intelligence system in about 25 minutes, then use it to generate high-performing campaigns instantly.\n\nThink of this as building your sales playbook once, then getting campaigns on demand forever.\n\nWhat's your name?",
+      'default': "I'm Sam, your sales AI agent. Want `#icp`, `#leads`, `#messaging`, or should we keep building from where we left off?"
     };
 
     // Improved keyword matching
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('❌ SAM AI Error:', error);
     return NextResponse.json({
-      response: "Hello, I'm Sam. I'm your consultant within a team of AI agents that execute sales and go-to-market strategies. I'll guide you through discovery, capture your ICP and business knowledge, then coordinate campaign, messaging, and analytics agents to take action. What would you like us to tackle first?",
+      response: "Hello! I'm Sam, your AI GTM consultant and outreach strategist.\n\nI help you build a go-to-market intelligence system in about 25 minutes, then use it to generate high-performing campaigns instantly.\n\nThink of this as building your sales playbook once, then getting campaigns on demand forever.\n\nWhat's your name?",
       timestamp: new Date().toISOString(),
       aiPowered: false,
       user: { authenticated: false, anonymous: true }

@@ -1,20 +1,19 @@
 #!/usr/bin/env node
 
-import { 
-  mcp__mistral__optimize_template,
-  mcp__mistral__analyze_performance,
-  mcp__mistral__generate_variations,
-  mcp__mistral__personalize_for_prospect
-} from '../../lib/mcp/mistral-mcp.js';
+import {
+  mcp__sonnet__optimize_template,
+  mcp__sonnet__analyze_performance,
+  mcp__sonnet__generate_variations,
+  mcp__sonnet__personalize_for_prospect
+} from '../../lib/mcp/sonnet-mcp.js';
 
-async function testMistralIntegration() {
-  console.log('🧠 MISTRAL AI MCP INTEGRATION TEST');
-  console.log('=================================\n');
+async function testSonnetIntegration() {
+  console.log('🧠 SONNET MCP INTEGRATION TEST');
+  console.log('=============================\n');
 
   try {
     // Test 1: Template Optimization
     console.log('🎯 Test 1: Template Optimization');
-    
     const optimizationRequest = {
       original_template: {
         connection_message: "Hi, I'd like to connect with you.",
@@ -31,11 +30,14 @@ async function testMistralIntegration() {
         tone: "professional",
         campaign_type: "sales"
       },
-      optimization_goals: ["increase_response_rate", "improve_personalization", "strengthen_value_proposition"]
+      optimization_goals: [
+        "increase_response_rate",
+        "improve_personalization",
+        "strengthen_value_proposition"
+      ]
     };
 
-    const optimizationResult = await mcp__mistral__optimize_template(optimizationRequest);
-    
+    const optimizationResult = await mcp__sonnet__optimize_template(optimizationRequest);
     if (optimizationResult.success) {
       console.log('✅ Template optimization successful');
       console.log(`   Confidence Score: ${optimizationResult.result.confidence_score}`);
@@ -47,9 +49,8 @@ async function testMistralIntegration() {
       console.log('❌ Template optimization failed:', optimizationResult.error);
     }
 
-    // Test 2: Performance Analysis  
+    // Test 2: Performance Analysis
     console.log('📊 Test 2: Performance Analysis');
-    
     const performanceRequest = {
       template_id: "test-template-123",
       performance_data: {
@@ -66,8 +67,7 @@ async function testMistralIntegration() {
       }
     };
 
-    const performanceResult = await mcp__mistral__analyze_performance(performanceRequest);
-    
+    const performanceResult = await mcp__sonnet__analyze_performance(performanceRequest);
     if (performanceResult.success) {
       console.log('✅ Performance analysis successful');
       console.log(`   Overall Score: ${performanceResult.result.performance_score}/10`);
@@ -83,7 +83,6 @@ async function testMistralIntegration() {
 
     // Test 3: Template Variations
     console.log('🔄 Test 3: Template Variations Generation');
-    
     const variationsRequest = {
       base_template: {
         connection_message: "Hi {first_name}, I noticed your work at {company_name} in the fintech space.",
@@ -101,8 +100,7 @@ async function testMistralIntegration() {
       count: 3
     };
 
-    const variationsResult = await mcp__mistral__generate_variations(variationsRequest);
-    
+    const variationsResult = await mcp__sonnet__generate_variations(variationsRequest);
     if (variationsResult.success) {
       console.log('✅ Template variations generated');
       console.log(`   Variations Created: ${variationsResult.result.variations.length}`);
@@ -116,7 +114,6 @@ async function testMistralIntegration() {
 
     // Test 4: Prospect Personalization
     console.log('👤 Test 4: Prospect Personalization');
-    
     const personalizationRequest = {
       template: {
         connection_message: "Hi {first_name}, I noticed your work at {company_name}.",
@@ -127,7 +124,7 @@ async function testMistralIntegration() {
       },
       prospect_data: {
         first_name: "John",
-        last_name: "Smith", 
+        last_name: "Smith",
         company_name: "TechStartup Inc",
         role: "CEO",
         industry: "fintech",
@@ -137,8 +134,7 @@ async function testMistralIntegration() {
       personalization_level: "high"
     };
 
-    const personalizationResult = await mcp__mistral__personalize_for_prospect(personalizationRequest);
-    
+    const personalizationResult = await mcp__sonnet__personalize_for_prospect(personalizationRequest);
     if (personalizationResult.success) {
       console.log('✅ Prospect personalization successful');
       console.log(`   Personalization Score: ${personalizationResult.result.personalization_score}`);
@@ -150,32 +146,29 @@ async function testMistralIntegration() {
     }
 
     // Summary
-    console.log('🎉 MISTRAL INTEGRATION SUMMARY');
-    console.log('=============================');
+    console.log('🎉 SONNET MCP SUMMARY');
+    console.log('====================');
     console.log('✅ Template Optimization - WORKING');
-    console.log('✅ Performance Analysis - WORKING');  
+    console.log('✅ Performance Analysis - WORKING');
     console.log('✅ Template Variations - WORKING');
     console.log('✅ Prospect Personalization - WORKING');
-    
-    console.log('\n🧠 Mistral API Status:');
-    if (process.env.MISTRAL_API_KEY && process.env.MISTRAL_API_KEY !== 'your_mistral_api_key_here') {
-      console.log('🟢 Real Mistral API - CONFIGURED');
-      console.log('💡 Note: Add real API key to .env.local for production');
+
+    console.log('\n🧠 Sonnet API Status:');
+    if (process.env.OPENROUTER_API_KEY) {
+      console.log('🟢 Claude 4.5 Sonnet via OpenRouter - CONFIGURED');
     } else {
-      console.log('🟡 Mock Responses - ACTIVE (no API key)');
-      console.log('💡 Set MISTRAL_API_KEY in .env.local for real API calls');
+      console.log('🟡 Mock Responses - ACTIVE (no OPENROUTER_API_KEY provided)');
     }
-    
+
     console.log('\n🚀 Sam AI can now:');
     console.log('• "Optimize this template" → Real AI improvements');
-    console.log('• "Analyze template performance" → Data-driven insights');  
+    console.log('• "Analyze template performance" → Data-driven insights');
     console.log('• "Create variations" → Multiple approach options');
     console.log('• "Personalize for this prospect" → Custom messaging');
 
   } catch (error) {
-    console.error('❌ Mistral integration test failed:', error);
+    console.error('❌ Sonnet integration test failed:', error);
   }
 }
 
-// Execute test
-testMistralIntegration();
+testSonnetIntegration();

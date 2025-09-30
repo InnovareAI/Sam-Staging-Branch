@@ -365,6 +365,20 @@ export class MCPAgentOrchestrator {
             const taskDuration = Date.now() - taskStartTime
             
             results[taskId] = result
+
+            if (task.type === 'research' && !result.isError) {
+              const synthesisTask = plan.tasks.find(t => t.type === 'synthesis')
+              if (synthesisTask) {
+                const existingProspects = Array.isArray(synthesisTask.context.prospects)
+                  ? synthesisTask.context.prospects
+                  : []
+                synthesisTask.context.prospects = [
+                  ...existingProspects,
+                  ...this.extractProspectsFromResult(result)
+                ]
+              }
+            }
+
             success = true
             
             // Record execution history
@@ -540,6 +554,33 @@ export class MCPAgentOrchestrator {
       console.error('Failed to parse intelligence result:', error)
     }
     return undefined
+  }
+
+  private extractProspectsFromResult(result: MCPCallToolResult): any[] {
+    try {
+      const textContent = result.content.find(c => c.type === 'text')?.text
+      if (!textContent) {
+        return []
+      }
+
+      const parsed = JSON.parse(textContent)
+      if (Array.isArray(parsed.prospects)) {
+        return parsed.prospects
+      }
+
+      if (Array.isArray(parsed.results?.prospects)) {
+        return parsed.results.prospects
+      }
+
+      if (parsed.success && Array.isArray(parsed.data?.prospects)) {
+        return parsed.data.prospects
+      }
+
+      return []
+    } catch (error) {
+      console.error('Failed to extract prospects from result:', error)
+      return []
+    }
   }
 
   /**

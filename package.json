@@ -22,8 +22,13 @@
     "monitoring:alerts": "curl -s https://app.meet-sam.com/api/monitoring/alerts | jq .",
     "test:integration": "node test-integration.js",
     "test:email": "node test-complete-flow.js",
+    "test:kb-crud": "node tests/knowledge-base-crud.test.js",
+    "test:sam-threads": "node tests/integration-sam-threads.test.js",
+    "seed:kb-simple": "node scripts/seed-structured-kb-simple.js",
     "update-docs": "node scripts/js/auto-update-documentation.cjs",
     "post-deploy": "npm run update-docs && echo 'Documentation updated automatically'",
+    "seed:demo": "node scripts/seed-demo-knowledge-base.js",
+    "migrate:kb": "node scripts/migrate-legacy-knowledge-base.js",
     "pre-commit": "npm run lint && npm run update-docs"
   },
   "dependencies": {

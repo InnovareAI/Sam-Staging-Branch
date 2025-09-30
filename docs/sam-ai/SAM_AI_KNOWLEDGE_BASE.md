@@ -193,7 +193,7 @@ Sam has been trained on real-world B2B sales automation that:
 6. **Social Selling Fundamentals** - Beginner level, 35 minutes
 
 ## Technical Architecture
-- **AI Model**: Claude 3.5 Sonnet via OpenRouter
+- **AI Model**: Claude 4.5 Sonnet via OpenRouter
 - **Database**: Supabase PostgreSQL with Row Level Security
 - **Authentication**: Clerk multi-tenant workspaces
 - **Frontend**: Next.js with TypeScript and Tailwind CSS

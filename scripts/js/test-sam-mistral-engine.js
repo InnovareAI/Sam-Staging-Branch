@@ -30,10 +30,10 @@ async function testSamMistralEngine() {
     console.log('\n🔄 Test 2: Engine Replacement Status');
     
     const engineChanges = [
-      { component: 'Sam Message API', old: 'Claude 3.5 Sonnet via OpenRouter', new: 'Mistral Large Latest', status: '✅ REPLACED' },
+      { component: 'Sam Message API', old: 'Claude 4.5 Sonnet via OpenRouter', new: 'Mistral Large Latest', status: '✅ REPLACED' },
       { component: 'System Prompt', old: 'General conversational', new: 'Task-oriented with MCP capabilities', status: '✅ OPTIMIZED' },
       { component: 'Fallback Responses', old: 'Generic errors', new: 'Intelligent campaign-aware responses', status: '✅ ENHANCED' },
-      { component: 'Model Field', old: 'anthropic/claude-3.5-sonnet', new: 'mistral-large-latest', status: '✅ UPDATED' },
+      { component: 'Model Field', old: 'anthropic/claude-4.5-sonnet', new: 'mistral-large-latest', status: '✅ UPDATED' },
       { component: 'Error Handling', old: 'OpenRouter errors', new: 'Mistral + graceful fallback', status: '✅ IMPROVED' }
     ];
 

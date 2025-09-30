@@ -185,7 +185,7 @@ export class N8NMCPServer {
                 type: 'array',
                 items: {
                   type: 'string',
-                  enum: ['linkedin', 'apollo', 'brightdata', 'websearch']
+                  enum: ['linkedin', 'brightdata', 'websearch']
                 },
                 description: 'Data sources to include in the workflow'
               },
@@ -550,17 +550,6 @@ export class N8NMCPServer {
               parameters: {
                 url: 'https://api.linkedin.com/v2/people',
                 method: 'GET'
-              }
-            })
-            break
-          case 'apollo':
-            nodes.push({
-              name: `Apollo Enrichment`,
-              type: 'n8n-nodes-base.httpRequest',
-              position: [xPosition, yPosition + (index * 150)],
-              parameters: {
-                url: 'https://api.apollo.io/v1/people/search',
-                method: 'POST'
               }
             })
             break

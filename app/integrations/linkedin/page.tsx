@@ -96,9 +96,9 @@ export default function UnipileIntegrationPage() {
                 type: 'LINKEDIN',
                 created_at: new Date().toISOString(),
                 sources: [{ id: 'unipile', status: 'OK' }],
-                connection_params: { im: { username: 'Connected via Unipile' } }
+                connection_params: { im: { username: 'LinkedIn Connected' } }
               }])
-              console.log('✅ LinkedIn connection detected via Unipile (fallback display)')
+              console.log('✅ LinkedIn connection detected (fallback display)')
             }
           } catch (contactError) {
             console.log('⚠️ Contact center failed, using fallback display:', contactError instanceof Error ? contactError.message : 'Unknown error')
@@ -108,11 +108,11 @@ export default function UnipileIntegrationPage() {
               type: 'LINKEDIN',
               created_at: new Date().toISOString(),
               sources: [{ id: 'unipile', status: 'OK' }],
-              connection_params: { im: { username: 'Connected via Unipile' } }
+              connection_params: { im: { username: 'LinkedIn Connected' } }
             }])
           }
         } else {
-          console.log('❌ Unipile reports no LinkedIn connections found')
+          console.log('❌ No LinkedIn connections found')
           setAccounts([])
         }
         setDuplicates([])
@@ -167,7 +167,7 @@ export default function UnipileIntegrationPage() {
       console.log(`✅ Generated hosted auth URL: ${data.auth_url}`)
       console.log(`🔗 Action: ${data.action}, Existing connections: ${data.existing_connections}`)
       
-      // Redirect to Unipile's hosted auth page
+      // Redirect to LinkedIn OAuth authentication
       // This will handle all authentication, 2FA, CAPTCHA, etc.
       window.location.href = data.auth_url
       

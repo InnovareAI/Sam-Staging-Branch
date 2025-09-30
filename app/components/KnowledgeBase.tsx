@@ -1,18 +1,157 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Brain, CheckSquare, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, FileText, Search, Package, Award, MessageSquare, Cpu, Clock, AlertCircle, Mic, Briefcase, Trophy, GitBranch, Mail, Shield, UserCheck, MessageCircle, DollarSign, Zap, BarChart, UserPlus, Bot, HelpCircle, Globe, ArrowLeft, X } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Brain, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, FileText, Package, MessageSquare, Cpu, Clock, AlertCircle, Mic, Briefcase, Trophy, GitBranch, Mail, Shield, UserCheck, MessageCircle, DollarSign, Zap, BarChart, Bot, HelpCircle, Globe, ArrowLeft } from 'lucide-react';
 import SAMOnboarding from './SAMOnboarding';
 import InquiryResponses from './InquiryResponses';
 
+type KnowledgeDocument = {
+  id: string;
+  section: string;
+  title: string;
+  summary?: string;
+  tags?: string[];
+  vectorChunks?: number;
+  updatedAt?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+type ICPProfile = {
+  id: string;
+  name?: string;
+  icp_name?: string;
+  overview?: Record<string, unknown>;
+  target_profile?: Record<string, unknown>;
+  decision_makers?: {
+    primary_contact?: {
+      name?: string;
+      role?: string;
+      company?: string;
+    };
+    supporting_contacts?: Array<{ name?: string; role?: string }>;
+  };
+  pain_points?: Record<string, unknown>;
+  buying_process?: Record<string, unknown>;
+  messaging?: Record<string, unknown>;
+  success_metrics?: Record<string, unknown>;
+  advanced?: {
+    company_culture?: string[];
+    messaging_guidelines?: string[];
+    must_not_mention?: string[];
+    human_checkpoints?: string[];
+  } & Record<string, unknown>;
+  [key: string]: unknown;
+};
+
+type KnowledgeBaseProduct = {
+  id: string;
+  name: string;
+  description?: string | null;
+  category?: string | null;
+  pricing?: Record<string, unknown> | null;
+  features?: string[] | null;
+  benefits?: string[] | null;
+  use_cases?: string[] | null;
+  competitive_advantages?: string[] | null;
+  target_segments?: string[] | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+type KnowledgeBaseCompetitor = {
+  id: string;
+  name: string;
+  website?: string | null;
+  description?: string | null;
+  strengths?: string[] | null;
+  weaknesses?: string[] | null;
+  pricing_model?: string | null;
+  key_features?: string[] | null;
+  target_market?: string | null;
+  competitive_positioning?: Record<string, unknown> | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+type KnowledgeBasePersona = {
+  id: string;
+  name: string;
+  icp_id?: string | null;
+  job_title?: string | null;
+  department?: string | null;
+  seniority_level?: string | null;
+  decision_making_role?: string | null;
+  pain_points?: string[] | null;
+  goals?: string[] | null;
+  communication_preferences?: Record<string, unknown> | null;
+  objections?: string[] | null;
+  messaging_approach?: Record<string, unknown> | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+const ensureRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+
+const ensureArray = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value
+        .map((item) => (typeof item === 'string' ? item.trim() : String(item).trim()))
+        .filter((item) => item.length > 0)
+    : [];
+
+const transformICPResponse = (icp: Record<string, unknown>): ICPProfile => {
+  const industries = ensureArray(icp['industries']);
+  const jobTitles = ensureArray(icp['job_titles']);
+  const locations = ensureArray(icp['locations']);
+  const technologies = ensureArray(icp['technologies']);
+  const painPoints = ensureArray(icp['pain_points']);
+  const companySizeMin = typeof icp['company_size_min'] === 'number' ? icp['company_size_min'] : null;
+  const companySizeMax = typeof icp['company_size_max'] === 'number' ? icp['company_size_max'] : null;
+  const idValue = icp['id'];
+
+  const id = typeof idValue === 'string' && idValue.trim().length > 0
+    ? idValue
+    : String(idValue ?? `icp-${Date.now()}`);
+
+  return {
+    id,
+    name: typeof icp['name'] === 'string' ? icp['name'] : typeof icp['icp_name'] === 'string' ? icp['icp_name'] : 'Untitled ICP',
+    overview: {
+      industries,
+      job_titles: jobTitles,
+      locations,
+      technologies,
+      company_size_min: companySizeMin,
+      company_size_max: companySizeMax,
+    },
+    target_profile: {
+      industries,
+      job_titles: jobTitles,
+      locations,
+      technologies,
+      company_size_range: [companySizeMin, companySizeMax].filter((value) => value !== null),
+    },
+    decision_makers: {},
+    pain_points: {
+      operational_challenges: painPoints,
+      growth_pressures: [],
+      emotional_drivers: [],
+    },
+    buying_process: ensureRecord(icp['qualification_criteria']),
+    messaging: ensureRecord(icp['messaging_framework']),
+    success_metrics: {},
+    advanced: {},
+  };
+};
+
 // Enhanced AI-Powered Document Upload Component
-function DocumentUpload({ section }: { section: string }) {
+function DocumentUpload({ section, onComplete }: { section: string; onComplete?: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState<string>('');
   const [uploadMode, setUploadMode] = useState<'file' | 'url'>('file');
   const [status, setStatus] = useState<'idle' | 'uploading' | 'processing' | 'extracting' | 'tagging' | 'vectorizing' | 'done' | 'error'>('idle');
   const [progress, setProgress] = useState(0);
-  const [extractedContent, setExtractedContent] = useState<any>(null);
   const [aiTags, setAiTags] = useState<string[]>([]);
   const [error, setError] = useState<string>('');
   
@@ -48,7 +187,6 @@ function DocumentUpload({ section }: { section: string }) {
       }
       
       const uploadResult = await uploadResponse.json();
-      setExtractedContent(uploadResult.content);
       setProgress(50);
       
       // Step 2: AI Processing and Tagging
@@ -96,6 +234,10 @@ function DocumentUpload({ section }: { section: string }) {
       
       setProgress(100);
       setStatus('done');
+
+      if (typeof onComplete === 'function') {
+        onComplete();
+      }
       
       // Reset form after success
       setTimeout(() => {
@@ -243,10 +385,18 @@ function DocumentUpload({ section }: { section: string }) {
 }
 
 // Comprehensive ICP Configuration Component
-function ICPConfiguration({ onBack }: { onBack?: () => void }) {
+function ICPConfiguration({
+  onBack,
+  onProfilesUpdated,
+  onRefresh
+}: {
+  onBack?: () => void;
+  onProfilesUpdated?: (profiles: Record<string, ICPProfile>) => void;
+  onRefresh?: () => void;
+}) {
   const [selectedICP, setSelectedICP] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('overview');
-  const [icpProfiles, setIcpProfiles] = useState<{[key: string]: any}>({});
+  const [icpProfiles, setIcpProfiles] = useState<Record<string, ICPProfile>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   
@@ -255,25 +405,36 @@ function ICPConfiguration({ onBack }: { onBack?: () => void }) {
   // Fetch ICP profiles on component mount
   React.useEffect(() => {
     const fetchICPProfiles = async () => {
+      setIsLoading(true);
       try {
-        const response = await fetch('/api/knowledge-base/icp-profiles');
+        const response = await fetch('/api/knowledge-base/icps');
         if (response.ok) {
-          const profiles = await response.json();
-          setIcpProfiles(profiles || {});
-          
-          // Auto-select first profile if none selected
-          if (!selectedICP && Object.keys(profiles || {}).length > 0) {
-            setSelectedICP(Object.keys(profiles)[0]);
+          const payload = await response.json();
+          const entries = Array.isArray(payload?.icps) ? payload.icps : [];
+          const mapped = entries.reduce((acc: Record<string, ICPProfile>, item: Record<string, unknown>) => {
+            const profile = transformICPResponse(item);
+            acc[profile.id] = profile;
+            return acc;
+          }, {});
+
+          setIcpProfiles(mapped);
+          onProfilesUpdated?.(mapped);
+          onRefresh?.();
+
+          if (!selectedICP && Object.keys(mapped).length > 0) {
+            setSelectedICP(Object.keys(mapped)[0]);
           }
         }
       } catch (error) {
         console.error('Failed to fetch ICP profiles:', error);
+        setIcpProfiles({});
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchICPProfiles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCreateICP = () => {
@@ -282,26 +443,26 @@ function ICPConfiguration({ onBack }: { onBack?: () => void }) {
 
   const handleCreateICPSubmit = async (icpName: string) => {
     try {
-      const response = await fetch('/api/knowledge-base/icp-profiles', {
+      const response = await fetch('/api/knowledge-base/icps', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          name: icpName,
-          overview: {},
-          target_profile: {},
-          decision_makers: {},
-          pain_points: {},
-          buying_process: {},
-          messaging: {},
-          success_metrics: {},
-          advanced: {}
+          name: icpName
         })
       });
       
       if (response.ok) {
-        const newProfile = await response.json();
-        setIcpProfiles(prev => ({ ...prev, [newProfile.id]: newProfile }));
-        setSelectedICP(newProfile.id);
+        const payload = await response.json();
+        const createdRaw = (payload?.icp ?? {}) as Record<string, unknown>;
+        const createdProfile = transformICPResponse(createdRaw);
+
+        setIcpProfiles(prev => {
+          const updated = { ...prev, [createdProfile.id]: createdProfile };
+          onProfilesUpdated?.(updated);
+          return updated;
+        });
+        onRefresh?.();
+        setSelectedICP(createdProfile.id);
         setShowCreateForm(false);
       }
     } catch (error) {
@@ -465,37 +626,6 @@ function ICPConfiguration({ onBack }: { onBack?: () => void }) {
               </div>
             )}
           </div>
-
-      {/* Remove the old no-profiles section since we moved it above */}
-      {false && (
-        <div className="text-center py-12">
-          <Target size={64} className="mx-auto text-gray-500 mb-4" />
-          <h3 className="text-xl font-medium text-gray-300 mb-2">No ICP Profiles Configured</h3>
-          <p className="text-gray-400 mb-6 max-w-md mx-auto">
-            Create comprehensive Ideal Customer Profiles with detailed targeting criteria, decision maker analysis, 
-            and strategic messaging frameworks to help SAM identify and engage your best prospects.
-          </p>
-          <div className="space-y-3">
-            <button 
-              onClick={handleCreateICP}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center mx-auto"
-            >
-              <Plus className="mr-2" size={16} />
-              Create Your First ICP Profile
-            </button>
-            <div className="flex justify-center space-x-4 text-sm">
-              <button className="text-gray-400 hover:text-gray-300 flex items-center">
-                <Upload className="mr-1" size={14} />
-                Import from Template
-              </button>
-              <button className="text-gray-400 hover:text-gray-300 flex items-center">
-                <Search className="mr-1" size={14} />
-                Browse Examples
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Category Content */}
       <div className="space-y-6">
@@ -1338,7 +1468,7 @@ function VectorTest() {
 type Doc = { name: string; status: 'Ready' | 'Processing' | 'Error'; uploaded: string; labels: string[] };
 
 function DocumentsTable() {
-  const [documents, setDocuments] = useState<Doc[]>([]);
+  const [documents] = useState<Doc[]>([]);
 
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg">
@@ -1416,7 +1546,7 @@ type Chunk = { text: string; labels: string[]; confidence: number };
 
 function ChunkDrawer() {
   const [open, setOpen] = useState(false);
-  const [chunks, setChunks] = useState<Chunk[]>([]);
+  const [chunks] = useState<Chunk[]>([]);
   
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg">
@@ -1459,6 +1589,410 @@ function ChunkDrawer() {
 
 const KnowledgeBase: React.FC = () => {
   const [activeSection, setActiveSection] = useState('overview');
+  const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
+  const [documentsLoading, setDocumentsLoading] = useState(true);
+  const [documentsError, setDocumentsError] = useState<string | null>(null);
+  const [icpCount, setIcpCount] = useState<number | null>(null);
+  const [icpProfiles, setIcpProfiles] = useState<Record<string, ICPProfile>>({});
+  const [products, setProducts] = useState<KnowledgeBaseProduct[]>([]);
+  const [competitors, setCompetitors] = useState<KnowledgeBaseCompetitor[]>([]);
+  const [personas, setPersonas] = useState<KnowledgeBasePersona[]>([]);
+
+  const loadDocuments = useCallback(async () => {
+    setDocumentsLoading(true);
+    setDocumentsError(null);
+    try {
+      const response = await fetch('/api/knowledge-base/documents');
+      if (!response.ok) {
+        throw new Error('Failed to load knowledge base documents');
+      }
+      const data = await response.json();
+      setDocuments((data.documents || []) as KnowledgeDocument[]);
+    } catch (error) {
+      console.error('Knowledge base document fetch failed:', error);
+      setDocuments([]);
+      setDocumentsError(error instanceof Error ? error.message : 'Unable to load documents');
+    } finally {
+      setDocumentsLoading(false);
+    }
+  }, []);
+
+  const loadIcpProfiles = useCallback(async () => {
+    try {
+      const response = await fetch('/api/knowledge-base/icps');
+      if (!response.ok) {
+        throw new Error('Failed to load ICP profiles');
+      }
+      const payload = await response.json();
+      const entries = Array.isArray(payload?.icps) ? payload.icps : [];
+      const mapped = entries.reduce((acc: Record<string, ICPProfile>, icp: Record<string, unknown>) => {
+        const profile = transformICPResponse(icp);
+        acc[profile.id] = profile;
+        return acc;
+      }, {});
+      setIcpProfiles(mapped);
+      setIcpCount(Object.keys(mapped).length);
+    } catch (error) {
+      console.error('ICP profile fetch failed:', error);
+      setIcpCount(0);
+      setIcpProfiles({});
+    }
+  }, []);
+
+  const loadProducts = useCallback(async () => {
+    try {
+      const response = await fetch('/api/knowledge-base/products');
+      if (!response.ok) {
+        throw new Error('Failed to load products');
+      }
+      const payload = await response.json();
+      setProducts(Array.isArray(payload?.products) ? payload.products : []);
+    } catch (error) {
+      console.error('Product fetch failed:', error);
+      setProducts([]);
+    }
+  }, []);
+
+  const loadCompetitors = useCallback(async () => {
+    try {
+      const response = await fetch('/api/knowledge-base/competitors');
+      if (!response.ok) {
+        throw new Error('Failed to load competitors');
+      }
+      const payload = await response.json();
+      setCompetitors(Array.isArray(payload?.competitors) ? payload.competitors : []);
+    } catch (error) {
+      console.error('Competitor fetch failed:', error);
+      setCompetitors([]);
+    }
+  }, []);
+
+  const loadPersonas = useCallback(async () => {
+    try {
+      const response = await fetch('/api/knowledge-base/personas');
+      if (!response.ok) {
+        throw new Error('Failed to load personas');
+      }
+      const payload = await response.json();
+      setPersonas(Array.isArray(payload?.personas) ? payload.personas : []);
+    } catch (error) {
+      console.error('Persona fetch failed:', error);
+      setPersonas([]);
+    }
+  }, []);
+
+  const handleQuickAddProduct = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    const name = window.prompt('Product name');
+    if (!name || name.trim().length === 0) {
+      return;
+    }
+    const description = window.prompt('Product description (optional)') ?? undefined;
+    const category = window.prompt('Category (optional)') ?? undefined;
+
+    try {
+      const response = await fetch('/api/knowledge-base/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          description,
+          category
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create product');
+      }
+
+      await loadProducts();
+    } catch (error) {
+      console.error('Failed to create product:', error);
+    }
+  }, [loadProducts]);
+
+  const handleQuickAddCompetitor = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    const name = window.prompt('Competitor name');
+    if (!name || name.trim().length === 0) {
+      return;
+    }
+    const website = window.prompt('Website (optional)') ?? undefined;
+    const description = window.prompt('Brief description (optional)') ?? undefined;
+
+    try {
+      const response = await fetch('/api/knowledge-base/competitors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          website,
+          description
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create competitor');
+      }
+
+      await loadCompetitors();
+    } catch (error) {
+      console.error('Failed to create competitor:', error);
+    }
+  }, [loadCompetitors]);
+
+  const handleQuickAddPersona = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    const name = window.prompt('Persona name');
+    if (!name || name.trim().length === 0) {
+      return;
+    }
+    const jobTitle = window.prompt('Job title (optional)') ?? undefined;
+    const department = window.prompt('Department (optional)') ?? undefined;
+
+    let icpId: string | undefined;
+    const availableICPs = Object.values(icpProfiles);
+    if (availableICPs.length > 0) {
+      const selectionPrompt = availableICPs
+        .map((profile, index) => `${index + 1}) ${profile.name || profile.icp_name || 'ICP'}`)
+        .join('\n');
+      const selectedIndex = window.prompt(
+        `Assign to ICP (optional). Enter number or leave blank:\n${selectionPrompt}`
+      );
+      if (selectedIndex) {
+        const parsed = Number(selectedIndex) - 1;
+        if (!Number.isNaN(parsed) && availableICPs[parsed]) {
+          icpId = availableICPs[parsed].id;
+        }
+      }
+    }
+
+    try {
+      const response = await fetch('/api/knowledge-base/personas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          job_title: jobTitle,
+          department,
+          icp_id: icpId
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create persona');
+      }
+
+      await loadPersonas();
+    } catch (error) {
+      console.error('Failed to create persona:', error);
+    }
+  }, [icpProfiles, loadPersonas]);
+
+  useEffect(() => {
+    loadDocuments();
+    loadIcpProfiles();
+    loadProducts();
+    loadCompetitors();
+    loadPersonas();
+  }, [loadDocuments, loadIcpProfiles, loadProducts, loadCompetitors, loadPersonas]);
+
+  const docScore = Math.min(40, documents.length * 8);
+  const icpScore = Math.min(30, (icpCount || 0) * 15);
+  const knowledgeCompletion = Math.min(100, Math.round(20 + docScore + icpScore));
+  const isKnowledgeLoading = documentsLoading || icpCount === null;
+  const completionDisplay = isKnowledgeLoading ? '—' : `${knowledgeCompletion}%`;
+  const completionWidth = isKnowledgeLoading ? '0%' : `${knowledgeCompletion}%`;
+  const latestDocuments = documents.slice(0, 4);
+  const recentActivity = documents.slice(0, 6);
+
+  const SECTION_ALIAS_MAP: Record<string, string[]> = {
+    buying: ['process', 'buying-process'],
+    company: ['company-info', 'company', 'about'],
+    competition: ['competition', 'competitors'],
+    compliance: ['compliance', 'regulatory'],
+    documents: ['documents', 'general'],
+    icp: ['icp'],
+    inquiry_responses: ['inquiry-responses', 'faq', 'customer-questions'],
+    messaging: ['messaging', 'templates'],
+    metrics: ['metrics', 'success-metrics'],
+    objections: ['objections'],
+    personas: ['personas', 'buyer-personas', 'roles'],
+    pricing: ['pricing', 'roi'],
+    products: ['products', 'product'],
+    sam_onboarding: ['sam-onboarding', 'sam_onboarding'],
+    setup: ['setup', 'crm-setup', 'configuration'],
+    success: ['stories', 'success-stories', 'case-studies'],
+    tone: ['tone', 'tone-of-voice', 'brand-voice']
+  };
+
+  const getSectionMatches = (sectionId: string) => {
+    const matches = SECTION_ALIAS_MAP[sectionId];
+    if (matches && matches.length > 0) {
+      return matches;
+    }
+    return [sectionId];
+  };
+
+  const getDocumentsForSection = (sectionId: string) => {
+    const normalizedMatches = getSectionMatches(sectionId).map((slug) => slug.toLowerCase());
+    return documents.filter((doc) => {
+      if (!doc.section) return false;
+      return normalizedMatches.includes(doc.section.toLowerCase());
+    });
+  };
+
+  const formatRelativeTime = (input?: string | null) => {
+    if (!input) return 'Just now';
+    const parsed = new Date(input);
+    if (Number.isNaN(parsed.getTime())) return 'Just now';
+
+    const seconds = Math.floor((Date.now() - parsed.getTime()) / 1000);
+    if (seconds < 60) return 'Just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+    return parsed.toLocaleDateString();
+  };
+
+  const renderDocumentList = (sectionId: string, emptyIcon: React.ReactNode, emptyTitle: string, emptyDescription: string) => {
+    if (documentsLoading) {
+      return (
+        <div className="text-center py-8">
+          <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+          <div className="text-gray-400 text-sm">Loading documents…</div>
+        </div>
+      );
+    }
+
+    if (documentsError) {
+      return (
+        <div className="text-center py-8">
+          <div className="text-red-400 text-sm">{documentsError}</div>
+        </div>
+      );
+    }
+
+    const sectionDocs = getDocumentsForSection(sectionId);
+
+    if (sectionDocs.length === 0) {
+      return (
+        <div className="text-center py-8">
+          <div className="mx-auto mb-4 text-gray-500 text-4xl flex items-center justify-center">{emptyIcon}</div>
+          <div className="text-gray-400 mb-2">{emptyTitle}</div>
+          <div className="text-gray-500 text-sm">{emptyDescription}</div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3">
+        {sectionDocs.map((doc) => (
+          <div key={doc.id} className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-white font-semibold">{doc.title}</p>
+                {doc.summary && <p className="text-gray-300 text-sm mt-2">{doc.summary}</p>}
+              </div>
+              {doc.updatedAt && (
+                <span className="text-xs text-gray-400">
+                  {formatRelativeTime(doc.updatedAt)}
+                </span>
+              )}
+            </div>
+            {doc.tags && doc.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {doc.tags.slice(0, 6).map((tag: string) => (
+                  <span key={`${doc.id}-${tag}`} className="text-[11px] bg-blue-500/10 text-blue-200 px-2 py-1 rounded-full">
+                    {tag}
+                  </span>
+                ))}
+                {doc.tags.length > 6 && (
+                  <span className="text-[11px] text-gray-400">+{doc.tags.length - 6} more</span>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const defaultActionDescriptions: Record<string, string> = {
+    buying: 'Map customer journey',
+    company: 'Update company info',
+    competition: 'Update battlecards',
+    compliance: 'Manage regulations',
+    documents: 'Upload files',
+    icp: 'Manage customer profiles',
+    inquiry_responses: 'Handle questions',
+    messaging: 'Update templates',
+    metrics: 'Track success KPIs',
+    objections: 'Handle concerns',
+    personas: 'Define user roles',
+    pricing: 'Manage pricing info',
+    products: 'Add documentation',
+    sam_onboarding: 'Train SAM AI',
+    setup: 'Configure system',
+    success: 'Share case studies',
+    tone: 'Set voice guidelines'
+  };
+
+  const getQuickActionDescription = (sectionId: string) => {
+    const docs = getDocumentsForSection(sectionId);
+    if (docs.length > 0) {
+      return `Latest: ${docs[0].title}`;
+    }
+    if (sectionId === 'icp' && icpCount) {
+      return `${icpCount} ICP profile${icpCount === 1 ? '' : 's'} configured`;
+    }
+    return defaultActionDescriptions[sectionId] || 'Open section';
+  };
+
+  const docScoreForSection = (sectionId: string) => {
+    const docs = getDocumentsForSection(sectionId).length;
+    if (docs === 0) return 20;
+    if (docs === 1) return 55;
+    if (docs === 2) return 75;
+    return 95;
+  };
+
+  const healthMetrics = [
+    {
+      label: 'ICP Configuration',
+      value: icpCount === null ? null : Math.min(95, 40 + (icpCount * 15)),
+      description: icpCount && icpCount > 0 ? `${icpCount} ICP profile${icpCount === 1 ? '' : 's'}` : 'Add your target profile'
+    },
+    {
+      label: 'Product Knowledgebase',
+      value: documentsLoading ? null : docScoreForSection('products'),
+      description: getDocumentsForSection('products').length > 0 ? 'Core product guide uploaded' : 'Upload product collateral'
+    },
+    {
+      label: 'Messaging Templates',
+      value: documentsLoading ? null : docScoreForSection('messaging'),
+      description: getDocumentsForSection('messaging').length > 0 ? 'Messaging framework ready' : 'Add messaging playbook'
+    },
+    {
+      label: 'Pricing & ROI Assets',
+      value: documentsLoading ? null : docScoreForSection('pricing'),
+      description: getDocumentsForSection('pricing').length > 0 ? 'Pricing cheat sheet loaded' : 'Upload pricing guide'
+    }
+  ];
+
+  const getHealthColor = (value: number | null) => {
+    if (value === null) return 'bg-gray-500';
+    if (value >= 80) return 'bg-green-400';
+    if (value >= 55) return 'bg-yellow-400';
+    return 'bg-red-400';
+  };
+
+  const getHealthTextColor = (value: number | null) => {
+    if (value === null) return 'text-gray-300';
+    if (value >= 80) return 'text-green-400';
+    if (value >= 55) return 'text-yellow-400';
+    return 'text-red-400';
+  };
 
   const sections = [
     { id: 'overview', label: 'Overview', icon: Brain },
@@ -1481,6 +2015,26 @@ const KnowledgeBase: React.FC = () => {
     { id: 'tone', label: 'Tone of Voice', icon: Mic }
   ];
 
+  const getSectionLabel = (sectionId: string) => {
+    const directMatch = sections.find((section) => section.id === sectionId);
+    if (directMatch) return directMatch.label;
+
+    const aliasOwner = Object.entries(SECTION_ALIAS_MAP).find(([, aliases]) =>
+      aliases.some((alias) => alias.toLowerCase() === sectionId?.toLowerCase())
+    );
+
+    if (aliasOwner) {
+      const aliasMatch = sections.find((section) => section.id === aliasOwner[0]);
+      if (aliasMatch) return aliasMatch.label;
+    }
+
+    return sectionId
+      .replace(/[-_]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
   return (
     <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
       {/* Header */}
@@ -1498,16 +2052,16 @@ const KnowledgeBase: React.FC = () => {
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 min-w-[300px]">
             <div className="flex items-center justify-between mb-2">
               <span className="text-white text-sm font-medium">Knowledgebase Completeness</span>
-              <span className="text-white text-lg font-bold">73%</span>
+              <span className="text-white text-lg font-bold">{completionDisplay}</span>
             </div>
             
             {/* Temperature-style completion bar */}
             <div className="relative">
               <div className="w-full bg-gray-600 rounded-full h-4 overflow-hidden">
-                <div 
+                <div
                   className="h-4 rounded-full transition-all duration-1000 ease-out"
-                  style={{ 
-                    width: '73%',
+                  style={{
+                    width: completionWidth,
                     background: 'linear-gradient(90deg, #3B82F6 0%, #10B981 50%, #F59E0B 75%, #EF4444 100%)'
                   }}
                 ></div>
@@ -1563,11 +2117,15 @@ const KnowledgeBase: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-gray-400 text-sm">Total Documents</p>
-                    <p className="text-white text-2xl font-bold">247</p>
+                    <p className="text-white text-2xl font-bold">
+                      {documentsLoading ? '—' : documents.length}
+                    </p>
                   </div>
                   <FileText className="text-blue-400" size={24} />
                 </div>
-                <p className="text-green-400 text-xs mt-2">+12 this week</p>
+                <p className="text-green-400 text-xs mt-2">
+                  {documentsLoading ? 'Loading documents…' : documentsError ? documentsError : `${documents.length} assets ready for RAG`}
+                </p>
               </div>
 
               {/* ICP Profiles */}
@@ -1575,11 +2133,15 @@ const KnowledgeBase: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-gray-400 text-sm">ICP Profiles</p>
-                    <p className="text-white text-2xl font-bold">8</p>
+                    <p className="text-white text-2xl font-bold">
+                      {icpCount === null ? '—' : icpCount}
+                    </p>
                   </div>
                   <Target className="text-purple-400" size={24} />
                 </div>
-                <p className="text-blue-400 text-xs mt-2">3 active campaigns</p>
+                <p className="text-blue-400 text-xs mt-2">
+                  {icpCount === null ? 'Loading ICPs…' : icpCount > 0 ? 'Primary profile seeded for demo' : 'Add an ICP to unlock tailored outreach'}
+                </p>
               </div>
 
               {/* Knowledgebase Completion */}
@@ -1587,11 +2149,13 @@ const KnowledgeBase: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-gray-400 text-sm">KB Completion</p>
-                    <p className="text-white text-2xl font-bold">73%</p>
+                    <p className="text-white text-2xl font-bold">{completionDisplay}</p>
                   </div>
                   <BarChart className="text-green-400" size={24} />
                 </div>
-                <p className="text-yellow-400 text-xs mt-2">3 sections pending</p>
+                <p className="text-yellow-400 text-xs mt-2">
+                  {isKnowledgeLoading ? 'Calculating coverage…' : `Powered by ${documents.length} docs + ${icpCount || 0} ICP records`}
+                </p>
               </div>
 
               {/* SAM Conversations */}
@@ -1617,47 +2181,35 @@ const KnowledgeBase: React.FC = () => {
                 <button className="text-blue-400 hover:text-blue-300 text-sm">View All</button>
               </div>
               <div className="space-y-3">
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-white text-sm font-medium">Pricing Objection Pattern Detected</p>
-                      <p className="text-gray-300 text-xs mt-1">SAM identified recurring concerns about implementation costs in 8 recent conversations with SaaS prospects.</p>
+                {documentsLoading ? (
+                  <div className="text-center py-8 text-gray-400 text-sm">Loading insights…</div>
+                ) : documentsError ? (
+                  <div className="text-center py-8 text-red-400 text-sm">{documentsError}</div>
+                ) : latestDocuments.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 text-sm">
+                    Upload knowledge assets so Sam can surface insights from your content library.
+                  </div>
+                ) : (
+                  latestDocuments.map((doc) => (
+                    <div key={`insight-${doc.id}`} className="bg-gray-700 rounded-lg p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-white text-sm font-medium">{doc.title}</p>
+                          {doc.summary && (
+                            <p className="text-gray-300 text-xs mt-1">{doc.summary}</p>
+                          )}
+                        </div>
+                        <span className="text-blue-400 text-xs bg-blue-400/10 px-2 py-1 rounded">
+                          {getSectionLabel(doc.section || 'documents')}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex items-center text-gray-400 text-xs">
+                        <Clock size={12} className="mr-1" />
+                        {doc.updatedAt ? formatRelativeTime(doc.updatedAt) : 'Just now'}
+                      </div>
                     </div>
-                    <span className="text-yellow-400 text-xs bg-yellow-400/10 px-2 py-1 rounded">Action Needed</span>
-                  </div>
-                  <div className="mt-2 flex items-center text-gray-400 text-xs">
-                    <Clock size={12} className="mr-1" />
-                    2 hours ago • Auto-extracted from conversations
-                  </div>
-                </div>
-                
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-white text-sm font-medium">New Competitor Mentioned</p>
-                      <p className="text-gray-300 text-xs mt-1">"TechFlow Solutions" was mentioned in 3 prospect conversations as an alternative. Consider adding to competition knowledge.</p>
-                    </div>
-                    <span className="text-blue-400 text-xs bg-blue-400/10 px-2 py-1 rounded">Insight</span>
-                  </div>
-                  <div className="mt-2 flex items-center text-gray-400 text-xs">
-                    <Clock size={12} className="mr-1" />
-                    5 hours ago • From LinkedIn & Email conversations
-                  </div>
-                </div>
-
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-white text-sm font-medium">Successful Value Prop Identified</p>
-                      <p className="text-gray-300 text-xs mt-1">The "30% time savings" message generated positive responses in 12/15 manufacturing prospect conversations.</p>
-                    </div>
-                    <span className="text-green-400 text-xs bg-green-400/10 px-2 py-1 rounded">Success</span>
-                  </div>
-                  <div className="mt-2 flex items-center text-gray-400 text-xs">
-                    <Clock size={12} className="mr-1" />
-                    1 day ago • Cross-campaign analysis
-                  </div>
-                </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -1678,23 +2230,7 @@ const KnowledgeBase: React.FC = () => {
                         <span className="text-white text-sm font-medium">{section.label}</span>
                       </div>
                       <p className="text-gray-300 text-xs">
-                        {section.id === 'buying' && 'Map customer journey'}
-                        {section.id === 'company' && 'Update company info'}
-                        {section.id === 'competition' && 'Update battlecards'}
-                        {section.id === 'compliance' && 'Manage regulations'}
-                        {section.id === 'documents' && 'Upload files'}
-                        {section.id === 'icp' && 'Manage customer profiles'}
-                        {section.id === 'inquiry_responses' && 'Handle questions'}
-                        {section.id === 'messaging' && 'Update templates'}
-                        {section.id === 'metrics' && 'Track success KPIs'}
-                        {section.id === 'objections' && 'Handle concerns'}
-                        {section.id === 'personas' && 'Define user roles'}
-                        {section.id === 'pricing' && 'Manage pricing info'}
-                        {section.id === 'products' && 'Add documentation'}
-                        {section.id === 'sam_onboarding' && 'Train SAM AI'}
-                        {section.id === 'setup' && 'Configure system'}
-                        {section.id === 'success' && 'Share case studies'}
-                        {section.id === 'tone' && 'Set voice guidelines'}
+                        {getQuickActionDescription(section.id)}
                       </p>
                     </button>
                   );
@@ -1706,76 +2242,118 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
                 <h3 className="text-white text-lg font-semibold mb-4">Knowledgebase Health</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-300 text-sm">ICP Configuration</span>
-                    <div className="flex items-center">
-                      <div className="w-20 bg-gray-700 rounded-full h-2 mr-2">
-                        <div className="bg-green-400 h-2 rounded-full" style={{width: '85%'}}></div>
+                <div className="space-y-4">
+                  {healthMetrics.map((metric) => (
+                    <div key={metric.label}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-300 text-sm font-medium">{metric.label}</p>
+                          <p className="text-gray-500 text-xs">{metric.description}</p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-24 bg-gray-700 rounded-full h-2 overflow-hidden">
+                            <div
+                              className={`${getHealthColor(metric.value)} h-2 rounded-full transition-all duration-500`}
+                              style={{ width: metric.value === null ? '0%' : `${metric.value}%` }}
+                            ></div>
+                          </div>
+                          <span className={`text-xs ${getHealthTextColor(metric.value)}`}>
+                            {metric.value === null ? '—' : `${metric.value}%`}
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-green-400 text-xs">85%</span>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-300 text-sm">Product Knowledgebase</span>
-                    <div className="flex items-center">
-                      <div className="w-20 bg-gray-700 rounded-full h-2 mr-2">
-                        <div className="bg-yellow-400 h-2 rounded-full" style={{width: '60%'}}></div>
-                      </div>
-                      <span className="text-yellow-400 text-xs">60%</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-300 text-sm">Messaging Templates</span>
-                    <div className="flex items-center">
-                      <div className="w-20 bg-gray-700 rounded-full h-2 mr-2">
-                        <div className="bg-blue-400 h-2 rounded-full" style={{width: '90%'}}></div>
-                      </div>
-                      <span className="text-blue-400 text-xs">90%</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-300 text-sm">Competition Data</span>
-                    <div className="flex items-center">
-                      <div className="w-20 bg-gray-700 rounded-full h-2 mr-2">
-                        <div className="bg-red-400 h-2 rounded-full" style={{width: '30%'}}></div>
-                      </div>
-                      <span className="text-red-400 text-xs">30%</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
 
               <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
                 <h3 className="text-white text-lg font-semibold mb-4">Recent Activity</h3>
                 <div className="space-y-3">
-                  <div className="flex items-center text-sm">
-                    <div className="w-2 h-2 bg-green-400 rounded-full mr-3"></div>
-                    <span className="text-gray-300 flex-1">Product spec uploaded</span>
-                    <span className="text-gray-400 text-xs">2h ago</span>
-                  </div>
-                  <div className="flex items-center text-sm">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full mr-3"></div>
-                    <span className="text-gray-300 flex-1">ICP profile updated</span>
-                    <span className="text-gray-400 text-xs">4h ago</span>
-                  </div>
-                  <div className="flex items-center text-sm">
-                    <div className="w-2 h-2 bg-yellow-400 rounded-full mr-3"></div>
-                    <span className="text-gray-300 flex-1">Message template added</span>
-                    <span className="text-gray-400 text-xs">1d ago</span>
-                  </div>
-                  <div className="flex items-center text-sm">
-                    <div className="w-2 h-2 bg-purple-400 rounded-full mr-3"></div>
-                    <span className="text-gray-300 flex-1">Case study processed</span>
-                    <span className="text-gray-400 text-xs">2d ago</span>
-                  </div>
+                  {documentsLoading ? (
+                    <div className="text-gray-400 text-sm">Loading activity…</div>
+                  ) : documentsError ? (
+                    <div className="text-red-400 text-sm">{documentsError}</div>
+                  ) : recentActivity.length === 0 ? (
+                    <div className="text-gray-500 text-sm">Upload knowledge assets to populate the activity feed.</div>
+                  ) : (
+                    recentActivity.map((activity) => (
+                      <div key={activity.id} className="flex items-start text-sm">
+                        <div className="w-2 h-2 bg-blue-400 rounded-full mr-3 mt-1"></div>
+                        <div className="flex-1">
+                          <span className="text-gray-200 block font-medium">{activity.title}</span>
+                          <span className="text-gray-400 text-xs">{getSectionLabel(activity.section)}</span>
+                        </div>
+                        <span className="text-gray-500 text-xs">{formatRelativeTime(activity.updatedAt)}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
+            </div>
+
+            {/* Latest Knowledge Assets */}
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-white text-lg font-semibold flex items-center">
+                  <FileText className="mr-2 text-blue-400" size={20} />
+                  Latest Knowledge Base Assets
+                </h3>
+                <button
+                  onClick={() => loadDocuments()}
+                  className="text-blue-400 hover:text-blue-300 text-sm"
+                >
+                  Refresh
+                </button>
+              </div>
+
+              {documentsLoading ? (
+                <div className="text-gray-400 text-sm">Loading documents…</div>
+              ) : documentsError ? (
+                <div className="text-red-400 text-sm">{documentsError}</div>
+              ) : latestDocuments.length === 0 ? (
+                <div className="text-gray-400 text-sm">
+                  No documents uploaded yet. Drop your pitch deck, pricing sheet, or objection handlers to power SAM.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {latestDocuments.map((doc) => (
+                    <div key={doc.id} className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <p className="text-white text-sm font-semibold">{doc.title}</p>
+                          <p className="text-gray-400 text-xs">Section: {doc.section}</p>
+                        </div>
+                        <span className="text-xs text-gray-300">
+                          {doc.updatedAt ? new Date(doc.updatedAt).toLocaleDateString() : ''}
+                        </span>
+                      </div>
+                      <p className="text-gray-300 text-xs mb-3 line-clamp-3">{doc.summary || 'No summary available.'}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {(doc.tags || []).slice(0, 4).map((tag: string) => (
+                          <span key={tag} className="text-[11px] bg-blue-500/10 text-blue-200 px-2 py-0.5 rounded-full">
+                            {tag}
+                          </span>
+                        ))}
+                        {doc.tags && doc.tags.length > 4 && (
+                          <span className="text-[11px] text-gray-400">+{doc.tags.length - 4} more</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
         
-        {activeSection === 'icp' && <ICPConfiguration onBack={() => setActiveSection('overview')} />}
+        {activeSection === 'icp' && (
+          <ICPConfiguration
+            onBack={() => setActiveSection('overview')}
+            onProfilesUpdated={setIcpProfiles}
+            onRefresh={loadIcpProfiles}
+          />
+        )}
         
         {activeSection === 'products' && (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
@@ -1798,7 +2376,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="products" />
+                <DocumentUpload section="products" onComplete={loadDocuments} />
                 <p className="text-sm text-gray-400 mt-3">
                   📄 Product sheets, service descriptions, feature specs, pricing guides, demo scripts
                 </p>
@@ -1806,12 +2384,66 @@ const KnowledgeBase: React.FC = () => {
               
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Current Documents</h3>
-                <div className="text-center py-8">
-                  <FileText size={48} className="mx-auto text-gray-500 mb-4" />
-                  <div className="text-gray-400 mb-2">No product documents uploaded</div>
-                  <div className="text-gray-500 text-sm">Upload product sheets, feature specs, and pricing guides to get started</div>
-                </div>
+                {renderDocumentList(
+                  'products',
+                  <FileText size={48} className="text-gray-500" />,
+                  'No product documents uploaded',
+                  'Upload product sheets, feature specs, and pricing guides to get started'
+                )}
               </div>
+            </div>
+
+            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-white">Structured Product Library</h3>
+                <button
+                  onClick={handleQuickAddProduct}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center"
+                >
+                  <Plus className="mr-1" size={14} />
+                  Add Product
+                </button>
+              </div>
+              {products.length === 0 ? (
+                <p className="text-gray-400 text-sm">
+                  No structured products captured yet. Add your offerings so SAM can reference positioning, benefits, and feature highlights in conversations.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {products.map((product) => (
+                    <div key={product.id} className="border border-gray-600 rounded-lg p-3 bg-gray-800">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-white font-medium text-sm">{product.name}</p>
+                          {product.description && (
+                            <p className="text-gray-400 text-xs mt-1">{product.description}</p>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-gray-500">
+                          {formatRelativeTime(product.updated_at || product.created_at || '')}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {product.category && (
+                          <span className="text-[11px] bg-blue-500/10 text-blue-200 px-2 py-0.5 rounded-full">
+                            {product.category}
+                          </span>
+                        )}
+                        {(product.features ?? []).slice(0, 3).map((feature) => (
+                          <span key={feature} className="text-[11px] bg-green-500/10 text-green-200 px-2 py-0.5 rounded-full">
+                            {feature}
+                          </span>
+                        ))}
+                        {(product.use_cases ?? []).slice(0, 2).map((useCase) => (
+                          <span key={useCase} className="text-[11px] bg-purple-500/10 text-purple-200 px-2 py-0.5 rounded-full">
+                            {useCase}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1837,7 +2469,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="competition" />
+                <DocumentUpload section="competition" onComplete={loadDocuments} />
                 <p className="text-sm text-gray-400 mt-3">
                   🎯 Competitor analysis, battlecards, win/loss reports, market research, SWOT analysis
                 </p>
@@ -1845,12 +2477,76 @@ const KnowledgeBase: React.FC = () => {
               
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Current Documents</h3>
-                <div className="text-center py-8">
-                  <TrendingUp size={48} className="mx-auto text-gray-500 mb-4" />
-                  <div className="text-gray-400 mb-2">No competitive analysis documents uploaded</div>
-                  <div className="text-gray-500 text-sm">Upload battlecards, market research, and win/loss reports</div>
-                </div>
+                {renderDocumentList(
+                  'competition',
+                  <TrendingUp size={48} className="text-gray-500" />,
+                  'No competitive analysis documents uploaded',
+                  'Upload battlecards, market research, and win/loss reports'
+                )}
               </div>
+            </div>
+
+            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-white">Competitive Intelligence</h3>
+                <button
+                  onClick={handleQuickAddCompetitor}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center"
+                >
+                  <Plus className="mr-1" size={14} />
+                  Add Competitor
+                </button>
+              </div>
+              {competitors.length === 0 ? (
+                <p className="text-gray-400 text-sm">
+                  Capture competitor positioning, strengths, and weaknesses to give SAM fast access to battlecard insights during conversations.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {competitors.map((competitor) => (
+                    <div key={competitor.id} className="border border-gray-600 rounded-lg p-3 bg-gray-800">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-white font-medium text-sm">{competitor.name}</p>
+                          {competitor.website && (
+                            <a
+                              href={competitor.website}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-blue-400 text-xs hover:underline"
+                            >
+                              {competitor.website}
+                            </a>
+                          )}
+                          {competitor.description && (
+                            <p className="text-gray-400 text-xs mt-1">{competitor.description}</p>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-gray-500">
+                          {formatRelativeTime(competitor.updated_at || competitor.created_at || '')}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {(competitor.strengths ?? []).slice(0, 3).map((item) => (
+                          <span key={item} className="text-[11px] bg-green-500/10 text-green-200 px-2 py-0.5 rounded-full">
+                            {item}
+                          </span>
+                        ))}
+                        {(competitor.weaknesses ?? []).slice(0, 2).map((item) => (
+                          <span key={item} className="text-[11px] bg-red-500/10 text-red-200 px-2 py-0.5 rounded-full">
+                            {item}
+                          </span>
+                        ))}
+                        {competitor.pricing_model && (
+                          <span className="text-[11px] bg-yellow-500/10 text-yellow-200 px-2 py-0.5 rounded-full">
+                            {competitor.pricing_model}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1876,7 +2572,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="messaging" />
+                <DocumentUpload section="messaging" onComplete={loadDocuments} />
                 <p className="text-sm text-gray-400 mt-3">
                   💬 Email templates, LinkedIn messages, objection handlers, value propositions, case studies
                 </p>
@@ -1884,11 +2580,12 @@ const KnowledgeBase: React.FC = () => {
               
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Current Templates</h3>
-                <div className="text-center py-8">
-                  <MessageSquare size={48} className="mx-auto text-gray-500 mb-4" />
-                  <div className="text-gray-400 mb-2">No messaging templates uploaded</div>
-                  <div className="text-gray-500 text-sm">Upload email templates, LinkedIn sequences, and objection handlers</div>
-                </div>
+                {renderDocumentList(
+                  'messaging',
+                  <MessageSquare size={48} className="text-gray-500" />,
+                  'No messaging templates uploaded',
+                  'Upload email templates, LinkedIn sequences, and objection handlers'
+                )}
               </div>
             </div>
           </div>
@@ -1915,7 +2612,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="tone-of-voice" />
+                <DocumentUpload section="tone-of-voice" onComplete={loadDocuments} />
                 <p className="text-sm text-gray-400 mt-3">
                   🎭 Brand voice guidelines, writing style guides, communication frameworks, persona-based messaging
                 </p>
@@ -1923,11 +2620,12 @@ const KnowledgeBase: React.FC = () => {
               
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Current Guidelines</h3>
-                <div className="text-center py-8">
-                  <Mic size={48} className="mx-auto text-gray-500 mb-4" />
-                  <div className="text-gray-400 mb-2">No tone of voice guidelines uploaded</div>
-                  <div className="text-gray-500 text-sm">Upload brand voice guides and communication frameworks</div>
-                </div>
+                {renderDocumentList(
+                  'tone-of-voice',
+                  <Mic size={48} className="text-gray-500" />,
+                  'No tone of voice guidelines uploaded',
+                  'Upload brand voice guides and communication frameworks'
+                )}
               </div>
             </div>
 
@@ -1944,7 +2642,7 @@ const KnowledgeBase: React.FC = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
                   <h4 className="text-white font-medium mb-3">Upload Content</h4>
-                  <DocumentUpload section="sender-emails" />
+                  <DocumentUpload section="sender-emails" onComplete={loadDocuments} />
                   <p className="text-xs text-gray-400 mt-2">
                     📧 Email exports (.txt, .eml), blog posts, LinkedIn articles, newsletters, published content
                   </p>
@@ -1952,11 +2650,12 @@ const KnowledgeBase: React.FC = () => {
                 
                 <div className="space-y-3">
                   <h4 className="text-white font-medium mb-3">Analyzed Content</h4>
-                  <div className="text-center py-8">
-                    <Mail size={48} className="mx-auto text-gray-500 mb-4" />
-                    <div className="text-gray-400 mb-2">No content analyzed yet</div>
-                    <div className="text-gray-500 text-sm">Upload email exports or published content to analyze your writing style</div>
-                  </div>
+                  {renderDocumentList(
+                    'sender-emails',
+                    <Mail size={48} className="text-gray-500" />,
+                    'No content analyzed yet',
+                    'Upload email exports or published content to analyze your writing style'
+                  )}
                 </div>
               </div>
 
@@ -1996,7 +2695,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="company-info" />
+                <DocumentUpload section="company-info" onComplete={loadDocuments} />
                 <p className="text-sm text-gray-400 mt-3">
                   🏢 Company overview, team bios, achievements, partnerships, brand guidelines
                 </p>
@@ -2004,11 +2703,12 @@ const KnowledgeBase: React.FC = () => {
               
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Current Documents</h3>
-                <div className="text-center py-8">
-                  <Briefcase size={48} className="mx-auto text-gray-500 mb-4" />
-                  <div className="text-gray-400 mb-2">No company documents uploaded</div>
-                  <div className="text-gray-500 text-sm">Upload company overview, team profiles, and brand guidelines</div>
-                </div>
+                {renderDocumentList(
+                  'company-info',
+                  <Briefcase size={48} className="text-gray-500" />,
+                  'No company documents uploaded',
+                  'Upload company overview, team profiles, and brand guidelines'
+                )}
               </div>
             </div>
           </div>
@@ -2035,7 +2735,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="success-stories" />
+                <DocumentUpload section="success-stories" onComplete={loadDocuments} />
                 <p className="text-sm text-gray-400 mt-3">
                   🏆 Case studies, customer testimonials, reference stories, ROI data, success metrics
                 </p>
@@ -2043,11 +2743,12 @@ const KnowledgeBase: React.FC = () => {
               
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Current Stories</h3>
-                <div className="text-center py-8">
-                  <Trophy size={48} className="mx-auto text-gray-500 mb-4" />
-                  <div className="text-gray-400 mb-2">No success stories uploaded</div>
-                  <div className="text-gray-500 text-sm">Upload case studies, testimonials, and customer success stories</div>
-                </div>
+                {renderDocumentList(
+                  'success-stories',
+                  <Trophy size={48} className="text-gray-500" />,
+                  'No success stories uploaded',
+                  'Upload case studies, testimonials, and customer success stories'
+                )}
               </div>
             </div>
           </div>
@@ -2074,7 +2775,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="buying-process" />
+                <DocumentUpload section="buying-process" onComplete={loadDocuments} />
                 <p className="text-sm text-gray-400 mt-3">
                   🔄 Buying journey maps, decision criteria, approval processes, stakeholder analysis, procurement guides
                 </p>
@@ -2082,11 +2783,12 @@ const KnowledgeBase: React.FC = () => {
               
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Current Frameworks</h3>
-                <div className="text-center py-8">
-                  <GitBranch size={48} className="mx-auto text-gray-500 mb-4" />
-                  <div className="text-gray-400 mb-2">No buying process documents uploaded</div>
-                  <div className="text-gray-500 text-sm">Upload buying journey maps, decision frameworks, and procurement guides</div>
-                </div>
+                {renderDocumentList(
+                  'buying-process',
+                  <GitBranch size={48} className="text-gray-500" />,
+                  'No buying process documents uploaded',
+                  'Upload buying journey maps, decision frameworks, and procurement guides'
+                )}
                 
                 <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mt-4">
                   <h4 className="text-white font-medium mb-3">Decision Framework Summary</h4>
@@ -2120,7 +2822,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="compliance" />
+                <DocumentUpload section="compliance" onComplete={loadDocuments} />
                 <p className="text-sm text-gray-400 mt-3">
                   🛡️ Industry regulations, compliance guidelines, approved/restricted phrases, HITL checkpoints
                 </p>
@@ -2128,11 +2830,12 @@ const KnowledgeBase: React.FC = () => {
               
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Compliance Rules</h3>
-                <div className="text-center py-8">
-                  <Shield size={48} className="mx-auto text-gray-500 mb-4" />
-                  <div className="text-gray-400 mb-2">No compliance documents uploaded</div>
-                  <div className="text-gray-500 text-sm">Upload industry regulations and compliance guidelines</div>
-                </div>
+                {renderDocumentList(
+                  'compliance',
+                  <Shield size={48} className="text-gray-500" />,
+                  'No compliance documents uploaded',
+                  'Upload industry regulations and compliance guidelines'
+                )}
               </div>
             </div>
 
@@ -2167,7 +2870,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="personas" />
+                <DocumentUpload section="personas" onComplete={loadDocuments} />
                 <p className="text-sm text-gray-400 mt-3">
                   👥 Role profiles, pain points, motivations, communication preferences, decision-making patterns
                 </p>
@@ -2175,21 +2878,68 @@ const KnowledgeBase: React.FC = () => {
               
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Persona Library</h3>
-                <div className="space-y-2">
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
-                    <div className="text-white text-sm font-medium">Founder/Co-Founder Persona.pdf</div>
-                    <div className="text-gray-400 text-xs">Vision-driven, time-pressed • ROI focused</div>
-                  </div>
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
-                    <div className="text-white text-sm font-medium">VP Sales/Revenue Persona.pdf</div>
-                    <div className="text-gray-400 text-xs">Performance-driven, competitive • Metrics focused</div>
-                  </div>
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
-                    <div className="text-white text-sm font-medium">Agency Owner Persona.pdf</div>
-                    <div className="text-gray-400 text-xs">Client-focused, efficiency-driven • Scaling challenges</div>
-                  </div>
-                </div>
+                {renderDocumentList(
+                  'personas',
+                  <UserCheck size={48} className="text-gray-500" />,
+                  'No personas uploaded',
+                  'Upload persona sheets with role insights, pains, and motivations'
+                )}
               </div>
+            </div>
+
+            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-white">Structured Personas</h3>
+                <button
+                  onClick={handleQuickAddPersona}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center"
+                >
+                  <Plus className="mr-1" size={14} />
+                  Add Persona
+                </button>
+              </div>
+              {personas.length === 0 ? (
+                <p className="text-gray-400 text-sm">
+                  Capture structured personas so SAM can tailor messaging, objections, and success stories to the contacts you work with most.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {personas.map((persona) => {
+                    const icp = persona.icp_id ? icpProfiles[persona.icp_id] : undefined;
+                    return (
+                      <div key={persona.id} className="border border-gray-600 rounded-lg p-3 bg-gray-800">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-white font-medium text-sm">{persona.name}</p>
+                            <p className="text-gray-400 text-xs">
+                              {persona.job_title || 'Role not specified'}
+                              {persona.department ? ` • ${persona.department}` : ''}
+                            </p>
+                            {icp && (
+                              <p className="text-gray-500 text-[11px] mt-1">Aligned ICP: {icp.name || icp.icp_name || icp.id}</p>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-gray-500">
+                            {formatRelativeTime(persona.updated_at || persona.created_at || '')}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {(persona.pain_points ?? []).slice(0, 3).map((item) => (
+                            <span key={item} className="text-[11px] bg-red-500/10 text-red-200 px-2 py-0.5 rounded-full">
+                              Pain: {item}
+                            </span>
+                          ))}
+                          {(persona.goals ?? []).slice(0, 2).map((item) => (
+                            <span key={item} className="text-[11px] bg-green-500/10 text-green-200 px-2 py-0.5 rounded-full">
+                              Goal: {item}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -2245,7 +2995,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="objections" />
+                <DocumentUpload section="objections" onComplete={loadDocuments} />
                 <p className="text-sm text-gray-400 mt-3">
                   💬 Common objections, proven rebuttals, redirect strategies, conversation frameworks
                 </p>
@@ -2253,11 +3003,12 @@ const KnowledgeBase: React.FC = () => {
               
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Objection Handlers</h3>
-                <div className="text-center py-8">
-                  <MessageCircle size={48} className="mx-auto text-gray-500 mb-4" />
-                  <div className="text-gray-400 mb-2">No objection handling scripts uploaded</div>
-                  <div className="text-gray-500 text-sm">Upload common objections and proven rebuttals</div>
-                </div>
+                {renderDocumentList(
+                  'objections',
+                  <MessageCircle size={48} className="text-gray-500" />,
+                  'No objection handling scripts uploaded',
+                  'Upload common objections and proven rebuttals'
+                )}
               </div>
             </div>
 
@@ -2295,7 +3046,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="pricing" />
+                <DocumentUpload section="pricing" onComplete={loadDocuments} />
                 <p className="text-sm text-gray-400 mt-3">
                   💰 Pricing tiers, package details, ROI calculators, cost justification materials
                 </p>
@@ -2303,11 +3054,12 @@ const KnowledgeBase: React.FC = () => {
               
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Pricing Materials</h3>
-                <div className="text-center py-8">
-                  <DollarSign size={48} className="mx-auto text-gray-500 mb-4" />
-                  <div className="text-gray-400 mb-2">No pricing documents uploaded</div>
-                  <div className="text-gray-500 text-sm">Upload pricing tiers, ROI calculators, and cost justification materials</div>
-                </div>
+                {renderDocumentList(
+                  'pricing',
+                  <DollarSign size={48} className="text-gray-500" />,
+                  'No pricing documents uploaded',
+                  'Upload pricing tiers, ROI calculators, and cost justification materials'
+                )}
               </div>
             </div>
 
@@ -2348,7 +3100,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="metrics" />
+                <DocumentUpload section="metrics" onComplete={loadDocuments} />
                 <p className="text-sm text-gray-400 mt-3">
                   📊 Success benchmarks, industry improvements, ROI studies, timeline examples
                 </p>
@@ -2356,20 +3108,12 @@ const KnowledgeBase: React.FC = () => {
               
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Success Studies</h3>
-                <div className="space-y-2">
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
-                    <div className="text-white text-sm font-medium">Industry Benchmark Report 2024.pdf</div>
-                    <div className="text-gray-400 text-xs">Cross-industry success metrics • 500+ companies</div>
-                  </div>
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
-                    <div className="text-white text-sm font-medium">90-Day Success Timeline.pdf</div>
-                    <div className="text-gray-400 text-xs">Typical implementation milestones • ROI progression</div>
-                  </div>
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
-                    <div className="text-white text-sm font-medium">ROI Case Studies Collection.pdf</div>
-                    <div className="text-gray-400 text-xs">10x ROI examples in 3 months • Detailed analysis</div>
-                  </div>
-                </div>
+                {renderDocumentList(
+                  'metrics',
+                  <BarChart size={48} className="text-gray-500" />,
+                  'No success metrics uploaded',
+                  'Upload benchmark reports, ROI studies, and timeline examples'
+                )}
               </div>
             </div>
 
@@ -2475,7 +3219,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="crm-setup" />
+                <DocumentUpload section="crm-setup" onComplete={loadDocuments} />
                 <p className="text-sm text-gray-400 mt-3">
                   ⚙️ CRM integration guides, field mapping templates, automation workflows, sync protocols
                 </p>
@@ -2698,7 +3442,7 @@ const KnowledgeBase: React.FC = () => {
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <DocumentUpload section="general" />
+              <DocumentUpload section="general" onComplete={loadDocuments} />
               <VectorTest />
             </div>
 

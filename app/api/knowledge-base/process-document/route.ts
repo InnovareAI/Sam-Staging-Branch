@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase client
+// Initialize service-role Supabase client for background processing
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -150,8 +150,22 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Fetch document metadata to ensure workspace context exists
+    const { data: documentRecord, error: documentError } = await supabase
+      .from('knowledge_base_documents')
+      .select('workspace_id, section_id')
+      .eq('id', documentId)
+      .single();
+
+    if (documentError || !documentRecord?.workspace_id) {
+      console.error('Document lookup failed:', documentError);
+      return NextResponse.json({ error: 'Document not found or missing workspace context' }, { status: 404 });
+    }
+
+    const resolvedSection = section || documentRecord.section_id;
+
     // Process content with Mistral AI
-    const analysis = await processwithMistral(content, section, filename);
+    const analysis = await processwithMistral(content, resolvedSection, filename);
 
     // Update document with AI analysis results
     const { data: updatedDocument, error: updateError } = await supabase
@@ -182,6 +196,7 @@ export async function POST(request: NextRequest) {
       .from('document_ai_analysis')
       .insert({
         document_id: documentId,
+        workspace_id: documentRecord.workspace_id,
         analysis_type: 'content_processing',
         model_used: analysis.metadata.model_used,
         tags: analysis.tags,

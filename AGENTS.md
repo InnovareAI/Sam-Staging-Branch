@@ -1,5 +1,11 @@
 # Repository Guidelines
 
+## Latest Deployment Highlights (Last 24 Hours)
+- **Consultant Persona Rollout**: The chat welcome flow now assumes the "consultant orchestrator" persona; ensure content tweaks respect this narrative (`55a450c`, `de483b9`, `268ec96`).
+- **ICPs & Playbook Updates**: Conversational playbooks were refreshed with precise ICP guidance—reference the newest directives before modifying onboarding copy (`cb215f9`, `40c3a42`).
+- **Chat Feed Stability**: A rapid sequence of fixes resolved message ordering, scroll anchoring, and OpenRouter fallbacks. If UI anomalies resurface, start with regression tests on the reversed feed commits (`4766c96` through `051e86c`).
+- **Deployment Baseline**: `8794947` consolidated build fixes prior to the chat hotfix push; treat it as the recovery point if recent UI patches need to be rolled back.
+
 ## Project Structure & Module Organization
 The Next.js app router lives in `app/`, with route handlers and server actions colocated by feature. Reusable UI primitives and shadcn-based components sit in `components/`, while shared utilities, Supabase clients, and domain helpers are in `lib/`. Static assets and icons belong in `public/`. SQL migrations live in `sql/`, and Supabase edge functions or configuration files reside under `supabase/`. Legacy Vite experiments are retained in `src-old-vite/` for reference only—avoid adding new code there.
 

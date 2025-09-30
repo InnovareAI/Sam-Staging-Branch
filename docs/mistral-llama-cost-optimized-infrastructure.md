@@ -20,7 +20,7 @@ Based on the budget analysis, **message personalization consumes 80% of tokens**
 |------|-------|--------|-----------|
 | **Message Personalization** | Mistral 7B | 45M tokens | $63,000 |
 | **Template Generation** | Llama 3 8B | 8M tokens | $10,400 |
-| **Quality Review** | Claude 3.5 Sonnet | 2M tokens | $60,000 |
+| **Quality Review** | Claude 4.5 Sonnet | 2M tokens | $60,000 |
 | ****TOTAL**| | **55M tokens** | **$133,400** |
 
 **75% cost reduction** vs all-premium approach ($534,000/year)
@@ -95,7 +95,7 @@ export class CostOptimizedLLMClient {
     score: number;
   }> {
     const response = await this.openrouter.chat.completions.create({
-      model: "anthropic/claude-3.5-sonnet",
+      model: "anthropic/claude-4.5-sonnet",
       messages: [
         {
           role: "system",
@@ -233,7 +233,7 @@ export class LLMCostMonitor {
       'mistralai/mistral-7b-instruct': { input: 0.0007, output: 0.0007 },
       'meta-llama/llama-3-8b-instruct': { input: 0.0005, output: 0.0008 },
       'mistralai/mistral-nemo': { input: 0.0013, output: 0.0013 },
-      'anthropic/claude-3.5-sonnet': { input: 0.015, output: 0.075 }
+      'anthropic/claude-4.5-sonnet': { input: 0.015, output: 0.075 }
     };
     
     const rate = rates[model] || { input: 0.001, output: 0.001 };
@@ -302,7 +302,7 @@ await samFunnel.routeToStep(replyAnalysis.category, prospect);
 ### **2. Smart Model Routing**
 - **Mistral 7B**: Basic personalization, variable replacement
 - **Llama 3 8B**: Content optimization, reply analysis
-- **Claude 3.5**: Quality review for high-value prospects only
+- **Claude 4.5**: Quality review for high-value prospects only
 
 ### **3. Batch Processing**
 - Process 100+ prospects simultaneously

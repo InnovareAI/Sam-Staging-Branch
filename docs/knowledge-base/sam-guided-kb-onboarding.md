@@ -6,14 +6,13 @@ The Knowledge Base system enables SAM to collect, organize, and leverage company
 
 ## Knowledge Base Architecture
 
-### Database Schema
-- **knowledge_base_sections**: 15 predefined sections with customizable content
-- **knowledge_base_content**: Flexible JSONB storage for all content types
-- **knowledge_base_documents**: File uploads with extracted text search
-- **knowledge_base_icps**: Structured ideal customer profiles
-- **knowledge_base_products**: Product information and positioning
-- **knowledge_base_competitors**: Competitive intelligence
-- **knowledge_base_personas**: Buyer personas and decision-maker profiles
+### Database Schema (Current Production Tables)
+- **knowledge_base** – Flat text entries grouped by category/subcategory
+- **knowledge_base_sections** – Global list of sections surfaced in the UI
+- **knowledge_base_content** – JSONB payloads keyed by section identifier
+- **icp_configurations** – Library of ICP templates (used during discovery)
+
+> **Note:** Structured tables for documents, products, competitors, and personas are part of the long-term roadmap but are *not* present in the live schema yet. Until they are introduced, those data points are stored inside `knowledge_base_content.content`.
 
 ### API Endpoints
 - `/api/knowledge-base/sections` - Section management

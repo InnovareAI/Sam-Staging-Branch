@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 
 // Helper function to make Unipile API calls
@@ -49,31 +49,7 @@ export async function POST(request: NextRequest) {
   try {
     // Authenticate user first
     const cookieStore = await cookies()
-    
-    // Get auth token from cookies
-    const accessToken = cookieStore.get('sb-access-token')?.value
-    const refreshToken = cookieStore.get('sb-refresh-token')?.value
-    
-    if (!accessToken) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required to generate LinkedIn auth link',
-        timestamp: new Date().toISOString()
-      }, { status: 401 })
-    }
-    
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
-        }
-      }
-    )
-    
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {

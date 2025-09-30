@@ -15,12 +15,12 @@ function getSenderByAffiliation(userEmail: string): string {
   // Check if user belongs to 3cubed or sendingcell.com
   if (userEmail.includes('3cubed') || userEmail.includes('cubedcapital') || userEmail.includes('sendingcell.com')) {
     console.log('✅ GENERAL ROUTE - 3cubed affiliation detected, using Sophia Caldwell');
-    return 'Sophia Caldwell <sophia@innovareai.com>';
+    return 'Sophia Caldwell <sophia@3cubed.ai>';
   }
   
   // Default to Sarah Powell for InnovareAI and other users
   console.log('✅ GENERAL ROUTE - InnovareAI affiliation, using Sarah Powell');
-  return 'Sarah Powell <sarah@innovareai.com>';
+  return 'Sarah Powell <sp@innovareai.com>';
 }
 
 // Postmark email service

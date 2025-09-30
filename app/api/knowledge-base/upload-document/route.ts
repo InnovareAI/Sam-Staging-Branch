@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import formidable from 'formidable';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // Document content extraction functions
 async function extractContentFromFile(filePath: string, mimeType: string): Promise<string> {
@@ -68,6 +62,32 @@ async function extractContentFromURL(url: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = createRouteHandlerClient({ cookies: cookies });
+    const { data: { session }, error: authError } = await supabase.auth.getSession();
+
+    if (authError || !session?.user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+
+    const { data: userProfile, error: profileError } = await supabase
+      .from('users')
+      .select('current_workspace_id')
+      .eq('id', userId)
+      .single();
+
+    if (profileError) {
+      console.error('Failed to load user workspace profile:', profileError);
+      return NextResponse.json({ error: 'Unable to determine workspace' }, { status: 500 });
+    }
+
+    const workspaceId = userProfile?.current_workspace_id;
+
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Please select a workspace before uploading knowledge base documents.' }, { status: 400 });
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const url = formData.get('url') as string | null;
@@ -136,17 +156,27 @@ export async function POST(request: NextRequest) {
       .from('knowledge_base_documents')
       .insert({
         id: documentId,
-        filename,
+        workspace_id: workspaceId,
+        section_id: section,
         section,
-        content: extractedContent,
-        mime_type: mimeType,
+        filename,
+        original_filename: filename,
+        file_type: mimeType || 'text/plain',
         file_size: fileSize,
+        storage_path: `inline://${documentId}`,
+        extracted_content: extractedContent,
+        metadata: {
+          upload_mode: uploadMode,
+          source_url: uploadMode === 'url' ? url : null
+        },
+        mime_type: mimeType || 'text/plain',
         upload_mode: uploadMode,
         source_url: uploadMode === 'url' ? url : null,
+        uploaded_by: userId,
         created_at: new Date().toISOString(),
         status: 'extracted'
       })
-      .select()
+      .select('id, workspace_id, section_id')
       .single();
 
     if (dbError) {
@@ -160,6 +190,7 @@ export async function POST(request: NextRequest) {
       filename,
       section,
       extractedLength: extractedContent.length,
+      workspaceId,
       success: true
     });
 

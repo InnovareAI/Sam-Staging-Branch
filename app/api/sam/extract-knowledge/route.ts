@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     // Get all messages in the thread
     const { data: messages } = await supabase
-      .from('sam_thread_messages')
+      .from('sam_conversation_messages')
       .select('*')
       .eq('thread_id', thread_id)
       .order('message_order', { ascending: true })
@@ -267,10 +267,12 @@ async function updateGlobalKnowledgeBase(supabase: any, insights: any[], thread:
   for (const insight of insights) {
     const title = `${insight.category}: ${thread.prospect_company || 'Prospect'} - ${insight.subcategory}`
     const content = JSON.stringify(insight.content, null, 2)
-    
+    const workspaceId = thread.workspace_id ?? null
+
     await supabase
       .from('knowledge_base')
       .upsert({
+        workspace_id: workspaceId,
         category: 'conversational-design',
         subcategory: insight.category,
         title,

@@ -1,9 +1,9 @@
 /**
  * Cost-Optimized LLM Client for Sam Funnel
  * 
- * Prioritizes cost control over maximum quality using Mistral/Llama models
- * for high-volume message personalization while reserving premium models
- * for critical decision points.
+ * Prioritizes template-first personalization while leveraging Claude 4.5 Sonnet
+ * for on-demand copy polishing and Llama for offline template refinement.
+ * Premium reviews are still routed through Claude when needed.
  * 
  * Expected Annual Savings: 75% ($400K+ saved vs all-premium approach)
  */
@@ -49,10 +49,8 @@ export class CostOptimizedLLMClient {
 
   // Model pricing per 1K tokens (OpenRouter.ai rates)
   private readonly MODEL_COSTS: Record<string, ModelCosts> = {
-    'mistralai/mistral-7b-instruct': { input: 0.0007, output: 0.0007 },
     'meta-llama/llama-3-8b-instruct': { input: 0.0005, output: 0.0008 },
-    'mistralai/mistral-nemo': { input: 0.0013, output: 0.0013 },
-    'anthropic/claude-3.5-sonnet': { input: 0.015, output: 0.075 }
+    'anthropic/claude-4.5-sonnet': { input: 0.015, output: 0.075 }
   };
 
   constructor() {
@@ -64,14 +62,14 @@ export class CostOptimizedLLMClient {
 
   /**
    * High-volume, cost-optimized message personalization
-   * Uses Mistral 7B for 90% of personalization tasks
+   * Uses Claude 4.5 Sonnet for consistent tone and consultant voice
    */
   async personalizeMessage(
     template: string, 
     prospect: ProspectData,
     context?: { campaignType?: string; sequenceStep?: number }
   ): Promise<{ message: string; cost: number; tokensUsed: number }> {
-    const model = 'mistralai/mistral-7b-instruct';
+    const model = 'anthropic/claude-4.5-sonnet';
     
     const prompt = this.buildPersonalizationPrompt(template, prospect, context);
     
@@ -182,7 +180,7 @@ Return JSON format:
   }
 
   /**
-   * Quality review with premium model (Claude 3.5 Sonnet)
+   * Quality review with premium model (Claude 4.5 Sonnet)
    * Used sparingly for high-value prospects only
    */
   async qualityReview(
@@ -193,7 +191,7 @@ Return JSON format:
       riskLevel: 'low' | 'medium' | 'high';
     }
   ): Promise<QualityReview & { cost: number }> {
-    const model = 'anthropic/claude-3.5-sonnet';
+    const model = 'anthropic/claude-4.5-sonnet';
     
     const prompt = `
 Review this LinkedIn message for quality, professionalism, and likelihood of positive response:
@@ -473,7 +471,7 @@ Return only the personalized message, no explanations.`;
   }
 
   private getTaskType(model: string): UsageMetrics['taskType'] {
-    if (model.includes('mistral-7b')) return 'personalization';
+    if (model.includes('claude-4.5-sonnet')) return 'personalization';
     if (model.includes('llama-3-8b')) return 'optimization';
     if (model.includes('claude')) return 'review';
     return 'classification';

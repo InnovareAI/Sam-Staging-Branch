@@ -1,12 +1,13 @@
 /**
  * Cost-Controlled LLM Infrastructure for SAM AI Message Personalization
- * Prioritizes budget control using Mistral/Llama while maintaining quality
+ * Prioritizes budget control using Claude 4.5 Sonnet for primary flows while
+ * keeping Llama as an offline batch option.
  * 
  * Key Features:
  * - 60-70% cost reduction through template-first approach
  * - Real-time budget monitoring and enforcement
  * - Quality gates with automatic fallbacks
- * - Multi-model orchestration (Mistral → Llama → Claude)
+ * - Multi-model orchestration (Claude → Llama fallback)
  */
 
 import { OpenRouter } from './openrouter-client';
@@ -14,10 +15,10 @@ import { OpenRouter } from './openrouter-client';
 // Model configurations optimized for cost-quality balance
 const MODEL_CONFIGS = {
   primary: {
-    model: "mistralai/mistral-large-2407",
-    displayName: "Mistral Large 2",
+    model: "anthropic/claude-4.5-sonnet",
+    displayName: "Claude 4.5 Sonnet",
     costPer1M: 3.00,
-    qualityScore: 87,
+    qualityScore: 95,
     maxTokens: 150,
     temperature: 0.3,
     useCase: "primary_personalization"
@@ -32,10 +33,10 @@ const MODEL_CONFIGS = {
     useCase: "batch_processing"
   },
   fallback: {
-    model: "anthropic/claude-3.5-sonnet",
-    displayName: "Claude 3.5 Sonnet",
+    model: "anthropic/claude-4.5-sonnet",
+    displayName: "Claude 4.5 Sonnet",
     costPer1M: 3.00,
-    qualityScore: 92,
+    qualityScore: 95,
     maxTokens: 150,
     temperature: 0.3,
     useCase: "quality_fallback"
@@ -198,7 +199,7 @@ class CostControlledPersonalization {
       results.push(...batchResults);
     }
     
-    // Process standard requests with Mistral Large 2
+    // Process standard requests with Claude 4.5 Sonnet
     for (const request of batches.standard) {
       const result = await this.personalizeMessage(request);
       results.push(result);
@@ -245,9 +246,9 @@ class CostControlledPersonalization {
     switch (level) {
       case 'minimal':
       case 'standard':
-        return MODEL_CONFIGS.primary; // Mistral Large 2
+        return MODEL_CONFIGS.primary; // Claude 4.5 Sonnet
       case 'premium':
-        return MODEL_CONFIGS.fallback; // Claude 3.5 Sonnet for highest quality
+        return MODEL_CONFIGS.fallback; // Claude 4.5 Sonnet for highest quality
       default:
         return MODEL_CONFIGS.primary;
     }
@@ -357,7 +358,7 @@ Enhanced message:`;
     request: PersonalizationRequest
   ): Promise<PersonalizationResult> {
     
-    console.log('Attempting quality fallback to Claude 3.5 Sonnet');
+    console.log('Attempting quality fallback to Claude 4.5 Sonnet');
     
     try {
       return await this.enhanceWithAI(templateMessage, request, MODEL_CONFIGS.fallback);

@@ -5,7 +5,7 @@
 
 import { supabaseAdmin } from '@/app/lib/supabase';
 import { mcp__template__get_by_criteria, mcp__template__get_by_id } from './template-mcp';
-import { mcp__mistral__personalize_for_prospect } from './mistral-mcp';
+import { mcp__sonnet__personalize_for_prospect } from './sonnet-mcp';
 
 export interface CampaignRequest {
   workspace_id: string;
@@ -487,7 +487,7 @@ async function personalizeForProspect(template: any, prospect: any, level: strin
   }
 
   // For advanced/deep personalization, use Mistral
-  const personalizationResult = await mcp__mistral__personalize_for_prospect({
+  const personalizationResult = await mcp__sonnet__personalize_for_prospect({
     template: {
       connection_message: template.connection_message,
       follow_up_messages: template.follow_up_messages || []

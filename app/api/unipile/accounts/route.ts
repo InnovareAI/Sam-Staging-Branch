@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // Helper function to make Unipile API calls
 async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: any) {
@@ -39,12 +40,13 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
 }
 
 // Helper function to store user account association using robust function
-async function storeUserAccountAssociation(userId: string, unipileAccount: any) {
+async function storeUserAccountAssociation(
+  supabase: SupabaseClient,
+  userId: string,
+  unipileAccount: any
+) {
   try {
     console.log(`🔗 Starting association storage for user ${userId} and account ${unipileAccount.id}`)
-    
-    const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     
     const connectionParams = unipileAccount.connection_params?.im || {}
     
@@ -104,6 +106,50 @@ async function storeUserAccountAssociation(userId: string, unipileAccount: any) 
   } catch (error) {
     console.error('💥 Exception in storing user account association:', error)
     return false
+  }
+}
+
+async function upsertWorkspaceAccount(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  userId: string,
+  unipileAccount: any
+) {
+  if (!workspaceId) return
+
+  const connectionParams = unipileAccount.connection_params?.im || {}
+  const accountIdentifier =
+    connectionParams.email?.toLowerCase() ||
+    connectionParams.username?.toLowerCase() ||
+    unipileAccount.connection_params?.email?.toLowerCase() ||
+    unipileAccount.id
+
+  const connectionStatus = unipileAccount.sources?.some((source: any) => source.status === 'OK')
+    ? 'connected'
+    : unipileAccount.sources?.[0]?.status?.toLowerCase() || 'pending'
+
+  const { error } = await supabase
+    .from('workspace_accounts')
+    .upsert(
+      {
+        workspace_id: workspaceId,
+        user_id: userId,
+        account_type: 'linkedin',
+        account_identifier: accountIdentifier,
+        account_name: unipileAccount.name || connectionParams.publicIdentifier || accountIdentifier,
+        unipile_account_id: unipileAccount.id,
+        connection_status: connectionStatus,
+        is_active: true,
+        account_metadata: {
+          unipile_instance: process.env.UNIPILE_DSN || null,
+          product_type: unipileAccount.connection_params?.product_type || null
+        }
+      },
+      { onConflict: 'workspace_id,user_id,account_type,account_identifier', ignoreDuplicates: false }
+    )
+
+  if (error) {
+    console.error('⚠️ Failed to upsert workspace account association', error)
   }
 }
 
@@ -186,40 +232,51 @@ export async function GET(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // Get user's current workspace
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single()
-
-    // Enhanced debugging for workspace association
-    console.log(`🔍 Debug: User ${user.email} workspace check:`, {
-      user_id: user.id,
-      user_email: user.email,
-      userProfile: userProfile,
-      current_workspace_id: userProfile?.current_workspace_id
-    })
-
-    // 🚨 MANAGEMENT TEAM: Allow InnovareAI team to access all workspaces for management
+    // Get user's current workspace - use user ID as fallback if no workspace table
     const userEmail = user.email?.toLowerCase() || ''
     const isInnovareAIManager = ['tl@innovareai.com', 'cl@innovareai.com', 'cs@innovareai.com', 'thorsten@innovareai.com', 'thorsten.linz@gmail.com'].includes(userEmail)
+    const requestedWorkspaceId = request.nextUrl.searchParams.get('workspace_id')
     
+    let workspaceId: string | null = null
+    
+    try {
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('current_workspace_id')
+        .eq('id', user.id)
+        .maybeSingle()
+      
+      if (userProfile?.current_workspace_id) {
+        workspaceId = userProfile.current_workspace_id as string
+      }
+    } catch (error) {
+      console.log('⚠️ Users table not available, using fallback')
+    }
+    
+    // Fallback: use requested workspace for managers or user ID
+    if (!workspaceId) {
+      if (isInnovareAIManager && requestedWorkspaceId) {
+        workspaceId = requestedWorkspaceId
+      } else {
+        // Use user ID as workspace for compatibility
+        workspaceId = user.id
+        console.log('⚠️ Using user ID as workspace ID')
+      }
+    }
+
+    console.log(`🔍 Debug: User ${user.email} workspace:`, {
+      user_id: user.id,
+      workspace_id: workspaceId
+    })
+
     console.log(`🔍 User authentication check:`, {
       user_id: user.id,
       user_email: userEmail,
       is_innovareai_manager: isInnovareAIManager,
-      current_workspace_id: userProfile?.current_workspace_id
+      workspace_id: workspaceId
     })
     
-    // TEMPORARY FIX: Skip workspace check entirely for debugging production issues
-    if (!userProfile?.current_workspace_id && !isInnovareAIManager) {
-      console.log(`⚠️ User ${user.email} not associated with workspace - allowing access for debugging`)
-      // Don't block access, just log the issue
-      console.log(`📝 Debug info: user_email=${userEmail}, is_innovareai_manager=${isInnovareAIManager}, current_workspace_id=${userProfile?.current_workspace_id}`)
-    }
-
-    console.log(`✅ User ${user.email} access granted - ${isInnovareAIManager ? 'InnovareAI Manager' : `Workspace: ${userProfile?.current_workspace_id || 'none'}`}`)
+    console.log(`✅ User ${user.email} access granted for workspace ${workspaceId}`)
 
     // Fetch ALL accounts from Unipile (we'll filter by user associations)
     const data = await callUnipileAPI('accounts')
@@ -271,6 +328,9 @@ export async function GET(request: NextRequest) {
       // Exact email match
       const exactEmailMatch = possibleEmails.includes(userEmailLower)
       
+      const trustedDomains = ['innovareai.com', '3cubed.ai', 'sendingcell.com']
+      const isDomainTrusted = userDomain ? trustedDomains.includes(userDomain) : false
+
       console.log(`🔍 Checking account ${linkedInAccount.id}:`, {
         account_name: linkedInAccount.name,
         possible_emails: possibleEmails,
@@ -280,10 +340,6 @@ export async function GET(request: NextRequest) {
         will_associate: exactEmailMatch || (accountDomainMatches && isDomainTrusted),
         association_type: exactEmailMatch ? 'exact_email' : (accountDomainMatches && isDomainTrusted ? 'trusted_domain' : 'none')
       })
-      
-      // Trusted corporate domains for domain-based association
-      const trustedDomains = ['innovareai.com', '3cubed.ai', 'sendingcell.com']
-      const isDomainTrusted = userDomain && trustedDomains.includes(userDomain)
       
       // Auto-associate on exact email matches OR trusted domain matches
       if (exactEmailMatch || (accountDomainMatches && isDomainTrusted)) {
@@ -304,9 +360,10 @@ export async function GET(request: NextRequest) {
         }
         
         // Store the association (will update if already exists due to UPSERT)
-        const associationStored = await storeUserAccountAssociation(user.id, linkedInAccount)
+        const associationStored = await storeUserAccountAssociation(supabase, user.id, linkedInAccount)
         if (associationStored) {
           userAccountIds.add(linkedInAccount.id)
+          await upsertWorkspaceAccount(supabase, workspaceId, user.id, linkedInAccount)
           console.log(`✅ Successfully auto-associated LinkedIn account for user ${user.email}`)
         } else {
           console.log(`❌ Failed to store association for ${linkedInAccount.id}`)
@@ -318,7 +375,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter to only show accounts that belong to this user's workspace
-    const userLinkedInAccounts = allAccounts.filter((account: any) => 
+    const userLinkedInAccounts = allAccounts.filter((account: any) =>
       account.type === 'LINKEDIN' && userAccountIds.has(account.id)
     )
 
@@ -361,7 +418,7 @@ export async function GET(request: NextRequest) {
         linkedin_accounts_in_unipile: allLinkedInAccounts.length,
         user_associations_count: userAccountIds.size,
         auto_association_attempted: true,
-        current_workspace_id: userProfile?.current_workspace_id
+        current_workspace_id: workspaceId
       },
       timestamp: new Date().toISOString()
     })
@@ -460,7 +517,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Store the association using the helper function
-      const associationStored = await storeUserAccountAssociation(user.id, targetAccount)
+      const associationStored = await storeUserAccountAssociation(supabase, user.id, targetAccount)
       
       if (!associationStored) {
         return NextResponse.json({
@@ -469,6 +526,8 @@ export async function POST(request: NextRequest) {
           timestamp: new Date().toISOString()
         }, { status: 500 })
       }
+
+      await upsertWorkspaceAccount(supabase, workspaceId, user.id, targetAccount)
 
       console.log(`✅ Successfully associated LinkedIn account ${targetAccount.name} with user ${user.email}`)
 
@@ -550,7 +609,8 @@ export async function POST(request: NextRequest) {
         
         if (!existingAssociation) {
           console.log(`🔗 Storing association for existing account ${duplicateAccount.id}`)
-          await storeUserAccountAssociation(user.id, duplicateAccount)
+          await storeUserAccountAssociation(supabase, user.id, duplicateAccount)
+          await upsertWorkspaceAccount(supabase, workspaceId, user.id, duplicateAccount)
         }
         
         try {
@@ -693,13 +753,14 @@ export async function POST(request: NextRequest) {
       
       // Store user account association
       console.log(`🔗 Storing association for user ${user.email} and account ${result.id}`)
-      const associationStored = await storeUserAccountAssociation(user.id, result)
+      const associationStored = await storeUserAccountAssociation(supabase, user.id, result)
       
       if (!associationStored) {
         console.error(`❌ Failed to store association for user ${user.email} and account ${result.id}`)
         // Still return success for the account creation, but note the association failure
       } else {
         console.log(`✅ Successfully stored association for user ${user.email} and account ${result.id}`)
+        await upsertWorkspaceAccount(supabase, workspaceId, user.id, result)
       }
       
       return NextResponse.json({

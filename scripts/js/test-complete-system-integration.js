@@ -72,7 +72,7 @@ async function testCompleteSystemIntegration() {
       {
         input: "Optimize my LinkedIn template for better response rates",
         detected: "Template Optimization", 
-        mcp_tool: "mcp__mistral__optimize_template",
+        mcp_tool: "mcp__sonnet__optimize_template",
         integration: "✅ READY"
       },
       {

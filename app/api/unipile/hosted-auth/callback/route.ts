@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // Helper function to check for duplicate LinkedIn accounts
 async function checkAndHandleDuplicateAccounts(userId: string, newAccountData: any) {
@@ -83,11 +84,13 @@ async function deleteDuplicateUnipileAccount(accountId: string) {
 }
 
 // Helper function to store user account association
-async function storeUserAccountAssociation(userId: string, unipileAccount: any) {
+async function storeUserAccountAssociation(
+  supabase: SupabaseClient,
+  userId: string,
+  unipileAccount: any
+) {
   try {
     console.log(`🔗 Starting association storage for user ${userId} and account ${unipileAccount.id}`)
-    
-    const supabase = createRouteHandlerClient({ cookies })
     
     const connectionParams = unipileAccount.connection_params?.im || {}
     
@@ -150,9 +153,54 @@ async function storeUserAccountAssociation(userId: string, unipileAccount: any) 
   }
 }
 
+async function upsertWorkspaceAccount(
+  supabase: SupabaseClient,
+  workspaceId: string | null,
+  userId: string,
+  unipileAccount: any
+) {
+  if (!workspaceId) return
+
+  const connectionParams = unipileAccount.connection_params?.im || {}
+  const accountIdentifier =
+    connectionParams.email?.toLowerCase() ||
+    connectionParams.username?.toLowerCase() ||
+    unipileAccount.connection_params?.email?.toLowerCase() ||
+    unipileAccount.id
+
+  const connectionStatus = unipileAccount.sources?.some((source: any) => source.status === 'OK')
+    ? 'connected'
+    : unipileAccount.sources?.[0]?.status?.toLowerCase() || 'pending'
+
+  const { error } = await supabase
+    .from('workspace_accounts')
+    .upsert(
+      {
+        workspace_id: workspaceId,
+        user_id: userId,
+        account_type: 'linkedin',
+        account_identifier: accountIdentifier,
+        account_name: unipileAccount.name || connectionParams.publicIdentifier || accountIdentifier,
+        unipile_account_id: unipileAccount.id,
+        connection_status: connectionStatus,
+        is_active: true,
+        account_metadata: {
+          unipile_instance: process.env.UNIPILE_DSN || null,
+          product_type: unipileAccount.connection_params?.product_type || null
+        }
+      },
+      { onConflict: 'workspace_id,user_id,account_type,account_identifier', ignoreDuplicates: false }
+    )
+
+  if (error) {
+    console.error('⚠️ Failed to upsert workspace account during hosted auth callback', error)
+  }
+}
+
 // GET - Handle hosted auth callback from Unipile
 export async function GET(request: NextRequest) {
   try {
+    const supabase = createRouteHandlerClient({ cookies })
     const { searchParams } = new URL(request.url)
     const sessionId = searchParams.get('session_id')
     const accountId = searchParams.get('account_id')
@@ -221,18 +269,20 @@ export async function GET(request: NextRequest) {
                 console.log(`✅ Duplicate account cleaned up successfully`)
               } else {
                 // Store the association
-                const associationStored = await storeUserAccountAssociation(
-                  parsedUserContext.user_id, 
-                  accountData
-                )
-                
-                if (associationStored) {
-                  console.log(`✅ Successfully stored association for user ${parsedUserContext.user_email}`)
-                } else {
-                  console.log(`❌ Failed to store association for account ${accountId}`)
-                }
+              const associationStored = await storeUserAccountAssociation(
+                supabase,
+                parsedUserContext.user_id,
+                accountData
+              )
+              
+              if (associationStored) {
+                console.log(`✅ Successfully stored association for user ${parsedUserContext.user_email}`)
+                await upsertWorkspaceAccount(supabase, parsedUserContext.workspace_id, parsedUserContext.user_id, accountData)
+              } else {
+                console.log(`❌ Failed to store association for account ${accountId}`)
               }
             }
+          }
           }
         } catch (associationError) {
           console.error('❌ Error storing account association:', associationError)
@@ -286,6 +336,7 @@ export async function POST(request: NextRequest) {
 
     if (status === 'success' && account_id) {
       // If we have user context, store the association
+      const supabase = createRouteHandlerClient({ cookies })
       if (user_context?.user_id) {
         try {
           // Fetch account details and store association (same logic as GET)
@@ -304,11 +355,21 @@ export async function POST(request: NextRequest) {
               const accountData = await accountResponse.json()
               
               const associationStored = await storeUserAccountAssociation(
-                user_context.user_id, 
+                supabase,
+                user_context.user_id,
                 accountData
               )
               
               console.log(`Association result for webhook: ${associationStored}`)
+
+              if (associationStored) {
+                await upsertWorkspaceAccount(
+                  supabase,
+                  user_context.workspace_id,
+                  user_context.user_id,
+                  accountData
+                )
+              }
             }
           }
         } catch (associationError) {

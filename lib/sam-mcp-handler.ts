@@ -768,7 +768,7 @@ async function handleTemplateOptimization(input: string, workspaceId: string, co
   const mcpRequest: MCPCallToolRequest = {
     method: 'tools/call',
     params: {
-      name: 'mcp__mistral__optimize_template',
+      name: 'mcp__sonnet__optimize_template',
       arguments: optimizationRequest
     }
   }
@@ -779,7 +779,7 @@ async function handleTemplateOptimization(input: string, workspaceId: string, co
     return {
       success: false,
       message: `I couldn't optimize the template: ${result.content[0]?.text || 'Unknown error'}`,
-      toolsUsed: ['mcp__mistral__optimize_template'],
+      toolsUsed: ['mcp__sonnet__optimize_template'],
       error: result.content[0]?.text
     }
   }
@@ -790,7 +790,7 @@ async function handleTemplateOptimization(input: string, workspaceId: string, co
     return {
       success: true,
       message: formatTemplateOptimizationResponse(optimizationData),
-      toolsUsed: ['mcp__mistral__optimize_template'],
+      toolsUsed: ['mcp__sonnet__optimize_template'],
       data: optimizationData,
       suggestedActions: [
         `Save optimized template`,
@@ -803,7 +803,7 @@ async function handleTemplateOptimization(input: string, workspaceId: string, co
     return {
       success: false,
       message: `Template optimization failed: ${optimizationData.error || 'Unknown error'}`,
-      toolsUsed: ['mcp__mistral__optimize_template'],
+      toolsUsed: ['mcp__sonnet__optimize_template'],
       error: optimizationData.error
     }
   }
@@ -860,13 +860,13 @@ async function handlePerformanceAnalysis(input: string, workspaceId: string, con
     const analysisMcpRequest: MCPCallToolRequest = {
       method: 'tools/call',
       params: {
-        name: 'mcp__mistral__analyze_performance',
+        name: 'mcp__sonnet__analyze_performance',
         arguments: analysisRequest
       }
     }
 
     const analysisResult = await mcpRegistry.callTool(analysisMcpRequest)
-    toolsUsed.push('mcp__mistral__analyze_performance')
+    toolsUsed.push('mcp__sonnet__analyze_performance')
     
     if (analysisResult.isError) {
       return {

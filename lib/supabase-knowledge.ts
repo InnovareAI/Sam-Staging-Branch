@@ -18,16 +18,120 @@ export interface KnowledgeBaseItem {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  workspace_id?: string | null;
 }
 
 export interface SearchResult extends KnowledgeBaseItem {
   rank: number;
 }
 
+export interface KnowledgeBaseDocument {
+  id: string;
+  workspace_id: string | null;
+  section_id: string;
+  filename: string;
+  original_filename?: string | null;
+  file_type?: string | null;
+  file_size?: number | null;
+  storage_path?: string | null;
+  extracted_content?: string | null;
+  metadata?: Record<string, unknown> | null;
+  tags?: string[] | null;
+  summary?: string | null;
+  vector_chunks?: number | null;
+  processed_at?: string | null;
+  vectorized_at?: string | null;
+  uploaded_by?: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface KnowledgeBaseICP {
+  id: string;
+  workspace_id: string;
+  name: string;
+  icp_name?: string | null;
+  company_size_min?: number | null;
+  company_size_max?: number | null;
+  industries?: string[] | null;
+  job_titles?: string[] | null;
+  locations?: string[] | null;
+  technologies?: string[] | null;
+  pain_points?: string[] | null;
+  qualification_criteria?: Record<string, unknown> | null;
+  messaging_framework?: Record<string, unknown> | null;
+  is_active: boolean;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface KnowledgeBaseProduct {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description?: string | null;
+  category?: string | null;
+  pricing?: Record<string, unknown> | null;
+  features?: string[] | null;
+  benefits?: string[] | null;
+  use_cases?: string[] | null;
+  competitive_advantages?: string[] | null;
+  target_segments?: string[] | null;
+  is_active: boolean;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface KnowledgeBaseCompetitor {
+  id: string;
+  workspace_id: string;
+  name: string;
+  website?: string | null;
+  description?: string | null;
+  strengths?: string[] | null;
+  weaknesses?: string[] | null;
+  pricing_model?: string | null;
+  key_features?: string[] | null;
+  target_market?: string | null;
+  competitive_positioning?: Record<string, unknown> | null;
+  is_active: boolean;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface KnowledgeBasePersona {
+  id: string;
+  workspace_id: string;
+  name: string;
+  job_title?: string | null;
+  department?: string | null;
+  seniority_level?: string | null;
+  decision_making_role?: string | null;
+  pain_points?: string[] | null;
+  goals?: string[] | null;
+  communication_preferences?: Record<string, unknown> | null;
+  objections?: string[] | null;
+  messaging_approach?: Record<string, unknown> | null;
+  icp_id?: string | null;
+  is_active: boolean;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export class SupabaseKnowledgeBase {
   
   // Get all knowledge base items by category
-  async getByCategory(category?: string): Promise<KnowledgeBaseItem[]> {
+  async getByCategory(options: {
+    category?: string;
+    workspaceId?: string;
+    includeGlobal?: boolean;
+  } = {}): Promise<KnowledgeBaseItem[]> {
+    const { category, workspaceId, includeGlobal = true } = options;
     try {
       let query = supabaseAdmin
         .from('knowledge_base')
@@ -38,6 +142,13 @@ export class SupabaseKnowledgeBase {
       if (category) {
         query = query.eq('category', category);
       }
+      
+       if (workspaceId) {
+         const filters = includeGlobal
+           ? `workspace_id.eq.${workspaceId},workspace_id.is.null`
+           : `workspace_id.eq.${workspaceId}`;
+         query = query.or(filters);
+       }
       
       const { data, error } = await query;
       
@@ -54,19 +165,44 @@ export class SupabaseKnowledgeBase {
   }
   
   // Search knowledge base with full text search
-  async search(query: string, category?: string): Promise<SearchResult[]> {
+  async search(
+    query: string,
+    options: {
+      category?: string;
+      workspaceId?: string;
+      includeGlobal?: boolean;
+    } = {}
+  ): Promise<SearchResult[]> {
+    const { category, workspaceId, includeGlobal = true } = options;
     try {
-      const { data, error } = await supabaseAdmin.rpc('search_knowledge_base', {
-        search_query: query,
-        category_filter: category || null
-      });
-      
+      let builder = supabaseAdmin
+        .from('knowledge_base')
+        .select('*')
+        .eq('is_active', true);
+
+      if (category) {
+        builder = builder.eq('category', category);
+      }
+
+      if (workspaceId) {
+        const filters = includeGlobal
+          ? `workspace_id.eq.${workspaceId},workspace_id.is.null`
+          : `workspace_id.eq.${workspaceId}`;
+        builder = builder.or(filters);
+      }
+
+      if (query) {
+        builder = builder.or(`content.ilike.%${query}%,title.ilike.%${query}%`);
+      }
+
+      const { data, error } = await builder.order('updated_at', { ascending: false });
+
       if (error) {
         console.error('Error searching knowledge base:', error);
         return [];
       }
-      
-      return data || [];
+
+      return (data || []).map(item => ({ ...item, rank: 1 }));
     } catch (error) {
       console.error('Knowledge base search error:', error);
       return [];
@@ -74,8 +210,11 @@ export class SupabaseKnowledgeBase {
   }
   
   // Get persona-specific guidance based on user input
-  async getPersonaGuidance(userInput: string): Promise<string> {
-    const personas = await this.search('personas founder sales marketing consultant coach agency recruiting financial legal pharma manufacturing');
+  async getPersonaGuidance(userInput: string, workspaceId?: string): Promise<string> {
+    await this.search('personas founder sales marketing consultant coach agency recruiting financial legal pharma manufacturing', {
+      workspaceId,
+      includeGlobal: true
+    });
     
     const input = userInput.toLowerCase();
     const personaKeywords = {
@@ -102,8 +241,11 @@ export class SupabaseKnowledgeBase {
   }
   
   // Get objection handling response
-  async getObjectionResponse(objection: string): Promise<string> {
-    const objectionData = await this.search('objections apollo sales nav hire sdr ai compliance');
+  async getObjectionResponse(objection: string, workspaceId?: string): Promise<string> {
+    await this.search('objections apollo sales nav hire sdr ai compliance', {
+      workspaceId,
+      includeGlobal: true
+    });
     
     const input = objection.toLowerCase();
     const objectionMap: { [key: string]: string } = {
@@ -124,8 +266,12 @@ export class SupabaseKnowledgeBase {
   }
   
   // Get industry-specific messaging
-  async getIndustryBurst(industry: string): Promise<string> {
-    const industryData = await this.search(`industry ${industry} vertical messaging`, 'verticals');
+  async getIndustryBurst(industry: string, workspaceId?: string): Promise<string> {
+    const industryData = await this.search(`industry ${industry} vertical messaging`, {
+      category: 'verticals',
+      workspaceId,
+      includeGlobal: true
+    });
     
     if (industryData.length > 0) {
       return industryData[0].content;
@@ -135,15 +281,15 @@ export class SupabaseKnowledgeBase {
   }
   
   // Get comprehensive system prompt with all knowledge
-  async getSystemPrompt(): Promise<string> {
+  async getSystemPrompt(workspaceId?: string): Promise<string> {
     try {
       const [identity, personas, conversationModes, errorHandling, objectionHandling, industryBursts] = await Promise.all([
-        this.search('identity core capabilities', 'core'),
-        this.search('personas library', 'core'), 
-        this.search('conversation modes', 'conversational-design'),
-        this.search('error handling', 'conversational-design'),
-        this.search('objection handling', 'strategy'),
-        this.search('industry messaging', 'verticals')
+        this.search('identity core capabilities', { category: 'core', workspaceId, includeGlobal: true }),
+        this.search('personas library', { category: 'core', workspaceId, includeGlobal: true }),
+        this.search('conversation modes', { category: 'conversational-design', workspaceId, includeGlobal: true }),
+        this.search('error handling', { category: 'conversational-design', workspaceId, includeGlobal: true }),
+        this.search('objection handling', { category: 'strategy', workspaceId, includeGlobal: true }),
+        this.search('industry messaging', { category: 'verticals', workspaceId, includeGlobal: true })
       ]);
       
       const systemPrompt = `You are Sam, an AI-powered B2B sales assistant with sophisticated training in automated outreach, lead scoring, and personalized messaging.
@@ -180,7 +326,7 @@ You are context-aware and adapt your responses based on the user's industry, rol
     try {
       const { data, error } = await supabaseAdmin
         .from('knowledge_base')
-        .insert([item])
+        .insert([{ ...item, workspace_id: item.workspace_id ?? null }])
         .select()
         .single();
       
@@ -197,12 +343,22 @@ You are context-aware and adapt your responses based on the user's industry, rol
   }
   
   // Update knowledge base item
-  async updateKnowledgeItem(id: string, updates: Partial<KnowledgeBaseItem>): Promise<KnowledgeBaseItem | null> {
+  async updateKnowledgeItem(
+    id: string,
+    updates: Partial<KnowledgeBaseItem>,
+    workspaceId?: string | null
+  ): Promise<KnowledgeBaseItem | null> {
     try {
-      const { data, error } = await supabaseAdmin
+      let query = supabaseAdmin
         .from('knowledge_base')
         .update(updates)
-        .eq('id', id)
+        .eq('id', id);
+
+      if (workspaceId) {
+        query = query.eq('workspace_id', workspaceId);
+      }
+
+      const { data, error } = await query
         .select()
         .single();
       
@@ -219,12 +375,18 @@ You are context-aware and adapt your responses based on the user's industry, rol
   }
   
   // Soft delete knowledge base item
-  async deleteKnowledgeItem(id: string): Promise<boolean> {
+  async deleteKnowledgeItem(id: string, workspaceId?: string | null): Promise<boolean> {
     try {
-      const { error } = await supabaseAdmin
+      let query = supabaseAdmin
         .from('knowledge_base')
         .update({ is_active: false })
         .eq('id', id);
+
+      if (workspaceId) {
+        query = query.eq('workspace_id', workspaceId);
+      }
+
+      const { error } = await query;
       
       if (error) {
         console.error('Error deleting knowledge item:', error);
@@ -235,6 +397,168 @@ You are context-aware and adapt your responses based on the user's industry, rol
     } catch (error) {
       console.error('Knowledge base delete error:', error);
       return false;
+    }
+  }
+
+  async getDocuments(options: {
+    workspaceId: string;
+    sectionId?: string;
+    includeInactive?: boolean;
+    limit?: number;
+  }): Promise<KnowledgeBaseDocument[]> {
+    const { workspaceId, sectionId, includeInactive = false, limit = 50 } = options;
+    try {
+      let query = supabaseAdmin
+        .from('knowledge_base_documents')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (!includeInactive) {
+        query = query.eq('is_active', true);
+      }
+
+      if (sectionId) {
+        query = query.eq('section_id', sectionId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching knowledge base documents:', error);
+        return [];
+      }
+
+      return (data || []) as KnowledgeBaseDocument[];
+    } catch (error) {
+      console.error('Knowledge base documents fetch error:', error);
+      return [];
+    }
+  }
+
+  async getICPs(options: {
+    workspaceId: string;
+    includeInactive?: boolean;
+  }): Promise<KnowledgeBaseICP[]> {
+    const { workspaceId, includeInactive = false } = options;
+    try {
+      let query = supabaseAdmin
+        .from('knowledge_base_icps')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('created_at', { ascending: false });
+
+      if (!includeInactive) {
+        query = query.eq('is_active', true);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching knowledge base ICPs:', error);
+        return [];
+      }
+
+      return (data || []) as KnowledgeBaseICP[];
+    } catch (error) {
+      console.error('Knowledge base ICP fetch error:', error);
+      return [];
+    }
+  }
+
+  async getProducts(options: {
+    workspaceId: string;
+    includeInactive?: boolean;
+  }): Promise<KnowledgeBaseProduct[]> {
+    const { workspaceId, includeInactive = false } = options;
+    try {
+      let query = supabaseAdmin
+        .from('knowledge_base_products')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('created_at', { ascending: false });
+
+      if (!includeInactive) {
+        query = query.eq('is_active', true);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching knowledge base products:', error);
+        return [];
+      }
+
+      return (data || []) as KnowledgeBaseProduct[];
+    } catch (error) {
+      console.error('Knowledge base products fetch error:', error);
+      return [];
+    }
+  }
+
+  async getCompetitors(options: {
+    workspaceId: string;
+    includeInactive?: boolean;
+  }): Promise<KnowledgeBaseCompetitor[]> {
+    const { workspaceId, includeInactive = false } = options;
+    try {
+      let query = supabaseAdmin
+        .from('knowledge_base_competitors')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('created_at', { ascending: false });
+
+      if (!includeInactive) {
+        query = query.eq('is_active', true);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching knowledge base competitors:', error);
+        return [];
+      }
+
+      return (data || []) as KnowledgeBaseCompetitor[];
+    } catch (error) {
+      console.error('Knowledge base competitors fetch error:', error);
+      return [];
+    }
+  }
+
+  async getPersonas(options: {
+    workspaceId: string;
+    icpId?: string;
+    includeInactive?: boolean;
+  }): Promise<KnowledgeBasePersona[]> {
+    const { workspaceId, icpId, includeInactive = false } = options;
+    try {
+      let query = supabaseAdmin
+        .from('knowledge_base_personas')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('created_at', { ascending: false });
+
+      if (icpId) {
+        query = query.eq('icp_id', icpId);
+      }
+
+      if (!includeInactive) {
+        query = query.eq('is_active', true);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching knowledge base personas:', error);
+        return [];
+      }
+
+      return (data || []) as KnowledgeBasePersona[];
+    } catch (error) {
+      console.error('Knowledge base personas fetch error:', error);
+      return [];
     }
   }
 }

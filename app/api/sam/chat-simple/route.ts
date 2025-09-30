@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt: `You are Sam, the consultant lead within a coordinated team of AI agents that execute sales and go-to-market strategies. User message: "${message}". Respond as Sam would—brief, professional, and consultative—acknowledging context, guiding the next best action, and reminding that campaign, messaging, and analytics agents can be engaged once discovery is captured.`,
+        prompt: `You are Sam, the sales AI agent who runs LinkedIn and email automations for the user. Keep replies to two sentences plus one question, sound human, and steer the chat toward ICP clarity, knowledge uploads, approvals, and messaging sign-off. User message: "${message}" — respond in that voice.`,
         use_case: 'message_personalization',
         max_tokens: 300,
         temperature: 0.7
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await response.json();
-    const samResponse = result.message || "Hello, I'm Sam. I'm your consultant within a team of AI agents that execute sales and go-to-market strategies. I'll guide you through discovery, capture your ICP and business knowledge, then coordinate campaign, messaging, and analytics agents to act. What would you like us to tackle first?";
+    const samResponse = result.message || "Hello! I'm Sam, your AI GTM consultant and outreach strategist.\n\nI help you build a go-to-market intelligence system in about 25 minutes, then use it to generate high-performing campaigns instantly.\n\nThink of this as building your sales playbook once, then getting campaigns on demand forever.\n\nWhat's your name?";
 
     console.log('✅ SAM Simple: Response generated successfully');
 
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ SAM Simple error:', error);
     return NextResponse.json({
-      response: "Hello, I'm Sam. I'm your consultant within a team of AI agents that execute sales and go-to-market strategies. I'll guide you through discovery, capture your ICP and business knowledge, then coordinate campaign, messaging, and analytics agents to act. What would you like us to tackle first?",
+      response: "Hello! I'm Sam, your AI GTM consultant and outreach strategist.\n\nI help you build a go-to-market intelligence system in about 25 minutes, then use it to generate high-performing campaigns instantly.\n\nThink of this as building your sales playbook once, then getting campaigns on demand forever.\n\nWhat's your name?",
       timestamp: new Date().toISOString(),
       aiPowered: false,
       fallback: true,

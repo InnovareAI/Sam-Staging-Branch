@@ -21,7 +21,7 @@ async function testPostmarkAccount(accountName, apiKey, fromEmail, toEmail) {
         'X-Postmark-Server-Token': apiKey
       },
       body: JSON.stringify({
-        From: `${accountName} SAM AI <${fromEmail}>`,
+        From: fromEmail,  // Clean sender: just the email address
         To: toEmail,
         Subject: `Test Email from ${accountName} - ${new Date().toLocaleString()}`,
         HtmlBody: `
@@ -127,7 +127,7 @@ async function main() {
     'InnovareAI',
     innovareApiKey,
     'sp@innovareai.com',
-    'tl@innovareai.com'  // Test email
+    'tl@innovareai.com'  // Test email - InnovareAI domain
   );
 
   // Test 3CubedAI email sending
@@ -135,7 +135,7 @@ async function main() {
     '3CubedAI',
     cubedApiKey,
     'sophia@3cubed.ai',
-    'tl@innovareai.com'  // Test email
+    'tl@3cubed.ai'  // Test email - 3cubed domain
   );
 
   // Summary

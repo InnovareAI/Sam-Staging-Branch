@@ -88,12 +88,35 @@ export async function POST(request: NextRequest) {
               jobTitles: search_criteria.job_titles,
               industries: search_criteria.industries,
               companySize: search_criteria.company_size,
+              location: search_criteria.locations?.[0],
               maxResults: search_criteria.max_results || 20
             }
           })
         });
 
-        prospectResults = await googleResponse.json();
+        const rawGoogleResults = await googleResponse.json();
+
+        if (rawGoogleResults.success) {
+          const payloadText = rawGoogleResults.result?.content?.[0]?.text;
+          try {
+            const parsedPayload = payloadText ? JSON.parse(payloadText) : null;
+            prospectResults = {
+              success: !!parsedPayload,
+              parsedPayload,
+              raw: rawGoogleResults
+            };
+          } catch (parseError) {
+            console.error('Failed to parse Google Search MCP payload:', parseError);
+            prospectResults = {
+              success: false,
+              error: 'Invalid response from Google Custom Search MCP',
+              raw: rawGoogleResults
+            };
+          }
+        } else {
+          prospectResults = rawGoogleResults;
+        }
+
         break;
       }
 
@@ -127,6 +150,7 @@ export async function POST(request: NextRequest) {
 
     // Process and standardize prospect data
     const standardizedProspects = await standardizeProspectData(prospectResults, search_type);
+    const sampleProspects = standardizedProspects.slice(0, Math.min(standardizedProspects.length, 7));
 
     // If auto_send is enabled, create campaign and send templates
     let campaignResult;
@@ -143,13 +167,14 @@ export async function POST(request: NextRequest) {
       success: true,
       search_type,
       search_criteria,
-      prospects_found: standardizedProspects.length,
-      prospects: standardizedProspects,
+      prospects_found: sampleProspects.length,
+      total_prospects_available: standardizedProspects.length,
+      prospects: sampleProspects,
       campaign_created: auto_send,
       campaign_result: campaignResult,
       message: auto_send 
-        ? `Found ${standardizedProspects.length} prospects and sent template messages`
-        : `Found ${standardizedProspects.length} prospects ready for outreach`
+        ? `Sent templates to ${standardizedProspects.length} prospects (showing ${sampleProspects.length} sample matches)`
+        : `Here are ${sampleProspects.length} sample prospects (${standardizedProspects.length} total discovered) ready for review`
     });
 
   } catch (error) {
@@ -188,17 +213,27 @@ async function standardizeProspectData(prospectResults: any, searchType: string)
       break;
 
     case 'google_search':
-      if (prospectResults.result?.prospects) {
-        for (const prospect of prospectResults.result.prospects) {
-          prospects.push({
-            first_name: prospect.name?.split(' ')[0],
-            last_name: prospect.name?.split(' ').slice(1).join(' '),
-            company_name: prospect.company,
-            job_title: prospect.title,
-            linkedin_url: prospect.linkedin_url,
-            location: prospect.location,
-            source: 'google_search'
-          });
+      {
+        const payload = prospectResults.parsedPayload || prospectResults.result || prospectResults.raw?.result;
+        const prospectsFromPayload = payload?.prospects || payload?.result?.prospects;
+
+        if (Array.isArray(prospectsFromPayload)) {
+          for (const prospect of prospectsFromPayload) {
+            const nameParts = (prospect.name || '').trim().split(' ');
+            const firstName = nameParts[0];
+            const lastName = nameParts.slice(1).join(' ');
+
+            prospects.push({
+              first_name: firstName,
+              last_name: lastName || undefined,
+              company_name: prospect.company,
+              job_title: prospect.title,
+              linkedin_url: prospect.linkedin_url || prospect.profileUrl,
+              location: prospect.location,
+              source: 'google_search',
+              relevance_score: prospect.relevanceScore
+            });
+          }
         }
       }
       break;

@@ -5,10 +5,18 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
-    
+    const workspaceId = formData.get('workspace_id') as string | null;
+
     if (!file) {
       return NextResponse.json(
         { error: 'No file provided' }, 
+        { status: 400 }
+      );
+    }
+
+    if (!workspaceId) {
+      return NextResponse.json(
+        { error: 'Workspace ID is required' },
         { status: 400 }
       );
     }
@@ -22,6 +30,7 @@ export async function POST(req: NextRequest) {
     const tags = ['document', 'uploaded'];
     
     const result = await supabaseKnowledge.addKnowledgeItem({
+      workspace_id: workspaceId,
       title,
       category,
       content: text,

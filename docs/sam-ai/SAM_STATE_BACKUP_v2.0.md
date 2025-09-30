@@ -6,7 +6,7 @@
 ## 🎯 COMPLETE FEATURE SET
 
 ### ✅ Core AI Functionality
-- **Human Conversational AI**: OpenRouter + Claude 3.5 Sonnet integration
+- **Human Conversational AI**: OpenRouter + Claude 4.5 Sonnet integration
 - **Balanced Script System**: Follows exact training scripts while answering any questions naturally
 - **RAG Integration**: Complete training data scripts integrated into system prompt
 - **Sticky Memory**: localStorage persistence across sessions
@@ -125,7 +125,7 @@ NEXT_PUBLIC_ENVIRONMENT=development
 ## 📊 CURRENT PERFORMANCE
 
 ### Features Working
-- ✅ AI Conversations with Claude 3.5 Sonnet
+- ✅ AI Conversations with Claude 4.5 Sonnet
 - ✅ Script-guided onboarding flow  
 - ✅ Flexible question handling
 - ✅ Conversation persistence

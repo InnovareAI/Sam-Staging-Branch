@@ -48,11 +48,25 @@ export interface PersonalizationConfig {
   fallback_behavior: 'generic_template' | 'ai_generation' | 'skip';
 }
 
+import type { ICPDiscoveryPayload } from '@/lib/icp-discovery/types';
+
 export class TemplateSelectionEngine {
   private templates: MessageTemplate[] = [];
   
   constructor(templates: MessageTemplate[]) {
     this.templates = templates;
+  }
+
+  selectTemplateFromDiscovery(
+    discoveryPayload: ICPDiscoveryPayload,
+    config: PersonalizationConfig = {
+      personalization_tier: 'variable_only',
+      template_selection_strategy: 'best_match',
+      fallback_behavior: 'generic_template'
+    }
+  ) {
+    const prospect = mapDiscoveryToProspect(discoveryPayload);
+    return this.selectOptimalTemplate(prospect, config);
   }
 
   /**
@@ -330,6 +344,60 @@ export class TemplateSelectionEngine {
     template.updated_at = new Date();
   }
 }
+
+function mapDiscoveryToProspect(payload: ICPDiscoveryPayload): ProspectData {
+  const companySize = parseCompanySize(payload.company_stage);
+  return {
+    first_name: 'ICP',
+    company_name: payload.target_industry ? `${payload.target_industry} Target` : 'Target Company',
+    industry: payload.target_industry?.toLowerCase(),
+    company_size: companySize ?? undefined,
+    job_title: payload.target_role,
+    seniority_level: inferSeniority(payload.target_role),
+    department: inferDepartment(payload.target_role),
+    pain_points: payload.pain_points?.map(p => p.description),
+    recent_activity: payload.positioning?.primary_pain_point,
+    growth_indicators: payload.objectives?.map(o => o.description)
+  };
+}
+
+function parseCompanySize(stage?: string): number | undefined {
+  if (!stage) return undefined;
+  const match = stage.match(/(\d+)[^\d]+(\d+)/);
+  if (match) {
+    const avg = (parseInt(match[1], 10) + parseInt(match[2], 10)) / 2;
+    return Math.round(avg);
+  }
+  if (stage.toLowerCase().includes('seed')) return 25;
+  if (stage.toLowerCase().includes('series a')) return 75;
+  if (stage.toLowerCase().includes('series b')) return 150;
+  if (stage.toLowerCase().includes('series c')) return 300;
+  if (stage.toLowerCase().includes('enterprise')) return 1000;
+  return undefined;
+}
+
+function inferSeniority(role?: string): ProspectData['seniority_level'] {
+  if (!role) return undefined;
+  const lower = role.toLowerCase();
+  if (lower.includes('chief') || lower.includes('cfo') || lower.includes('ceo') || lower.includes('cro')) return 'c_level';
+  if (lower.includes('vp') || lower.includes('vice president')) return 'vp';
+  if (lower.includes('director')) return 'director';
+  if (lower.includes('manager') || lower.includes('lead')) return 'manager';
+  return 'ic';
+}
+
+function inferDepartment(role?: string): ProspectData['department'] {
+  if (!role) return undefined;
+  const lower = role.toLowerCase();
+  if (lower.includes('sales') || lower.includes('revenue')) return 'sales';
+  if (lower.includes('marketing') || lower.includes('growth')) return 'marketing';
+  if (lower.includes('engineering') || lower.includes('product')) return 'engineering';
+  if (lower.includes('operations') || lower.includes('ops')) return 'operations';
+  if (lower.includes('hr') || lower.includes('people')) return 'hr';
+  return undefined;
+}
+
+export { mapDiscoveryToProspect };
 
 /**
  * Variable replacement system for zero-token execution

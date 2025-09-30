@@ -31,6 +31,7 @@ interface DataAggregationRequest {
     }
   }
   max_results?: number
+  workspace_id?: string
 }
 
 interface AggregatedData {
@@ -45,7 +46,14 @@ interface AggregatedData {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const workspaceId = searchParams.get('workspace_id') || 'default-workspace'
+    const workspaceId = searchParams.get('workspace_id')
+
+    if (!workspaceId) {
+      return NextResponse.json({
+        success: false,
+        error: 'workspace_id is required'
+      }, { status: 400 })
+    }
 
     const supabase = supabaseAdmin()
 
@@ -134,8 +142,8 @@ export async function GET(request: NextRequest) {
     // Get knowledge base sources
     const { data: kbSections, error: kbError } = await supabase
       .from('knowledge_base_sections')
-      .select('id, title, content_type, created_at')
-      .eq('workspace_id', workspaceId)
+      .select('id, section_id, title, created_at')
+      .or(`workspace_id.eq.${workspaceId},workspace_id.is.null`)
       .limit(10)
 
     const knowledgeBaseSources: DataSource[] = kbSections?.map(section => ({
@@ -203,7 +211,14 @@ export async function POST(request: NextRequest) {
     const { context_type, data_sources, filters, max_results = 50 } = body
 
     const supabase = supabaseAdmin()
-    const workspaceId = request.headers.get('x-workspace-id') || 'default-workspace'
+    const workspaceId = request.headers.get('x-workspace-id') ?? body.workspace_id
+
+    if (!workspaceId) {
+      return NextResponse.json({
+        success: false,
+        error: 'workspace_id header (x-workspace-id) or body value is required'
+      }, { status: 400 })
+    }
     
     let aggregatedData: AggregatedData[] = []
 
@@ -333,7 +348,7 @@ async function aggregateKnowledgeBaseData(sources: string[], filters: any, supab
     const sectionId = source.replace('kb_', '')
     
     // Get knowledge base content
-    const { data: kbContent, error } = await supabase
+    let query = supabase
       .from('knowledge_base_content')
       .select(`
         id,
@@ -344,6 +359,16 @@ async function aggregateKnowledgeBaseData(sources: string[], filters: any, supab
         created_at
       `)
       .eq('section_id', sectionId)
+      .eq('is_active', true)
+
+    if (workspaceId) {
+      query = query.or(`workspace_id.eq.${workspaceId},workspace_id.is.null`)
+    } else {
+      query = query.is('workspace_id', null)
+    }
+
+    const { data: kbContent, error } = await query
+      .order('created_at', { ascending: false })
       .limit(10)
 
     if (!error && kbContent?.length) {

@@ -1,11 +1,11 @@
 /**
- * MCP Mistral Integration for Template Optimization
+ * MCP Sonnet Integration for Template Optimization
  * Handles AI-powered template enhancement, personalization, and performance analysis
  */
 
-// Using OpenRouter API for Mistral access
+// Using OpenRouter API for Sonnet access
 
-export interface MistralOptimizationRequest {
+export interface SonnetOptimizationRequest {
   original_template: {
     connection_message: string;
     alternative_message?: string;
@@ -22,7 +22,7 @@ export interface MistralOptimizationRequest {
   optimization_goals: string[];
 }
 
-export interface MistralOptimizationResult {
+export interface SonnetOptimizationResult {
   optimized_template: {
     connection_message: string;
     alternative_message?: string;
@@ -34,20 +34,20 @@ export interface MistralOptimizationResult {
 }
 
 /**
- * Optimize messaging template using Mistral
+ * Optimize messaging template using Sonnet
  */
-export async function mcp__mistral__optimize_template(request: MistralOptimizationRequest): Promise<{
+export async function mcp__sonnet__optimize_template(request: SonnetOptimizationRequest): Promise<{
   success: boolean;
-  result?: MistralOptimizationResult;
+  result?: SonnetOptimizationResult;
   error?: string;
 }> {
   try {
-    // Construct Mistral prompt for template optimization
+    // Construct Sonnet prompt for template optimization
     const prompt = buildOptimizationPrompt(request);
     
-    // Call Mistral API (placeholder for actual implementation)
-    const mistralResponse = await callMistralAPI({
-      model: "mistral-large-latest",
+    // Call Sonnet API (placeholder for actual implementation)
+    const sonnetResponse = await callSonnetAPI({
+      model: "anthropic/claude-4.5-sonnet",
       messages: [
         {
           role: "system",
@@ -62,14 +62,14 @@ export async function mcp__mistral__optimize_template(request: MistralOptimizati
       max_tokens: 2000
     });
 
-    // Parse Mistral response
-    const result = parseMistralOptimizationResponse(mistralResponse.content);
+    // Parse Sonnet response
+    const result = parseSonnetOptimizationResponse(sonnetResponse.content);
     
     return { success: true, result };
   } catch (error) {
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : 'Mistral optimization failed' 
+      error: error instanceof Error ? error.message : 'Sonnet optimization failed' 
     };
   }
 }
@@ -77,7 +77,7 @@ export async function mcp__mistral__optimize_template(request: MistralOptimizati
 /**
  * Analyze template performance and suggest improvements
  */
-export async function mcp__mistral__analyze_performance(params: {
+export async function mcp__sonnet__analyze_performance(params: {
   template: {
     connection_message: string;
     follow_up_messages: string[];
@@ -131,8 +131,8 @@ Provide analysis in this JSON format:
 }
 `;
 
-    const mistralResponse = await callMistralAPI({
-      model: "mistral-large-latest",
+    const sonnetResponse = await callSonnetAPI({
+      model: "anthropic/claude-4.5-sonnet",
       messages: [
         {
           role: "system",
@@ -147,7 +147,7 @@ Provide analysis in this JSON format:
       max_tokens: 1000
     });
 
-    const analysis = JSON.parse(mistralResponse.content);
+    const analysis = JSON.parse(sonnetResponse.content);
     
     return { success: true, analysis };
   } catch (error) {
@@ -161,7 +161,7 @@ Provide analysis in this JSON format:
 /**
  * Generate template variations for A/B testing
  */
-export async function mcp__mistral__generate_variations(params: {
+export async function mcp__sonnet__generate_variations(params: {
   base_template: {
     connection_message: string;
     follow_up_messages: string[];
@@ -204,8 +204,8 @@ Return JSON array with this format:
 ]
 `;
 
-    const mistralResponse = await callMistralAPI({
-      model: "mistral-large-latest",
+    const sonnetResponse = await callSonnetAPI({
+      model: "anthropic/claude-4.5-sonnet",
       messages: [
         {
           role: "system",
@@ -220,7 +220,7 @@ Return JSON array with this format:
       max_tokens: 2000
     });
 
-    const variations = JSON.parse(mistralResponse.content);
+    const variations = JSON.parse(sonnetResponse.content);
     
     return { success: true, variations };
   } catch (error) {
@@ -234,7 +234,7 @@ Return JSON array with this format:
 /**
  * Personalize template for specific prospect
  */
-export async function mcp__mistral__personalize_for_prospect(params: {
+export async function mcp__sonnet__personalize_for_prospect(params: {
   template: {
     connection_message: string;
     follow_up_messages: string[];
@@ -285,8 +285,8 @@ Return JSON:
 }
 `;
 
-    const mistralResponse = await callMistralAPI({
-      model: "mistral-large-latest",
+    const sonnetResponse = await callSonnetAPI({
+      model: "anthropic/claude-4.5-sonnet",
       messages: [
         {
           role: "system",
@@ -301,7 +301,7 @@ Return JSON:
       max_tokens: 1500
     });
 
-    const personalized = JSON.parse(mistralResponse.content);
+    const personalized = JSON.parse(sonnetResponse.content);
     
     return { success: true, personalized_template: personalized };
   } catch (error) {
@@ -314,7 +314,7 @@ Return JSON:
 
 // Helper functions
 
-function buildOptimizationPrompt(request: MistralOptimizationRequest): string {
+function buildOptimizationPrompt(request: SonnetOptimizationRequest): string {
   return `
 Optimize this ${request.target_context.campaign_type} template for ${request.target_context.industry} ${request.target_context.role}s:
 
@@ -342,7 +342,7 @@ Return optimized template in JSON format:
 `;
 }
 
-function parseMistralOptimizationResponse(content: string): MistralOptimizationResult {
+function parseSonnetOptimizationResponse(content: string): SonnetOptimizationResult {
   try {
     return JSON.parse(content);
   } catch (error) {
@@ -359,7 +359,7 @@ function parseMistralOptimizationResponse(content: string): MistralOptimizationR
   }
 }
 
-async function callMistralAPI(request: {
+async function callSonnetAPI(request: {
   model: string;
   messages: Array<{ role: string; content: string }>;
   temperature: number;
@@ -369,12 +369,12 @@ async function callMistralAPI(request: {
     // Check if OpenRouter API key is available
     if (!process.env.OPENROUTER_API_KEY) {
       console.log('⚠️  OpenRouter API key not found, using mock response');
-      return getMockMistralResponse(request);
+      return getMockSonnetResponse(request);
     }
 
-    console.log('🧠 Calling OpenRouter API for Mistral:', request.model);
+    console.log('🧠 Calling OpenRouter API for Claude Sonnet:', request.model);
     
-    // Make OpenRouter API call to access Mistral
+    // Make OpenRouter API call to access Sonnet
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -384,7 +384,7 @@ async function callMistralAPI(request: {
         'X-Title': 'Sam AI Template Optimization'
       },
       body: JSON.stringify({
-        model: 'mistralai/mistral-large-2407',
+        model: request.model,
         messages: request.messages,
         temperature: request.temperature,
         max_tokens: request.max_tokens,
@@ -400,20 +400,20 @@ async function callMistralAPI(request: {
     const content = data.choices?.[0]?.message?.content
     
     if (!content) {
-      throw new Error('No content in Mistral response')
+      throw new Error('No content in Sonnet response')
     }
 
     return { content }
     
   } catch (error) {
-    console.error('❌ Mistral API error:', error)
+    console.error('❌ Sonnet API error:', error)
     console.log('🔄 Falling back to mock response')
-    return getMockMistralResponse(request)
+    return getMockSonnetResponse(request)
   }
 }
 
-function getMockMistralResponse(request: { messages: Array<{ role: string; content: string }> }): { content: string } {
-  console.log('🧠 Mock Mistral response for:', request.messages[1]?.content.substring(0, 100) + '...')
+function getMockSonnetResponse(request: { messages: Array<{ role: string; content: string }> }): { content: string } {
+  console.log('🧠 Mock Claude Sonnet response for:', request.messages[1]?.content.substring(0, 100) + '...')
   
   return {
     content: JSON.stringify({
@@ -438,7 +438,7 @@ function getMockMistralResponse(request: { messages: Array<{ role: string; conte
 }
 
 export {
-  callMistralAPI,
+  callSonnetAPI,
   buildOptimizationPrompt,
-  parseMistralOptimizationResponse
+  parseSonnetOptimizationResponse
 };

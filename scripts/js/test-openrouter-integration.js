@@ -89,7 +89,7 @@ async function testOpenRouterIntegration() {
     console.log('   • High performance for business conversations\n');
 
     console.log('🚀 FUTURE MODEL OPTIONS VIA OPENROUTER:');
-    console.log('   • anthropic/claude-3.5-sonnet (Conversation excellence)');
+    console.log('   • anthropic/claude-4.5-sonnet (Conversation excellence)');
     console.log('   • openai/gpt-4o (General business intelligence)');
     console.log('   • meta-llama/llama-3.1-405b (Open source option)');
     console.log('   • google/gemini-pro (Google ecosystem integration)');

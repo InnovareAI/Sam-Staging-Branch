@@ -150,7 +150,7 @@ aiResponse = await callOpenRouterAPI(messages, systemPrompt)
 
 ### 2. MCP Template Tools
 
-**File**: `/lib/mcp/mistral-mcp.ts`
+**File**: `/lib/mcp/sonnet-mcp.ts`
 
 #### Changes Made
 
@@ -384,7 +384,7 @@ If rollback is needed:
 
 ```bash
 git checkout HEAD~1 -- app/api/sam/threads/[threadId]/messages/route.ts
-git checkout HEAD~1 -- lib/mcp/mistral-mcp.ts
+git checkout HEAD~1 -- lib/mcp/sonnet-mcp.ts
 ```
 
 ### 2. Restore Dependencies
@@ -554,7 +554,7 @@ const fallbackRate = fallbackRequests / totalRequests
 const modelConfig = {
   simple_questions: 'meta-llama/llama-3.1-70b',
   template_optimization: 'mistralai/mistral-large-2407',
-  complex_analysis: 'anthropic/claude-3.5-sonnet',
+  complex_analysis: 'anthropic/claude-4.5-sonnet',
   cost_sensitive: 'openai/gpt-4o-mini'
 }
 ```

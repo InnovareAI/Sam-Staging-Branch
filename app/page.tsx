@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import KnowledgeBase from './components/KnowledgeBase';
 import CampaignHub from './components/CampaignHub';
 import LeadPipeline from './components/LeadPipeline';
@@ -73,6 +73,45 @@ const LinkedInLogo = ({ size = 16, className = "" }: { size?: number; className?
   </svg>
 );
 
+// Animated Message Component - typewriter effect character by character
+const AnimatedMessage = ({ content, animate = false }: { content: string; animate?: boolean }) => {
+  const [displayedContent, setDisplayedContent] = useState(animate ? '' : content);
+  const [currentIndex, setCurrentIndex] = useState(animate ? 0 : content.length);
+
+  useEffect(() => {
+    if (!animate) {
+      // If not animating, show content immediately
+      setDisplayedContent(content);
+      setCurrentIndex(content.length);
+      return;
+    }
+
+    // Reset animation when content changes
+    setDisplayedContent('');
+    setCurrentIndex(0);
+  }, [content, animate]);
+
+  useEffect(() => {
+    if (animate && currentIndex < content.length) {
+      const timer = setTimeout(() => {
+        setDisplayedContent(prev => prev + content[currentIndex]);
+        setCurrentIndex(prev => prev + 1);
+      }, 20); // 20ms between each character (50 chars per second)
+
+      return () => clearTimeout(timer);
+    }
+  }, [currentIndex, content, animate]);
+
+  return (
+    <div className="text-sm leading-relaxed whitespace-pre-wrap">
+      {displayedContent}
+      {animate && currentIndex < content.length && (
+        <span className="inline-block w-1 h-4 bg-purple-400 animate-pulse ml-0.5" />
+      )}
+    </div>
+  );
+};
+
 export default function Page() {
   // Initialize Supabase client
   const supabase = createClientComponentClient();
@@ -110,6 +149,7 @@ export default function Page() {
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [passwordChangeData, setPasswordChangeData] = useState({ password: '', confirmPassword: '', loading: false });
   const [showConversationHistory, setShowConversationHistory] = useState(false);
+  const [threadId, setThreadId] = useState<string | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   
   // Workspace state
@@ -183,6 +223,98 @@ export default function Page() {
     sessionId: '',
     lastUpdated: ''
   });
+
+  const fetchThreadMessages = useCallback(async (targetThreadId: string) => {
+    try {
+      const response = await fetch(`/api/sam/threads/${targetThreadId}/messages`);
+      if (!response.ok) {
+        throw new Error('Failed to load conversation history');
+      }
+      const data = await response.json();
+      const fetchedMessages = data.messages || [];
+      setMessages(fetchedMessages);
+      if (fetchedMessages.length > 0) {
+        setShowStarterScreen(false);
+      }
+    } catch (error) {
+      console.error('Unable to load thread messages:', error);
+      setMessages([]);
+    }
+  }, []);
+
+  const createDefaultThread = useCallback(async () => {
+    try {
+      const response = await fetch('/api/sam/threads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: `Sales Chat – ${new Date().toLocaleDateString()}`,
+          thread_type: 'general',
+          priority: 'medium',
+          sales_methodology: 'meddic'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create conversation thread');
+      }
+
+      const data = await response.json();
+      if (data?.thread?.id) {
+        setThreadId(data.thread.id);
+        await fetchThreadMessages(data.thread.id);
+        return data.thread;
+      }
+    } catch (error) {
+      console.error('Unable to create default thread:', error);
+    }
+    return null;
+  }, [fetchThreadMessages]);
+
+  const resetConversation = useCallback(async () => {
+    try {
+      if (threadId) {
+        const response = await fetch(`/api/sam/threads/${threadId}`, { method: 'DELETE' });
+        if (!response.ok && response.status !== 404) {
+          throw new Error(`Failed to archive thread (${response.status})`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to reset conversation thread:', error);
+    }
+
+    setMessages([]);
+    setShowStarterScreen(true);
+    setInputMessage('');
+    setThreadId(null);
+
+    await createDefaultThread();
+  }, [threadId, createDefaultThread]);
+
+  const initializeThread = useCallback(async () => {
+    try {
+      const response = await fetch('/api/sam/threads?status=active');
+      if (!response.ok) {
+        throw new Error('Failed to load threads');
+      }
+
+      const data = await response.json();
+      const existingThreads = data.threads || [];
+
+      if (existingThreads.length > 0) {
+        const preferredThread = existingThreads.find((thread: any) => thread.thread_type === 'general') || existingThreads[0];
+        setThreadId(preferredThread.id);
+        await fetchThreadMessages(preferredThread.id);
+      } else {
+        await createDefaultThread();
+      }
+    } catch (error) {
+      console.error('Thread initialization failed:', error);
+      setMessages([]);
+    }
+  }, [createDefaultThread, fetchThreadMessages]);
 
   // Handle test connection
   const handleTestConnection = async () => {
@@ -605,7 +737,7 @@ export default function Page() {
           console.log('🧠 MEMORY: Auth state change - user signed out, clearing messages');
           setMessages([]);
           setShowStarterScreen(true);
-          localStorage.removeItem('sam_messages');
+          setThreadId(null);
         } else {
           console.log('🧠 MEMORY: Auth state change - preserving conversation history');
         }
@@ -647,43 +779,16 @@ export default function Page() {
   // Load persisted data on component mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Load messages from localStorage
-      const savedMessages = localStorage.getItem('sam_messages');
-      if (savedMessages) {
-        try {
-          const parsedMessages = JSON.parse(savedMessages);
-          if (Array.isArray(parsedMessages) && parsedMessages.length > 0) {
-            setMessages(parsedMessages);
-            setShowStarterScreen(false);
-          }
-        } catch (error) {
-          console.error('Error loading saved messages:', error);
-        }
-      }
-
-      // Load active menu item
-      const savedMenuItem = localStorage.getItem('sam_active_menu');
-      if (savedMenuItem) {
-        setActiveMenuItem(savedMenuItem);
-      }
-
       setIsLoaded(true);
     }
   }, []);
 
-  // Save messages to localStorage whenever messages change
+  // Initialize or load active thread once user is authenticated
   useEffect(() => {
-    if (isLoaded && typeof window !== 'undefined') {
-      localStorage.setItem('sam_messages', JSON.stringify(messages));
+    if (user && !isAuthLoading && threadId === null) {
+      initializeThread();
     }
-  }, [messages, isLoaded]);
-
-  // Save active menu item to localStorage
-  useEffect(() => {
-    if (isLoaded && typeof window !== 'undefined') {
-      localStorage.setItem('sam_active_menu', activeMenuItem);
-    }
-  }, [activeMenuItem, isLoaded]);
+  }, [user, isAuthLoading, threadId, initializeThread]);
 
   // Set mock data based on user type (InnovareAI gets demo data, others get empty)
   useEffect(() => {
@@ -754,15 +859,11 @@ export default function Page() {
   }, [user, isAuthLoading]);
 
   // Keep newest messages visible by anchoring scroll to the top
-  const scrollToTop = () => {
+  useEffect(() => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop = 0;
     }
-  };
-
-  useEffect(() => {
-    scrollToTop();
-  }, [messages, isSending]);
+  }, [messages]);
 
   const menuItems = [
     {
@@ -874,70 +975,92 @@ export default function Page() {
     }
   };
 
+  const shortcutMappings: Record<string, string> = {
+    '#icp': "Let's run an ICP research sprint. Use what we know so far and surface three sample prospects I can validate.",
+    '#leads': 'Pull at least 50 qualified leads for the ICP we just defined so I can run the approval.',
+    '#messaging': 'Draft the LinkedIn intro plus two follow-ups for the approved ICP so we can route it for approval.'
+  };
+
   const handleSendMessage = async () => {
-    if (inputMessage.trim()) {
-      const userMessage = {
-        id: Date.now(),
-        role: 'user',
-        content: inputMessage.trim()
-      };
-      
-      setMessages(prev => [...prev, userMessage]);
-      setInputMessage('');
-      setIsSending(true);
-      
-      // Immediate scroll after adding user message
-      setTimeout(() => scrollToBottom(), 100);
-      
-      if (showStarterScreen) {
-        setShowStarterScreen(false);
-      }
+    const rawInput = inputMessage.trim();
+    if (!rawInput) {
+      return;
+    }
 
-      // Call SAM AI API with knowledge base integration
-      try {
-        const response = await fetch('/api/sam/chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            message: userMessage.content,
-            conversationHistory: messages
-          }),
-        });
+    const lowerInput = rawInput.toLowerCase();
 
-        const data = await response.json();
-        
-        if (response.ok) {
-          const aiMessage = {
-            id: Date.now() + 1,
-            role: 'assistant',
-            content: data.response
-          };
-          setMessages(prev => [...prev, aiMessage]);
-          // Scroll after AI response
-          setTimeout(() => scrollToBottom(), 100);
-        } else {
-          const errorMessage = {
-            id: Date.now() + 1,
-            role: 'assistant',
-            content: "I apologize, but I'm having trouble processing your request right now. Please try again."
-          };
-          setMessages(prev => [...prev, errorMessage]);
-          setTimeout(() => scrollToBottom(), 100);
+    if (lowerInput === '#clear') {
+      await resetConversation();
+      showNotification('success', 'Chat history cleared successfully');
+      return;
+    }
+
+    const expansion = shortcutMappings[lowerInput] || null;
+    const messageForSam = expansion || rawInput;
+
+    setIsSending(true);
+    setInputMessage('');
+
+    let targetThreadId = threadId;
+    if (!targetThreadId) {
+      const newThread = await createDefaultThread();
+      targetThreadId = newThread?.id || null;
+    }
+
+    if (!targetThreadId) {
+      setIsSending(false);
+      showNotification('error', 'Unable to open a conversation. Please try again.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/sam/threads/${targetThreadId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: messageForSam })
+      });
+
+      if (!response.ok) {
+        // Try to get error details from response
+        let errorDetails = '';
+        try {
+          const errorData = await response.json();
+          console.error('❌ API Error Response:', errorData);
+          errorDetails = errorData.details || errorData.error || errorData.message || '';
+          if (errorData.hint) {
+            console.error('💡 Hint:', errorData.hint);
+          }
+        } catch (e) {
+          console.error('Failed to parse error response:', e);
         }
-      } catch (error) {
-        console.error('Chat API error:', error);
-        const errorMessage = {
-          id: Date.now() + 1,
-          role: 'assistant',
-          content: "I'm experiencing technical difficulties. Please try again in a moment."
-        };
-        setMessages(prev => [...prev, errorMessage]);
-        setTimeout(() => scrollToBottom(), 100);
-      } finally {
-        setIsSending(false);
+        throw new Error(`Failed to send message (${response.status}): ${errorDetails}`);
       }
+
+      const data = await response.json();
+      const newMessages: any[] = [];
+
+      if (data.userMessage) {
+        newMessages.push({
+          ...data.userMessage,
+          display_content: expansion ? rawInput : data.userMessage.content
+        });
+      }
+
+      if (data.samMessage) {
+        newMessages.push(data.samMessage);
+      }
+
+      setThreadId(targetThreadId);
+      setMessages(prev => [...prev, ...newMessages]);
+      setShowStarterScreen(false);
+    } catch (error) {
+      console.error('❌ Chat API error (full details):', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      showNotification('error', `Error: ${errorMessage}`);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -962,11 +1085,8 @@ export default function Page() {
         // Sign out from Supabase completely
         await supabase.auth.signOut({ scope: 'global' });
         
-        // Clear authentication-related storage but preserve conversation history
         localStorage.removeItem('supabase.auth.token');
-        // Keep: localStorage.removeItem('sam_messages'); - preserve conversation history
-        // Keep: localStorage.removeItem('sam_active_menu'); - preserve active menu state
-        
+
         // Clear session storage as well
         sessionStorage.clear();
         
@@ -982,7 +1102,6 @@ export default function Page() {
       } catch (error) {
         console.error('❌ Error signing out:', error);
         
-        // Clear auth storage but preserve conversation history
         localStorage.removeItem('supabase.auth.token');
         sessionStorage.clear();
         setUser(null);
@@ -1858,13 +1977,11 @@ export default function Page() {
         <div className="space-y-4 border-t border-border/60 px-5 py-5">
           <button
             type="button"
-            onClick={() => {
+            onClick={async () => {
               if (confirm('Clear all conversation history? This cannot be undone.')) {
-                setMessages([]);
-                setShowStarterScreen(true);
+                await resetConversation();
                 setActiveMenuItem('chat');
-                localStorage.removeItem('sam_messages');
-                localStorage.removeItem('sam_active_menu');
+                showNotification('success', 'Chat history cleared successfully');
               }
             }}
             className="flex w-full items-center justify-between rounded-xl border border-border/60 bg-surface-highlight/50 px-4 py-3 text-sm font-medium text-muted-foreground transition hover:border-border hover:bg-surface-highlight hover:text-foreground"
@@ -1933,7 +2050,7 @@ export default function Page() {
         {/* Connection Status Bar */}
         <ConnectionStatusBar />
 
-        <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="flex-1 overflow-y-auto px-6 py-6" style={{ paddingBottom: activeMenuItem === 'chat' ? '240px' : '24px' }}>
         {activeMenuItem === 'knowledge' ? (
           <KnowledgeBase />
         ) : activeMenuItem === 'data-approval' ? (
@@ -2966,13 +3083,10 @@ export default function Page() {
                       <p className="text-gray-400 text-sm">Remove all conversation history from this device</p>
                     </div>
                     <button 
-                      onClick={() => {
+                      onClick={async () => {
                         if (confirm('Clear all conversation history? This cannot be undone.')) {
-                          setMessages([]);
-                          setShowStarterScreen(true);
+                          await resetConversation();
                           setActiveMenuItem('chat');
-                          localStorage.removeItem('sam_messages');
-                          localStorage.removeItem('sam_active_menu');
                           showNotification('success', 'Chat history cleared successfully');
                         }
                       }}
@@ -3767,38 +3881,8 @@ export default function Page() {
           /* CHAT MESSAGES */
           <div
             ref={messagesContainerRef}
-            className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth pb-40"
-            style={{ maxHeight: 'calc(100vh - 240px)' }}
+            className="space-y-4"
           >
-            {messages.slice().reverse().map((message) => (
-              <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[70%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
-                  {message.role === 'assistant' && (
-                    <div className="flex items-start space-x-3">
-                      <img 
-                        src="/SAM.jpg" 
-                        alt="Sam AI" 
-                        className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1"
-                        style={{ objectPosition: 'center 30%' }}
-                      />
-                      <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl">
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                      </div>
-                    </div>
-                  )}
-                  {message.role === 'user' && (
-                    <>
-                      <div className="flex items-center justify-end space-x-2 mb-1">
-                        <span className="text-gray-400 text-sm font-medium">You</span>
-                      </div>
-                      <div className="bg-gray-800 text-white px-4 py-3 rounded-2xl">
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
             {isSending && (
               <div className="flex justify-start">
                 <div className="max-w-[70%]">
@@ -3821,6 +3905,43 @@ export default function Page() {
                 </div>
               </div>
             )}
+            {messages.slice().reverse().map((message, index) => {
+              // Only animate the first (newest) assistant message
+              const isNewestAssistantMessage = index === 0 && message.role === 'assistant' && !isSending;
+              
+              return (
+                <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[70%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
+                    {message.role === 'assistant' && (
+                      <div className="flex items-start space-x-3">
+                        <img 
+                          src="/SAM.jpg" 
+                          alt="Sam AI" 
+                          className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1"
+                          style={{ objectPosition: 'center 30%' }}
+                        />
+                        <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl">
+                          <AnimatedMessage 
+                            content={message.display_content ?? message.content} 
+                            animate={isNewestAssistantMessage}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {message.role === 'user' && (
+                      <>
+                        <div className="flex items-center justify-end space-x-2 mb-1">
+                          <span className="text-gray-400 text-sm font-medium">You</span>
+                        </div>
+                        <div className="bg-gray-800 text-white px-4 py-3 rounded-2xl">
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.display_content ?? message.content}</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
         </div>
@@ -3845,8 +3966,8 @@ export default function Page() {
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="What do you want to get done?"
-                  className="flex-1 resize-vertical bg-transparent text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
-                  rows={4}
+                  className="flex-1 resize-none bg-transparent text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  rows={3}
                 />
                 <button
                   onClick={handleSendMessage}

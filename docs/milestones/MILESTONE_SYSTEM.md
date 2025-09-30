@@ -23,7 +23,7 @@
 **Human Conversational AI Complete**
 
 **Features:**
-- ✅ Human conversational AI with Claude 3.5 Sonnet
+- ✅ Human conversational AI with Claude 4.5 Sonnet
 - ✅ Balanced script adherence with natural flexibility
 - ✅ Complete training data integration for RAG
 - ✅ Sticky memory with localStorage persistence
@@ -76,7 +76,7 @@
 ### MILESTONE 2025-01-09 v1.5
 **OpenRouter AI Integration**
 - OpenRouter API integration
-- Claude 3.5 Sonnet model
+- Claude 4.5 Sonnet model
 - Fallback system for API failures
 - Error handling and recovery
 

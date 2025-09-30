@@ -80,10 +80,10 @@ async function testCompleteSamMCPIntegration() {
       'mcp__template__optimize_based_on_performance',
       
       // Mistral AI Tools (4)
-      'mcp__mistral__optimize_template',
-      'mcp__mistral__analyze_performance',
-      'mcp__mistral__generate_variations',
-      'mcp__mistral__personalize_for_prospect',
+      'mcp__sonnet__optimize_template',
+      'mcp__sonnet__analyze_performance',
+      'mcp__sonnet__generate_variations',
+      'mcp__sonnet__personalize_for_prospect',
       
       // Campaign Orchestration Tools (3)
       'mcp__sam__create_campaign',
@@ -109,7 +109,7 @@ async function testCompleteSamMCPIntegration() {
       },
       {
         input: "Optimize this template for better performance",
-        expectedRoute: "Template Optimization → mcp__mistral__optimize_template",
+        expectedRoute: "Template Optimization → mcp__sonnet__optimize_template",
         trigger: "optimize template"
       },
       {
@@ -188,7 +188,7 @@ async function testCompleteSamMCPIntegration() {
     console.log('🤖 Sam: [Creates campaign via mcp__sam__create_campaign]');
     console.log('');
     console.log('👤 User: "Optimize my LinkedIn template"');
-    console.log('🤖 Sam: [Optimizes via mcp__mistral__optimize_template]');
+    console.log('🤖 Sam: [Optimizes via mcp__sonnet__optimize_template]');
     console.log('');
     console.log('👤 User: "How is my campaign performing?"');
     console.log('🤖 Sam: [Reports status via mcp__sam__get_campaign_status]');

@@ -1,5 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { mcpOrchestrator } from '@/lib/mcp/agent-orchestrator';
+import { mcpRegistry, createMCPConfig } from '@/lib/mcp/mcp-registry';
+import {
+  MCPIntelligenceRequest,
+  BrightDataProspectRequest,
+  ApifyProspectRequest,
+  MCPCallToolResult
+} from '@/lib/mcp/types';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+let registryInitialized = false;
+type GenericRecord = Record<string, unknown>;
+
+interface LegacyFallbackResult {
+  prospects: EnrichedProspect[];
+  insights: GenericRecord[];
+  sources: string[];
+  notes: string[];
+}
 
 // MCP Lead Generation Orchestrator
 // Combines Apollo, Sales Navigator, and other data sources for intelligent prospect discovery
@@ -26,12 +45,17 @@ interface LeadGenerationRequest {
     require_email?: boolean;
     require_linkedin?: boolean;
     quality_threshold?: number;
-    auto_import_to_campaign?: string;
+    auto_import_to_campaign?:
+      | string
+      | {
+          workflow_id: string;
+          input_data?: GenericRecord;
+        };
   };
   conversation_context?: {
     user_request: string;
-    sam_context?: any;
-    previous_searches?: any[];
+    sam_context?: GenericRecord;
+    previous_searches?: GenericRecord[];
   };
 }
 
@@ -51,10 +75,10 @@ interface EnrichedProspect {
     phone?: string;
   };
   enrichment_data?: {
-    company_details?: any;
-    contact_verification?: any;
-    social_profiles?: any;
-    intent_signals?: any;
+    company_details?: GenericRecord;
+    contact_verification?: GenericRecord;
+    social_profiles?: GenericRecord;
+    intent_signals?: GenericRecord;
   };
   premium_insights?: {
     mutual_connections?: number;
@@ -100,13 +124,13 @@ export async function POST(req: NextRequest) {
         return await leadFinderBot(request, user, supabase);
       
       case 'intelligence_gatherer':
-        return await intelligenceGathererBot(request, user, supabase);
+        return await intelligenceGathererBot(request);
       
       case 'campaign_builder':
-        return await campaignBuilderBot(request, user, supabase);
+        return await campaignBuilderBot(request);
       
       case 'research_assistant':
-        return await researchAssistantBot(request, user, supabase);
+        return await researchAssistantBot();
       
       default:
         return NextResponse.json({ 
@@ -120,166 +144,532 @@ export async function POST(req: NextRequest) {
         }, { status: 400 });
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('MCP Orchestrator error:', error);
     return NextResponse.json(
-      { error: 'Lead generation orchestration failed', details: error.message },
+      {
+        error: 'Lead generation orchestration failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
 }
 
-async function leadFinderBot(request: LeadGenerationRequest, user: any, supabaseClient: any) {
-  const supabase = supabaseClient;
-  const results = {
-    bot_type: 'lead_finder',
-    execution_plan: [],
-    prospects: [] as EnrichedProspect[],
-    summary: {
-      total_found: 0,
-      sources_used: [],
-      quality_distribution: {},
-      execution_time: 0
-    }
-  };
+async function leadFinderBot(request: LeadGenerationRequest, user: { id: string } | null, supabaseClient: SupabaseClient) {
+  await ensureMCPRegistry();
 
   const startTime = Date.now();
+  const executionNotes: string[] = [];
+  const sourceSet = new Set<string>();
 
-  // Step 1: Brightdata MCP Integration (if enabled)
-  if (request.data_sources.use_brightdata) {
-    try {
-      results.execution_plan.push('Calling Brightdata MCP for prospect scraping...');
-      
-      // TODO: Implement actual Brightdata MCP tool calls
-      // This should call real Brightdata scraping APIs
-      const brightdataResponse = await fetch('/api/leads/brightdata-scraper', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'scrape_prospects',
-          search_params: {
-            target_sites: ['linkedin', 'crunchbase'],
-            search_criteria: request.search_criteria,
-            scraping_options: {
-              max_results: request.output_preferences.max_prospects || 50,
-              include_emails: request.output_preferences.require_email || false,
-              depth: 'detailed'
-            }
-          }
-        })
-      });
-      
-      const brightdataData = await brightdataResponse.json();
-      
-      console.log('Brightdata MCP Response:', brightdataData);
-      
-      if (!brightdataResponse.ok) {
-        throw new Error(`Brightdata API error: ${brightdataData.error || 'Unknown error'}`);
-      }
-      
-      if (brightdataData.success && brightdataData.results?.prospects) {
-        const brightdataProspects = brightdataData.results.prospects.map((p: any) => 
-          convertBrightdataToEnriched(p)
+  let orchestratedProspects: EnrichedProspect[] = [];
+  let aggregatedInsights: GenericRecord[] = [];
+  let orchestrationDetails: GenericRecord | null = null;
+  let n8nTriggerResult: GenericRecord | null = null;
+
+  try {
+    const intelligenceRequest = buildIntelligenceRequest(request);
+    executionNotes.push(`Prepared intelligence request using ${intelligenceRequest.source}`);
+
+    const plan = await mcpOrchestrator.planExecution(intelligenceRequest);
+    orchestrationDetails = {
+      executionOrder: plan.executionOrder,
+      parallelGroups: plan.parallelGroups,
+      estimatedCost: plan.totalEstimatedCost,
+      estimatedDuration: plan.totalEstimatedDuration
+    };
+    executionNotes.push('Generated multi-agent execution plan');
+
+    const execution = await mcpOrchestrator.executeOrchestrationPlan(plan, (taskId, status) => {
+      executionNotes.push(`Task ${taskId} ${status}`);
+    });
+
+    const researchTasks = plan.tasks.filter(task => task.type === 'research');
+    for (const task of researchTasks) {
+      const result = execution.results[task.id];
+      const { prospects, insights } = parseResearchResult(result);
+      const source = mapAgentToSource(task.context.agent);
+      if (prospects.length) {
+        sourceSet.add(source);
+        orchestratedProspects.push(
+          ...prospects.map(raw => normalizeMCPProspect(raw, source, request))
         );
-        results.prospects.push(...brightdataProspects);
-        results.summary.sources_used.push('brightdata');
-      } else {
-        console.warn('Brightdata returned no results or failed:', brightdataData);
-        results.execution_plan.push('Brightdata returned no results - continuing with other sources');
       }
-    } catch (error) {
-      console.error('Brightdata MCP integration failed:', error);
-      results.execution_plan.push('Brightdata MCP integration failed - continuing with other sources');
+      if (insights.length) {
+        aggregatedInsights.push(...insights);
+      }
     }
+
+    if (execution.intelligence?.insights?.strategicInsights) {
+      aggregatedInsights.push(
+        ...execution.intelligence.insights.strategicInsights.map(insight =>
+          (typeof insight === 'object' && insight !== null)
+            ? (insight as GenericRecord)
+            : { insight }
+        )
+      );
+    }
+
+    if (!orchestratedProspects.length) {
+      const fallback = await legacyBrightdataFallback(request);
+      orchestratedProspects = fallback.prospects;
+      aggregatedInsights = fallback.insights;
+      fallback.sources.forEach(source => sourceSet.add(source));
+      executionNotes.push(...fallback.notes);
+    }
+
+    orchestrationDetails = {
+      ...orchestrationDetails,
+      executionMetrics: execution.executionMetrics
+    };
+  } catch (error) {
+    console.error('Lead finder orchestrator error:', error);
+    executionNotes.push('Multi-agent orchestration failed, falling back to legacy pipeline');
+    const fallback = await legacyBrightdataFallback(request);
+    orchestratedProspects = fallback.prospects;
+    aggregatedInsights = fallback.insights;
+    fallback.sources.forEach(source => sourceSet.add(source));
+    executionNotes.push(...fallback.notes);
   }
 
-  // Step 2: Unipile LinkedIn Integration (if enabled)
-  if (request.data_sources.use_unipile_linkedin) {
-    try {
-      results.execution_plan.push('Accessing LinkedIn via Unipile MCP...');
-      
-      // TODO: Implement actual Unipile MCP tool calls for LinkedIn data
-      // This should use mcp__unipile__unipile_get_recent_messages and mcp__unipile__unipile_get_accounts
-      // Current implementation uses placeholder structure
-      const unipileProspects: EnrichedProspect[] = [];
-      
-      // Placeholder for Unipile LinkedIn integration
-      // Would integrate with existing message history and connection data
-      results.prospects.push(...unipileProspects);
-      results.summary.sources_used.push('unipile_linkedin');
-      
-    } catch (error) {
-      console.error('Unipile LinkedIn integration failed:', error);
-      results.execution_plan.push('Unipile LinkedIn integration failed - continuing with other sources');
-    }
-  }
+  const unipileAccounts = request.data_sources.use_unipile_linkedin
+    ? await fetchUnipileAccountsSafe()
+    : [];
 
-  // Step 3: Deduplication and Quality Scoring
-  results.execution_plan.push('Deduplicating and scoring prospects...');
-  const deduplicatedProspects = deduplicateProspects(results.prospects);
-  const scoredProspects = scoreProspectQuality(deduplicatedProspects, request);
-  
-  // Step 4: Apply Filters and Limits
-  results.execution_plan.push('Applying quality filters...');
-  let filteredProspects = scoredProspects;
-  
+  const deduplicatedProspects = deduplicateProspects(orchestratedProspects);
+  let scoredProspects = scoreProspectQuality(deduplicatedProspects);
+
   if (request.output_preferences.require_email) {
-    filteredProspects = filteredProspects.filter(p => p.prospect_data.email);
+    scoredProspects = scoredProspects.filter(prospect => prospect.prospect_data.email);
   }
-  
+
   if (request.output_preferences.quality_threshold) {
-    filteredProspects = filteredProspects.filter(p => 
-      p.confidence_score >= request.output_preferences.quality_threshold
+    scoredProspects = scoredProspects.filter(prospect =>
+      prospect.confidence_score >= request.output_preferences.quality_threshold!
     );
   }
 
-  // Limit results
   const maxProspects = request.output_preferences.max_prospects || 50;
-  filteredProspects = filteredProspects
+  const limitedProspects = scoredProspects
     .sort((a, b) => b.confidence_score - a.confidence_score)
     .slice(0, maxProspects);
 
-  // Step 5: Generate Recommendations
-  results.execution_plan.push('Generating outreach recommendations...');
-  filteredProspects.forEach(prospect => {
-    prospect.recommended_approach = generateOutreachRecommendations(
-      prospect, 
-      request.search_criteria
-    );
+  limitedProspects.forEach(prospect => {
+    prospect.recommended_approach = generateOutreachRecommendations(prospect, request.search_criteria);
   });
 
-  // Step 6: Auto-import to Campaign (if requested)
-  if (request.output_preferences.auto_import_to_campaign && filteredProspects.length > 0) {
-    results.execution_plan.push('Auto-importing to campaign...');
-    // TODO: Implement campaign import
+  const autoImportPref = request.output_preferences.auto_import_to_campaign;
+  if (autoImportPref && limitedProspects.length > 0) {
+    const workflowId = typeof autoImportPref === 'string'
+      ? autoImportPref
+      : autoImportPref.workflow_id;
+    const extraInput = typeof autoImportPref === 'string'
+      ? {}
+      : autoImportPref.input_data ?? {};
+
+    if (workflowId) {
+      executionNotes.push(`Triggering n8n workflow ${workflowId} for campaign import`);
+      const n8nResponse = await triggerN8nWorkflow(workflowId, {
+        prospects: limitedProspects,
+        filters: request.search_criteria,
+        summary: {
+          total: limitedProspects.length,
+          sources: Array.from(sourceSet)
+        },
+        ...extraInput
+      });
+
+      if (n8nResponse.result) {
+        n8nTriggerResult = n8nResponse.result;
+        executionNotes.push('n8n workflow triggered successfully');
+      } else if (n8nResponse.error) {
+        executionNotes.push(`n8n workflow trigger failed: ${n8nResponse.error}`);
+      }
+    }
   }
 
-  results.prospects = filteredProspects;
-  results.summary.total_found = filteredProspects.length;
-  results.summary.execution_time = Date.now() - startTime;
-  results.summary.quality_distribution = calculateQualityDistribution(filteredProspects);
+  const summary = {
+    total_found: limitedProspects.length,
+    sources_used: Array.from(sourceSet),
+    quality_distribution: calculateQualityDistribution(limitedProspects),
+    execution_time: Date.now() - startTime,
+    orchestration_metrics: orchestrationDetails?.executionMetrics || null
+  };
+
+  const results = {
+    bot_type: 'lead_finder',
+    execution_plan: executionNotes,
+    prospects: limitedProspects,
+    summary
+  };
+
+  const logPayload: GenericRecord = {
+    request,
+    summary,
+    orchestration: orchestrationDetails,
+    insights: aggregatedInsights,
+    n8n_trigger: n8nTriggerResult
+  };
+
+  await logLeadGenerationRun(supabaseClient, user?.id, logPayload);
 
   return NextResponse.json({
     success: true,
     results,
-    recommendations: {
-      next_actions: [
-        `Review ${filteredProspects.length} high-quality prospects`,
-        'Create personalized outreach templates',
-        'Set up campaign tracking',
-        'Schedule follow-up sequences'
-      ],
-      quality_insights: [
-        `${filteredProspects.filter(p => p.confidence_score > 0.8).length} prospects are high-confidence matches`,
-        `${filteredProspects.filter(p => p.prospect_data.email).length} prospects have verified email addresses`,
-        `${filteredProspects.filter(p => p.premium_insights?.mutual_connections).length} prospects have mutual connections`
-      ]
-    },
+    orchestration: orchestrationDetails,
+    unipile_accounts: unipileAccounts,
+    intelligence: aggregatedInsights,
+    campaign_trigger: n8nTriggerResult,
+    recommendations: buildRecommendations(limitedProspects, aggregatedInsights),
     timestamp: new Date().toISOString()
   });
 }
 
-async function intelligenceGathererBot(request: LeadGenerationRequest, user: any, supabaseClient: any) {
+async function logLeadGenerationRun(
+  supabase: SupabaseClient,
+  userId: string | undefined,
+  payload: GenericRecord
+) {
+  if (!supabase || !userId) return;
+  try {
+    await supabase.from('mcp_orchestration_logs').insert({
+      user_id: userId,
+      event_type: 'lead_finder',
+      payload,
+      created_at: new Date().toISOString()
+    });
+  } catch (error) {
+    console.warn('Lead generation run logging skipped:', error);
+  }
+}
+
+async function ensureMCPRegistry() {
+  if (registryInitialized) return;
+  const config = createMCPConfig();
+  const result = await mcpRegistry.initialize(config);
+  registryInitialized = result.success;
+  if (!result.success) {
+    console.warn('MCP registry initialization failed, continuing with fallback tools:', result.message);
+  }
+}
+
+function buildIntelligenceRequest(request: LeadGenerationRequest): MCPIntelligenceRequest {
+  const useBrightData = request.data_sources.use_brightdata !== false;
+  const maxResults = request.output_preferences.max_prospects || 50;
+
+  if (useBrightData) {
+    const brightDataRequest: BrightDataProspectRequest = {
+      searchCriteria: {
+        jobTitles: request.search_criteria.target_titles || [],
+        companies: [],
+        industries: request.search_criteria.target_industries || [],
+        locations: request.search_criteria.target_locations || [],
+        keywords: request.search_criteria.keywords ? [request.search_criteria.keywords] : []
+      },
+      depth: maxResults > 200 ? 'comprehensive' : 'standard',
+      maxResults
+    };
+
+    return {
+      type: 'profile_research',
+      source: 'bright_data',
+      request: brightDataRequest,
+      conversationContext: buildConversationContext(request)
+    };
+  }
+
+  const apifyRequest: ApifyProspectRequest = {
+    searchUrl: buildLinkedInSearchUrl(request),
+    maxResults,
+    extractEmails: request.output_preferences.require_email,
+    waitForResults: true
+  };
+
+  return {
+    type: 'profile_research',
+    source: 'apify',
+    request: apifyRequest,
+    conversationContext: buildConversationContext(request)
+  };
+}
+
+function buildConversationContext(request: LeadGenerationRequest): string {
+  const parts: string[] = [];
+  if (request.search_criteria.target_titles?.length) {
+    parts.push(`Titles: ${request.search_criteria.target_titles.join(', ')}`);
+  }
+  if (request.search_criteria.target_industries?.length) {
+    parts.push(`Industries: ${request.search_criteria.target_industries.join(', ')}`);
+  }
+  if (request.search_criteria.target_locations?.length) {
+    parts.push(`Locations: ${request.search_criteria.target_locations.join(', ')}`);
+  }
+  if (request.search_criteria.company_size) {
+    parts.push(`Company size: ${request.search_criteria.company_size}`);
+  }
+  if (request.output_preferences.require_email) {
+    parts.push('Require verified emails');
+  }
+  if (request.data_sources.prioritize_premium) {
+    parts.push('Prioritize premium data sources');
+  }
+  return parts.join(' | ');
+}
+
+function buildLinkedInSearchUrl(request: LeadGenerationRequest): string {
+  const conditions: string[] = [];
+  const { target_titles, target_industries, target_locations, keywords } = request.search_criteria;
+
+  if (target_titles?.length) {
+    conditions.push(`(${target_titles.map(title => `title:"${title}"`).join(' OR ')})`);
+  }
+  if (target_industries?.length) {
+    conditions.push(`(${target_industries.map(industry => `industry:"${industry}"`).join(' OR ')})`);
+  }
+  if (target_locations?.length) {
+    conditions.push(`(${target_locations.map(location => `geo:"${location}"`).join(' OR ')})`);
+  }
+  if (keywords) {
+    conditions.push(`(${keywords})`);
+  }
+
+  const query = conditions.length ? conditions.join(' AND ') : 'decision maker';
+  return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(query)}`;
+}
+
+function parseResearchResult(result: MCPCallToolResult): { prospects: GenericRecord[]; insights: GenericRecord[] } {
+  try {
+    const textContent = result.content.find(item => item.type === 'text')?.text;
+    if (!textContent) {
+      return { prospects: [], insights: [] };
+    }
+
+    const parsed = JSON.parse(textContent);
+    const prospects = Array.isArray(parsed.prospects)
+      ? (parsed.prospects as GenericRecord[])
+      : Array.isArray(parsed.results?.prospects)
+        ? (parsed.results.prospects as GenericRecord[])
+        : [];
+    const rawInsights = parsed.insights?.strategicInsights || parsed.strategicInsights || [];
+    const insights = Array.isArray(rawInsights)
+      ? rawInsights.map((entry: unknown) =>
+          (typeof entry === 'object' && entry !== null)
+            ? (entry as GenericRecord)
+            : { insight: entry }
+        )
+      : [];
+
+    return { prospects, insights };
+  } catch (error: unknown) {
+    console.error('Failed to parse research result:', error);
+    return { prospects: [], insights: [] };
+  }
+}
+
+function mapAgentToSource(agent?: string): EnrichedProspect['source'] {
+  switch (agent) {
+    case 'bright-data-researcher':
+      return 'brightdata';
+    case 'apify-extractor':
+      return 'combined';
+    case 'unipile-linkedin':
+      return 'unipile_linkedin';
+    default:
+      return 'brightdata';
+  }
+}
+
+function normalizeMCPProspect(
+  raw: GenericRecord,
+  source: EnrichedProspect['source'],
+  request: LeadGenerationRequest
+): EnrichedProspect {
+  const prospectRecord = (raw.prospect_data as GenericRecord | undefined) ?? raw;
+  const firstName = (prospectRecord.first_name as string | undefined) ||
+    (prospectRecord.firstName as string | undefined) ||
+    'Prospect';
+  const lastName = (prospectRecord.last_name as string | undefined) ||
+    (prospectRecord.lastName as string | undefined) ||
+    'Candidate';
+  const company = (prospectRecord.company as string | undefined) ||
+    (prospectRecord.company_name as string | undefined) ||
+    'Unknown Company';
+  const title = (prospectRecord.title as string | undefined) ||
+    request.search_criteria.target_titles?.[0] ||
+    'Executive';
+  const location = (prospectRecord.location as string | undefined) ||
+    request.search_criteria.target_locations?.[0] ||
+    'United States';
+
+  return {
+    id:
+      (raw.id as string | undefined) ||
+      (prospectRecord.id as string | undefined) ||
+      `${source}-${Date.now()}-${Math.random()}`,
+    source,
+    confidence_score:
+      (raw.confidence_score as number | undefined) ||
+      (raw.score as number | undefined) ||
+      0.7,
+    prospect_data: {
+      first_name: firstName,
+      last_name: lastName,
+      email: prospectRecord.email as string | undefined,
+      linkedin_url:
+        (prospectRecord.linkedin_url as string | undefined) ||
+        (prospectRecord.linkedinUrl as string | undefined) ||
+        '',
+      linkedin_id:
+        (prospectRecord.linkedin_id as string | undefined) ||
+        (prospectRecord.linkedinId as string | undefined),
+      title,
+      company,
+      location,
+      phone: prospectRecord.phone as string | undefined
+    },
+    enrichment_data: raw.enrichment_data as EnrichedProspect['enrichment_data'],
+    premium_insights: raw.premium_insights as EnrichedProspect['premium_insights']
+  };
+}
+
+async function fetchUnipileAccountsSafe() {
+  try {
+    const result = await mcpRegistry.callTool({
+      method: 'tools/call',
+      params: { name: 'unipile_get_accounts' },
+      server: 'unipile'
+    });
+
+    const textContent = result.content.find(item => item.type === 'text')?.text;
+    if (!textContent) return [];
+
+    const parsed = JSON.parse(textContent);
+    return Array.isArray(parsed.accounts) ? parsed.accounts : [];
+  } catch (error: unknown) {
+    console.warn('Unable to fetch Unipile accounts via MCP:', error);
+    return [];
+  }
+}
+
+async function triggerN8nWorkflow(
+  workflowId: string,
+  inputData: GenericRecord
+): Promise<{ result?: GenericRecord; error?: string }> {
+  try {
+    const response = await mcpRegistry.callTool({
+      method: 'tools/call',
+      params: {
+        name: 'n8n_execute_workflow',
+        arguments: {
+          workflow_id: workflowId,
+          input_data: inputData
+        }
+      },
+      server: 'n8n'
+    });
+
+    const textContent = response.content.find(item => item.type === 'text')?.text;
+
+    if (response.isError) {
+      return {
+        error: textContent || 'n8n execution failed'
+      };
+    }
+
+    if (textContent) {
+      try {
+        const parsed = JSON.parse(textContent) as GenericRecord;
+        return { result: parsed };
+      } catch {
+        return {
+          result: {
+            message: 'Workflow triggered (unparsed response)',
+            raw: textContent
+          }
+        };
+      }
+    }
+
+    return {
+      result: {
+        message: 'Workflow triggered'
+      }
+    };
+  } catch (error: unknown) {
+    return {
+      error: error instanceof Error ? error.message : 'Unknown n8n error'
+    };
+  }
+}
+
+async function legacyBrightdataFallback(request: LeadGenerationRequest): Promise<LegacyFallbackResult> {
+  const notes = ['Fallback: invoking legacy Bright Data scraper'];
+  try {
+    const response = await fetch('/api/leads/brightdata-scraper', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'scrape_prospects',
+        search_params: {
+          target_sites: ['linkedin'],
+          search_criteria: request.search_criteria,
+          scraping_options: {
+            max_results: request.output_preferences.max_prospects || 50,
+            include_emails: request.output_preferences.require_email || false,
+            depth: 'detailed'
+          }
+        }
+      })
+    });
+
+    const payload = await response.json();
+    if (!response.ok || !payload.success) {
+      throw new Error(payload.error || 'Unknown Bright Data fallback error');
+    }
+
+    const prospects = (payload.results?.prospects || []).map((p: GenericRecord) => convertBrightdataToEnriched(p));
+    const rawInsights = payload.results?.insights?.strategicInsights || payload.results?.insights || [];
+    const insights = Array.isArray(rawInsights)
+      ? rawInsights.map((entry: unknown) =>
+          (typeof entry === 'object' && entry !== null)
+            ? (entry as GenericRecord)
+            : { insight: entry }
+        )
+      : [];
+    return { prospects, insights, sources: ['brightdata'], notes };
+  } catch (error) {
+    console.error('Bright Data fallback failed:', error);
+    notes.push(`Fallback error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    return { prospects: [], insights: [], sources: [], notes };
+  }
+}
+
+function buildRecommendations(prospects: EnrichedProspect[], insights: GenericRecord[]) {
+  const qualityInsights = [
+    `${prospects.filter(p => p.confidence_score > 0.8).length} prospects are high-confidence matches`,
+    `${prospects.filter(p => p.prospect_data.email).length} prospects have verified email addresses`,
+    `${prospects.filter(p => p.premium_insights?.mutual_connections).length} prospects show mutual connections`
+  ];
+
+  const nextActions = [
+    `Review ${prospects.length} qualified prospects`,
+    'Create personalized outreach templates',
+    'Set up campaign tracking',
+    'Schedule follow-up sequences'
+  ];
+
+  if (insights.length) {
+    nextActions.unshift('Incorporate strategic insights into outreach messaging');
+  }
+
+  return {
+    next_actions: nextActions,
+    quality_insights: qualityInsights
+  };
+}
+
+async function intelligenceGathererBot(request: LeadGenerationRequest) {
   // Focus on deep research and market intelligence
   const intelligence = {
     bot_type: 'intelligence_gatherer',
@@ -325,7 +715,7 @@ async function intelligenceGathererBot(request: LeadGenerationRequest, user: any
   });
 }
 
-async function campaignBuilderBot(request: LeadGenerationRequest, user: any, supabaseClient: any) {
+async function campaignBuilderBot(request: LeadGenerationRequest) {
   // End-to-end campaign creation
   const campaign = {
     bot_type: 'campaign_builder',
@@ -371,7 +761,7 @@ async function campaignBuilderBot(request: LeadGenerationRequest, user: any, sup
   });
 }
 
-async function researchAssistantBot(request: LeadGenerationRequest, user: any, supabaseClient: any) {
+async function researchAssistantBot() {
   // Market and competitive research
   const research = {
     bot_type: 'research_assistant',
@@ -433,54 +823,36 @@ async function researchAssistantBot(request: LeadGenerationRequest, user: any, s
 
 // Helper Functions
 
-function convertBrightdataToEnriched(brightdataProspect: any): EnrichedProspect {
+function convertBrightdataToEnriched(brightdataProspect: GenericRecord): EnrichedProspect {
+  const prospectData = brightdataProspect.prospect_data as GenericRecord | undefined;
   return {
-    id: brightdataProspect.prospect_data.linkedin_url || `brightdata_${Date.now()}`,
+    id:
+      (prospectData?.linkedin_url as string | undefined) ||
+      (prospectData?.linkedinUrl as string | undefined) ||
+      `brightdata_${Date.now()}`,
     source: 'brightdata',
-    confidence_score: brightdataProspect.confidence_score,
+    confidence_score: (brightdataProspect.confidence_score as number | undefined) || 0.7,
     prospect_data: {
-      first_name: brightdataProspect.prospect_data.first_name,
-      last_name: brightdataProspect.prospect_data.last_name,
-      email: brightdataProspect.prospect_data.email,
-      linkedin_url: brightdataProspect.prospect_data.linkedin_url,
-      title: brightdataProspect.prospect_data.title,
-      company: brightdataProspect.prospect_data.company,
-      location: brightdataProspect.prospect_data.location,
-      phone: brightdataProspect.prospect_data.phone
+      first_name: (prospectData?.first_name as string | undefined) || 'Prospect',
+      last_name: (prospectData?.last_name as string | undefined) || 'Candidate',
+      email: prospectData?.email as string | undefined,
+      linkedin_url:
+        (prospectData?.linkedin_url as string | undefined) ||
+        (prospectData?.linkedinUrl as string | undefined) ||
+        '',
+      title: (prospectData?.title as string | undefined) || 'Executive',
+      company: (prospectData?.company as string | undefined) || 'Unknown Company',
+      location: (prospectData?.location as string | undefined) || 'United States',
+      phone: prospectData?.phone as string | undefined
     },
     enrichment_data: {
-      company_details: brightdataProspect.enrichment_data?.company_details,
+      company_details: brightdataProspect.enrichment_data?.company_details as GenericRecord | undefined,
       contact_verification: { 
-        email_verified: !!brightdataProspect.prospect_data.email,
-        phone_verified: !!brightdataProspect.prospect_data.phone
+        email_verified: Boolean(prospectData?.email),
+        phone_verified: Boolean(prospectData?.phone)
       },
-      social_profiles: brightdataProspect.enrichment_data?.social_profiles,
-      experience_years: brightdataProspect.enrichment_data?.experience_years
-    }
-  };
-}
-
-function convertUnipileToEnriched(unipileProspect: any): EnrichedProspect {
-  return {
-    id: unipileProspect.id,
-    source: 'unipile_linkedin',
-    confidence_score: 0.95, // High confidence for connected LinkedIn prospects
-    prospect_data: {
-      first_name: unipileProspect.first_name,
-      last_name: unipileProspect.last_name,
-      email: unipileProspect.email,
-      linkedin_url: unipileProspect.linkedin_url,
-      linkedin_id: unipileProspect.linkedin_id,
-      title: unipileProspect.title,
-      company: unipileProspect.company,
-      location: unipileProspect.location,
-      phone: unipileProspect.phone
-    },
-    premium_insights: {
-      mutual_connections: unipileProspect.mutual_connections,
-      connection_status: unipileProspect.connection_status,
-      message_history: unipileProspect.message_history || [],
-      last_interaction: unipileProspect.last_interaction
+      social_profiles: brightdataProspect.enrichment_data?.social_profiles as GenericRecord | undefined,
+      experience_years: brightdataProspect.enrichment_data?.experience_years as number | undefined
     }
   };
 }
@@ -496,7 +868,7 @@ function deduplicateProspects(prospects: EnrichedProspect[]): EnrichedProspect[]
   });
 }
 
-function scoreProspectQuality(prospects: EnrichedProspect[], request: LeadGenerationRequest): EnrichedProspect[] {
+function scoreProspectQuality(prospects: EnrichedProspect[]): EnrichedProspect[] {
   return prospects.map(prospect => {
     let score = prospect.confidence_score;
     
@@ -517,7 +889,10 @@ function scoreProspectQuality(prospects: EnrichedProspect[], request: LeadGenera
   });
 }
 
-function generateOutreachRecommendations(prospect: EnrichedProspect, criteria: any) {
+function generateOutreachRecommendations(
+  prospect: EnrichedProspect,
+  criteria: LeadGenerationRequest['search_criteria']
+) {
   return {
     connection_strategy: prospect.premium_insights?.mutual_connections 
       ? 'Reference mutual connections' 
@@ -544,7 +919,7 @@ function calculateQualityDistribution(prospects: EnrichedProspect[]) {
   return { high, medium, low };
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     return NextResponse.json({
       service: 'MCP Lead Generation Orchestrator',
@@ -586,9 +961,12 @@ export async function GET(req: NextRequest) {
       ]
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: 'MCP Orchestrator status check failed', details: error.message },
+      {
+        error: 'MCP Orchestrator status check failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

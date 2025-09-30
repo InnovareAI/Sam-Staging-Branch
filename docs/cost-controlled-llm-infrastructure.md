@@ -32,7 +32,7 @@ Based on comprehensive analysis showing message personalization consumes **80% o
 
 #### **Fallback Chain**:
 ```
-Mistral Large 2 → Llama 3.1 405B → Claude 3.5 Sonnet (emergency)
+Mistral Large 2 → Llama 3.1 405B → Claude 4.5 Sonnet (emergency)
 ```
 
 ## 📊 Cost Analysis & Projections
@@ -43,7 +43,7 @@ Mistral Large 2 → Llama 3.1 405B → Claude 3.5 Sonnet (emergency)
 |-------|-------------|-------------|---------------|-------------------|
 | **Mistral Large 2** | $3.00 | **$164.70** | 87/100 | **1.89** |
 | **Llama 3.1 405B** | $2.70 | **$148.23** | 82/100 | **1.85** |
-| Claude 3.5 Sonnet | $3.00 | $164.70 | 92/100 | 2.17 |
+| Claude 4.5 Sonnet | $3.00 | $164.70 | 92/100 | 2.17 |
 | GPT-4 | $15.00 | $823.50 | 100/100 | 5.49 |
 | GPT-5 | $10.00 | $549.00 | 95/100 | 3.51 |
 
@@ -53,7 +53,7 @@ Mistral Large 2 → Llama 3.1 405B → Claude 3.5 Sonnet (emergency)
 |-------|-------------|---------------|-----------------|
 | **Mistral Large 2** | **$65.88** | 87/100 | ✅ **PRIMARY** |
 | **Llama 3.1 405B** | **$59.29** | 82/100 | ✅ **BATCH** |
-| Claude 3.5 Sonnet | $65.88 | 92/100 | 🔄 **FALLBACK** |
+| Claude 4.5 Sonnet | $65.88 | 92/100 | 🔄 **FALLBACK** |
 
 ## 🔧 Technical Implementation
 
@@ -75,7 +75,7 @@ const MODEL_CONFIG = {
     costPerMillion: 2.70
   },
   fallback: {
-    model: "anthropic/claude-3.5-sonnet",
+    model: "anthropic/claude-4.5-sonnet",
     maxTokens: 150,
     temperature: 0.3,
     costPerMillion: 3.00
@@ -190,7 +190,7 @@ const QUALITY_GATES = {
   },
   premium: {
     threshold: 0.85,
-    model: "anthropic/claude-3.5-sonnet",
+    model: "anthropic/claude-4.5-sonnet",
     fallback: "mistralai/mistral-large-2407"
   }
 };

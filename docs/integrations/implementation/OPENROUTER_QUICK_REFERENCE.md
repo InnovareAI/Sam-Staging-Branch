@@ -74,7 +74,7 @@ https://openrouter.ai/api/v1/chat/completions
   - Environment variable: `MISTRAL_API_KEY` → `OPENROUTER_API_KEY`
 
 ### MCP Tools
-- `/lib/mcp/mistral-mcp.ts`
+- `/lib/mcp/sonnet-mcp.ts`
   - Removed Mistral SDK dependency
   - Updated `callMistralAPI()` function to use OpenRouter
 
@@ -132,7 +132,7 @@ node scripts/js/test-openrouter-integration.js
 'mistralai/mistral-large-2407'
 
 // Alternatives
-'anthropic/claude-3.5-sonnet'     // Best reasoning
+'anthropic/claude-4.5-sonnet'     // Best reasoning
 'openai/gpt-4o'                   // General intelligence  
 'meta-llama/llama-3.1-405b'       // Open source
 'google/gemini-pro'               // Google ecosystem
@@ -141,7 +141,7 @@ node scripts/js/test-openrouter-integration.js
 ### Model Switching
 Update in both files:
 - `/app/api/sam/threads/[threadId]/messages/route.ts` (line ~30)
-- `/lib/mcp/mistral-mcp.ts` (line ~387)
+- `/lib/mcp/sonnet-mcp.ts` (line ~387)
 
 ## Cost Monitoring
 
@@ -218,7 +218,7 @@ echo $OPENROUTER_API_KEY
 ```bash
 # If issues, verify these files are updated:
 git log --oneline -5 app/api/sam/threads/[threadId]/messages/route.ts
-git log --oneline -5 lib/mcp/mistral-mcp.ts
+git log --oneline -5 lib/mcp/sonnet-mcp.ts
 
 # Check environment variables
 env | grep OPENROUTER
@@ -228,7 +228,7 @@ env | grep OPENROUTER
 ```bash
 # If critical issues (use with caution)
 git checkout HEAD~1 -- app/api/sam/threads/[threadId]/messages/route.ts
-git checkout HEAD~1 -- lib/mcp/mistral-mcp.ts
+git checkout HEAD~1 -- lib/mcp/sonnet-mcp.ts
 npm install @mistralai/mistralai
 # Set MISTRAL_API_KEY instead of OPENROUTER_API_KEY
 ```

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase client
+// Initialize Supabase client (service role) for vector operations
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -80,10 +80,11 @@ function splitIntoChunks(content: string, chunkSize: number = 1000, overlap: num
 
 // Enhanced content processing for SAM AI
 async function createSAMKnowledgeEntries(
-  documentId: string, 
-  content: string, 
-  tags: string[], 
-  section: string, 
+  documentId: string,
+  workspaceId: string,
+  section: string,
+  content: string,
+  tags: string[],
   metadata: any
 ) {
   const chunks = splitIntoChunks(content);
@@ -109,10 +110,11 @@ async function createSAMKnowledgeEntries(
     knowledgeEntries.push({
       id: `${documentId}_chunk_${i}`,
       document_id: documentId,
+      workspace_id: workspaceId,
+      section_id: section,
       content: chunk,
       embedding: embedding,
       metadata: enhancedMetadata,
-      section: section,
       tags: tags,
       created_at: new Date().toISOString()
     });
@@ -176,12 +178,34 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    const { data: documentRecord, error: documentError } = await supabase
+      .from('knowledge_base_documents')
+      .select('workspace_id, section_id, tags')
+      .eq('id', documentId)
+      .single();
+
+    if (documentError || !documentRecord?.workspace_id) {
+      console.error('Knowledge base document lookup failed:', documentError);
+      return NextResponse.json({ error: 'Document not found or missing workspace context' }, { status: 404 });
+    }
+
+    const workspaceId = documentRecord.workspace_id;
+    const sectionId = section || documentRecord.section_id;
+    const combinedTags = Array.from(new Set([...(documentRecord.tags || []), ...(tags || [])]));
+
+    // Remove any previous vectors for this document to avoid duplicates
+    await supabase
+      .from('knowledge_base_vectors')
+      .delete()
+      .eq('document_id', documentId);
+
     // Create knowledge entries with embeddings
     const knowledgeEntries = await createSAMKnowledgeEntries(
       documentId, 
-      content, 
-      tags || [], 
-      section, 
+      workspaceId,
+      sectionId,
+      content,
+      combinedTags,
       metadata || {}
     );
 
@@ -210,14 +234,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Create summary entry for SAM AI quick access
+    // Refresh summary information for this document
+    await supabase
+      .from('sam_knowledge_summaries')
+      .delete()
+      .eq('document_id', documentId);
+
     const documentSummary = {
       document_id: documentId,
-      section: section,
+      workspace_id: workspaceId,
+      section_id: sectionId,
       total_chunks: knowledgeEntries.length,
       total_tokens: content.length,
-      tags: tags || [],
+      tags: combinedTags,
       sam_ready: true,
       quick_summary: metadata?.summary || 'Document processed and ready for SAM conversations',
+      metadata: metadata || {},
       created_at: new Date().toISOString()
     };
 

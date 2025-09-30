@@ -3,7 +3,7 @@
 **Complete working state with all features**
 
 ## 🚀 Key Features Working
-- Human conversational AI with OpenRouter Claude 3.5 Sonnet
+- Human conversational AI with OpenRouter Claude 4.5 Sonnet
 - Balanced script adherence with natural conversation flexibility  
 - Sticky memory with localStorage persistence
 - Auto-scroll chat functionality
@@ -437,7 +437,7 @@ async function callOpenRouter(messages: any[], systemPrompt: string) {
       'X-Title': 'SAM AI Platform'
     },
     body: JSON.stringify({
-      model: 'anthropic/claude-3.5-sonnet',
+      model: 'anthropic/claude-4.5-sonnet',
       messages: [
         { role: 'system', content: systemPrompt },
         ...messages

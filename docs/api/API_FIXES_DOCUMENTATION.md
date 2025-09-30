@@ -119,7 +119,7 @@ import OpenAI from 'openai';
 ```
 
 **Key Features**:
-- OpenRouter integration with Claude 3.5 Sonnet
+- OpenRouter integration with Claude 4.5 Sonnet
 - Fallback responses when API keys unavailable
 - Comprehensive error handling and logging
 

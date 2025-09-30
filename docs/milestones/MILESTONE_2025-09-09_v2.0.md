@@ -439,7 +439,7 @@ async function callOpenRouter(messages: any[], systemPrompt: string) {
       'X-Title': 'SAM AI Platform'
     },
     body: JSON.stringify({
-      model: 'anthropic/claude-3.5-sonnet',
+      model: 'anthropic/claude-4.5-sonnet',
       messages: [
         { role: 'system', content: systemPrompt },
         ...messages

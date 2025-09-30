@@ -1,19 +1,23 @@
 /**
  * Bright Data MCP Server for SAM AI Platform
- * 
- * Provides enterprise-grade LinkedIn prospect intelligence with compliance
- * through Model Context Protocol (MCP)
+ *
+ * Provides enterprise-grade LinkedIn prospect intelligence via Bright Data's
+ * Data Collector API. Requires a Bright Data API token and, optionally,
+ * default collector configuration supplied through environment variables.
  */
 
-import { 
-  MCPTool, 
-  MCPCallToolRequest, 
-  MCPCallToolResult, 
+import {
+  MCPTool,
+  MCPCallToolRequest,
+  MCPCallToolResult,
   BrightDataMCPConfig,
-  BrightDataProspectRequest,
-  ProspectIntelligence
+  BrightDataProspectRequest
 } from './types'
 import { AutoIPAssignmentService } from '@/lib/services/auto-ip-assignment'
+
+const DEFAULT_BASE_URL = 'https://api.brightdata.com'
+const DEFAULT_WAIT_SECONDS = 60
+const POLL_INTERVAL_MS = 2500
 
 export class BrightDataMCPServer {
   private config: BrightDataMCPConfig
@@ -30,14 +34,22 @@ export class BrightDataMCPServer {
     return [
       {
         name: 'research_prospect',
-        description: 'Research LinkedIn prospects using Bright Data with enterprise compliance',
+        description: 'Run a Bright Data collector to research LinkedIn prospects',
         inputSchema: {
           type: 'object',
           properties: {
+            collectorId: {
+              type: 'string',
+              description: 'Bright Data collector ID (overrides default)'
+            },
+            datasetId: {
+              type: 'string',
+              description: 'Existing dataset ID to fetch instead of launching a new run'
+            },
             profileUrls: {
               type: 'array',
               items: { type: 'string' },
-              description: 'LinkedIn profile URLs to research'
+              description: 'LinkedIn profile URLs to enrich'
             },
             searchCriteria: {
               type: 'object',
@@ -48,17 +60,24 @@ export class BrightDataMCPServer {
                 locations: { type: 'array', items: { type: 'string' } },
                 keywords: { type: 'array', items: { type: 'string' } }
               },
-              description: 'Search criteria for finding prospects'
+              description: 'Structured search criteria for the collector payload'
+            },
+            payload: {
+              type: 'object',
+              description: 'Raw payload object to send to the collector (overrides auto-generated payload)'
             },
             depth: {
               type: 'string',
               enum: ['quick', 'standard', 'comprehensive'],
-              description: 'Research depth level'
+              description: 'Collector-specific depth preference'
             },
             maxResults: {
               type: 'number',
-              maximum: 1000,
-              description: 'Maximum number of prospects to research'
+              description: 'Maximum number of results to request or fetch'
+            },
+            waitForResultsSeconds: {
+              type: 'number',
+              description: 'How long to wait for dataset to finish before timing out'
             }
           },
           required: ['depth']
@@ -66,53 +85,33 @@ export class BrightDataMCPServer {
       },
       {
         name: 'analyze_company',
-        description: 'Analyze company intelligence using Bright Data proxies',
+        description: 'Run company-oriented collectors (requires collectorId)',
         inputSchema: {
           type: 'object',
           properties: {
-            companyUrls: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'LinkedIn company URLs to analyze'
-            },
-            includeCompetitors: {
-              type: 'boolean',
-              description: 'Include competitive analysis'
-            },
-            includeTechnology: {
-              type: 'boolean',
-              description: 'Include technology stack analysis'
-            }
+            collectorId: { type: 'string' },
+            payload: { type: 'object' },
+            waitForResultsSeconds: { type: 'number' }
           },
-          required: ['companyUrls']
+          required: ['collectorId']
         }
       },
       {
         name: 'generate_strategic_insights',
-        description: 'Generate strategic sales insights using Challenger, SPIN, or MEDDIC methodologies',
+        description: 'Summarize existing prospect data with selected methodology',
         inputSchema: {
           type: 'object',
           properties: {
-            prospects: {
-              type: 'array',
-              description: 'Prospect data to analyze'
-            },
-            methodology: {
-              type: 'string',
-              enum: ['challenger', 'spin', 'meddic'],
-              description: 'Sales methodology to apply'
-            },
-            conversationContext: {
-              type: 'string',
-              description: 'Current conversation context for personalization'
-            }
+            prospects: { type: 'array' },
+            methodology: { type: 'string', enum: ['challenger', 'spin', 'meddic'] },
+            conversationContext: { type: 'string' }
           },
           required: ['prospects', 'methodology']
         }
       },
       {
         name: 'check_system_health',
-        description: 'Check Bright Data system health and compliance status',
+        description: 'Verify Bright Data API connectivity and collector availability',
         inputSchema: {
           type: 'object',
           properties: {},
@@ -121,17 +120,17 @@ export class BrightDataMCPServer {
       },
       {
         name: 'auto_assign_proxy_location',
-        description: 'Automatically assign optimal Bright Data proxy location based on user location',
+        description: 'Assign optimal Bright Data proxy location based on detected user location',
         inputSchema: {
           type: 'object',
           properties: {
             linkedinProfileLocation: {
               type: 'string',
-              description: 'LinkedIn profile location for enhanced accuracy'
+              description: 'Override location determination with LinkedIn profile location'
             },
             forceRegenerate: {
               type: 'boolean',
-              description: 'Force regeneration of proxy configuration'
+              description: 'Force regeneration of proxy configuration even if cached'
             }
           },
           required: []
@@ -149,19 +148,17 @@ export class BrightDataMCPServer {
       switch (request.params.name) {
         case 'research_prospect':
           return await this.researchProspect(request.params.arguments as BrightDataProspectRequest)
-        
         case 'analyze_company':
-          return await this.analyzeCompany(request.params.arguments as any)
-        
+          return await this.researchProspect({
+            ...(request.params.arguments as Record<string, unknown>),
+            depth: 'standard'
+          } as BrightDataProspectRequest)
         case 'generate_strategic_insights':
           return await this.generateStrategicInsights(request.params.arguments as any)
-        
         case 'check_system_health':
           return await this.checkSystemHealth()
-        
         case 'auto_assign_proxy_location':
           return await this.autoAssignProxyLocation(request.params.arguments as any)
-        
         default:
           return {
             content: [{
@@ -175,7 +172,7 @@ export class BrightDataMCPServer {
       return {
         content: [{
           type: 'text',
-          text: `Tool execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+          text: `Bright Data MCP error: ${error instanceof Error ? error.message : 'Unknown error'}`
         }],
         isError: true
       }
@@ -183,212 +180,232 @@ export class BrightDataMCPServer {
   }
 
   private async researchProspect(request: BrightDataProspectRequest): Promise<MCPCallToolResult> {
-    try {
-      // Import a lightweight local mock to enable offline builds
-      const { SamAIBrightDataSystem, defaultConfigurations } = await import('@/lib/mocks/sam-ai-bright-data-integration')
-      
-      // Configure system based on environment
-      const systemConfig = {
-        organizationId: this.config.organizationId,
-        userId: this.config.userId,
-        brightData: {
-          username: this.config.username,
-          password: this.config.password,
-          endpoint: this.config.endpoint,
-          port: this.config.port || 22225
-        },
-        ...defaultConfigurations.production,
-        intelligence: {
-          ...defaultConfigurations.production.intelligence,
-          researchDepth: request.depth,
-          maxConcurrentResearch: Math.min(request.maxResults || 10, 5)
-        }
-      }
+    const apiToken = this.getApiToken()
+    const collectorId = request.collectorId || this.config.defaultCollectorId
+    let datasetId = request.datasetId
+    let runInfo: Record<string, unknown> | undefined
 
-      // Initialize system
-      const system = new SamAIBrightDataSystem(systemConfig)
-      const initResult = await system.initialize()
-
-      if (!initResult.success) {
+    if (!datasetId) {
+      if (!collectorId) {
         return {
           content: [{
             type: 'text',
-            text: `Bright Data system initialization failed: ${initResult.message}`
+            text: 'Bright Data collectorId is required (provide in request or configure BRIGHT_DATA_DEFAULT_COLLECTOR_ID).'
           }],
           isError: true
         }
       }
 
-      // Process intelligence request
-      const intelligenceRequest = {
-        type: 'profile_research' as const,
-        profileUrls: request.profileUrls,
-        searchCriteria: request.searchCriteria,
-        depth: request.depth,
-        priorityLevel: 'high' as const,
-        conversationContext: 'SAM AI MCP Integration'
-      }
+      const payload = request.payload ?? this.buildCollectorPayload(request)
+      runInfo = await this.runCollector(apiToken, collectorId, payload, request.maxResults)
+      datasetId = runInfo.datasetId as string | undefined
 
-      const intelligence = await system.processConversation(
-        `Research prospects: ${JSON.stringify(intelligenceRequest)}`,
-        `mcp-${Date.now()}`,
-        { intelligenceRequest }
-      )
-
-      // Clean up system
-      await system.shutdown()
-
-      if (!intelligence.success) {
+      if (!datasetId) {
         return {
           content: [{
             type: 'text',
-            text: `Prospect research failed: ${intelligence.error}`
+            text: 'Bright Data collector run did not return a dataset_id. Check collector configuration.'
           }],
           isError: true
         }
       }
+    }
 
-      // Format results for MCP
-      const results = this.formatIntelligenceResults(intelligence.response)
+    const waitSeconds = request.waitForResultsSeconds ?? this.config.defaultWaitSeconds ?? DEFAULT_WAIT_SECONDS
+    const items = await this.fetchDatasetItems(apiToken, datasetId, waitSeconds, request.maxResults)
 
-      return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({
-            success: true,
-            prospectCount: results.prospects.length,
-            insights: results.insights,
-            systemHealth: intelligence.systemHealth,
-            timestamp: new Date().toISOString()
-          }, null, 2)
-        }]
-      }
+    const result = {
+      success: true,
+      source: 'bright_data',
+      datasetId,
+      collectorId: collectorId ?? 'n/a',
+      itemCount: items.length,
+      items,
+      runInfo,
+      timestamp: new Date().toISOString()
+    }
 
-    } catch (error) {
-      return {
-        content: [{
-          type: 'text',
-          text: `Prospect research error: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
-        isError: true
-      }
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2)
+      }]
     }
   }
 
-  private async analyzeCompany(request: { companyUrls: string[], includeCompetitors?: boolean, includeTechnology?: boolean }): Promise<MCPCallToolResult> {
-    try {
-      // Company analysis using Bright Data
-      const analysis = {
-        companies: request.companyUrls.map(url => ({
-          url,
-          name: this.extractCompanyName(url),
-          industry: 'Technology', // Would be extracted via Bright Data
-          employees: '1000-5000',
-          technologies: request.includeTechnology ? ['React', 'Node.js', 'AWS'] : [],
-          competitors: request.includeCompetitors ? ['Competitor A', 'Competitor B'] : [],
-          recentNews: [
-            {
-              title: 'Company announces new product line',
-              sentiment: 'positive' as const,
-              url: 'https://example.com/news'
-            }
-          ]
-        })),
-        timestamp: new Date().toISOString()
-      }
+  private buildCollectorPayload(request: BrightDataProspectRequest): Record<string, unknown> {
+    const payload: Record<string, unknown> = {
+      profileUrls: request.profileUrls,
+      searchCriteria: request.searchCriteria,
+      depth: request.depth,
+      maxResults: request.maxResults
+    }
 
-      return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify(analysis, null, 2)
-        }]
+    Object.keys(payload).forEach(key => {
+      if (payload[key] === undefined || payload[key] === null) {
+        delete payload[key]
       }
-    } catch (error) {
-      return {
-        content: [{
-          type: 'text',
-          text: `Company analysis error: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
-        isError: true
-      }
+    })
+
+    return payload
+  }
+
+  private async runCollector(
+    apiToken: string,
+    collectorId: string,
+    payload: Record<string, unknown>,
+    maxResults?: number
+  ): Promise<Record<string, unknown>> {
+    const body: Record<string, unknown> = {
+      format: 'json',
+      limit: maxResults,
+      payload
+    }
+
+    const response = await fetch(`${this.getBaseUrl()}/dca/dataset?id=${collectorId}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    })
+
+    if (!response.ok) {
+      const errorBody = await response.text()
+      throw new Error(`Bright Data collector run failed (${response.status}): ${errorBody || 'unknown error'}`)
+    }
+
+    const data = await response.json() as Record<string, unknown>
+    if (!data.dataset_id && !data.datasetId) {
+      throw new Error('Bright Data API response did not include a dataset identifier.')
+    }
+
+    return {
+      ...data,
+      datasetId: data.dataset_id ?? data.datasetId
     }
   }
 
-  private async generateStrategicInsights(request: { prospects: any[], methodology: string, conversationContext?: string }): Promise<MCPCallToolResult> {
-    try {
-      const insights = {
-        methodology: request.methodology,
-        insights: this.generateInsightsByMethodology(request.prospects, request.methodology),
-        conversationStarters: this.generateConversationStarters(request.prospects, request.methodology),
-        nextActions: this.generateNextActions(request.prospects, request.methodology),
-        confidence: 0.85,
-        timestamp: new Date().toISOString()
+  private async fetchDatasetItems(
+    apiToken: string,
+    datasetId: string,
+    waitSeconds: number,
+    limit?: number
+  ): Promise<any[]> {
+    const timeoutAt = Date.now() + waitSeconds * 1000
+    let lastError: string | undefined
+
+    while (Date.now() < timeoutAt) {
+      const query = new URLSearchParams({ format: 'json' })
+      if (limit) {
+        query.set('limit', String(limit))
       }
 
-      return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify(insights, null, 2)
-        }]
+      const response = await fetch(`${this.getBaseUrl()}/datasets/v1/${datasetId}/items?${query.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiToken}`
+        }
+      })
+
+      if (response.ok) {
+        const text = await response.text()
+        const trimmed = text.trim()
+
+        if (!trimmed) {
+          await this.delay(POLL_INTERVAL_MS)
+          continue
+        }
+
+        try {
+          return this.parseItemsResponse(trimmed)
+        } catch (error) {
+          lastError = `Failed to parse dataset items: ${error instanceof Error ? error.message : String(error)}`
+          break
+        }
       }
+
+      if (response.status === 404 || response.status === 425) {
+        // Dataset not ready yet
+        await this.delay(POLL_INTERVAL_MS)
+        continue
+      }
+
+      const body = await response.text()
+      lastError = `Dataset fetch failed (${response.status}): ${body || 'unknown error'}`
+      break
+    }
+
+    throw new Error(lastError || 'Timed out waiting for Bright Data dataset to finish processing.')
+  }
+
+  private parseItemsResponse(payload: string): any[] {
+    try {
+      const parsed = JSON.parse(payload)
+      if (Array.isArray(parsed)) {
+        return parsed
+      }
+      return [parsed]
     } catch (error) {
-      return {
-        content: [{
-          type: 'text',
-          text: `Strategic insights generation error: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
-        isError: true
+      const lines = payload.split('\n').map(line => line.trim()).filter(Boolean)
+      if (!lines.length) {
+        throw error
       }
+      return lines.map(line => JSON.parse(line))
     }
   }
 
   private async checkSystemHealth(): Promise<MCPCallToolResult> {
-    try {
-      const health = {
-        status: 'healthy',
-        components: {
-          brightData: 'operational',
-          compliance: 'active',
-          costOptimization: 'enabled',
-          autoIPAssignment: 'active'
-        },
-        limits: {
-          dailyQuota: 1000,
-          used: 45,
-          remaining: 955
-        },
-        lastCheck: new Date().toISOString()
+    const apiToken = this.getApiToken()
+    const response = await fetch(`${this.getBaseUrl()}/dca/collectors?limit=5`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiToken}`
       }
+    })
 
+    if (!response.ok) {
+      const body = await response.text()
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify(health, null, 2)
-        }]
-      }
-    } catch (error) {
-      return {
-        content: [{
-          type: 'text',
-          text: `Health check error: ${error instanceof Error ? error.message : 'Unknown error'}`
+          text: `Bright Data health check failed (${response.status}): ${body || 'unknown error'}`
         }],
         isError: true
       }
     }
+
+    const data = await response.json()
+    const collectors = Array.isArray(data) ? data : (data?.collectors ?? data?.items ?? [])
+
+    const result = {
+      success: true,
+      collectorCount: Array.isArray(collectors) ? collectors.length : 0,
+      sampleCollectors: (collectors as any[]).slice(0, 3).map(collector => ({
+        id: collector?.id ?? collector?._id ?? 'unknown',
+        name: collector?.name ?? 'unknown',
+        status: collector?.status ?? collector?.state ?? 'unknown'
+      })),
+      timestamp: new Date().toISOString()
+    }
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2)
+      }]
+    }
   }
 
-  private async autoAssignProxyLocation(request: { linkedinProfileLocation?: string, forceRegenerate?: boolean }): Promise<MCPCallToolResult> {
+  private async autoAssignProxyLocation(request: { linkedinProfileLocation?: string; forceRegenerate?: boolean }): Promise<MCPCallToolResult> {
     try {
-      // Detect user location (in a real implementation, you'd pass the actual request object)
       const userLocation = await this.autoIPService.detectUserLocation()
-      
-      // Generate optimal proxy configuration
       const proxyConfig = await this.autoIPService.generateOptimalProxyConfig(
         userLocation || undefined,
         request.linkedinProfileLocation
       )
 
-      // Test connectivity
       const connectivityTest = await this.autoIPService.testProxyConnectivity(proxyConfig)
 
       const result = {
@@ -429,79 +446,106 @@ export class BrightDataMCPServer {
     }
   }
 
-  // Helper methods
-  private formatIntelligenceResults(response: any): { prospects: any[], insights: any } {
+  private async generateStrategicInsights(request: { prospects: any[]; methodology: string; conversationContext?: string }): Promise<MCPCallToolResult> {
+    const insights = {
+      methodology: request.methodology,
+      insights: this.generateInsightsByMethodology(request.prospects, request.methodology),
+      conversationStarters: this.generateConversationStarters(request.prospects, request.methodology),
+      nextActions: this.generateNextActions(request.prospects, request.methodology),
+      timestamp: new Date().toISOString()
+    }
+
     return {
-      prospects: response?.prospectData || [],
-      insights: {
-        strategicInsights: response?.strategicInsights || [],
-        meddic: response?.meddic || {},
-        conversationStarters: response?.conversationStarters || []
-      }
+      content: [{
+        type: 'text',
+        text: JSON.stringify(insights, null, 2)
+      }]
     }
   }
 
-  private extractCompanyName(url: string): string {
-    const match = url.match(/\/company\/([^\/]+)/)
-    return match ? match[1].replace(/-/g, ' ') : 'Unknown Company'
-  }
-
   private generateInsightsByMethodology(prospects: any[], methodology: string): any[] {
+    if (!Array.isArray(prospects) || !prospects.length) {
+      return []
+    }
+
     switch (methodology) {
       case 'challenger':
-        return [
-          {
-            type: 'opportunity',
-            insight: 'Industry disruption opportunity identified',
-            evidence: ['Market consolidation trends', 'Technology gaps'],
-            confidence: 0.8
-          }
-        ]
+        return prospects.slice(0, 3).map(prospect => ({
+          type: 'opportunity',
+          insight: `Challenge the status quo at ${prospect.company ?? 'their company'} with a differentiated POV`,
+          evidence: [prospect.title, prospect.industry].filter(Boolean),
+          confidence: 0.7
+        }))
       case 'spin':
-        return [
-          {
-            type: 'pain_point',
-            insight: 'Scaling challenges evident from hiring patterns',
-            evidence: ['20+ open positions', 'Recent leadership changes'],
-            confidence: 0.85
-          }
-        ]
+        return prospects.slice(0, 3).map(prospect => ({
+          type: 'pain_point',
+          insight: `Explore implications of current process for ${prospect.company ?? 'their organization'}.`,
+          question: `How is ${prospect.title ?? 'your team'} measuring success today?`,
+          confidence: 0.65
+        }))
       case 'meddic':
-        return [
-          {
-            type: 'decision_factor',
-            insight: 'Economic buyer identified with budget authority',
-            evidence: ['C-level title', 'Decision influence score: 9/10'],
-            confidence: 0.9
-          }
-        ]
+        return prospects.slice(0, 3).map(prospect => ({
+          type: 'qualification',
+          metric: 'Pipeline coverage',
+          decisionCriteria: prospect.industry,
+          suggestedChampion: `${prospect.full_name ?? prospect.name ?? 'Prospect'}`,
+          confidence: 0.6
+        }))
       default:
         return []
     }
   }
 
-  private generateConversationStarters(prospects: any[], methodology: string): any[] {
-    return [
-      {
-        approach: methodology,
-        message: `Based on your recent activity, I noticed an opportunity to address ${methodology === 'challenger' ? 'industry challenges' : methodology === 'spin' ? 'operational inefficiencies' : 'strategic objectives'}...`,
-        followUpQuestions: [
-          'How has this been impacting your team?',
-          'What approaches have you considered?',
-          'What would success look like?'
-        ]
-      }
-    ]
+  private generateConversationStarters(prospects: any[], methodology: string): string[] {
+    if (!Array.isArray(prospects) || !prospects.length) {
+      return []
+    }
+
+    const firstProspect = prospects[0]
+    const company = firstProspect.company ?? 'your organization'
+
+    switch (methodology) {
+      case 'challenger':
+        return [`I noticed ${company} is investing heavily in growth—how are you balancing personalization with volume right now?`]
+      case 'spin':
+        return [`What happens to pipeline if ${company} doubles outbound volume without additional enablement?`]
+      case 'meddic':
+        return [`Who ultimately signs off on new sales tooling at ${company}, and what KPIs matter most to them?`]
+      default:
+        return []
+    }
   }
 
-  private generateNextActions(prospects: any[], methodology: string): any[] {
-    return [
-      {
-        action: 'Schedule discovery call',
-        priority: 10,
-        methodology,
-        timeline: '1-2 weeks'
-      }
-    ]
+  private generateNextActions(prospects: any[], methodology: string): string[] {
+    if (!Array.isArray(prospects) || !prospects.length) {
+      return []
+    }
+
+    switch (methodology) {
+      case 'challenger':
+        return ['Craft tailored POV deck referencing recent strategic shifts.']
+      case 'spin':
+        return ['Prepare discovery call focused on situational and implication questions.']
+      case 'meddic':
+        return ['Map economic buyer, champion, and metrics with CRM notes.']
+      default:
+        return []
+    }
+  }
+
+  private getApiToken(): string {
+    const token = this.config.apiToken || process.env.BRIGHT_DATA_API_TOKEN
+    if (!token) {
+      throw new Error('BRIGHT_DATA_API_TOKEN is not configured. Provide a valid Bright Data API token to use this tool.')
+    }
+    return token
+  }
+
+  private getBaseUrl(): string {
+    return this.config.baseUrl || process.env.BRIGHT_DATA_API_BASE_URL || DEFAULT_BASE_URL
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
   }
 }

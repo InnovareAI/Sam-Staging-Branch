@@ -7,6 +7,156 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+  throw new Error('Missing Supabase environment configuration')
+}
+
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey)
+
+interface SupabaseAuthUser {
+  id: string
+  email?: string
+  user_metadata?: Record<string, unknown>
+}
+
+async function ensureUserProfile(user: SupabaseAuthUser) {
+  const { data: existingProfile, error: existingProfileError } = await supabaseAdmin
+    .from('users')
+    .select('id')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (existingProfileError) {
+    console.error('Failed to fetch user profile', existingProfileError)
+    throw new Error('Unable to load user profile')
+  }
+
+  if (existingProfile) {
+    return
+  }
+
+  const insertPayload: Record<string, unknown> = {
+    id: user.id,
+    email: user.email || `${user.id}@unknown.local`,
+    first_name: user.user_metadata?.first_name ?? null,
+    last_name: user.user_metadata?.last_name ?? null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }
+
+  const { error: upsertError } = await supabaseAdmin
+    .from('users')
+    .upsert(insertPayload, { onConflict: 'id' })
+
+  if (upsertError) {
+    console.error('Failed to upsert user profile', upsertError)
+    throw new Error('Unable to initialize user profile')
+  }
+}
+
+async function resolveWorkspaceId(
+  authUser: SupabaseAuthUser,
+  providedWorkspaceId?: string | null
+): Promise<string> {
+  const userId = authUser.id
+
+  if (providedWorkspaceId && providedWorkspaceId.trim().length > 0) {
+    return providedWorkspaceId
+  }
+
+  await ensureUserProfile(authUser)
+
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from('users')
+    .select('current_workspace_id')
+    .eq('id', userId)
+    .single()
+
+  if (profileError) {
+    console.error('Failed to load user profile', profileError)
+    throw new Error('Unable to load user profile')
+  }
+
+  if (profile?.current_workspace_id) {
+    return profile.current_workspace_id
+  }
+
+  const { data: membership, error: membershipError } = await supabaseAdmin
+    .from('workspace_members')
+    .select('workspace_id')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (membershipError) {
+    console.error('Failed to inspect workspace membership', membershipError)
+    throw new Error('Unable to determine workspace access')
+  }
+
+  if (membership?.workspace_id) {
+    const { error: updateError } = await supabaseAdmin
+      .from('users')
+      .update({ current_workspace_id: membership.workspace_id })
+      .eq('id', userId)
+
+    if (updateError) {
+      console.error('Failed to update current workspace', updateError)
+      throw new Error('Unable to persist workspace selection')
+    }
+
+    return membership.workspace_id
+  }
+
+  const { data: defaultWorkspace, error: workspaceFetchError } = await supabaseAdmin
+    .from('workspaces')
+    .select('id')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (workspaceFetchError) {
+    console.error('Failed to fetch fallback workspace', workspaceFetchError)
+    throw new Error('Unable to resolve fallback workspace')
+  }
+
+  if (!defaultWorkspace?.id) {
+    throw new Error('Workspace not found for user')
+  }
+
+  const { error: membershipInsertError } = await supabaseAdmin
+    .from('workspace_members')
+    .insert({
+      workspace_id: defaultWorkspace.id,
+      user_id: userId,
+      role: 'member',
+      joined_at: new Date().toISOString()
+    })
+    .onConflict('workspace_id,user_id')
+    .ignore()
+
+  if (membershipInsertError && membershipInsertError.code !== '23505') {
+    console.error('Failed to assign default workspace membership', membershipInsertError)
+    throw new Error('Unable to assign default workspace')
+  }
+
+  const { error: userUpdateError } = await supabaseAdmin
+    .from('users')
+    .update({ current_workspace_id: defaultWorkspace.id })
+    .eq('id', userId)
+
+  if (userUpdateError) {
+    console.error('Failed to set current workspace after assignment', userUpdateError)
+    throw new Error('Unable to finalize workspace assignment')
+  }
+
+  return defaultWorkspace.id
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,31 +168,6 @@ export async function GET(request: NextRequest) {
         success: false,
         error: 'Authentication required'
       }, { status: 401 })
-    }
-
-    // CRITICAL: Check if required tables exist before proceeding
-    try {
-      const { error: tableCheckError } = await supabase
-        .from('sam_conversation_threads')
-        .select('id')
-        .limit(0);
-
-      if (tableCheckError && tableCheckError.code === '42P01') {
-        console.error('🚨 CRITICAL: sam_conversation_threads table missing!');
-        return NextResponse.json({
-          success: false,
-          error: 'Database schema error: Required chat tables missing',
-          fix_instructions: 'Run SQL from /api/admin/setup-chat-tables in Supabase SQL Editor',
-          health_check: '/api/admin/check-db'
-        }, { status: 503 });
-      }
-    } catch (schemaError) {
-      console.error('🚨 Schema check failed:', schemaError);
-      return NextResponse.json({
-        success: false,
-        error: 'Database schema validation failed',
-        fix_instructions: 'Check database connectivity and run /api/admin/check-db'
-      }, { status: 503 });
     }
 
     // Get query parameters for filtering
@@ -124,7 +249,8 @@ export async function POST(request: NextRequest) {
       campaign_name,
       tags,
       priority = 'medium',
-      sales_methodology = 'meddic'
+      sales_methodology = 'meddic',
+      workspace_id: providedWorkspaceId
     } = body
 
     if (!title || !thread_type) {
@@ -132,6 +258,19 @@ export async function POST(request: NextRequest) {
         success: false,
         error: 'Title and thread type are required'
       }, { status: 400 })
+    }
+
+    // Try to resolve workspace but don't fail if it's not available
+    let workspaceId: string | null = null
+    try {
+      workspaceId = await resolveWorkspaceId({
+        id: user.id,
+        email: user.email || undefined,
+        user_metadata: user.user_metadata as Record<string, unknown> | undefined
+      }, providedWorkspaceId)
+    } catch (error) {
+      console.warn('Workspace resolution failed, creating thread without workspace:', error)
+      // Don't fail - just create thread without workspace
     }
 
     // Get user's organization (if any)
@@ -146,7 +285,7 @@ export async function POST(request: NextRequest) {
       if (userOrgs) {
         organizationId = userOrgs.organization_id
       }
-    } catch (orgError) {
+    } catch {
       // Continue without organization - not critical
     }
 
@@ -156,6 +295,7 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         organization_id: organizationId,
+        workspace_id: workspaceId,
         title,
         thread_type,
         prospect_name,

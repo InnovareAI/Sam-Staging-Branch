@@ -7,12 +7,23 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search');
     const category = searchParams.get('category');
+    const workspaceId = searchParams.get('workspace_id');
+
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Workspace ID is required' }, { status: 400 });
+    }
 
     let data;
     if (search) {
-      data = await supabaseKnowledge.search(search, category || undefined);
+      data = await supabaseKnowledge.search(search, {
+        category: category || undefined,
+        workspaceId
+      });
     } else {
-      data = await supabaseKnowledge.getByCategory(category || undefined);
+      data = await supabaseKnowledge.getByCategory({
+        category: category || undefined,
+        workspaceId
+      });
     }
 
     return NextResponse.json({
@@ -34,16 +45,17 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { category, subcategory, title, content, tags, version = '4.4' } = body;
+    const { workspace_id, category, subcategory, title, content, tags, version = '4.4' } = body;
 
-    if (!category || !title || !content) {
+    if (!workspace_id || !category || !title || !content) {
       return NextResponse.json(
-        { error: 'Category, title, and content are required' },
+        { error: 'Workspace ID, category, title, and content are required' },
         { status: 400 }
       );
     }
 
     const newItem = await supabaseKnowledge.addKnowledgeItem({
+      workspace_id,
       category,
       subcategory,
       title,

@@ -7,7 +7,7 @@ export interface MCPTool {
   description: string
   inputSchema: {
     type: string
-    properties: Record<string, any>
+    properties: Record<string, unknown>
     required?: string[]
   }
 }
@@ -36,7 +36,7 @@ export interface MCPCallToolRequest {
   method: 'tools/call'
   params: {
     name: string
-    arguments?: Record<string, any>
+    arguments?: Record<string, unknown>
   }
 }
 
@@ -52,15 +52,21 @@ export interface MCPCallToolResult {
 
 // Bright Data specific types
 export interface BrightDataMCPConfig {
-  username: string
-  password: string
-  endpoint: string
+  username?: string
+  password?: string
+  endpoint?: string
   port?: number
+  apiToken?: string
+  baseUrl?: string
+  defaultCollectorId?: string
+  defaultWaitSeconds?: number
   organizationId: string
   userId: string
 }
 
 export interface BrightDataProspectRequest {
+  collectorId?: string
+  datasetId?: string
   profileUrls?: string[]
   searchCriteria?: {
     jobTitles: string[]
@@ -71,21 +77,27 @@ export interface BrightDataProspectRequest {
   }
   depth: 'quick' | 'standard' | 'comprehensive'
   maxResults?: number
+  payload?: Record<string, unknown>
+  waitForResultsSeconds?: number
 }
 
 // Apify specific types
 export interface ApifyMCPConfig {
   apiToken: string
+  baseUrl?: string
+  defaultActorId?: string
   organizationId: string
   userId: string
 }
 
 export interface ApifyProspectRequest {
-  searchUrl: string
+  searchUrl?: string
   maxResults?: number
   extractEmails?: boolean
   extractPhones?: boolean
   waitForResults?: boolean
+  actorId?: string
+  input?: Record<string, unknown>
 }
 
 // Google Search specific types
@@ -122,8 +134,7 @@ export interface N8NMCPConfig {
   userId: string
 }
 
-// Apollo specific types
-export interface ApolloMCPConfig {
+export interface ReachInboxMCPConfig {
   apiKey: string
   baseUrl?: string
   organizationId: string
@@ -211,10 +222,10 @@ export interface DatabaseMCPConfig {
 
 export interface DatabaseQueryRequest {
   query: string
-  parameters?: Record<string, any>
+  parameters?: Record<string, unknown>
   table?: string
   operation?: 'select' | 'insert' | 'update' | 'delete' | 'raw'
-  conditions?: Record<string, any>
+  conditions?: Record<string, unknown>
   limit?: number
   offset?: number
 }
