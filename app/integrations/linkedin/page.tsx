@@ -57,43 +57,34 @@ export default function UnipileIntegrationPage() {
     try {
       setError(null)
       
-      console.log('🔍 Checking LinkedIn connections via simplified API...')
+      console.log('🔍 Checking LinkedIn connections via authenticated API...')
       
-      // Use simplified status endpoint that bypasses Supabase auth
-      const response = await fetch('/api/linkedin/status-simple')
+      // Use authenticated endpoint; requires user to be signed in
+      const response = await fetch('/api/unipile/accounts')
       if (response.ok) {
         const data = await response.json()
         console.log('📊 LinkedIn status result:', {
           has_linkedin: data.has_linkedin,
           connection_status: data.connection_status,
-          accounts: data.accounts
+          accounts: (data.accounts || []).length
         })
         
-        if (data.has_linkedin && data.accounts && data.accounts.length > 0) {
+        const unipileAccounts = (data.accounts || []) as UnipileAccount[]
+        if (data.has_linkedin && unipileAccounts.length > 0) {
           console.log('✅ LinkedIn is connected')
-          // Map the accounts to the expected format
-          const mappedAccounts = data.accounts.map((acc: any) => ({
-            id: acc.id,
-            name: acc.name,
-            type: 'LINKEDIN',
-            created_at: acc.created_at,
-            sources: [{ id: 'unipile', status: acc.status }],
-            connection_params: { 
-              im: { 
-                username: acc.email || acc.name,
-                email: acc.email
-              } 
-            }
-          }))
-          setAccounts(mappedAccounts)
+          setAccounts(unipileAccounts)
         } else {
           console.log('❌ No LinkedIn connections found')
           setAccounts([])
         }
         setDuplicates([])
       } else {
+        if (response.status === 401) {
+          throw new Error('Please sign in to access LinkedIn integration. You need to be logged into SAM AI first.')
+        }
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(errorData.error || 'Unable to check LinkedIn connection status. Please try again.')
+        const msg = errorData.error || errorData.debug_info?.error_message || 'Unable to check LinkedIn connection status. Please try again.'
+        throw new Error(msg)
       }
     } catch (error) {
       console.error('Error fetching accounts:', error)
@@ -117,8 +108,8 @@ export default function UnipileIntegrationPage() {
       
       console.log('🔗 Initiating LinkedIn hosted auth connection...')
       
-      // Call our hosted auth endpoint to generate the auth link
-      const response = await fetch('/api/linkedin/hosted-auth-simple', {
+      // Call our hosted auth endpoint to generate the auth link (requires login)
+      const response = await fetch('/api/linkedin/hosted-auth', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -126,8 +117,11 @@ export default function UnipileIntegrationPage() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to generate authentication link')
+        if (response.status === 401) {
+          throw new Error('Please sign in to generate the LinkedIn authentication link.')
+        }
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || errorData.debug_info?.error_message || 'Failed to generate authentication link')
       }
 
       const data = await response.json()
