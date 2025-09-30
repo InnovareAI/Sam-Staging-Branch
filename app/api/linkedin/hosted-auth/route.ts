@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
 // Helper function to make Unipile API calls
@@ -49,18 +49,40 @@ export async function POST(request: NextRequest) {
   try {
     // Authenticate user first
     const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    const { data: { session }, error: authError } = await supabase.auth.getSession()
     
-    if (authError || !session || !session.user) {
+    // Get auth token from cookies
+    const accessToken = cookieStore.get('sb-access-token')?.value
+    const refreshToken = cookieStore.get('sb-refresh-token')?.value
+    
+    if (!accessToken) {
       return NextResponse.json({
         success: false,
         error: 'Authentication required to generate LinkedIn auth link',
         timestamp: new Date().toISOString()
       }, { status: 401 })
     }
-
-    const user = session.user
+    
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      }
+    )
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required to generate LinkedIn auth link',
+        timestamp: new Date().toISOString()
+      }, { status: 401 })
+    }
     console.log(`🔗 Generating hosted auth link for user ${user.email} (${user.id})`)
 
     // Get workspace - try users table first, fall back to workspace_members
