@@ -963,6 +963,11 @@ Use this data to refine the ICP iteratively based on user feedback.`
       systemPrompt += industryExpertise;
     }
 
+    // Add Knowledge Base Building Phase instructions after ICP discovery
+    if (completedDiscoverySession && thread.current_discovery_stage === 'discovery_complete') {
+      systemPrompt += `\n\n📚 KNOWLEDGE BASE BUILDING PHASE\n\nICP Discovery is complete. Now guide the user through building their knowledge base with TWO critical paths:\n\n**PATH 1: LinkedIn Profile Optimization**\n- Ask if they want help optimizing their LinkedIn profile\n- If YES: Request they copy/paste their current LinkedIn "About" section and headline\n- Analyze it and provide specific improvement suggestions for:\n  * Headline optimization for their ICP\n  * About section structure and messaging\n  * Authority positioning\n  * Call-to-action clarity\n- If NO: Move to Path 2\n\n**PATH 2: Expertise & Market Positioning**\nAsk discovery questions to understand:\n1. **Their Unique Positioning**: What makes them different in their market? What's their POV?\n2. **Subject Matter Expertise**: What do they know better than anyone? Where do they have battle scars?\n3. **Thought Leadership**: What do they teach/share? What frameworks have they developed?\n4. **Market Perception**: How do clients describe them? What are they known for?\n5. **Proof Points**: Case studies, results, testimonials that validate their expertise\n\n**HOW TO GUIDE:**\n- Be conversational, not robotic\n- Ask one focused question at a time\n- Build on their previous answers\n- If they paste LinkedIn content, analyze it immediately with specific suggestions\n- Store all insights in knowledge base for campaign messaging\n\n**GOAL:** Build a comprehensive knowledge base that makes all future messaging sound authentic and authoritative.`;
+    }
+
     // Generate AI response
     let aiResponse: string
     

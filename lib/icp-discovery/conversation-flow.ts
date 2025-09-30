@@ -524,7 +524,7 @@ export function getSummaryPrompt(payload: ICPDiscoveryPayload): string {
   const current = payload.current_solution?.approach || 'Unknown';
   const gap = payload.current_solution?.why_fails || payload.current_solution?.gap || 'Not captured';
   const expectation = payload.solution_expectations?.primary || 'Not captured';
-  const language = payload.customer_language?.slice(0, 3).map(item => `• "${item}"`).join('\n') || '• No customer language recorded';
+  const language = payload.customer_language?.slice(0, 3).map(item => `• \"${item}\"`).join('\n') || '• No customer language recorded';
   const objections = payload.objections?.slice(0, 3).map(obj => `• ${obj.objection} → ${obj.response || obj.real_reason || 'Need response'}`).join('\n') || '• Not captured';
   const frustrations = payload.frustrations?.daily?.slice(0, 2).map(item => `• ${item}`).join('\n') || '• Not captured';
   const breakdown = payload.frustrations?.breakdown_scenario ? `• ${payload.frustrations.breakdown_scenario}` : '• Not captured';
@@ -536,7 +536,7 @@ export function getSummaryPrompt(payload: ICPDiscoveryPayload): string {
     ? payload.past_failures.slice(0, 1).map(f => `• ${f.failure} (impact: ${f.impact})`).join('\n')
     : '• None noted';
 
-  return `Here’s what I’ve captured so far:\n\n**WHO:** ${role} at ${industry}\n**OBJECTIVE:** ${objective}\n**FOCUS:** ${focus}\n**PAIN:** ${pain}\n**CURRENT SOLUTION:** ${current} (fails because ${gap})\n**EXPECTATION:** ${expectation}\n\n**HOW THEY TALK ABOUT IT:**\n${language}\n\n**ROADBLOCKS WE MUST ADDRESS:**\n${objections}\n\n**DAILY FRUSTRATIONS:**\n${frustrations}\n\n**BREAKDOWN NIGHTMARE:**\n${breakdown}\n\n**FEARS:**\n${fearLines}\n\n**IMPLICATIONS:**\n${implicationLines}\n\n**PAST DISAPPOINTMENTS (skepticism: ${skepticism}):**\n${disappointments}\n\n**PAST FAILURES:**\n${failureLines}\n\nDoes this nail everything, or should we adjust before I move into the sequence?`;
+  return `Perfect! Here's your ICP foundation:\n\n**WHO:** ${role} at ${industry}\n**TOP PAIN:** ${pain}\n**WHAT THEY EXPECT:** ${expectation}\n**HOW THEY TALK:** ${language}\n\n✅ ICP Discovery Complete!\n\nNow let's build your knowledge base so I can craft messaging that sounds exactly like you.\n\n**Two critical areas:**\n\n1️⃣ **LinkedIn Profile Optimization**\nYour profile is often the first thing prospects see. Want me to review it and suggest improvements?\n\nIf yes: Copy/paste your current LinkedIn "About" section and headline.\nIf no: We'll skip to positioning questions.\n\n2️⃣ **Your Expertise & Market Position**\nI need to understand what makes you a subject matter expert so messaging reflects your unique POV.\n\nWhich would you like to tackle first—LinkedIn profile review or positioning questions?`;
 }
 
 function buildRoadblockSummary(payload: ICPDiscoveryPayload): string {
