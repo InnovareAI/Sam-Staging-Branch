@@ -75,6 +75,7 @@ export async function PATCH(
       'prospect_name',
       'prospect_company',
       'prospect_linkedin_url',
+      'campaign_id',
       'campaign_name',
       'tags',
       'priority',

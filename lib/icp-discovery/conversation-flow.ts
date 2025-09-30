@@ -465,10 +465,10 @@ export function handleDiscoveryAnswer(answer: string, session: ICPDiscoverySessi
 
   const prompts: Record<DiscoveryQuestionId, string> = {
     basic_icp: '',
-    objectives: `Got it. Now think about their business objectives. What are the top three things they’re trying to achieve right now? List them in order of importance.`,
-    objective_urgency: `You said their #1 objective is "${payload.objectives?.[0]?.description || 'that objective'}". How urgent is this?\nA) They’re doing okay but want to improve\nB) They’re struggling and need to fix it urgently\nC) They know it matters but keep putting it off`,
-    focus_areas: `Let’s drop into their day-to-day world. What are they actually spending their time on each week? List the top three areas that eat their calendar.`,
-    focus_positioning: `Does what you do help them with those focus areas directly, or does it remove other work so they can focus on them?`,
+    objectives: `Got it. Now think about their business objectives. What are the top three things they're trying to achieve right now? List them in order of importance.`,
+    objective_urgency: `You said their #1 objective is "${payload.objectives?.[0]?.description || 'that objective'}". How urgent is this?\nA) They're doing okay but want to improve\nB) They're struggling and need to fix it urgently\nC) They know it matters but keep putting it off`,
+    focus_areas: `Let's drop into their day-to-day world. What are they actually spending their time on each week? List the top three areas that eat their calendar.`,
+    focus_positioning: `Does what you do help them with those focus areas directly, or does it remove other work so they can focus on them?\n\n💡 **Quick tip:** If you have documents with this info (pitch decks, ICP docs, customer research, emails, etc.), you can click the 📎 paperclip icon to upload them. I'll extract and structure everything for you—much faster than typing it all out!`,
     long_term_desire: `Zoom out—what do they secretly want long-term? The ambition they think about at 11pm.`,
     long_term_alignment: `Does your solution help them reach that ambition directly, act as a stepping stone, or mostly solve a tactical problem? (A/B/C)`,
     pain_points: `Let’s capture what’s frustrating them. List the top three pains they complain about, starting with the one that keeps them up at night.`,
@@ -536,7 +536,7 @@ export function getSummaryPrompt(payload: ICPDiscoveryPayload): string {
     ? payload.past_failures.slice(0, 1).map(f => `• ${f.failure} (impact: ${f.impact})`).join('\n')
     : '• None noted';
 
-  return `Perfect! Here's your ICP foundation:\n\n**WHO:** ${role} at ${industry}\n**TOP PAIN:** ${pain}\n**WHAT THEY EXPECT:** ${expectation}\n**HOW THEY TALK:** ${language}\n\n✅ ICP Discovery Complete!\n\nNow let's build your knowledge base so I can craft messaging that sounds exactly like you.\n\n**Two critical areas:**\n\n1️⃣ **LinkedIn Profile Optimization**\nYour profile is often the first thing prospects see. Want me to review it and suggest improvements?\n\nIf yes: Copy/paste your current LinkedIn "About" section and headline.\nIf no: We'll skip to positioning questions.\n\n2️⃣ **Your Expertise & Market Position**\nI need to understand what makes you a subject matter expert so messaging reflects your unique POV.\n\nWhich would you like to tackle first—LinkedIn profile review or positioning questions?`;
+  return `Perfect! Here's your ICP foundation:\n\n**WHO:** ${role} at ${industry}\n**TOP PAIN:** ${pain}\n**WHAT THEY EXPECT:** ${expectation}\n**HOW THEY TALK:** ${language}\n\n✅ ICP Discovery Complete!\n\nNow let's build your positioning and expertise foundation. This becomes your messaging DNA for every campaign.\n\n💡 **Pro tip:** Got case studies, testimonials, pitch decks, or positioning docs? Upload them using the 📎 paperclip button—I'll extract your proof points, messaging, and expertise automatically.\n\nFirst question: What makes you different in ${industry || 'your market'}? What's your unique angle or POV that sets you apart?`;
 }
 
 function buildRoadblockSummary(payload: ICPDiscoveryPayload): string {

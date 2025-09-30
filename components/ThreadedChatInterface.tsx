@@ -51,6 +51,11 @@ export default function ThreadedChatInterface() {
   const [showMemorySnapshots, setShowMemorySnapshots] = useState(false)
   const [memorySnapshots, setMemorySnapshots] = useState<any[]>([])
   const [isLoadingMemory, setIsLoadingMemory] = useState(false)
+  const [isUploadingFile, setIsUploadingFile] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [pendingDocumentData, setPendingDocumentData] = useState<any>(null)
+  const [showDocumentApproval, setShowDocumentApproval] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
 
   // Load threads on mount
@@ -165,10 +170,217 @@ export default function ThreadedChatInterface() {
     }
   }
 
+  const handleFileUpload = async (file: File) => {
+    if (!currentThread || isUploadingFile) return
+
+    setIsUploadingFile(true)
+    try {
+      // Get workspace ID
+      const response = await fetch('/api/sam/threads/' + currentThread.id)
+      const threadData = await response.json()
+      const workspaceId = threadData.thread?.workspace_id
+
+      if (!workspaceId) {
+        throw new Error('No workspace context available')
+      }
+
+      // Show processing message
+      const processingMessage = {
+        id: `temp-${Date.now()}-processing`,
+        role: 'assistant' as const,
+        content: `📄 **Processing ${file.name}...**\n\nI'm analyzing your document and extracting structured information. This will take a moment.`,
+        created_at: new Date().toISOString(),
+      }
+      setMessages(prev => [...prev, processingMessage])
+
+      // Upload document to knowledge base
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('section', 'general')
+      formData.append('uploadMode', 'file')
+
+      const uploadResponse = await fetch('/api/knowledge-base/upload-document', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!uploadResponse.ok) {
+        throw new Error('File upload failed')
+      }
+
+      const uploadResult = await uploadResponse.json()
+
+      // Process document with AI to extract tags and insights
+      const processResponse = await fetch('/api/knowledge-base/process-document', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          documentId: uploadResult.documentId,
+          content: uploadResult.content,
+          section: 'general',
+          filename: file.name
+        })
+      })
+
+      if (!processResponse.ok) {
+        throw new Error('Document processing failed')
+      }
+
+      const processResult = await processResponse.json()
+
+      // Store pending data for user confirmation
+      setPendingDocumentData({
+        file,
+        workspaceId,
+        uploadResult,
+        processResult,
+        documentId: uploadResult.documentId
+      })
+
+      // Create confirmation message with extracted information
+      const confirmationMessage = {
+        id: `temp-${Date.now()}-confirmation`,
+        role: 'assistant' as const,
+        content: `✅ **Document Analysis Complete!**\n\n📄 **File:** ${file.name}\n📊 **Size:** ${(file.size / 1024).toFixed(2)} KB\n\n**🔍 What I Found:**\n\n**Summary:**\n${processResult.analysis?.summary || 'Content extracted successfully'}\n\n**Key Insights:**\n${processResult.analysis?.key_insights?.slice(0, 5).map((insight: string, i: number) => `${i + 1}. ${insight}`).join('\n') || '• Content processed successfully'}\n\n**📝 Extracted Information:**\n• **Tags:** ${processResult.analysis?.tags?.slice(0, 8).join(', ') || 'General'}\n• **Categories:** ${processResult.analysis?.categories?.join(', ') || 'General'}\n• **Content Type:** ${processResult.analysis?.content_type || 'Document'}\n• **Business Value:** ${processResult.analysis?.metadata?.business_value || 'Medium'}\n\n**🎯 Detected Topics:**\n${processResult.analysis?.metadata?.topics?.slice(0, 5).map((topic: string) => `• ${topic}`).join('\n') || '• General information'}\n\n---\n\n**Please review this information and confirm:**\n\n✅ **Does this look accurate?**\n\n• Reply **"Yes, save it"** or **"Confirm"** to add this to your knowledge base\n• Reply **"Edit tags"** or **"Change category"** if you want to modify the classification\n• Reply **"Cancel"** or **"Discard"** if this information isn't useful\n\nOnce confirmed, I'll:\n1. Vectorize the content for semantic search\n2. Store it in your knowledge base\n3. Make it available for all our conversations\n4. Use it to enhance campaign messaging and research`,
+        created_at: new Date().toISOString(),
+        has_prospect_intelligence: true,
+        prospect_intelligence_data: {
+          document: uploadResult,
+          analysis: processResult.analysis,
+          pending_confirmation: true
+        }
+      }
+
+      setMessages(prev => [...prev.filter(m => m.id !== processingMessage.id), confirmationMessage])
+      setShowDocumentApproval(true)
+
+    } catch (error) {
+      console.error('File upload error:', error)
+      const errorMessage = {
+        id: `temp-${Date.now()}-error`,
+        role: 'assistant' as const,
+        content: `❌ **Upload Failed**\n\nSorry, I couldn't process ${file.name}. ${error instanceof Error ? error.message : 'Please try again or contact support.'}`,
+        created_at: new Date().toISOString(),
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsUploadingFile(false)
+      setSelectedFile(null)
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setSelectedFile(file)
+      handleFileUpload(file)
+    }
+  }
+
+  const handleDocumentConfirmation = async () => {
+    if (!pendingDocumentData || !currentThread) return
+
+    setIsSending(true)
+    try {
+      const { workspaceId, uploadResult, processResult, documentId, file } = pendingDocumentData
+
+      // Vectorize and store in RAG system
+      const vectorizeResponse = await fetch('/api/knowledge-base/vectorize-content', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          workspaceId,
+          documentId: uploadResult.documentId,
+          content: uploadResult.content,
+          section: 'general',
+          metadata: {
+            filename: file.name,
+            tags: processResult.analysis?.tags || [],
+            categories: processResult.analysis?.categories || [],
+            summary: processResult.analysis?.summary || ''
+          }
+        })
+      })
+
+      const vectorizeResult = vectorizeResponse.ok ? await vectorizeResponse.json() : null
+
+      // Create success message
+      const successMessage = {
+        id: `temp-${Date.now()}-success`,
+        role: 'assistant' as const,
+        content: `🎉 **Knowledge Base Updated!**\n\n✅ ${file.name} has been successfully added to your knowledge base.\n\n**What's Available Now:**\n• ${vectorizeResult?.chunks_created || 0} searchable chunks created\n• Indexed with ${processResult.analysis?.tags?.length || 0} tags\n• Available for semantic search\n• Ready for use in all conversations\n• Can be referenced in campaign messaging\n\n**Next Steps:**\n• Ask me questions about this document\n• Use it to build ICPs or personas\n• Reference it when creating campaigns\n• Let me pull insights for prospect research\n\nWhat would you like to do with this information?`,
+        created_at: new Date().toISOString(),
+        has_prospect_intelligence: true,
+        prospect_intelligence_data: {
+          document: uploadResult,
+          analysis: processResult.analysis,
+          vectorization: vectorizeResult,
+          confirmed: true
+        }
+      }
+
+      setMessages(prev => [...prev, successMessage])
+
+      // Update thread tags
+      await updateThreadContext({
+        tags: [...(currentThread.tags || []), 'document-upload', 'knowledge-base'],
+      })
+
+      // Clear pending data
+      setPendingDocumentData(null)
+      setShowDocumentApproval(false)
+
+    } catch (error) {
+      console.error('Document confirmation error:', error)
+      const errorMessage = {
+        id: `temp-${Date.now()}-error`,
+        role: 'assistant' as const,
+        content: `❌ **Failed to save document**\n\nThere was an error saving to the knowledge base. ${error instanceof Error ? error.message : 'Please try again.'}`,
+        created_at: new Date().toISOString(),
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  const handleDocumentRejection = () => {
+    if (!pendingDocumentData) return
+
+    const rejectionMessage = {
+      id: `temp-${Date.now()}-rejected`,
+      role: 'assistant' as const,
+      content: `❌ **Document Discarded**\n\nI've removed ${pendingDocumentData.file.name} and won't add it to your knowledge base.\n\nFeel free to upload a different document or let me know if you need any help!`,
+      created_at: new Date().toISOString(),
+    }
+
+    setMessages(prev => [...prev, rejectionMessage])
+    setPendingDocumentData(null)
+    setShowDocumentApproval(false)
+  }
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || !currentThread || isSending) return
 
     const trimmedInput = inputMessage.trim()
+
+    // Check for document confirmation commands
+    if (showDocumentApproval && pendingDocumentData) {
+      const lowerInput = trimmedInput.toLowerCase()
+      if (lowerInput.includes('yes') || lowerInput.includes('confirm') || lowerInput.includes('save it') || lowerInput.includes('looks good') || lowerInput === 'ok') {
+        setInputMessage('')
+        await handleDocumentConfirmation()
+        return
+      } else if (lowerInput.includes('cancel') || lowerInput.includes('discard') || lowerInput.includes('no') || lowerInput.includes('reject')) {
+        setInputMessage('')
+        handleDocumentRejection()
+        return
+      }
+    }
 
     // Check for template library save commands
     if (await handleTemplateLibraryCommands(trimmedInput)) {
@@ -1392,8 +1604,24 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                 />
                 
                 <div className="flex items-end bg-gray-600 rounded-lg px-4 py-2 mt-6">
-                  <button className="text-gray-400 hover:text-gray-200 transition-colors p-1 mr-2">
-                    <Paperclip size={18} />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    onChange={handleFileSelect}
+                    accept=".pdf,.doc,.docx,.txt,.csv,.json,.md,.ppt,.pptx,.xls,.xlsx"
+                    className="hidden"
+                  />
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingFile}
+                    className="text-gray-400 hover:text-gray-200 disabled:text-gray-600 disabled:cursor-not-allowed transition-colors p-1 mr-2"
+                    title="Upload document to knowledge base"
+                  >
+                    {isUploadingFile ? (
+                      <div className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Paperclip size={18} />
+                    )}
                   </button>
                   <textarea
                     value={inputMessage}
