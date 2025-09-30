@@ -157,16 +157,10 @@ function LinkedInIntegrationContent() {
       setLoading(true);
       setMessage('Generating secure authentication link...');
       
-      const response = await fetch('/api/unipile/hosted-auth', {
+      const response = await fetch('/api/linkedin/hosted-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          provider: 'LINKEDIN',
-          redirect_url: window.location.hostname === 'localhost' 
-            ? `${window.location.origin}/api/unipile/hosted-auth/callback`
-            : `https://app.meet-sam.com/api/unipile/hosted-auth/callback`
-        })
+        credentials: 'include'
       });
       
       const data = await response.json();
