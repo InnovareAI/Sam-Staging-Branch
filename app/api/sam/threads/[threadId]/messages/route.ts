@@ -27,6 +27,7 @@ import {
   supabaseKnowledge,
   type KnowledgeBaseICP,
 } from '@/lib/supabase-knowledge'
+import { INDUSTRY_BLUEPRINTS } from '@/lib/templates/industry-blueprints'
 
 // Helper function to call OpenRouter API
 async function callOpenRouterAPI(messages: any[], systemPrompt: string) {
@@ -707,6 +708,27 @@ export async function POST(
       ? activeDiscovery
       : null
 
+    // Load industry blueprint knowledge when discovery is complete
+    let industryExpertise: string | null = null
+    if (completedDiscoverySession?.discovery_payload) {
+      const payload = completedDiscoverySession.discovery_payload
+      const industry = payload.industry || payload.targetMarket?.industry
+      
+      if (industry) {
+        // Try to match industry to blueprint
+        const industryKey = Object.keys(INDUSTRY_BLUEPRINTS).find(key => {
+          const blueprint = INDUSTRY_BLUEPRINTS[key]
+          return industry.toLowerCase().includes(blueprint.industry.toLowerCase()) ||
+                 blueprint.industry.toLowerCase().includes(industry.toLowerCase())
+        })
+        
+        if (industryKey) {
+          const blueprint = INDUSTRY_BLUEPRINTS[industryKey]
+          industryExpertise = `\n\n🎯 INDUSTRY SUBJECT MATTER EXPERT MODE ACTIVATED\n\nYou are now a specialized expert in **${blueprint.industry}**. Use this deep industry knowledge in all responses:\n\n**INDUSTRY INSIGHTS:**\n- Hook: ${blueprint.hook}\n- Why It Matters: ${blueprint.whyItMatters}\n- Solution Approach: ${blueprint.solutionOneLiner}\n- Differentiation: ${blueprint.differentiation}\n\n**BUYER PERSONAS:**\n${blueprint.personas.map((p, i) => `${i + 1}. **${p.titleVariations.join('/')}**: ${p.description}\n   Pain Points: ${p.painPoints.join('; ')}\n   Desired Outcomes: ${p.outcomes.join('; ')}\n   Tone: ${p.tone}`).join('\n\n')}\n\n**COMMON LANGUAGE PATTERNS:**\n${blueprint.commonLanguage.map((lang, i) => `${i + 1}. "${lang}"`).join('\n')}\n\n**SOCIAL PROOF TEMPLATE:**\n${blueprint.proof.label}: ${blueprint.proof.before} → ${blueprint.proof.after}\nMetrics: ${blueprint.proof.metrics.join(', ')}\n\n${blueprint.freeResource ? `**VALUABLE RESOURCE:**\n${blueprint.freeResource.title}: ${blueprint.freeResource.description}\n` : ''}\n**CRITICAL:** Use this industry expertise to:\n1. Speak their language naturally\n2. Reference industry-specific pain points\n3. Provide relevant examples and proof points\n4. Suggest messaging that resonates with this market\n5. Identify the right personas and decision-makers`
+        }
+      }
+    }
+
     const sequenceIntent = detectSequenceIntent(content)
 
     if (sequenceIntent) {
@@ -934,6 +956,11 @@ Use this data to refine the ICP iteratively based on user feedback.`
 
     if (structuredKnowledge?.hasData && structuredKnowledge.context) {
       systemPrompt += `\n\nWORKSPACE STRUCTURED DATA:\n${structuredKnowledge.context}\n\nThese entries summarize the current ICPs, products, competitors, and personas. Use them as the source of truth before requesting new uploads.`;
+    }
+
+    // Inject industry expertise after discovery completion
+    if (industryExpertise) {
+      systemPrompt += industryExpertise;
     }
 
     // Generate AI response
