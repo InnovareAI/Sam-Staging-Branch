@@ -219,21 +219,31 @@ async function processLinkedInCallback(
       return NextResponse.json({ success: false, error: 'Failed to fetch account details' }, { status: 500 })
     }
 
-    // Check for existing accounts (using integrations table)
+    // Check for existing accounts in BOTH tables (integrations and user_unipile_accounts)
     const { data: existingAccounts } = await supabase
       .from('integrations')
       .select('id, credentials, created_at')
       .eq('user_id', resolvedUserId)
       .eq('provider', 'linkedin')
+    
+    const { data: existingUnipileAccounts } = await supabase
+      .from('user_unipile_accounts')
+      .select('unipile_account_id, account_email, linkedin_public_identifier')
+      .eq('user_id', resolvedUserId)
+      .eq('platform', 'LINKEDIN')
 
-    console.log(`🔍 Found ${existingAccounts?.length || 0} existing LinkedIn accounts in workspace`)
+    console.log(`🔍 Found ${existingAccounts?.length || 0} accounts in integrations, ${existingUnipileAccounts?.length || 0} in user_unipile_accounts`)
     
     // CRITICAL: Check if this exact account already exists to prevent duplicates
-    const accountAlreadyExists = existingAccounts?.some(
+    const accountAlreadyExistsInIntegrations = existingAccounts?.some(
       acc => acc.credentials?.unipile_account_id === account_id
     )
     
-    if (accountAlreadyExists) {
+    const accountAlreadyExistsInUnipile = existingUnipileAccounts?.some(
+      acc => acc.unipile_account_id === account_id
+    )
+    
+    if (accountAlreadyExistsInIntegrations || accountAlreadyExistsInUnipile) {
       console.log(`⚠️ Account ${account_id} already exists in database - skipping duplicate insert`)
       return NextResponse.json({ 
         success: true, 
@@ -248,13 +258,20 @@ async function processLinkedInCallback(
     const linkedInEmail = accountDetails.connection_params?.im?.email
     const linkedInIdentifier = accountDetails.connection_params?.im?.public_identifier
     
-    const sameProfileExists = existingAccounts?.some(acc => {
+    const sameProfileExistsInIntegrations = existingAccounts?.some(acc => {
       const existingEmail = acc.credentials?.account_email
       const existingIdentifier = acc.credentials?.linkedin_public_identifier
       
       return (linkedInEmail && existingEmail && linkedInEmail === existingEmail) ||
              (linkedInIdentifier && existingIdentifier && linkedInIdentifier === existingIdentifier)
     })
+    
+    const sameProfileExistsInUnipile = existingUnipileAccounts?.some(acc => {
+      return (linkedInEmail && acc.account_email && linkedInEmail === acc.account_email) ||
+             (linkedInIdentifier && acc.linkedin_public_identifier && linkedInIdentifier === acc.linkedin_public_identifier)
+    })
+    
+    const sameProfileExists = sameProfileExistsInIntegrations || sameProfileExistsInUnipile
     
     if (sameProfileExists) {
       console.log(`⚠️ LinkedIn profile already connected with different Unipile account - cleaning up duplicate`)
@@ -334,6 +351,36 @@ async function processLinkedInCallback(
     }
 
     console.log(`✅ Successfully stored LinkedIn account in workspace ${resolvedWorkspaceId}`)
+    
+    // ALSO store in user_unipile_accounts table for compatibility with /api/unipile/accounts endpoint
+    try {
+      const { error: unipileAccountError } = await supabase
+        .from('user_unipile_accounts')
+        .upsert({
+          user_id: resolvedUserId,
+          unipile_account_id: account_id,
+          platform: 'LINKEDIN',
+          account_name: accountName,
+          account_email: accountDetails.connection_params?.im?.email,
+          linkedin_public_identifier: accountDetails.connection_params?.im?.public_identifier,
+          linkedin_profile_url: accountDetails.connection_params?.im?.profile_url || 
+            (accountDetails.connection_params?.im?.public_identifier ? 
+              `https://linkedin.com/in/${accountDetails.connection_params.im.public_identifier}` : null),
+          connection_status: 'active',
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'unipile_account_id',
+          ignoreDuplicates: false
+        })
+      
+      if (unipileAccountError) {
+        console.error('⚠️ Failed to store in user_unipile_accounts (non-critical):', unipileAccountError)
+      } else {
+        console.log('✅ Also stored in user_unipile_accounts table for compatibility')
+      }
+    } catch (unipileTableError) {
+      console.error('⚠️ user_unipile_accounts table might not exist (non-critical):', unipileTableError)
+    }
 
     // ENHANCED: Assign Bright Data IP based on LinkedIn profile location
     try {

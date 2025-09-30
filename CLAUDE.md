@@ -498,6 +498,93 @@ This documentation provides the complete strategic framework for building SAM AI
   - **Date**: 9/30/2025
 - **Modified**: `/docs/knowledge-base/technical-implementation-guide.md`
   - **Date**: 9/30/2025
+
+### 🗄️ Database Schema Changes
+- **Modified**: `/supabase/migrations/20250929110000_create_icp_discovery_sessions.sql`
+  - **Date**: 9/29/2025
+- **Modified**: `/supabase/migrations/20250930120000_align_knowledge_base_schema.sql`
+  - **Date**: 9/30/2025
+- **Modified**: `/supabase/migrations/20250930121500_force_rls_on_kb_tables.sql`
+  - **Date**: 9/30/2025
+- **Modified**: `/supabase/migrations/20250930123000_add_kb_rls_policies.sql`
+  - **Date**: 9/30/2025
+- **Modified**: `/supabase/migrations/20250930140000_create_structured_kb_tables.sql`
+  - **Date**: 9/30/2025
+- **Modified**: `/supabase/migrations/20250930_auto_workspace_setup.sql`
+  - **Date**: 9/30/2025
+- **Modified**: `/supabase/migrations/20250930_fix_sam_conversation_messages.sql`
+  - **Date**: 9/30/2025
+- **Modified**: `/supabase/migrations/add_model_used_column.sql`
+  - **Date**: 9/30/2025
+- **Modified**: `/supabase/migrations/create_sam_icp_discovery_sessions.sql`
+  - **Date**: 9/30/2025
+
+
+---
+
+## 🔄 RECENT UPDATES (September 30, 2025)
+
+**Auto-Generated Update**: September 30, 2025
+
+### ⚙️ General Updates
+- **Modified**: `/app/api/admin/users/reset-password/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/auth/magic-link/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/auth/reset-password/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/knowledge/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/knowledge/upload/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/knowledge-base/competitors/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/knowledge-base/data/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/knowledge-base/icps/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/knowledge-base/personas/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/knowledge-base/products/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/linkedin/callback/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/linkedin/hosted-auth/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/linkedin/status/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/sam/chat/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/sam/chat-simple/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/sam/data-sources/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/sam/extract-knowledge/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/sam/icp-discovery/route.ts`
+  - **Date**: 9/29/2025
+- **Modified**: `/app/api/sam/threads/[threadId]/messages/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/sam/threads/[threadId]/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/sam/threads/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/unipile/accounts/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/app/api/unipile/hosted-auth/route.ts`
+  - **Date**: 9/30/2025
+- **Modified**: `/docs/ICP_DISCOVERY_FLOW.md`
+  - **Date**: 9/29/2025
+- **Modified**: `/docs/email/POSTMARK_ORGANIZATION_ROUTING.md`
+  - **Date**: 9/30/2025
+- **Modified**: `/docs/knowledge-base/STRUCTURED_KB_MIGRATION_GUIDE.md`
+  - **Date**: 9/30/2025
+- **Modified**: `/docs/knowledge-base/migration-plan.md`
+  - **Date**: 9/30/2025
+- **Modified**: `/docs/knowledge-base/sam-guided-kb-onboarding.md`
+  - **Date**: 9/30/2025
+- **Modified**: `/docs/knowledge-base/technical-implementation-guide.md`
+  - **Date**: 9/30/2025
 - **Modified**: `/docs/sam-ai/SAM_AI_MCP_INFRASTRUCTURE_STATUS.md`
   - **Date**: 9/29/2025
 
