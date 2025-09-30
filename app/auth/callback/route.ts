@@ -71,12 +71,12 @@ export async function GET(request: NextRequest) {
           // Check if user already has a workspace
           const { data: existingUser, error: userCheckError } = await supabaseAdmin
             .from('users')
-            .select('default_workspace_id')
+            .select('current_workspace_id')
             .eq('id', data.user.id)
             .single();
 
           // If user doesn't have a workspace, create one automatically
-          if (!userCheckError && existingUser && !existingUser.default_workspace_id) {
+          if (!userCheckError && existingUser && !existingUser.current_workspace_id) {
             console.log('Creating default workspace for new user:', data.user.email);
             
             // Check if there's an InnovareAI workspace to add them to
@@ -100,7 +100,6 @@ export async function GET(request: NextRequest) {
               await supabaseAdmin
                 .from('users')
                 .update({
-                  default_workspace_id: innovareWorkspace.id,
                   current_workspace_id: innovareWorkspace.id,
                   updated_at: new Date().toISOString()
                 })
@@ -134,11 +133,10 @@ export async function GET(request: NextRequest) {
                     role: 'owner'
                   });
 
-                // Update user with default workspace
+                // Update user with current workspace
                 await supabaseAdmin
                   .from('users')
                   .update({
-                    default_workspace_id: newWorkspace.id,
                     current_workspace_id: newWorkspace.id,
                     updated_at: new Date().toISOString()
                   })
