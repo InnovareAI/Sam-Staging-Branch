@@ -146,7 +146,7 @@ export default function UnipileIntegrationPage() {
       console.log('🔗 Initiating LinkedIn hosted auth connection...')
       
       // Call our hosted auth endpoint to generate the auth link
-      const response = await fetch('/api/linkedin/hosted-auth', {
+      const response = await fetch('/api/linkedin/hosted-auth-simple', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
