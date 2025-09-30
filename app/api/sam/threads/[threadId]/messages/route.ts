@@ -113,8 +113,8 @@ function getMockSamResponse(messages: any[]): string {
     return "I can line up competitor intel and positioning. Which rival or account should we dissect first?";
   }
   
-  // Default response - Stage-3 consultant intro
-  return "Hello! I'm Sam, your AI GTM consultant and outreach strategist.\n\nI help you build a go-to-market intelligence system in about 25 minutes, then use it to generate high-performing campaigns instantly.\n\nThink of this as building your sales playbook once, then getting campaigns on demand forever.\n\nWhat's your name?";
+  // Default response - 7-Step Process Introduction
+  return "Welcome! I'm Sam, your AI GTM consultant and campaign strategist.\n\nHere's how we'll work together:\n\n**📍 STEP 1: Define Your Target Market & ICP**\nWe'll identify your ideal customer profile—who they are, what they care about, and how they talk about their problems. Once I understand your market, I become an expert in your niche.\n\n**🎯 STEP 2: Map Your Expertise & Unique Value**\nWe'll discuss your offerings, your differentiation, and what makes you uniquely positioned to help this market.\n\n**📱 STEP 3: Review Your Content Strategy**\nWe'll look at how prospects currently see you—your LinkedIn presence, thought leadership, and positioning—because this is how they evaluate you before engaging.\n\n**👥 STEP 4: Build Your Prospect List**\nI'll help you identify and research the right prospects who match your ICP and are ready for outreach.\n\n**✉️ STEP 5: Create Messaging Sequence with A/B Testing**\nWe'll craft personalized messaging sequences and set up A/B tests to optimize performance from day one.\n\n**💡 STEP 6: Subject Matter Expert Content Suggestions**\nI'll suggest thought leadership topics and content that position you as an industry expert and make you stand out.\n\n**🚀 STEP 7: Launch Your First Campaign**\nWe'll launch your campaign with full tracking, performance monitoring, and continuous optimization.\n\n---\n\n**Let's start with Step 1.**\n\nGive me a one-sentence description of your ideal customer. Include:\n- Role/title (e.g. VP Sales, Founder)\n- Industry (e.g. FinTech, Manufacturing)\n- Company stage/size (e.g. Series A, 50-200 employees)";
 }
 
 const supabaseAdmin = createSupabaseAdminClient(
@@ -980,28 +980,54 @@ Use this data to refine the ICP iteratively based on user feedback.`
     
     // For first message, let AI respond naturally with personality
     if (conversationHistory.length === 0 || (conversationHistory.length === 1 && conversationHistory[0].role === 'user')) {
-      console.log('✅ First message - using AI for natural greeting');
-      // Add special instruction for first greeting - v5.2 Standard Opening
+      console.log('✅ First message - using AI for natural 7-step greeting');
+      // Add special instruction for first greeting - v6.0 7-Step Process Introduction
       systemPrompt += `\n\nIMPORTANT: This is the FIRST message in this conversation.
 
-**OPENING MESSAGE (v5.2 Standard):**
-Use this exact opening, then adapt based on their response:
+**OPENING MESSAGE (v6.0 - 7-Step Process Introduction):**
+Use this exact opening:
 
-"Hello! I'm Sam, your AI GTM consultant and outreach strategist.
+"Welcome! I'm Sam, your AI GTM consultant and campaign strategist.
 
-I help you build a go-to-market intelligence system in about 25 minutes, then use it to generate high-performing campaigns instantly.
+Here's how we'll work together:
 
-Think of this as building your sales playbook once, then getting campaigns on demand forever.
+**📍 STEP 1: Define Your Target Market & ICP**
+We'll identify your ideal customer profile—who they are, what they care about, and how they talk about their problems. Once I understand your market, I become an expert in your niche.
 
-What's your name?"
+**🎯 STEP 2: Map Your Expertise & Unique Value**
+We'll discuss your offerings, your differentiation, and what makes you uniquely positioned to help this market.
+
+**📱 STEP 3: Review Your Content Strategy**
+We'll look at how prospects currently see you—your LinkedIn presence, thought leadership, and positioning—because this is how they evaluate you before engaging.
+
+**👥 STEP 4: Build Your Prospect List**
+I'll help you identify and research the right prospects who match your ICP and are ready for outreach.
+
+**✉️ STEP 5: Create Messaging Sequence with A/B Testing**
+We'll craft personalized messaging sequences and set up A/B tests to optimize performance from day one.
+
+**💡 STEP 6: Subject Matter Expert Content Suggestions**
+I'll suggest thought leadership topics and content that position you as an industry expert and make you stand out.
+
+**🚀 STEP 7: Launch Your First Campaign**
+We'll launch your campaign with full tracking, performance monitoring, and continuous optimization.
+
+---
+
+**Let's start with Step 1.**
+
+Give me a one-sentence description of your ideal customer. Include:
+- Role/title (e.g. VP Sales, Founder)
+- Industry (e.g. FinTech, Manufacturing)
+- Company stage/size (e.g. Series A, 50-200 employees)"
 
 **AFTER THEY RESPOND:**
-- If they give their name → Use it and explain the discovery process
-- If they ask "how does this work?" → Explain the 25-min KB building process
-- If they want something specific → Be flexible and help with that
-- If skeptical → Show value ("This becomes your source of truth for all outreach")
+- Acknowledge their input naturally
+- Begin the ICP discovery process
+- Reference relevant step numbers as you progress
+- Keep responses conversational and focused
 
-Keep responses conversational, max 6 lines, 2 paragraphs.`;
+Keep responses conversational, max 6 lines, 2 paragraphs unless providing structured information.`;
     }
     
     // Always use AI for responses (even first message) to allow natural conversation
