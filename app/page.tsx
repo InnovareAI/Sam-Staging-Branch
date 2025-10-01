@@ -4814,12 +4814,7 @@ export default function Page() {
                         </a>
                       </div>
                     )
-                  ) : (
-                      <a href="/linkedin-integration" className="text-blue-400 hover:text-blue-300 underline">
-                        Connect a LinkedIn account
-                      </a>
-                    </div>
-                  ) : (
+) : (
                     <div className="space-y-4">
                       <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
                         <div className="flex items-start space-x-3">

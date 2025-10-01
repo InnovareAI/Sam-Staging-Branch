@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { AutoIPAssignmentService } from '@/lib/services/auto-ip-assignment'
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,12 +27,65 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch proxy preferences' }, { status: 500 })
     }
 
-    console.log('✅ Proxy preferences:', proxyPrefs)
+    // Auto-provision preference if missing
+    let effectivePrefs = proxyPrefs
+    if (!effectivePrefs) {
+      try {
+        const autoIP = new AutoIPAssignmentService()
+        // Try to use profile country if available
+        let profileCountry: string | undefined
+        try {
+          const { data: profile } = await supabase
+            .from('users')
+            .select('profile_country')
+            .eq('id', session.user.id)
+            .maybeSingle()
+          if (profile?.profile_country && typeof profile.profile_country === 'string') {
+            profileCountry = profile.profile_country.toLowerCase()
+          }
+        } catch (e) {
+          // ignore
+        }
+
+        const userLocation = profileCountry ? null : await autoIP.detectUserLocation()
+        const proxyConfig = await autoIP.generateOptimalProxyConfig(
+          userLocation || undefined,
+          profileCountry || undefined
+        )
+
+        const { data: inserted, error: upsertError } = await supabase
+          .from('user_proxy_preferences')
+          .upsert({
+            user_id: session.user.id,
+            detected_location: userLocation ? `${userLocation.city}, ${userLocation.regionName}, ${userLocation.country}` : null,
+            linkedin_location: null,
+            preferred_country: proxyConfig.country,
+            preferred_state: proxyConfig.state,
+            preferred_city: proxyConfig.city,
+            confidence_score: proxyConfig.confidence,
+            session_id: proxyConfig.sessionId,
+            is_auto_assigned: true,
+            last_updated: new Date().toISOString()
+          }, { onConflict: 'user_id' })
+          .select()
+          .single()
+
+        if (upsertError) {
+          console.error('❌ Failed to auto-provision proxy preferences:', upsertError)
+        } else {
+          effectivePrefs = inserted
+        }
+      } catch (e) {
+        console.error('⚠️ Auto-provisioning proxy failed:', e)
+      }
+    }
+
+    console.log('✅ Proxy preferences:', effectivePrefs)
 
     return NextResponse.json({
       success: true,
-      preferences: proxyPrefs,
-      has_preferences: !!proxyPrefs
+      preferences: effectivePrefs || null,
+      has_preferences: !!effectivePrefs
     })
 
   } catch (error) {
