@@ -17,6 +17,7 @@ import DataCollectionHub from '../components/DataCollectionHub';
 import ApprovedProspectsDashboard from '../components/ApprovedProspectsDashboard';
 import { DemoModeToggle } from '../components/DemoModeToggle';
 import ConnectionStatusBar from '../components/ConnectionStatusBar';
+import EmailProvidersModal from './components/EmailProvidersModal';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import {
   Activity,
@@ -4663,106 +4664,10 @@ export default function Page() {
       )}
 
       {/* Email Integration Modal */}
-      {showEmailIntegrationModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-white flex items-center">
-                <Mail className="mr-3 text-blue-400" size={28} />
-                Email Integration Settings
-              </h2>
-              <button 
-                onClick={() => setShowEmailIntegrationModal(false)}
-                className="text-gray-400 hover:text-gray-200 transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="space-y-6">
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-3">SMTP Configuration</h3>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">SMTP Server</label>
-                      <input
-                        type="text"
-                        placeholder="smtp.gmail.com"
-                        className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Port</label>
-                      <input
-                        type="number"
-                        placeholder="587"
-                        className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">From Email</label>
-                    <input
-                      type="email"
-                      placeholder="your-email@domain.com"
-                      className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Username</label>
-                      <input
-                        type="text"
-                        placeholder="Email username"
-                        className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
-                      <input
-                        type="password"
-                        placeholder="App password"
-                        className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-3">Email Templates</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-300">Default Follow-up Template</span>
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
-                      Edit
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-300">Cold Outreach Template</span>
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
-                      Edit
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-3">
-                <button 
-                  onClick={() => setShowEmailIntegrationModal(false)}
-                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
-                  Save Configuration
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <EmailProvidersModal 
+        isOpen={showEmailIntegrationModal} 
+        onClose={() => setShowEmailIntegrationModal(false)} 
+      />
 
       {/* Notifications Settings Modal */}
       {showNotificationsModal && (
