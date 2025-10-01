@@ -4,9 +4,22 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Upload, Search, Linkedin, Database, FileText, Users, Download, Loader2, Check, X, Eye, ChevronDown, ChevronUp, Tag } from 'lucide-react'
 import ProspectApprovalModal, { ProspectData as ProspectDataType, ApprovalSession } from './ProspectApprovalModal'
 
+// LinkedIn Campaign Types
+type LinkedInCampaignType = 
+  | '1st-degree-direct'      // Direct messages to existing connections
+  | '2nd-3rd-connection'     // Connection requests
+  | '2nd-3rd-group'          // Group messages (shared groups)
+  | 'open-inmail'            // InMail campaigns (requires premium)
+
 // Using ProspectData from ProspectApprovalModal
 type ProspectData = ProspectDataType & {
-  campaignTag?: string
+  campaignName?: string            // Primary: e.g., "20251001-IFC-College Campaign"
+  campaignTag?: string             // Secondary: for A/B testing e.g., "Industry-FinTech", "Region-West"
+  linkedinCampaignType?: LinkedInCampaignType  // LinkedIn campaign type
+  connectionDegree?: '1st' | '2nd' | '3rd' | 'unknown'
+  conversationId?: string          // For 1st degree follow-ups
+  sharedGroups?: string[]          // For group campaigns
+  inmailEligible?: boolean         // Has Open Profile or InMail available
   approvalStatus?: 'pending' | 'approved' | 'rejected'
   uploaded?: boolean
 }
@@ -63,13 +76,15 @@ export default function DataCollectionHub({
     const dummyProspects = generateDummyProspects(100).map(p => ({ 
       ...p, 
       approvalStatus: 'pending' as const, 
-      campaignTag: `${today}-CLIENT-Demo`, 
+      campaignName: `${today}-CLIENT-Demo`,
+      campaignTag: undefined,
       uploaded: false 
     }))
     const uploadedProspects = initialUploadedData.map(p => ({ 
       ...p, 
       approvalStatus: (p.approvalStatus || 'pending') as const, 
-      campaignTag: p.campaignTag || `${today}-CLIENT-Demo`, 
+      campaignName: p.campaignName || `${today}-CLIENT-Demo`,
+      campaignTag: p.campaignTag,
       uploaded: true 
     }))
     return [...uploadedProspects, ...dummyProspects]
@@ -78,9 +93,11 @@ export default function DataCollectionHub({
   const [expandedProspect, setExpandedProspect] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
-  // Generate default campaign tag with systematic naming: YYYYMMDD-ClientID-CampaignName
+  // Generate default campaign name with systematic naming: YYYYMMDD-ClientID-CampaignName
   const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
-  const [defaultCampaignTag, setDefaultCampaignTag] = useState(`${today}-CLIENT-Demo`)
+  const [defaultCampaignName, setDefaultCampaignName] = useState(`${today}-CLIENT-Demo`)
+  const [defaultCampaignTag, setDefaultCampaignTag] = useState('')
+  const [selectedCampaignName, setSelectedCampaignName] = useState<string>('all')
   const [selectedCampaignTag, setSelectedCampaignTag] = useState<string>('all')
   
   // Update prospects when new data is uploaded from chat
@@ -543,6 +560,26 @@ export default function DataCollectionHub({
                           <span className="text-gray-400">Confidence:</span>
                           <span className="text-white ml-2">{prospect.confidence ? `${Math.round(prospect.confidence * 100)}%` : 'N/A'}</span>
                         </div>
+                        {prospect.linkedinCampaignType && (
+                          <div>
+                            <span className="text-gray-400">Campaign Type:</span>
+                            <span className="px-2 py-1 ml-2 rounded text-xs font-semibold bg-blue-600 text-blue-100">
+                              {prospect.linkedinCampaignType}
+                            </span>
+                          </div>
+                        )}
+                        {prospect.connectionDegree && (
+                          <div>
+                            <span className="text-gray-400">Connection Degree:</span>
+                            <span className={`px-2 py-1 ml-2 rounded text-xs font-semibold ${
+                              prospect.connectionDegree === '1st' ? 'bg-green-600 text-green-100' :
+                              prospect.connectionDegree === '2nd' ? 'bg-yellow-600 text-yellow-100' :
+                              'bg-orange-600 text-orange-100'
+                            }`}>
+                              {prospect.connectionDegree} degree
+                            </span>
+                          </div>
+                        )}
                         {prospect.linkedinUrl && (
                           <div className="col-span-2">
                             <span className="text-gray-400">LinkedIn:</span>

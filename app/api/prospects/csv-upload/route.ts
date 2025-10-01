@@ -383,6 +383,7 @@ async function validateAndEnrichProspects(prospects: any[]) {
   const invalid = []
   const duplicates = []
   const issues = []
+  let missingLinkedInCount = 0
   
   const seenEmails = new Set()
   const seenLinkedIn = new Set()
@@ -391,10 +392,17 @@ async function validateAndEnrichProspects(prospects: any[]) {
     let isValid = true
     let prospectIssues = []
     
-    // Check for required fields
-    if (!prospect.name && !prospect.email && !prospect.linkedinUrl) {
+    // LinkedIn URL is REQUIRED for LinkedIn campaigns
+    if (!prospect.linkedinUrl) {
       isValid = false
-      prospectIssues.push('Missing name, email, and LinkedIn URL')
+      missingLinkedInCount++
+      prospectIssues.push('Missing LinkedIn URL (required for LinkedIn campaigns)')
+    }
+    
+    // Check for required fields
+    if (!prospect.name && !prospect.email) {
+      isValid = false
+      prospectIssues.push('Missing both name and email')
     }
     
     // Validate email format
@@ -443,7 +451,9 @@ async function validateAndEnrichProspects(prospects: any[]) {
     duplicates: duplicates,
     issues: issues,
     quality_score: qualityScore,
-    completeness_score: completenessScore
+    completeness_score: completenessScore,
+    missing_linkedin_count: missingLinkedInCount,
+    linkedin_url_required: true
   }
 }
 

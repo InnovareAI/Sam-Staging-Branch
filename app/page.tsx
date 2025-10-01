@@ -1330,29 +1330,76 @@ export default function Page() {
         const validCount = data.validation_results?.valid_records || 0;
         const totalCount = data.validation_results?.total_records || 0;
         const qualityScore = data.validation_results?.quality_score ? (data.validation_results.quality_score * 100).toFixed(0) : 0;
+        const missingLinkedIn = data.validation_results?.missing_linkedin_count || 0;
         
-        showNotification('success', `CSV processed successfully! ${validCount} valid LinkedIn prospects found.`);
+        // Show warning if LinkedIn URLs are missing
+        if (missingLinkedIn > 0) {
+          showNotification('error', `⚠️ WARNING: ${missingLinkedIn} prospects missing LinkedIn URLs!\n\nLinkedIn URLs are REQUIRED for LinkedIn campaigns.\nOnly ${validCount} valid prospects with LinkedIn URLs found.`);
+        } else {
+          showNotification('success', `CSV processed successfully! ${validCount} valid LinkedIn prospects found.`);
+        }
         
-        // Store pasted prospects with 'uploaded' flag and systematic campaign tag
+        // Store pasted prospects with 'uploaded' flag and systematic campaign name
         // Format: YYYYMMDD-ClientID-CampaignName
         const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
         const clientId = 'CLIENT'; // TODO: Get from workspace/user settings
         
         // Prompt user for campaign name
         const defaultCampaignName = `CSV${csvUploadCounter}`;
-        const campaignName = prompt(
+        const userCampaignName = prompt(
           `Enter campaign name for this upload:\n\nFormat: ${today}-${clientId}-[CampaignName]`,
           defaultCampaignName
         ) || defaultCampaignName;
         
-        const campaignTag = `${today}-${clientId}-${campaignName.replace(/[^a-zA-Z0-9-_]/g, '')}`;
+        const fullCampaignName = `${today}-${clientId}-${userCampaignName.replace(/[^a-zA-Z0-9-_ ]/g, '')}`;
+        
+        // REQUIRED: Select LinkedIn campaign type
+        const campaignTypeChoice = prompt(
+          `Select LinkedIn Campaign Type:\n\n1 = 1st Degree Direct (existing connections)\n2 = 2nd/3rd Degree Connection Request\n3 = 2nd/3rd Degree Group Message\n4 = Open InMail (Premium)\n\nEnter number (1-4):`,
+          '2'
+        );
+        
+        const campaignTypeMap: Record<string, string> = {
+          '1': '1st-degree-direct',
+          '2': '2nd-3rd-connection',
+          '3': '2nd-3rd-group',
+          '4': 'open-inmail'
+        };
+        
+        const linkedinCampaignType = campaignTypeMap[campaignTypeChoice || '2'] || '2nd-3rd-connection';
+        
+        // Prompt for connection degree
+        let connectionDegree: '1st' | '2nd' | '3rd' | 'unknown' = 'unknown';
+        
+        if (linkedinCampaignType === '1st-degree-direct') {
+          connectionDegree = '1st';
+          alert('✓ 1st Degree Campaign\n\nThese prospects should already be connected to you.\nMake sure CSV includes Conversation IDs for threading.');
+        } else {
+          const degreeChoice = prompt(
+            `What connection degree are these prospects?\n\n2 = 2nd Degree (friend of friend)\n3 = 3rd Degree or beyond\n\nEnter 2 or 3:`,
+            '2'
+          );
+          connectionDegree = degreeChoice === '3' ? '3rd' : '2nd';
+        }
+        
+        // Set campaign tag based on campaign type
+        const campaignTag = linkedinCampaignType;
+        
+        // Optional: Additional A/B testing tag
+        const abTestTag = prompt(
+          `Add A/B testing tag (optional):\nExamples: Industry-FinTech, Region-West, Variant-A\n\nLeave empty if not needed.`,
+          ''
+        ) || undefined;
         
         const prospectsWithUploadedFlag = (data.preview_data || []).map((p: any) => ({
           ...p,
           uploaded: true,
           source: p.source || 'csv_upload',
           approvalStatus: 'pending',
-          campaignTag: campaignTag
+          campaignName: fullCampaignName,
+          campaignTag: abTestTag || campaignTag,
+          linkedinCampaignType: linkedinCampaignType,
+          connectionDegree: connectionDegree
         }));
         setUploadedProspects(prev => [...prev, ...prospectsWithUploadedFlag]);
         setCsvUploadCounter(prev => prev + 1);
@@ -1434,29 +1481,76 @@ export default function Page() {
         const validCount = data.validation_results?.valid_records || 0;
         const totalCount = data.validation_results?.total_records || 0;
         const qualityScore = data.validation_results?.quality_score ? (data.validation_results.quality_score * 100).toFixed(0) : 0;
+        const missingLinkedIn = data.validation_results?.missing_linkedin_count || 0;
         
-        showNotification('success', `CSV uploaded successfully! ${validCount} valid LinkedIn prospects found.`);
+        // Show warning if LinkedIn URLs are missing
+        if (missingLinkedIn > 0) {
+          showNotification('error', `⚠️ WARNING: ${missingLinkedIn} prospects missing LinkedIn URLs!\n\nLinkedIn URLs are REQUIRED for LinkedIn campaigns.\nOnly ${validCount} valid prospects with LinkedIn URLs found.`);
+        } else {
+          showNotification('success', `CSV uploaded successfully! ${validCount} valid LinkedIn prospects found.`);
+        }
         
-        // Store uploaded prospects with 'uploaded' flag and systematic campaign tag
+        // Store uploaded prospects with 'uploaded' flag and systematic campaign name
         // Format: YYYYMMDD-ClientID-CampaignName
         const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
         const clientId = 'CLIENT'; // TODO: Get from workspace/user settings
         
         // Prompt user for campaign name
         const defaultCampaignName = `CSV${csvUploadCounter}`;
-        const campaignName = prompt(
+        const userCampaignName = prompt(
           `Enter campaign name for this upload:\n\nFormat: ${today}-${clientId}-[CampaignName]`,
           defaultCampaignName
         ) || defaultCampaignName;
         
-        const campaignTag = `${today}-${clientId}-${campaignName.replace(/[^a-zA-Z0-9-_]/g, '')}`;
+        const fullCampaignName = `${today}-${clientId}-${userCampaignName.replace(/[^a-zA-Z0-9-_ ]/g, '')}`;
+        
+        // REQUIRED: Select LinkedIn campaign type
+        const campaignTypeChoice = prompt(
+          `Select LinkedIn Campaign Type:\n\n1 = 1st Degree Direct (existing connections)\n2 = 2nd/3rd Degree Connection Request\n3 = 2nd/3rd Degree Group Message\n4 = Open InMail (Premium)\n\nEnter number (1-4):`,
+          '2'
+        );
+        
+        const campaignTypeMap: Record<string, string> = {
+          '1': '1st-degree-direct',
+          '2': '2nd-3rd-connection',
+          '3': '2nd-3rd-group',
+          '4': 'open-inmail'
+        };
+        
+        const linkedinCampaignType = campaignTypeMap[campaignTypeChoice || '2'] || '2nd-3rd-connection';
+        
+        // Prompt for connection degree
+        let connectionDegree: '1st' | '2nd' | '3rd' | 'unknown' = 'unknown';
+        
+        if (linkedinCampaignType === '1st-degree-direct') {
+          connectionDegree = '1st';
+          alert('✓ 1st Degree Campaign\n\nThese prospects should already be connected to you.\nMake sure CSV includes Conversation IDs for threading.');
+        } else {
+          const degreeChoice = prompt(
+            `What connection degree are these prospects?\n\n2 = 2nd Degree (friend of friend)\n3 = 3rd Degree or beyond\n\nEnter 2 or 3:`,
+            '2'
+          );
+          connectionDegree = degreeChoice === '3' ? '3rd' : '2nd';
+        }
+        
+        // Set campaign tag based on campaign type
+        const campaignTag = linkedinCampaignType;
+        
+        // Optional: Additional A/B testing tag
+        const abTestTag = prompt(
+          `Add A/B testing tag (optional):\nExamples: Industry-FinTech, Region-West, Variant-A\n\nLeave empty if not needed.`,
+          ''
+        ) || undefined;
         
         const prospectsWithUploadedFlag = (data.preview_data || []).map((p: any) => ({
           ...p,
           uploaded: true,
           source: p.source || 'csv_upload',
           approvalStatus: 'pending',
-          campaignTag: campaignTag
+          campaignName: fullCampaignName,
+          campaignTag: abTestTag || campaignTag,
+          linkedinCampaignType: linkedinCampaignType,
+          connectionDegree: connectionDegree
         }));
         setUploadedProspects(prev => [...prev, ...prospectsWithUploadedFlag]);
         setCsvUploadCounter(prev => prev + 1);
