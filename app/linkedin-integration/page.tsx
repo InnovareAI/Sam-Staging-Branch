@@ -71,19 +71,25 @@ function LinkedInIntegrationContent() {
     const accountId = searchParams.get('account_id');
 
     if (success === 'true') {
+      console.log('✅ Success callback detected! Account ID:', accountId);
       setMessage(`LinkedIn account connected successfully! ${accountId ? `Account ID: ${accountId}` : ''}`);
       setConnectionStatus('connected');
       setIsAuthenticated(true); // Force authenticated state for successful callbacks
+      // Don't check API status - we know it's connected from the success callback
+      // The callback webhook already stored the account in the database
+      return; // Exit early to prevent API check from overriding status
     } else if (error) {
       setMessage(`Error: ${decodeURIComponent(error)}`);
       setConnectionStatus('error');
+      return; // Exit early
     } else if (status === 'pending') {
       setMessage('Authentication is still in progress. Please wait...');
       // Poll for status updates
       pollForCompletion();
+      return; // Exit early
     }
 
-    // Always check current connection status
+    // Only check connection status if we're not handling a callback
     checkLinkedInConnection();
   };
 
@@ -103,11 +109,16 @@ function LinkedInIntegrationContent() {
 
   const checkLinkedInConnection = async () => {
     try {
+      console.log('🔍 Checking LinkedIn connection status...');
       setConnectionStatus('checking');
       const response = await fetch('/api/unipile/accounts', {
         credentials: 'include' // Include cookies for authentication
       });
+      
+      console.log('📊 Response status:', response.status);
+      
       const data = await response.json();
+      console.log('📋 Response data:', data);
       
       if (response.ok && data.success) {
         setConnectionStatus(data.has_linkedin ? 'connected' : 'disconnected');
@@ -136,18 +147,27 @@ function LinkedInIntegrationContent() {
             // Don't fail the whole process if proxy assignment fails
           }
         } else {
+          console.log('ℹ️ No LinkedIn accounts found');
           setMessage('No LinkedIn accounts connected to your account.');
         }
         return data.has_linkedin;
       } else {
-        setConnectionStatus('error');
-        setMessage(data.error || 'Failed to check LinkedIn connection status.');
+        console.error('❌ API check failed:', data);
+        setConnectionStatus('disconnected'); // Change from 'error' to 'disconnected' to allow retry
+        const errorMsg = data.error || 'Failed to check LinkedIn connection status.';
+        setMessage(errorMsg);
+        // If it's an auth error, show as disconnected not error
+        if (response.status === 401 || data.debug_info?.needs_signin) {
+          setConnectionStatus('disconnected');
+        } else {
+          setConnectionStatus('error');
+        }
         return false;
       }
     } catch (error) {
-      console.error('Connection check failed:', error);
-      setConnectionStatus('error');
-      setMessage('Failed to check LinkedIn connection status.');
+      console.error('❌ Connection check failed with exception:', error);
+      setConnectionStatus('disconnected'); // Show as disconnected to allow retry
+      setMessage('Unable to check LinkedIn status. Please try connecting.');
       return false;
     }
   };
