@@ -18,14 +18,10 @@ export default function DataCollectionHub({
   onApprovalComplete,
   className = '' 
 }: DataCollectionHubProps) {
-  const [activeTab, setActiveTab] = useState<'collect' | 'approve'>('collect')
+  // Removed collect tab - all data collection happens in Sam chat now
   const [loading, setLoading] = useState(false)
   const [prospectData, setProspectData] = useState<ProspectData[]>([])
   const [showApprovalPanel, setShowApprovalPanel] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [linkedinQuery, setLinkedinQuery] = useState('')
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // CSV Upload Handler
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,231 +170,37 @@ export default function DataCollectionHub({
 
   return (
     <div className={`bg-gray-800 rounded-lg ${className}`}>
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-700">
-        <div className="flex">
-          <button
-            onClick={() => setActiveTab('collect')}
-            className={`px-6 py-3 font-medium text-sm transition-colors ${
-              activeTab === 'collect'
-                ? 'text-purple-400 border-b-2 border-purple-400'
-                : 'text-gray-400 hover:text-gray-300'
-            }`}
-          >
-            <Database className="w-4 h-4 inline mr-2" />
-            Collect Data
-          </button>
-          <button
-            onClick={() => setActiveTab('approve')}
-            className={`px-6 py-3 font-medium text-sm transition-colors ${
-              activeTab === 'approve'
-                ? 'text-purple-400 border-b-2 border-purple-400'
-                : 'text-gray-400 hover:text-gray-300'
-            }`}
-          >
-            <Users className="w-4 h-4 inline mr-2" />
-            Approve Data ({prospectData.length})
-          </button>
+      {/* Header */}
+      <div className="border-b border-gray-700 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Users className="w-5 h-5 text-purple-400" />
+            <h2 className="text-xl font-semibold text-white">Approved Prospects Dashboard</h2>
+          </div>
+          <div className="text-sm text-gray-400">
+            {prospectData.length} prospects ready for campaigns
+          </div>
         </div>
       </div>
 
-      {/* Data Collection Tab */}
-      {activeTab === 'collect' && (
-        <div className="p-6">
-          <h2 className="text-xl font-semibold text-white mb-6">Collect Prospect Data</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* CSV Upload */}
-            <div className="bg-gray-700 rounded-lg p-6">
-              <div className="flex items-center mb-4">
-                <Upload className="w-6 h-6 text-blue-400 mr-3" />
-                <h3 className="text-lg font-semibold text-white">CSV Upload</h3>
-              </div>
-              <p className="text-gray-300 text-sm mb-4">
-                Upload a CSV file with prospect data. Auto-detects name, email, LinkedIn, title, company fields.
-              </p>
-              
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                onChange={handleCSVUpload}
-                className="hidden"
-              />
-              
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Uploading ({uploadProgress}%)
-                  </>
-                ) : (
-                  <>
-                    <FileText className="w-4 h-4 mr-2" />
-                    Choose CSV File
-                  </>
-                )}
-              </button>
+      {/* Main Content - Approved Prospects View */}
+      <div className="p-6">
+        {prospectData.length > 0 ? (
+          {/* Prospects list would go here */}
+          <div className="space-y-4">
+            <div className="text-gray-400 text-sm mb-4">
+              Prospects approved through Sam chat will appear here.
             </div>
-
-            {/* LinkedIn Search */}
-            <div className="bg-gray-700 rounded-lg p-6">
-              <div className="flex items-center mb-4">
-                <Linkedin className="w-6 h-6 text-blue-400 mr-3" />
-                <h3 className="text-lg font-semibold text-white">LinkedIn Search</h3>
-              </div>
-              <p className="text-gray-300 text-sm mb-4">
-                Search LinkedIn for prospects using Unipile MCP integration.
-              </p>
-              
-              <input
-                type="text"
-                value={linkedinQuery}
-                onChange={(e) => setLinkedinQuery(e.target.value)}
-                placeholder="e.g., 'VP Sales at SaaS companies'"
-                className="w-full bg-gray-600 text-white px-3 py-2 rounded-lg mb-3 border border-gray-500 focus:border-blue-400 focus:outline-none"
-              />
-              
-              <button
-                onClick={handleLinkedInSearch}
-                disabled={loading || !linkedinQuery.trim()}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Searching LinkedIn...
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-4 h-4 mr-2" />
-                    Search LinkedIn
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Bright Data Enrichment */}
-            <div className="bg-gray-700 rounded-lg p-6">
-              <div className="flex items-center mb-4">
-                <Database className="w-6 h-6 text-green-400 mr-3" />
-                <h3 className="text-lg font-semibold text-white">Bright Data</h3>
-              </div>
-              <p className="text-gray-300 text-sm mb-4">
-                Enrich prospect data using Bright Data's web scraping network.
-              </p>
-              
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="e.g., 'FinTech companies San Francisco'"
-                className="w-full bg-gray-600 text-white px-3 py-2 rounded-lg mb-3 border border-gray-500 focus:border-green-400 focus:outline-none"
-              />
-              
-              <button
-                onClick={handleBrightDataEnrich}
-                disabled={loading || !searchQuery.trim()}
-                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Enriching Data...
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-4 h-4 mr-2" />
-                    Enrich Data
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Test Data */}
-            <div className="bg-gray-700 rounded-lg p-6">
-              <div className="flex items-center mb-4">
-                <Users className="w-6 h-6 text-purple-400 mr-3" />
-                <h3 className="text-lg font-semibold text-white">Test Data</h3>
-              </div>
-              <p className="text-gray-300 text-sm mb-4">
-                Generate realistic test prospect data for demonstration purposes.
-              </p>
-              
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleGenerateTestData(10)}
-                  disabled={loading}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white px-3 py-2 rounded-lg transition-colors text-sm"
-                >
-                  10 Prospects
-                </button>
-                <button
-                  onClick={() => handleGenerateTestData(25)}
-                  disabled={loading}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white px-3 py-2 rounded-lg transition-colors text-sm"
-                >
-                  25 Prospects
-                </button>
-                <button
-                  onClick={() => handleGenerateTestData(50)}
-                  disabled={loading}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white px-3 py-2 rounded-lg transition-colors text-sm"
-                >
-                  50 Prospects
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="mt-6 p-4 bg-gray-700 rounded-lg">
-            <h4 className="text-md font-semibold text-white mb-3">Quick Actions</h4>
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => handleGenerateTestData(25)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-              >
-                📊 Generate Sample Data
-              </button>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-              >
-                📁 Upload CSV
-              </button>
-              <button
-                onClick={() => {
-                  setLinkedinQuery('VP Sales at SaaS companies')
-                  handleLinkedInSearch()
-                }}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-              >
-                🔍 Demo LinkedIn Search
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Data Approval Tab */}
-      {activeTab === 'approve' && (
-        <div className="p-6">
-          {prospectData.length > 0 ? (
             <div>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold text-white">
-                  Review {prospectData.length} Prospects
-                </h2>
+                <h3 className="text-lg font-semibold text-white">
+                  {prospectData.length} Approved Prospects
+                </h3>
                 <button
                   onClick={() => setShowApprovalPanel(true)}
                   className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
                 >
-                  Open Full Approval Panel
+                  View All Details
                 </button>
               </div>
               
@@ -434,20 +236,21 @@ export default function DataCollectionHub({
           ) : (
             <div className="text-center py-12">
               <Users className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-400 mb-2">No Data to Approve</h3>
+              <h3 className="text-lg font-semibold text-gray-400 mb-2">No Approved Prospects Yet</h3>
               <p className="text-gray-500 mb-4">
-                Collect prospect data first to review and approve them here.
+                Use Sam chat to upload CSV files or search LinkedIn. Approved prospects will appear here.
               </p>
-              <button
-                onClick={() => setActiveTab('collect')}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                Collect Data
-              </button>
+              <div className="text-sm text-gray-600">
+                💬 Go to Sam chat and try:
+                <ul className="mt-2 text-left inline-block">
+                  <li>• "Upload prospects from my CSV"</li>
+                  <li>• "Find CTOs at SaaS companies"</li>
+                </ul>
+              </div>
             </div>
           )}
         </div>
-      )}
+      </div>
 
       {/* Prospect Approval Modal */}
       <ProspectApprovalModal
