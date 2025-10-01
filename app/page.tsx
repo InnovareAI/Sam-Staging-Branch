@@ -328,8 +328,12 @@ export default function Page() {
     setLoadingProxyAssignments(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        console.log('No session found');
+        return;
+      }
 
+      console.log('Fetching proxy assignments...');
       const response = await fetch('/api/linkedin/assign-proxy-ips', {
         method: 'GET',
         headers: {
@@ -338,12 +342,18 @@ export default function Page() {
       });
 
       const data = await response.json();
+      console.log('Proxy assignments response:', data);
       
       if (data.current_assignments) {
+        console.log(`Found ${data.current_assignments.length} assignments`);
         setLinkedinProxyAssignments(data.current_assignments);
+      } else {
+        console.log('No current_assignments in response');
+        setLinkedinProxyAssignments([]);
       }
     } catch (error) {
       console.error('Failed to load proxy assignments:', error);
+      setLinkedinProxyAssignments([]);
     } finally {
       setLoadingProxyAssignments(false);
     }
