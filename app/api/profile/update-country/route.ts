@@ -29,20 +29,38 @@ export async function POST(request: NextRequest) {
     const normalizedCountry = country.toLowerCase();
     
     // Update user profile country
-    const { error: updateError } = await supabase
+    console.log(`🔄 Attempting to update profile country for user ${user.id} to: ${normalizedCountry}`);
+    
+    const { data: updateData, error: updateError } = await supabase
       .from('users')
       .update({ 
         profile_country: normalizedCountry,
         updated_at: new Date().toISOString()
       })
-      .eq('id', user.id);
+      .eq('id', user.id)
+      .select();
     
     if (updateError) {
-      console.error('Failed to update profile country:', updateError);
+      console.error('❌ Failed to update profile country:', {
+        error: updateError,
+        code: updateError.code,
+        message: updateError.message,
+        details: updateError.details,
+        hint: updateError.hint
+      });
       return NextResponse.json({
         success: false,
-        error: 'Failed to update profile country'
+        error: 'Failed to update profile country',
+        details: updateError.message
       }, { status: 500 });
+    }
+    
+    if (!updateData || updateData.length === 0) {
+      console.error('❌ No rows updated - possible RLS policy issue');
+      return NextResponse.json({
+        success: false,
+        error: 'Update failed - check permissions'
+      }, { status: 403 });
     }
     
     console.log(`✅ Updated profile country for user ${user.email} to: ${normalizedCountry}`);
