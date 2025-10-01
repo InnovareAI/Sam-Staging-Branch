@@ -255,20 +255,28 @@ export async function GET(request: NextRequest) {
 
             if (accountResponse.ok) {
               const accountData = await accountResponse.json()
+              const accountType = accountData.type // LINKEDIN, GOOGLE, OUTLOOK, etc.
               
-              // Check for duplicates before storing
-              const duplicateCheck = await checkAndHandleDuplicateAccounts(
-                parsedUserContext.user_id,
-                accountData
-              )
+              // Check for duplicates before storing (LinkedIn only)
+              if (accountType === 'LINKEDIN') {
+                const duplicateCheck = await checkAndHandleDuplicateAccounts(
+                  parsedUserContext.user_id,
+                  accountData
+                )
+                
+                if (duplicateCheck.isDuplicate) {
+                  console.log(`🔄 Duplicate LinkedIn account detected, cleaning up: ${accountData.id}`)
+                  // Delete the duplicate account from Unipile to avoid billing
+                  await deleteDuplicateUnipileAccount(accountData.id)
+                  console.log(`✅ Duplicate account cleaned up successfully`)
+                  
+                  // Redirect to LinkedIn page with duplicate warning
+                  const redirectUrl = `/linkedin-integration?warning=duplicate_account_removed`
+                  return NextResponse.redirect(new URL(redirectUrl, request.url))
+                }
+              }
               
-              if (duplicateCheck.isDuplicate) {
-                console.log(`🔄 Duplicate LinkedIn account detected, cleaning up: ${accountData.id}`)
-                // Delete the duplicate account from Unipile to avoid billing
-                await deleteDuplicateUnipileAccount(accountData.id)
-                console.log(`✅ Duplicate account cleaned up successfully`)
-              } else {
-                // Store the association
+              // Store the association for all account types
               const associationStored = await storeUserAccountAssociation(
                 supabase,
                 parsedUserContext.user_id,
@@ -278,11 +286,20 @@ export async function GET(request: NextRequest) {
               if (associationStored) {
                 console.log(`✅ Successfully stored association for user ${parsedUserContext.user_email}`)
                 await upsertWorkspaceAccount(supabase, parsedUserContext.workspace_id, parsedUserContext.user_id, accountData)
+                
+                // Redirect based on account type
+                if (accountType === 'LINKEDIN') {
+                  const redirectUrl = `/linkedin-integration?success=true&account_id=${accountId}`
+                  return NextResponse.redirect(new URL(redirectUrl, request.url))
+                } else if (accountType === 'GOOGLE' || accountType === 'OUTLOOK') {
+                  // Redirect to main page with settings tab open
+                  const redirectUrl = `/?email_connected=true&provider=${accountType.toLowerCase()}`
+                  return NextResponse.redirect(new URL(redirectUrl, request.url))
+                }
               } else {
                 console.log(`❌ Failed to store association for account ${accountId}`)
               }
             }
-          }
           }
         } catch (associationError) {
           console.error('❌ Error storing account association:', associationError)
@@ -290,7 +307,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Redirect to LinkedIn integration page with success
+      // Default redirect (shouldn't reach here if account data was fetched)
       const redirectUrl = `/linkedin-integration?success=true&account_id=${accountId}`
       return NextResponse.redirect(new URL(redirectUrl, request.url))
     }
