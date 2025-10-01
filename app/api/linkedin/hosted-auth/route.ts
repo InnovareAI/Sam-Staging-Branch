@@ -228,21 +228,19 @@ export async function POST(request: NextRequest) {
       throw new Error('Hosted auth link not received from Unipile - check API response format')
     }
     
-    // WHITE-LABEL: Replace Unipile's domain with our custom domain
-    // DNS CNAME: auth.meet-sam.com -> account.unipile.com
-    const whitelabeledAuthUrl = authUrl.replace(
-      'https://account.unipile.com',
-      'https://auth.meet-sam.com'
-    )
+    // WHITE-LABEL: Disabled until Unipile completes SSL certificate setup for auth.meet-sam.com
+    // TODO: Enable after Unipile support confirms SSL is ready
+    // const whitelabeledAuthUrl = authUrl.replace(
+    //   'https://account.unipile.com',
+    //   'https://auth.meet-sam.com'
+    // )
     
     console.log('✅ Successfully generated hosted auth URL:', authUrl)
-    console.log('🎨 White-labeled URL:', whitelabeledAuthUrl)
 
     return NextResponse.json({
       success: true,
       action: authAction,
-      auth_url: whitelabeledAuthUrl, // Return white-labeled URL instead of raw Unipile URL
-      original_url: authUrl, // Keep original for debugging
+      auth_url: authUrl, // Using Unipile domain until white-label is ready
       expires_in: 3600,
       existing_connections: existingConnections?.length || 0,
       existing_accounts: existingConnections?.map(conn => ({

@@ -206,19 +206,16 @@ export async function POST(request: NextRequest) {
       object: hostedAuthResponse.object
     })
     
-    // WHITE-LABEL: Replace Unipile's domain with our custom domain
-    // DNS CNAME: auth.meet-sam.com -> account.unipile.com
-    const whitelabeledAuthUrl = hostedAuthResponse.url?.replace(
-      'https://account.unipile.com',
-      'https://auth.meet-sam.com'
-    ) || hostedAuthResponse.url
-    
-    console.log('🎨 White-labeled URL:', whitelabeledAuthUrl)
+    // WHITE-LABEL: Disabled until Unipile completes SSL certificate setup for auth.meet-sam.com
+    // TODO: Enable after Unipile support confirms SSL is ready
+    // const whitelabeledAuthUrl = hostedAuthResponse.url?.replace(
+    //   'https://account.unipile.com',
+    //   'https://auth.meet-sam.com'
+    // ) || hostedAuthResponse.url
 
     return NextResponse.json({
       success: true,
-      auth_url: whitelabeledAuthUrl, // Return white-labeled URL
-      original_url: hostedAuthResponse.url, // Keep original for debugging
+      auth_url: hostedAuthResponse.url, // Using Unipile domain until white-label is ready
       session_id: null, // Unipile embeds session in URL, no separate session_id
       expires_at: null, // Not provided in response
       provider: provider,
