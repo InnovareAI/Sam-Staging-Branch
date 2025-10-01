@@ -252,6 +252,171 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PUT(req: NextRequest) {
+  try {
+    const supabase = createRouteHandlerClient({ cookies: cookies });
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { linkedin_account_id, country, state, city } = body || {};
+
+    if (!linkedin_account_id || !country) {
+      return NextResponse.json({ error: 'linkedin_account_id and country are required' }, { status: 400 });
+    }
+
+    if (!process.env.BRIGHT_DATA_CUSTOMER_ID || !process.env.BRIGHT_DATA_RESIDENTIAL_PASSWORD) {
+      return NextResponse.json({
+        error: 'BrightData not configured',
+        details: 'Missing BRIGHT_DATA_CUSTOMER_ID or BRIGHT_DATA_RESIDENTIAL_PASSWORD environment variables'
+      }, { status: 400 });
+    }
+
+    const normalizedCountry = String(country).toLowerCase();
+    const normalizedState = state ? String(state).toLowerCase() : null;
+    const normalizedCity = city ? String(city) : null;
+
+    const { data: existingAssignment, error: fetchError } = await supabase
+      .from('linkedin_proxy_assignments')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('linkedin_account_id', linkedin_account_id)
+      .maybeSingle();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error('Failed to fetch assignment before update:', fetchError);
+      return NextResponse.json({ error: 'Failed to load proxy assignment' }, { status: 500 });
+    }
+
+    if (!existingAssignment) {
+      return NextResponse.json({ error: 'Proxy assignment not found for this account' }, { status: 404 });
+    }
+
+    const sessionId = `manual_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+    let username = `brd-customer-${process.env.BRIGHT_DATA_CUSTOMER_ID}-zone-residential-country-${normalizedCountry}`;
+
+    if (normalizedState) {
+      username += `-state-${normalizedState}`;
+    }
+    if (normalizedCity) {
+      username += `-city-${normalizedCity}`;
+    }
+
+    username += `-session-${sessionId}`;
+
+    const proxyConfig = {
+      host: 'brd.superproxy.io',
+      port: 22225,
+      username,
+      password: process.env.BRIGHT_DATA_RESIDENTIAL_PASSWORD!,
+      country: normalizedCountry,
+      state: normalizedState,
+      city: normalizedCity,
+      sessionId,
+      confidence: 1.0
+    };
+
+    const autoIPService = new AutoIPAssignmentService();
+    let connectivityTest = null;
+    let connectivityStatus: 'active' | 'failed' | 'untested' = 'untested';
+    try {
+      connectivityTest = await autoIPService.testProxyConnectivity(proxyConfig);
+      connectivityStatus = connectivityTest.success ? 'active' : 'failed';
+    } catch (testError) {
+      console.warn('Connectivity test failed during manual override:', testError);
+    }
+
+    const { data: updatedAssignment, error: updateError } = await supabase
+      .from('linkedin_proxy_assignments')
+      .update({
+        proxy_country: normalizedCountry,
+        proxy_state: normalizedState,
+        proxy_city: normalizedCity,
+        proxy_session_id: sessionId,
+        proxy_username: username,
+        confidence_score: 1.0,
+        connectivity_status: connectivityStatus,
+        connectivity_details: connectivityTest,
+        is_primary_account: existingAssignment.is_primary_account,
+        last_updated: new Date().toISOString()
+      })
+      .eq('user_id', user.id)
+      .eq('linkedin_account_id', linkedin_account_id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Failed to update LinkedIn proxy assignment:', updateError);
+      return NextResponse.json({ error: 'Failed to update LinkedIn proxy assignment' }, { status: 500 });
+    }
+
+    const shouldSyncUserPreference = existingAssignment?.is_primary_account;
+
+    if (shouldSyncUserPreference) {
+      const { error: prefError } = await supabase
+        .from('user_proxy_preferences')
+        .upsert({
+          user_id: user.id,
+          preferred_country: normalizedCountry,
+          preferred_state: normalizedState,
+          preferred_city: normalizedCity,
+          confidence_score: 1.0,
+          session_id: sessionId,
+          is_manual_selection: true,
+          is_linkedin_based: true,
+          last_updated: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+
+      if (prefError) {
+        console.error('Failed to align user proxy preference with manual override:', prefError);
+      }
+    } else {
+      const { data: existingPreference, error: prefFetchError } = await supabase
+        .from('user_proxy_preferences')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!prefFetchError && !existingPreference) {
+        const { error: createPrefError } = await supabase
+          .from('user_proxy_preferences')
+          .insert({
+            user_id: user.id,
+            preferred_country: normalizedCountry,
+            preferred_state: normalizedState,
+            preferred_city: normalizedCity,
+            confidence_score: 1.0,
+            session_id: sessionId,
+            is_manual_selection: true,
+            is_linkedin_based: false,
+            last_updated: new Date().toISOString()
+          });
+
+        if (createPrefError) {
+          console.error('Failed to create user proxy preference after manual override:', createPrefError);
+        }
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      assignment: updatedAssignment,
+      proxyConfig,
+      connectivityTest
+    });
+
+  } catch (error: any) {
+    console.error('Failed to override LinkedIn proxy assignment:', error);
+    return NextResponse.json(
+      { error: 'Failed to override LinkedIn proxy assignment', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies: cookies });

@@ -139,6 +139,21 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { provider = 'LINKEDIN', redirect_url } = body
     
+    // Get user's profile country for proxy assignment
+    let userCountry: string | null = null
+    try {
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('profile_country')
+        .eq('id', user.id)
+        .maybeSingle()
+      
+      userCountry = userProfile?.profile_country || null
+      console.log('📍 User profile country:', userCountry)
+    } catch (error) {
+      console.log('⚠️ Could not fetch user profile country:', error)
+    }
+    
     // Check if user already has LinkedIn accounts to prevent duplicates (LinkedIn only)
     let existingAccounts: any[] = []
     let authType = 'create'
@@ -185,6 +200,42 @@ export async function POST(request: NextRequest) {
     const expirationDate = new Date(Date.now() + 2 * 60 * 60 * 1000)
     const expiresOn = expirationDate.toISOString().replace(/\.\d{3}Z$/, '.000Z') // Ensure .000Z format
     
+    // Map country names to Unipile's 2-letter country codes
+    const countryCodeMap: { [key: string]: string } = {
+      'argentina': 'ar', 'australia': 'au', 'austria': 'at', 'belgium': 'be',
+      'brazil': 'br', 'bulgaria': 'bg', 'canada': 'ca', 'croatia': 'hr',
+      'cyprus': 'cy', 'czechia': 'cz', 'czech republic': 'cz', 'denmark': 'dk',
+      'france': 'fr', 'germany': 'de', 'hong kong': 'hk', 'india': 'in',
+      'italy': 'it', 'japan': 'jp', 'mexico': 'mx', 'netherlands': 'nl',
+      'norway': 'no', 'poland': 'pl', 'portugal': 'pt', 'romania': 'ro',
+      'south africa': 'za', 'spain': 'es', 'sweden': 'se', 'switzerland': 'ch',
+      'singapore': 'sg', 'turkey': 'tr', 'ukraine': 'ua', 'united arab emirates': 'ae',
+      'uae': 'ae', 'united kingdom': 'gb', 'uk': 'gb', 'great britain': 'gb',
+      'united states': 'us', 'usa': 'us', 'us': 'us', 'america': 'us'
+    }
+    
+    // Determine proxy country code
+    let proxyCountry: string | null = null
+    if (userCountry) {
+      const normalizedCountry = userCountry.toLowerCase().trim()
+      proxyCountry = countryCodeMap[normalizedCountry] || null
+      
+      // If exact match not found, try partial match
+      if (!proxyCountry) {
+        for (const [key, value] of Object.entries(countryCodeMap)) {
+          if (normalizedCountry.includes(key) || key.includes(normalizedCountry)) {
+            proxyCountry = value
+            break
+          }
+        }
+      }
+      
+      console.log('🌍 Mapped country for proxy:', {
+        userCountry,
+        proxyCountry: proxyCountry || 'auto-detect from IP'
+      })
+    }
+    
     let hostedAuthPayload: any = {
       type: authType,
       expiresOn: expiresOn,
@@ -193,7 +244,8 @@ export async function POST(request: NextRequest) {
       failure_redirect_url: failureRedirectUrl,
       notify_url: notifyUrl,
       name: JSON.stringify(userContextPayload),
-      bypass_success_screen: true // Skip success screen and redirect directly
+      bypass_success_screen: true, // Skip success screen and redirect directly
+      ...(proxyCountry && { proxy_country: proxyCountry }) // Add proxy country if available
     }
     
     if (authType === 'create') {
@@ -231,6 +283,8 @@ export async function POST(request: NextRequest) {
       auth_type: authType, // Indicate if this is create or reconnect flow
       existing_accounts: existingAccounts.length,
       workspace_id: workspaceId,
+      proxy_country: proxyCountry || 'auto-detect',
+      user_country: userCountry,
       instructions: {
         step1: 'Click the auth_url to open LinkedIn authentication',
         step2: 'Complete LinkedIn login and authorization',

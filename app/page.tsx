@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+
+const USER_PROXY_SENTINEL = '__USER_PROXY__';
 import KnowledgeBase from './components/KnowledgeBase';
 import CampaignHub from './components/CampaignHub';
 import LeadPipeline from './components/LeadPipeline';
@@ -208,7 +210,6 @@ export default function Page() {
   const [showSecurityComplianceModal, setShowSecurityComplianceModal] = useState(false);
   const [showAnalyticsReportingModal, setShowAnalyticsReportingModal] = useState(false);
   const [showProxyCountryModal, setShowProxyCountryModal] = useState(false);
-  const [proxyEditMode, setProxyEditMode] = useState(false);
   const [selectedProxyCountry, setSelectedProxyCountry] = useState('');
   const [selectedProxyState, setSelectedProxyState] = useState('');
   const [selectedProxyCity, setSelectedProxyCity] = useState('');
@@ -231,6 +232,10 @@ export default function Page() {
   const [selectedLinkedinAccount, setSelectedLinkedinAccount] = useState<string | null>(null);
   const [loadingProxyAssignments, setLoadingProxyAssignments] = useState(false);
   const [userProxyPreferences, setUserProxyPreferences] = useState<any | null>(null);
+  const isEditingUserProxy = selectedLinkedinAccount === USER_PROXY_SENTINEL;
+  const editingLinkedinAssignment = !isEditingUserProxy && selectedLinkedinAccount
+    ? linkedinProxyAssignments.find((a) => a.linkedin_account_id === selectedLinkedinAccount)
+    : null;
 
   const fetchThreadMessages = useCallback(async (targetThreadId: string) => {
     try {
@@ -364,7 +369,20 @@ export default function Page() {
   const loadUserProxyPreferences = async () => {
     try {
       console.log('Fetching user proxy preferences...');
-      const resp = await fetch('/api/bright-data/proxy-preferences');
+      let accessToken: string | null = null;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        accessToken = session?.access_token || null;
+      } catch (sessionError) {
+        console.error('Failed to get session for proxy preferences:', sessionError);
+      }
+
+      const requestInit: RequestInit = {};
+      if (accessToken) {
+        requestInit.headers = { 'Authorization': `Bearer ${accessToken}` };
+      }
+
+      const resp = await fetch('/api/bright-data/proxy-preferences', requestInit);
       if (!resp.ok) {
         console.log('No proxy preferences found');
         setUserProxyPreferences(null);
@@ -432,7 +450,7 @@ export default function Page() {
   // Handle save proxy settings
   const handleSaveProxySettings = async () => {
     if (!selectedProxyCountry) {
-      alert('Please select a country before saving.');
+      showNotification('error', 'Select a country before saving.');
       return;
     }
 
@@ -441,42 +459,73 @@ export default function Page() {
       // Get current session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        alert('❌ Authentication required. Please sign in.');
+        showNotification('error', 'Authentication required. Please sign in.');
         setProxySaveLoading(false);
         return;
       }
 
-      const response = await fetch('/api/bright-data/location-assignment', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          country: selectedProxyCountry,
-          state: selectedProxyState || null,
-          city: selectedProxyCity || null
-        }),
-      });
+      let response: Response;
+      let data: any;
 
-      const data = await response.json();
-      
-      if (data.success) {
-        setCurrentProxySettings(prev => ({
-          ...prev,
-          country: data.proxyConfig.country,
-          state: data.proxyConfig.state || '',
-          city: data.proxyConfig.city || '',
-          confidence: Math.round(data.proxyConfig.confidence * 100)
-        }));
-        setProxyEditMode(false);
-        alert(`✅ Proxy settings saved successfully!\nLocation: ${data.proxyConfig.country}${data.proxyConfig.state ? ` (${data.proxyConfig.state})` : ''}`);
-      } else {
-        alert(`❌ Failed to save proxy settings: ${data.error}`);
+      if (isEditingUserProxy) {
+        response = await fetch('/api/bright-data/proxy-preferences', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            preferred_country: selectedProxyCountry.toLowerCase(),
+            preferred_state: selectedProxyState ? selectedProxyState.trim().toLowerCase() : null,
+            preferred_city: selectedProxyCity ? selectedProxyCity.trim() : null
+          })
+        });
+        data = await response.json();
+
+        if (response.ok && data.success) {
+          setUserProxyPreferences(data.preferences);
+          setCurrentProxySettings(prev => ({
+            ...prev,
+            country: data.preferences?.preferred_country?.toUpperCase() || '',
+            state: data.preferences?.preferred_state?.toUpperCase() || '',
+            city: data.preferences?.preferred_city || ''
+          }));
+          showNotification('success', 'Default proxy location updated');
+          await loadUserProxyPreferences();
+        } else {
+          showNotification('error', data?.error || 'Failed to update default proxy');
+          return;
+        }
+      } else if (selectedLinkedinAccount) {
+        response = await fetch('/api/linkedin/assign-proxy-ips', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            linkedin_account_id: selectedLinkedinAccount,
+            country: selectedProxyCountry,
+            state: selectedProxyState ? selectedProxyState.trim() : null,
+            city: selectedProxyCity ? selectedProxyCity.trim() : null
+          })
+        });
+        data = await response.json();
+
+        if (response.ok && data.success) {
+          showNotification('success', 'LinkedIn proxy updated');
+          await loadLinkedinProxyAssignments();
+          await loadUserProxyPreferences();
+        } else {
+          showNotification('error', data?.error || 'Failed to update LinkedIn proxy');
+          return;
+        }
       }
+
+      setSelectedLinkedinAccount(null);
     } catch (error) {
       console.error('Save proxy settings failed:', error);
-      alert('❌ Failed to save proxy settings. Please try again.');
+      showNotification('error', 'Failed to save proxy settings. Please try again.');
     } finally {
       setProxySaveLoading(false);
     }
@@ -488,7 +537,6 @@ export default function Page() {
       // Load both LinkedIn assignments and user-level proxy preferences
       loadLinkedinProxyAssignments();
       loadUserProxyPreferences();
-      loadLinkedinProxyAssignments();
     }
   }, [showProxyCountryModal]);
 
@@ -4723,7 +4771,6 @@ export default function Page() {
                 <button 
                   onClick={() => {
                     setShowProxyCountryModal(false);
-                    setProxyEditMode(false);
                     setSelectedLinkedinAccount(null);
                   }}
                   className="text-gray-400 hover:text-gray-200 transition-colors"
@@ -4768,42 +4815,56 @@ export default function Page() {
                         <div className="text-xs text-gray-400 mb-4">
                           Session: {userProxyPreferences.session_id ? `${userProxyPreferences.session_id.substring(0, 8)}...` : '—'}
                         </div>
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                           <a href="/linkedin-integration" className="text-blue-400 hover:text-blue-300 underline">
                             Connect a LinkedIn account
                           </a>
-                          <button
-                            onClick={async () => {
-                              setLoadingProxyAssignments(true);
-                              try {
-                                const { data: { session } } = await supabase.auth.getSession();
-                                if (!session) return;
-                                const response = await fetch('/api/linkedin/assign-proxy-ips', {
-                                  method: 'POST',
-                                  headers: {
-                                    'Authorization': `Bearer ${session.access_token}`,
-                                    'Content-Type': 'application/json'
-                                  },
-                                  body: JSON.stringify({ force_update: true })
-                                });
-                                const data = await response.json();
-                                if (response.ok) {
-                                  showNotification('success', 'LinkedIn proxies assigned');
-                                  await loadLinkedinProxyAssignments();
-                                } else {
-                                  showNotification('error', data.error || 'Failed to assign proxies');
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedProxyCountry((userProxyPreferences.preferred_country || '').toUpperCase());
+                                setSelectedProxyState(userProxyPreferences.preferred_state ? userProxyPreferences.preferred_state.toUpperCase() : '');
+                                setSelectedProxyCity(userProxyPreferences.preferred_city || '');
+                                setSelectedLinkedinAccount(USER_PROXY_SENTINEL);
+                              }}
+                              className="bg-gray-600 hover:bg-gray-700 text-white text-sm px-4 py-2 rounded-lg transition-colors"
+                            >
+                              Change Location
+                            </button>
+                            <button
+                              onClick={async () => {
+                                setLoadingProxyAssignments(true);
+                                try {
+                                  const { data: { session } } = await supabase.auth.getSession();
+                                  if (!session) return;
+                                  const response = await fetch('/api/linkedin/assign-proxy-ips', {
+                                    method: 'POST',
+                                    headers: {
+                                      'Authorization': `Bearer ${session.access_token}`,
+                                      'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({ force_update: true })
+                                  });
+                                  const data = await response.json();
+                                  if (response.ok) {
+                                    showNotification('success', 'LinkedIn proxies assigned');
+                                    await loadLinkedinProxyAssignments();
+                                    await loadUserProxyPreferences();
+                                  } else {
+                                    showNotification('error', data.error || 'Failed to assign proxies');
+                                  }
+                                } catch (e) {
+                                  console.error(e);
+                                  showNotification('error', 'Failed to assign proxies');
+                                } finally {
+                                  setLoadingProxyAssignments(false);
                                 }
-                              } catch (e) {
-                                console.error(e);
-                                showNotification('error', 'Failed to assign proxies');
-                              } finally {
-                                setLoadingProxyAssignments(false);
-                              }
-                            }}
-                            className="bg-purple-600 hover:bg-purple-700 text-white text-sm px-4 py-2 rounded-lg transition-colors"
-                          >
-                            Assign to LinkedIn
-                          </button>
+                              }}
+                              className="bg-purple-600 hover:bg-purple-700 text-white text-sm px-4 py-2 rounded-lg transition-colors"
+                            >
+                              Assign to LinkedIn
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ) : (
@@ -4866,11 +4927,11 @@ export default function Page() {
                           </div>
                           
                           <div className="flex justify-end">
-                            <button 
+                              <button 
                               onClick={() => {
                                 setSelectedLinkedinAccount(assignment.linkedin_account_id);
-                                setSelectedProxyCountry(assignment.proxy_country);
-                                setSelectedProxyState(assignment.proxy_state || '');
+                                setSelectedProxyCountry((assignment.proxy_country || '').toUpperCase());
+                                setSelectedProxyState(assignment.proxy_state ? assignment.proxy_state.toUpperCase() : '');
                                 setSelectedProxyCity(assignment.proxy_city || '');
                               }}
                               className="bg-purple-600 hover:bg-purple-700 text-white text-sm px-4 py-2 rounded-lg transition-colors"
@@ -4887,9 +4948,15 @@ export default function Page() {
                 /* Edit Mode - Country Selection Form for Selected Account */
                 <>
                   <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="text-lg font-medium text-white mb-2">Change Proxy Country for {linkedinProxyAssignments.find(a => a.linkedin_account_id === selectedLinkedinAccount)?.linkedin_account_name}</h3>
+                    <h3 className="text-lg font-medium text-white mb-2">
+                      {isEditingUserProxy
+                        ? 'Change Your Proxy Location'
+                        : `Change Proxy Country for ${editingLinkedinAssignment?.linkedin_account_name ?? 'LinkedIn Account'}`}
+                    </h3>
                     <p className="text-gray-300 text-sm mb-4">
-                      Select a different country for this LinkedIn account's proxy IP. This will change the location from which the account appears to operate.
+                      {isEditingUserProxy
+                        ? 'Update the default Bright Data proxy location Sam uses for your workspace when no LinkedIn account is mapped.'
+                        : 'Select a different country for this LinkedIn account’s proxy IP. This will change the location from which the account appears to operate.'}
                     </p>
                     
                     <div className="space-y-4">
@@ -4953,7 +5020,9 @@ export default function Page() {
                     <div>
                       <h4 className="text-yellow-400 font-medium text-sm">Manual Override</h4>
                       <p className="text-gray-300 text-sm mt-1">
-                        Changing the proxy country may affect account performance. Only change if you're targeting a specific region or experiencing connectivity issues.
+                        {isEditingUserProxy
+                          ? 'This updates the default proxy Sam uses when making outbound LinkedIn or email automation on your behalf.'
+                          : 'Changing the proxy country may affect account performance. Only change if you are targeting a specific region or experiencing connectivity issues.'}
                       </p>
                     </div>
                   </div>
@@ -4983,7 +5052,9 @@ export default function Page() {
                 /* Edit Mode Buttons */
                 <>
                   <button 
-                    onClick={() => setSelectedLinkedinAccount(null)}
+                    onClick={() => {
+                      setSelectedLinkedinAccount(null);
+                    }}
                     className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
                   >
                     Back
@@ -4993,7 +5064,7 @@ export default function Page() {
                     disabled={proxySaveLoading}
                     className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white px-4 py-2 rounded-lg transition-colors"
                   >
-                    {proxySaveLoading ? 'Saving...' : 'Save Country Change'}
+                    {proxySaveLoading ? 'Saving...' : isEditingUserProxy ? 'Save Default Proxy' : 'Save Country Change'}
                   </button>
                 </>
               )}

@@ -88,7 +88,6 @@ export async function GET(request: NextRequest) {
             preferred_city: proxyConfig.city,
             confidence_score: proxyConfig.confidence,
             session_id: proxyConfig.sessionId,
-            is_auto_assigned: true,
             last_updated: new Date().toISOString()
           }, { onConflict: 'user_id' })
           .select()
@@ -124,17 +123,46 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies: cookies })
-    
-    // Get current user
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) {
+
+    let userId: string | null = session?.user?.id || null
+    let db = supabase
+
+    if (!userId) {
+      const authHeader = request.headers.get('Authorization')
+      const token = authHeader?.toLowerCase().startsWith('bearer ')
+        ? authHeader.slice(7)
+        : null
+      if (token) {
+        try {
+          const admin = supabaseAdmin()
+          const { data: userRes } = await admin.auth.getUser(token)
+          if (userRes?.user?.id) {
+            userId = userRes.user.id
+            db = admin as any
+          }
+        } catch (e) {
+          console.error('Failed to resolve user from authorization header:', e)
+        }
+      }
+    }
+
+    if (!userId) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
     const { preferred_country, preferred_state, preferred_city } = await request.json()
 
-    console.log('🌍 Updating proxy preferences for user:', session.user.id, {
-      preferred_country,
+    const normalizedCountry = typeof preferred_country === 'string'
+      ? preferred_country.toLowerCase()
+      : null
+
+    if (!normalizedCountry) {
+      return NextResponse.json({ error: 'preferred_country is required' }, { status: 400 })
+    }
+
+    console.log('🌍 Updating proxy preferences for user:', userId, {
+      preferred_country: normalizedCountry,
       preferred_state,
       preferred_city
     })
@@ -143,16 +171,16 @@ export async function POST(request: NextRequest) {
     const sessionId = `${Date.now().toString(36)}_${Math.random().toString(36).substring(2)}`
 
     // Update or create proxy preferences
-    const { data: updatedPrefs, error: updateError } = await supabase
+    const { data: updatedPrefs, error: updateError } = await db
       .from('user_proxy_preferences')
       .upsert({
-        user_id: session.user.id,
-        preferred_country,
-        preferred_state,
-        preferred_city,
+        user_id: userId,
+        preferred_country: normalizedCountry,
+        preferred_state: preferred_state ? String(preferred_state).toLowerCase() : null,
+        preferred_city: preferred_city || null,
         session_id: sessionId,
-        is_auto_assigned: false, // User manually changed
-        is_linkedin_based: false, // User overrode LinkedIn-based assignment
+        is_manual_selection: true,
+        is_auto_assigned: false,
         last_updated: new Date().toISOString()
       }, {
         onConflict: 'user_id'
