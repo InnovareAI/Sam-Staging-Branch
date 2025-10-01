@@ -2,24 +2,48 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { AutoIPAssignmentService } from '@/lib/services/auto-ip-assignment'
+import { supabaseAdmin } from '@/app/lib/supabase'
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies: cookies })
     
-    // Get current user
+    // Get current user via session cookies or Authorization header fallback
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) {
+
+    let userId: string | null = session?.user?.id || null
+    let db = supabase
+
+    if (!userId) {
+      const authHeader = request.headers.get('Authorization')
+      const token = authHeader?.toLowerCase().startsWith('bearer ')
+        ? authHeader.slice(7)
+        : null
+      if (token) {
+        try {
+          const admin = supabaseAdmin()
+          const { data: userRes } = await admin.auth.getUser(token)
+          if (userRes?.user?.id) {
+            userId = userRes.user.id
+            db = admin as any
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+
+    if (!userId) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    console.log('🔍 Fetching proxy preferences for user:', session.user.id)
+    console.log('🔍 Fetching proxy preferences for user:', userId)
 
     // Get user's proxy preferences
-    const { data: proxyPrefs, error: proxyError } = await supabase
+    const { data: proxyPrefs, error: proxyError } = await db
       .from('user_proxy_preferences')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq('user_id', userId)
       .single()
 
     if (proxyError && proxyError.code !== 'PGRST116') { // PGRST116 = no rows found
@@ -35,10 +59,10 @@ export async function GET(request: NextRequest) {
         // Try to use profile country if available
         let profileCountry: string | undefined
         try {
-          const { data: profile } = await supabase
+          const { data: profile } = await db
             .from('users')
             .select('profile_country')
-            .eq('id', session.user.id)
+            .eq('id', userId)
             .maybeSingle()
           if (profile?.profile_country && typeof profile.profile_country === 'string') {
             profileCountry = profile.profile_country.toLowerCase()
@@ -53,10 +77,10 @@ export async function GET(request: NextRequest) {
           profileCountry || undefined
         )
 
-        const { data: inserted, error: upsertError } = await supabase
+        const { data: inserted, error: upsertError } = await db
           .from('user_proxy_preferences')
           .upsert({
-            user_id: session.user.id,
+            user_id: userId,
             detected_location: userLocation ? `${userLocation.city}, ${userLocation.regionName}, ${userLocation.country}` : null,
             linkedin_location: null,
             preferred_country: proxyConfig.country,
