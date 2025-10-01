@@ -241,6 +241,30 @@ export default function Page() {
   // Profile country state
   const [profileCountry, setProfileCountry] = useState<string>('');
   const [profileCountryLoading, setProfileCountryLoading] = useState(false);
+  
+  // Load profile country when user is authenticated
+  useEffect(() => {
+    const loadProfileCountry = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('profile_country')
+          .eq('id', user.id)
+          .single();
+        
+        if (data && data.profile_country) {
+          setProfileCountry(data.profile_country);
+          console.log('✅ Loaded profile country:', data.profile_country);
+        }
+      } catch (error) {
+        console.error('Failed to load profile country:', error);
+      }
+    };
+    
+    loadProfileCountry();
+  }, [user?.id]);
 
   const fetchThreadMessages = useCallback(async (targetThreadId: string) => {
     try {
