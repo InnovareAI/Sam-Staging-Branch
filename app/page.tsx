@@ -5037,56 +5037,34 @@ export default function Page() {
                 </div>
               </div>
 
-              {/* Connected LinkedIn Accounts Section */}
+              {/* My LinkedIn Account & Proxy Info */}
               <div className="bg-gray-700 rounded-lg p-5 border border-gray-600">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
                   <svg className="mr-2 text-blue-400" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
                   </svg>
-                  Connected LinkedIn Accounts
+                  My LinkedIn Account
                 </h3>
                 {loadingProxyAssignments ? (
                   <div className="text-center py-4">
                     <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
-                    <p className="text-gray-400 text-sm mt-2">Loading accounts...</p>
+                    <p className="text-gray-400 text-sm mt-2">Loading...</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {/* Show connected accounts from diagnostic */}
-                    <button
-                      onClick={async () => {
-                        setLoadingProxyAssignments(true);
-                        try {
-                          const response = await fetch('/api/proxy-diagnostic');
-                          const data = await response.json();
-                          if (data.success && data.unipile_linkedin_accounts) {
-                            // Display accounts inline
-                            const accountsHtml = data.unipile_linkedin_accounts.map((acc: any, idx: number) => `
-                              <div key="${idx}" class="bg-gray-800 rounded p-3 mb-2">
-                                <div class="flex items-center justify-between">
-                                  <div>
-                                    <p class="text-white font-medium">${acc.account_name}</p>
-                                    <p class="text-gray-400 text-xs">ID: ${acc.unipile_account_id}</p>
-                                  </div>
-                                  <span class="px-2 py-1 bg-green-900 text-green-300 rounded text-xs">${acc.connection_status}</span>
-                                </div>
-                              </div>
-                            `).join('');
-                            showNotification('success', `Found ${data.unipile_linkedin_accounts.length} LinkedIn accounts`);
-                          }
-                        } catch (error) {
-                          showNotification('error', 'Failed to load accounts');
-                        } finally {
-                          setLoadingProxyAssignments(false);
-                        }
-                      }}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
-                    >
-                      Load My LinkedIn Accounts
-                    </button>
-                    <p className="text-gray-400 text-xs text-center">
-                      Click above to view all connected accounts with proxy details
-                    </p>
+                    <div className="text-gray-400 text-sm">
+                      {user?.email ? (
+                        <>
+                          <p className="mb-2">Account: <span className="text-white">{user.email}</span></p>
+                          <p className="mb-2">Status: <span className="text-green-400">Connected via Unipile</span></p>
+                          <p className="text-xs text-gray-500 mt-3">
+                            Proxy details are managed automatically by Unipile based on your profile country above.
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-center py-2">No LinkedIn account connected</p>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
