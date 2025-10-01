@@ -18,6 +18,8 @@ import ApprovedProspectsDashboard from '../components/ApprovedProspectsDashboard
 import { DemoModeToggle } from '../components/DemoModeToggle';
 import ConnectionStatusBar from '../components/ConnectionStatusBar';
 import EmailProvidersModal from './components/EmailProvidersModal';
+import ModelSelector from '../components/ModelSelector';
+import LLMConfigModal from '../components/LLMConfigModal';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import {
   Activity,
@@ -198,6 +200,7 @@ export default function Page() {
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [showApiKeysModal, setShowApiKeysModal] = useState(false);
   const [showDataPreferencesModal, setShowDataPreferencesModal] = useState(false);
+  const [showLLMConfigModal, setShowLLMConfigModal] = useState(false);
   const [showTeamManagementModal, setShowTeamManagementModal] = useState(false);
   const [showWorkspaceSettingsModal, setShowWorkspaceSettingsModal] = useState(false);
   const [showCrmIntegrationModal, setShowCrmIntegrationModal] = useState(false);
@@ -2516,34 +2519,6 @@ export default function Page() {
                 </div>
 
 
-                {/* Notification Settings */}
-                <div 
-                  onClick={() => setShowNotificationsModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer relative"
-                >
-                  <button 
-                    className="absolute top-3 right-3 text-gray-400 hover:text-gray-200 transition-colors opacity-0 group-hover:opacity-100"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Handle close/exit logic here
-                    }}
-                  >
-                    <X size={16} />
-                  </button>
-                  <div className="flex items-center mb-4">
-                    <Bell className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">Notifications</h2>
-                  </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                    Customize notification preferences for campaigns, approvals, responses, and system alerts across all channels.
-                  </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Customize • Schedule • Manage</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
-                </div>
 
                 {/* API Keys */}
                 <div 
@@ -2759,6 +2734,15 @@ export default function Page() {
                   </div>
                 </div>
 
+              </div>
+
+              {/* AI Model Selector Section */}
+              <div className="mt-8">
+                <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+                  <Brain className="mr-3" size={24} />
+                  AI Model Configuration
+                </h3>
+                <ModelSelector onChangeClick={() => setShowLLMConfigModal(true)} />
               </div>
 
                 {/* Integration Status */}
@@ -4632,98 +4616,15 @@ export default function Page() {
         onClose={() => setShowEmailIntegrationModal(false)} 
       />
 
-      {/* Notifications Settings Modal */}
-      {showNotificationsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-white flex items-center">
-                <Bell className="mr-3 text-blue-400" size={28} />
-                Notification Settings
-              </h2>
-              <button 
-                onClick={() => setShowNotificationsModal(false)}
-                className="text-gray-400 hover:text-gray-200 transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="space-y-6">
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4">Campaign Notifications</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-white font-medium">Campaign Started</div>
-                      <div className="text-gray-400 text-sm">Get notified when campaigns begin execution</div>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" defaultChecked className="sr-only peer" />
-                      <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-white font-medium">Campaign Completed</div>
-                      <div className="text-gray-400 text-sm">Receive summary when campaigns finish</div>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" defaultChecked className="sr-only peer" />
-                      <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-white font-medium">Response Received</div>
-                      <div className="text-gray-400 text-sm">Immediate alerts for prospect responses</div>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" defaultChecked className="sr-only peer" />
-                      <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4">Delivery Preferences</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Email Notifications</label>
-                    <select className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white">
-                      <option>All notifications</option>
-                      <option>Important only</option>
-                      <option>Daily digest</option>
-                      <option>Disabled</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Notification Email</label>
-                    <input
-                      type="email"
-                      placeholder="notifications@yourdomain.com"
-                      className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-3">
-                <button 
-                  onClick={() => setShowNotificationsModal(false)}
-                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
-                  Save Settings
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* LLM Model Configuration Modal */}
+      <LLMConfigModal
+        isOpen={showLLMConfigModal}
+        onClose={() => setShowLLMConfigModal(false)}
+        onSave={() => {
+          setShowLLMConfigModal(false);
+          // Optionally show success message
+        }}
+      />
 
       {/* Proxy Country Modal */}
       {showProxyCountryModal && (
