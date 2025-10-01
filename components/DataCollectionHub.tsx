@@ -1,11 +1,14 @@
 'use client'
 
 import React, { useState, useRef } from 'react'
-import { Upload, Search, Linkedin, Database, FileText, Users, Download, Loader2 } from 'lucide-react'
+import { Upload, Search, Linkedin, Database, FileText, Users, Download, Loader2, Check, X, Eye, ChevronDown, ChevronUp, Tag } from 'lucide-react'
 import ProspectApprovalModal, { ProspectData as ProspectDataType, ApprovalSession } from './ProspectApprovalModal'
 
 // Using ProspectData from ProspectApprovalModal
-type ProspectData = ProspectDataType
+type ProspectData = ProspectDataType & {
+  campaignTag?: string
+  approvalStatus?: 'pending' | 'approved' | 'rejected'
+}
 
 interface DataCollectionHubProps {
   onDataCollected: (data: ProspectData[], source: string) => void
@@ -51,8 +54,10 @@ export default function DataCollectionHub({
 }: DataCollectionHubProps) {
   // Initialize with 100 dummy prospects for demo
   const [loading, setLoading] = useState(false)
-  const [prospectData, setProspectData] = useState<ProspectData[]>(generateDummyProspects(100))
-  const [showApprovalPanel, setShowApprovalPanel] = useState(false)
+  const [prospectData, setProspectData] = useState<ProspectData[]>(generateDummyProspects(100).map(p => ({ ...p, approvalStatus: 'pending' as const })))
+  const [expandedProspect, setExpandedProspect] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
 
   // CSV Upload Handler
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,16 +193,75 @@ export default function DataCollectionHub({
     }
   }
 
-  const handleApprove = (approvedData: ProspectData[]) => {
-    console.log('Approved prospects:', approvedData)
-    onApprovalComplete?.(approvedData)
-    alert(`✅ Approved ${approvedData.length} prospects!\n\n🎯 What's Next:\n1. Scroll down to view your approved data in the "Approved Prospects" section\n2. Select prospects and create campaigns\n3. Launch outreach with confidence\n\nYour approved prospects are now saved and ready to use!`)
+  const handleApprove = (prospectId: string) => {
+    setProspectData(prev => prev.map(p => 
+      p.id === prospectId ? { ...p, approvalStatus: 'approved' as const } : p
+    ))
   }
 
-  const handleReject = (rejectedData: ProspectData[]) => {
-    console.log('Rejected prospects:', rejectedData)
-    alert(`❌ Rejected ${rejectedData.length} prospects.`)
+  const handleReject = (prospectId: string) => {
+    setProspectData(prev => prev.map(p => 
+      p.id === prospectId ? { ...p, approvalStatus: 'rejected' as const } : p
+    ))
   }
+
+  const handleCampaignTagChange = (prospectId: string, tag: string) => {
+    setProspectData(prev => prev.map(p => 
+      p.id === prospectId ? { ...p, campaignTag: tag } : p
+    ))
+  }
+
+  const toggleExpanded = (prospectId: string) => {
+    setExpandedProspect(prev => prev === prospectId ? null : prospectId)
+  }
+
+  const downloadCSV = () => {
+    const csv = [
+      ['Name', 'Company', 'Title', 'Industry', 'Email', 'Phone', 'LinkedIn', 'Location', 'Campaign Tag', 'Status', 'Confidence', 'Source'],
+      ...prospectData.map(p => [
+        p.name,
+        p.company,
+        p.title,
+        p.industry || '',
+        p.email || '',
+        p.phone || '',
+        p.linkedinUrl || '',
+        p.location || '',
+        p.campaignTag || '',
+        p.approvalStatus || 'pending',
+        p.confidence ? `${Math.round(p.confidence * 100)}%` : '',
+        p.source
+      ])
+    ].map(row => row.join(',')).join('\n')
+
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `prospects_${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    window.URL.revokeObjectURL(url)
+  }
+
+  // Filter prospects
+  const filteredProspects = prospectData.filter(p => {
+    if (filterStatus !== 'all' && p.approvalStatus !== filterStatus) return false
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase()
+      return (
+        p.name.toLowerCase().includes(search) ||
+        p.company.toLowerCase().includes(search) ||
+        p.title.toLowerCase().includes(search) ||
+        p.industry?.toLowerCase().includes(search) ||
+        p.email?.toLowerCase().includes(search)
+      )
+    }
+    return true
+  })
+
+  const approvedCount = prospectData.filter(p => p.approvalStatus === 'approved').length
+  const rejectedCount = prospectData.filter(p => p.approvalStatus === 'rejected').length
+  const pendingCount = prospectData.filter(p => p.approvalStatus === 'pending').length
 
   return (
     <div className={`bg-gray-800 rounded-lg ${className}`}>
@@ -206,92 +270,207 @@ export default function DataCollectionHub({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Users className="w-5 h-5 text-purple-400" />
-            <h2 className="text-xl font-semibold text-white">Approved Prospects Dashboard</h2>
+            <h2 className="text-xl font-semibold text-white">Prospect Approval Dashboard</h2>
           </div>
-          <div className="text-sm text-gray-400">
-            {prospectData.length} prospects ready for campaigns
+          <div className="flex items-center space-x-4">
+            <div className="text-sm text-gray-400">
+              <span className="text-green-400 font-semibold">{approvedCount}</span> approved • 
+              <span className="text-red-400 font-semibold">{rejectedCount}</span> rejected • 
+              <span className="text-yellow-400 font-semibold">{pendingCount}</span> pending
+            </div>
+            <button
+              onClick={downloadCSV}
+              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download CSV</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Main Content - Approved Prospects View */}
-      <div className="p-6">
-        {prospectData.length > 0 ? (
-          <div className="space-y-4">
-            <div className="text-gray-400 text-sm mb-4">
-              Prospects approved through Sam chat will appear here.
-            </div>
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-white">
-                  {prospectData.length} Approved Prospects
-                </h3>
-                <button
-                  onClick={() => setShowApprovalPanel(true)}
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  View All Details
-                </button>
-              </div>
-              
-              {/* Preview List */}
-              <div className="bg-gray-700 rounded-lg p-4 max-h-96 overflow-y-auto">
-                <div className="space-y-3">
-                  {prospectData.slice(0, 10).map((prospect, index) => (
-                    <div key={prospect.id} className="flex justify-between items-center p-3 bg-gray-600 rounded-lg">
-                      <div>
-                        <div className="text-white font-medium">{prospect.name}</div>
-                        <div className="text-gray-300 text-sm">{prospect.title} at {prospect.company}</div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          prospect.confidence > 0.8 ? 'bg-green-600 text-green-100' :
-                          prospect.confidence > 0.6 ? 'bg-yellow-600 text-yellow-100' :
-                          'bg-red-600 text-red-100'
-                        }`}>
-                          {Math.round(prospect.confidence * 100)}%
-                        </span>
-                        <span className="text-xs text-gray-400">{prospect.source}</span>
-                      </div>
-                    </div>
-                  ))}
-                  {prospectData.length > 10 && (
-                    <div className="text-center text-gray-400 text-sm py-2">
-                      + {prospectData.length - 10} more prospects...
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+      {/* Filters and Search */}
+      <div className="border-b border-gray-700 px-6 py-3 bg-gray-750">
+        <div className="flex items-center space-x-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by name, company, title, industry, email..."
+              className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
           </div>
-        ) : (
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as any)}
+            className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            <option value="all">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Main Content - Table View */}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-750 border-b border-gray-700">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Name</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Company</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Title</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Industry</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Campaign Tag</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Details</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-700">
+            {filteredProspects.map((prospect) => (
+              <React.Fragment key={prospect.id}>
+                <tr className="hover:bg-gray-750 transition-colors">
+                  <td className="px-4 py-3 text-sm text-white font-medium">{prospect.name}</td>
+                  <td className="px-4 py-3 text-sm text-gray-300">{prospect.company}</td>
+                  <td className="px-4 py-3 text-sm text-gray-300">{prospect.title}</td>
+                  <td className="px-4 py-3 text-sm text-gray-300">{prospect.industry || '-'}</td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="text"
+                      value={prospect.campaignTag || ''}
+                      onChange={(e) => handleCampaignTagChange(prospect.id, e.target.value)}
+                      placeholder="Add tag..."
+                      className="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center space-x-2">
+                      {prospect.approvalStatus === 'pending' ? (
+                        <>
+                          <button
+                            onClick={() => handleApprove(prospect.id)}
+                            className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+                            title="Approve"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleReject(prospect.id)}
+                            className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
+                            title="Reject"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          prospect.approvalStatus === 'approved' 
+                            ? 'bg-green-600 text-green-100' 
+                            : 'bg-red-600 text-red-100'
+                        }`}>
+                          {prospect.approvalStatus}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <button
+                      onClick={() => toggleExpanded(prospect.id)}
+                      className="p-1.5 text-gray-400 hover:text-white transition-colors"
+                      title="View Details"
+                    >
+                      {expandedProspect === prospect.id ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </button>
+                  </td>
+                </tr>
+                {/* Expanded Detail Row */}
+                {expandedProspect === prospect.id && (
+                  <tr className="bg-gray-750">
+                    <td colSpan={7} className="px-4 py-4">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-400">Email:</span>
+                          <span className="text-white ml-2">{prospect.email || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Phone:</span>
+                          <span className="text-white ml-2">{prospect.phone || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Location:</span>
+                          <span className="text-white ml-2">{prospect.location || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Source:</span>
+                          <span className="text-white ml-2">{prospect.source}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Confidence:</span>
+                          <span className="text-white ml-2">{prospect.confidence ? `${Math.round(prospect.confidence * 100)}%` : 'N/A'}</span>
+                        </div>
+                        {prospect.linkedinUrl && (
+                          <div className="col-span-2">
+                            <span className="text-gray-400">LinkedIn:</span>
+                            <a
+                              href={prospect.linkedinUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-400 hover:text-blue-300 ml-2"
+                            >
+                              {prospect.linkedinUrl}
+                            </a>
+                          </div>
+                        )}
+                        {prospect.complianceFlags && prospect.complianceFlags.length > 0 && (
+                          <div className="col-span-2">
+                            <span className="text-gray-400">Compliance Flags:</span>
+                            <span className="text-yellow-400 ml-2">{prospect.complianceFlags.join(', ')}</span>
+                          </div>
+                        )}
+                        {/* Approval buttons in detail view too */}
+                        {prospect.approvalStatus === 'pending' && (
+                          <div className="col-span-2 flex space-x-2 mt-2">
+                            <button
+                              onClick={() => handleApprove(prospect.id)}
+                              className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                            >
+                              <Check className="w-4 h-4" />
+                              <span>Approve</span>
+                            </button>
+                            <button
+                              onClick={() => handleReject(prospect.id)}
+                              className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                              <span>Reject</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+        {filteredProspects.length === 0 && (
           <div className="text-center py-12">
             <Users className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-400 mb-2">No Approved Prospects Yet</h3>
-            <p className="text-gray-500 mb-4">
-              Use Sam chat to upload CSV files or search LinkedIn. Approved prospects will appear here.
+            <h3 className="text-lg font-semibold text-gray-400 mb-2">No Prospects Found</h3>
+            <p className="text-gray-500">
+              {searchTerm || filterStatus !== 'all' ? 'Try adjusting your filters' : 'Upload prospects to get started'}
             </p>
-            <div className="text-sm text-gray-600">
-              💬 Go to Sam chat and try:
-              <ul className="mt-2 text-left inline-block">
-                <li>• "Upload prospects from my CSV"</li>
-                <li>• "Find CTOs at SaaS companies"</li>
-              </ul>
-            </div>
           </div>
         )}
       </div>
-
-      {/* Prospect Approval Modal */}
-      <ProspectApprovalModal
-        isVisible={showApprovalPanel}
-        onClose={() => setShowApprovalPanel(false)}
-        prospects={prospectData}
-        onApprove={handleApprove}
-        onReject={handleReject}
-        title="Approve Collected Prospects"
-        subtitle="Review prospects from your data collection"
-      />
     </div>
   )
 }
