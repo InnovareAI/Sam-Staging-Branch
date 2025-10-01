@@ -28,57 +28,23 @@ import {
   type KnowledgeBaseICP,
 } from '@/lib/supabase-knowledge'
 import { INDUSTRY_BLUEPRINTS } from '@/lib/templates/industry-blueprints'
+import { llmRouter } from '@/lib/llm/llm-router'
 
-// Helper function to call OpenRouter API
-async function callOpenRouterAPI(messages: any[], systemPrompt: string) {
-  const openRouterKey = process.env.OPENROUTER_API_KEY;
-  
-  if (!openRouterKey) {
-    console.log('⚠️  OpenRouter API key not configured, using fallback');
-    return getMockSamResponse(messages);
-  }
-
+// Helper function to call LLM via router (respects customer preferences)
+async function callLLMRouter(userId: string, messages: any[], systemPrompt: string) {
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openRouterKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://innovareai.com',
-        'X-Title': 'Sam AI Sales Consultant'
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-3.7-sonnet',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages.map((msg: any) => ({
-            role: msg.role as 'user' | 'assistant',
-            content: msg.content
-          }))
-        ],
-        temperature: 0.7,
-        max_tokens: 1000,
-        top_p: 0.9,
-        frequency_penalty: 0.1,
-        presence_penalty: 0.1
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+    const response = await llmRouter.chat(
+      userId,
+      messages.map((msg: any) => ({
+        role: msg.role as 'system' | 'user' | 'assistant',
+        content: msg.content
+      })),
+      systemPrompt
+    );
     
-    if (!content) {
-      throw new Error('No content in OpenRouter response');
-    }
-
-    return content;
-    
+    return response.content;
   } catch (error) {
-    console.error('❌ OpenRouter API error:', error);
+    console.error('❌ LLM Router error:', error);
     console.log('🔄 Falling back to mock response');
     return getMockSamResponse(messages);
   }
@@ -1084,7 +1050,7 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
           content: msg.content
         }))
 
-        aiResponse = await callOpenRouterAPI(messages, systemPrompt)
+        aiResponse = await callLLMRouter(user.id, messages, systemPrompt)
         
         // Clean up prompt leakage
         aiResponse = aiResponse.replace(/\([^)]*script[^)]*\)/gi, '')
@@ -1109,7 +1075,7 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
       role: 'assistant',
       content_length: aiResponse?.length || 0,
       message_order: nextOrder + 1,
-      model_used: 'anthropic/claude-3.7-sonnet'
+      model_used: 'llm-router'
     })
     
     const { data: samMessage, error: samError } = await supabase
@@ -1120,7 +1086,7 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         role: 'assistant',
         content: aiResponse,
         message_order: nextOrder + 1,
-        model_used: 'anthropic/claude-3.7-sonnet'
+        model_used: 'llm-router' // Model routing handled by LLMRouter
       })
       .select()
       .single()
@@ -1138,7 +1104,7 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
           role: 'assistant',
           content_preview: aiResponse?.slice(0, 100) + '...',
           message_order: nextOrder + 1,
-          model_used: 'anthropic/claude-3.7-sonnet'
+          model_used: 'llm-router'
         }
       }, null, 2))
       
