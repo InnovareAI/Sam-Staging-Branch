@@ -236,6 +236,10 @@ export default function Page() {
   const editingLinkedinAssignment = !isEditingUserProxy && selectedLinkedinAccount
     ? linkedinProxyAssignments.find((a) => a.linkedin_account_id === selectedLinkedinAccount)
     : null;
+  
+  // Profile country state
+  const [profileCountry, setProfileCountry] = useState<string>('');
+  const [profileCountryLoading, setProfileCountryLoading] = useState(false);
 
   const fetchThreadMessages = useCallback(async (targetThreadId: string) => {
     try {
@@ -982,6 +986,29 @@ export default function Page() {
       checkLinkedInConnection();
     }
   }, [user, isAuthLoading]);
+  
+  // Load profile country when user views profile
+  useEffect(() => {
+    const fetchProfileCountry = async () => {
+      if (activeMenuItem === 'profile' && user) {
+        try {
+          const { data, error } = await supabase
+            .from('users')
+            .select('profile_country')
+            .eq('id', user.id)
+            .maybeSingle();
+          
+          if (!error && data?.profile_country) {
+            setProfileCountry(data.profile_country);
+          }
+        } catch (error) {
+          console.error('Failed to fetch profile country:', error);
+        }
+      }
+    };
+    
+    fetchProfileCountry();
+  }, [activeMenuItem, user, supabase]);
 
   // Keep newest messages visible by anchoring scroll to the top
   useEffect(() => {
@@ -3096,9 +3123,78 @@ export default function Page() {
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white opacity-50"
                     />
                   </div>
-                  <button className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors">
-                    Update Profile
-                  </button>
+                  
+                  {/* Profile Country for Proxy Configuration */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">🌍 Profile Country</label>
+                    <select
+                      value={profileCountry}
+                      onChange={async (e) => {
+                        const newCountry = e.target.value;
+                        setProfileCountry(newCountry);
+                        setProfileCountryLoading(true);
+                        
+                        try {
+                          const response = await fetch('/api/profile/update-country', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ country: newCountry })
+                          });
+                          
+                          if (response.ok) {
+                            showNotification('success', 'Profile country updated! This will be used for LinkedIn proxy assignment.');
+                          } else {
+                            const data = await response.json();
+                            showNotification('error', data.error || 'Failed to update country');
+                          }
+                        } catch (error) {
+                          showNotification('error', 'Network error updating country');
+                        } finally {
+                          setProfileCountryLoading(false);
+                        }
+                      }}
+                      disabled={profileCountryLoading}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                      <option value="">Select your country...</option>
+                      <option value="us">🇺🇸 United States</option>
+                      <option value="gb">🇬🇧 United Kingdom</option>
+                      <option value="ca">🇨🇦 Canada</option>
+                      <option value="de">🇩🇪 Germany</option>
+                      <option value="fr">🇫🇷 France</option>
+                      <option value="au">🇦🇺 Australia</option>
+                      <option value="nl">🇳🇱 Netherlands</option>
+                      <option value="br">🇧🇷 Brazil</option>
+                      <option value="es">🇪🇸 Spain</option>
+                      <option value="it">🇮🇹 Italy</option>
+                      <option value="jp">🇯🇵 Japan</option>
+                      <option value="sg">🇸🇬 Singapore</option>
+                      <option value="in">🇮🇳 India</option>
+                      <option value="at">🇦🇹 Austria</option>
+                      <option value="ch">🇨🇭 Switzerland</option>
+                      <option value="ar">🇦🇷 Argentina</option>
+                      <option value="be">🇧🇪 Belgium</option>
+                      <option value="bg">🇧🇬 Bulgaria</option>
+                      <option value="hr">🇭🇷 Croatia</option>
+                      <option value="cy">🇨🇾 Cyprus</option>
+                      <option value="cz">🇨🇿 Czech Republic</option>
+                      <option value="dk">🇩🇰 Denmark</option>
+                      <option value="hk">🇭🇰 Hong Kong</option>
+                      <option value="mx">🇲🇽 Mexico</option>
+                      <option value="no">🇳🇴 Norway</option>
+                      <option value="pl">🇵🇱 Poland</option>
+                      <option value="pt">🇵🇹 Portugal</option>
+                      <option value="ro">🇷🇴 Romania</option>
+                      <option value="za">🇿🇦 South Africa</option>
+                      <option value="se">🇸🇪 Sweden</option>
+                      <option value="tr">🇹🇷 Turkey</option>
+                      <option value="ua">🇺🇦 Ukraine</option>
+                      <option value="ae">🇦🇪 UAE</option>
+                    </select>
+                    <p className="text-gray-400 text-xs mt-1">
+                      {profileCountryLoading ? '⏳ Updating...' : '📍 This country will be used for LinkedIn proxy assignment'}
+                    </p>
+                  </div>
                 </div>
               </div>
 
