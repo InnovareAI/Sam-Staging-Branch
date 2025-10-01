@@ -2,20 +2,10 @@
 
 import React, { useState, useRef } from 'react'
 import { Upload, Search, Linkedin, Database, FileText, Users, Download, Loader2 } from 'lucide-react'
-import DataApprovalPanel from './DataApprovalPanel'
+import ProspectApprovalModal, { ProspectData as ProspectDataType, ApprovalSession } from './ProspectApprovalModal'
 
-interface ProspectData {
-  id: string
-  name: string
-  title: string
-  company: string
-  email?: string
-  phone?: string
-  linkedinUrl?: string
-  source: 'unipile' | 'bright-data' | 'csv_upload' | 'manual'
-  confidence: number
-  complianceFlags?: string[]
-}
+// Using ProspectData from ProspectApprovalModal
+type ProspectData = ProspectDataType
 
 interface DataCollectionHubProps {
   onDataCollected: (data: ProspectData[], source: string) => void
@@ -459,13 +449,15 @@ export default function DataCollectionHub({
         </div>
       )}
 
-      {/* Data Approval Panel */}
-      <DataApprovalPanel
+      {/* Prospect Approval Modal */}
+      <ProspectApprovalModal
         isVisible={showApprovalPanel}
         onClose={() => setShowApprovalPanel(false)}
-        prospectData={prospectData}
+        prospects={prospectData}
         onApprove={handleApprove}
         onReject={handleReject}
+        title="Approve Collected Prospects"
+        subtitle="Review prospects from your data collection"
       />
     </div>
   )
