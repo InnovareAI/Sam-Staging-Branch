@@ -59,23 +59,38 @@ export default function DataCollectionHub({
   // Merge with any uploaded data from chat
   const [loading, setLoading] = useState(false)
   const initializeProspects = () => {
-    const dummyProspects = generateDummyProspects(100).map(p => ({ ...p, approvalStatus: 'pending' as const, campaignTag: 'Demo Campaign', uploaded: false }))
-    const uploadedProspects = initialUploadedData.map(p => ({ ...p, approvalStatus: (p.approvalStatus || 'pending') as const, campaignTag: p.campaignTag || 'Demo Campaign', uploaded: true }))
+    const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
+    const dummyProspects = generateDummyProspects(100).map(p => ({ 
+      ...p, 
+      approvalStatus: 'pending' as const, 
+      campaignTag: `${today}-CLIENT-Demo`, 
+      uploaded: false 
+    }))
+    const uploadedProspects = initialUploadedData.map(p => ({ 
+      ...p, 
+      approvalStatus: (p.approvalStatus || 'pending') as const, 
+      campaignTag: p.campaignTag || `${today}-CLIENT-Demo`, 
+      uploaded: true 
+    }))
     return [...uploadedProspects, ...dummyProspects]
   }
   const [prospectData, setProspectData] = useState<ProspectData[]>(initializeProspects())
   const [expandedProspect, setExpandedProspect] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
-  const [defaultCampaignTag, setDefaultCampaignTag] = useState('Demo Campaign')
+  // Generate default campaign tag with systematic naming: YYYYMMDD-ClientID-CampaignName
+  const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
+  const [defaultCampaignTag, setDefaultCampaignTag] = useState(`${today}-CLIENT-Demo`)
+  const [selectedCampaignTag, setSelectedCampaignTag] = useState<string>('all')
   
   // Update prospects when new data is uploaded from chat
   useEffect(() => {
     if (initialUploadedData && initialUploadedData.length > 0) {
+      const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
       const uploadedProspects = initialUploadedData.map(p => ({
         ...p,
         approvalStatus: (p.approvalStatus || 'pending') as const,
-        campaignTag: p.campaignTag || 'Demo Campaign',
+        campaignTag: p.campaignTag || `${today}-CLIENT-Demo`,
         uploaded: true
       }))
       // Add uploaded prospects to the beginning of the list
@@ -278,8 +293,12 @@ export default function DataCollectionHub({
     window.URL.revokeObjectURL(url)
   }
 
+  // Get unique campaign tags
+  const campaignTags = ['all', ...Array.from(new Set(prospectData.map(p => p.campaignTag).filter(Boolean))) as string[]]
+  
   // Filter prospects
   const filteredProspects = prospectData.filter(p => {
+    if (selectedCampaignTag !== 'all' && p.campaignTag !== selectedCampaignTag) return false
     if (filterStatus !== 'all' && p.approvalStatus !== filterStatus) return false
     if (searchTerm) {
       const search = searchTerm.toLowerCase()
@@ -327,6 +346,38 @@ export default function DataCollectionHub({
               <span>Download CSV</span>
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Campaign Tag Tabs */}
+      <div className="border-b border-gray-700 px-6 py-3 bg-gray-750">
+        <div className="flex items-center space-x-2 overflow-x-auto">
+          {campaignTags.map((tag) => {
+            const tagCount = tag === 'all' 
+              ? prospectData.length 
+              : prospectData.filter(p => p.campaignTag === tag).length
+            return (
+              <button
+                key={tag}
+                onClick={() => setSelectedCampaignTag(tag)}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                  selectedCampaignTag === tag
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                <Tag className="w-3 h-3" />
+                <span>{tag === 'all' ? 'All Campaigns' : tag}</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs ${
+                  selectedCampaignTag === tag
+                    ? 'bg-purple-700 text-purple-100'
+                    : 'bg-gray-600 text-gray-300'
+                }`}>
+                  {tagCount}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
 

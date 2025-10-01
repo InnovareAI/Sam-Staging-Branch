@@ -165,6 +165,7 @@ export default function Page() {
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [pastedCSV, setPastedCSV] = useState('');
   const [uploadedProspects, setUploadedProspects] = useState<any[]>([]);
+  const [csvUploadCounter, setCsvUploadCounter] = useState(1);
   
   // Workspace state
   const [workspaces, setWorkspaces] = useState<any[]>([]);
@@ -1332,14 +1333,29 @@ export default function Page() {
         
         showNotification('success', `CSV processed successfully! ${validCount} valid LinkedIn prospects found.`);
         
-        // Store pasted prospects with 'uploaded' flag
+        // Store pasted prospects with 'uploaded' flag and systematic campaign tag
+        // Format: YYYYMMDD-ClientID-CampaignName
+        const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+        const clientId = 'CLIENT'; // TODO: Get from workspace/user settings
+        
+        // Prompt user for campaign name
+        const defaultCampaignName = `CSV${csvUploadCounter}`;
+        const campaignName = prompt(
+          `Enter campaign name for this upload:\n\nFormat: ${today}-${clientId}-[CampaignName]`,
+          defaultCampaignName
+        ) || defaultCampaignName;
+        
+        const campaignTag = `${today}-${clientId}-${campaignName.replace(/[^a-zA-Z0-9-_]/g, '')}`;
+        
         const prospectsWithUploadedFlag = (data.preview_data || []).map((p: any) => ({
           ...p,
           uploaded: true,
           source: p.source || 'csv_upload',
-          approvalStatus: 'pending'
+          approvalStatus: 'pending',
+          campaignTag: campaignTag
         }));
         setUploadedProspects(prev => [...prev, ...prospectsWithUploadedFlag]);
+        setCsvUploadCounter(prev => prev + 1);
         
         // Switch to Data Approval section
         setActiveMenuItem('data-approval');
@@ -1421,14 +1437,29 @@ export default function Page() {
         
         showNotification('success', `CSV uploaded successfully! ${validCount} valid LinkedIn prospects found.`);
         
-        // Store uploaded prospects with 'uploaded' flag
+        // Store uploaded prospects with 'uploaded' flag and systematic campaign tag
+        // Format: YYYYMMDD-ClientID-CampaignName
+        const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+        const clientId = 'CLIENT'; // TODO: Get from workspace/user settings
+        
+        // Prompt user for campaign name
+        const defaultCampaignName = `CSV${csvUploadCounter}`;
+        const campaignName = prompt(
+          `Enter campaign name for this upload:\n\nFormat: ${today}-${clientId}-[CampaignName]`,
+          defaultCampaignName
+        ) || defaultCampaignName;
+        
+        const campaignTag = `${today}-${clientId}-${campaignName.replace(/[^a-zA-Z0-9-_]/g, '')}`;
+        
         const prospectsWithUploadedFlag = (data.preview_data || []).map((p: any) => ({
           ...p,
           uploaded: true,
           source: p.source || 'csv_upload',
-          approvalStatus: 'pending'
+          approvalStatus: 'pending',
+          campaignTag: campaignTag
         }));
         setUploadedProspects(prev => [...prev, ...prospectsWithUploadedFlag]);
+        setCsvUploadCounter(prev => prev + 1);
         
         // Switch to Data Approval section to review the uploaded prospects
         setActiveMenuItem('data-approval');
