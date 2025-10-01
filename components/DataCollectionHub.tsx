@@ -52,12 +52,13 @@ export default function DataCollectionHub({
   onApprovalComplete,
   className = '' 
 }: DataCollectionHubProps) {
-  // Initialize with 100 dummy prospects for demo
+  // Initialize with 100 dummy prospects for demo - assign default campaign tag
   const [loading, setLoading] = useState(false)
-  const [prospectData, setProspectData] = useState<ProspectData[]>(generateDummyProspects(100).map(p => ({ ...p, approvalStatus: 'pending' as const })))
+  const [prospectData, setProspectData] = useState<ProspectData[]>(generateDummyProspects(100).map(p => ({ ...p, approvalStatus: 'pending' as const, campaignTag: 'Demo Campaign' })))
   const [expandedProspect, setExpandedProspect] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
+  const [defaultCampaignTag, setDefaultCampaignTag] = useState('Demo Campaign')
 
   // CSV Upload Handler
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -263,6 +264,12 @@ export default function DataCollectionHub({
   const rejectedCount = prospectData.filter(p => p.approvalStatus === 'rejected').length
   const pendingCount = prospectData.filter(p => p.approvalStatus === 'pending').length
 
+  const applyDefaultTagToAll = () => {
+    if (defaultCampaignTag.trim()) {
+      setProspectData(prev => prev.map(p => ({ ...p, campaignTag: defaultCampaignTag })))
+    }
+  }
+
   return (
     <div className={`bg-gray-800 rounded-lg ${className}`}>
       {/* Header */}
@@ -286,6 +293,27 @@ export default function DataCollectionHub({
               <span>Download CSV</span>
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Campaign Tag Assignment Bar */}
+      <div className="border-b border-gray-700 px-6 py-3 bg-gray-750">
+        <div className="flex items-center space-x-4">
+          <Tag className="w-4 h-4 text-purple-400" />
+          <label className="text-sm text-gray-300 font-medium">Default Campaign Tag:</label>
+          <input
+            type="text"
+            value={defaultCampaignTag}
+            onChange={(e) => setDefaultCampaignTag(e.target.value)}
+            placeholder="Enter campaign name..."
+            className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+          <button
+            onClick={applyDefaultTagToAll}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium"
+          >
+            Apply to All
+          </button>
         </div>
       </div>
 
