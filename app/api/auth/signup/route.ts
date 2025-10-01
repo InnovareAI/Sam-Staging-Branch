@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies: cookies });
     
-    const { email, password, firstName, lastName } = await request.json();
+    const { email, password, firstName, lastName, country } = await request.json();
 
     // Validate input
     if (!email || !password || !firstName || !lastName) {
@@ -16,6 +16,20 @@ export async function POST(request: NextRequest) {
         { error: 'All fields are required' },
         { status: 400 }
       );
+    }
+
+    // Validate country (2-letter ISO code)
+    let profileCountry: string | null = null;
+    if (country && typeof country === 'string') {
+      const c = country.trim().toLowerCase();
+      if (c.length === 2) {
+        profileCountry = c;
+      } else {
+        return NextResponse.json(
+          { error: 'Country must be a 2-letter code (e.g., DE, US)' },
+          { status: 400 }
+        );
+      }
     }
 
     if (password.length < 6) {
@@ -58,8 +72,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user was created and needs email verification
+    // If user created but requires email verification, still proceed to create profile and auto-assign proxy
     if (data.user && !data.session) {
+      try {
+        const supabaseAdminClient = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        // Create user profile (best-effort)
+        await supabaseAdminClient
+          .from('users')
+          .upsert({
+            id: data.user.id,
+            supabase_id: data.user.id,
+            email: data.user.email,
+            first_name: firstName,
+            last_name: lastName,
+            profile_country: profileCountry, // may be ignored if column doesn't exist
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'id' });
+
+        // Auto-assign proxy using profile country if provided; fallback to IP
+        const autoIPService = new AutoIPAssignmentService();
+        const locationHint = profileCountry || undefined; // two-letter code
+        const userLocation = locationHint ? null : await autoIPService.detectUserLocation(request);
+        const proxyConfig = await autoIPService.generateOptimalProxyConfig(
+          userLocation || undefined,
+          locationHint || undefined
+        );
+
+        await supabaseAdminClient
+          .from('user_proxy_preferences')
+          .upsert({
+            user_id: data.user.id,
+            detected_location: userLocation ? `${userLocation.city}, ${userLocation.regionName}, ${userLocation.country}` : null,
+            linkedin_location: null,
+            preferred_country: proxyConfig.country,
+            preferred_state: proxyConfig.state,
+            preferred_city: proxyConfig.city,
+            confidence_score: proxyConfig.confidence,
+            session_id: proxyConfig.sessionId,
+            is_auto_assigned: true,
+            last_updated: new Date().toISOString()
+          }, { onConflict: 'user_id' });
+      } catch (e) {
+        console.error('Post-signup auto-assign (verification) failed (non-critical):', e);
+      }
+
       return NextResponse.json({
         message: 'Registration successful! Please check your email to verify your account.',
         requiresVerification: true,
@@ -78,17 +139,19 @@ export async function POST(request: NextRequest) {
           process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
 
-        // Create user profile
+        // Create or update user profile
         const { error: profileError } = await supabaseAdmin
           .from('users')
-          .insert({
+          .upsert({
             id: data.user.id,
             supabase_id: data.user.id, // Supabase user ID
             email: data.user.email,
             first_name: firstName,
             last_name: lastName,
-            created_at: new Date().toISOString()
-          });
+            profile_country: profileCountry, // may be ignored if column doesn't exist
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'id' });
 
         if (profileError && !profileError.message.includes('duplicate key')) {
           console.error('Profile creation error:', profileError);
@@ -100,12 +163,16 @@ export async function POST(request: NextRequest) {
           
           const autoIPService = new AutoIPAssignmentService();
           
-          // Detect user location from request headers
-          const userLocation = await autoIPService.detectUserLocation(request);
-          console.log('📍 Detected signup location:', userLocation);
+          // Prefer profile country; fallback to detected user location
+          let locationHint = profileCountry || undefined;
+          const userLocation = locationHint ? null : await autoIPService.detectUserLocation(request);
+          console.log('📍 Signup location hint / detected:', { locationHint, userLocation });
           
           // Generate optimal proxy configuration for the user
-          const proxyConfig = await autoIPService.generateOptimalProxyConfig(userLocation || undefined);
+          const proxyConfig = await autoIPService.generateOptimalProxyConfig(
+            userLocation || undefined,
+            locationHint
+          );
           
           console.log('✅ Generated proxy config for new user:', {
             country: proxyConfig.country,
@@ -126,7 +193,6 @@ export async function POST(request: NextRequest) {
               confidence_score: proxyConfig.confidence,
               session_id: proxyConfig.sessionId,
               is_auto_assigned: true,
-              created_at: new Date().toISOString(),
               last_updated: new Date().toISOString()
             });
           
