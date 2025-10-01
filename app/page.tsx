@@ -4993,7 +4993,7 @@ export default function Page() {
                     <option value="ae">🇦🇪 UAE</option>
                   </select>
                   <p className="text-gray-400 text-xs mt-2">
-                    {profileCountryLoading ? '⏳ Updating...' : '📍 Used for automatic proxy assignment via Unipile'}
+                    {profileCountryLoading ? '⏳ Updating...' : '📍 Used for automatic proxy assignment via InnovareAI'}
                   </p>
                 </div>
               </div>
@@ -5017,9 +5017,9 @@ export default function Page() {
                       {user?.email ? (
                         <>
                           <p className="mb-2">Account: <span className="text-white">{user.email}</span></p>
-                          <p className="mb-2">Status: <span className="text-green-400">Connected via Unipile</span></p>
+                          <p className="mb-2">Status: <span className="text-green-400">Connected via InnovareAI</span></p>
                           <p className="text-xs text-gray-500 mt-3">
-                            Proxy details are managed automatically by Unipile based on your profile country above.
+                            Proxy details are managed automatically by InnovareAI based on your profile country above.
                           </p>
                         </>
                       ) : (
@@ -5030,293 +5030,61 @@ export default function Page() {
                 )}
               </div>
 
-              {!selectedLinkedinAccount ? (
-                /* LinkedIn Accounts List View */
-                <>
-                  {loadingProxyAssignments ? (
-                    <div className="bg-gray-700 rounded-lg p-8 text-center">
-                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mb-4"></div>
-                      <p className="text-gray-300">Loading LinkedIn accounts...</p>
+              {/* Detailed Proxy Information */}
+              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-5">
+                <h3 className="text-blue-400 font-semibold text-sm mb-3 flex items-center">
+                  <svg className="mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                  </svg>
+                  Proxy Information
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-gray-400 text-xs mb-1">Provider</p>
+                      <p className="text-white">InnovareAI / Unipile</p>
                     </div>
-                  ) : linkedinProxyAssignments.length === 0 ? (
-                    userProxyPreferences ? (
-                      <div className="bg-gray-700 rounded-lg p-6 border border-gray-600 text-left">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold">🌍</div>
-                            <div>
-                              <h4 className="text-white font-medium">Your Proxy</h4>
-                              <p className="text-gray-400 text-sm">Auto-assigned at signup</p>
-                            </div>
-                          </div>
-                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-900 text-blue-300">ACTIVE</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 mb-3">
-                          <div>
-                            <span className="text-gray-400 text-xs">Proxy Country</span>
-                            <p className="text-white">{userProxyPreferences.preferred_country?.toUpperCase()}{userProxyPreferences.preferred_state ? `/${userProxyPreferences.preferred_state.toUpperCase()}` : ''}</p>
-                          </div>
-                          <div>
-                            <span className="text-gray-400 text-xs">Confidence</span>
-                            <p className="text-white">{Math.round((userProxyPreferences.confidence_score || 0) * 100)}%</p>
-                          </div>
-                        </div>
-                        <div className="text-xs text-gray-400 mb-4">
-                          Session: {userProxyPreferences.session_id ? `${userProxyPreferences.session_id.substring(0, 8)}...` : '—'}
-                        </div>
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                          <a href="/linkedin-integration" className="text-blue-400 hover:text-blue-300 underline">
-                            Connect a LinkedIn account
-                          </a>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => {
-                                setSelectedProxyCountry((userProxyPreferences.preferred_country || '').toUpperCase());
-                                setSelectedProxyState(userProxyPreferences.preferred_state ? userProxyPreferences.preferred_state.toUpperCase() : '');
-                                setSelectedProxyCity(userProxyPreferences.preferred_city || '');
-                                setSelectedLinkedinAccount(USER_PROXY_SENTINEL);
-                              }}
-                              className="bg-gray-600 hover:bg-gray-700 text-white text-sm px-4 py-2 rounded-lg transition-colors"
-                            >
-                              Change Location
-                            </button>
-                            <button
-                              onClick={async () => {
-                                setLoadingProxyAssignments(true);
-                                try {
-                                  const { data: { session } } = await supabase.auth.getSession();
-                                  if (!session) return;
-                                  const response = await fetch('/api/linkedin/assign-proxy-ips', {
-                                    method: 'POST',
-                                    headers: {
-                                      'Authorization': `Bearer ${session.access_token}`,
-                                      'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify({ force_update: true })
-                                  });
-                                  const data = await response.json();
-                                  if (response.ok) {
-                                    showNotification('success', 'LinkedIn proxies assigned');
-                                    await loadLinkedinProxyAssignments();
-                                    await loadUserProxyPreferences();
-                                  } else {
-                                    showNotification('error', data.error || 'Failed to assign proxies');
-                                  }
-                                } catch (e) {
-                                  console.error(e);
-                                  showNotification('error', 'Failed to assign proxies');
-                                } finally {
-                                  setLoadingProxyAssignments(false);
-                                }
-                              }}
-                              className="bg-purple-600 hover:bg-purple-700 text-white text-sm px-4 py-2 rounded-lg transition-colors"
-                            >
-                              Assign to LinkedIn
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-gray-700 rounded-lg p-8 text-center">
-                        <p className="text-gray-300 mb-4">No LinkedIn accounts connected</p>
-                        <a href="/linkedin-integration" className="text-blue-400 hover:text-blue-300 underline">
-                          Connect a LinkedIn account
-                        </a>
-                      </div>
-                    )
-) : (
-                    <div className="space-y-4">
-                      <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
-                        <div className="flex items-start space-x-3">
-                          <Info className="text-blue-400 mt-0.5" size={16} />
-                          <div>
-                            <h4 className="text-blue-400 font-medium text-sm">Dedicated IPs per Account</h4>
-                            <p className="text-gray-300 text-sm mt-1">
-                              Each LinkedIn account is assigned a dedicated IP from its registration country for authenticity. You can manually override if needed.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {linkedinProxyAssignments.map((assignment) => (
-                        <div key={assignment.linkedin_account_id} className="bg-gray-700 rounded-lg p-4 border border-gray-600">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                                {assignment.linkedin_account_name.charAt(0).toUpperCase()}
-                              </div>
-                              <div>
-                                <h4 className="text-white font-medium">{assignment.linkedin_account_name}</h4>
-                                <p className="text-gray-400 text-sm">{assignment.detected_country}</p>
-                              </div>
-                            </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              assignment.connectivity_status === 'active' 
-                                ? 'bg-green-900 text-green-300' 
-                                : assignment.connectivity_status === 'untested'
-                                ? 'bg-yellow-900 text-yellow-300'
-                                : 'bg-red-900 text-red-300'
-                            }`}>
-                              {assignment.connectivity_status === 'active' && '✓ Active'}
-                              {assignment.connectivity_status === 'untested' && '⏳ Untested'}
-                              {assignment.connectivity_status === 'failed' && '✗ Failed'}
-                              {assignment.connectivity_status === 'disabled' && '🚫 Disabled'}
-                            </span>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-4 mb-3">
-                            <div>
-                              <span className="text-gray-400 text-xs">Proxy Country</span>
-                              <p className="text-white">{assignment.proxy_country?.toUpperCase()}{assignment.proxy_state ? `/${assignment.proxy_state.toUpperCase()}` : ''}</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-400 text-xs">Confidence</span>
-                              <p className="text-white">{Math.round((assignment.confidence_score || 0) * 100)}%</p>
-                            </div>
-                          </div>
-                          
-                          <div className="flex justify-end">
-                              <button 
-                              onClick={() => {
-                                setSelectedLinkedinAccount(assignment.linkedin_account_id);
-                                setSelectedProxyCountry((assignment.proxy_country || '').toUpperCase());
-                                setSelectedProxyState(assignment.proxy_state ? assignment.proxy_state.toUpperCase() : '');
-                                setSelectedProxyCity(assignment.proxy_city || '');
-                              }}
-                              className="bg-purple-600 hover:bg-purple-700 text-white text-sm px-4 py-2 rounded-lg transition-colors"
-                            >
-                              Change Country
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              ) : (
-                /* Edit Mode - Country Selection Form for Selected Account */
-                <>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h3 className="text-lg font-medium text-white mb-2">
-                      {isEditingUserProxy
-                        ? 'Change Your Proxy Location'
-                        : `Change Proxy Country for ${editingLinkedinAssignment?.linkedin_account_name ?? 'LinkedIn Account'}`}
-                    </h3>
-                    <p className="text-gray-300 text-sm mb-4">
-                      {isEditingUserProxy
-                        ? 'Update the default Bright Data proxy location Sam uses for your workspace when no LinkedIn account is mapped.'
-                        : 'Select a different country for this LinkedIn account’s proxy IP. This will change the location from which the account appears to operate.'}
-                    </p>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Country *
-                        </label>
-                        <select 
-                          value={selectedProxyCountry}
-                          onChange={(e) => setSelectedProxyCountry(e.target.value)}
-                          className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        >
-                          <option value="">Select Country</option>
-                          <option value="US">United States</option>
-                          <option value="CA">Canada</option>
-                          <option value="GB">United Kingdom</option>
-                          <option value="DE">Germany</option>
-                          <option value="FR">France</option>
-                          <option value="AU">Australia</option>
-                          <option value="NL">Netherlands</option>
-                          <option value="CH">Switzerland</option>
-                          <option value="AT">Austria</option>
-                          <option value="PH">Philippines</option>
-                        </select>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          State/Region (Optional)
-                        </label>
-                        <input 
-                          type="text" 
-                          value={selectedProxyState}
-                          onChange={(e) => setSelectedProxyState(e.target.value)}
-                          placeholder="e.g., California, Bavaria, etc."
-                          className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          City (Optional)
-                        </label>
-                        <input 
-                          type="text" 
-                          value={selectedProxyCity}
-                          onChange={(e) => setSelectedProxyCity(e.target.value)}
-                          placeholder="e.g., Los Angeles, Munich, etc."
-                          className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        />
-                      </div>
+                    <div>
+                      <p className="text-gray-400 text-xs mb-1">Connection Type</p>
+                      <p className="text-white">Residential Proxy</p>
                     </div>
                   </div>
-                </>
-              )}
-              
-              {selectedLinkedinAccount && (
-                <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
-                  <div className="flex items-start space-x-3">
-                    <Info className="text-yellow-400 mt-0.5" size={16} />
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <h4 className="text-yellow-400 font-medium text-sm">Manual Override</h4>
-                      <p className="text-gray-300 text-sm mt-1">
-                        {isEditingUserProxy
-                          ? 'This updates the default proxy Sam uses when making outbound LinkedIn or email automation on your behalf.'
-                          : 'Changing the proxy country may affect account performance. Only change if you are targeting a specific region or experiencing connectivity issues.'}
+                      <p className="text-gray-400 text-xs mb-1">Proxy Location</p>
+                      <p className="text-white">{profileCountry ? profileCountry.toUpperCase() : 'Not set'}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-xs mb-1">Status</p>
+                      <p className="text-green-400 flex items-center">
+                        <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                        Active
                       </p>
                     </div>
                   </div>
+                  <div className="border-t border-blue-500/20 pt-3 mt-3">
+                    <p className="text-gray-300 text-xs leading-relaxed">
+                      <strong className="text-blue-300">How it works:</strong> All LinkedIn activity from your account is routed through a dedicated residential proxy in your selected country. This ensures your connection appears authentic and prevents LinkedIn from detecting automation.
+                    </p>
+                  </div>
+                  <div className="border-t border-blue-500/20 pt-3">
+                    <p className="text-gray-300 text-xs leading-relaxed">
+                      <strong className="text-blue-300">Security:</strong> Your proxy configuration is managed automatically and securely by InnovareAI. IP addresses are rotated intelligently to maintain account health while ensuring consistent geolocation.
+                    </p>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="flex justify-end space-x-3 mt-6">
-              {!selectedLinkedinAccount ? (
-                /* List View Buttons */
-                <>
-                  <button 
-                    onClick={() => setShowProxyCountryModal(false)}
-                    className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
-                  >
-                    Close
-                  </button>
-                  <button 
-                    onClick={loadLinkedinProxyAssignments}
-                    disabled={loadingProxyAssignments}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg transition-colors"
-                  >
-                    {loadingProxyAssignments ? 'Refreshing...' : 'Refresh'}
-                  </button>
-                </>
-              ) : (
-                /* Edit Mode Buttons */
-                <>
-                  <button 
-                    onClick={() => {
-                      setSelectedLinkedinAccount(null);
-                    }}
-                    className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
-                  >
-                    Back
-                  </button>
-                  <button 
-                    onClick={handleSaveProxySettings}
-                    disabled={proxySaveLoading}
-                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white px-4 py-2 rounded-lg transition-colors"
-                  >
-                    {proxySaveLoading ? 'Saving...' : isEditingUserProxy ? 'Save Default Proxy' : 'Save Country Change'}
-                  </button>
-                </>
-              )}
+              <button 
+                onClick={() => setShowProxyCountryModal(false)}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
