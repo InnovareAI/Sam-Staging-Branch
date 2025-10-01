@@ -194,16 +194,22 @@ export default function DataCollectionHub({
     }
   }
 
-  const handleApprove = (prospectId: string) => {
-    setProspectData(prev => prev.map(p => 
-      p.id === prospectId ? { ...p, approvalStatus: 'approved' as const } : p
-    ))
-  }
-
   const handleReject = (prospectId: string) => {
     setProspectData(prev => prev.map(p => 
       p.id === prospectId ? { ...p, approvalStatus: 'rejected' as const } : p
     ))
+  }
+
+  const handleApproveAll = () => {
+    setProspectData(prev => prev.map(p => 
+      p.approvalStatus !== 'rejected' ? { ...p, approvalStatus: 'approved' as const } : p
+    ))
+  }
+
+  const handleRejectAll = () => {
+    if (confirm('Are you sure you want to reject all prospects?')) {
+      setProspectData(prev => prev.map(p => ({ ...p, approvalStatus: 'rejected' as const })))
+    }
   }
 
   const handleCampaignTagChange = (prospectId: string, tag: string) => {
@@ -298,22 +304,40 @@ export default function DataCollectionHub({
 
       {/* Campaign Tag Assignment Bar */}
       <div className="border-b border-gray-700 px-6 py-3 bg-gray-750">
-        <div className="flex items-center space-x-4">
-          <Tag className="w-4 h-4 text-purple-400" />
-          <label className="text-sm text-gray-300 font-medium">Default Campaign Tag:</label>
-          <input
-            type="text"
-            value={defaultCampaignTag}
-            onChange={(e) => setDefaultCampaignTag(e.target.value)}
-            placeholder="Enter campaign name..."
-            className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          />
-          <button
-            onClick={applyDefaultTagToAll}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium"
-          >
-            Apply to All
-          </button>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4 flex-1">
+            <Tag className="w-4 h-4 text-purple-400" />
+            <label className="text-sm text-gray-300 font-medium">Default Campaign Tag:</label>
+            <input
+              type="text"
+              value={defaultCampaignTag}
+              onChange={(e) => setDefaultCampaignTag(e.target.value)}
+              placeholder="Enter campaign name..."
+              className="flex-1 max-w-md px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+            <button
+              onClick={applyDefaultTagToAll}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium"
+            >
+              Apply to All
+            </button>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleApproveAll}
+              className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium"
+            >
+              <Check className="w-4 h-4" />
+              <span>Approve All</span>
+            </button>
+            <button
+              onClick={handleRejectAll}
+              className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium"
+            >
+              <X className="w-4 h-4" />
+              <span>Reject All</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -376,31 +400,22 @@ export default function DataCollectionHub({
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center space-x-2">
-                      {prospect.approvalStatus === 'pending' ? (
-                        <>
-                          <button
-                            onClick={() => handleApprove(prospect.id)}
-                            className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
-                            title="Approve"
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleReject(prospect.id)}
-                            className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
-                            title="Reject"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </>
-                      ) : (
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          prospect.approvalStatus === 'approved' 
-                            ? 'bg-green-600 text-green-100' 
-                            : 'bg-red-600 text-red-100'
-                        }`}>
-                          {prospect.approvalStatus}
+                      {prospect.approvalStatus === 'rejected' ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-600 text-red-100">
+                          rejected
                         </span>
+                      ) : prospect.approvalStatus === 'approved' ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-600 text-green-100">
+                          approved
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleReject(prospect.id)}
+                          className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
+                          title="Reject"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       )}
                     </div>
                   </td>
@@ -462,16 +477,9 @@ export default function DataCollectionHub({
                             <span className="text-yellow-400 ml-2">{prospect.complianceFlags.join(', ')}</span>
                           </div>
                         )}
-                        {/* Approval buttons in detail view too */}
+                        {/* Reject button in detail view if still pending */}
                         {prospect.approvalStatus === 'pending' && (
-                          <div className="col-span-2 flex space-x-2 mt-2">
-                            <button
-                              onClick={() => handleApprove(prospect.id)}
-                              className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
-                            >
-                              <Check className="w-4 h-4" />
-                              <span>Approve</span>
-                            </button>
+                          <div className="col-span-2 mt-2">
                             <button
                               onClick={() => handleReject(prospect.id)}
                               className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
@@ -479,6 +487,17 @@ export default function DataCollectionHub({
                               <X className="w-4 h-4" />
                               <span>Reject</span>
                             </button>
+                          </div>
+                        )}
+                        {prospect.approvalStatus !== 'pending' && (
+                          <div className="col-span-2 mt-2">
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              prospect.approvalStatus === 'approved' 
+                                ? 'bg-green-600 text-green-100' 
+                                : 'bg-red-600 text-red-100'
+                            }`}>
+                              {prospect.approvalStatus}
+                            </span>
                           </div>
                         )}
                       </div>
