@@ -230,6 +230,7 @@ export default function Page() {
   const [linkedinProxyAssignments, setLinkedinProxyAssignments] = useState<any[]>([]);
   const [selectedLinkedinAccount, setSelectedLinkedinAccount] = useState<string | null>(null);
   const [loadingProxyAssignments, setLoadingProxyAssignments] = useState(false);
+  const [userProxyPreferences, setUserProxyPreferences] = useState<any | null>(null);
 
   const fetchThreadMessages = useCallback(async (targetThreadId: string) => {
     try {
@@ -359,6 +360,29 @@ export default function Page() {
     }
   };
 
+  // Load current user's proxy preferences (fallback when no LinkedIn accounts)
+  const loadUserProxyPreferences = async () => {
+    try {
+      console.log('Fetching user proxy preferences...');
+      const resp = await fetch('/api/bright-data/proxy-preferences');
+      if (!resp.ok) {
+        console.log('No proxy preferences found');
+        setUserProxyPreferences(null);
+        return;
+      }
+      const data = await resp.json();
+      if (data.success && data.preferences) {
+        console.log('User proxy preferences:', data.preferences);
+        setUserProxyPreferences(data.preferences);
+      } else {
+        setUserProxyPreferences(null);
+      }
+    } catch (e) {
+      console.error('Failed to load user proxy preferences:', e);
+      setUserProxyPreferences(null);
+    }
+  };
+
   // Handle test connection
   const handleTestConnection = async () => {
     setProxyTestLoading(true);
@@ -461,6 +485,9 @@ export default function Page() {
   // Load proxy assignments when modal opens
   useEffect(() => {
     if (showProxyCountryModal) {
+      // Load both LinkedIn assignments and user-level proxy preferences
+      loadLinkedinProxyAssignments();
+      loadUserProxyPreferences();
       loadLinkedinProxyAssignments();
     }
   }, [showProxyCountryModal]);
@@ -4716,8 +4743,78 @@ export default function Page() {
                       <p className="text-gray-300">Loading LinkedIn accounts...</p>
                     </div>
                   ) : linkedinProxyAssignments.length === 0 ? (
-                    <div className="bg-gray-700 rounded-lg p-8 text-center">
-                      <p className="text-gray-300 mb-4">No LinkedIn accounts connected</p>
+                    userProxyPreferences ? (
+                      <div className="bg-gray-700 rounded-lg p-6 border border-gray-600 text-left">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold">🌍</div>
+                            <div>
+                              <h4 className="text-white font-medium">Your Proxy</h4>
+                              <p className="text-gray-400 text-sm">Auto-assigned at signup</p>
+                            </div>
+                          </div>
+                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-900 text-blue-300">ACTIVE</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 mb-3">
+                          <div>
+                            <span className="text-gray-400 text-xs">Proxy Country</span>
+                            <p className="text-white">{userProxyPreferences.preferred_country?.toUpperCase()}{userProxyPreferences.preferred_state ? `/${userProxyPreferences.preferred_state.toUpperCase()}` : ''}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 text-xs">Confidence</span>
+                            <p className="text-white">{Math.round((userProxyPreferences.confidence_score || 0) * 100)}%</p>
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-400 mb-4">
+                          Session: {userProxyPreferences.session_id ? `${userProxyPreferences.session_id.substring(0, 8)}...` : '—'}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <a href="/linkedin-integration" className="text-blue-400 hover:text-blue-300 underline">
+                            Connect a LinkedIn account
+                          </a>
+                          <button
+                            onClick={async () => {
+                              setLoadingProxyAssignments(true);
+                              try {
+                                const { data: { session } } = await supabase.auth.getSession();
+                                if (!session) return;
+                                const response = await fetch('/api/linkedin/assign-proxy-ips', {
+                                  method: 'POST',
+                                  headers: {
+                                    'Authorization': `Bearer ${session.access_token}`,
+                                    'Content-Type': 'application/json'
+                                  },
+                                  body: JSON.stringify({ force_update: true })
+                                });
+                                const data = await response.json();
+                                if (response.ok) {
+                                  showNotification('success', 'LinkedIn proxies assigned');
+                                  await loadLinkedinProxyAssignments();
+                                } else {
+                                  showNotification('error', data.error || 'Failed to assign proxies');
+                                }
+                              } catch (e) {
+                                console.error(e);
+                                showNotification('error', 'Failed to assign proxies');
+                              } finally {
+                                setLoadingProxyAssignments(false);
+                              }
+                            }}
+                            className="bg-purple-600 hover:bg-purple-700 text-white text-sm px-4 py-2 rounded-lg transition-colors"
+                          >
+                            Assign to LinkedIn
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-700 rounded-lg p-8 text-center">
+                        <p className="text-gray-300 mb-4">No LinkedIn accounts connected</p>
+                        <a href="/linkedin-integration" className="text-blue-400 hover:text-blue-300 underline">
+                          Connect a LinkedIn account
+                        </a>
+                      </div>
+                    )
+                  ) : (
                       <a href="/linkedin-integration" className="text-blue-400 hover:text-blue-300 underline">
                         Connect a LinkedIn account
                       </a>
