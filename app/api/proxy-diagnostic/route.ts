@@ -33,7 +33,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       user: {
-        id: profile?.id,
+        auth_user_id: user.id,
+        profile_id: profile?.id,
         email: profile?.email,
         created_at: profile?.created_at,
         profile_country: profile?.profile_country || 'Not set',
