@@ -56,7 +56,6 @@ export default function ProspectApprovalModal({
 }: ProspectApprovalModalProps) {
   const [selectedProspects, setSelectedProspects] = useState<Set<string>>(new Set())
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterConfidence, setFilterConfidence] = useState<'all' | 'high' | 'medium' | 'low'>('all')
   const [filterSource, setFilterSource] = useState<string>('all')
 
   // Filter prospects based on search and filters
@@ -74,19 +73,12 @@ export default function ProspectApprovalModal({
         if (!matchesSearch) return false
       }
 
-      // Confidence filter
-      if (filterConfidence !== 'all' && prospect.confidence !== undefined) {
-        if (filterConfidence === 'high' && prospect.confidence < 0.8) return false
-        if (filterConfidence === 'medium' && (prospect.confidence < 0.6 || prospect.confidence >= 0.8)) return false
-        if (filterConfidence === 'low' && prospect.confidence >= 0.6) return false
-      }
-
       // Source filter
       if (filterSource !== 'all' && prospect.source !== filterSource) return false
 
       return true
     })
-  }, [prospects, searchTerm, filterConfidence, filterSource])
+  }, [prospects, searchTerm, filterSource])
 
   // Get unique sources for filter dropdown
   const sources = useMemo(() => {
@@ -225,17 +217,6 @@ export default function ProspectApprovalModal({
 
           {/* Filters */}
           <div className="flex items-center gap-2">
-            <select
-              value={filterConfidence}
-              onChange={(e) => setFilterConfidence(e.target.value as any)}
-              className="px-3 py-2 bg-surface border border-border/60 rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-            >
-              <option value="all">All Confidence</option>
-              <option value="high">High (80%+)</option>
-              <option value="medium">Medium (60-80%)</option>
-              <option value="low">Low (&lt;60%)</option>
-            </select>
-
             <select
               value={filterSource}
               onChange={(e) => setFilterSource(e.target.value)}
