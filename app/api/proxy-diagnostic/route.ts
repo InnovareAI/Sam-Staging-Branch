@@ -25,10 +25,10 @@ export async function GET(request: NextRequest) {
     
     // 2. Get Unipile LinkedIn accounts
     const { data: unipileAccounts } = await supabase
-      .from('unipile_accounts')
-      .select('id, provider, provider_account_id, display_name, status, created_at')
+      .from('user_unipile_accounts')
+      .select('unipile_account_id, platform, account_name, account_email, connection_status, created_at')
       .eq('user_id', user.id)
-      .eq('provider', 'LINKEDIN');
+      .eq('platform', 'LINKEDIN');
     
     return NextResponse.json({
       success: true,
@@ -43,10 +43,10 @@ export async function GET(request: NextRequest) {
         note: 'This country is sent to Unipile when connecting LinkedIn accounts. Unipile handles the actual proxy assignment on their backend.',
       },
       unipile_linkedin_accounts: unipileAccounts?.map(acc => ({
-        id: acc.id,
-        provider_account_id: acc.provider_account_id,
-        display_name: acc.display_name,
-        status: acc.status,
+        unipile_account_id: acc.unipile_account_id,
+        account_name: acc.account_name,
+        account_email: acc.account_email,
+        connection_status: acc.connection_status,
         created_at: acc.created_at,
       })) || [],
       summary: {
