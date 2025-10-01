@@ -13,14 +13,45 @@ interface DataCollectionHubProps {
   className?: string
 }
 
+// Generate dummy prospect data
+const generateDummyProspects = (count: number): ProspectData[] => {
+  const titles = ['CEO', 'CTO', 'VP Sales', 'VP Marketing', 'Director of Growth', 'Head of Product', 'VP Engineering', 'CMO', 'COO', 'Sales Director', 'Marketing Manager', 'Product Manager', 'Engineering Manager', 'Business Development Manager', 'Head of Sales']
+  const companies = ['TechCorp', 'InnovateLabs', 'DataSystems Inc', 'CloudScale', 'GrowthPartners', 'SaaS Solutions', 'Digital Ventures', 'Enterprise Tech', 'ScaleUp Inc', 'AI Innovations', 'Platform Solutions', 'DevOps Co', 'MarketLeaders', 'FutureScale', 'Nexus Group']
+  const industries = ['SaaS', 'FinTech', 'HealthTech', 'EdTech', 'E-commerce', 'AI/ML', 'Cloud Infrastructure', 'Marketing Tech', 'Sales Tech', 'DevOps']
+  const locations = ['San Francisco, CA', 'New York, NY', 'Austin, TX', 'Seattle, WA', 'Boston, MA', 'Denver, CO', 'Chicago, IL', 'Los Angeles, CA', 'Miami, FL', 'Portland, OR']
+  const sources: Array<'linkedin' | 'csv_upload' | 'unipile' | 'bright-data' | 'websearch' | 'manual' | 'test_data'> = ['linkedin', 'csv_upload', 'unipile', 'bright-data', 'test_data']
+  
+  return Array.from({ length: count }, (_, i) => {
+    const firstName = ['John', 'Sarah', 'Mike', 'Emily', 'David', 'Jennifer', 'Chris', 'Amanda', 'Ryan', 'Lisa'][i % 10]
+    const lastName = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'][Math.floor(i / 10) % 10]
+    const company = companies[i % companies.length]
+    const title = titles[i % titles.length]
+    
+    return {
+      id: `prospect_${i + 1}_${Date.now()}`,
+      name: `${firstName} ${lastName}`,
+      title,
+      company,
+      email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${company.toLowerCase().replace(/\s+/g, '')}.com`,
+      phone: `+1 (${Math.floor(Math.random() * 900) + 100}) ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
+      linkedinUrl: `https://linkedin.com/in/${firstName.toLowerCase()}-${lastName.toLowerCase()}-${i + 1}`,
+      source: sources[i % sources.length],
+      confidence: Math.round((0.6 + Math.random() * 0.4) * 100) / 100,
+      location: locations[i % locations.length],
+      industry: industries[i % industries.length],
+      complianceFlags: Math.random() > 0.9 ? ['gdpr-review'] : []
+    }
+  })
+}
+
 export default function DataCollectionHub({ 
   onDataCollected, 
   onApprovalComplete,
   className = '' 
 }: DataCollectionHubProps) {
-  // Removed collect tab - all data collection happens in Sam chat now
+  // Initialize with 100 dummy prospects for demo
   const [loading, setLoading] = useState(false)
-  const [prospectData, setProspectData] = useState<ProspectData[]>([])
+  const [prospectData, setProspectData] = useState<ProspectData[]>(generateDummyProspects(100))
   const [showApprovalPanel, setShowApprovalPanel] = useState(false)
 
   // CSV Upload Handler
