@@ -393,38 +393,89 @@ async function processLinkedInCallback(
       console.error('⚠️ user_unipile_accounts table might not exist (non-critical):', unipileTableError)
     }
 
-    // ENHANCED: Assign Bright Data IP based on LinkedIn profile location
+    // ENHANCED: Assign Bright Data dedicated IP per LinkedIn account
     try {
-      console.log('🌍 Assigning Bright Data IP based on LinkedIn location...');
+      console.log('🌍 Assigning dedicated Bright Data IP for LinkedIn account...');
       
-      // Extract location from LinkedIn profile
+      // Extract LinkedIn registration country from profile
       let linkedInLocation = null;
+      let linkedInCountry = null;
+      
+      // Try multiple location sources from Unipile
       if (accountDetails.connection_params?.im?.location) {
         linkedInLocation = accountDetails.connection_params.im.location;
+      } else if (accountDetails.connection_params?.im?.geoCountryName) {
+        linkedInCountry = accountDetails.connection_params.im.geoCountryName;
       } else if (accountDetails.connection_params?.profile?.location) {
         linkedInLocation = accountDetails.connection_params.profile.location;
       } else if (accountDetails.metadata?.location) {
         linkedInLocation = accountDetails.metadata.location;
+      } else if (accountDetails.metadata?.country) {
+        linkedInCountry = accountDetails.metadata.country;
       }
       
-      console.log('📍 LinkedIn profile location:', linkedInLocation);
+      const detectedLocation = linkedInLocation || linkedInCountry;
+      console.log('📍 LinkedIn account registration location:', detectedLocation);
       
-      if (linkedInLocation) {
+      if (detectedLocation) {
         const { AutoIPAssignmentService } = await import('@/lib/services/auto-ip-assignment');
         const autoIPService = new AutoIPAssignmentService();
         
-        // Generate optimal proxy configuration based on LinkedIn location
-        const proxyConfig = await autoIPService.generateOptimalProxyConfig(undefined, linkedInLocation);
+        // Generate ACCOUNT-SPECIFIC proxy configuration based on registration country
+        const proxyConfig = await autoIPService.generateOptimalProxyConfig(undefined, detectedLocation);
         
-        console.log('✅ Generated proxy config from LinkedIn location:', {
-          linkedInLocation,
-          country: proxyConfig.country,
-          state: proxyConfig.state,
+        console.log('✅ Generated dedicated proxy for account:', {
+          account_id,
+          account_name: accountName,
+          detected_location: detectedLocation,
+          proxy_country: proxyConfig.country,
+          proxy_state: proxyConfig.state,
           confidence: proxyConfig.confidence,
-          sessionId: proxyConfig.sessionId
+          session_id: proxyConfig.sessionId
         });
         
-        // Check if user already has IP assignment
+        // Test proxy connectivity
+        let connectivityTest = null;
+        try {
+          connectivityTest = await autoIPService.testProxyConnectivity(proxyConfig);
+          console.log('🔌 Proxy connectivity test:', connectivityTest.success ? '✅ Active' : '❌ Failed');
+        } catch (testError) {
+          console.warn('⚠️ Connectivity test failed (non-critical):', testError);
+        }
+        
+        // CRITICAL: Store dedicated IP assignment in linkedin_proxy_assignments table
+        const { error: proxyAssignmentError } = await supabase
+          .from('linkedin_proxy_assignments')
+          .upsert({
+            user_id: resolvedUserId,
+            linkedin_account_id: account_id,
+            linkedin_account_name: accountName,
+            detected_country: detectedLocation,
+            proxy_country: proxyConfig.country,
+            proxy_state: proxyConfig.state,
+            proxy_city: proxyConfig.city,
+            proxy_session_id: proxyConfig.sessionId,
+            proxy_username: proxyConfig.username,
+            confidence_score: proxyConfig.confidence,
+            connectivity_status: connectivityTest?.success ? 'active' : 'untested',
+            connectivity_details: connectivityTest,
+            is_primary_account: false, // Will be set manually later if needed
+            account_features: accountDetails.connection_params?.im?.premiumFeatures || [],
+            last_updated: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id,linkedin_account_id',
+            ignoreDuplicates: false
+          });
+        
+        if (proxyAssignmentError) {
+          console.error('❌ Failed to store dedicated proxy assignment:', proxyAssignmentError);
+        } else {
+          console.log('✅ Stored dedicated Bright Data IP assignment for account');
+          console.log(`   📡 Proxy: ${proxyConfig.country}${proxyConfig.state ? '/' + proxyConfig.state : ''} (Session: ${proxyConfig.sessionId.substring(0, 8)}...)`);
+        }
+        
+        // ALSO update user_proxy_preferences for backward compatibility
         const { data: existingProxy } = await supabase
           .from('user_proxy_preferences')
           .select('id, session_id')
@@ -436,7 +487,7 @@ async function processLinkedInCallback(
           const { error: updateError } = await supabase
             .from('user_proxy_preferences')
             .update({
-              linkedin_location: linkedInLocation,
+              linkedin_location: detectedLocation,
               preferred_country: proxyConfig.country,
               preferred_state: proxyConfig.state,
               preferred_city: proxyConfig.city,
@@ -448,17 +499,17 @@ async function processLinkedInCallback(
             .eq('user_id', resolvedUserId);
           
           if (updateError) {
-            console.error('❌ Failed to update proxy with LinkedIn location:', updateError);
+            console.error('❌ Failed to update user proxy preferences:', updateError);
           } else {
-            console.log('✅ Updated proxy config with LinkedIn location');
+            console.log('✅ Updated user proxy preferences for compatibility');
           }
         } else {
-          // Create new proxy assignment based on LinkedIn location
+          // Create new proxy preference
           const { error: proxyError } = await supabase
             .from('user_proxy_preferences')
             .insert({
               user_id: resolvedUserId,
-              linkedin_location: linkedInLocation,
+              linkedin_location: detectedLocation,
               preferred_country: proxyConfig.country,
               preferred_state: proxyConfig.state,
               preferred_city: proxyConfig.city,
@@ -471,17 +522,18 @@ async function processLinkedInCallback(
             });
           
           if (proxyError) {
-            console.error('❌ Failed to create proxy from LinkedIn location:', proxyError);
+            console.error('❌ Failed to create user proxy preference:', proxyError);
           } else {
-            console.log('✅ Created proxy config from LinkedIn location');
+            console.log('✅ Created user proxy preference');
           }
         }
       } else {
-        console.log('ℹ️ No location found in LinkedIn profile, keeping existing IP assignment');
+        console.warn('⚠️ No location found in LinkedIn profile - cannot assign dedicated IP');
+        console.log('   Available fields:', Object.keys(accountDetails.connection_params?.im || {}));
       }
       
     } catch (ipError) {
-      console.error('⚠️ LinkedIn-based IP assignment failed (non-critical):', ipError);
+      console.error('⚠️ Dedicated IP assignment failed (non-critical):', ipError);
       // Don't fail the entire LinkedIn connection if IP assignment fails
     }
 
