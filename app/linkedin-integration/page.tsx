@@ -382,6 +382,13 @@ function LinkedInIntegrationContent() {
                   <span>LinkedIn official OAuth flow</span>
                 </div>
               </div>
+              
+              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mb-6">
+                <p className="text-xs text-gray-400">
+                  <strong className="text-blue-400">Note:</strong> Your LinkedIn account will be linked to your current SAM account, 
+                  even if the LinkedIn email differs from your SAM login email.
+                </p>
+              </div>
 
               <button
                 onClick={handleHostedAuth}
