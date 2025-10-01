@@ -162,6 +162,8 @@ export default function Page() {
   const [isUploadingCSV, setIsUploadingCSV] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [showPasteModal, setShowPasteModal] = useState(false);
+  const [pastedCSV, setPastedCSV] = useState('');
   
   // Workspace state
   const [workspaces, setWorkspaces] = useState<any[]>([]);
@@ -1284,6 +1286,87 @@ export default function Page() {
   const handleLoadConversation = (conversationMessages: any[]) => {
     setMessages(conversationMessages);
     setShowStarterScreen(false);
+  };
+
+  // Handle Pasted CSV
+  const handlePasteCSV = async () => {
+    if (!pastedCSV.trim()) {
+      showNotification('error', 'Please paste CSV data first');
+      return;
+    }
+
+    setIsUploadingCSV(true);
+    setUploadProgress(0);
+    setShowPasteModal(false);
+
+    try {
+      // Create a blob from the pasted text
+      const blob = new Blob([pastedCSV], { type: 'text/csv' });
+      const file = new File([blob], 'pasted-data.csv', { type: 'text/csv' });
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('dataset_name', 'CSV Paste - Manual Entry');
+      formData.append('action', 'upload');
+
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => Math.min(prev + 10, 90));
+      }, 200);
+
+      const response = await fetch('/api/prospects/csv-upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      const data = await response.json();
+      
+      if (data.success) {
+        const validCount = data.validation_results?.valid_records || 0;
+        const totalCount = data.validation_results?.total_records || 0;
+        const qualityScore = data.validation_results?.quality_score ? (data.validation_results.quality_score * 100).toFixed(0) : 0;
+        
+        showNotification('success', `CSV processed successfully! ${validCount} valid LinkedIn prospects found.`);
+        
+        // Switch to Data Approval section
+        setActiveMenuItem('data-approval');
+        
+        const linkedinProspectsCount = data.preview_data?.filter((p: any) => p.linkedinUrl || p.linkedin_url)?.length || 0;
+        
+        const uploadMessage = {
+          id: `msg_${Date.now()}`,
+          role: 'assistant',
+          content: `I've successfully processed your pasted CSV data.\n\n📊 **Processing Summary:**\n• Total records: ${totalCount}\n• Valid prospects: ${validCount}\n• LinkedIn profiles: ${linkedinProspectsCount}\n• Quality score: ${qualityScore}%\n\n🔍 **LinkedIn Validation:**\nI'm checking each prospect for:\n✓ Valid LinkedIn profile URLs\n✓ Complete contact information\n✓ Company and title data\n✓ No duplicates\n\n📋 **Next Steps:**\n1. Review and approve prospects in the Data Approval dashboard\n2. Assign approved prospects to a campaign\n3. I'll help personalize outreach for each prospect\n\nThe Data Approval section is now open. Would you like me to automatically approve prospects with 80%+ quality scores?`,
+          created_at: new Date().toISOString()
+        };
+        
+        setMessages(prev => [...prev, uploadMessage]);
+        setShowStarterScreen(false);
+        setPastedCSV(''); // Clear the pasted data
+        
+        if (data.session_id) {
+          sessionStorage.setItem('latest_csv_upload_session', JSON.stringify({
+            session_id: data.session_id,
+            filename: 'pasted-data.csv',
+            valid_count: validCount,
+            uploaded_at: new Date().toISOString()
+          }));
+        }
+      } else {
+        console.error('CSV paste API error:', data);
+        const errorMsg = data.details || data.error || 'Failed to process CSV';
+        throw new Error(errorMsg);
+      }
+    } catch (error) {
+      console.error('CSV paste error:', error);
+      showNotification('error', `CSV processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsUploadingCSV(false);
+      setUploadProgress(0);
+    }
   };
 
   // CSV Upload Handler with Data Approval and Campaign Assignment
@@ -4067,6 +4150,16 @@ export default function Page() {
                   <Paperclip size={18} />
                 </button>
                 
+                {/* Paste CSV Button */}
+                <button 
+                  onClick={() => setShowPasteModal(true)}
+                  disabled={isUploadingCSV}
+                  className="hidden rounded-full bg-surface px-3 py-2 text-muted-foreground transition hover:text-foreground hover:bg-green-600/20 disabled:opacity-50 disabled:cursor-not-allowed sm:flex"
+                  title="Paste CSV data"
+                >
+                  <FileText size={18} />
+                </button>
+                
                 <textarea
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
@@ -4096,6 +4189,60 @@ export default function Page() {
         currentMessages={messages}
         onLoadConversation={handleLoadConversation}
       />
+
+      {/* Paste CSV Modal */}
+      {showPasteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-3xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-white">Paste CSV Data</h3>
+              <button
+                onClick={() => {
+                  setShowPasteModal(false);
+                  setPastedCSV('');
+                }}
+                className="text-gray-400 hover:text-white"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Paste your CSV data below (with headers)
+              </label>
+              <textarea
+                value={pastedCSV}
+                onChange={(e) => setPastedCSV(e.target.value)}
+                placeholder="name,linkedin_url,company,title\nJohn Doe,https://linkedin.com/in/johndoe,TechCorp,CEO\nJane Smith,https://linkedin.com/in/janesmith,InnovateLabs,CTO"
+                className="w-full h-64 px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono text-sm"
+              />
+              <p className="text-xs text-gray-400 mt-2">
+                💡 Tip: Copy directly from Excel/Google Sheets or paste CSV text with commas
+              </p>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setShowPasteModal(false);
+                  setPastedCSV('');
+                }}
+                className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePasteCSV}
+                disabled={!pastedCSV.trim()}
+                className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+              >
+                Process CSV
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Invite User Modal */}
       {showInviteUser && (
