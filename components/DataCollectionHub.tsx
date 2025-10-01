@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Upload, Search, Linkedin, Database, FileText, Users, Download, Loader2, Check, X, Eye, ChevronDown, ChevronUp, Tag } from 'lucide-react'
 import ProspectApprovalModal, { ProspectData as ProspectDataType, ApprovalSession } from './ProspectApprovalModal'
 
@@ -8,12 +8,14 @@ import ProspectApprovalModal, { ProspectData as ProspectDataType, ApprovalSessio
 type ProspectData = ProspectDataType & {
   campaignTag?: string
   approvalStatus?: 'pending' | 'approved' | 'rejected'
+  uploaded?: boolean
 }
 
 interface DataCollectionHubProps {
   onDataCollected: (data: ProspectData[], source: string) => void
   onApprovalComplete?: (approvedData: ProspectData[]) => void
   className?: string
+  initialUploadedData?: ProspectData[]
 }
 
 // Generate dummy prospect data
@@ -50,15 +52,41 @@ const generateDummyProspects = (count: number): ProspectData[] => {
 export default function DataCollectionHub({ 
   onDataCollected, 
   onApprovalComplete,
-  className = '' 
+  className = '',
+  initialUploadedData = []
 }: DataCollectionHubProps) {
   // Initialize with 100 dummy prospects for demo - assign default campaign tag
+  // Merge with any uploaded data from chat
   const [loading, setLoading] = useState(false)
-  const [prospectData, setProspectData] = useState<ProspectData[]>(generateDummyProspects(100).map(p => ({ ...p, approvalStatus: 'pending' as const, campaignTag: 'Demo Campaign' })))
+  const initializeProspects = () => {
+    const dummyProspects = generateDummyProspects(100).map(p => ({ ...p, approvalStatus: 'pending' as const, campaignTag: 'Demo Campaign', uploaded: false }))
+    const uploadedProspects = initialUploadedData.map(p => ({ ...p, approvalStatus: (p.approvalStatus || 'pending') as const, campaignTag: p.campaignTag || 'Demo Campaign', uploaded: true }))
+    return [...uploadedProspects, ...dummyProspects]
+  }
+  const [prospectData, setProspectData] = useState<ProspectData[]>(initializeProspects())
   const [expandedProspect, setExpandedProspect] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
   const [defaultCampaignTag, setDefaultCampaignTag] = useState('Demo Campaign')
+  
+  // Update prospects when new data is uploaded from chat
+  useEffect(() => {
+    if (initialUploadedData && initialUploadedData.length > 0) {
+      const uploadedProspects = initialUploadedData.map(p => ({
+        ...p,
+        approvalStatus: (p.approvalStatus || 'pending') as const,
+        campaignTag: p.campaignTag || 'Demo Campaign',
+        uploaded: true
+      }))
+      // Add uploaded prospects to the beginning of the list
+      setProspectData(prev => {
+        // Filter out any duplicates based on email or linkedinUrl
+        const existingIds = new Set(prev.map(p => p.email || p.linkedinUrl).filter(Boolean))
+        const newProspects = uploadedProspects.filter(p => !existingIds.has(p.email || p.linkedinUrl))
+        return [...newProspects, ...prev]
+      })
+    }
+  }, [initialUploadedData])
 
   // CSV Upload Handler
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {

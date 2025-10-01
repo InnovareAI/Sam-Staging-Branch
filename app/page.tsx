@@ -164,6 +164,7 @@ export default function Page() {
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [pastedCSV, setPastedCSV] = useState('');
+  const [uploadedProspects, setUploadedProspects] = useState<any[]>([]);
   
   // Workspace state
   const [workspaces, setWorkspaces] = useState<any[]>([]);
@@ -1331,6 +1332,15 @@ export default function Page() {
         
         showNotification('success', `CSV processed successfully! ${validCount} valid LinkedIn prospects found.`);
         
+        // Store pasted prospects with 'uploaded' flag
+        const prospectsWithUploadedFlag = (data.preview_data || []).map((p: any) => ({
+          ...p,
+          uploaded: true,
+          source: p.source || 'csv_upload',
+          approvalStatus: 'pending'
+        }));
+        setUploadedProspects(prev => [...prev, ...prospectsWithUploadedFlag]);
+        
         // Switch to Data Approval section
         setActiveMenuItem('data-approval');
         
@@ -1410,6 +1420,15 @@ export default function Page() {
         const qualityScore = data.validation_results?.quality_score ? (data.validation_results.quality_score * 100).toFixed(0) : 0;
         
         showNotification('success', `CSV uploaded successfully! ${validCount} valid LinkedIn prospects found.`);
+        
+        // Store uploaded prospects with 'uploaded' flag
+        const prospectsWithUploadedFlag = (data.preview_data || []).map((p: any) => ({
+          ...p,
+          uploaded: true,
+          source: p.source || 'csv_upload',
+          approvalStatus: 'pending'
+        }));
+        setUploadedProspects(prev => [...prev, ...prospectsWithUploadedFlag]);
         
         // Switch to Data Approval section to review the uploaded prospects
         setActiveMenuItem('data-approval');
@@ -2470,7 +2489,13 @@ export default function Page() {
           <KnowledgeBase />
         ) : activeMenuItem === 'data-approval' ? (
           /* Data Approval - Unified via DataCollectionHub */
-          <DataCollectionHub />
+          <DataCollectionHub 
+            onDataCollected={(data, source) => {
+              // Handle data collected from DataCollectionHub
+              console.log('Data collected:', data, 'Source:', source);
+            }}
+            initialUploadedData={uploadedProspects}
+          />
         ) : activeMenuItem === 'campaign' ? (
           <CampaignHub />
         ) : activeMenuItem === 'pipeline' ? (
