@@ -210,6 +210,7 @@ export default function Page() {
   const [showSecurityComplianceModal, setShowSecurityComplianceModal] = useState(false);
   const [showAnalyticsReportingModal, setShowAnalyticsReportingModal] = useState(false);
   const [showProxyCountryModal, setShowProxyCountryModal] = useState(false);
+  const [showUserProfileModal, setShowUserProfileModal] = useState(false);
   const [selectedProxyCountry, setSelectedProxyCountry] = useState('');
   const [selectedProxyState, setSelectedProxyState] = useState('');
   const [selectedProxyCity, setSelectedProxyCity] = useState('');
@@ -987,10 +988,10 @@ export default function Page() {
     }
   }, [user, isAuthLoading]);
   
-  // Load profile country when user views profile
+  // Load profile country when user views profile or opens modal
   useEffect(() => {
     const fetchProfileCountry = async () => {
-      if (activeMenuItem === 'profile' && user) {
+      if ((activeMenuItem === 'profile' || showUserProfileModal) && user) {
         try {
           const { data, error } = await supabase
             .from('users')
@@ -1008,7 +1009,7 @@ export default function Page() {
     };
     
     fetchProfileCountry();
-  }, [activeMenuItem, user, supabase]);
+  }, [activeMenuItem, showUserProfileModal, user, supabase]);
 
   // Keep newest messages visible by anchoring scroll to the top
   useEffect(() => {
@@ -2672,17 +2673,37 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* BrightData Proxy Country */}
+                {/* User Profile & Country */}
+                <div 
+                  onClick={() => setShowUserProfileModal(true)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                >
+                  <div className="flex items-center mb-4">
+                    <User className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">User Profile</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Manage your account details, profile country for proxy assignment, and personal preferences.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Profile • Country • Preferences</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+                
+                {/* BrightData Proxy Country (Advanced) */}
                 <div 
                   onClick={() => setShowProxyCountryModal(true)}
                   className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
                   <div className="flex items-center mb-4">
                     <Globe className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">Proxy Country</h2>
+                    <h2 className="text-xl font-semibold text-white">LinkedIn Proxy Management</h2>
                   </div>
                   <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                    Manually select your preferred country for proxy IP assignment. Override automatic detection for LinkedIn and email campaigns.
+                    Advanced proxy configuration for LinkedIn accounts. Manually override automatic proxy assignment per account.
                   </p>
                   <div className="mt-4 flex items-center text-gray-400 text-xs">
                     <span>Select • Configure • Test</span>
@@ -4817,6 +4838,145 @@ export default function Page() {
           // Optionally show success message
         }}
       />
+
+      {/* User Profile Modal */}
+      {showUserProfileModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-semibold text-white flex items-center">
+                <User className="mr-3 text-blue-400" size={28} />
+                User Profile
+              </h2>
+              <button 
+                onClick={() => setShowUserProfileModal(false)}
+                className="text-gray-400 hover:text-gray-200 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              {/* Profile Information Section */}
+              <div className="bg-gray-700 rounded-lg p-5">
+                <h3 className="text-lg font-semibold text-white mb-4">Account Information</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                    <input
+                      type="email"
+                      value={user?.email || ''}
+                      disabled
+                      className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white opacity-50"
+                    />
+                    <p className="text-gray-400 text-xs mt-1">Email cannot be changed</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Account Created</label>
+                    <input
+                      type="text"
+                      value={user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                      disabled
+                      className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white opacity-50"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Profile Country for Proxy Configuration */}
+              <div className="bg-gray-700 rounded-lg p-5">
+                <h3 className="text-lg font-semibold text-white mb-2 flex items-center">
+                  <Globe className="mr-2 text-blue-400" size={20} />
+                  Profile Country
+                </h3>
+                <p className="text-gray-400 text-sm mb-4">
+                  This country will be used for LinkedIn proxy assignment and localization preferences.
+                </p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Select your country</label>
+                  <select
+                    value={profileCountry}
+                    onChange={async (e) => {
+                      const newCountry = e.target.value;
+                      setProfileCountry(newCountry);
+                      setProfileCountryLoading(true);
+                      
+                      try {
+                        const response = await fetch('/api/profile/update-country', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ country: newCountry })
+                        });
+                        
+                        if (response.ok) {
+                          showNotification('success', 'Profile country updated! This will be used for LinkedIn proxy assignment.');
+                        } else {
+                          const data = await response.json();
+                          showNotification('error', data.error || 'Failed to update country');
+                        }
+                      } catch (error) {
+                        showNotification('error', 'Network error updating country');
+                      } finally {
+                        setProfileCountryLoading(false);
+                      }
+                    }}
+                    disabled={profileCountryLoading}
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50"
+                  >
+                    <option value="">Select your country...</option>
+                    <option value="us">🇺🇸 United States</option>
+                    <option value="gb">🇬🇧 United Kingdom</option>
+                    <option value="ca">🇨🇦 Canada</option>
+                    <option value="de">🇩🇪 Germany</option>
+                    <option value="fr">🇫🇷 France</option>
+                    <option value="au">🇦🇺 Australia</option>
+                    <option value="nl">🇳🇱 Netherlands</option>
+                    <option value="br">🇧🇷 Brazil</option>
+                    <option value="es">🇪🇸 Spain</option>
+                    <option value="it">🇮🇹 Italy</option>
+                    <option value="jp">🇯🇵 Japan</option>
+                    <option value="sg">🇸🇬 Singapore</option>
+                    <option value="in">🇮🇳 India</option>
+                    <option value="at">🇦🇹 Austria</option>
+                    <option value="ch">🇨🇭 Switzerland</option>
+                    <option value="ar">🇦🇷 Argentina</option>
+                    <option value="be">🇧🇪 Belgium</option>
+                    <option value="bg">🇧🇬 Bulgaria</option>
+                    <option value="hr">🇭🇷 Croatia</option>
+                    <option value="cy">🇨🇾 Cyprus</option>
+                    <option value="cz">🇨🇿 Czech Republic</option>
+                    <option value="dk">🇩🇰 Denmark</option>
+                    <option value="hk">🇭🇰 Hong Kong</option>
+                    <option value="mx">🇲🇽 Mexico</option>
+                    <option value="no">🇳🇴 Norway</option>
+                    <option value="pl">🇵🇱 Poland</option>
+                    <option value="pt">🇵🇹 Portugal</option>
+                    <option value="ro">🇷🇴 Romania</option>
+                    <option value="za">🇿🇦 South Africa</option>
+                    <option value="se">🇸🇪 Sweden</option>
+                    <option value="tr">🇹🇷 Turkey</option>
+                    <option value="ua">🇺🇦 Ukraine</option>
+                    <option value="ae">🇦🇪 UAE</option>
+                  </select>
+                  <p className="text-gray-400 text-xs mt-2">
+                    {profileCountryLoading ? '⏳ Updating...' : '📍 This country will be used for LinkedIn proxy assignment'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex justify-end mt-6 pt-4 border-t border-gray-700">
+              <button
+                onClick={() => setShowUserProfileModal(false)}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Proxy Country Modal */}
       {showProxyCountryModal && (
