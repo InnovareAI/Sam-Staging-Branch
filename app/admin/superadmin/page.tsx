@@ -214,125 +214,14 @@ export default function SuperAdminPage() {
           </div>
         </motion.div>
 
-        {/* Overview Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            title="Total Workspaces"
-            value={systemStats.totalWorkspaces}
-            subtitle="Active workspaces"
-            icon={Building2}
-            trend={12}
-            color="blue"
-            delay={0}
-          />
-          <StatCard
-            title="Total Users"
-            value={systemStats.totalUsers}
-            subtitle={`${systemStats.activeUsers} active`}
-            icon={Users}
-            trend={8}
-            color="indigo"
-            delay={0.1}
-          />
-          <StatCard
-            title="API Calls"
-            value={systemStats.apiCalls.toLocaleString()}
-            subtitle="Last 24 hours"
-            icon={Zap}
-            trend={23}
-            color="purple"
-            delay={0.2}
-          />
-          <StatCard
-            title="System Health"
-            value={`${systemStats.systemHealth}%`}
-            subtitle={`Uptime: ${systemStats.uptime}%`}
-            icon={Activity}
-            color="green"
-            delay={0.3}
-          />
-        </div>
-
-        {/* System Health */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mb-8"
-        >
-          <Card className="shadow-lg border-0">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Server className="h-5 w-5 text-blue-600" />
-                System Health
-              </CardTitle>
-              <CardDescription>Real-time system component status</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Database className="h-5 w-5 text-blue-600" />
-                      <span className="font-medium">Database</span>
-                    </div>
-                    <HealthIndicator status={healthMetrics.database.status} />
-                  </div>
-                  <div className="text-sm text-slate-500">
-                    Response: {healthMetrics.database.responseTime}ms
-                  </div>
-                  <Progress value={95} className="h-2" />
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Wifi className="h-5 w-5 text-indigo-600" />
-                      <span className="font-medium">API</span>
-                    </div>
-                    <HealthIndicator status={healthMetrics.api.status} />
-                  </div>
-                  <div className="text-sm text-slate-500">
-                    Response: {healthMetrics.api.responseTime}ms
-                  </div>
-                  <Progress value={92} className="h-2" />
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <HardDrive className="h-5 w-5 text-purple-600" />
-                      <span className="font-medium">Storage</span>
-                    </div>
-                    <HealthIndicator status={healthMetrics.storage.status} />
-                  </div>
-                  <div className="text-sm text-slate-500">
-                    Used: {healthMetrics.storage.usage}%
-                  </div>
-                  <Progress value={healthMetrics.storage.usage} className="h-2" />
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Cpu className="h-5 w-5 text-green-600" />
-                      <span className="font-medium">Memory</span>
-                    </div>
-                    <HealthIndicator status={healthMetrics.memory.status} />
-                  </div>
-                  <div className="text-sm text-slate-500">
-                    Used: {healthMetrics.memory.usage}%
-                  </div>
-                  <Progress value={healthMetrics.memory.usage} className="h-2" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="workspaces" className="space-y-6">
+        <Tabs defaultValue="overview" className="space-y-6">
           <TabsList className="bg-white shadow-sm">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Overview
+            </TabsTrigger>
             <TabsTrigger value="workspaces" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               Workspaces
@@ -341,15 +230,220 @@ export default function SuperAdminPage() {
               <Users className="h-4 w-4" />
               Users
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Analytics
-            </TabsTrigger>
             <TabsTrigger value="system" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               System
             </TabsTrigger>
           </TabsList>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Quick Stats Tiles */}
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                <Card className="shadow-lg border-0">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-slate-600">Total Workspaces</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-3xl font-bold text-blue-600">{systemStats.totalWorkspaces}</div>
+                        <p className="text-xs text-slate-500 mt-1">Active accounts</p>
+                      </div>
+                      <div className="p-3 bg-blue-50 rounded-xl">
+                        <Building2 className="h-8 w-8 text-blue-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                <Card className="shadow-lg border-0">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-slate-600">Total Users</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-3xl font-bold text-indigo-600">{systemStats.totalUsers}</div>
+                        <p className="text-xs text-slate-500 mt-1">{systemStats.activeUsers} active</p>
+                      </div>
+                      <div className="p-3 bg-indigo-50 rounded-xl">
+                        <Users className="h-8 w-8 text-indigo-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                <Card className="shadow-lg border-0">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-slate-600">API Calls (24h)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-3xl font-bold text-purple-600">{systemStats.apiCalls.toLocaleString()}</div>
+                        <p className="text-xs text-slate-500 mt-1">+23% from yesterday</p>
+                      </div>
+                      <div className="p-3 bg-purple-50 rounded-xl">
+                        <Zap className="h-8 w-8 text-purple-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                <Card className="shadow-lg border-0">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-slate-600">System Health</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-3xl font-bold text-green-600">{systemStats.systemHealth}%</div>
+                        <p className="text-xs text-slate-500 mt-1">All systems operational</p>
+                      </div>
+                      <div className="p-3 bg-green-50 rounded-xl">
+                        <Activity className="h-8 w-8 text-green-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                <Card className="shadow-lg border-0">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-slate-600">Response Time</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-3xl font-bold text-orange-600">{systemStats.avgResponseTime}ms</div>
+                        <p className="text-xs text-slate-500 mt-1">Average latency</p>
+                      </div>
+                      <div className="p-3 bg-orange-50 rounded-xl">
+                        <Clock className="h-8 w-8 text-orange-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+                <Card className="shadow-lg border-0">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-slate-600">System Uptime</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-3xl font-bold text-emerald-600">{systemStats.uptime}%</div>
+                        <p className="text-xs text-slate-500 mt-1">Last 30 days</p>
+                      </div>
+                      <div className="p-3 bg-emerald-50 rounded-xl">
+                        <Server className="h-8 w-8 text-emerald-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+
+            {/* System Health Details */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="mt-6"
+            >
+              <Card className="shadow-lg border-0">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-blue-600" />
+                    System Components
+                  </CardTitle>
+                  <CardDescription>Real-time health monitoring</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="p-4 bg-slate-50 rounded-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Database className="h-5 w-5 text-blue-600" />
+                          <span className="font-medium">Database</span>
+                        </div>
+                        <HealthIndicator status={healthMetrics.database.status} />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-600">Response</span>
+                          <span className="font-medium">{healthMetrics.database.responseTime}ms</span>
+                        </div>
+                        <Progress value={95} className="h-2" />
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-slate-50 rounded-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Wifi className="h-5 w-5 text-indigo-600" />
+                          <span className="font-medium">API</span>
+                        </div>
+                        <HealthIndicator status={healthMetrics.api.status} />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-600">Response</span>
+                          <span className="font-medium">{healthMetrics.api.responseTime}ms</span>
+                        </div>
+                        <Progress value={92} className="h-2" />
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-slate-50 rounded-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <HardDrive className="h-5 w-5 text-purple-600" />
+                          <span className="font-medium">Storage</span>
+                        </div>
+                        <HealthIndicator status={healthMetrics.storage.status} />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-600">Used</span>
+                          <span className="font-medium">{healthMetrics.storage.usage}%</span>
+                        </div>
+                        <Progress value={healthMetrics.storage.usage} className="h-2" />
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-slate-50 rounded-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Cpu className="h-5 w-5 text-green-600" />
+                          <span className="font-medium">Memory</span>
+                        </div>
+                        <HealthIndicator status={healthMetrics.memory.status} />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-600">Used</span>
+                          <span className="font-medium">{healthMetrics.memory.usage}%</span>
+                        </div>
+                        <Progress value={healthMetrics.memory.usage} className="h-2" />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </TabsContent>
 
           {/* Workspaces Tab */}
           <TabsContent value="workspaces">
@@ -495,67 +589,6 @@ export default function SuperAdminPage() {
             </motion.div>
           </TabsContent>
 
-          {/* Analytics Tab */}
-          <TabsContent value="analytics">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="shadow-lg border-0">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-blue-600" />
-                      Growth Metrics
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Workspace Growth</span>
-                        <span className="text-sm text-green-600 font-medium">+12%</span>
-                      </div>
-                      <Progress value={75} className="h-2" />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">User Adoption</span>
-                        <span className="text-sm text-green-600 font-medium">+23%</span>
-                      </div>
-                      <Progress value={85} className="h-2" />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">API Usage</span>
-                        <span className="text-sm text-green-600 font-medium">+45%</span>
-                      </div>
-                      <Progress value={92} className="h-2" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="shadow-lg border-0">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-indigo-600" />
-                      Performance
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="p-4 bg-slate-50 rounded-lg">
-                      <p className="text-sm text-slate-500 mb-1">Avg Response Time</p>
-                      <p className="text-2xl font-bold text-blue-600">{systemStats.avgResponseTime}ms</p>
-                    </div>
-                    <div className="p-4 bg-slate-50 rounded-lg">
-                      <p className="text-sm text-slate-500 mb-1">System Uptime</p>
-                      <p className="text-2xl font-bold text-green-600">{systemStats.uptime}%</p>
-                    </div>
-                    <div className="p-4 bg-slate-50 rounded-lg">
-                      <p className="text-sm text-slate-500 mb-1">Storage Used</p>
-                      <p className="text-2xl font-bold text-purple-600">{systemStats.storageUsed}%</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </motion.div>
-          </TabsContent>
 
           {/* System Tab */}
           <TabsContent value="system">
