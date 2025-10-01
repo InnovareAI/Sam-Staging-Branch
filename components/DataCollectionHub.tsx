@@ -100,6 +100,13 @@ export default function DataCollectionHub({
   const [selectedCampaignName, setSelectedCampaignName] = useState<string>('all')
   const [selectedCampaignTag, setSelectedCampaignTag] = useState<string>('all')
   
+  // Missing state variables
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [showApprovalPanel, setShowApprovalPanel] = useState(true)
+  const [activeTab, setActiveTab] = useState('approve')
+  const [linkedinQuery, setLinkedinQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  
   // Update prospects when new data is uploaded from chat
   useEffect(() => {
     if (initialUploadedData && initialUploadedData.length > 0) {
@@ -340,6 +347,66 @@ export default function DataCollectionHub({
     }
   }
 
+  // Proceed to Campaign Hub with approved prospects
+  const handleProceedToCampaignHub = () => {
+    const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved')
+    
+    if (approvedProspects.length === 0) {
+      alert('⚠️ No approved prospects found. Please approve at least one prospect before proceeding to Campaign Hub.')
+      return
+    }
+
+    // Check if all approved prospects have campaign tags
+    const untaggedCount = approvedProspects.filter(p => !p.campaignTag || p.campaignTag.trim() === '').length
+    if (untaggedCount > 0) {
+      if (!confirm(`⚠️ ${untaggedCount} approved prospect(s) don't have campaign tags assigned.\n\nDo you want to proceed anyway?`)) {
+        return
+      }
+    }
+
+    // Call the onApprovalComplete callback
+    if (onApprovalComplete) {
+      onApprovalComplete(approvedProspects)
+    }
+
+    alert(`✅ Success!\n\n${approvedProspects.length} approved prospects are ready for campaigns.\n\nProceeding to Campaign Hub...`)
+  }
+
+  // Download only approved prospects
+  const downloadApprovedCSV = () => {
+    const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved')
+    
+    if (approvedProspects.length === 0) {
+      alert('No approved prospects to download.')
+      return
+    }
+
+    const csv = [
+      ['Name', 'Company', 'Title', 'Industry', 'Email', 'Phone', 'LinkedIn', 'Location', 'Campaign Tag', 'Confidence', 'Source'],
+      ...approvedProspects.map(p => [
+        p.name,
+        p.company,
+        p.title,
+        p.industry || '',
+        p.email || '',
+        p.phone || '',
+        p.linkedinUrl || '',
+        p.location || '',
+        p.campaignTag || '',
+        p.confidence ? `${Math.round(p.confidence * 100)}%` : '',
+        p.source
+      ])
+    ].map(row => row.join(',')).join('\n')
+
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `approved_prospects_${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    window.URL.revokeObjectURL(url)
+  }
+
   return (
     <div className={`bg-gray-800 rounded-lg ${className}`}>
       {/* Header */}
@@ -356,11 +423,21 @@ export default function DataCollectionHub({
               <span className="text-yellow-400 font-semibold">{pendingCount}</span> pending
             </div>
             <button
-              onClick={downloadCSV}
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              onClick={downloadApprovedCSV}
+              disabled={approvedCount === 0}
+              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Download approved prospects only"
             >
               <Download className="w-4 h-4" />
-              <span>Download CSV</span>
+              <span>Download Approved</span>
+            </button>
+            <button
+              onClick={handleProceedToCampaignHub}
+              disabled={approvedCount === 0}
+              className="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-2 rounded-lg transition-all font-semibold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Check className="w-4 h-4" />
+              <span>Proceed to Campaign Hub</span>
             </button>
           </div>
         </div>

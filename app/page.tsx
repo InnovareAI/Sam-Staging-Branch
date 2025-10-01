@@ -2619,6 +2619,13 @@ export default function Page() {
               // Handle data collected from DataCollectionHub
               console.log('Data collected:', data, 'Source:', source);
             }}
+            onApprovalComplete={(approvedData) => {
+              // Navigate to Campaign Hub with approved prospects
+              console.log('Approved prospects:', approvedData);
+              setActiveMenuItem('campaign');
+              // You can also pass the approved data to Campaign Hub if needed
+              // by storing it in state and passing it as a prop
+            }}
             initialUploadedData={uploadedProspects}
           />
         ) : activeMenuItem === 'campaign' ? (
