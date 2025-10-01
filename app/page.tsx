@@ -241,6 +241,8 @@ export default function Page() {
   // Profile country state
   const [profileCountry, setProfileCountry] = useState<string>('');
   const [profileCountryLoading, setProfileCountryLoading] = useState(false);
+  const [mcpStatus, setMcpStatus] = useState<any>(null);
+  const [mcpStatusLoading, setMcpStatusLoading] = useState(false);
   
   // Load profile country when user is authenticated
   useEffect(() => {
@@ -265,6 +267,31 @@ export default function Page() {
     
     loadProfileCountry();
   }, [user?.id]);
+  
+  // Load MCP status for super admins
+  useEffect(() => {
+    const loadMcpStatus = async () => {
+      if (!isSuperAdmin) return;
+      
+      setMcpStatusLoading(true);
+      try {
+        const response = await fetch('/api/mcp/health');
+        const data = await response.json();
+        setMcpStatus(data);
+      } catch (error) {
+        console.error('Failed to load MCP status:', error);
+      } finally {
+        setMcpStatusLoading(false);
+      }
+    };
+    
+    if (isSuperAdmin) {
+      loadMcpStatus();
+      // Refresh every 30 seconds
+      const interval = setInterval(loadMcpStatus, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isSuperAdmin]);
 
   const fetchThreadMessages = useCallback(async (targetThreadId: string) => {
     try {
@@ -3452,7 +3479,7 @@ export default function Page() {
                     </div>
                   )}
 
-                  {/* MCP Tool Status */}
+                  {/* MCP Tool Status - Live Data */}
                   {isSuperAdmin && (
                     <div className="rounded-2xl border border-gray-700/80 bg-gray-900/70 p-6 shadow-lg shadow-black/20">
                       <div className="space-y-4">
@@ -3464,90 +3491,169 @@ export default function Page() {
                           </p>
                         </div>
 
-                        <div className="space-y-3">
-                          {/* Unipile */}
-                          <div className="flex items-center justify-between p-3 rounded-lg bg-green-900/20 border border-green-500/30">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-                              <div>
-                                <h4 className="text-white font-medium">Unipile</h4>
-                                <p className="text-xs text-gray-400">Messaging accounts (LinkedIn, WhatsApp, etc.)</p>
+                        {mcpStatusLoading ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                          </div>
+                        ) : mcpStatus ? (
+                          <>
+                            <div className="space-y-3">
+                              {/* Google CSE */}
+                              {mcpStatus.googleCSE && (
+                                <div className={`flex items-center justify-between p-3 rounded-lg ${
+                                  mcpStatus.googleCSE.status === 'online' 
+                                    ? 'bg-green-900/20 border border-green-500/30' 
+                                    : 'bg-red-900/20 border border-red-500/30'
+                                }`}>
+                                  <div className="flex items-center space-x-3">
+                                    <div className={`w-3 h-3 rounded-full ${
+                                      mcpStatus.googleCSE.status === 'online' ? 'bg-green-400' : 'bg-red-400'
+                                    }`}></div>
+                                    <div>
+                                      <h4 className="text-white font-medium">Google Custom Search</h4>
+                                      <p className="text-xs text-gray-400">{mcpStatus.googleCSE.description}</p>
+                                      {mcpStatus.googleCSE.error && (
+                                        <p className="text-xs text-red-400 mt-1">{mcpStatus.googleCSE.error}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className={`text-sm font-medium ${
+                                    mcpStatus.googleCSE.status === 'online' ? 'text-green-400' : 'text-red-400'
+                                  }`}>
+                                    {mcpStatus.googleCSE.status === 'online' ? 'Online' : 'Offline'}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Bright Data */}
+                              {mcpStatus.brightData && (
+                                <div className={`flex items-center justify-between p-3 rounded-lg ${
+                                  mcpStatus.brightData.status === 'online' 
+                                    ? 'bg-green-900/20 border border-green-500/30' 
+                                    : 'bg-red-900/20 border border-red-500/30'
+                                }`}>
+                                  <div className="flex items-center space-x-3">
+                                    <div className={`w-3 h-3 rounded-full ${
+                                      mcpStatus.brightData.status === 'online' ? 'bg-green-400' : 'bg-red-400'
+                                    }`}></div>
+                                    <div>
+                                      <h4 className="text-white font-medium">Bright Data</h4>
+                                      <p className="text-xs text-gray-400">{mcpStatus.brightData.description}</p>
+                                      {mcpStatus.brightData.error && (
+                                        <p className="text-xs text-red-400 mt-1">{mcpStatus.brightData.error}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className={`text-sm font-medium ${
+                                    mcpStatus.brightData.status === 'online' ? 'text-green-400' : 'text-red-400'
+                                  }`}>
+                                    {mcpStatus.brightData.status === 'online' ? 'Online' : 'Offline'}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Apify */}
+                              {mcpStatus.apify && (
+                                <div className={`flex items-center justify-between p-3 rounded-lg ${
+                                  mcpStatus.apify.status === 'online' 
+                                    ? 'bg-green-900/20 border border-green-500/30' 
+                                    : 'bg-red-900/20 border border-red-500/30'
+                                }`}>
+                                  <div className="flex items-center space-x-3">
+                                    <div className={`w-3 h-3 rounded-full ${
+                                      mcpStatus.apify.status === 'online' ? 'bg-green-400' : 'bg-red-400'
+                                    }`}></div>
+                                    <div>
+                                      <h4 className="text-white font-medium">Apify</h4>
+                                      <p className="text-xs text-gray-400">{mcpStatus.apify.description}</p>
+                                      {mcpStatus.apify.error && (
+                                        <p className="text-xs text-red-400 mt-1">{mcpStatus.apify.error}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className={`text-sm font-medium ${
+                                    mcpStatus.apify.status === 'online' ? 'text-green-400' : 'text-red-400'
+                                  }`}>
+                                    {mcpStatus.apify.status === 'online' ? 'Online' : 'Offline'}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Unipile */}
+                              {mcpStatus.unipile && (
+                                <div className={`flex items-center justify-between p-3 rounded-lg ${
+                                  mcpStatus.unipile.status === 'online' 
+                                    ? 'bg-green-900/20 border border-green-500/30' 
+                                    : 'bg-red-900/20 border border-red-500/30'
+                                }`}>
+                                  <div className="flex items-center space-x-3">
+                                    <div className={`w-3 h-3 rounded-full ${
+                                      mcpStatus.unipile.status === 'online' ? 'bg-green-400' : 'bg-red-400'
+                                    }`}></div>
+                                    <div>
+                                      <h4 className="text-white font-medium">Unipile</h4>
+                                      <p className="text-xs text-gray-400">{mcpStatus.unipile.description}</p>
+                                      {mcpStatus.unipile.error && (
+                                        <p className="text-xs text-red-400 mt-1">{mcpStatus.unipile.error}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className={`text-sm font-medium ${
+                                    mcpStatus.unipile.status === 'online' ? 'text-green-400' : 'text-red-400'
+                                  }`}>
+                                    {mcpStatus.unipile.status === 'online' ? 'Online' : 'Offline'}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* N8N */}
+                              {mcpStatus.n8n && (
+                                <div className={`flex items-center justify-between p-3 rounded-lg ${
+                                  mcpStatus.n8n.status === 'online' 
+                                    ? 'bg-green-900/20 border border-green-500/30' 
+                                    : 'bg-red-900/20 border border-red-500/30'
+                                }`}>
+                                  <div className="flex items-center space-x-3">
+                                    <div className={`w-3 h-3 rounded-full ${
+                                      mcpStatus.n8n.status === 'online' ? 'bg-green-400' : 'bg-red-400'
+                                    }`}></div>
+                                    <div>
+                                      <h4 className="text-white font-medium">N8N Self-Hosted</h4>
+                                      <p className="text-xs text-gray-400">{mcpStatus.n8n.description}</p>
+                                      {mcpStatus.n8n.error && (
+                                        <p className="text-xs text-red-400 mt-1">{mcpStatus.n8n.error}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className={`text-sm font-medium ${
+                                    mcpStatus.n8n.status === 'online' ? 'text-green-400' : 'text-red-400'
+                                  }`}>
+                                    {mcpStatus.n8n.status === 'online' ? 'Online' : 'Offline'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="pt-3 border-t border-gray-600">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-400">Last updated:</span>
+                                <span className="text-white">{mcpStatus.lastUpdated ? new Date(mcpStatus.lastUpdated).toLocaleString() : 'Never'}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-sm mt-1">
+                                <span className="text-gray-400">System status:</span>
+                                <span className={`font-medium ${
+                                  mcpStatus.onlineCount === mcpStatus.totalCount ? 'text-green-400' : 'text-yellow-400'
+                                }`}>
+                                  {mcpStatus.onlineCount}/{mcpStatus.totalCount} tools online
+                                </span>
                               </div>
                             </div>
-                            <span className="text-green-400 text-sm font-medium">Online</span>
+                          </>
+                        ) : (
+                          <div className="text-center py-8 text-gray-400">
+                            <p>Unable to load MCP status</p>
                           </div>
-
-                          {/* N8N Self-Hosted */}
-                          <div className="flex items-center justify-between p-3 rounded-lg bg-green-900/20 border border-green-500/30">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-                              <div>
-                                <h4 className="text-white font-medium">N8N Self-Hosted</h4>
-                                <p className="text-xs text-gray-400">Workflow management and automation</p>
-                              </div>
-                            </div>
-                            <span className="text-green-400 text-sm font-medium">Online</span>
-                          </div>
-
-                          {/* Airtable */}
-                          <div className="flex items-center justify-between p-3 rounded-lg bg-green-900/20 border border-green-500/30">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-                              <div>
-                                <h4 className="text-white font-medium">Airtable</h4>
-                                <p className="text-xs text-gray-400">Database operations and data management</p>
-                              </div>
-                            </div>
-                            <span className="text-green-400 text-sm font-medium">Online</span>
-                          </div>
-
-                          {/* Airtable Enhanced */}
-                          <div className="flex items-center justify-between p-3 rounded-lg bg-green-900/20 border border-green-500/30">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-                              <div>
-                                <h4 className="text-white font-medium">Airtable Enhanced</h4>
-                                <p className="text-xs text-gray-400">Advanced database operations</p>
-                              </div>
-                            </div>
-                            <span className="text-green-400 text-sm font-medium">Online</span>
-                          </div>
-
-                          {/* ActiveCampaign */}
-                          <div className="flex items-center justify-between p-3 rounded-lg bg-green-900/20 border border-green-500/30">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-                              <div>
-                                <h4 className="text-white font-medium">ActiveCampaign</h4>
-                                <p className="text-xs text-gray-400">Email marketing automation</p>
-                              </div>
-                            </div>
-                            <span className="text-green-400 text-sm font-medium">Online</span>
-                          </div>
-
-                          {/* N8N Docs */}
-                          <div className="flex items-center justify-between p-3 rounded-lg bg-green-900/20 border border-green-500/30">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-                              <div>
-                                <h4 className="text-white font-medium">N8N Docs</h4>
-                                <p className="text-xs text-gray-400">Documentation and workflow templates</p>
-                              </div>
-                            </div>
-                            <span className="text-green-400 text-sm font-medium">Online</span>
-                          </div>
-                        </div>
-
-                        <div className="pt-3 border-t border-gray-600">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-400">Last updated:</span>
-                            <span className="text-white">{new Date().toLocaleString()}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-sm mt-1">
-                            <span className="text-gray-400">All systems operational:</span>
-                            <span className="text-green-400 font-medium">6/6 tools online</span>
-                          </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   )}
