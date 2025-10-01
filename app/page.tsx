@@ -4892,43 +4892,7 @@ export default function Page() {
                 LinkedIn Account Proxy Management
               </h2>
               <div className="flex items-center space-x-2">
-                <button 
-                  onClick={async () => {
-                    setLoadingProxyAssignments(true);
-                    try {
-                      const { data: { session } } = await supabase.auth.getSession();
-                      if (!session) return;
-                      
-                      const response = await fetch('/api/linkedin/assign-proxy-ips', {
-                        method: 'POST',
-                        headers: {
-                          'Authorization': `Bearer ${session.access_token}`,
-                          'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ force_update: true })
-                      });
-                      
-                      const data = await response.json();
-                      if (response.ok) {
-                        showNotification('success', 'Proxies regenerated successfully');
-                        await loadLinkedinProxyAssignments();
-                      } else {
-                        showNotification('error', data.error || 'Failed to regenerate proxies');
-                      }
-                    } catch (error) {
-                      console.error('Regenerate error:', error);
-                      showNotification('error', 'Failed to regenerate proxies');
-                    } finally {
-                      setLoadingProxyAssignments(false);
-                    }
-                  }}
-                  disabled={loadingProxyAssignments}
-                  className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white px-3 py-2 rounded-lg transition-colors text-sm flex items-center space-x-2"
-                >
-                  <Zap size={16} />
-                  <span>{loadingProxyAssignments ? 'Regenerating...' : 'Regenerate All'}</span>
-                </button>
-                <button 
+                <button
                   onClick={() => {
                     setShowProxyCountryModal(false);
                     setSelectedLinkedinAccount(null);
