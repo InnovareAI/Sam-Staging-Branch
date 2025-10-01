@@ -2515,34 +2515,6 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* Unipile Configuration */}
-                <div 
-                  onClick={() => setShowUnipileModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer relative"
-                >
-                  <button 
-                    className="absolute top-3 right-3 text-gray-400 hover:text-gray-200 transition-colors opacity-0 group-hover:opacity-100"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Handle close/exit logic here
-                    }}
-                  >
-                    <X size={16} />
-                  </button>
-                  <div className="flex items-center mb-4">
-                    <Globe className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">Unipile Configuration</h2>
-                  </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                    Manage multi-platform social media integrations including WhatsApp, Instagram, Twitter, and Messenger connections.
-                  </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Connect • Sync • Monitor</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
-                </div>
 
                 {/* Notification Settings */}
                 <div 
