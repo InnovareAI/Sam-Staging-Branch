@@ -30,9 +30,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const {
+    let {
       // Search configuration
-      api = 'classic', // 'classic' | 'sales_navigator' | 'recruiter'
+      api, // 'classic' | 'sales_navigator' | 'recruiter' - will auto-detect if not provided
       category = 'people', // 'people' | 'companies' | 'posts' | 'jobs'
       
       // Search methods (either url OR structured params)
@@ -105,6 +105,51 @@ export async function POST(request: NextRequest) {
       }
       
       linkedinAccountId = linkedinAccount.unipile_account_id;
+    }
+
+    // Auto-detect LinkedIn capabilities (Sales Navigator, Recruiter, etc.)
+    if (!api) {
+      console.log('🔍 Auto-detecting LinkedIn capabilities...');
+      
+      const accountInfoResponse = await fetch(
+        `${UNIPILE_BASE_URL}/api/v1/accounts/${linkedinAccountId}`,
+        {
+          headers: {
+            'X-API-KEY': UNIPILE_API_KEY,
+            'Accept': 'application/json'
+          }
+        }
+      );
+
+      if (accountInfoResponse.ok) {
+        const accountInfo = await accountInfoResponse.json();
+        const premiumFeatures = accountInfo.connection_params?.im?.premiumFeatures || [];
+        
+        console.log('✅ Premium features detected:', premiumFeatures);
+        
+        // Auto-select best API based on features
+        if (premiumFeatures.includes('recruiter')) {
+          api = 'recruiter';
+          console.log('🎯 Using Recruiter API (2,500 results limit)');
+        } else if (premiumFeatures.includes('sales_navigator')) {
+          api = 'sales_navigator';
+          console.log('🎯 Using Sales Navigator API (2,500 results limit)');
+        } else {
+          api = 'classic';
+          console.log('🎯 Using Classic LinkedIn API (1,000 results limit)');
+        }
+      } else {
+        // Fallback to classic if account info fails
+        api = 'classic';
+        console.warn('⚠️  Could not detect capabilities, using Classic LinkedIn');
+      }
+    }
+
+    // Adjust limit based on API
+    const maxLimit = api === 'classic' ? 50 : 100;
+    if (limit > maxLimit) {
+      console.warn(`⚠️  Limit ${limit} exceeds max for ${api} (${maxLimit}), adjusting...`);
+      limit = maxLimit;
     }
 
     // Build search request
@@ -214,6 +259,9 @@ export async function POST(request: NextRequest) {
         page_count: searchResults.paging?.page_count,
         cursor: searchResults.paging?.cursor,
         has_more: !!searchResults.paging?.cursor,
+        max_results: api === 'classic' ? 1000 : 2500,
+        max_per_page: api === 'classic' ? 50 : 100,
+        auto_detected: !body.api, // Was API auto-detected?
         timestamp: new Date().toISOString()
       }
     });

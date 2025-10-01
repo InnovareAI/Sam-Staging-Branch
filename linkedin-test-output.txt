@@ -1,0 +1,37 @@
+[dotenv@17.2.2] injecting env (3) from .env.local -- tip: ⚙️  override existing env vars with { override: true }
+🔍 Testing Unipile LinkedIn Search API (Direct)...
+
+✅ Credentials loaded
+   Unipile DSN: api6.unipile.com:13670
+   Supabase URL: https://latxadqrvrrrcvkktrog.supabase.co
+
+📊 Fetching LinkedIn accounts from database...
+✅ Found LinkedIn account:
+   Email: undefined
+   Unipile ID: osKDIRFtTtqzmfULiWGTEg
+   Status: undefined
+
+🔎 Performing LinkedIn search...
+Search parameters: {
+  "api": "classic",
+  "category": "people",
+  "network_distance": [
+    1,
+    2
+  ],
+  "profile_language": [
+    "en"
+  ]
+}
+
+📤 Request URL: https://api6.unipile.com:13670/api/v1/linkedin/search?account_id=osKDIRFtTtqzmfULiWGTEg&limit=20
+
+📥 Response status: 404 Not Found
+
+❌ Unipile API error:
+{
+  "status": 404,
+  "type": "errors/resource_not_found",
+  "title": "Resource not found.",
+  "detail": "The requested resource were not found.\nAccount not found"
+}
