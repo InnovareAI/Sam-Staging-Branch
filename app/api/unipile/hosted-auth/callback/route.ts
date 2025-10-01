@@ -276,16 +276,38 @@ export async function GET(request: NextRequest) {
                 }
               }
               
-              // Store the association for all account types
+              // Find the correct user by LinkedIn email
+              const linkedinEmail = accountData.connection_params?.im?.email || accountData.connection_params?.email;
+              let targetUserId = parsedUserContext.user_id;
+              let targetWorkspaceId = parsedUserContext.workspace_id;
+              
+              if (linkedinEmail) {
+                console.log(`🔍 Looking for user with email: ${linkedinEmail}`);
+                const { data: matchedUser } = await supabase
+                  .from('users')
+                  .select('id, current_workspace_id')
+                  .eq('email', linkedinEmail.toLowerCase())
+                  .single();
+                
+                if (matchedUser) {
+                  targetUserId = matchedUser.id;
+                  targetWorkspaceId = matchedUser.current_workspace_id || parsedUserContext.workspace_id;
+                  console.log(`✅ Matched LinkedIn account to user: ${linkedinEmail} -> ${targetUserId}`);
+                } else {
+                  console.log(`⚠️ No user found with email ${linkedinEmail}, using connector's account`);
+                }
+              }
+              
+              // Store the association with the correct user
               const associationStored = await storeUserAccountAssociation(
                 supabase,
-                parsedUserContext.user_id,
+                targetUserId,
                 accountData
               )
               
               if (associationStored) {
-                console.log(`✅ Successfully stored association for user ${parsedUserContext.user_email}`)
-                await upsertWorkspaceAccount(supabase, parsedUserContext.workspace_id, parsedUserContext.user_id, accountData)
+                console.log(`✅ Successfully stored association for user ${targetUserId}`)
+                await upsertWorkspaceAccount(supabase, targetWorkspaceId, targetUserId, accountData)
                 
                 // Redirect based on account type
                 if (accountType === 'LINKEDIN') {
