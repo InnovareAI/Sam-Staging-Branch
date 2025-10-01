@@ -220,11 +220,18 @@ async function processLinkedInCallback(
     }
 
     // Check for existing accounts in BOTH tables (integrations and user_unipile_accounts)
-    const { data: existingAccounts } = await supabase
-      .from('integrations')
-      .select('id, credentials, created_at')
-      .eq('user_id', resolvedUserId)
-      .eq('provider', 'linkedin')
+    // Integrations table might not exist, so handle gracefully
+    let existingAccounts = []
+    try {
+      const { data } = await supabase
+        .from('integrations')
+        .select('id, credentials, created_at')
+        .eq('user_id', resolvedUserId)
+        .eq('provider', 'linkedin')
+      existingAccounts = data || []
+    } catch (integrationsError) {
+      console.log('⚠️ integrations table not available, using user_unipile_accounts only')
+    }
     
     const { data: existingUnipileAccounts } = await supabase
       .from('user_unipile_accounts')
@@ -313,44 +320,48 @@ async function processLinkedInCallback(
       }
     }
 
-    // Store new account in integrations table
+    // Store new account in integrations table (if it exists)
     const accountName = accountDetails.name || accountDetails.connection_params?.im?.username || 'LinkedIn Account'
     const accountIdentifier = accountDetails.connection_params?.im?.email || 
                              accountDetails.connection_params?.im?.public_identifier ||
                              accountName
     
-    const { data: newAccount, error: insertError } = await supabase
-      .from('integrations')
-      .insert({
-        user_id: resolvedUserId,
-        provider: 'linkedin',
-        type: 'social',
-        status: 'active',
-        credentials: {
-          unipile_account_id: account_id,
-          account_name: accountName,
-          linkedin_public_identifier: accountDetails.connection_params?.im?.public_identifier,
-          account_email: accountDetails.connection_params?.im?.email
-        },
-        settings: {
-          workspace_id: resolvedWorkspaceId,
-          linkedin_experience: linkedinExperience,
-          linkedin_profile_url: accountDetails.connection_params?.im?.profile_url || 
-            (accountDetails.connection_params?.im?.public_identifier ? 
-              `https://linkedin.com/in/${accountDetails.connection_params.im.public_identifier}` : null),
-          connection_method: 'hosted_auth',
-          product_type: accountDetails.connection_params?.product_type
-        }
-      })
-      .select()
-      .single()
+    // Try to store in integrations table, but don't fail if table doesn't exist
+    try {
+      const { data: newAccount, error: insertError } = await supabase
+        .from('integrations')
+        .insert({
+          user_id: resolvedUserId,
+          provider: 'linkedin',
+          type: 'social',
+          status: 'active',
+          credentials: {
+            unipile_account_id: account_id,
+            account_name: accountName,
+            linkedin_public_identifier: accountDetails.connection_params?.im?.public_identifier,
+            account_email: accountDetails.connection_params?.im?.email
+          },
+          settings: {
+            workspace_id: resolvedWorkspaceId,
+            linkedin_experience: linkedinExperience,
+            linkedin_profile_url: accountDetails.connection_params?.im?.profile_url || 
+              (accountDetails.connection_params?.im?.public_identifier ? 
+                `https://linkedin.com/in/${accountDetails.connection_params.im.public_identifier}` : null),
+            connection_method: 'hosted_auth',
+            product_type: accountDetails.connection_params?.product_type
+          }
+        })
+        .select()
+        .single()
 
-    if (insertError) {
-      console.error('❌ Failed to store association:', insertError)
-      return NextResponse.json({ success: false, error: 'Failed to store account data' }, { status: 500 })
+      if (insertError) {
+        console.warn('⚠️ Failed to store in integrations table (might not exist):', insertError.message)
+      } else {
+        console.log(`✅ Successfully stored LinkedIn account in integrations table`)
+      }
+    } catch (integrationsError) {
+      console.log('⚠️ integrations table not available, continuing with user_unipile_accounts only')
     }
-
-    console.log(`✅ Successfully stored LinkedIn account in workspace ${resolvedWorkspaceId}`)
     
     // ALSO store in user_unipile_accounts table for compatibility with /api/unipile/accounts endpoint
     try {
