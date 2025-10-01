@@ -373,7 +373,6 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
               ))}
             </div>
           )}
-          )}
         </div>
 
         {/* Add Provider Modal */}
