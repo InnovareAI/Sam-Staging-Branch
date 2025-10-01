@@ -80,6 +80,19 @@ export async function POST(request: NextRequest) {
           process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
 
+        // Auto-assign proxy using profile country if provided; fallback to IP
+        const autoIPService = new AutoIPAssignmentService();
+        let detectedCountryCode = profileCountry; // Start with user-provided country
+        
+        // If no country provided, detect from IP
+        if (!detectedCountryCode) {
+          const userLocation = await autoIPService.detectUserLocation(request);
+          if (userLocation?.countryCode) {
+            detectedCountryCode = userLocation.countryCode.toLowerCase();
+            console.log('🌍 Auto-detected country from IP:', detectedCountryCode);
+          }
+        }
+        
         // Create user profile (best-effort)
         await supabaseAdminClient
           .from('users')
@@ -89,25 +102,21 @@ export async function POST(request: NextRequest) {
             email: data.user.email,
             first_name: firstName,
             last_name: lastName,
-            profile_country: profileCountry, // may be ignored if column doesn't exist
+            profile_country: detectedCountryCode, // Auto-detected or user-provided
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }, { onConflict: 'id' });
 
-        // Auto-assign proxy using profile country if provided; fallback to IP
-        const autoIPService = new AutoIPAssignmentService();
-        const locationHint = profileCountry || undefined; // two-letter code
-        const userLocation = locationHint ? null : await autoIPService.detectUserLocation(request);
         const proxyConfig = await autoIPService.generateOptimalProxyConfig(
-          userLocation || undefined,
-          locationHint || undefined
+          null,
+          detectedCountryCode || undefined
         );
 
         await supabaseAdminClient
           .from('user_proxy_preferences')
           .upsert({
             user_id: data.user.id,
-            detected_location: userLocation ? `${userLocation.city}, ${userLocation.regionName}, ${userLocation.country}` : null,
+            detected_location: detectedCountryCode || null,
             linkedin_location: null,
             preferred_country: proxyConfig.country,
             preferred_state: proxyConfig.state,
@@ -139,6 +148,18 @@ export async function POST(request: NextRequest) {
           process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
 
+        // Detect country from IP if not provided
+        const autoIPService = new AutoIPAssignmentService();
+        let detectedCountryCode = profileCountry; // Start with user-provided country
+        
+        if (!detectedCountryCode) {
+          const userLocation = await autoIPService.detectUserLocation(request);
+          if (userLocation?.countryCode) {
+            detectedCountryCode = userLocation.countryCode.toLowerCase();
+            console.log('🌍 Auto-detected country from IP:', detectedCountryCode);
+          }
+        }
+        
         // Create or update user profile
         const { error: profileError } = await supabaseAdmin
           .from('users')
@@ -148,7 +169,7 @@ export async function POST(request: NextRequest) {
             email: data.user.email,
             first_name: firstName,
             last_name: lastName,
-            profile_country: profileCountry, // may be ignored if column doesn't exist
+            profile_country: detectedCountryCode, // Auto-detected or user-provided
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }, { onConflict: 'id' });
@@ -161,17 +182,13 @@ export async function POST(request: NextRequest) {
         try {
           console.log('🌍 Assigning dedicated IP for new user...');
           
-          const autoIPService = new AutoIPAssignmentService();
-          
-          // Prefer profile country; fallback to detected user location
-          let locationHint = profileCountry || undefined;
-          const userLocation = locationHint ? null : await autoIPService.detectUserLocation(request);
-          console.log('📍 Signup location hint / detected:', { locationHint, userLocation });
+          // Use the detected country code from above
+          console.log('📍 Signup country code:', detectedCountryCode);
           
           // Generate optimal proxy configuration for the user
           const proxyConfig = await autoIPService.generateOptimalProxyConfig(
-            userLocation || undefined,
-            locationHint
+            undefined,
+            detectedCountryCode || undefined
           );
           
           console.log('✅ Generated proxy config for new user:', {
@@ -186,7 +203,7 @@ export async function POST(request: NextRequest) {
             .from('user_proxy_preferences')
             .insert({
               user_id: data.user.id,
-              detected_location: userLocation ? `${userLocation.city}, ${userLocation.regionName}, ${userLocation.country}` : null,
+              detected_location: detectedCountryCode || null,
               preferred_country: proxyConfig.country,
               preferred_state: proxyConfig.state,
               preferred_city: proxyConfig.city,
