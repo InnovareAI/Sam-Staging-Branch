@@ -156,6 +156,12 @@ export default function Page() {
   const [showConversationHistory, setShowConversationHistory] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // CSV Upload state
+  const [isUploadingCSV, setIsUploadingCSV] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
   
   // Workspace state
   const [workspaces, setWorkspaces] = useState<any[]>([]);
@@ -1278,6 +1284,126 @@ export default function Page() {
   const handleLoadConversation = (conversationMessages: any[]) => {
     setMessages(conversationMessages);
     setShowStarterScreen(false);
+  };
+
+  // CSV Upload Handler with Data Approval and Campaign Assignment
+  const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      showNotification('error', 'Please upload a CSV file');
+      return;
+    }
+
+    setIsUploadingCSV(true);
+    setUploadProgress(0);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('dataset_name', `CSV Upload - ${file.name}`);
+      formData.append('action', 'upload'); // Mark as upload action for data approval
+
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => Math.min(prev + 10, 90));
+      }, 200);
+
+      const response = await fetch('/api/prospects/csv-upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      const data = await response.json();
+      
+      if (data.success) {
+        const validCount = data.validation_results?.valid_records || 0;
+        const totalCount = data.validation_results?.total_records || 0;
+        const qualityScore = data.validation_results?.quality_score ? (data.validation_results.quality_score * 100).toFixed(0) : 0;
+        
+        showNotification('success', `CSV uploaded successfully! ${validCount} valid LinkedIn prospects found.`);
+        
+        // Switch to Data Approval section to review the uploaded prospects
+        setActiveMenuItem('data-approval');
+        
+        // Create detailed Sam message with LinkedIn validation info
+        const linkedinProspectsCount = data.preview_data?.filter((p: any) => p.linkedinUrl || p.linkedin_url)?.length || 0;
+        
+        const uploadMessage = {
+          id: `msg_${Date.now()}`,
+          role: 'assistant',
+          content: `I've successfully uploaded and validated your CSV file "${file.name}".\n\n📊 **Upload Summary:**\n• Total records: ${totalCount}\n• Valid prospects: ${validCount}\n• LinkedIn profiles: ${linkedinProspectsCount}\n• Quality score: ${qualityScore}%\n\n🔍 **LinkedIn Validation:**\nI'm checking each prospect for:\n✓ Valid LinkedIn profile URLs\n✓ Complete contact information\n✓ Company and title data\n✓ No duplicates\n\n📋 **Next Steps:**\n1. Review and approve prospects in the Data Approval dashboard\n2. Assign approved prospects to a campaign\n3. I'll help personalize outreach for each prospect\n\nThe Data Approval section is now open. Would you like me to automatically approve prospects with 80%+ quality scores, or would you prefer to review each one manually?`,
+          created_at: new Date().toISOString()
+        };
+        
+        setMessages(prev => [...prev, uploadMessage]);
+        setShowStarterScreen(false);
+        
+        // Store session info for campaign assignment
+        if (data.session_id) {
+          sessionStorage.setItem('latest_csv_upload_session', JSON.stringify({
+            session_id: data.session_id,
+            filename: file.name,
+            valid_count: validCount,
+            uploaded_at: new Date().toISOString()
+          }));
+        }
+      } else {
+        throw new Error(data.error || 'Failed to upload CSV');
+      }
+    } catch (error) {
+      console.error('CSV upload error:', error);
+      showNotification('error', `CSV upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsUploadingCSV(false);
+      setUploadProgress(0);
+      // Reset the file input so the same file can be uploaded again if needed
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Drag and drop handlers for CSV upload
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFile(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFile(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFile(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length === 0) return;
+
+    const file = files[0];
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      showNotification('error', 'Please upload a CSV file');
+      return;
+    }
+
+    // Simulate file input change event
+    const event = {
+      target: {
+        files: [file]
+      }
+    } as any;
+
+    await handleCSVUpload(event);
   };
 
   // Handle logout
@@ -3886,7 +4012,32 @@ export default function Page() {
         {/* CHAT INPUT CONTAINER */}
         {activeMenuItem === 'chat' && (
           <div className="fixed bottom-0 left-72 right-0 z-50 px-6 pb-6 bg-background/95 backdrop-blur-sm border-t border-border/60">
-            <div className="mx-auto max-w-4xl overflow-hidden rounded-3xl border border-border/60 bg-surface-highlight/60 shadow-glow">
+            <div 
+              className={`mx-auto max-w-4xl overflow-hidden rounded-3xl border bg-surface-highlight/60 shadow-glow transition-all ${
+                isDraggingFile 
+                  ? 'border-purple-500 border-2 bg-purple-600/20 scale-[1.02]' 
+                  : 'border-border/60'
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              {/* Upload Progress Bar */}
+              {isUploadingCSV && (
+                <div className="px-5 pt-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-purple-400">Uploading CSV...</span>
+                    <span className="text-xs text-purple-400">{uploadProgress}%</span>
+                  </div>
+                  <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-purple-500 transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              
               <div className="flex items-end gap-3 px-5 py-4">
                 <button
                   onClick={() => setShowConversationHistory(true)}
@@ -3895,20 +4046,37 @@ export default function Page() {
                 >
                   <History size={18} />
                 </button>
-                <button className="hidden rounded-full bg-surface px-3 py-2 text-muted-foreground transition hover:text-foreground sm:flex">
+                
+                {/* CSV Upload Button (Paperclip) */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCSVUpload}
+                  className="hidden"
+                  id="csv-file-upload"
+                />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingCSV}
+                  className="hidden rounded-full bg-surface px-3 py-2 text-muted-foreground transition hover:text-foreground hover:bg-purple-600/20 disabled:opacity-50 disabled:cursor-not-allowed sm:flex"
+                  title="Upload CSV file with prospects"
+                >
                   <Paperclip size={18} />
                 </button>
+                
                 <textarea
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="What do you want to get done?"
+                  placeholder={isDraggingFile ? "Drop CSV file here..." : "What do you want to get done?"}
                   className="flex-1 resize-none bg-transparent text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
                   rows={3}
+                  disabled={isUploadingCSV}
                 />
                 <button
                   onClick={handleSendMessage}
-                  disabled={isSending || !inputMessage.trim()}
+                  disabled={isSending || !inputMessage.trim() || isUploadingCSV}
                   className="inline-flex items-center gap-2 rounded-full bg-primary/80 px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary disabled:bg-primary/30 disabled:text-primary-foreground/60"
                 >
                   <span>{isSending ? 'Sending…' : 'Send'}</span>
