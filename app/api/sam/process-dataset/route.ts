@@ -126,17 +126,24 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
 
-      // Get user's workspace
-      const { data: workspaces } = await supabase
-        .from('workspaces')
-        .select('id')
+      // Get user's workspace via workspace_members
+      const { data: membership, error: membershipError } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
         .eq('user_id', session.user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
         .single();
 
-      if (!workspaces) {
-        return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
+      if (membershipError || !membership) {
+        console.error('Workspace membership lookup failed:', membershipError);
+        return NextResponse.json({ 
+          error: 'Workspace not found',
+          details: 'User is not a member of any workspace'
+        }, { status: 404 });
       }
 
+      const workspaceId = membership.workspace_id;
       let targetCampaignId = campaign_id;
 
       // If campaign_name provided, create or find campaign
@@ -144,7 +151,7 @@ export async function POST(request: NextRequest) {
         const { data: existingCampaign } = await supabase
           .from('campaigns')
           .select('id')
-          .eq('workspace_id', workspaces.id)
+          .eq('workspace_id', workspaceId)
           .eq('name', campaign_name)
           .single();
 
@@ -155,7 +162,7 @@ export async function POST(request: NextRequest) {
           const { data: newCampaign, error: campaignError } = await supabase
             .from('campaigns')
             .insert({
-              workspace_id: workspaces.id,
+              workspace_id: workspaceId,
               name: campaign_name,
               type: 'sam_signature',
               status: 'draft',
@@ -203,7 +210,7 @@ export async function POST(request: NextRequest) {
 
       // Insert prospects into workspace_prospects first
       const prospectInserts = readyProspects.map((p: any) => ({
-        workspace_id: workspaces.id,
+        workspace_id: workspaceId,
         first_name: p.name.split(' ')[0] || '',
         last_name: p.name.split(' ').slice(1).join(' ') || '',
         full_name: p.name,
