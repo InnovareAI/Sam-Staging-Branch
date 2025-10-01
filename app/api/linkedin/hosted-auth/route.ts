@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
       type: authAction,
       api_url: `https://${process.env.UNIPILE_DSN}`,
       expiresOn: expirationTime.toISOString(),
-      providers: '*', // Allow all providers for hosted auth
+      providers: ['LINKEDIN'], // Show ONLY LinkedIn in the OAuth wizard
       success_redirect_url: `${siteUrl}/linkedin-integration?success=true`,
       failure_redirect_url: `${siteUrl}/linkedin-integration?error=Authentication+failed`,
       notify_url: callbackUrl,
