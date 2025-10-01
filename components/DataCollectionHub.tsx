@@ -232,23 +232,23 @@ export default function DataCollectionHub({
                 </div>
               </div>
             </div>
-          ) : (
-            <div className="text-center py-12">
-              <Users className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-400 mb-2">No Approved Prospects Yet</h3>
-              <p className="text-gray-500 mb-4">
-                Use Sam chat to upload CSV files or search LinkedIn. Approved prospects will appear here.
-              </p>
-              <div className="text-sm text-gray-600">
-                💬 Go to Sam chat and try:
-                <ul className="mt-2 text-left inline-block">
-                  <li>• "Upload prospects from my CSV"</li>
-                  <li>• "Find CTOs at SaaS companies"</li>
-                </ul>
-              </div>
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <Users className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-400 mb-2">No Approved Prospects Yet</h3>
+            <p className="text-gray-500 mb-4">
+              Use Sam chat to upload CSV files or search LinkedIn. Approved prospects will appear here.
+            </p>
+            <div className="text-sm text-gray-600">
+              💬 Go to Sam chat and try:
+              <ul className="mt-2 text-left inline-block">
+                <li>• "Upload prospects from my CSV"</li>
+                <li>• "Find CTOs at SaaS companies"</li>
+              </ul>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Prospect Approval Modal */}
