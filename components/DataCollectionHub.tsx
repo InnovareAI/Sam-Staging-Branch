@@ -492,13 +492,16 @@ export default function DataCollectionHub({
                   <td className="px-4 py-3 text-sm text-gray-300">{prospect.title}</td>
                   <td className="px-4 py-3 text-sm text-gray-300">{prospect.industry || '-'}</td>
                   <td className="px-4 py-3">
-                    <input
-                      type="text"
+                    <select
                       value={prospect.campaignTag || ''}
                       onChange={(e) => handleCampaignTagChange(prospect.id, e.target.value)}
-                      placeholder="Add tag..."
-                      className="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                    />
+                      className="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                    >
+                      <option value="">Select tag...</option>
+                      {Array.from(new Set(prospectData.map(p => p.campaignTag).filter(Boolean))).map(tag => (
+                        <option key={tag} value={tag}>{tag}</option>
+                      ))}
+                    </select>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center space-x-2">
