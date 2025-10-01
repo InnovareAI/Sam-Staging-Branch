@@ -187,6 +187,7 @@ if (!workspaceAccounts.length && hasAnyUnipileAccounts) {
       const accountName = primaryAccount.name || accountIdentifier
       const connectionStatus = primaryAccount.status === 'OK' ? 'connected' : (primaryAccount.status || 'error')
 
+      // Save to workspace_accounts
       const { data: upsertedAccount, error: linkError } = await supabase
         .from('workspace_accounts')
         .upsert({
@@ -206,6 +207,20 @@ if (!workspaceAccounts.length && hasAnyUnipileAccounts) {
         }, { onConflict: 'workspace_id,user_id,account_type,account_identifier', ignoreDuplicates: false })
         .select()
         .maybeSingle()
+
+      // ALSO save to user_unipile_accounts for diagnostic API
+      await supabase
+        .from('user_unipile_accounts')
+        .upsert({
+          user_id: user.id,
+          unipile_account_id: primaryAccount.id,
+          platform: 'LINKEDIN',
+          account_name: accountName,
+          account_email: primaryAccount.email,
+          linkedin_public_identifier: primaryAccount.linkedin_id,
+          linkedin_profile_url: primaryAccount.linkedin_id ? `https://www.linkedin.com/in/${primaryAccount.linkedin_id}` : null,
+          connection_status: 'active'
+        }, { onConflict: 'unipile_account_id', ignoreDuplicates: false })
 
       if (!linkError) {
         const linkedAccount = {
