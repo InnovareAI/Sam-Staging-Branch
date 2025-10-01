@@ -298,6 +298,76 @@ export async function GET(request: NextRequest) {
                 }
               }
               
+              // Auto-set profile_country from LinkedIn location if not already set
+              if (accountType === 'LINKEDIN' && accountData.connection_params?.im?.location) {
+                try {
+                  const linkedinLocation = accountData.connection_params.im.location;
+                  console.log(`🌍 LinkedIn location detected: ${linkedinLocation}`);
+                  
+                  // Extract country code from LinkedIn location (e.g., "Germany" -> "de")
+                  const countryMapping: { [key: string]: string } = {
+                    'germany': 'de', 'deutschland': 'de',
+                    'united states': 'us', 'usa': 'us', 'america': 'us',
+                    'united kingdom': 'gb', 'uk': 'gb', 'england': 'gb',
+                    'france': 'fr',
+                    'spain': 'es', 'españa': 'es',
+                    'italy': 'it', 'italia': 'it',
+                    'netherlands': 'nl',
+                    'belgium': 'be',
+                    'switzerland': 'ch',
+                    'austria': 'at', 'österreich': 'at',
+                    'canada': 'ca',
+                    'australia': 'au',
+                    'brazil': 'br',
+                    'mexico': 'mx',
+                    'india': 'in',
+                    'singapore': 'sg',
+                    'japan': 'jp',
+                    'china': 'cn'
+                  };
+                  
+                  const locationLower = linkedinLocation.toLowerCase();
+                  let countryCode = null;
+                  
+                  // Find matching country
+                  for (const [key, code] of Object.entries(countryMapping)) {
+                    if (locationLower.includes(key)) {
+                      countryCode = code;
+                      break;
+                    }
+                  }
+                  
+                  if (countryCode) {
+                    // Check if user already has a profile_country set
+                    const { data: userData } = await supabase
+                      .from('users')
+                      .select('profile_country')
+                      .eq('id', targetUserId)
+                      .single();
+                    
+                    // Only update if not already set
+                    if (!userData?.profile_country) {
+                      const { error: updateError } = await supabase
+                        .from('users')
+                        .update({ profile_country: countryCode })
+                        .eq('id', targetUserId);
+                      
+                      if (!updateError) {
+                        console.log(`✅ Auto-set profile_country to ${countryCode} from LinkedIn location`);
+                      } else {
+                        console.error('Failed to set profile_country:', updateError);
+                      }
+                    } else {
+                      console.log(`ℹ️ User already has profile_country set: ${userData.profile_country}`);
+                    }
+                  } else {
+                    console.log(`⚠️ Could not map LinkedIn location "${linkedinLocation}" to country code`);
+                  }
+                } catch (locationError) {
+                  console.error('Error setting profile_country from LinkedIn:', locationError);
+                }
+              }
+              
               // Store the association with the correct user
               const associationStored = await storeUserAccountAssociation(
                 supabase,
