@@ -4646,16 +4646,54 @@ export default function Page() {
                 <Globe className="mr-3 text-blue-400" size={28} />
                 LinkedIn Account Proxy Management
               </h2>
-              <button 
-                onClick={() => {
-                  setShowProxyCountryModal(false);
-                  setProxyEditMode(false);
-                  setSelectedLinkedinAccount(null);
-                }}
-                className="text-gray-400 hover:text-gray-200 transition-colors"
-              >
-                <X size={24} />
-              </button>
+              <div className="flex items-center space-x-2">
+                <button 
+                  onClick={async () => {
+                    setLoadingProxyAssignments(true);
+                    try {
+                      const { data: { session } } = await supabase.auth.getSession();
+                      if (!session) return;
+                      
+                      const response = await fetch('/api/linkedin/assign-proxy-ips', {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${session.access_token}`,
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ force_update: true })
+                      });
+                      
+                      const data = await response.json();
+                      if (response.ok) {
+                        showNotification('success', 'Proxies regenerated successfully');
+                        await loadLinkedinProxyAssignments();
+                      } else {
+                        showNotification('error', data.error || 'Failed to regenerate proxies');
+                      }
+                    } catch (error) {
+                      console.error('Regenerate error:', error);
+                      showNotification('error', 'Failed to regenerate proxies');
+                    } finally {
+                      setLoadingProxyAssignments(false);
+                    }
+                  }}
+                  disabled={loadingProxyAssignments}
+                  className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white px-3 py-2 rounded-lg transition-colors text-sm flex items-center space-x-2"
+                >
+                  <Zap size={16} />
+                  <span>{loadingProxyAssignments ? 'Regenerating...' : 'Regenerate All'}</span>
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowProxyCountryModal(false);
+                    setProxyEditMode(false);
+                    setSelectedLinkedinAccount(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-200 transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
             </div>
             
             <div className="space-y-6">
