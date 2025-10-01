@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import EmailProvidersOnboarding from '@/components/EmailProvidersOnboarding'
 import { 
   Settings, 
   User, 
@@ -21,7 +22,8 @@ import {
   Users,
   ArrowRight,
   Eye,
-  EyeOff
+  EyeOff,
+  Mail
 } from 'lucide-react'
 
 export default function DemoSettingsPage() {
@@ -30,6 +32,7 @@ export default function DemoSettingsPage() {
   const [darkMode, setDarkMode] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [linkedInConnected, setLinkedInConnected] = useState(true)
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
@@ -49,11 +52,11 @@ export default function DemoSettingsPage() {
             <Settings className="h-6 w-6 text-indigo-600" />
           </motion.div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-            Settings Demo
+            Personal Settings
           </h1>
         </div>
         <p className="text-slate-600">
-          Showcasing all 5 design approaches: Blocks.mvp-subha.me • Kibo UI • Skiper UI • Origin UI • SHSF UI
+          Manage your personal profile, integrations, and preferences
         </p>
       </motion.div>
 
@@ -179,14 +182,14 @@ export default function DemoSettingsPage() {
                   <CardContent>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {[
-                        { name: 'LinkedIn', connected: true, icon: LinkedinIcon, color: 'blue' },
-                        { name: 'Unipile', connected: true, icon: Zap, color: 'green' },
-                        { name: 'ActiveCampaign', connected: false, icon: Users, color: 'orange' }
+                        { name: 'LinkedIn', connected: true, icon: LinkedinIcon, color: 'blue', description: 'Professional networking' },
+                        { name: 'Email Integration', connected: false, icon: Mail, color: 'emerald', action: () => setIsEmailModalOpen(true), description: 'Google & Microsoft email' }
                       ].map((integration) => (
                         <motion.div
                           key={integration.name}
                           whileHover={{ y: -5, scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
+                          onClick={integration.action}
                           className={`p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer ${
                             integration.connected 
                               ? `bg-${integration.color}-50 border-${integration.color}-200` 
@@ -204,7 +207,10 @@ export default function DemoSettingsPage() {
                             )}
                           </div>
                           <h3 className="font-semibold">{integration.name}</h3>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-xs text-gray-600 mt-1">
+                            {integration.description}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-2">
                             {integration.connected ? 'Connected' : 'Not connected'}
                           </p>
                         </motion.div>
@@ -377,6 +383,16 @@ export default function DemoSettingsPage() {
           </div>
         </Tabs>
       </div>
+
+      {/* Email Providers Onboarding Modal */}
+      <EmailProvidersOnboarding
+        isOpen={isEmailModalOpen}
+        onClose={() => setIsEmailModalOpen(false)}
+        onComplete={() => {
+          console.log('Email provider connected');
+          setIsEmailModalOpen(false);
+        }}
+      />
     </div>
   )
 }

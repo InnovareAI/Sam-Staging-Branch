@@ -91,16 +91,23 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
     setTimeout(() => setNotification(null), 5000);
   };
 
-  // Connect Google account
+  // Connect Google account via Unipile
   const connectGoogle = async () => {
     try {
       setIsConnecting(true);
-      const response = await fetch('/api/email-providers/google/auth');
+      const response = await fetch('/api/unipile/hosted-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'GOOGLE',
+          type: 'MESSAGING',
+        }),
+      });
       const data = await response.json();
 
-      if (data.success && data.authUrl) {
-        // Redirect to Google OAuth
-        window.location.href = data.authUrl;
+      if (data.success && data.url) {
+        // Redirect to Unipile hosted auth with custom domain
+        window.location.href = data.url;
       } else {
         throw new Error(data.error || 'Failed to initiate Google OAuth');
       }
@@ -111,16 +118,23 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
     }
   };
 
-  // Connect Microsoft account
+  // Connect Microsoft account via Unipile
   const connectMicrosoft = async () => {
     try {
       setIsConnecting(true);
-      const response = await fetch('/api/email-providers/microsoft/auth');
+      const response = await fetch('/api/unipile/hosted-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'OUTLOOK',
+          type: 'MESSAGING',
+        }),
+      });
       const data = await response.json();
 
-      if (data.success && data.authUrl) {
-        // Redirect to Microsoft OAuth
-        window.location.href = data.authUrl;
+      if (data.success && data.url) {
+        // Redirect to Unipile hosted auth with custom domain
+        window.location.href = data.url;
       } else {
         throw new Error(data.error || 'Failed to initiate Microsoft OAuth');
       }
