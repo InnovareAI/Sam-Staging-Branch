@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import ThreadSidebar from './ThreadSidebar'
 import TagFilterPanel from './TagFilterPanel'
-import DataApprovalPanel from './DataApprovalPanel'
+import ProspectApprovalModal, { ProspectData, ApprovalSession } from './ProspectApprovalModal'
 import { LinkedInLimitsInfobox } from './LinkedInLimitsInfobox'
 import { SamConversationThread, useSamThreadedChat } from '@/lib/hooks/useSamThreadedChat'
 
@@ -47,7 +47,8 @@ export default function ThreadedChatInterface() {
   const [showTagFilter, setShowTagFilter] = useState(false)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [showDataApproval, setShowDataApproval] = useState(false)
-  const [pendingProspectData, setPendingProspectData] = useState<any[]>([])
+  const [pendingProspectData, setPendingProspectData] = useState<ProspectData[]>([])
+  const [approvalSession, setApprovalSession] = useState<ApprovalSession | undefined>(undefined)
   const [showMemorySnapshots, setShowMemorySnapshots] = useState(false)
   const [memorySnapshots, setMemorySnapshots] = useState<any[]>([])
   const [isLoadingMemory, setIsLoadingMemory] = useState(false)
@@ -271,11 +272,110 @@ export default function ThreadedChatInterface() {
     }
   }
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      setSelectedFile(file)
-      handleFileUpload(file)
+    if (!file) return
+    
+    setSelectedFile(file)
+    
+    // Check if it's a CSV file for prospect upload
+    if (file.name.endsWith('.csv') && currentThread) {
+      await handleCSVProspectUpload(file)
+    } else {
+      // Handle as knowledge base document
+      await handleFileUpload(file)
+    }
+  }
+  
+  const handleCSVProspectUpload = async (file: File) => {
+    if (!currentThread) return
+    
+    setIsUploadingFile(true)
+    try {
+      // Show processing message
+      const processingMessage = {
+        id: `temp-${Date.now()}-processing`,
+        role: 'assistant' as const,
+        content: `📄 **Processing CSV Upload: ${file.name}**\n\nValidating data and preparing prospects for review...`,
+        created_at: new Date().toISOString(),
+      }
+      setMessages(prev => [...prev, processingMessage])
+      
+      // Upload CSV for processing
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('dataset_name', file.name.replace('.csv', ''))
+      formData.append('action', 'upload')
+      
+      const response = await fetch('/api/prospects/csv-upload', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!response.ok) {
+        throw new Error('CSV upload failed')
+      }
+      
+      const result = await response.json()
+      
+      if (result.success && result.session) {
+        // Transform CSV data to ProspectData format
+        const transformedProspects: ProspectData[] = result.session.processed_data.map((prospect: any, index: number) => ({
+          id: `csv-${Date.now()}-${index}`,
+          name: prospect.name || prospect.full_name || 'Unknown',
+          title: prospect.title || prospect.job_title || 'Unknown',
+          company: prospect.company || prospect.company_name || 'Unknown',
+          email: prospect.email,
+          phone: prospect.phone || prospect.phone_number,
+          linkedinUrl: prospect.linkedin_url || prospect.linkedinUrl,
+          source: 'csv_upload',
+          confidence: prospect.confidence || 0.7,
+          complianceFlags: prospect.compliance_flags || [],
+          location: prospect.location || prospect.city,
+          industry: prospect.industry
+        }))
+        
+        setPendingProspectData(transformedProspects)
+        
+        // Set approval session
+        setApprovalSession({
+          session_id: result.session_id,
+          dataset_name: result.session.dataset_name || file.name,
+          dataset_source: 'csv_upload',
+          total_count: result.session.total_count,
+          data_quality_score: result.session.data_quality_score || 0.75,
+          completeness_score: result.session.completeness_score || 0.8,
+          duplicate_count: result.session.duplicate_count
+        })
+        
+        // Show success message with validation results
+        const successMessage = {
+          id: `temp-${Date.now()}-success`,
+          role: 'assistant' as const,
+          content: `✅ **CSV Upload Complete!**\n\n📊 **Validation Results:**\n• Total Records: ${result.validation_results.total_records}\n• Valid Records: ${result.validation_results.valid_records}\n• Invalid Records: ${result.validation_results.invalid_records}\n• Duplicates: ${result.validation_results.duplicates}\n• Quality Score: ${(result.validation_results.quality_score * 100).toFixed(0)}%\n\nClick "Review & Approve Data" below to examine the prospects and select which ones to add to your campaign.`,
+          created_at: new Date().toISOString(),
+          has_prospect_intelligence: true,
+          prospect_intelligence_data: {
+            csv_upload: true,
+            validation_results: result.validation_results
+          }
+        }
+        
+        setMessages(prev => [...prev.filter(m => m.id !== processingMessage.id), successMessage])
+        setShowDataApproval(true)
+      }
+    } catch (error) {
+      console.error('CSV upload error:', error)
+      const errorMessage = {
+        id: `temp-${Date.now()}-error`,
+        role: 'assistant' as const,
+        content: `❌ **CSV Upload Failed**\n\nSorry, I couldn't process ${file.name}. ${error instanceof Error ? error.message : 'Please make sure your CSV has the required columns (name, title, company) and try again.'}`,
+        created_at: new Date().toISOString(),
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsUploadingFile(false)
+      setSelectedFile(null)
     }
   }
 
@@ -897,12 +997,26 @@ export default function ThreadedChatInterface() {
           email: prospect.email,
           phone: prospect.phone,
           linkedinUrl: prospect.linkedinUrl,
-          source: result.metadata?.source || 'unipile',
+          source: result.metadata?.source || 'linkedin',
           confidence: prospect.confidence || result.metadata?.confidence || 0.8,
-          complianceFlags: prospect.complianceFlags || []
+          complianceFlags: prospect.complianceFlags || [],
+          connectionDegree: prospect.connectionDegree,
+          mutualConnections: prospect.mutualConnections,
+          location: prospect.location,
+          industry: prospect.industry
         }))
 
         setPendingProspectData(transformedProspects)
+        
+        // Set approval session info
+        setApprovalSession({
+          session_id: `linkedin_${Date.now()}`,
+          dataset_name: 'LinkedIn Search Results',
+          dataset_source: 'linkedin',
+          total_count: transformedProspects.length,
+          data_quality_score: result.metadata?.quality_score || 0.85,
+          completeness_score: result.metadata?.completeness_score || 0.9
+        })
         
         const userMessage = {
           id: `temp-${Date.now()}-user`,
@@ -1698,13 +1812,20 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
         </div>
       )}
 
-      {/* Data Approval Panel */}
-      <DataApprovalPanel
+      {/* Prospect Approval Modal */}
+      <ProspectApprovalModal
         isVisible={showDataApproval}
-        onClose={() => setShowDataApproval(false)}
-        prospectData={pendingProspectData}
+        onClose={() => {
+          setShowDataApproval(false)
+          setPendingProspectData([])
+          setApprovalSession(undefined)
+        }}
+        prospects={pendingProspectData}
+        session={approvalSession}
         onApprove={handleDataApproval}
         onReject={handleDataRejection}
+        title={approvalSession?.dataset_source === 'csv_upload' ? 'Approve CSV Upload' : 'Approve LinkedIn Prospects'}
+        subtitle={approvalSession?.dataset_source === 'csv_upload' ? 'Review uploaded prospects before adding to campaign' : 'Review LinkedIn search results before adding to campaign'}
       />
 
       {/* Memory Snapshots Panel */}
