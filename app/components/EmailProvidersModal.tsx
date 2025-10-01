@@ -105,9 +105,9 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
       });
       const data = await response.json();
 
-      if (data.success && data.url) {
+      if (data.success && (data.auth_url || data.url)) {
         // Redirect to Unipile hosted auth with custom domain
-        window.location.href = data.url;
+        window.location.href = data.auth_url || data.url;
       } else {
         throw new Error(data.error || 'Failed to initiate Google OAuth');
       }
@@ -132,9 +132,9 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
       });
       const data = await response.json();
 
-      if (data.success && data.url) {
+      if (data.success && (data.auth_url || data.url)) {
         // Redirect to Unipile hosted auth with custom domain
-        window.location.href = data.url;
+        window.location.href = data.auth_url || data.url;
       } else {
         throw new Error(data.error || 'Failed to initiate Microsoft OAuth');
       }

@@ -139,13 +139,21 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { provider = 'LINKEDIN', redirect_url } = body
     
-    // Check if user already has LinkedIn accounts to prevent duplicates
-    const existingAccounts = await checkExistingLinkedInAccounts(user.id)
-    console.log(`📊 User has ${existingAccounts.length} existing LinkedIn accounts`)
+    // Check if user already has LinkedIn accounts to prevent duplicates (LinkedIn only)
+    let existingAccounts: any[] = []
+    let authType = 'create'
+    let reconnectAccountId = null
     
-    // If user has existing accounts, use reconnect flow instead of create
-    const authType = existingAccounts.length > 0 ? 'reconnect' : 'create'
-    const reconnectAccountId = existingAccounts.length > 0 ? existingAccounts[0].unipile_account_id : null
+    if (provider === 'LINKEDIN') {
+      existingAccounts = await checkExistingLinkedInAccounts(user.id)
+      console.log(`📊 User has ${existingAccounts.length} existing LinkedIn accounts`)
+      
+      // If user has existing accounts, use reconnect flow instead of create
+      authType = existingAccounts.length > 0 ? 'reconnect' : 'create'
+      reconnectAccountId = existingAccounts.length > 0 ? existingAccounts[0].unipile_account_id : null
+    } else {
+      console.log(`📧 Email provider (${provider}) - using create flow`)
+    }
     
     // Get the current domain for callback URL
     // Always use correct production URL for LinkedIn authentication
