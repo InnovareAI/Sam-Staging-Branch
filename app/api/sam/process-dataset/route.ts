@@ -127,15 +127,13 @@ export async function POST(request: NextRequest) {
       }
 
       // Get user's workspace via workspace_members
-      const { data: membership, error: membershipError } = await supabase
+      const { data: memberships, error: membershipError } = await supabase
         .from('workspace_members')
         .select('workspace_id')
         .eq('user_id', session.user.id)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .single();
+        .limit(1);
 
-      if (membershipError || !membership) {
+      if (membershipError || !memberships || memberships.length === 0) {
         console.error('Workspace membership lookup failed:', membershipError);
         return NextResponse.json({ 
           error: 'Workspace not found',
@@ -143,7 +141,7 @@ export async function POST(request: NextRequest) {
         }, { status: 404 });
       }
 
-      const workspaceId = membership.workspace_id;
+      const workspaceId = memberships[0].workspace_id;
       let targetCampaignId = campaign_id;
 
       // If campaign_name provided, create or find campaign

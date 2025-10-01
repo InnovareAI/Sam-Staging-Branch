@@ -44,23 +44,21 @@ export async function POST(request: NextRequest) {
 async function processCSVUpload(supabase: any, userId: string, file: File, datasetName: string) {
   try {
     // Get user's workspace via workspace_members
-    const { data: membership, error: membershipError } = await supabase
+    const { data: memberships, error: membershipError } = await supabase
       .from('workspace_members')
       .select('workspace_id')
       .eq('user_id', userId)
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .single()
+      .limit(1);
 
-    if (membershipError || !membership) {
-      console.error('Workspace membership lookup failed:', membershipError)
+    if (membershipError || !memberships || memberships.length === 0) {
+      console.error('Workspace membership lookup failed:', membershipError);
       return NextResponse.json({ 
         error: 'Workspace not found',
         details: 'User is not a member of any workspace. Please create or join a workspace first.'
-      }, { status: 404 })
+      }, { status: 404 });
     }
 
-    const workspaceId = membership.workspace_id
+    const workspaceId = memberships[0].workspace_id
 
     // Parse CSV
     const csvText = await file.text()
