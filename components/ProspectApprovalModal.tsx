@@ -12,7 +12,7 @@ export interface ProspectData {
   email?: string
   phone?: string
   linkedinUrl?: string
-  source: 'linkedin' | 'csv_upload' | 'unipile' | 'bright-data' | 'websearch'
+  source: 'linkedin' | 'csv_upload' | 'unipile' | 'bright-data' | 'websearch' | 'manual' | 'test_data'
   confidence?: number
   complianceFlags?: string[]
   connectionDegree?: string
@@ -163,7 +163,9 @@ export default function ProspectApprovalModal({
       'csv_upload': 'bg-purple-500/20 text-purple-400 border-purple-500/40',
       'unipile': 'bg-green-500/20 text-green-400 border-green-500/40',
       'bright-data': 'bg-orange-500/20 text-orange-400 border-orange-500/40',
-      'websearch': 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
+      'websearch': 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40',
+      'manual': 'bg-gray-500/20 text-gray-300 border-gray-500/40',
+      'test_data': 'bg-pink-500/20 text-pink-400 border-pink-500/40'
     }
     return styles[source] || 'bg-gray-500/20 text-gray-400 border-gray-500/40'
   }
