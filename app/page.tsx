@@ -2633,45 +2633,6 @@ export default function Page() {
 
 
 
-                {/* API Keys */}
-                <div 
-                  onClick={() => setShowApiKeysModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
-                >
-                  <div className="flex items-center mb-4">
-                    <Key className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">API Keys</h2>
-                  </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                    Manage API keys for external integrations, data sources, and third-party services used in your outreach workflows.
-                  </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Create • Rotate • Secure</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Data Preferences */}
-                <div 
-                  onClick={() => setShowDataPreferencesModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
-                >
-                  <div className="flex items-center mb-4">
-                    <Database className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">Data Preferences</h2>
-                  </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                    Control data retention, privacy settings, compliance requirements, and data export preferences for your workspace.
-                  </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Configure • Privacy • Export</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
-                </div>
 
                 {/* User Profile & Country */}
                 <div 
