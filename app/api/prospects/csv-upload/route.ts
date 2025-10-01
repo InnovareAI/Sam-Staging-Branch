@@ -212,19 +212,28 @@ function parseCSV(csvText: string) {
       }
     }
 
+    // Detect delimiter (tab or comma)
+    const delimiter = lines[0].includes('\t') ? '\t' : ',';
+    console.log('Detected delimiter:', delimiter === '\t' ? 'TAB' : 'COMMA');
+
     // Parse header
-    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
+    const headers = lines[0].split(delimiter).map(h => h.trim().replace(/"/g, ''))
+    console.log('Detected headers:', headers)
     
     // Detect field mapping
     const fieldMapping = detectFieldMapping(headers)
     
-    if (!fieldMapping.name && !fieldMapping.email && !fieldMapping.linkedin) {
+    // Check if we have at least one way to identify prospects
+    const hasName = fieldMapping.name || (fieldMapping.first_name && fieldMapping.last_name);
+    const hasIdentifier = hasName || fieldMapping.email || fieldMapping.linkedin;
+    
+    if (!hasIdentifier) {
       return {
         success: false,
-        error: 'CSV must contain at least one of: name, email, or LinkedIn URL columns',
+        error: 'CSV must contain at least one of: name (or first_name+last_name), email, or LinkedIn URL columns',
         details: {
           detected_headers: headers,
-          required_fields: ['name', 'email', 'linkedin_url', 'linkedin', 'profile_url']
+          required_fields: ['name/first_name+last_name', 'email', 'linkedin_url/profile_link']
         }
       }
     }
@@ -232,7 +241,8 @@ function parseCSV(csvText: string) {
     // Parse data rows
     const data = []
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''))
+      if (!lines[i].trim()) continue; // Skip empty lines
+      const values = lines[i].split(delimiter).map(v => v.trim().replace(/"/g, ''))
       
       if (values.length !== headers.length) {
         console.warn(`Row ${i + 1} has ${values.length} values but ${headers.length} headers`)
@@ -274,10 +284,20 @@ function detectFieldMapping(headers: string[]) {
   const mapping: any = {}
   
   headers.forEach(header => {
-    const lowerHeader = header.toLowerCase()
+    const lowerHeader = header.toLowerCase().replace(/_/g, '')
     
-    // Name detection
-    if (lowerHeader.includes('name') || lowerHeader.includes('full_name') || lowerHeader === 'contact') {
+    // First name detection
+    if (lowerHeader.includes('firstname') || lowerHeader === 'first') {
+      mapping.first_name = header
+    }
+    
+    // Last name detection
+    if (lowerHeader.includes('lastname') || lowerHeader === 'last') {
+      mapping.last_name = header
+    }
+    
+    // Name detection (full name)
+    if (!mapping.first_name && !mapping.last_name && (lowerHeader.includes('name') || lowerHeader === 'contact')) {
       mapping.name = header
     }
     
@@ -286,8 +306,8 @@ function detectFieldMapping(headers: string[]) {
       mapping.email = header
     }
     
-    // LinkedIn detection
-    if (lowerHeader.includes('linkedin') || lowerHeader.includes('profile_url') || lowerHeader.includes('profile')) {
+    // LinkedIn detection (support profile_link, linkedin_url, etc.)
+    if (lowerHeader.includes('linkedin') || lowerHeader.includes('profilelink') || lowerHeader.includes('profileurl') || lowerHeader.includes('profile')) {
       mapping.linkedin = header
     }
     
@@ -305,8 +325,14 @@ function detectFieldMapping(headers: string[]) {
     if (lowerHeader.includes('phone') || lowerHeader.includes('mobile') || lowerHeader.includes('tel')) {
       mapping.phone = header
     }
+    
+    // Location detection
+    if (lowerHeader.includes('location') || lowerHeader.includes('city') || lowerHeader.includes('address')) {
+      mapping.location = header
+    }
   })
   
+  console.log('Field mapping:', mapping);
   return mapping
 }
 
@@ -316,7 +342,12 @@ function mapToStandardFields(prospect: any, fieldMapping: any) {
     source: 'csv_upload'
   }
   
-  if (fieldMapping.name && prospect[fieldMapping.name.toLowerCase().replace(/\s+/g, '_')]) {
+  // Handle first_name + last_name
+  if (fieldMapping.first_name && fieldMapping.last_name) {
+    const firstName = prospect[fieldMapping.first_name.toLowerCase().replace(/\s+/g, '_')] || '';
+    const lastName = prospect[fieldMapping.last_name.toLowerCase().replace(/\s+/g, '_')] || '';
+    mapped.name = `${firstName} ${lastName}`.trim();
+  } else if (fieldMapping.name && prospect[fieldMapping.name.toLowerCase().replace(/\s+/g, '_')]) {
     mapped.name = prospect[fieldMapping.name.toLowerCase().replace(/\s+/g, '_')]
   }
   
@@ -338,6 +369,10 @@ function mapToStandardFields(prospect: any, fieldMapping: any) {
   
   if (fieldMapping.phone && prospect[fieldMapping.phone.toLowerCase().replace(/\s+/g, '_')]) {
     mapped.phone = prospect[fieldMapping.phone.toLowerCase().replace(/\s+/g, '_')]
+  }
+  
+  if (fieldMapping.location && prospect[fieldMapping.location.toLowerCase().replace(/\s+/g, '_')]) {
+    mapped.location = prospect[fieldMapping.location.toLowerCase().replace(/\s+/g, '_')]
   }
   
   return mapped
