@@ -2734,15 +2734,26 @@ export default function Page() {
                   </div>
                 </div>
 
-              </div>
+                {/* AI Model Configuration Tile */}
+                <div 
+                  onClick={() => setShowLLMConfigModal(true)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                >
+                  <div className="flex items-center mb-4">
+                    <Brain className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">AI Model Configuration</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Configure your preferred AI model for SAM. Currently using Claude Sonnet 4.5 by Anthropic.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Claude Sonnet 4.5 • Anthropic</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
 
-              {/* AI Model Selector Section */}
-              <div className="mt-8">
-                <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-                  <Brain className="mr-3" size={24} />
-                  AI Model Configuration
-                </h3>
-                <ModelSelector onChangeClick={() => setShowLLMConfigModal(true)} />
               </div>
 
                 {/* Integration Status */}
