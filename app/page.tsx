@@ -1354,7 +1354,9 @@ export default function Page() {
           }));
         }
       } else {
-        throw new Error(data.error || 'Failed to upload CSV');
+        console.error('CSV upload API error:', data);
+        const errorMsg = data.details || data.error || 'Failed to upload CSV';
+        throw new Error(errorMsg);
       }
     } catch (error) {
       console.error('CSV upload error:', error);
