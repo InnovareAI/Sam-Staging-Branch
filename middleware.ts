@@ -1,9 +1,82 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-// Simple middleware for Supabase Auth - no authentication blocking
-export function middleware(request: NextRequest) {
-  // Let all requests through - Supabase Auth handles authentication at the component level
+// InnovareAI workspace ID - only members of this workspace can access /admin routes
+const INNOVARE_AI_WORKSPACE_ID = 'babdcab8-1a78-4b2f-913e-6e9fd9821009';
+
+export async function middleware(request: NextRequest) {
+  // Check if this is an admin route
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    try {
+      // Get the session token from cookies
+      const token = request.cookies.get('sb-access-token')?.value ||
+                    request.cookies.get('sb-latxadqrvrrrcvkktrog-auth-token')?.value;
+      
+      if (!token) {
+        // No auth token - redirect to login
+        const loginUrl = new URL('/', request.url);
+        loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
+        return NextResponse.redirect(loginUrl);
+      }
+
+      // Create Supabase client
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      );
+
+      // Verify the user
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      
+      if (authError || !user) {
+        // Invalid token - redirect to login
+        const loginUrl = new URL('/', request.url);
+        loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
+        return NextResponse.redirect(loginUrl);
+      }
+
+      // Check if user is a member of InnovareAI workspace
+      const { data: membership, error: memberError } = await supabase
+        .from('workspace_members')
+        .select('role, status')
+        .eq('workspace_id', INNOVARE_AI_WORKSPACE_ID)
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .single();
+
+      if (memberError || !membership) {
+        // User is not a member of InnovareAI workspace - show 403 error
+        return new NextResponse(
+          JSON.stringify({
+            error: 'Forbidden',
+            message: 'Access to admin routes is restricted to InnovareAI workspace members only.'
+          }),
+          {
+            status: 403,
+            headers: { 'content-type': 'application/json' }
+          }
+        );
+      }
+
+      // User is authorized - allow access
+      return NextResponse.next();
+      
+    } catch (error) {
+      console.error('Auth middleware error:', error);
+      // On error, redirect to login for safety
+      const loginUrl = new URL('/', request.url);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // Let all other requests through
   return NextResponse.next();
 }
 
