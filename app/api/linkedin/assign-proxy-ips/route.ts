@@ -112,24 +112,49 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get LinkedIn accounts via Unipile API
-    console.log('🔍 Fetching LinkedIn accounts from Unipile...');
-    const data = await callUnipileAPI('accounts');
-    const accounts = Array.isArray(data) ? data : (data.items || data.accounts || []);
-    
-    const linkedinAccounts = accounts.filter((account: any) => 
-      account.type === 'LINKEDIN' && 
-      account.sources?.[0]?.status === 'OK'
-    );
+    // Get LinkedIn accounts from database
+    console.log('🔍 Fetching LinkedIn accounts from database...');
+    const { data: dbAccounts, error: dbError } = await supabase
+      .from('user_unipile_accounts')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('platform', 'LINKEDIN')
+      .eq('connection_status', 'active');
 
-    if (linkedinAccounts.length === 0) {
+    if (dbError || !dbAccounts || dbAccounts.length === 0) {
       return NextResponse.json({ 
         error: 'No active LinkedIn accounts found',
-        details: 'Please connect LinkedIn accounts first' 
+        details: 'Please connect LinkedIn accounts first',
+        db_error: dbError?.message
       }, { status: 400 });
     }
 
-    console.log(`📊 Found ${linkedinAccounts.length} active LinkedIn accounts`);
+    console.log(`📊 Found ${dbAccounts.length} active LinkedIn accounts in database`);
+    
+    // Fetch full account details from Unipile for each account
+    const linkedinAccounts = [];
+    for (const dbAccount of dbAccounts) {
+      try {
+        const accountData = await callUnipileAPI(`accounts/${dbAccount.unipile_account_id}`);
+        linkedinAccounts.push({
+          id: dbAccount.unipile_account_id,
+          name: dbAccount.account_name,
+          type: 'LINKEDIN',
+          connection_params: accountData.connection_params,
+          sources: accountData.sources
+        });
+      } catch (err) {
+        console.error(`Failed to fetch Unipile data for ${dbAccount.unipile_account_id}:`, err);
+        // Continue with partial data
+        linkedinAccounts.push({
+          id: dbAccount.unipile_account_id,
+          name: dbAccount.account_name,
+          type: 'LINKEDIN',
+          connection_params: { im: {} },
+          sources: [{ status: 'OK' }]
+        });
+      }
+    }
 
     const autoIPService = new AutoIPAssignmentService();
     const results = [];
