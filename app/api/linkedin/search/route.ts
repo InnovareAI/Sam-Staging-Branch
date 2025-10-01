@@ -89,10 +89,11 @@ export async function POST(request: NextRequest) {
     let linkedinAccountId = accountId;
     if (!linkedinAccountId) {
       const { data: linkedinAccount } = await supabase
-        .from('linkedin_accounts')
+        .from('user_unipile_accounts')
         .select('unipile_account_id')
         .eq('user_id', session.user.id)
-        .eq('status', 'active')
+        .eq('platform', 'LINKEDIN')
+        .eq('connection_status', 'active')
         .single();
       
       if (!linkedinAccount?.unipile_account_id) {
