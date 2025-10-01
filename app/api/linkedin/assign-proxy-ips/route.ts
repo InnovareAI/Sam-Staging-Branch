@@ -3,14 +3,61 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { AutoIPAssignmentService } from '@/lib/services/auto-ip-assignment';
 
-// LinkedIn account to country mapping based on profile analysis
-const LINKEDIN_ACCOUNT_COUNTRIES = {
-  "Thorsten Linz": "Germany",           // Sales Navigator + Premium - Primary account
-  "Irish Cita De Ade": "Philippines",   // Premium - InnovareAI Services
-  "Martin Schechtner": "Austria",       // Basic - DIGGERS GmbH
-  "Peter Noble": "Australia",           // Premium - red-dragonfly.vc  
-  "Charissa Daniel": "Philippines"      // Premium - Various organizations
-};
+// Helper function to extract country from LinkedIn account location
+function detectCountryFromLinkedInAccount(account: any): string {
+  // Try to get country from various Unipile fields
+  const connectionParams = account.connection_params?.im || {};
+  
+  // 1. Check for explicit country field
+  if (connectionParams.country) {
+    return connectionParams.country;
+  }
+  
+  // 2. Check location string and parse it
+  const location = connectionParams.location || connectionParams.headline || '';
+  if (location) {
+    // Common country patterns in LinkedIn locations
+    const countryPatterns = [
+      { pattern: /Germany|Deutschland|Berlin|Munich|Hamburg|Frankfurt/i, country: 'Germany' },
+      { pattern: /Austria|Österreich|Vienna|Wien|Salzburg/i, country: 'Austria' },
+      { pattern: /Switzerland|Schweiz|Zurich|Geneva|Bern/i, country: 'Switzerland' },
+      { pattern: /Philippines|Manila|Quezon|Cebu/i, country: 'Philippines' },
+      { pattern: /Australia|Sydney|Melbourne|Brisbane|Perth/i, country: 'Australia' },
+      { pattern: /United States|USA|US|New York|California|Texas|Florida/i, country: 'United States' },
+      { pattern: /United Kingdom|UK|GB|London|Manchester|Birmingham/i, country: 'United Kingdom' },
+      { pattern: /Canada|Toronto|Vancouver|Montreal|Calgary/i, country: 'Canada' },
+      { pattern: /Netherlands|Amsterdam|Rotterdam|The Hague/i, country: 'Netherlands' },
+      { pattern: /France|Paris|Lyon|Marseille/i, country: 'France' },
+    ];
+    
+    for (const { pattern, country } of countryPatterns) {
+      if (pattern.test(location)) {
+        console.log(`🌍 Detected country "${country}" from location: "${location}"`);
+        return country;
+      }
+    }
+  }
+  
+  // 3. Fallback: Use account name patterns (for your specific accounts)
+  const accountName = account.name || '';
+  const nameFallbacks = [
+    { pattern: /Thorsten.*Linz/i, country: 'Germany' },
+    { pattern: /Martin.*Schechtner/i, country: 'Austria' },
+    { pattern: /Peter.*Noble/i, country: 'Australia' },
+    { pattern: /Irish|Charissa/i, country: 'Philippines' },
+  ];
+  
+  for (const { pattern, country } of nameFallbacks) {
+    if (pattern.test(accountName)) {
+      console.log(`👤 Detected country "${country}" from account name: "${accountName}"`);
+      return country;
+    }
+  }
+  
+  // Default fallback
+  console.log(`⚠️  Could not detect country for account: ${accountName}, defaulting to United States`);
+  return 'United States';
+}
 
 // Helper function to make Unipile API calls
 async function callUnipileAPI(endpoint: string, method: string = 'GET') {
@@ -91,9 +138,14 @@ export async function POST(req: NextRequest) {
     for (const account of linkedinAccounts) {
       try {
         const accountName = account.name;
-        const detectedCountry = LINKEDIN_ACCOUNT_COUNTRIES[accountName] || 'United States'; // Default fallback
+        const detectedCountry = detectCountryFromLinkedInAccount(account);
         
-        console.log(`Processing ${accountName}: Detected country = ${detectedCountry}`);
+        console.log(`🔄 Processing ${accountName}: Detected country = ${detectedCountry}`);
+        console.log(`📍 Account location data:`, {
+          location: account.connection_params?.im?.location,
+          headline: account.connection_params?.im?.headline,
+          name: accountName
+        });
 
         // Generate optimal proxy configuration for this account's country
         const proxyConfig = await autoIPService.generateOptimalProxyConfig(

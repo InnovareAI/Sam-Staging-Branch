@@ -99,6 +99,20 @@ export class AutoIPAssignmentService {
     
     { detectedLocation: 'IN', brightDataCountry: 'in', confidence: 0.75, priority: 5 },
     { detectedLocation: 'India', brightDataCountry: 'in', confidence: 0.75, priority: 5 },
+    
+    // Austria
+    { detectedLocation: 'AT', brightDataCountry: 'at', confidence: 0.90, priority: 2 },
+    { detectedLocation: 'Austria', brightDataCountry: 'at', confidence: 0.90, priority: 2 },
+    { detectedLocation: 'Österreich', brightDataCountry: 'at', confidence: 0.90, priority: 2 },
+    
+    // Switzerland
+    { detectedLocation: 'CH', brightDataCountry: 'ch', confidence: 0.90, priority: 2 },
+    { detectedLocation: 'Switzerland', brightDataCountry: 'ch', confidence: 0.90, priority: 2 },
+    { detectedLocation: 'Schweiz', brightDataCountry: 'ch', confidence: 0.90, priority: 2 },
+    
+    // Philippines
+    { detectedLocation: 'PH', brightDataCountry: 'ph', confidence: 0.85, priority: 3 },
+    { detectedLocation: 'Philippines', brightDataCountry: 'ph', confidence: 0.85, priority: 3 },
   ];
 
   /**
@@ -408,7 +422,10 @@ export class AutoIPAssignmentService {
       'it': 'Italy',
       'jp': 'Japan',
       'sg': 'Singapore',
-      'in': 'India'
+      'in': 'India',
+      'at': 'Austria',
+      'ch': 'Switzerland',
+      'ph': 'Philippines'
     };
 
     const stateNames: { [key: string]: string } = {
