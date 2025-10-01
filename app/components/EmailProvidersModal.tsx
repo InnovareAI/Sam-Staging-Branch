@@ -42,7 +42,6 @@ interface EmailProvidersModalProps {
 const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClose }) => {
   const [providers, setProviders] = useState<EmailProvider[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAddProvider, setShowAddProvider] = useState(false);
   const [addProviderType, setAddProviderType] = useState<'google' | 'microsoft' | 'smtp' | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
@@ -307,16 +306,8 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
 
         {/* Connected Accounts */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4">
             <h3 className="text-lg font-medium text-white">Connected Email Accounts</h3>
-            <button
-              onClick={() => setShowAddProvider(true)}
-              disabled={isConnecting}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-            >
-              <Plus size={16} />
-              <span>Add Account</span>
-            </button>
           </div>
 
           {loading ? (
@@ -384,38 +375,33 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
           )}
         </div>
 
-        {/* Add Provider Modal */}
-        {showAddProvider && (
-          <div className="bg-gray-700 rounded-lg p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-white">
-                {addProviderType === 'smtp' ? 'Configure SMTP Account' : 'Add Email Account'}
-              </h3>
+        {/* Add Provider Section - Always Visible */}
+        <div className="bg-gray-700 rounded-lg p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-white">
+              {addProviderType === 'smtp' ? 'Configure SMTP Account' : 'Add Email Account'}
+            </h3>
+            {addProviderType === 'smtp' && (
               <button
                 onClick={() => {
-                  if (addProviderType === 'smtp') {
-                    // Go back to provider selection
-                    setAddProviderType(null);
-                    setSmtpForm({
-                      email_address: '',
-                      smtp_host: '',
-                      smtp_port: '587',
-                      smtp_username: '',
-                      smtp_password: '',
-                      smtp_use_tls: true,
-                      smtp_use_ssl: false,
-                    });
-                  } else {
-                    // Close the modal
-                    setShowAddProvider(false);
-                    setAddProviderType(null);
-                  }
+                  // Go back to provider selection
+                  setAddProviderType(null);
+                  setSmtpForm({
+                    email_address: '',
+                    smtp_host: '',
+                    smtp_port: '587',
+                    smtp_username: '',
+                    smtp_password: '',
+                    smtp_use_tls: true,
+                    smtp_use_ssl: false,
+                  });
                 }}
                 className="text-gray-400 hover:text-gray-200 transition-colors"
               >
                 <X size={20} />
               </button>
-            </div>
+            )}
+          </div>
 
             {!addProviderType ? (
               <div className="grid grid-cols-3 gap-4">
@@ -588,8 +574,7 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
                 </div>
               </div>
             ) : null}
-          </div>
-        )}
+        </div>
 
         {/* Info Section */}
         <div className="bg-blue-900 bg-opacity-30 border border-blue-700 rounded-lg p-4">
