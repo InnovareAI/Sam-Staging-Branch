@@ -350,8 +350,14 @@ export default function DataCollectionHub({
       </div>
 
       {/* Campaign Tag Tabs */}
-      <div className="border-b border-gray-700 px-6 py-3 bg-gray-750">
-        <div className="flex items-center space-x-2 overflow-x-auto">
+      <div className="border-b-2 border-purple-500/20 px-6 py-4 bg-gray-900">
+        <div className="mb-2">
+          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Campaign Filter</h3>
+        </div>
+        <div className="flex items-center space-x-2 overflow-x-auto pb-1">
+          {campaignTags.length === 1 && (
+            <p className="text-sm text-gray-500 italic">Upload CSV files to create campaigns</p>
+          )}
           {campaignTags.map((tag) => {
             const tagCount = tag === 'all' 
               ? prospectData.length 
@@ -360,10 +366,10 @@ export default function DataCollectionHub({
               <button
                 key={tag}
                 onClick={() => setSelectedCampaignTag(tag)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                className={`flex items-center space-x-2 px-5 py-3 rounded-lg text-sm font-semibold whitespace-nowrap transition-all duration-200 shadow-sm ${
                   selectedCampaignTag === tag
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    ? 'bg-purple-600 text-white shadow-purple-500/50 scale-105'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:scale-102'
                 }`}
               >
                 <Tag className="w-3 h-3" />
