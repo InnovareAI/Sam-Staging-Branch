@@ -147,7 +147,11 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
 
   } catch (error) {
     console.error('Process CSV upload error:', error)
-    return NextResponse.json({ error: 'Failed to process CSV upload' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Failed to process CSV upload',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    }, { status: 500 })
   }
 }
 
