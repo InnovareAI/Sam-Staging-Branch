@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Mail, X, Plus, Trash2, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { Mail, X, Plus, Trash2, CheckCircle, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
 
 interface EmailProvider {
   id: string;
@@ -268,10 +268,19 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
       <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-semibold text-white flex items-center">
-            <Mail className="mr-3 text-blue-400" size={28} />
-            Email Integration Settings
-          </h2>
+          <div className="flex items-center">
+            <button
+              onClick={onClose}
+              className="mr-3 text-gray-400 hover:text-gray-200 transition-colors flex items-center"
+              title="Back to Settings"
+            >
+              <ArrowLeft size={24} />
+            </button>
+            <h2 className="text-2xl font-semibold text-white flex items-center">
+              <Mail className="mr-3 text-blue-400" size={28} />
+              Email Integration Settings
+            </h2>
+          </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-200 transition-colors"
