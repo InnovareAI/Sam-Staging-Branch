@@ -186,7 +186,6 @@ export default function DataCollectionHub({
       {/* Main Content - Approved Prospects View */}
       <div className="p-6">
         {prospectData.length > 0 ? (
-          {/* Prospects list would go here */}
           <div className="space-y-4">
             <div className="text-gray-400 text-sm mb-4">
               Prospects approved through Sam chat will appear here.
