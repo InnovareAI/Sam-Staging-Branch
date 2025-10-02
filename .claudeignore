@@ -1,0 +1,37 @@
+# Minimal exclusions - "Cursor-style"
+# Only exclude what's truly unnecessary
+
+# Dependencies (always exclude)
+node_modules/
+.pnp/
+
+# Build outputs (always exclude)
+.next/
+out/
+dist/
+build/
+.netlify/
+
+# Environment and secrets (security)
+.env
+.env*.local
+.env.production
+
+# Logs (noise)
+*.log
+
+# Testing artifacts
+coverage/
+
+# Cache
+.cache/
+.turbo/
+
+# Git
+.git/
+
+# OS files
+.DS_Store
+
+# Everything else is fair game!
+# Let Claude Code decide what's relevant

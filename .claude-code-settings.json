@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "read:/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/**",
+      "write:/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/**",
+      "bash:**"
+    ],
+    "deny": [
+      "read:/Users/tvonlinz/Dev_Master/3cubed/**",
+      "write:/Users/tvonlinz/Dev_Master/3cubed/**",
+      "read:/Users/tvonlinz/Dev_Master/*",
+      "write:/Users/tvonlinz/Dev_Master/*"
+    ],
+    "ask": [
+      "bash:rm **",
+      "bash:git push **",
+      "write:**/.env**"
+    ]
+  },
+  "sandbox": {
+    "filesystem": {
+      "read": {
+        "denyOnly": [
+          "/Users/tvonlinz/Dev_Master/3cubed",
+          "/Users/tvonlinz/.ssh",
+          "/Users/tvonlinz/.aws"
+        ]
+      },
+      "write": {
+        "allowOnly": [
+          "/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7"
+        ],
+        "includeDefaults": false,
+        "denyWithinAllow": [
+          ".git/config",
+          ".env",
+          ".env.local"
+        ]
+      }
+    },
+    "network": {
+      "allow": [
+        "github.com:443",
+        "api.anthropic.com:443",
+        "supabase.com:443"
+      ]
+    }
+  },
+  "cleanupPeriodDays": 30,
+  "includeCoAuthoredBy": true,
+  "enableAllProjectMcpServers": true,
+  "autocompact": {
+    "enabled": true,
+    "threshold": 0.9,
+    "strategy": "summary"
+  },
+  "enabledMcpjsonServers": [
+    "brightdata",
+    "apify",
+    "unipile",
+    "postmark",
+    "stripe"
+  ],
+  "env": {
+    "PROJECT_ROOT": "/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7"
+  }
+}
