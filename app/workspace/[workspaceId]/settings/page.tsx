@@ -63,17 +63,18 @@ export default function WorkspaceSettingsPage({ params }: { params: { workspaceI
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <TabsList className="grid w-full grid-cols-5 bg-white/70 backdrop-blur-sm border border-white/20 shadow-lg">
+            <TabsList className="grid w-full grid-cols-6 bg-white/70 backdrop-blur-sm border border-white/20 shadow-lg">
               {[
                 { id: 'general', icon: Settings, label: 'General' },
                 { id: 'team', icon: Users, label: 'Team' },
                 { id: 'integrations', icon: Zap, label: 'Integrations' },
+                { id: 'compliance', icon: Shield, label: 'Compliance' },
                 { id: 'billing', icon: CreditCard, label: 'Billing' },
                 { id: 'analytics', icon: BarChart3, label: 'Analytics' }
               ].map((tab) => (
-                <TabsTrigger 
+                <TabsTrigger
                   key={tab.id}
-                  value={tab.id} 
+                  value={tab.id}
                   className="flex items-center gap-2 data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 transition-all duration-300"
                 >
                   <tab.icon className="h-4 w-4" />
@@ -275,6 +276,119 @@ export default function WorkspaceSettingsPage({ params }: { params: { workspaceI
                             {integration.connected ? 'Connected' : 'Not connected'}
                           </p>
                         </motion.div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </TabsContent>
+
+            {/* Compliance Tab */}
+            <TabsContent value="compliance" className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+                className="space-y-6"
+              >
+                {/* DPA Management Card */}
+                <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield className="h-5 w-5 text-indigo-600" />
+                      Data Processing Agreement (GDPR Compliance)
+                    </CardTitle>
+                    <CardDescription>
+                      EU customers require a signed DPA for GDPR compliance
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-6">
+                      <div className="flex items-start gap-3">
+                        <Shield className="h-5 w-5 text-yellow-600 mt-0.5" />
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-yellow-900 mb-1">DPA Signature Required</h3>
+                          <p className="text-sm text-yellow-800 mb-3">
+                            Your workspace is located in the EU. GDPR compliance requires a signed
+                            Data Processing Agreement to continue using SAM AI.
+                          </p>
+                          <div className="flex items-center gap-2 text-sm text-yellow-700">
+                            <span className="font-medium">Deadline: November 5, 2025</span>
+                            <Badge variant="outline" className="border-yellow-400">30 days remaining</Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <Button className="w-full bg-indigo-600 hover:bg-indigo-700" size="lg">
+                        <Shield className="h-4 w-4 mr-2" />
+                        Review & Sign Data Processing Agreement
+                      </Button>
+
+                      <div className="p-4 bg-slate-50 rounded-lg">
+                        <h4 className="font-semibold text-sm mb-3">What is a DPA?</h4>
+                        <p className="text-sm text-slate-600 mb-3">
+                          A Data Processing Agreement (DPA) is a legally binding contract required by GDPR
+                          when a service provider processes personal data on behalf of a customer. It outlines
+                          data protection responsibilities, security measures, and your rights as a data controller.
+                        </p>
+                        <ul className="space-y-2 text-sm text-slate-600">
+                          <li className="flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            One-click electronic signature (legally valid)
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            Download signed PDF certificate
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            GDPR Article 28 compliant
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Sub-processors Card */}
+                <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Globe className="h-5 w-5 text-indigo-600" />
+                      Sub-processors
+                    </CardTitle>
+                    <CardDescription>
+                      Third-party services that process data on behalf of SAM AI
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {[
+                        { name: 'Supabase', purpose: 'Database and authentication', location: 'United States', data: 'Prospect data, campaign data' },
+                        { name: 'Anthropic', purpose: 'AI model inference (Claude)', location: 'United States', data: 'Conversation history, documents' },
+                        { name: 'Unipile', purpose: 'LinkedIn/email integration', location: 'European Union (France)', data: 'Messages, prospect data' },
+                        { name: 'Postmark', purpose: 'Transactional emails', location: 'United States', data: 'Email addresses, notifications' }
+                      ].map((processor) => (
+                        <div key={processor.name} className="p-3 border border-slate-200 rounded-lg">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="font-semibold">{processor.name}</div>
+                              <div className="text-sm text-slate-600 mt-1">{processor.purpose}</div>
+                              <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+                                <span className="flex items-center gap-1">
+                                  <Globe className="h-3 w-3" />
+                                  {processor.location}
+                                </span>
+                                <span>• {processor.data}</span>
+                              </div>
+                            </div>
+                            <Badge variant="secondary" className="bg-green-100 text-green-700">
+                              Active
+                            </Badge>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </CardContent>
