@@ -4186,7 +4186,7 @@ export default function Page() {
           /* CHAT MESSAGES */
           <div
             ref={messagesContainerRef}
-            className="space-y-4 pb-6"
+            className="space-y-4 pb-20 mb-8"
           >
             {isSending && (
               <div className="flex justify-start">
