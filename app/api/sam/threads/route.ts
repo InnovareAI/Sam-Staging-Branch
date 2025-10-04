@@ -1,12 +1,13 @@
 /**
  * SAM AI Threaded Conversations API
- * 
+ *
  * Handles creation and listing of conversation threads
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -21,48 +22,6 @@ interface SupabaseAuthUser {
   id: string
   email?: string
   user_metadata?: Record<string, unknown>
-}
-
-async function getAuthenticatedUser() {
-  const cookieStore = await cookies()
-
-  // Try different cookie name patterns
-  let authCookie = cookieStore.get('sb-latxadqrvrrrcvkktrog-auth-token')
-
-  if (!authCookie) {
-    // Try the chunked cookie pattern
-    const authCookie0 = cookieStore.get('sb-latxadqrvrrrcvkktrog-auth-token.0')
-    const authCookie1 = cookieStore.get('sb-latxadqrvrrrcvkktrog-auth-token.1')
-
-    if (authCookie0) {
-      // Combine chunked cookies
-      let combinedValue = authCookie0.value
-      if (authCookie1) {
-        combinedValue += authCookie1.value
-      }
-      authCookie = { name: 'sb-auth-token', value: combinedValue }
-    }
-  }
-
-  if (!authCookie?.value) {
-    console.log('No auth cookie found')
-    return null
-  }
-
-  try {
-    const authData = JSON.parse(authCookie.value)
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(authData.access_token)
-
-    if (error || !user) {
-      console.log('Auth getUser failed:', error?.message)
-      return null
-    }
-
-    return user
-  } catch (err) {
-    console.log('Auth cookie parse error:', err)
-    return null
-  }
 }
 
 async function ensureUserProfile(user: SupabaseAuthUser) {
@@ -201,9 +160,10 @@ async function resolveWorkspaceId(
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthenticatedUser()
+    const supabase = createRouteHandlerClient({ cookies })
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (authError || !user) {
       return NextResponse.json({
         success: false,
         error: 'Authentication required'
@@ -269,9 +229,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthenticatedUser()
+    const supabase = createRouteHandlerClient({ cookies })
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (authError || !user) {
       return NextResponse.json({
         success: false,
         error: 'Authentication required'
