@@ -4186,7 +4186,7 @@ export default function Page() {
           /* CHAT MESSAGES */
           <div
             ref={messagesContainerRef}
-            className="space-y-4 pb-20 mb-8"
+            className="space-y-4"
           >
             {isSending && (
               <div className="flex justify-start">
@@ -4253,7 +4253,7 @@ export default function Page() {
 
         {/* CHAT INPUT CONTAINER */}
         {activeMenuItem === 'chat' && (
-          <div className="fixed bottom-0 left-72 right-0 z-50 px-6 pb-6 bg-background/95 backdrop-blur-sm border-t border-border/60">
+          <div className="fixed bottom-0 left-72 right-0 z-50 px-6 pb-6 pt-8 bg-background/95 backdrop-blur-sm border-t border-border/60">
             <div 
               className={`mx-auto max-w-4xl overflow-hidden rounded-3xl border bg-surface-highlight/60 shadow-glow transition-all ${
                 isDraggingFile 
