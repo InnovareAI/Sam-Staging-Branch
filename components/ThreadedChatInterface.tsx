@@ -1652,13 +1652,13 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                       )}
 
                       {/* Message bubble */}
-                      <div className={`max-w-[70%] ${message.role === 'user' ? 'ml-auto' : 'flex-1'}`}>
+                      <div className={`max-w-[70%] ${message.role === 'user' ? 'ml-auto' : ''}`}>
                         <div className={`px-4 py-3 rounded-2xl ${
-                          message.role === 'user' 
-                            ? 'bg-purple-600 text-white' 
+                          message.role === 'user'
+                            ? 'bg-purple-600 text-white'
                             : 'bg-gray-700 text-white'
                         }`}>
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap m-0">
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words m-0">
                             {message.content}
                           </p>
                           {message.has_prospect_intelligence && (
@@ -1676,13 +1676,13 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                   {/* Sending state - styled like a real message */}
                   {isSending && (
                     <div className="flex items-start justify-start">
-                      <img 
-                        src="/SAM.jpg" 
-                        alt="Sam AI" 
+                      <img
+                        src="/SAM.jpg"
+                        alt="Sam AI"
                         className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1 mr-2"
                         style={{ objectPosition: 'center 30%' }}
                       />
-                      <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl max-w-[70%] flex-1">
+                      <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl max-w-[70%]">
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
                           <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>

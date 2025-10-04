@@ -5,7 +5,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 
@@ -22,6 +21,48 @@ interface SupabaseAuthUser {
   id: string
   email?: string
   user_metadata?: Record<string, unknown>
+}
+
+async function getAuthenticatedUser() {
+  const cookieStore = await cookies()
+
+  // Try different cookie name patterns
+  let authCookie = cookieStore.get('sb-latxadqrvrrrcvkktrog-auth-token')
+
+  if (!authCookie) {
+    // Try the chunked cookie pattern
+    const authCookie0 = cookieStore.get('sb-latxadqrvrrrcvkktrog-auth-token.0')
+    const authCookie1 = cookieStore.get('sb-latxadqrvrrrcvkktrog-auth-token.1')
+
+    if (authCookie0) {
+      // Combine chunked cookies
+      let combinedValue = authCookie0.value
+      if (authCookie1) {
+        combinedValue += authCookie1.value
+      }
+      authCookie = { name: 'sb-auth-token', value: combinedValue }
+    }
+  }
+
+  if (!authCookie?.value) {
+    console.log('No auth cookie found')
+    return null
+  }
+
+  try {
+    const authData = JSON.parse(authCookie.value)
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(authData.access_token)
+
+    if (error || !user) {
+      console.log('Auth getUser failed:', error?.message)
+      return null
+    }
+
+    return user
+  } catch (err) {
+    console.log('Auth cookie parse error:', err)
+    return null
+  }
 }
 
 async function ensureUserProfile(user: SupabaseAuthUser) {
@@ -160,10 +201,9 @@ async function resolveWorkspaceId(
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies })
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const user = await getAuthenticatedUser()
+
+    if (!user) {
       return NextResponse.json({
         success: false,
         error: 'Authentication required'
@@ -179,7 +219,7 @@ export async function GET(request: NextRequest) {
     const tags = url.searchParams.get('tags')?.split(',')
 
     // Build query
-    let query = supabase
+    let query = supabaseAdmin
       .from('sam_conversation_threads')
       .select('*')
       .eq('user_id', user.id)
@@ -229,10 +269,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies })
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const user = await getAuthenticatedUser()
+
+    if (!user) {
       return NextResponse.json({
         success: false,
         error: 'Authentication required'
@@ -276,12 +315,12 @@ export async function POST(request: NextRequest) {
     // Get user's organization (if any)
     let organizationId = null
     try {
-      const { data: userOrgs } = await supabase
+      const { data: userOrgs } = await supabaseAdmin
         .from('user_organizations')
         .select('organization_id')
         .eq('user_id', user.id)
         .single()
-      
+
       if (userOrgs) {
         organizationId = userOrgs.organization_id
       }
@@ -290,7 +329,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create thread
-    const { data: thread, error } = await supabase
+    const { data: thread, error } = await supabaseAdmin
       .from('sam_conversation_threads')
       .insert({
         user_id: user.id,

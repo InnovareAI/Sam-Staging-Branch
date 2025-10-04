@@ -108,7 +108,7 @@ const AnimatedMessage = ({ content, animate = false }: { content: string; animat
   }, [currentIndex, content, animate]);
 
   return (
-    <div className="text-sm leading-relaxed whitespace-pre-wrap">
+    <div className="text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">
       {displayedContent}
       {animate && currentIndex < content.length && (
         <span className="inline-block w-1 h-4 bg-purple-400 animate-pulse ml-0.5" />
@@ -4191,15 +4191,15 @@ export default function Page() {
             {isSending && (
               <div className="flex justify-start">
                 <div className="max-w-[70%]">
-                  <div className="flex items-start space-x-3">
-                    <img 
-                      src="/SAM.jpg" 
-                      alt="Sam AI" 
+                  <div className="flex items-start space-x-3 min-w-0">
+                    <img
+                      src="/SAM.jpg"
+                      alt="Sam AI"
                       className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1"
                       style={{ objectPosition: 'center 30%' }}
                     />
-                    <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl">
-              <div className="flex items-center space-x-2">
+                    <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl overflow-hidden min-w-0 flex-1">
+                      <div className="flex items-center space-x-2">
                         <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
                         <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                         <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
@@ -4218,16 +4218,16 @@ export default function Page() {
                 <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[70%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
                     {message.role === 'assistant' && (
-                      <div className="flex items-start space-x-3">
-                        <img 
-                          src="/SAM.jpg" 
-                          alt="Sam AI" 
+                      <div className="flex items-start space-x-3 min-w-0">
+                        <img
+                          src="/SAM.jpg"
+                          alt="Sam AI"
                           className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1"
                           style={{ objectPosition: 'center 30%' }}
                         />
-                        <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl">
-                          <AnimatedMessage 
-                            content={message.display_content ?? message.content} 
+                        <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl break-words overflow-hidden min-w-0 flex-1">
+                          <AnimatedMessage
+                            content={message.display_content ?? message.content}
                             animate={isNewestAssistantMessage}
                           />
                         </div>
@@ -4238,8 +4238,8 @@ export default function Page() {
                         <div className="flex items-center justify-end space-x-2 mb-1">
                           <span className="text-gray-400 text-sm font-medium">You</span>
                         </div>
-                        <div className="bg-gray-800 text-white px-4 py-3 rounded-2xl">
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap line-clamp-6">{message.display_content ?? message.content}</p>
+                        <div className="bg-gray-800 text-white px-4 py-3 rounded-2xl break-words overflow-hidden">
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere line-clamp-6">{message.display_content ?? message.content}</p>
                         </div>
                       </>
                     )}
