@@ -327,18 +327,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <p className="text-gray-500 text-xs mt-1">Enter your email above, then click for instant access</p>
             </div>
 
-            {/* New Account CTA */}
-            <div className="text-center pt-4 border-t border-gray-700">
-              <p className="text-gray-400 text-sm mb-3">
-                Don't have an account?
-              </p>
-              <a
-                href="/signup/innovareai"
-                className="text-purple-400 hover:text-purple-300 font-medium transition-colors"
-              >
-                Start Your Free 14-Day Trial →
-              </a>
-            </div>
           </form>
           )}
         </div>

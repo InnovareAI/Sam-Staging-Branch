@@ -101,18 +101,20 @@ export function AuthModal({ isOpen, onClose, mode, onModeSwitch }: AuthModalProp
             )}
           </button>
 
-          <div className="mt-6 text-center">
-            <p className="text-gray-400 text-sm">
-              {mode === 'sign-in' ? "Don't have an account?" : "Already have an account?"}{' '}
-              <button
-                type="button"
-                onClick={onModeSwitch}
-                className="text-purple-400 hover:text-purple-300 font-medium"
-              >
-                {mode === 'sign-in' ? 'Sign Up' : 'Sign In'}
-              </button>
-            </p>
-          </div>
+          {mode === 'sign-up' && (
+            <div className="mt-6 text-center">
+              <p className="text-gray-400 text-sm">
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  onClick={onModeSwitch}
+                  className="text-purple-400 hover:text-purple-300 font-medium"
+                >
+                  Sign In
+                </button>
+              </p>
+            </div>
+          )}
         </form>
       </div>
     </div>

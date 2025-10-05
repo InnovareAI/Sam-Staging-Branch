@@ -130,12 +130,8 @@ export async function GET() {
                 Sign In
             </button>
             
-            <div class="text-center space-y-2">
+            <div class="text-center">
                 <a href="/api/auth/reset-password" class="text-purple-400 hover:text-purple-300 text-sm">Forgot your password?</a>
-                <p class="text-gray-400 text-sm">
-                    Don't have an account? 
-                    <a href="/api/auth/signup" class="text-purple-400 hover:text-purple-300">Sign up</a>
-                </p>
             </div>
         </form>
         

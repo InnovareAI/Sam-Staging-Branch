@@ -236,15 +236,6 @@ export default function SignInPage() {
               <p className="text-xs text-gray-500">
                 Enter your email address above for password-less options
               </p>
-
-              <div className="mt-6 pt-6 border-t border-gray-700">
-                <p className="text-sm text-gray-400">
-                  Don't have an account?{' '}
-                  <a href="/signup" className="text-purple-400 hover:text-purple-300">
-                    Sign up here
-                  </a>
-                </p>
-              </div>
             </div>
           )}
         </form>
