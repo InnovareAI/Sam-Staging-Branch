@@ -5335,8 +5335,7 @@ export default function Page() {
               isDirectBilling={isDirectBilling}
             />
           );
-        })()
-        ) : (
+        })() : (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
               <h2 className="text-xl font-semibold text-white mb-4">No Workspace Found</h2>
