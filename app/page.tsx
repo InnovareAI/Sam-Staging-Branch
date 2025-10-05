@@ -36,6 +36,7 @@ import {
   Building2,
   CheckSquare,
   Clock,
+  CreditCard,
   Database,
   Eye,
   Gauge,
