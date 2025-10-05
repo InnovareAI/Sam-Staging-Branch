@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Loader2, CheckCircle, XCircle } from 'lucide-react'
@@ -9,7 +9,7 @@ import { Loader2, CheckCircle, XCircle } from 'lucide-react'
  * Stripe Payment Completion Page
  * Handles redirect after Stripe payment confirmation
  */
-export default function SignupCompletePage() {
+function SignupCompleteContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -70,5 +70,22 @@ export default function SignupCompletePage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function SignupCompletePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
+        <Card className="w-full max-w-md shadow-xl">
+          <CardContent className="pt-12 pb-12 text-center">
+            <Loader2 className="h-16 w-16 animate-spin mx-auto text-[#8907FF] mb-4" />
+            <p className="text-slate-600">Loading...</p>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <SignupCompleteContent />
+    </Suspense>
   )
 }

@@ -89,6 +89,7 @@
     "globals": "^15.9.0",
     "ignore-loader": "^0.1.2",
     "next": "^15.5.2",
+    "playwright": "^1.55.1",
     "postcss": "^8.4.35",
     "puppeteer": "^24.23.0",
     "shadcn": "^3.2.1",
