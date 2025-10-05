@@ -99,9 +99,10 @@ async function createQueryEmbedding(text: string): Promise<number[]> {
         'X-Title': 'SAM AI Knowledge Retrieval'
       },
       body: JSON.stringify({
-        model: 'text-embedding-3-small',
+        model: 'text-embedding-3-large',
         input: text.substring(0, 8000),
-        encoding_format: 'float'
+        encoding_format: 'float',
+        dimensions: 1536 // Reduced from 3072 due to pgvector 2000-dim limit
       })
     });
 

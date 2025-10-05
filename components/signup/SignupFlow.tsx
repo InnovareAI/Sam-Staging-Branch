@@ -5,28 +5,25 @@ import { useRouter } from 'next/navigation'
 import EmailSignupForm from './EmailSignupForm'
 import PlanSelector from './PlanSelector'
 import StripePaymentSetup from './StripePaymentSetup'
-import DpaSigningModal from '@/components/dpa/DpaSigningModal'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-type SignupStep = 'email' | 'plan' | 'dpa' | 'payment' | 'complete'
+type SignupStep = 'email' | 'plan' | 'payment' | 'complete'
 
 /**
- * Multi-Step Signup Flow with DPA Integration
+ * Multi-Step Signup Flow for InnovareAI
  *
- * Flow for EU/EEA/UK/CH customers:
- * 1. Email signup → Auto-detect country
- * 2. Plan selection
- * 3. Sign DPA (EU/EEA/UK/CH only)
- * 4. Payment setup (Stripe, card saved but not charged)
- * 5. Trial starts (14 days)
+ * Flow for all customers:
+ * 1. Email signup → Auto-detect country (for DPA tracking)
+ * 2. Plan selection (Startup $99 or SME $399)
+ * 3. Payment setup (Stripe, card saved but not charged)
+ * 4. Trial starts (14 days)
+ * 5. Day 14: Auto-charge payment method
+ * 6. EU customers: DPA signature required within 30 days of first charge
  *
- * Flow for non-EU customers:
- * 1. Email signup
- * 2. Plan selection
- * 3. Payment setup (skip DPA)
- * 4. Trial starts
+ * Note: DPA is NOT required during signup. It's collected post-payment
+ * with a 30-day grace period for EU/EEA/UK/CH customers.
  */
 export default function SignupFlow() {
   const [step, setStep] = useState<SignupStep>('email')
@@ -39,11 +36,10 @@ export default function SignupFlow() {
   const [error, setError] = useState('')
   const router = useRouter()
 
-  // Progress indicator
+  // Progress indicator (same for all customers)
   const steps = [
     { id: 'email', label: 'Account' },
     { id: 'plan', label: 'Plan' },
-    ...(isEu ? [{ id: 'dpa', label: 'DPA' }] : []),
     { id: 'payment', label: 'Payment' }
   ]
 
@@ -80,20 +76,10 @@ export default function SignupFlow() {
   // Step 2: Plan selection
   const handlePlanSelected = (plan: 'startup' | 'sme') => {
     setSelectedPlan(plan)
-
-    if (isEu) {
-      setStep('dpa')  // EU customers: sign DPA first
-    } else {
-      setStep('payment')  // Non-EU: skip to payment
-    }
+    setStep('payment')  // All customers proceed directly to payment
   }
 
-  // Step 3: DPA signed (EU only)
-  const handleDpaSigned = () => {
-    setStep('payment')  // Proceed to Stripe after DPA
-  }
-
-  // Step 4: Payment setup complete
+  // Step 3: Payment setup complete
   const handlePaymentSetup = () => {
     setStep('complete')
 
@@ -179,38 +165,12 @@ export default function SignupFlow() {
           >
             <PlanSelector
               onPlanSelected={handlePlanSelected}
-              showEuBadge={isEu}
+              showEuBadge={false}
             />
           </motion.div>
         )}
 
-        {/* Step 3: DPA Signing (EU only) */}
-        {step === 'dpa' && (
-          <motion.div
-            key="dpa"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
-            className="w-full max-w-4xl"
-          >
-            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
-              <p className="text-sm text-blue-800">
-                <strong>🇪🇺 EU/EEA/UK Customer Detected</strong>
-                <br />
-                As a customer in {country.toUpperCase()}, please review and sign our Data Processing Agreement before proceeding to payment setup.
-              </p>
-            </div>
-            <DpaSigningModal
-              isOpen={true}
-              workspaceId={workspaceId}
-              onClose={() => {}}  // Can't skip - required for EU customers
-              onSuccess={handleDpaSigned}
-            />
-          </motion.div>
-        )}
-
-        {/* Step 4: Payment Setup */}
+        {/* Step 3: Payment Setup */}
         {step === 'payment' && (
           <motion.div
             key="payment"
@@ -228,7 +188,7 @@ export default function SignupFlow() {
           </motion.div>
         )}
 
-        {/* Step 5: Complete */}
+        {/* Step 4: Complete */}
         {step === 'complete' && (
           <motion.div
             key="complete"

@@ -7,7 +7,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Create embeddings using OpenAI-compatible endpoint via OpenRouter
+// Create embeddings using OpenAI text-embedding-3-large via OpenRouter
+// Upgraded from text-embedding-3-small to text-embedding-3-large @ 1536 dimensions
+// (3072 dimensions not supported due to pgvector 2000-dim hard limit)
+// text-embedding-3-large @ 1536-dim still provides better quality than text-embedding-3-small
 async function createEmbeddings(text: string): Promise<number[]> {
   try {
     const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
@@ -19,9 +22,10 @@ async function createEmbeddings(text: string): Promise<number[]> {
         'X-Title': 'SAM AI Knowledge Base'
       },
       body: JSON.stringify({
-        model: 'text-embedding-3-small',
+        model: 'text-embedding-3-large',
         input: text.substring(0, 8000), // Limit input length
-        encoding_format: 'float'
+        encoding_format: 'float',
+        dimensions: 1536 // Reduced from 3072 due to pgvector 2000-dim limit
       })
     });
 
@@ -34,7 +38,7 @@ async function createEmbeddings(text: string): Promise<number[]> {
 
   } catch (error) {
     console.error('Embedding creation error:', error);
-    
+
     // Fallback: Create a simple hash-based vector for development
     const fallbackVector = Array.from({ length: 1536 }, (_, i) => {
       const hash = Array.from(text).reduce((acc, char, index) => {
@@ -42,7 +46,7 @@ async function createEmbeddings(text: string): Promise<number[]> {
       }, 0);
       return Math.sin(hash + i) * 0.1; // Normalize to small values
     });
-    
+
     return fallbackVector;
   }
 }
@@ -113,7 +117,7 @@ async function createSAMKnowledgeEntries(
       workspace_id: workspaceId,
       section_id: section,
       content: chunk,
-      embedding: embedding,
+      embedding: embedding, // Store in standard embedding column (text-embedding-3-large @ 1536-dim)
       metadata: enhancedMetadata,
       tags: tags,
       created_at: new Date().toISOString()

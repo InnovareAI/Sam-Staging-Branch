@@ -7,8 +7,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Mistral AI processing using OpenRouter
-async function processwithMistral(content: string, section: string, filename: string) {
+// Claude Sonnet 4.5 processing using OpenRouter
+async function processWithClaude(content: string, section: string, filename: string) {
   const systemPrompt = `You are an AI document analysis expert. Analyze the provided document content and extract structured information for a knowledge base system.
 
 Your task is to:
@@ -40,7 +40,7 @@ Filename: ${filename}`;
 
   const userPrompt = `Analyze this document content:
 
-${content.substring(0, 8000)}${content.length > 8000 ? '...' : ''}`;
+${content.substring(0, 100000)}${content.length > 100000 ? '...' : ''}`;
 
   try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -52,31 +52,31 @@ ${content.substring(0, 8000)}${content.length > 8000 ? '...' : ''}`;
         'X-Title': 'SAM AI Knowledge Base'
       },
       body: JSON.stringify({
-        model: 'mistralai/mistral-small-3',
+        model: 'anthropic/claude-sonnet-4.5',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.3,
-        max_tokens: 2000
+        max_tokens: 4000
       })
     });
 
     if (!response.ok) {
-      throw new Error(`Mistral API error: ${response.statusText}`);
+      throw new Error(`Claude API error: ${response.statusText}`);
     }
 
     const data = await response.json();
     const aiResponse = data.choices[0]?.message?.content;
 
     if (!aiResponse) {
-      throw new Error('No response from Mistral AI');
+      throw new Error('No response from Claude AI');
     }
 
     // Parse the JSON response
     const analysisMatch = aiResponse.match(/\{[\s\S]*\}/);
     if (!analysisMatch) {
-      throw new Error('Invalid JSON response from Mistral AI');
+      throw new Error('Invalid JSON response from Claude AI');
     }
 
     const analysis = JSON.parse(analysisMatch[0]);
@@ -96,12 +96,12 @@ ${content.substring(0, 8000)}${content.length > 8000 ? '...' : ''}`;
         topics: analysis.metadata?.topics || [],
         business_value: analysis.metadata?.business_value || 'medium',
         processed_at: new Date().toISOString(),
-        model_used: 'mistralai/mistral-small-3'
+        model_used: 'anthropic/claude-sonnet-4.5'
       }
     };
 
   } catch (error) {
-    console.error('Mistral processing error:', error);
+    console.error('Claude processing error:', error);
     
     // Fallback: Generate basic tags from content
     const words = content.toLowerCase().split(/\s+/);
@@ -164,8 +164,8 @@ export async function POST(request: NextRequest) {
 
     const resolvedSection = section || documentRecord.section_id;
 
-    // Process content with Mistral AI
-    const analysis = await processwithMistral(content, resolvedSection, filename);
+    // Process content with Claude Sonnet 4.5
+    const analysis = await processWithClaude(content, resolvedSection, filename);
 
     // Update document with AI analysis results
     const { data: updatedDocument, error: updateError } = await supabase

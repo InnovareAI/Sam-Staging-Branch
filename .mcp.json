@@ -38,6 +38,11 @@
         "STRIPE_API_KEY": "${STRIPE_API_KEY}"
       },
       "description": "Stripe MCP"
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["-y", "@executeautomation/chrome-devtools-mcp"],
+      "description": "Chrome DevTools MCP for browser automation and debugging"
     }
   }
 }
