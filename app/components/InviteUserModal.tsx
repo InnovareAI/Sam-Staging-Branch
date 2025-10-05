@@ -28,7 +28,7 @@ export function InviteUserModal({ isOpen, onClose, workspaceId, workspaceName }:
     setError('');
 
     try {
-      const response = await fetch('/api/workspaces/invite', {
+      const response = await fetch('/api/workspace/invite', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

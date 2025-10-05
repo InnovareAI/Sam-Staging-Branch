@@ -12,6 +12,7 @@ import AuditTrail from './components/AuditTrail';
 
 import ConversationHistory from '../components/ConversationHistory';
 import InviteUserPopup, { InviteFormData } from '../components/InviteUserPopup';
+import { InviteUserModal } from './components/InviteUserModal';
 import AuthModal from '../components/AuthModal';
 // LinkedIn integration now handled via dedicated page at /linkedin-integration
 import { UnipileModal } from '../components/integrations/UnipileModal';
@@ -2742,21 +2743,9 @@ export default function Page() {
                 {/* Team Management */}
                 <div
                   onClick={() => {
-                    // For admin users, use InnovareAI Workspace. For regular users, find their workspace
-                    const targetWorkspace = isSuperAdmin
-                      ? workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0]
-                      : workspaces.find(ws =>
-                          ws.owner_id === user?.id ||
-                          ws.workspace_members?.some((member: any) => member.user_id === user?.id)
-                        );
-
-                    if (targetWorkspace) {
-                      router.push(`/workspace/${targetWorkspace.id}/settings?tab=team`);
-                    } else if (workspaces.length > 0) {
-                      router.push(`/workspace/${workspaces[0].id}/settings?tab=team`);
-                    } else {
-                      alert('No workspace found. Please create a workspace first.');
-                    }
+                    console.log('Team Management clicked, workspaces:', workspaces.length);
+                    console.log('Setting showTeamManagementModal to true');
+                    setShowTeamManagementModal(true);
                   }}
                   className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
@@ -5301,6 +5290,37 @@ export default function Page() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Team Management Modal */}
+      {showTeamManagementModal && (
+        workspaces.length > 0 ? (
+          <InviteUserModal
+            isOpen={showTeamManagementModal}
+            onClose={() => setShowTeamManagementModal(false)}
+            workspaceId={isSuperAdmin
+              ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])?.id
+              : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0])?.id
+            }
+            workspaceName={isSuperAdmin
+              ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])?.name || 'Workspace'
+              : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0])?.name || 'Workspace'
+            }
+          />
+        ) : (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+              <h2 className="text-xl font-semibold text-white mb-4">No Workspace Found</h2>
+              <p className="text-gray-300 mb-6">You need to be logged in and have a workspace to invite team members.</p>
+              <button
+                onClick={() => setShowTeamManagementModal(false)}
+                className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )
       )}
 
       {/* Custom Notification Modal */}
