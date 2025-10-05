@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
 const USER_PROXY_SENTINEL = '__USER_PROXY__';
 import KnowledgeBase from './components/KnowledgeBase';
@@ -120,6 +121,7 @@ const AnimatedMessage = ({ content, animate = false }: { content: string; animat
 export default function Page() {
   // Initialize Supabase client
   const supabase = createClientComponentClient();
+  const router = useRouter();
   
   // Helper function to get auth token (cached from session state)
   const getAuthToken = async () => {
@@ -1124,7 +1126,7 @@ export default function Page() {
     },
     {
       id: 'workspace',
-      label: 'Workspaces',
+      label: 'Workspace',
       description: 'Organize teams, tenants, and invitations',
       icon: Building2,
     },
@@ -1725,46 +1727,24 @@ export default function Page() {
       // Get workspaces where user is owner
       const { data: ownedWorkspaces, error: ownedError } = await supabase
         .from('workspaces')
-        .select(`
-          *,
-          workspace_members (
-            id,
-            user_id,
-            role,
-            joined_at,
-            users (
-              email,
-              first_name,
-              last_name
-            )
-          )
-        `)
+        .select('*')
         .eq('owner_id', userId);
 
-      if (ownedError) throw ownedError;
+      if (ownedError) {
+        console.error('❌ Error fetching owned workspaces:', ownedError);
+        throw ownedError;
+      }
 
       // Get workspaces where user is a member
       const { data: memberWorkspaces, error: memberError } = await supabase
         .from('workspace_members')
-        .select(`
-          workspaces (
-            *,
-            workspace_members (
-              id,
-              user_id,
-              role,
-              joined_at,
-              users (
-                email,
-                first_name,
-                last_name
-              )
-            )
-          )
-        `)
+        .select('workspace_id, workspaces(*)')
         .eq('user_id', userId);
 
-      if (memberError) throw memberError;
+      if (memberError) {
+        console.error('❌ Error fetching member workspaces:', memberError);
+        throw memberError;
+      }
 
       // Combine and deduplicate workspaces
       const allWorkspaces = [...(ownedWorkspaces || [])];
@@ -2760,8 +2740,24 @@ export default function Page() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
                 {/* Team Management */}
-                <div 
-                  onClick={() => setShowTeamManagementModal(true)}
+                <div
+                  onClick={() => {
+                    // For admin users, use InnovareAI Workspace. For regular users, find their workspace
+                    const targetWorkspace = isSuperAdmin
+                      ? workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0]
+                      : workspaces.find(ws =>
+                          ws.owner_id === user?.id ||
+                          ws.workspace_members?.some((member: any) => member.user_id === user?.id)
+                        );
+
+                    if (targetWorkspace) {
+                      router.push(`/workspace/${targetWorkspace.id}/settings?tab=team`);
+                    } else if (workspaces.length > 0) {
+                      router.push(`/workspace/${workspaces[0].id}/settings?tab=team`);
+                    } else {
+                      alert('No workspace found. Please create a workspace first.');
+                    }
+                  }}
                   className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
                   <div className="flex items-center mb-4">
@@ -2981,7 +2977,7 @@ export default function Page() {
 
               {/* Workspace Management */}
               <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">My Workspaces</h2>
+                <h2 className="text-2xl font-semibold text-white mb-6">My Workspace</h2>
                 
                 {workspacesLoading ? (
                   <div className="text-center py-8">
@@ -3722,7 +3718,7 @@ export default function Page() {
                       </div>
                     </div>
                     <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>Showing {filteredWorkspaceCount} of {totalWorkspaceCount} workspaces</span>
+                      <span>Showing {filteredWorkspaceCount} of {totalWorkspaceCount} workspace{totalWorkspaceCount !== 1 ? 's' : ''}</span>
                       {selectedWorkspaces.size > 0 && (
                         <span>{selectedWorkspaces.size} selected</span>
                       )}
@@ -3735,7 +3731,7 @@ export default function Page() {
                     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                       <div>
                         <h2 className="text-2xl font-semibold text-white">
-                          {isSuperAdmin ? 'Workspace Directory' : 'My Workspaces'}
+                          {isSuperAdmin ? 'Workspace Directory' : 'My Workspace'}
                         </h2>
                         <p className="text-sm text-gray-400">
                           {filteredWorkspaceCount > 0
@@ -3751,7 +3747,7 @@ export default function Page() {
                             checked={selectedWorkspaces.size > 0 && selectedWorkspaces.size === workspaces.length}
                             className="rounded border-gray-600 bg-gray-900 text-purple-500 focus:ring-purple-500"
                           />
-                          <span>Select All Workspaces</span>
+                          <span>Select All</span>
                         </label>
                       )}
                     </div>
@@ -4683,7 +4679,7 @@ export default function Page() {
                       </th>
                       <th className="text-left py-3 px-4 text-gray-300">Email</th>
                       <th className="text-left py-3 px-4 text-gray-300">Status</th>
-                      <th className="text-left py-3 px-4 text-gray-300">Workspaces</th>
+                      <th className="text-left py-3 px-4 text-gray-300">Workspace</th>
                       <th className="text-left py-3 px-4 text-gray-300">Last Sign In</th>
                       <th className="text-left py-3 px-4 text-gray-300">Created</th>
                       <th className="text-left py-3 px-4 text-gray-300">Actions</th>
