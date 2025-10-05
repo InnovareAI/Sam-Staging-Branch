@@ -13,6 +13,8 @@ import AuditTrail from './components/AuditTrail';
 import ConversationHistory from '../components/ConversationHistory';
 import InviteUserPopup, { InviteFormData } from '../components/InviteUserPopup';
 import { InviteUserModal } from './components/InviteUserModal';
+import { WorkspaceSettingsModal } from './components/WorkspaceSettingsModal';
+import { ManageSubscriptionModal } from './components/ManageSubscriptionModal';
 import AuthModal from '../components/AuthModal';
 // LinkedIn integration now handled via dedicated page at /linkedin-integration
 import { UnipileModal } from '../components/integrations/UnipileModal';
@@ -218,6 +220,7 @@ export default function Page() {
   const [showLLMConfigModal, setShowLLMConfigModal] = useState(false);
   const [showTeamManagementModal, setShowTeamManagementModal] = useState(false);
   const [showWorkspaceSettingsModal, setShowWorkspaceSettingsModal] = useState(false);
+  const [showManageSubscriptionModal, setShowManageSubscriptionModal] = useState(false);
   const [showCrmIntegrationModal, setShowCrmIntegrationModal] = useState(false);
   const [showIntegrationsToolsModal, setShowIntegrationsToolsModal] = useState(false);
   const [showSecurityComplianceModal, setShowSecurityComplianceModal] = useState(false);
@@ -2764,7 +2767,7 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* Workspace Settings - Only for credit card customers */}
+                {/* Manage Subscription - Only for credit card customers */}
                 {(() => {
                   // Find target workspace
                   const targetWorkspace = isSuperAdmin
@@ -2784,22 +2787,18 @@ export default function Page() {
 
                   return (
                     <div
-                      onClick={() => {
-                        if (targetWorkspace) {
-                          router.push(`/workspace/${targetWorkspace.id}/settings?tab=billing`);
-                        }
-                      }}
+                      onClick={() => setShowManageSubscriptionModal(true)}
                       className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                     >
                       <div className="flex items-center mb-4">
-                        <Settings className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                        <h2 className="text-xl font-semibold text-white">Workspace Settings</h2>
+                        <CreditCard className="text-green-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                        <h2 className="text-xl font-semibold text-white">Manage Subscription</h2>
                       </div>
                       <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                        Configure workspace details, billing plans, and advanced settings. Manage your workspace name, branding, and subscription.
+                        View your subscription details, update payment methods, and access billing history. Manage your plan and invoices.
                       </p>
                       <div className="mt-4 flex items-center text-gray-400 text-xs">
-                        <span>Configure • Billing • Settings</span>
+                        <span>Subscription • Billing • Invoices</span>
                         <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="m9 18 6-6-6-6"/>
                         </svg>
@@ -2807,6 +2806,26 @@ export default function Page() {
                     </div>
                   );
                 })()}
+
+                {/* Workspace Settings */}
+                <div
+                  onClick={() => setShowWorkspaceSettingsModal(true)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                >
+                  <div className="flex items-center mb-4">
+                    <Settings className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
+                    <h2 className="text-xl font-semibold text-white">Workspace Settings</h2>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                    Configure workspace name, branding, and general settings. Customize your workspace preferences and appearance.
+                  </p>
+                  <div className="mt-4 flex items-center text-gray-400 text-xs">
+                    <span>Configure • Customize • Preferences</span>
+                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
 
                 {/* CRM Integration */}
                 <div 
@@ -5350,6 +5369,38 @@ export default function Page() {
           </div>
         )
       )}
+
+      {/* Workspace Settings Modal */}
+      {showWorkspaceSettingsModal && (() => {
+        const targetWorkspace = isSuperAdmin
+          ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
+          : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
+
+        return (
+          <WorkspaceSettingsModal
+            isOpen={showWorkspaceSettingsModal}
+            onClose={() => setShowWorkspaceSettingsModal(false)}
+            workspaceId={targetWorkspace?.id}
+            workspaceName={targetWorkspace?.name || 'Workspace'}
+          />
+        );
+      })()}
+
+      {/* Manage Subscription Modal */}
+      {showManageSubscriptionModal && (() => {
+        const targetWorkspace = isSuperAdmin
+          ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
+          : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
+
+        return (
+          <ManageSubscriptionModal
+            isOpen={showManageSubscriptionModal}
+            onClose={() => setShowManageSubscriptionModal(false)}
+            workspaceId={targetWorkspace?.id}
+            workspaceName={targetWorkspace?.name || 'Workspace'}
+          />
+        );
+      })()}
 
       {/* Custom Notification Modal */}
       {notification && (
