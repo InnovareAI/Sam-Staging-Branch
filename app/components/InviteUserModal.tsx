@@ -8,9 +8,10 @@ interface InviteUserModalProps {
   onClose: () => void;
   workspaceId: string;
   workspaceName: string;
+  isDirectBilling?: boolean; // true for 3cubed customers with direct billing
 }
 
-export function InviteUserModal({ isOpen, onClose, workspaceId, workspaceName }: InviteUserModalProps) {
+export function InviteUserModal({ isOpen, onClose, workspaceId, workspaceName, isDirectBilling = false }: InviteUserModalProps) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'member' | 'admin' | 'viewer'>('member');
   const [isLoading, setIsLoading] = useState(false);
@@ -18,6 +19,49 @@ export function InviteUserModal({ isOpen, onClose, workspaceId, workspaceName }:
   const [error, setError] = useState('');
 
   if (!isOpen) return null;
+
+  // If direct billing (3cubed customer), show restricted message
+  if (isDirectBilling) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-700">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
+                <UserPlus size={20} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-white">Team Management</h2>
+                <p className="text-gray-400 text-sm">{workspaceName}</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-300 transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="p-6">
+            <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-4">
+              <p className="text-blue-300 text-sm">
+                In order to add more members to your team, please reach out to your account manager.
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-full bg-gray-700 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

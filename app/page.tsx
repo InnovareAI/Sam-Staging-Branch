@@ -5294,19 +5294,24 @@ export default function Page() {
 
       {/* Team Management Modal */}
       {showTeamManagementModal && (
-        workspaces.length > 0 ? (
-          <InviteUserModal
-            isOpen={showTeamManagementModal}
-            onClose={() => setShowTeamManagementModal(false)}
-            workspaceId={isSuperAdmin
-              ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])?.id
-              : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0])?.id
-            }
-            workspaceName={isSuperAdmin
-              ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])?.name || 'Workspace'
-              : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0])?.name || 'Workspace'
-            }
-          />
+        workspaces.length > 0 ? (() => {
+          const targetWorkspace = isSuperAdmin
+            ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
+            : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
+
+          // Check if workspace uses direct billing (3cubed customers)
+          const isDirectBilling = targetWorkspace?.organization_id && targetWorkspace?.slug?.includes('3cubed');
+
+          return (
+            <InviteUserModal
+              isOpen={showTeamManagementModal}
+              onClose={() => setShowTeamManagementModal(false)}
+              workspaceId={targetWorkspace?.id}
+              workspaceName={targetWorkspace?.name || 'Workspace'}
+              isDirectBilling={isDirectBilling}
+            />
+          );
+        })()
         ) : (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
