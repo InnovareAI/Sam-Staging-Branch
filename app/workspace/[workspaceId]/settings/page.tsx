@@ -1,15 +1,17 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import LLMConfigModal from '@/components/LLMConfigModal'
-import { 
-  Settings, 
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import {
+  Settings,
   Building2,
   Users,
   Brain,
@@ -19,13 +21,108 @@ import {
   Globe,
   Shield,
   BarChart3,
-  Sparkles
+  Sparkles,
+  Mail,
+  UserPlus,
+  Clock,
+  Trash2,
+  Loader2
 } from 'lucide-react'
 
 export default function WorkspaceSettingsPage({ params }: { params: { workspaceId: string } }) {
   const [activeTab, setActiveTab] = useState('general')
   const [isLLMModalOpen, setIsLLMModalOpen] = useState(false)
   const [workspaceName, setWorkspaceName] = useState('InnovareAI')
+
+  // Team invitation state
+  const [showInviteForm, setShowInviteForm] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<'admin' | 'member' | 'viewer'>('member')
+  const [inviteLoading, setInviteLoading] = useState(false)
+  const [inviteError, setInviteError] = useState('')
+  const [inviteSuccess, setInviteSuccess] = useState('')
+  const [members, setMembers] = useState<any[]>([])
+  const [invitations, setInvitations] = useState<any[]>([])
+  const [loadingMembers, setLoadingMembers] = useState(true)
+
+  // Load team members and invitations
+  useEffect(() => {
+    loadTeamData()
+  }, [params.workspaceId])
+
+  const loadTeamData = async () => {
+    setLoadingMembers(true)
+    const supabase = createClientComponentClient()
+
+    try {
+      // Load workspace members
+      const { data: membersData } = await supabase
+        .from('workspace_members')
+        .select('*, users(email, first_name, last_name)')
+        .eq('workspace_id', params.workspaceId)
+
+      setMembers(membersData || [])
+
+      // Load pending invitations
+      const { data: invitationsData } = await supabase
+        .from('workspace_invitations')
+        .select('*')
+        .eq('workspace_id', params.workspaceId)
+        .eq('status', 'pending')
+
+      setInvitations(invitationsData || [])
+    } catch (error) {
+      console.error('Failed to load team data:', error)
+    } finally {
+      setLoadingMembers(false)
+    }
+  }
+
+  const handleSendInvitation = async () => {
+    if (!inviteEmail.trim()) {
+      setInviteError('Email is required')
+      return
+    }
+
+    setInviteLoading(true)
+    setInviteError('')
+    setInviteSuccess('')
+
+    try {
+      const supabase = createClientComponentClient()
+      const { data: { session } } = await supabase.auth.getSession()
+
+      const response = await fetch('/api/workspace/invite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          workspaceId: params.workspaceId,
+          email: inviteEmail.trim(),
+          role: inviteRole
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send invitation')
+      }
+
+      setInviteSuccess(`Invitation sent to ${inviteEmail}`)
+      setInviteEmail('')
+      setShowInviteForm(false)
+
+      // Reload invitations
+      await loadTeamData()
+    } catch (error) {
+      setInviteError(error instanceof Error ? error.message : 'Failed to send invitation')
+    } finally {
+      setInviteLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
@@ -173,49 +270,185 @@ export default function WorkspaceSettingsPage({ params }: { params: { workspaceI
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5 }}
+                className="space-y-6"
               >
+                {/* Success/Error Messages */}
+                {inviteSuccess && (
+                  <Alert className="bg-green-50 border-green-200">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800">{inviteSuccess}</AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Current Team Members */}
                 <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5 text-indigo-600" />
-                      Team Members
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-indigo-600" />
+                        Team Members ({members.length})
+                      </div>
+                      <Button
+                        onClick={() => setShowInviteForm(!showInviteForm)}
+                        className="bg-indigo-600 hover:bg-indigo-700"
+                      >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Invite Member
+                      </Button>
                     </CardTitle>
                     <CardDescription>
                       Manage workspace members and their roles
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {[
-                        { name: 'Sarah Powell', email: 'sarah@innovareai.com', role: 'Owner', status: 'active' },
-                        { name: 'John Smith', email: 'john@innovareai.com', role: 'Admin', status: 'active' },
-                        { name: 'Jane Doe', email: 'jane@innovareai.com', role: 'Member', status: 'active' }
-                      ].map((member) => (
-                        <div key={member.email} className="flex items-center justify-between p-4 border border-slate-200 rounded-lg">
+                  <CardContent className="space-y-4">
+                    {loadingMembers ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                      </div>
+                    ) : members.length === 0 ? (
+                      <div className="text-center py-8 text-slate-600">
+                        No team members yet. Invite your first member!
+                      </div>
+                    ) : (
+                      members.map((member) => (
+                        <div key={member.user_id} className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-indigo-300 transition-colors">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
                               <span className="text-indigo-600 font-medium">
-                                {member.name.split(' ').map(n => n[0]).join('')}
+                                {member.users?.first_name?.[0]}{member.users?.last_name?.[0]}
                               </span>
                             </div>
                             <div>
-                              <div className="font-medium">{member.name}</div>
-                              <div className="text-sm text-slate-600">{member.email}</div>
+                              <div className="font-medium">
+                                {member.users?.first_name} {member.users?.last_name}
+                              </div>
+                              <div className="text-sm text-slate-600">{member.users?.email}</div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary">{member.role}</Badge>
-                            <Badge className="bg-green-100 text-green-700">{member.status}</Badge>
-                          </div>
+                          <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
+                            {member.role}
+                          </Badge>
                         </div>
-                      ))}
-                      <Button className="w-full bg-indigo-600 hover:bg-indigo-700">
-                        <Users className="h-4 w-4 mr-2" />
-                        Invite Team Member
-                      </Button>
-                    </div>
+                      ))
+                    )}
                   </CardContent>
                 </Card>
+
+                {/* Invitation Form */}
+                {showInviteForm && (
+                  <Card className="bg-white/80 backdrop-blur-sm border-2 border-indigo-200 shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Mail className="h-5 w-5 text-indigo-600" />
+                        Send Invitation
+                      </CardTitle>
+                      <CardDescription>
+                        Invite a new member to join this workspace
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Email Address</label>
+                        <Input
+                          type="email"
+                          placeholder="colleague@company.com"
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          className="border-slate-200"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Role</label>
+                        <select
+                          value={inviteRole}
+                          onChange={(e) => setInviteRole(e.target.value as 'admin' | 'member' | 'viewer')}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                          <option value="member">Member - Can use the platform</option>
+                          <option value="admin">Admin - Can manage team and settings</option>
+                          <option value="viewer">Viewer - Read-only access</option>
+                        </select>
+                      </div>
+
+                      {inviteError && (
+                        <Alert variant="destructive">
+                          <AlertDescription>{inviteError}</AlertDescription>
+                        </Alert>
+                      )}
+
+                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h4 className="font-medium text-sm mb-2 text-blue-900">How it works:</h4>
+                        <ul className="space-y-1 text-sm text-blue-800">
+                          <li>• User receives invitation email with signup link</li>
+                          <li>• They create account (no payment required)</li>
+                          <li>• Automatically added to this workspace</li>
+                          <li>• Your subscription updated (+1 seat, charged immediately)</li>
+                        </ul>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={handleSendInvitation}
+                          disabled={inviteLoading}
+                          className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                        >
+                          {inviteLoading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <Mail className="h-4 w-4 mr-2" />
+                              Send Invitation
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setShowInviteForm(false)
+                            setInviteEmail('')
+                            setInviteError('')
+                          }}
+                          variant="outline"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Pending Invitations */}
+                {invitations.length > 0 && (
+                  <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-orange-600" />
+                        Pending Invitations ({invitations.length})
+                      </CardTitle>
+                      <CardDescription>
+                        Invitations awaiting acceptance
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {invitations.map((invitation) => (
+                        <div key={invitation.id} className="flex items-center justify-between p-4 border border-orange-200 bg-orange-50 rounded-lg">
+                          <div>
+                            <div className="font-medium">{invitation.invited_email}</div>
+                            <div className="text-sm text-slate-600">
+                              Invited {new Date(invitation.created_at).toLocaleDateString()} · Expires {new Date(invitation.expires_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <Badge className="bg-orange-100 text-orange-700">
+                            {invitation.role}
+                          </Badge>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
               </motion.div>
             </TabsContent>
 
