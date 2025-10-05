@@ -48,7 +48,7 @@ export function InviteUserModal({ isOpen, onClose, workspaceId, workspaceName, i
           <div className="p-6">
             <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-4">
               <p className="text-blue-300 text-sm">
-                In order to add more members to your team, please reach out to your account manager.
+                For billing inquiries please talk to your account manager.
               </p>
             </div>
             <button
