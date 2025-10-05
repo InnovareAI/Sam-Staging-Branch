@@ -15,6 +15,7 @@ import InviteUserPopup, { InviteFormData } from '../components/InviteUserPopup';
 import { InviteUserModal } from './components/InviteUserModal';
 import { WorkspaceSettingsModal } from './components/WorkspaceSettingsModal';
 import { ManageSubscriptionModal } from './components/ManageSubscriptionModal';
+import { CRMIntegrationModal } from './components/CRMIntegrationModal';
 import AuthModal from '../components/AuthModal';
 // LinkedIn integration now handled via dedicated page at /linkedin-integration
 import { UnipileModal } from '../components/integrations/UnipileModal';
@@ -5397,6 +5398,22 @@ export default function Page() {
           <ManageSubscriptionModal
             isOpen={showManageSubscriptionModal}
             onClose={() => setShowManageSubscriptionModal(false)}
+            workspaceId={targetWorkspace?.id}
+            workspaceName={targetWorkspace?.name || 'Workspace'}
+          />
+        );
+      })()}
+
+      {/* CRM Integration Modal */}
+      {showCrmIntegrationModal && (() => {
+        const targetWorkspace = isSuperAdmin
+          ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
+          : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
+
+        return (
+          <CRMIntegrationModal
+            isOpen={showCrmIntegrationModal}
+            onClose={() => setShowCrmIntegrationModal(false)}
             workspaceId={targetWorkspace?.id}
             workspaceName={targetWorkspace?.name || 'Workspace'}
           />

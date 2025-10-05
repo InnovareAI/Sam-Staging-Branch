@@ -43,6 +43,17 @@
       "command": "npx",
       "args": ["-y", "@executeautomation/chrome-devtools-mcp"],
       "description": "Chrome DevTools MCP for browser automation and debugging"
+    },
+    "crm-integration": {
+      "command": "node",
+      "args": ["./mcp-crm-server/dist/index.js"],
+      "env": {
+        "NEXT_PUBLIC_SUPABASE_URL": "${NEXT_PUBLIC_SUPABASE_URL}",
+        "SUPABASE_SERVICE_ROLE_KEY": "${SUPABASE_SERVICE_ROLE_KEY}",
+        "HUBSPOT_CLIENT_ID": "${HUBSPOT_CLIENT_ID}",
+        "HUBSPOT_CLIENT_SECRET": "${HUBSPOT_CLIENT_SECRET}"
+      },
+      "description": "CRM Integration MCP for HubSpot, Salesforce, etc."
     }
   }
 }
