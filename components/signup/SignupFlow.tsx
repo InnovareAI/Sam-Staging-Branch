@@ -6,6 +6,7 @@ import EmailSignupForm from './EmailSignupForm'
 import PlanSelector from './PlanSelector'
 import StripePaymentSetup from './StripePaymentSetup'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Card, CardContent } from '@/components/ui/card'
 import { CheckCircle, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -30,7 +31,7 @@ export default function SignupFlow() {
   const [email, setEmail] = useState('')
   const [userId, setUserId] = useState('')
   const [workspaceId, setWorkspaceId] = useState('')
-  const [selectedPlan, setSelectedPlan] = useState<'startup' | 'sme'>('startup')
+  const [selectedPlan, setSelectedPlan] = useState<'perseat' | 'sme'>('perseat')
   const [isEu, setIsEu] = useState(false)
   const [country, setCountry] = useState('')
   const [error, setError] = useState('')
@@ -38,43 +39,30 @@ export default function SignupFlow() {
 
   // Progress indicator (same for all customers)
   const steps = [
-    { id: 'email', label: 'Account' },
-    { id: 'plan', label: 'Plan' },
-    { id: 'payment', label: 'Payment' }
+    { id: 'email', label: 'Account Creation' },
+    { id: 'plan', label: 'Plan Selection' },
+    { id: 'payment', label: 'Get Started' }
   ]
 
   const currentStepIndex = steps.findIndex(s => s.id === step)
 
   // Step 1: Email signup
-  const handleEmailSignup = async (email: string, password: string) => {
-    try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      })
+  const handleEmailSignup = async (email: string, password: string, userId: string, workspaceId?: string) => {
+    // EmailSignupForm has already called the API and created the user
+    // We just need to save the data and move to next step
+    setEmail(email)
+    setUserId(userId)
 
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Signup failed')
-      }
-
-      const data = await response.json()
-
-      setEmail(email)
-      setUserId(data.user.id)
-      setWorkspaceId(data.workspace.id)
-      setIsEu(data.isEu || false)
-      setCountry(data.country || '')
-      setStep('plan')
-
-    } catch (err) {
-      throw err // Let EmailSignupForm handle the error
+    // If workspace was created during signup, use it
+    if (workspaceId) {
+      setWorkspaceId(workspaceId)
     }
+
+    setStep('plan')
   }
 
   // Step 2: Plan selection
-  const handlePlanSelected = (plan: 'startup' | 'sme') => {
+  const handlePlanSelected = (plan: 'perseat' | 'sme') => {
     setSelectedPlan(plan)
     setStep('payment')  // All customers proceed directly to payment
   }
@@ -83,14 +71,22 @@ export default function SignupFlow() {
   const handlePaymentSetup = () => {
     setStep('complete')
 
-    // Redirect to workspace after brief success message
+    // Notify parent window if embedded in iframe (for WordPress modal integration)
+    if (window.parent !== window) {
+      window.parent.postMessage(
+        { type: 'SAM_SIGNUP_COMPLETE', workspaceId },
+        'https://innovareai.com'
+      )
+    }
+
+    // Redirect to main SAM interface after brief success message
     setTimeout(() => {
-      router.push(`/workspace/${workspaceId}`)
+      router.push('/')
     }, 2000)
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6">
       {/* Progress Indicator */}
       {step !== 'complete' && (
         <motion.div
@@ -105,8 +101,8 @@ export default function SignupFlow() {
                   <div className={`
                     w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm
                     ${index <= currentStepIndex
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-slate-200 text-slate-500'
+                      ? 'bg-[#8907FF] text-white'
+                      : 'bg-slate-200 text-gray-700'
                     }
                   `}>
                     {index < currentStepIndex ? (
@@ -116,14 +112,14 @@ export default function SignupFlow() {
                     )}
                   </div>
                   <span className={`text-xs mt-2 ${
-                    index <= currentStepIndex ? 'text-indigo-600 font-medium' : 'text-slate-500'
+                    index <= currentStepIndex ? 'text-[#8907FF] font-medium' : 'text-gray-700'
                   }`}>
                     {s.label}
                   </span>
                 </div>
                 {index < steps.length - 1 && (
                   <div className={`h-0.5 flex-1 ${
-                    index < currentStepIndex ? 'bg-indigo-600' : 'bg-slate-200'
+                    index < currentStepIndex ? 'bg-[#8907FF]' : 'bg-slate-200'
                   }`} />
                 )}
               </div>
@@ -179,12 +175,21 @@ export default function SignupFlow() {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
           >
-            <StripePaymentSetup
-              plan={selectedPlan}
-              workspaceId={workspaceId}
-              userId={userId}
-              onSuccess={handlePaymentSetup}
-            />
+            {workspaceId && userId ? (
+              <StripePaymentSetup
+                plan={selectedPlan}
+                workspaceId={workspaceId}
+                userId={userId}
+                onSuccess={handlePaymentSetup}
+              />
+            ) : (
+              <Card className="w-full max-w-md shadow-xl bg-white border-0">
+                <CardContent className="pt-6 text-center">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#8907FF]" />
+                  <p className="mt-4 text-gray-900">Setting up your account...</p>
+                </CardContent>
+              </Card>
+            )}
           </motion.div>
         )}
 
@@ -204,13 +209,13 @@ export default function SignupFlow() {
             >
               <CheckCircle className="h-20 w-20 text-green-600 mx-auto mb-6" />
             </motion.div>
-            <h2 className="text-3xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            <h2 className="text-3xl font-bold mb-3 bg-gradient-to-r from-[#6600FF] to-[#8907FF] bg-clip-text text-transparent">
               Welcome to SAM AI! 🎉
             </h2>
-            <p className="text-slate-600 mb-4">
+            <p className="text-gray-900 mb-4">
               Your 14-day trial has started.
             </p>
-            <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-700">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>Redirecting to your workspace...</span>
             </div>

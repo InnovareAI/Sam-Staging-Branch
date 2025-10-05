@@ -7,15 +7,23 @@ import { X, Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialMode?: 'signin' | 'signup';
 }
 
-export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModalProps) {
-  const [mode, setMode] = useState(initialMode);
+/**
+ * Auth Modal for app.meet-sam.com
+ *
+ * Sign In ONLY - no signup option
+ * - For InnovareAI trial signup: Use /signup/innovareai
+ * - For 3cubed enterprise: Admin sends magic link
+ *
+ * Available options:
+ * 1. Email/Password Sign In
+ * 2. Password Reset
+ * 3. Magic Link Sign In
+ */
+export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -25,18 +33,18 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
 
   const supabase = createClientComponentClient();
 
-  // Reset form when modal opens/closes or mode changes
+  // Reset form when modal opens/closes
   React.useEffect(() => {
     if (isOpen) {
       setEmail('');
       setPassword('');
-      setFirstName('');
-      setLastName('');
       setError('');
       setSuccess('');
       setLoading(false);
+      setShowPasswordReset(false);
+      setResetEmail('');
     }
-  }, [isOpen, mode]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -131,42 +139,6 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
     }
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          email, 
-          password, 
-          firstName: firstName || undefined,
-          lastName: lastName || undefined
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccess('Account created! Please check your email to verify your account.');
-        setTimeout(() => {
-          setMode('signin');
-        }, 2000);
-      } else {
-        setError(data.error || 'Sign-up failed');
-      }
-    } catch (err) {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
@@ -188,18 +160,12 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
               style={{ objectPosition: 'center 30%' }}
             />
             <h1 className="text-2xl font-bold text-white mb-2">
-              {showPasswordReset 
-                ? 'Reset Password' 
-                : (mode === 'signin' ? 'Welcome Back' : 'Join SAM AI')
-              }
+              {showPasswordReset ? 'Reset Password' : 'Welcome Back'}
             </h1>
             <p className="text-gray-400 text-sm">
-              {showPasswordReset 
+              {showPasswordReset
                 ? 'Enter your email to receive a password reset link'
-                : (mode === 'signin' 
-                  ? 'Sign in to your Sales Agent Platform' 
-                  : 'Create your SAM AI account'
-                )
+                : 'Sign in to your Sales Agent Platform'
               }
             </p>
           </div>
@@ -265,44 +231,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
               </div>
             </form>
           ) : (
-            <form onSubmit={mode === 'signin' ? handleSignIn : handleSignUp} className="space-y-4">
-            {/* Sign Up Fields */}
-            {mode === 'signup' && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-300 mb-2">
-                    First Name
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                    <input
-                      type="text"
-                      id="firstName"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="John"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-300 mb-2">
-                    Last Name
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                    <input
-                      type="text"
-                      id="lastName"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="Doe"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
+            <form onSubmit={handleSignIn} className="space-y-4">
 
             {/* Email Field */}
             <div>
@@ -338,7 +267,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
                   required
                   minLength={6}
                   className="w-full pl-10 pr-12 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder={mode === 'signup' ? 'Create a password (min 6 chars)' : 'Enter your password'}
+                  placeholder="Enter your password"
                 />
                 <button
                   type="button"
@@ -370,57 +299,46 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
               disabled={loading || !email || !password}
               className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:from-purple-400 disabled:to-purple-500 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
             >
-              {loading 
-                ? (mode === 'signin' ? 'Signing in...' : 'Creating account...') 
-                : (mode === 'signin' ? 'Sign In' : 'Create Account')
-              }
+              {loading ? 'Signing in...' : 'Sign In'}
             </button>
 
-            {/* Mode Switch */}
-            <div className="text-center pt-4 border-t border-gray-700">
-              <p className="text-gray-400 text-sm mb-3">
-                {mode === 'signin' ? "Don't have an account?" : "Already have an account?"}
-              </p>
+            {/* Forgot Password & Magic Link Options */}
+            <div className="text-center pt-4 border-t border-gray-700 space-y-2">
               <button
                 type="button"
                 onClick={() => {
-                  setMode(mode === 'signin' ? 'signup' : 'signin');
+                  setShowPasswordReset(true);
                   setError('');
                   setSuccess('');
                 }}
-                disabled={loading}
-                className="text-purple-400 hover:text-purple-300 font-medium transition-colors disabled:opacity-50"
+                className="text-purple-400 hover:text-purple-300 text-sm transition-colors block mx-auto"
               >
-                {mode === 'signin' ? 'Create an account' : 'Sign in instead'}
+                Forgot your password?
               </button>
+              <div className="text-gray-500 text-xs">or</div>
+              <button
+                type="button"
+                onClick={() => handleMagicLink(email)}
+                disabled={!email || loading}
+                className="text-purple-400 hover:text-purple-300 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Send Magic Link ✨
+              </button>
+              <p className="text-gray-500 text-xs mt-1">Enter your email above, then click for instant access</p>
             </div>
 
-            {/* Forgot Password & Magic Link Options (Sign In Mode Only) */}
-            {mode === 'signin' && (
-              <div className="text-center space-y-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowPasswordReset(true);
-                    setError('');
-                    setSuccess('');
-                  }}
-                  className="text-purple-400 hover:text-purple-300 text-sm transition-colors block mx-auto"
-                >
-                  Forgot your password?
-                </button>
-                <div className="text-gray-500 text-xs">or</div>
-                <button
-                  type="button"
-                  onClick={() => handleMagicLink(email)}
-                  disabled={!email || loading}
-                  className="text-purple-400 hover:text-purple-300 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Send Magic Link ✨
-                </button>
-                <p className="text-gray-500 text-xs mt-1">Enter your email above, then click for instant access</p>
-              </div>
-            )}
+            {/* New Account CTA */}
+            <div className="text-center pt-4 border-t border-gray-700">
+              <p className="text-gray-400 text-sm mb-3">
+                Don't have an account?
+              </p>
+              <a
+                href="/signup/innovareai"
+                className="text-purple-400 hover:text-purple-300 font-medium transition-colors"
+              >
+                Start Your Free 14-Day Trial →
+              </a>
+            </div>
           </form>
           )}
         </div>

@@ -18,9 +18,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate country (2-letter ISO code)
+    // Country is optional - will be auto-detected from IP if not provided
     let profileCountry: string | null = null;
-    if (country && typeof country === 'string') {
+    if (country && typeof country === 'string' && country.trim().length > 0) {
       const c = country.trim().toLowerCase();
       if (c.length === 2) {
         profileCountry = c;
@@ -32,9 +32,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       return NextResponse.json(
-        { error: 'Password must be at least 6 characters long' },
+        { error: 'Password must be at least 8 characters long' },
         { status: 400 }
       );
     }
@@ -140,8 +140,9 @@ export async function POST(request: NextRequest) {
     // If session exists, user is automatically logged in (email verification disabled)
     if (data.session && data.user) {
       console.log('User created successfully:', data.user.id);
-      
+
       // Create user profile in our database
+      let workspace: any = null;
       try {
         const supabaseAdmin = createClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -151,7 +152,7 @@ export async function POST(request: NextRequest) {
         // Detect country from IP if not provided
         const autoIPService = new AutoIPAssignmentService();
         let detectedCountryCode = profileCountry; // Start with user-provided country
-        
+
         if (!detectedCountryCode) {
           const userLocation = await autoIPService.detectUserLocation(request);
           if (userLocation?.countryCode) {
@@ -159,8 +160,8 @@ export async function POST(request: NextRequest) {
             console.log('🌍 Auto-detected country from IP:', detectedCountryCode);
           }
         }
-        
-        // Create or update user profile
+
+        // Create or update user profile (without profile_country for now)
         const { error: profileError } = await supabaseAdmin
           .from('users')
           .upsert({
@@ -169,7 +170,6 @@ export async function POST(request: NextRequest) {
             email: data.user.email,
             first_name: firstName,
             last_name: lastName,
-            profile_country: detectedCountryCode, // Auto-detected or user-provided
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }, { onConflict: 'id' });
@@ -224,7 +224,41 @@ export async function POST(request: NextRequest) {
           // Don't fail the entire signup if IP assignment fails
         }
 
-        // Note: Workspace creation will happen automatically in the email confirmation callback
+        // Create default workspace for user
+        const workspaceSlug = `${firstName.toLowerCase()}-${data.user.id.substring(0, 8)}`
+        const { data: workspaceData, error: workspaceError } = await supabaseAdmin
+          .from('workspaces')
+          .insert({
+            name: `${firstName}'s Workspace`,
+            slug: workspaceSlug,
+            owner_id: data.user.id
+          })
+          .select()
+          .single();
+
+        if (workspaceError) {
+          console.error('Workspace creation error:', workspaceError);
+        } else {
+          workspace = workspaceData;
+          console.log('✅ Workspace created:', workspace.id);
+        }
+
+        // Add user as workspace member with admin role (owner_id is in workspaces table)
+        if (workspace) {
+          const { error: memberError } = await supabaseAdmin
+            .from('workspace_members')
+            .insert({
+              workspace_id: workspace.id,
+              user_id: data.user.id,
+              role: 'admin'
+            });
+
+          if (memberError) {
+            console.error('Workspace member creation error:', memberError);
+          } else {
+            console.log('✅ Workspace member added');
+          }
+        }
 
       } catch (profileErr) {
         console.error('Error creating user profile:', profileErr);
@@ -237,7 +271,8 @@ export async function POST(request: NextRequest) {
           email: data.user.email,
           firstName: firstName,
           lastName: lastName
-        }
+        },
+        workspace: workspace ? { id: workspace.id, name: workspace.name } : null
       });
     }
 

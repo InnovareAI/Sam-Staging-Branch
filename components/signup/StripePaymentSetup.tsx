@@ -9,15 +9,15 @@ import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 
 interface StripePaymentSetupProps {
-  plan: 'startup' | 'sme'
+  plan: 'perseat' | 'sme'
   workspaceId: string
   userId: string
   onSuccess: () => void
 }
 
 const PLAN_DETAILS = {
-  startup: { amount: 99, name: 'Startup' },
-  sme: { amount: 399, name: 'SME' }
+  perseat: { amount: 99, name: 'Per Seat', perSeat: true },
+  sme: { amount: 349, name: 'SME', perSeat: false }
 }
 
 // Initialize Stripe
@@ -40,6 +40,7 @@ export default function StripePaymentSetup(props: StripePaymentSetupProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             workspaceId: props.workspaceId,
+            userId: props.userId,
             plan: props.plan
           })
         })
@@ -76,15 +77,23 @@ export default function StripePaymentSetup(props: StripePaymentSetupProps) {
     return (
       <Card className="w-full max-w-md shadow-xl">
         <CardContent className="pt-6 text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-600" />
-          <p className="mt-4 text-slate-600">Setting up payment...</p>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#8907FF]" />
+          <p className="mt-4 text-gray-900">Setting up payment...</p>
         </CardContent>
       </Card>
     )
   }
 
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret }}>
+    <Elements
+      stripe={stripePromise}
+      options={{
+        clientSecret,
+        appearance: {
+          theme: 'stripe'
+        }
+      }}
+    >
       <PaymentForm {...props} />
     </Elements>
   )
@@ -149,11 +158,11 @@ function PaymentForm({
         </CardTitle>
         <div className="space-y-2 pt-2">
           <div className="flex justify-between text-sm">
-            <span className="text-slate-600">Plan:</span>
+            <span className="text-gray-900">Plan:</span>
             <span className="font-semibold">{planDetails.name}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-slate-600">Monthly Price:</span>
+            <span className="text-gray-900">Monthly Price:</span>
             <span className="font-semibold">${planDetails.amount}/month</span>
           </div>
           <div className="p-3 bg-green-50 border border-green-200 rounded-lg mt-3">
@@ -168,9 +177,14 @@ function PaymentForm({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Stripe Payment Element */}
+          {/* Stripe Payment Element - Credit Card Only */}
           <div className="p-4 border border-slate-200 rounded-lg bg-white">
-            <PaymentElement />
+            <PaymentElement
+              options={{
+                layout: 'tabs',
+                paymentMethodOrder: ['card']
+              }}
+            />
           </div>
 
           {error && (
@@ -194,10 +208,10 @@ function PaymentForm({
           </Button>
 
           <div className="text-center space-y-2">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-gray-700">
               🔒 Secure payment processing by Stripe
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-gray-700">
               Cancel anytime during your trial with no charge
             </p>
           </div>

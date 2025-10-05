@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/app/lib/supabase/server'
+import { createServerClient } from '@/app/lib/supabase'
 import Stripe from 'stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -14,27 +14,28 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
-
-    // Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const supabase = createServerClient()
 
     const body = await request.json()
-    const { workspaceId, plan } = body // plan: 'startup' | 'sme'
+    const { workspaceId, userId, plan } = body // plan: 'perseat' | 'sme'
+
+    // Validate input
+    if (!workspaceId || !userId || !plan) {
+      return NextResponse.json({
+        error: 'Missing required fields: workspaceId, userId, plan'
+      }, { status: 400 })
+    }
 
     // Verify workspace membership
     const { data: member } = await supabase
       .from('workspace_members')
       .select('role')
       .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single()
 
     if (!member) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ error: 'User is not a member of this workspace' }, { status: 403 })
     }
 
     // Get workspace and user details
@@ -46,14 +47,14 @@ export async function POST(request: NextRequest) {
 
     const { data: profile } = await supabase
       .from('users')
-      .select('profile_name, profile_email')
-      .eq('id', user.id)
+      .select('email, first_name, last_name')
+      .eq('id', userId)
       .single()
 
     // Determine price ID based on plan
-    const priceId = plan === 'startup'
-      ? process.env.NEXT_PUBLIC_STRIPE_STARTUP_PRICE_ID
-      : process.env.NEXT_PUBLIC_STRIPE_SME_PRICE_ID
+    const priceId = plan === 'perseat'
+      ? process.env.NEXT_PUBLIC_STRIPE_PERSEAT_MONTHLY_PRICE_ID
+      : process.env.NEXT_PUBLIC_STRIPE_SME_MONTHLY_PRICE_ID
 
     if (!priceId) {
       return NextResponse.json({
@@ -74,12 +75,16 @@ export async function POST(request: NextRequest) {
       customerId = existingCustomer.stripe_customer_id
     } else {
       // Create new Stripe customer
+      const customerName = profile?.first_name && profile?.last_name
+        ? `${profile.first_name} ${profile.last_name}`
+        : workspace?.name || 'Unknown'
+
       const customer = await stripe.customers.create({
-        email: profile?.profile_email || user.email,
-        name: profile?.profile_name || workspace?.name,
+        email: profile?.email || '',
+        name: customerName,
         metadata: {
           workspace_id: workspaceId,
-          user_id: user.id
+          user_id: userId
         }
       })
 
@@ -94,10 +99,10 @@ export async function POST(request: NextRequest) {
         })
     }
 
-    // Create SetupIntent for saving payment method
+    // Create SetupIntent for saving payment method (credit card only)
     const setupIntent = await stripe.setupIntents.create({
       customer: customerId,
-      payment_method_types: ['card'],
+      payment_method_types: ['card'],  // Only credit cards, no bank accounts
       metadata: {
         workspace_id: workspaceId,
         plan: plan
