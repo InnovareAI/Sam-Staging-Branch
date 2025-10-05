@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/utils/supabase/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 
 // Create Supabase admin client for generating reset tokens
-const supabaseAdmin = createClient(
+const supabaseAdmin = createServiceClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
