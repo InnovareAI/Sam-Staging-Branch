@@ -63,7 +63,7 @@ export default function StripePaymentSetup(props: StripePaymentSetupProps) {
 
   if (error) {
     return (
-      <Card className="w-full max-w-md shadow-xl">
+      <Card className="w-full max-w-md shadow-xl bg-white border-0">
         <CardContent className="pt-6">
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
@@ -75,7 +75,7 @@ export default function StripePaymentSetup(props: StripePaymentSetupProps) {
 
   if (!clientSecret) {
     return (
-      <Card className="w-full max-w-md shadow-xl">
+      <Card className="w-full max-w-md shadow-xl bg-white border-0">
         <CardContent className="pt-6 text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#8907FF]" />
           <p className="mt-4 text-gray-900">Setting up payment...</p>
@@ -150,9 +150,9 @@ function PaymentForm({
   }
 
   return (
-    <Card className="w-full max-w-md shadow-xl">
+    <Card className="w-full max-w-md shadow-xl bg-white border-0">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-gray-900">
           <CreditCard className="h-5 w-5" />
           Payment Information
         </CardTitle>
@@ -181,8 +181,16 @@ function PaymentForm({
           <div className="p-4 border border-slate-200 rounded-lg bg-white">
             <PaymentElement
               options={{
-                layout: 'tabs',
-                paymentMethodOrder: ['card']
+                layout: 'accordion',
+                wallets: {
+                  applePay: 'never',
+                  googlePay: 'never'
+                },
+                fields: {
+                  billingDetails: {
+                    address: 'auto'
+                  }
+                }
               }}
             />
           </div>

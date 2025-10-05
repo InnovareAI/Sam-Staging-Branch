@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import EmailSignupForm from './EmailSignupForm'
 import PlanSelector from './PlanSelector'
 import StripePaymentSetup from './StripePaymentSetup'
@@ -27,6 +27,9 @@ type SignupStep = 'email' | 'plan' | 'payment' | 'complete'
  * with a 30-day grace period for EU/EEA/UK/CH customers.
  */
 export default function SignupFlow() {
+  const searchParams = useSearchParams()
+  const inviteToken = searchParams.get('invite')
+
   const [step, setStep] = useState<SignupStep>('email')
   const [email, setEmail] = useState('')
   const [userId, setUserId] = useState('')
@@ -35,7 +38,22 @@ export default function SignupFlow() {
   const [isEu, setIsEu] = useState(false)
   const [country, setCountry] = useState('')
   const [error, setError] = useState('')
+  const [invitationInfo, setInvitationInfo] = useState<any>(null)
   const router = useRouter()
+
+  // Load invitation details if token present
+  useEffect(() => {
+    if (inviteToken) {
+      fetch(`/api/workspace/invite?token=${inviteToken}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.valid) {
+            setInvitationInfo(data.invitation)
+          }
+        })
+        .catch(err => console.error('Failed to load invitation:', err))
+    }
+  }, [inviteToken])
 
   // Progress indicator (same for all customers)
   const steps = [
@@ -146,7 +164,10 @@ export default function SignupFlow() {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
           >
-            <EmailSignupForm onSuccess={handleEmailSignup} />
+            <EmailSignupForm
+              onSuccess={handleEmailSignup}
+              inviteToken={inviteToken || undefined}
+            />
           </motion.div>
         )}
 

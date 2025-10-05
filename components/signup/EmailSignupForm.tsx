@@ -9,9 +9,10 @@ import { Loader2 } from 'lucide-react'
 
 interface EmailSignupFormProps {
   onSuccess: (email: string, password: string, userId: string, workspaceId?: string) => Promise<void>
+  inviteToken?: string
 }
 
-export default function EmailSignupForm({ onSuccess }: EmailSignupFormProps) {
+export default function EmailSignupForm({ onSuccess, inviteToken }: EmailSignupFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [firstName, setFirstName] = useState('')
@@ -70,7 +71,7 @@ export default function EmailSignupForm({ onSuccess }: EmailSignupFormProps) {
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, firstName, lastName })
+        body: JSON.stringify({ email, password, firstName, lastName, inviteToken })
       })
 
       if (!response.ok) {

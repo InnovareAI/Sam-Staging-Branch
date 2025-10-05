@@ -7,8 +7,8 @@ import { AutoIPAssignmentService } from '@/lib/services/auto-ip-assignment';
 export async function POST(request: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies: cookies });
-    
-    const { email, password, firstName, lastName, country } = await request.json();
+
+    const { email, password, firstName, lastName, country, inviteToken } = await request.json();
 
     // Validate input
     if (!email || !password || !firstName || !lastName) {
@@ -224,39 +224,108 @@ export async function POST(request: NextRequest) {
           // Don't fail the entire signup if IP assignment fails
         }
 
-        // Create default workspace for user
-        const workspaceSlug = `${firstName.toLowerCase()}-${data.user.id.substring(0, 8)}`
-        const { data: workspaceData, error: workspaceError } = await supabaseAdmin
-          .from('workspaces')
-          .insert({
-            name: `${firstName}'s Workspace`,
-            slug: workspaceSlug,
-            owner_id: data.user.id
-          })
-          .select()
-          .single();
+        // Check if user has an invitation token
+        if (inviteToken) {
+          console.log('🎟️ User has invitation token:', inviteToken);
 
-        if (workspaceError) {
-          console.error('Workspace creation error:', workspaceError);
-        } else {
-          workspace = workspaceData;
-          console.log('✅ Workspace created:', workspace.id);
+          try {
+            // Accept the invitation using database function
+            const { data: inviteResult, error: inviteError } = await supabaseAdmin
+              .rpc('accept_workspace_invitation', {
+                invitation_token: inviteToken,
+                user_id: data.user.id
+              });
+
+            if (inviteError) {
+              console.error('❌ Failed to accept invitation:', inviteError);
+              throw inviteError;
+            }
+
+            if (inviteResult && inviteResult.length > 0) {
+              const inviteData = inviteResult[0];
+              workspace = {
+                id: inviteData.workspace_id,
+                name: inviteData.workspace_name
+              };
+              console.log('✅ Joined workspace via invitation:', workspace.name);
+
+              // Update Stripe subscription - increase seat count
+              try {
+                const { data: subscription } = await supabaseAdmin
+                  .from('workspace_subscriptions')
+                  .select('stripe_subscription_id, plan')
+                  .eq('workspace_id', workspace.id)
+                  .eq('status', 'active')
+                  .single();
+
+                if (subscription?.stripe_subscription_id && subscription.plan === 'perseat') {
+                  // Only increase seat count for per-seat plans
+                  const Stripe = require('stripe');
+                  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+                  // Get current subscription
+                  const stripeSubscription = await stripe.subscriptions.retrieve(
+                    subscription.stripe_subscription_id
+                  );
+
+                  // Increase quantity by 1
+                  const currentQuantity = stripeSubscription.items.data[0].quantity || 1;
+                  await stripe.subscriptions.update(subscription.stripe_subscription_id, {
+                    items: [{
+                      id: stripeSubscription.items.data[0].id,
+                      quantity: currentQuantity + 1
+                    }],
+                    proration_behavior: 'always_invoice' // Charge immediately
+                  });
+
+                  console.log(`✅ Stripe subscription updated: ${currentQuantity} → ${currentQuantity + 1} seats`);
+                }
+              } catch (stripeErr) {
+                console.error('⚠️ Failed to update Stripe subscription (non-critical):', stripeErr);
+                // Don't fail signup if Stripe update fails - can be fixed manually
+              }
+            }
+          } catch (inviteErr) {
+            console.error('Invitation acceptance failed:', inviteErr);
+            // Continue to create new workspace if invitation fails
+          }
         }
 
-        // Add user as workspace member with admin role (owner_id is in workspaces table)
-        if (workspace) {
-          const { error: memberError } = await supabaseAdmin
-            .from('workspace_members')
+        // If no invitation or invitation failed, create default workspace
+        if (!workspace) {
+          const workspaceSlug = `${firstName.toLowerCase()}-${data.user.id.substring(0, 8)}`
+          const { data: workspaceData, error: workspaceError } = await supabaseAdmin
+            .from('workspaces')
             .insert({
-              workspace_id: workspace.id,
-              user_id: data.user.id,
-              role: 'admin'
-            });
+              name: `${firstName}'s Workspace`,
+              slug: workspaceSlug,
+              owner_id: data.user.id
+            })
+            .select()
+            .single();
 
-          if (memberError) {
-            console.error('Workspace member creation error:', memberError);
+          if (workspaceError) {
+            console.error('Workspace creation error:', workspaceError);
           } else {
-            console.log('✅ Workspace member added');
+            workspace = workspaceData;
+            console.log('✅ Workspace created:', workspace.id);
+          }
+
+          // Add user as workspace member with admin role (owner_id is in workspaces table)
+          if (workspace) {
+            const { error: memberError } = await supabaseAdmin
+              .from('workspace_members')
+              .insert({
+                workspace_id: workspace.id,
+                user_id: data.user.id,
+                role: 'admin'
+              });
+
+            if (memberError) {
+              console.error('Workspace member creation error:', memberError);
+            } else {
+              console.log('✅ Workspace member added');
+            }
           }
         }
 
