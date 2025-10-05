@@ -15,9 +15,15 @@
 **Billing:** Per seat (user)
 
 **Dual Quota System:**
-- **2,000 enrichments/month:** AI processing (scraping, email finding, scoring, qualification)
+- **2,000 prospect credits/month:** 1 credit = 1 contact enriched/validated (applies to uploaded, scraped, or CRM-synced data)
 - **2,000 sends/month:** Outreach messages (LinkedIn + Email combined)
-- **Unlimited uploads:** Customer's own data doesn't count toward quotas
+
+**What Uses Credits:**
+- ✅ Uploading & enriching contacts (CSV, manual entry)
+- ✅ CRM integration sync & validation (HubSpot, Salesforce, etc.)
+- ✅ SAM AI scraping & enrichment (LinkedIn, company data)
+- ✅ Email finding, verification, lead scoring
+- ❌ Raw data storage (doesn't use credits until processed)
 
 **Prices:**
 
@@ -39,9 +45,11 @@
 **Billing:** Flat rate (not per seat)
 
 **Dual Quota System:**
-- **5,000 enrichments/month:** AI processing shared across team
+- **5,000 prospect credits/month:** 1 credit = 1 contact enriched/validated (shared across team)
 - **5,000 sends/month:** Outreach messages across 2 accounts (LinkedIn + Email)
-- **Unlimited uploads:** Customer's own data doesn't count toward quotas
+
+**What Uses Credits:**
+- Same as Per Seat plan - ALL contacts must be validated/enriched (uses 1 credit each)
 
 **Prices:**
 
