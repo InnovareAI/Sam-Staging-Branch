@@ -120,8 +120,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Don't use Supabase links - create our own reset page link
-      const resetUrl = `${currentSiteUrl}/reset-password?email=${encodeURIComponent(email)}&recovery=true`;
+      // Use the Supabase-generated recovery link (contains actual token)
+      const resetUrl = data.properties.action_link;
       
       const htmlBody = `
         <!DOCTYPE html>

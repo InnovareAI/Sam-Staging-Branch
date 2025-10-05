@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate magic link URL
-    const magicLinkUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com'}/auth/magic/${magicToken}`
+    const magicLinkUrl = `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com'}/auth/magic/${magicToken}`
 
     // Send magic link email via Postmark (3cubed domain)
     try {

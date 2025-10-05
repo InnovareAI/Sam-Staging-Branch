@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export default function ResetPasswordPage() {
+  const supabase = createClientComponentClient();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -11,14 +13,23 @@ export default function ResetPasswordPage() {
   const [validToken, setValidToken] = useState<boolean | null>(null);
   const [email, setEmail] = useState('');
 
-  // Check for email parameter - simple approach
+  // Check for Supabase recovery token or hash fragment
   useEffect(() => {
+    // Supabase recovery links use hash fragments (#access_token=...)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const urlParams = new URLSearchParams(window.location.search);
+
+    const accessToken = hashParams.get('access_token');
+    const type = hashParams.get('type');
     const urlEmail = urlParams.get('email');
-    const recovery = urlParams.get('recovery');
-    
-    if (urlEmail && recovery === 'true') {
-      // Valid reset link - allow password change
+
+    if (accessToken && type === 'recovery') {
+      // Valid Supabase recovery token - extract email from token if possible
+      setValidToken(true);
+      // Email will be determined from the authenticated session
+      setEmail(urlEmail || 'your account');
+    } else if (urlEmail && urlParams.get('recovery') === 'true') {
+      // Fallback: old-style recovery link
       setEmail(urlEmail);
       setValidToken(true);
     } else {
@@ -29,7 +40,7 @@ export default function ResetPasswordPage() {
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -45,26 +56,24 @@ export default function ResetPasswordPage() {
     setMessage('');
 
     try {
-      // Use the API to update password
-      const response = await fetch('/api/auth/reset-password-confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+      // Use Supabase auth to update password directly
+      // This works with the recovery token from the URL hash
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: password
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage('Password updated successfully! Redirecting to sign in...');
-        setError('');
-        setTimeout(() => {
-          window.location.href = '/api/auth/signin';
-        }, 2000);
-      } else {
-        setError(data.error || 'Failed to update password');
+      if (updateError) {
+        throw updateError;
       }
+
+      setMessage('Password updated successfully! Redirecting to sign in...');
+      setError('');
+      setTimeout(() => {
+        window.location.href = '/api/auth/signin';
+      }, 2000);
     } catch (err) {
-      setError('An unexpected error occurred');
+      console.error('Password reset error:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
