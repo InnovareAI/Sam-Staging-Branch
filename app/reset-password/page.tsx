@@ -15,28 +15,51 @@ export default function ResetPasswordPage() {
 
   // Check for Supabase recovery token or hash fragment
   useEffect(() => {
-    // Supabase recovery links use hash fragments (#access_token=...)
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const urlParams = new URLSearchParams(window.location.search);
+    const initializeSession = async () => {
+      // Supabase recovery links use hash fragments (#access_token=...)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const urlParams = new URLSearchParams(window.location.search);
 
-    const accessToken = hashParams.get('access_token');
-    const type = hashParams.get('type');
-    const urlEmail = urlParams.get('email');
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      const type = hashParams.get('type');
+      const urlEmail = urlParams.get('email');
 
-    if (accessToken && type === 'recovery') {
-      // Valid Supabase recovery token - extract email from token if possible
-      setValidToken(true);
-      // Email will be determined from the authenticated session
-      setEmail(urlEmail || 'your account');
-    } else if (urlEmail && urlParams.get('recovery') === 'true') {
-      // Fallback: old-style recovery link
-      setEmail(urlEmail);
-      setValidToken(true);
-    } else {
-      setValidToken(false);
-      setError('Invalid reset link - please request a new password reset');
-    }
-  }, []);
+      if (accessToken && type === 'recovery') {
+        // Set the session using the tokens from the URL
+        try {
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || ''
+          });
+
+          if (sessionError) {
+            console.error('Session error:', sessionError);
+            setValidToken(false);
+            setError('Invalid or expired reset link - please request a new password reset');
+            return;
+          }
+
+          // Valid Supabase recovery token and session established
+          setValidToken(true);
+          setEmail(sessionData.user?.email || urlEmail || 'your account');
+        } catch (err) {
+          console.error('Session setup error:', err);
+          setValidToken(false);
+          setError('Failed to establish session - please request a new password reset');
+        }
+      } else if (urlEmail && urlParams.get('recovery') === 'true') {
+        // Fallback: old-style recovery link
+        setEmail(urlEmail);
+        setValidToken(true);
+      } else {
+        setValidToken(false);
+        setError('Invalid reset link - please request a new password reset');
+      }
+    };
+
+    initializeSession();
+  }, [supabase]);
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
