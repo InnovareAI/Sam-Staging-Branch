@@ -59,7 +59,7 @@ export default function StripePaymentSetup(props: StripePaymentSetupProps) {
     }
 
     createSubscription()
-  }, [props.workspaceId, props.plan])
+  }, [props.workspaceId, props.plan, props.userId])
 
   if (error) {
     return (
@@ -112,6 +112,7 @@ function PaymentForm({
   const elements = useElements()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [isReady, setIsReady] = useState(false)
 
   const planDetails = PLAN_DETAILS[plan]
   const trialEndDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
@@ -120,6 +121,7 @@ function PaymentForm({
     e.preventDefault()
 
     if (!stripe || !elements) {
+      setError('Payment system is still loading. Please wait a moment and try again.')
       return
     }
 
@@ -127,6 +129,12 @@ function PaymentForm({
     setError('')
 
     try {
+      // Submit the PaymentElement to validate it's complete
+      const { error: submitError } = await elements.submit()
+      if (submitError) {
+        throw new Error(submitError.message)
+      }
+
       // Confirm payment setup with Stripe
       const { error: stripeError } = await stripe.confirmSetup({
         elements,
@@ -144,7 +152,6 @@ function PaymentForm({
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Payment setup failed')
-    } finally {
       setLoading(false)
     }
   }
@@ -180,6 +187,7 @@ function PaymentForm({
           {/* Stripe Payment Element - Credit Card Only */}
           <div className="p-4 border border-slate-200 rounded-lg bg-white">
             <PaymentElement
+              onReady={() => setIsReady(true)}
               options={{
                 layout: 'accordion',
                 wallets: {
@@ -201,8 +209,13 @@ function PaymentForm({
             </Alert>
           )}
 
-          <Button type="submit" className="w-full" size="lg" disabled={loading || !stripe || !elements}>
-            {loading ? (
+          <Button type="submit" className="w-full" size="lg" disabled={loading || !stripe || !elements || !isReady}>
+            {!isReady && !loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading payment form...
+              </>
+            ) : loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Setting up...
