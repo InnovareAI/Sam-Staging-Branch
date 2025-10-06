@@ -217,7 +217,6 @@ export default function EmailSignupForm({ onSuccess, inviteToken }: EmailSignupF
               onChange={(e) => setCompanyWebsite(e.target.value)}
               disabled={loading}
             />
-            <p className="text-xs text-gray-600 mt-1">We'll analyze your website to understand your business</p>
           </div>
 
           {error && (
