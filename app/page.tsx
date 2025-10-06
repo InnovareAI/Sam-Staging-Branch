@@ -2327,51 +2327,34 @@ export default function Page() {
   const testUser = bypassAuth && !user ? { id: 'dev-user-access', email: 'dev@innovareai.com' } : user;
   
   if (!user && !bypassAuth) {
+    // Auto-open sign-in modal on first render
+    React.useEffect(() => {
+      if (!showAuthModal) {
+        setAuthModalMode('signin');
+        setShowAuthModal(true);
+      }
+    }, []);
+
     return (
       <>
         <div className="flex h-screen bg-gray-900 items-center justify-center">
-          <div className="text-center max-w-md mx-auto px-6">
-            <img 
-              src="/SAM.jpg" 
-              alt="Sam AI" 
-              className="w-20 h-20 rounded-full object-cover mx-auto mb-6"
+          {/* Background with logo while modal loads */}
+          <div className="text-center">
+            <img
+              src="/SAM.jpg"
+              alt="Sam AI"
+              className="w-32 h-32 rounded-full object-cover mx-auto opacity-20"
               style={{ objectPosition: 'center 30%' }}
             />
-            <h1 className="text-3xl font-bold text-white mb-4">Welcome to SAM AI</h1>
-            <p className="text-gray-400 mb-8">Your AI-powered Sales Agent Platform</p>
-            <div className="space-y-4">
-              <button 
-                onClick={() => {
-                  console.log('🚨 SIGN IN BUTTON CLICKED');
-                  setAuthModalMode('signin');
-                  setShowAuthModal(true);
-                  console.log('🚨 showAuthModal set to true, mode: signin');
-                }}
-                className="block w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-6 rounded-lg transition-colors transform hover:scale-105"
-              >
-                Sign In
-              </button>
-              <button 
-                onClick={() => {
-                  console.log('🚨 SIGN UP BUTTON CLICKED');
-                  setAuthModalMode('signup');
-                  setShowAuthModal(true);
-                  console.log('🚨 showAuthModal set to true, mode: signup');
-                }}
-                className="block w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-3 px-6 rounded-lg transition-colors transform hover:scale-105"
-              >
-                Create Account
-              </button>
-            </div>
           </div>
         </div>
-        
-        {/* Authentication Modal - Always rendered */}
+
+        {/* Authentication Modal - Auto-opens for sign-in */}
         <AuthModal
           isOpen={showAuthModal}
           onClose={() => {
-            console.log('🚨 AUTHMODAL CLOSE CLICKED');
-            setShowAuthModal(false);
+            // Don't allow closing when unauthenticated - must sign in
+            console.log('Sign-in required - modal cannot be closed');
           }}
           initialMode={authModalMode}
         />

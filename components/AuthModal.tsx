@@ -318,13 +318,19 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <div className="text-gray-500 text-xs">or</div>
               <button
                 type="button"
-                onClick={() => handleMagicLink(email)}
-                disabled={!email || loading}
-                className="text-purple-400 hover:text-purple-300 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => {
+                  if (!email) {
+                    setError('Please enter your email address first');
+                    return;
+                  }
+                  handleMagicLink(email);
+                }}
+                disabled={loading}
+                className="text-green-400 hover:text-green-300 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Send Magic Link ✨
+                ✨ Send Magic Link
               </button>
-              <p className="text-gray-500 text-xs mt-1">Enter your email above, then click for instant access</p>
+              <p className="text-gray-500 text-xs mt-1">No password needed - instant access via email</p>
             </div>
 
           </form>
