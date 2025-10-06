@@ -73,10 +73,10 @@ export default function ThreadedChatInterface() {
     }
   }, [currentThread])
 
-  // Keep newest-first layout visible by pinning scroll to top when messages update
+  // Auto-scroll to bottom for new messages (traditional chat behavior)
   useEffect(() => {
     if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = 0
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
     }
   }, [messages])
 
@@ -1639,7 +1639,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                 </div>
               ) : (
                 <div className="flex flex-col space-y-4">
-                  {messages.slice().reverse().map((message) => (
+                  {messages.map((message) => (
                     <div key={message.id} className={`flex items-start ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                       {/* Avatar for assistant messages only */}
                       {message.role === 'assistant' && (
