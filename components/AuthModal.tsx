@@ -98,9 +98,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       const data = await response.json();
 
       if (response.ok) {
-        setSuccess('Password reset email sent! Check your email and click the link to reset your password.');
-        setShowPasswordReset(false);
-        setResetEmail('');
+        setSuccess('✅ Password reset email sent! Check your email and click the link to reset your password.');
+        // Keep user on password reset form - don't switch back to main form
+        // User can click "Back to Sign In" when ready
       } else {
         setError(data.error || 'Password reset failed');
       }
@@ -128,7 +128,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       const data = await response.json();
 
       if (response.ok) {
-        setSuccess('Magic link sent! Check your email and click the link to instantly sign in.');
+        setSuccess('✨ Magic link sent! Check your email and click the link to instantly sign in.');
       } else {
         setError(data.error || 'Magic link failed');
       }
@@ -160,11 +160,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               style={{ objectPosition: 'center 30%' }}
             />
             <h1 className="text-2xl font-bold text-white mb-2">
-              {showPasswordReset ? 'Reset Password' : 'Welcome Back'}
+              {showPasswordReset
+                ? (success ? 'Check Your Email' : 'Reset Password')
+                : 'Welcome Back'
+              }
             </h1>
             <p className="text-gray-400 text-sm">
               {showPasswordReset
-                ? 'Enter your email to receive a password reset link'
+                ? (success ? 'We sent you an email with instructions' : 'Enter your email to reset password or get magic link')
                 : 'Sign in to your Sales Agent Platform'
               }
             </p>
@@ -175,23 +178,54 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         <div className="px-6 pb-6">
           {showPasswordReset ? (
             <form onSubmit={handlePasswordReset} className="space-y-4">
-              <div>
-                <label htmlFor="resetEmail" className="block text-sm font-medium text-gray-300 mb-2">
-                  Email Address
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                  <input
-                    type="email"
-                    id="resetEmail"
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    required
-                    className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Enter your email for password reset"
-                  />
-                </div>
-              </div>
+              {/* Only show form fields if no success message */}
+              {!success && (
+                <>
+                  <div>
+                    <label htmlFor="resetEmail" className="block text-sm font-medium text-gray-300 mb-2">
+                      Email Address
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                      <input
+                        type="email"
+                        id="resetEmail"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        required
+                        className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Enter your email"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading || !resetEmail}
+                    className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-red-400 disabled:to-red-500 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'Sending...' : '🔑 Send Password Reset'}
+                  </button>
+
+                  <div className="text-center text-gray-500 text-sm py-2">or</div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!resetEmail) {
+                        setError('Please enter your email address first');
+                        return;
+                      }
+                      handleMagicLink(resetEmail);
+                    }}
+                    disabled={loading || !resetEmail}
+                    className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-green-400 disabled:to-green-500 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'Sending...' : '✨ Send Magic Link'}
+                  </button>
+                  <p className="text-gray-500 text-xs text-center mt-2">No password needed - instant access via email</p>
+                </>
+              )}
 
               {/* Error Message */}
               {error && (
@@ -202,36 +236,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
               {/* Success Message */}
               {success && (
-                <div className="p-3 bg-green-600 bg-opacity-20 border border-green-500 rounded-lg text-green-400 text-sm">
+                <div className="p-4 bg-green-600 bg-opacity-20 border border-green-500 rounded-lg text-green-400 text-sm">
                   {success}
                 </div>
               )}
-
-              <button
-                type="submit"
-                disabled={loading || !resetEmail}
-                className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-red-400 disabled:to-red-500 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Sending...' : '🔑 Send Password Reset'}
-              </button>
-
-              <div className="text-center text-gray-500 text-sm py-2">or</div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (!resetEmail) {
-                    setError('Please enter your email address first');
-                    return;
-                  }
-                  handleMagicLink(resetEmail);
-                }}
-                disabled={loading || !resetEmail}
-                className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-green-400 disabled:to-green-500 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Sending...' : '✨ Send Magic Link'}
-              </button>
-              <p className="text-gray-500 text-xs text-center mt-2">No password needed - instant access via email</p>
 
               <div className="text-center pt-4 border-t border-gray-700">
                 <button
