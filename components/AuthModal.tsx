@@ -210,10 +210,28 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <button
                 type="submit"
                 disabled={loading || !resetEmail}
-                className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:from-purple-400 disabled:to-purple-500 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-red-400 disabled:to-red-500 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
               >
-                {loading ? 'Sending...' : 'Send Password Reset'}
+                {loading ? 'Sending...' : '🔑 Send Password Reset'}
               </button>
+
+              <div className="text-center text-gray-500 text-sm py-2">or</div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (!resetEmail) {
+                    setError('Please enter your email address first');
+                    return;
+                  }
+                  handleMagicLink(resetEmail);
+                }}
+                disabled={loading || !resetEmail}
+                className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-green-400 disabled:to-green-500 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Sending...' : '✨ Send Magic Link'}
+              </button>
+              <p className="text-gray-500 text-xs text-center mt-2">No password needed - instant access via email</p>
 
               <div className="text-center pt-4 border-t border-gray-700">
                 <button
@@ -302,8 +320,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
 
-            {/* Forgot Password & Magic Link Options */}
-            <div className="text-center pt-4 border-t border-gray-700 space-y-2">
+            {/* Forgot Password Link Only */}
+            <div className="text-center pt-4 border-t border-gray-700">
               <button
                 type="button"
                 onClick={() => {
@@ -311,26 +329,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   setError('');
                   setSuccess('');
                 }}
-                className="text-purple-400 hover:text-purple-300 text-sm transition-colors block mx-auto"
+                className="text-purple-400 hover:text-purple-300 text-sm transition-colors"
               >
                 Forgot your password?
               </button>
-              <div className="text-gray-500 text-xs">or</div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!email) {
-                    setError('Please enter your email address first');
-                    return;
-                  }
-                  handleMagicLink(email);
-                }}
-                disabled={loading}
-                className="text-green-400 hover:text-green-300 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                ✨ Send Magic Link
-              </button>
-              <p className="text-gray-500 text-xs mt-1">No password needed - instant access via email</p>
             </div>
 
           </form>
