@@ -2487,7 +2487,6 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
             <div className="text-xs text-purple-300">9.5% reply rate</div>
           </div>
         </div>
-      </div>
 
       {/* Template Library Modal */}
       {showTemplateLibrary && (
