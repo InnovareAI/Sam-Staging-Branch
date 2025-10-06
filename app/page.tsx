@@ -321,13 +321,22 @@ export default function Page() {
     // Only auto-open modal if:
     // 1. Auth loading is complete
     // 2. User is not authenticated
-    // 3. Auth bypass is disabled (production)
-    // 4. Modal is not already shown
-    if (!isAuthLoading && !user && !bypassAuth && !showAuthModal) {
-      setAuthModalMode('signin');
-      setShowAuthModal(true);
+    // 3. Session is also null (double-check we're really not authenticated)
+    // 4. Auth bypass is disabled (production)
+    // 5. Modal is not already shown
+    if (!isAuthLoading && !user && !session && !bypassAuth && !showAuthModal) {
+      // Small delay to ensure auth state is fully resolved (prevents race condition)
+      const timer = setTimeout(() => {
+        // Double-check user is still null after delay
+        if (!user && !session) {
+          setAuthModalMode('signin');
+          setShowAuthModal(true);
+        }
+      }, 500); // 500ms delay to let auth callback complete
+
+      return () => clearTimeout(timer);
     }
-  }, [isAuthLoading, user, showAuthModal]);
+  }, [isAuthLoading, user, session, showAuthModal]);
 
   const fetchThreadMessages = useCallback(async (targetThreadId: string) => {
     try {
