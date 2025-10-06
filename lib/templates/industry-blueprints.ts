@@ -1290,6 +1290,107 @@ export const INDUSTRY_BLUEPRINTS: Record<string, IndustryBlueprint> = {
       'Need more meetings without hiring',
       'I already work 60-hour weeks'
     ]
+  },
+  cybersecurity: {
+    code: 'cybersecurity',
+    industry: 'Cybersecurity',
+    defaultPersona: 'ciso',
+    personas: [
+      {
+        key: 'ciso',
+        titleVariations: ['CISO', 'Chief Information Security Officer', 'VP Security'],
+        description: 'Security executives balancing risk, compliance, and innovation',
+        painPoints: [
+          'Board demands clear security posture reporting',
+          'Compliance audits (SOC2, ISO 27001, NIST) consume resources',
+          'Alert fatigue drowning SOC team',
+          'Talent shortage - cannot hire fast enough'
+        ],
+        outcomes: [
+          'Reduce mean time to detect/respond (MTTD/MTTR)',
+          'Demonstrate compliance continuously',
+          'Automate tier-1 alerts to free analysts',
+          'Present clear risk metrics to board'
+        ],
+        tone: 'analytical'
+      },
+      {
+        key: 'soc_manager',
+        titleVariations: ['SOC Manager', 'Security Operations Manager', 'Director Security Operations'],
+        description: 'SOC leaders fighting alert overload and analyst burnout',
+        painPoints: [
+          'Analysts buried in false positives',
+          'Threat intelligence disconnected from workflows',
+          'Incident response playbooks outdated',
+          'Tool sprawl - too many consoles'
+        ],
+        outcomes: [
+          'Cut false positive rate by 70%+',
+          'Unified threat intelligence view',
+          'Faster incident containment',
+          'Reduce tool fatigue with integrations'
+        ],
+        tone: 'direct'
+      },
+      {
+        key: 'grc_manager',
+        titleVariations: ['GRC Manager', 'Compliance Manager', 'Risk Manager'],
+        description: 'Compliance teams proving security posture to auditors',
+        painPoints: [
+          'Manual evidence collection for audits',
+          'Frameworks overlap (SOC2, ISO, HIPAA, GDPR)',
+          'Need continuous compliance, not point-in-time',
+          'Hard to prove control effectiveness'
+        ],
+        outcomes: [
+          'Automate evidence collection',
+          'Map controls across frameworks',
+          'Real-time compliance dashboards',
+          'Pass audits first time'
+        ],
+        tone: 'consultative'
+      },
+      {
+        key: 'security_architect',
+        titleVariations: ['Security Architect', 'Principal Security Engineer'],
+        description: 'Security engineers building defense-in-depth',
+        painPoints: [
+          'Zero trust adoption complexity',
+          'Cloud security posture gaps',
+          'Integration hell across vendors',
+          'Legacy systems creating blind spots'
+        ],
+        outcomes: [
+          'Accelerate zero trust implementation',
+          'Visibility across hybrid/multi-cloud',
+          'Single pane for security telemetry',
+          'Secure legacy without rip-and-replace'
+        ],
+        tone: 'analytical'
+      }
+    ],
+    hook: 'Security teams drown in alerts while boards demand proof of protection.',
+    whyItMatters: 'Breaches cost millions, but alert fatigue and compliance overhead burn budgets just as fast.',
+    solutionOneLiner: 'Automates threat detection, compliance evidence, and board reporting so security teams focus on real risks.',
+    differentiation: 'Purpose-built for SOC efficiency with compliance automation, not just another SIEM replacement.',
+    proof: {
+      label: 'Mid-Market SaaS Company',
+      before: 'SOC team handling 5,000 alerts/day, 85% false positives, 6-month SOC2 prep',
+      after: 'Alert volume -70%, MTTR -60%, SOC2 audit passed in 3 weeks',
+      metrics: ['False positives -70%', 'MTTR from 4hrs to 90min', 'SOC2 prep time -75%', 'Analyst retention improved']
+    },
+    freeResource: {
+      title: 'SOC Efficiency Benchmark Report',
+      description: 'How leading security teams cut alert fatigue by 70% without adding headcount'
+    },
+    commonLanguage: [
+      'Our analysts are burned out from alert fatigue',
+      'Board keeps asking "are we secure?"',
+      'Compliance audits eat 3 months every year',
+      'Too many tools, not enough integration',
+      'Need to prove ROI on security spend',
+      'Threats are evolving faster than we can hire'
+    ]
   }
 };
 

@@ -3,17 +3,18 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { AutoIPAssignmentService } from '@/lib/services/auto-ip-assignment';
+import { analyzeWebsiteInBackground } from '@/lib/website-intelligence';
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies: cookies });
 
-    const { email, password, firstName, lastName, country, inviteToken } = await request.json();
+    const { email, password, firstName, lastName, companyName, companyWebsite, country, inviteToken } = await request.json();
 
     // Validate input
-    if (!email || !password || !firstName || !lastName) {
+    if (!email || !password || !firstName || !lastName || !companyName || !companyWebsite) {
       return NextResponse.json(
-        { error: 'All fields are required' },
+        { error: 'All fields are required (including company name and website)' },
         { status: 400 }
       );
     }
@@ -293,13 +294,14 @@ export async function POST(request: NextRequest) {
 
         // If no invitation or invitation failed, create default workspace
         if (!workspace) {
-          const workspaceSlug = `${firstName.toLowerCase()}-${data.user.id.substring(0, 8)}`
+          const workspaceSlug = `${companyName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${data.user.id.substring(0, 8)}`
           const { data: workspaceData, error: workspaceError } = await supabaseAdmin
             .from('workspaces')
             .insert({
-              name: `${firstName}'s Workspace`,
+              name: companyName,
               slug: workspaceSlug,
-              owner_id: data.user.id
+              owner_id: data.user.id,
+              company_url: companyWebsite
             })
             .select()
             .single();
@@ -325,6 +327,20 @@ export async function POST(request: NextRequest) {
               console.error('Workspace member creation error:', memberError);
             } else {
               console.log('✅ Workspace member added');
+            }
+
+            // Trigger website analysis in background (non-blocking)
+            // Note: Results are treated as initial hypotheses that need validation during discovery
+            if (companyWebsite) {
+              console.log('🌐 Triggering website analysis for:', companyWebsite);
+              analyzeWebsiteInBackground({
+                url: companyWebsite,
+                workspaceId: workspace.id,
+                companyName: companyName
+              }).catch(err => {
+                console.error('⚠️ Website analysis trigger failed (non-critical):', err);
+                // Don't fail signup if website analysis fails
+              });
             }
           }
         }

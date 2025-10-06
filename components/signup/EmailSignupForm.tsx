@@ -17,12 +17,14 @@ export default function EmailSignupForm({ onSuccess, inviteToken }: EmailSignupF
   const [password, setPassword] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
+  const [companyName, setCompanyName] = useState('')
+  const [companyWebsite, setCompanyWebsite] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Form submitted!', { firstName, lastName, email, password })
+    console.log('Form submitted!', { firstName, lastName, email, companyName, companyWebsite })
     setLoading(true)
     setError('')
 
@@ -66,12 +68,51 @@ export default function EmailSignupForm({ onSuccess, inviteToken }: EmailSignupF
       return
     }
 
+    // Validate company name
+    if (!companyName || !companyName.trim()) {
+      setError('Company name is required')
+      setLoading(false)
+      return
+    }
+
+    // Validate company website
+    if (!companyWebsite || !companyWebsite.trim()) {
+      setError('Company website is required')
+      setLoading(false)
+      return
+    }
+
+    // Validate URL format
+    try {
+      const url = new URL(companyWebsite.startsWith('http') ? companyWebsite : `https://${companyWebsite}`)
+      // Check if it's a valid business domain (not personal email domains)
+      const domain = url.hostname.toLowerCase()
+      const personalDomains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com']
+      if (personalDomains.some(d => domain.includes(d))) {
+        setError('Please enter a business website URL (not a personal email domain)')
+        setLoading(false)
+        return
+      }
+    } catch (urlError) {
+      setError('Please enter a valid website URL (e.g., yourcompany.com)')
+      setLoading(false)
+      return
+    }
+
     try {
       // Call API directly instead of using onSuccess callback
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, firstName, lastName, inviteToken })
+        body: JSON.stringify({
+          email,
+          password,
+          firstName,
+          lastName,
+          companyName,
+          companyWebsite: companyWebsite.startsWith('http') ? companyWebsite : `https://${companyWebsite}`,
+          inviteToken
+        })
       })
 
       if (!response.ok) {
@@ -154,6 +195,29 @@ export default function EmailSignupForm({ onSuccess, inviteToken }: EmailSignupF
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
             />
+          </div>
+
+          <div>
+            <Input
+              id="companyName"
+              type="text"
+              placeholder="Company name"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+
+          <div>
+            <Input
+              id="companyWebsite"
+              type="url"
+              placeholder="Company website (e.g., yourcompany.com)"
+              value={companyWebsite}
+              onChange={(e) => setCompanyWebsite(e.target.value)}
+              disabled={loading}
+            />
+            <p className="text-xs text-gray-600 mt-1">We'll analyze your website to understand your business</p>
           </div>
 
           {error && (
