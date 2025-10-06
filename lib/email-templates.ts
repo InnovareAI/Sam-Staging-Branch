@@ -401,52 +401,52 @@ export function generateWelcomeEmail(data: WelcomeEmailData) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Welcome to ${branding.name} SAM AI!</title>
   <style>
-    body { 
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-      line-height: 1.6; 
-      color: #333; 
-      margin: 0; 
-      padding: 0; 
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
       background-color: #f8f9fa;
     }
-    .container { 
-      max-width: 600px; 
-      margin: 0 auto; 
-      padding: 20px; 
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
     }
-    .card { 
-      background: white; 
-      border-radius: 12px; 
-      padding: 32px; 
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
-    .header { 
-      text-align: center; 
-      margin-bottom: 32px; 
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
     }
-    .logo { 
-      width: 80px; 
-      height: 80px; 
-      border-radius: 50%; 
-      object-fit: cover; 
-      margin: 0 auto 16px; 
-      display: block; 
+    .logo {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin: 0 auto 16px;
+      display: block;
     }
-    .button { 
-      display: inline-block; 
-      background: linear-gradient(135deg, ${branding.primaryColor} 0%, ${branding.secondaryColor} 100%); 
-      color: white; 
-      padding: 16px 32px; 
-      text-decoration: none; 
-      border-radius: 8px; 
-      font-weight: 600; 
+    .button {
+      display: inline-block;
+      background: linear-gradient(135deg, ${branding.primaryColor} 0%, ${branding.secondaryColor} 100%);
+      color: white;
+      padding: 16px 32px;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
       margin: 24px 0;
     }
-    .footer { 
-      text-align: center; 
-      margin-top: 32px; 
-      font-size: 14px; 
-      color: #666; 
+    .footer {
+      text-align: center;
+      margin-top: 32px;
+      font-size: 14px;
+      color: #666;
     }
     .company-signature {
       color: ${branding.primaryColor};
@@ -462,12 +462,12 @@ export function generateWelcomeEmail(data: WelcomeEmailData) {
         <h1>🎉 Welcome to SAM AI!</h1>
         <p>Your account with <strong class="company-signature">${branding.name}</strong> is now active</p>
       </div>
-      
+
       <div class="content">
         <p>${greeting}</p>
         <p>Congratulations! Your SAM AI account has been successfully created and you're now part of the ${branding.name} team.</p>
         ${data.workspaceName ? `<p>You've been added to the <strong>${data.workspaceName}</strong> workspace.</p>` : ''}
-        
+
         <h3>🚀 What's next?</h3>
         <p>Start exploring SAM AI's powerful features:</p>
         <ul>
@@ -476,14 +476,14 @@ export function generateWelcomeEmail(data: WelcomeEmailData) {
           <li>🎯 Import your first leads</li>
           <li>📚 Explore the knowledge base</li>
         </ul>
-        
+
         <div style="text-align: center; margin: 32px 0;">
           <a href="${data.loginLink}" class="button">Start Using SAM AI</a>
         </div>
-        
+
         <p><small>💡 <strong>Need help?</strong> Our team is here to support you. Reply to this email with any questions!</small></p>
       </div>
-      
+
       <div class="footer">
         <p>Welcome to the team!<br>
         <strong class="company-signature">${branding.fromName}</strong><br>
@@ -505,5 +505,286 @@ export function generateWelcomeEmail(data: WelcomeEmailData) {
     textBody: `Welcome to ${branding.name} SAM AI!\n\n${greeting}\n\nYour account is now active and ready to use!\n\nStart here: ${data.loginLink}\n\nBest regards,\n${branding.fromName}\n${branding.name}`,
     messageStream: 'outbound',
     tag: 'sam-ai-welcome'
+  };
+}
+
+// Trial Confirmation Email Template
+export interface TrialConfirmationEmailData {
+  recipientEmail: string;
+  recipientName?: string;
+  workspaceName: string;
+  plan: 'perseat' | 'sme';
+  planPrice: number;
+  trialEndDate: Date;
+  loginLink: string;
+  company: 'InnovareAI' | '3cubedai';
+}
+
+export function generateTrialConfirmationEmail(data: TrialConfirmationEmailData) {
+  const branding = COMPANY_BRANDING[data.company];
+  const greeting = data.recipientName ? `Hi ${data.recipientName}!` : 'Hi there!';
+  const planName = data.plan === 'perseat' ? 'Startup Plan' : 'SME Plan';
+  const trialEndFormatted = data.trialEndDate.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your SAM AI Trial Has Started - ${branding.name}</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f8f9fa;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .logo {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin: 0 auto 16px;
+      display: block;
+    }
+    .button {
+      display: inline-block;
+      background: linear-gradient(135deg, ${branding.primaryColor} 0%, ${branding.secondaryColor} 100%);
+      color: white;
+      padding: 16px 32px;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      margin: 24px 0;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 32px;
+      font-size: 14px;
+      color: #666;
+    }
+    .company-signature {
+      color: ${branding.primaryColor};
+      font-weight: 600;
+    }
+    .info-box {
+      background: #f0f9ff;
+      border: 1px solid #0ea5e9;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 24px 0;
+    }
+    .trial-box {
+      background: linear-gradient(135deg, #10b98120 0%, #059669 20 100%);
+      border: 2px solid #10b981;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 24px 0;
+      text-align: center;
+    }
+    .feature-list {
+      list-style: none;
+      padding: 0;
+      margin: 20px 0;
+    }
+    .feature-list li {
+      margin: 12px 0;
+      padding-left: 28px;
+      position: relative;
+    }
+    .feature-list li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #10b981;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    .account-details {
+      background: #f9fafb;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 20px 0;
+    }
+    .account-details table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .account-details td {
+      padding: 8px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .account-details td:first-child {
+      font-weight: 600;
+      color: #4b5563;
+      width: 40%;
+    }
+    .account-details tr:last-child td {
+      border-bottom: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <img src="https://app.meet-sam.com/SAM.jpg" alt="SAM AI" class="logo">
+        <h1>🎉 Your 14-Day Trial Has Started!</h1>
+        <p>Welcome to <strong class="company-signature">${branding.name}</strong> SAM AI Platform</p>
+      </div>
+
+      <div class="content">
+        <p>${greeting}</p>
+        <p>Thank you for signing up! Your SAM AI account is now active and your <strong>14-day free trial</strong> has officially started.</p>
+
+        <div class="trial-box">
+          <h2 style="margin: 0 0 12px 0; color: #059669;">✨ No Charge Until ${trialEndFormatted}</h2>
+          <p style="margin: 0; font-size: 14px; color: #047857;">Enjoy full access to all features during your trial. Cancel anytime with no charge.</p>
+        </div>
+
+        <div class="account-details">
+          <h3 style="margin: 0 0 16px 0;">📋 Account Details</h3>
+          <table>
+            <tr>
+              <td>Account Email:</td>
+              <td>${data.recipientEmail}</td>
+            </tr>
+            <tr>
+              <td>Workspace:</td>
+              <td>${data.workspaceName}</td>
+            </tr>
+            <tr>
+              <td>Plan:</td>
+              <td><strong>${planName}</strong></td>
+            </tr>
+            <tr>
+              <td>Monthly Price:</td>
+              <td><strong>$${data.planPrice}/month</strong></td>
+            </tr>
+            <tr>
+              <td>Trial Ends:</td>
+              <td><strong>${trialEndFormatted}</strong></td>
+            </tr>
+            <tr>
+              <td>First Charge:</td>
+              <td><strong>${trialEndFormatted}</strong> (only if you don't cancel)</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="info-box">
+          <h3 style="margin: 0 0 12px 0;">💳 Payment Information</h3>
+          <p style="margin: 0; font-size: 14px;">Your payment method has been saved but <strong>will not be charged</strong> until your trial period ends. You can cancel anytime before ${trialEndFormatted} with no charge.</p>
+        </div>
+
+        <h3>🚀 What You Can Do During Your Trial:</h3>
+        <ul class="feature-list">
+          <li>💬 Chat with SAM, your AI sales assistant</li>
+          <li>📊 Access your personalized sales dashboard</li>
+          <li>🎯 Import and manage prospects</li>
+          <li>📚 Build and customize your knowledge base</li>
+          <li>🚀 Launch LinkedIn and email campaigns</li>
+          <li>📈 Track performance with advanced analytics</li>
+          <li>👥 Invite team members to collaborate</li>
+        </ul>
+
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${data.loginLink}" class="button">Start Using SAM AI Now</a>
+        </div>
+
+        <p><small>💡 <strong>Need help getting started?</strong> Our team is here to support you. Reply to this email with any questions!</small></p>
+        <p><small>🔒 You can manage your subscription and payment details anytime from your workspace settings.</small></p>
+      </div>
+
+      <div class="footer">
+        <p>Welcome to SAM AI!<br>
+        <strong class="company-signature">${branding.fromName}</strong><br>
+        ${branding.name}</p>
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+        <p><small>This email confirms the start of your 14-day free trial.</small></p>
+        <p><small>SAM AI - Intelligent Sales Agent Platform</small></p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  const textBody = `
+Your 14-Day SAM AI Trial Has Started! - ${branding.name}
+
+${greeting}
+
+Thank you for signing up! Your SAM AI account is now active and your 14-day free trial has officially started.
+
+✨ NO CHARGE UNTIL ${trialEndFormatted}
+Enjoy full access to all features during your trial. Cancel anytime with no charge.
+
+ACCOUNT DETAILS:
+- Account Email: ${data.recipientEmail}
+- Workspace: ${data.workspaceName}
+- Plan: ${planName}
+- Monthly Price: $${data.planPrice}/month
+- Trial Ends: ${trialEndFormatted}
+- First Charge: ${trialEndFormatted} (only if you don't cancel)
+
+PAYMENT INFORMATION:
+Your payment method has been saved but will NOT be charged until your trial period ends. You can cancel anytime before ${trialEndFormatted} with no charge.
+
+WHAT YOU CAN DO DURING YOUR TRIAL:
+• Chat with SAM, your AI sales assistant
+• Access your personalized sales dashboard
+• Import and manage prospects
+• Build and customize your knowledge base
+• Launch LinkedIn and email campaigns
+• Track performance with advanced analytics
+• Invite team members to collaborate
+
+🚀 START USING SAM AI NOW:
+${data.loginLink}
+
+💡 Need help getting started? Our team is here to support you. Reply to this email with any questions!
+🔒 You can manage your subscription and payment details anytime from your workspace settings.
+
+Welcome to SAM AI!
+${branding.fromName}
+${branding.name}
+
+---
+This email confirms the start of your 14-day free trial.
+SAM AI - Intelligent Sales Agent Platform
+  `.trim();
+
+  return {
+    from: `${branding.fromName} <${branding.fromEmail}>`,
+    to: data.recipientEmail,
+    subject: `Your 14-Day SAM AI Trial Has Started! 🎉`,
+    htmlBody,
+    textBody,
+    messageStream: 'outbound',
+    tag: 'sam-ai-trial-confirmation'
   };
 }

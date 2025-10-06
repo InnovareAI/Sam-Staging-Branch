@@ -96,8 +96,30 @@ export default function SignupFlow() {
   }
 
   // Step 3: Payment setup complete
-  const handlePaymentSetup = () => {
+  const handlePaymentSetup = async () => {
     setStep('complete')
+
+    // Send trial confirmation email in background (non-blocking)
+    try {
+      const response = await fetch('/api/auth/send-trial-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspaceId,
+          userId,
+          plan: selectedPlan
+        })
+      })
+
+      if (!response.ok) {
+        console.error('Failed to send trial confirmation email:', await response.text())
+      } else {
+        console.log('✅ Trial confirmation email sent successfully')
+      }
+    } catch (emailErr) {
+      // Don't fail the signup flow if email fails - just log it
+      console.error('⚠️ Failed to send trial confirmation email (non-critical):', emailErr)
+    }
 
     // Notify parent window if embedded in iframe (for WordPress modal integration)
     if (window.parent !== window) {
