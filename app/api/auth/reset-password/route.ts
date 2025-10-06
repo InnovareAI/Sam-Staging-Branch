@@ -211,8 +211,8 @@ export async function GET() {
     <div class="max-w-md w-full mx-auto bg-gray-800 rounded-lg shadow-xl p-8">
         <div class="text-center mb-8">
             <img src="/SAM.jpg" alt="SAM AI" class="w-16 h-16 rounded-full object-cover mx-auto mb-4" style="object-position: center 30%;">
-            <h1 class="text-2xl font-bold text-white">🔑 Reset Your Password</h1>
-            <p class="text-gray-400">Enter your email address and we'll send you a link to reset your password.</p>
+            <h1 class="text-2xl font-bold text-white">🔑 Password Reset & Magic Link</h1>
+            <p class="text-gray-400">Enter your email to reset your password or get a magic link to sign in instantly.</p>
         </div>
         
         <form id="reset-form" class="space-y-6">
@@ -230,14 +230,23 @@ export async function GET() {
             
             <button
                 type="submit"
+                id="password-reset-btn"
                 class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
             >
                 🔑 Send Password Reset Link
             </button>
-            
+
+            <button
+                type="button"
+                id="magic-link-btn"
+                class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+            >
+                ✨ Send Magic Link
+            </button>
+
             <div class="text-center">
                 <p class="text-gray-400 text-sm">
-                    Remember your password? 
+                    Remember your password?
                     <a href="/api/auth/signin" class="text-purple-400 hover:text-purple-300">Sign in</a>
                 </p>
             </div>
@@ -248,17 +257,18 @@ export async function GET() {
     </div>
     
     <script>
+        // Password Reset Button Handler
         document.getElementById('reset-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const email = document.getElementById('email').value;
             const errorDiv = document.getElementById('error-message');
             const successDiv = document.getElementById('success-message');
-            
+
             // Clear previous messages
             errorDiv.classList.add('hidden');
             successDiv.classList.add('hidden');
-            
+
             try {
                 const response = await fetch('/api/auth/reset-password', {
                     method: 'POST',
@@ -267,15 +277,56 @@ export async function GET() {
                     },
                     body: JSON.stringify({ email })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     successDiv.textContent = 'Password reset email sent! Check your inbox and click the link to reset your password.';
                     successDiv.classList.remove('hidden');
                     document.getElementById('email').value = '';
                 } else {
                     errorDiv.textContent = data.error || 'Failed to send password reset email. Please try again.';
+                    errorDiv.classList.remove('hidden');
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Network error. Please try again.';
+                errorDiv.classList.remove('hidden');
+            }
+        });
+
+        // Magic Link Button Handler
+        document.getElementById('magic-link-btn').addEventListener('click', async function() {
+            const email = document.getElementById('email').value;
+            const errorDiv = document.getElementById('error-message');
+            const successDiv = document.getElementById('success-message');
+
+            if (!email) {
+                errorDiv.textContent = 'Please enter your email address first.';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            // Clear previous messages
+            errorDiv.classList.add('hidden');
+            successDiv.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/auth/magic-link', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    successDiv.textContent = 'Magic link sent! Check your email and click the link to instantly sign in.';
+                    successDiv.classList.remove('hidden');
+                    document.getElementById('email').value = '';
+                } else {
+                    errorDiv.textContent = data.error || 'Failed to send magic link. Please try again.';
                     errorDiv.classList.remove('hidden');
                 }
             } catch (error) {
