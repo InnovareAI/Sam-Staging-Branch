@@ -131,40 +131,40 @@ export async function POST(request: NextRequest) {
         <html>
         <head>
             <meta charset="utf-8">
-            <title>Your SAM AI Magic Link</title>
+            <title>Sign In to SAM AI - Magic Link</title>
             <style>
                 body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
                 .container { max-width: 600px; margin: 0 auto; padding: 20px; }
                 .header { text-align: center; margin-bottom: 30px; }
-                .button { display: inline-block; padding: 12px 24px; background: #7c3aed; color: white; text-decoration: none; border-radius: 6px; }
+                .button { display: inline-block; padding: 12px 24px; background: #10b981; color: white; text-decoration: none; border-radius: 6px; }
                 .footer { margin-top: 30px; font-size: 14px; color: #666; }
             </style>
         </head>
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>✨ Your SAM AI Magic Link</h1>
+                    <h1>✨ Sign In to SAM AI (Magic Link)</h1>
                 </div>
-                
+
                 <p>Hi there,</p>
-                
-                <p>We received a request to sign in to your SAM AI account (<strong>${email}</strong>).</p>
-                
-                <p>Click the button below to instantly sign in to SAM AI:</p>
-                
+
+                <p>We received a request to <strong>sign in</strong> to your SAM AI account (<strong>${email}</strong>) using a magic link.</p>
+
+                <p><strong>No password needed!</strong> Just click the button below to instantly sign in:</p>
+
                 <p style="text-align: center; margin: 30px 0;">
-                    <a href="${magicLinkUrl}" class="button">Sign In to SAM AI</a>
+                    <a href="${magicLinkUrl}" class="button">Sign In to SAM AI ✨</a>
                 </p>
-                
+
                 <p><small>If the button doesn't work, copy and paste this link:</small></p>
                 <p style="word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 12px;">
                     ${magicLinkUrl}
                 </p>
-                
+
                 <p><em>This link will expire in 1 hour for security.</em></p>
-                
+
                 <p>If you didn't request this magic link, you can safely ignore this email.</p>
-                
+
                 <div class="footer">
                     <p>Best regards,<br><strong>The SAM AI Team</strong></p>
                     <p style="color: #999; font-size: 12px;">SAM AI - Your AI-powered Sales Agent Platform</p>

@@ -43,11 +43,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Generate slug from workspace name
+    const generateSlug = (name: string): string => {
+      return name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .substring(0, 50) + '-' + Date.now().toString(36);
+    };
+
+    const slug = generateSlug(name);
+
     // Use service role to BYPASS ALL RLS and schema issues
     const { data: workspace, error: workspaceError } = await adminSupabase
       .from('workspaces')
       .insert({
         name: name,
+        slug: slug,
         owner_id: user.id,
         created_by: user.id,
         company: company,
@@ -64,6 +76,7 @@ export async function POST(request: NextRequest) {
         .from('workspaces')
         .insert({
           name: name,
+          slug: slug,
           owner_id: user.id
         })
         .select()

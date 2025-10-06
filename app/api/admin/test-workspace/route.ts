@@ -44,11 +44,23 @@ export async function POST(request: NextRequest) {
 
     const { name = 'Test Workspace', company = 'InnovareAI' } = await request.json();
 
+    // Generate slug from workspace name
+    const generateSlug = (name: string): string => {
+      return name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .substring(0, 50) + '-' + Date.now().toString(36);
+    };
+
+    const slug = generateSlug(name);
+
     // Test workspace creation
     const { data, error } = await adminSupabase
       .from('workspaces')
       .insert({
         name: name,
+        slug: slug,
         owner_id: user.id,
         created_by: user.id,
         company: company,

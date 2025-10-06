@@ -14,6 +14,7 @@ export default function SignInPage() {
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
   const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
+  const [showPasswordResetOnly, setShowPasswordResetOnly] = useState(false);
   const router = useRouter();
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -182,25 +183,34 @@ export default function SignInPage() {
               </button>
             ) : (
               <div className="space-y-3">
+                {/* Password Reset Button - Always show */}
                 <button
                   type="button"
                   onClick={handlePasswordReset}
                   disabled={isResettingPassword}
-                  className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isResettingPassword ? 'Sending...' : 'Send Reset Email'}
+                  🔑 {isResettingPassword ? 'Sending Reset Email...' : 'Send Password Reset Email'}
                 </button>
+
+                {/* Magic Link Button - Only show if not password reset only mode */}
+                {!showPasswordResetOnly && (
+                  <button
+                    type="button"
+                    onClick={handleMagicLink}
+                    disabled={isSendingMagicLink}
+                    className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    ✨ {isSendingMagicLink ? 'Sending Magic Link...' : 'Send Magic Link'}
+                  </button>
+                )}
+
                 <button
                   type="button"
-                  onClick={handleMagicLink}
-                  disabled={isSendingMagicLink}
-                  className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSendingMagicLink ? 'Sending...' : 'Send Magic Link'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setForgotPasswordMode(false)}
+                  onClick={() => {
+                    setForgotPasswordMode(false);
+                    setShowPasswordResetOnly(false);
+                  }}
                   className="group relative w-full flex justify-center py-2 px-4 border border-gray-600 text-sm font-medium rounded-md text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                 >
                   Back to Sign In
@@ -214,7 +224,10 @@ export default function SignInPage() {
               <div className="flex justify-center space-x-4">
                 <button
                   type="button"
-                  onClick={() => setForgotPasswordMode(true)}
+                  onClick={() => {
+                    setForgotPasswordMode(true);
+                    setShowPasswordResetOnly(true);
+                  }}
                   className="text-sm text-purple-400 hover:text-purple-300"
                 >
                   Forgot Password?
@@ -224,17 +237,16 @@ export default function SignInPage() {
                   type="button"
                   onClick={() => {
                     setForgotPasswordMode(true);
-                    handleMagicLink();
+                    setShowPasswordResetOnly(false);
                   }}
-                  disabled={isSendingMagicLink}
-                  className="text-sm text-purple-400 hover:text-purple-300 disabled:opacity-50"
+                  className="text-sm text-purple-400 hover:text-purple-300"
                 >
-                  {isSendingMagicLink ? 'Sending...' : 'Magic Link'}
+                  Magic Link
                 </button>
               </div>
-              
+
               <p className="text-xs text-gray-500">
-                Enter your email address above for password-less options
+                Enter your email address above to continue
               </p>
             </div>
           )}

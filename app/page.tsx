@@ -1960,11 +1960,23 @@ export default function Page() {
 
       // If API fails, fall back to direct attempts with progressive schema fallback
       console.log('Service role API failed, trying direct insertion...');
+
+      // Generate slug for workspace
+      const generateSlug = (name: string): string => {
+        return name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .substring(0, 50) + '-' + Date.now().toString(36);
+      };
+
+      const slug = generateSlug(newWorkspaceName);
+
       const attempts = [
-        { name: newWorkspaceName, owner_id: user.id, created_by: user.id, company: selectedCompany || 'InnovareAI', settings: {} },
-        { name: newWorkspaceName, owner_id: user.id, created_by: user.id, settings: {} },
-        { name: newWorkspaceName, owner_id: user.id, settings: {} },
-        { name: newWorkspaceName, owner_id: user.id }
+        { name: newWorkspaceName, slug, owner_id: user.id, created_by: user.id, company: selectedCompany || 'InnovareAI', settings: {} },
+        { name: newWorkspaceName, slug, owner_id: user.id, created_by: user.id, settings: {} },
+        { name: newWorkspaceName, slug, owner_id: user.id, settings: {} },
+        { name: newWorkspaceName, slug, owner_id: user.id }
       ];
 
       let data = null;

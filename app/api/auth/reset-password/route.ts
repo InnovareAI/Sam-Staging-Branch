@@ -128,40 +128,40 @@ export async function POST(request: NextRequest) {
         <html>
         <head>
             <meta charset="utf-8">
-            <title>Your SAM AI Magic Link</title>
+            <title>Reset Your SAM AI Password</title>
             <style>
                 body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
                 .container { max-width: 600px; margin: 0 auto; padding: 20px; }
                 .header { text-align: center; margin-bottom: 30px; }
-                .button { display: inline-block; padding: 12px 24px; background: #7c3aed; color: white; text-decoration: none; border-radius: 6px; }
+                .button { display: inline-block; padding: 12px 24px; background: #dc2626; color: white; text-decoration: none; border-radius: 6px; }
                 .footer { margin-top: 30px; font-size: 14px; color: #666; }
             </style>
         </head>
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>✨ Your SAM AI Magic Link</h1>
+                    <h1>🔑 Reset Your SAM AI Password</h1>
                 </div>
-                
+
                 <p>Hi there,</p>
-                
-                <p>We received a request to reset your password for your SAM AI account (<strong>${email}</strong>).</p>
-                
-                <p>Click the button below to reset your password and sign in to SAM AI:</p>
-                
+
+                <p>We received a request to <strong>reset your password</strong> for your SAM AI account (<strong>${email}</strong>).</p>
+
+                <p>Click the button below to reset your password:</p>
+
                 <p style="text-align: center; margin: 30px 0;">
-                    <a href="${resetUrl}" class="button">Reset Password</a>
+                    <a href="${resetUrl}" class="button">Reset My Password</a>
                 </p>
-                
+
                 <p><small>If the button doesn't work, copy and paste this link:</small></p>
                 <p style="word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 12px;">
                     ${resetUrl}
                 </p>
-                
+
                 <p><em>This link will expire in 24 hours for security.</em></p>
-                
+
                 <p>If you didn't request this password reset, you can safely ignore this email.</p>
-                
+
                 <div class="footer">
                     <p>Best regards,<br><strong>The SAM AI Team</strong></p>
                     <p style="color: #999; font-size: 12px;">SAM AI - Your AI-powered Sales Agent Platform</p>
