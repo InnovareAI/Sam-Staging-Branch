@@ -89,10 +89,10 @@ export default function ResetPasswordPage() {
         throw updateError;
       }
 
-      setMessage('Password updated successfully! Redirecting to sign in...');
+      setMessage('✅ Password updated successfully! Redirecting to your dashboard...');
       setError('');
       setTimeout(() => {
-        window.location.href = '/api/auth/signin';
+        window.location.href = '/';  // Redirect to main app - user is already authenticated
       }, 2000);
     } catch (err) {
       console.error('Password reset error:', err);
