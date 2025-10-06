@@ -416,8 +416,22 @@ function CampaignList() {
 }
 
 // Campaign Builder Component from v1
-function CampaignBuilder({ onClose }: { onClose?: () => void }) {
-  const [name, setName] = useState('Outbound – VP Sales (SaaS, NA)');
+function CampaignBuilder({
+  onClose,
+  initialProspects
+}: {
+  onClose?: () => void;
+  initialProspects?: any[] | null;
+}) {
+  // Derive campaign name from initialProspects if available
+  const getInitialCampaignName = () => {
+    if (initialProspects && initialProspects.length > 0 && initialProspects[0].campaignTag) {
+      return initialProspects[0].campaignTag;
+    }
+    return 'Outbound – VP Sales (SaaS, NA)';
+  };
+
+  const [name, setName] = useState(getInitialCampaignName());
   const [campaignType, setCampaignType] = useState('connector');
   const [executionType, setExecutionType] = useState('direct_linkedin');
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -426,6 +440,18 @@ function CampaignBuilder({ onClose }: { onClose?: () => void }) {
   const [showPreview, setShowPreview] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+
+  // Auto-populate CSV data when initialProspects are provided
+  useEffect(() => {
+    if (initialProspects && initialProspects.length > 0) {
+      const headers = ['name', 'title', 'company', 'email', 'linkedin_url'];
+      setCsvHeaders(headers);
+      setCsvData(initialProspects);
+      setDataSource('upload'); // Set to upload mode for validation
+      setShowPreview(true);
+      setCurrentStep(2); // Move to step 2 (preview) since data is already loaded
+    }
+  }, [initialProspects]);
   const [showSamChat, setShowSamChat] = useState(false);
   const [samMessages, setSamMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
   const [samInput, setSamInput] = useState('');
@@ -1179,7 +1205,19 @@ Would you like me to adjust these or create more variations?`
       {/* Step 2: Prospect Data */}
       {currentStep === 2 && (
         <div className="space-y-6">
-          {/* Data Source Selection */}
+          {/* Banner when prospects are from approval */}
+          {initialProspects && initialProspects.length > 0 && (
+            <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4 flex items-center gap-3 mb-4">
+              <CheckCircle className="text-green-400" size={24} />
+              <div className="flex-1">
+                <p className="text-white font-medium">✓ {initialProspects.length} Prospects Loaded</p>
+                <p className="text-gray-400 text-sm">Imported from Data Approval • Review below and proceed to messages</p>
+              </div>
+            </div>
+          )}
+
+          {/* Data Source Selection - Hide when prospects are from approval */}
+          {!(initialProspects && initialProspects.length > 0) && (
           <div className="bg-gray-700 rounded-lg p-4 mb-6">
             <h4 className="text-white font-medium mb-3">Choose Prospect Data Source</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1209,6 +1247,7 @@ Would you like me to adjust these or create more variations?`
               </button>
             </div>
           </div>
+          )}
 
           {/* Approved Prospects Selection */}
           {dataSource === 'approved' && (
@@ -1639,9 +1678,22 @@ Would you like me to adjust these or create more variations?`
   );
 }
 
-const CampaignHub: React.FC = () => {
+interface CampaignHubProps {
+  initialProspects?: any[] | null;
+  onCampaignCreated?: () => void;
+}
+
+const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignCreated }) => {
   const [showBuilder, setShowBuilder] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showFullFeatures, setShowFullFeatures] = useState(false);
+
+  // Auto-open campaign builder when initialProspects are provided
+  useEffect(() => {
+    if (initialProspects && initialProspects.length > 0) {
+      setShowBuilder(true);
+    }
+  }, [initialProspects]);
   
   // Modal states for campaign management features
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
@@ -2259,33 +2311,86 @@ const CampaignHub: React.FC = () => {
     updateSetting(key, newValues);
   };
 
+  // Check if we're in "auto-create mode" (prospects from approval)
+  const isAutoCreateMode = initialProspects && initialProspects.length > 0 && showBuilder;
+  const campaignName = initialProspects?.[0]?.campaignTag || 'New Campaign';
+
   return (
     <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-            <Megaphone className="mr-3" size={32} />
-            Campaign Hub
-          </h1>
-          <p className="text-gray-400">Design, approve, and launch marketing campaigns</p>
+      {/* Header - Different for auto-create mode */}
+      {isAutoCreateMode ? (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
+                <Target className="text-white" size={20} />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">Creating Campaign: {campaignName}</h1>
+                <p className="text-gray-400 text-sm">{initialProspects.length} approved prospects ready to launch</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowFullFeatures(!showFullFeatures)}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
+            >
+              {showFullFeatures ? (
+                <>
+                  <Eye className="w-4 h-4" />
+                  Hide Full Hub
+                </>
+              ) : (
+                <>
+                  <Grid3x3 className="w-4 h-4" />
+                  Show Full Hub
+                </>
+              )}
+            </button>
+          </div>
+          <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-4 flex items-center gap-3">
+            <CheckCircle className="text-green-400" size={20} />
+            <div className="flex-1">
+              <p className="text-white text-sm font-medium">Prospects Loaded from Data Approval</p>
+              <p className="text-gray-400 text-xs">Add your message templates below to complete the campaign setup</p>
+            </div>
+          </div>
         </div>
-        <button
-          onClick={() => setShowBuilder(!showBuilder)}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-        >
-          <Plus size={16} />
-          New Campaign
-        </button>
-      </div>
+      ) : (
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
+              <Megaphone className="mr-3" size={32} />
+              Campaign Hub
+            </h1>
+            <p className="text-gray-400">Design, approve, and launch marketing campaigns</p>
+          </div>
+          <button
+            onClick={() => setShowBuilder(!showBuilder)}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+          >
+            <Plus size={16} />
+            New Campaign
+          </button>
+        </div>
+      )}
 
       <div className="max-w-6xl space-y-8">
         {/* Campaign Builder */}
         {showBuilder && (
           <div className="mb-6">
-            <CampaignBuilder onClose={() => setShowBuilder(false)} />
+            <CampaignBuilder
+              onClose={() => {
+                setShowBuilder(false);
+                onCampaignCreated?.();
+              }}
+              initialProspects={initialProspects}
+            />
           </div>
         )}
+
+        {/* Show full features when: not in auto-create mode OR toggle is enabled */}
+        {(!isAutoCreateMode || showFullFeatures) && (
+          <>
 
         {/* Campaign Management Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -3130,6 +3235,9 @@ const CampaignHub: React.FC = () => {
           </div>
         </div>
       )}
+        </>
+        )}
+      </div>
     </div>
   );
 };

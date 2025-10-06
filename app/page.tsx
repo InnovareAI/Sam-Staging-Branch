@@ -173,7 +173,10 @@ export default function Page() {
   const [pastedCSV, setPastedCSV] = useState('');
   const [uploadedProspects, setUploadedProspects] = useState<any[]>([]);
   const [csvUploadCounter, setCsvUploadCounter] = useState(1);
-  
+
+  // Campaign state - for auto-proceed from approval to campaign
+  const [pendingCampaignProspects, setPendingCampaignProspects] = useState<any[] | null>(null);
+
   // Workspace state
   const [workspaces, setWorkspaces] = useState<any[]>([]);
   const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
@@ -2606,16 +2609,18 @@ export default function Page() {
               console.log('Data collected:', data, 'Source:', source);
             }}
             onApprovalComplete={(approvedData) => {
-              // Navigate to Campaign Hub with approved prospects
+              // Store approved prospects and navigate to Campaign Hub
               console.log('Approved prospects:', approvedData);
+              setPendingCampaignProspects(approvedData);
               setActiveMenuItem('campaign');
-              // You can also pass the approved data to Campaign Hub if needed
-              // by storing it in state and passing it as a prop
             }}
             initialUploadedData={uploadedProspects}
           />
         ) : activeMenuItem === 'campaign' ? (
-          <CampaignHub />
+          <CampaignHub
+            initialProspects={pendingCampaignProspects}
+            onCampaignCreated={() => setPendingCampaignProspects(null)}
+          />
         ) : activeMenuItem === 'pipeline' ? (
           <LeadPipeline />
         ) : activeMenuItem === 'analytics' ? (
