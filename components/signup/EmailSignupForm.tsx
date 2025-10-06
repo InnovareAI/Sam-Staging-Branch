@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2 } from 'lucide-react'
 
 interface EmailSignupFormProps {
-  onSuccess: (email: string, password: string, userId: string, workspaceId?: string) => Promise<void>
+  onSuccess: (email: string, password: string, userId: string, workspaceId?: string, userData?: { firstName: string, lastName: string, companyName: string }) => Promise<void>
   inviteToken?: string
 }
 
@@ -122,8 +122,12 @@ export default function EmailSignupForm({ onSuccess, inviteToken }: EmailSignupF
 
       const data = await response.json()
 
-      // Pass userId and workspaceId to move to next step
-      await onSuccess(email, password, data.user.id, data.workspace?.id)
+      // Pass userId, workspaceId, and user data to move to next step
+      await onSuccess(email, password, data.user.id, data.workspace?.id, {
+        firstName,
+        lastName,
+        companyName
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Signup failed. Please try again.')
     } finally {

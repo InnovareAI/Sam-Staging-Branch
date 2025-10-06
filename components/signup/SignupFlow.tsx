@@ -34,6 +34,9 @@ export default function SignupFlow() {
   const [email, setEmail] = useState('')
   const [userId, setUserId] = useState('')
   const [workspaceId, setWorkspaceId] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [companyName, setCompanyName] = useState('')
   const [selectedPlan, setSelectedPlan] = useState<'perseat' | 'sme'>('perseat')
   const [isEu, setIsEu] = useState(false)
   const [country, setCountry] = useState('')
@@ -65,11 +68,18 @@ export default function SignupFlow() {
   const currentStepIndex = steps.findIndex(s => s.id === step)
 
   // Step 1: Email signup
-  const handleEmailSignup = async (email: string, password: string, userId: string, workspaceId?: string) => {
+  const handleEmailSignup = async (email: string, password: string, userId: string, workspaceId?: string, userData?: { firstName: string, lastName: string, companyName: string }) => {
     // EmailSignupForm has already called the API and created the user
     // We just need to save the data and move to next step
     setEmail(email)
     setUserId(userId)
+
+    // Store user data for Stripe pre-fill
+    if (userData) {
+      setFirstName(userData.firstName)
+      setLastName(userData.lastName)
+      setCompanyName(userData.companyName)
+    }
 
     // If workspace was created during signup, use it
     if (workspaceId) {
@@ -201,6 +211,11 @@ export default function SignupFlow() {
                 plan={selectedPlan}
                 workspaceId={workspaceId}
                 userId={userId}
+                billingDetails={{
+                  name: `${firstName} ${lastName}`.trim(),
+                  email,
+                  companyName
+                }}
                 onSuccess={handlePaymentSetup}
               />
             ) : (
