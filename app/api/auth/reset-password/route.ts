@@ -211,8 +211,8 @@ export async function GET() {
     <div class="max-w-md w-full mx-auto bg-gray-800 rounded-lg shadow-xl p-8">
         <div class="text-center mb-8">
             <img src="/SAM.jpg" alt="SAM AI" class="w-16 h-16 rounded-full object-cover mx-auto mb-4" style="object-position: center 30%;">
-            <h1 class="text-2xl font-bold text-white">Get Magic Link</h1>
-            <p class="text-gray-400">Enter your email address and we'll send you a magic link to instantly sign in to SAM AI.</p>
+            <h1 class="text-2xl font-bold text-white">🔑 Reset Your Password</h1>
+            <p class="text-gray-400">Enter your email address and we'll send you a link to reset your password.</p>
         </div>
         
         <form id="reset-form" class="space-y-6">
@@ -228,11 +228,11 @@ export async function GET() {
                 >
             </div>
             
-            <button 
+            <button
                 type="submit"
-                class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
             >
-                Send Magic Link
+                🔑 Send Password Reset Link
             </button>
             
             <div class="text-center">
@@ -271,11 +271,11 @@ export async function GET() {
                 const data = await response.json();
                 
                 if (response.ok) {
-                    successDiv.textContent = 'Magic link sent! Check your email and click the link to instantly sign in to SAM AI.';
+                    successDiv.textContent = 'Password reset email sent! Check your inbox and click the link to reset your password.';
                     successDiv.classList.remove('hidden');
                     document.getElementById('email').value = '';
                 } else {
-                    errorDiv.textContent = data.error || 'Failed to send magic link. Please try again.';
+                    errorDiv.textContent = data.error || 'Failed to send password reset email. Please try again.';
                     errorDiv.classList.remove('hidden');
                 }
             } catch (error) {
