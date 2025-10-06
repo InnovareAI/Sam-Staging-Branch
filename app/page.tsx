@@ -314,6 +314,21 @@ export default function Page() {
     }
   }, [isSuperAdmin]);
 
+  // Auto-open sign-in modal for unauthenticated users
+  useEffect(() => {
+    const bypassAuth = process.env.NODE_ENV === 'development';
+
+    // Only auto-open modal if:
+    // 1. Auth loading is complete
+    // 2. User is not authenticated
+    // 3. Auth bypass is disabled (production)
+    // 4. Modal is not already shown
+    if (!isAuthLoading && !user && !bypassAuth && !showAuthModal) {
+      setAuthModalMode('signin');
+      setShowAuthModal(true);
+    }
+  }, [isAuthLoading, user, showAuthModal]);
+
   const fetchThreadMessages = useCallback(async (targetThreadId: string) => {
     try {
       const response = await fetch(`/api/sam/threads/${targetThreadId}/messages`);
@@ -2327,14 +2342,6 @@ export default function Page() {
   const testUser = bypassAuth && !user ? { id: 'dev-user-access', email: 'dev@innovareai.com' } : user;
   
   if (!user && !bypassAuth) {
-    // Auto-open sign-in modal on first render
-    React.useEffect(() => {
-      if (!showAuthModal) {
-        setAuthModalMode('signin');
-        setShowAuthModal(true);
-      }
-    }, []);
-
     return (
       <>
         <div className="flex h-screen bg-gray-900 items-center justify-center">
