@@ -1,6 +1,8 @@
 'use client';
 
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useState, useEffect } from 'react';
 import {
   Activity,
   Archive,
