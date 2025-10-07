@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import LLMConfigModal from '@/components/LLMConfigModal'
+import EmailProvidersModal from '@/app/components/EmailProvidersModal'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import {
   Settings,
@@ -32,6 +33,7 @@ import {
 export default function WorkspaceSettingsPage({ params }: { params: { workspaceId: string } }) {
   const [activeTab, setActiveTab] = useState('general')
   const [isLLMModalOpen, setIsLLMModalOpen] = useState(false)
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false)
   const [workspaceName, setWorkspaceName] = useState('InnovareAI')
 
   // Team invitation state
@@ -44,6 +46,36 @@ export default function WorkspaceSettingsPage({ params }: { params: { workspaceI
   const [members, setMembers] = useState<any[]>([])
   const [invitations, setInvitations] = useState<any[]>([])
   const [loadingMembers, setLoadingMembers] = useState(true)
+
+  // Handle URL query parameters (OAuth redirects)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search)
+      const tab = searchParams.get('tab')
+      const emailConnected = searchParams.get('email_connected')
+      const error = searchParams.get('error')
+
+      // Set active tab from URL
+      if (tab) {
+        setActiveTab(tab)
+      }
+
+      // Show success message for email connection
+      if (emailConnected === 'true') {
+        const provider = searchParams.get('provider')
+        setInviteSuccess(`✅ ${provider === 'google' ? 'Google' : 'Microsoft'} email account connected successfully!`)
+        // Clear URL parameters
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+
+      // Show error message
+      if (error) {
+        setInviteError(decodeURIComponent(error))
+        // Clear URL parameters
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+    }
+  }, [])
 
   // Load team members and invitations
   useEffect(() => {
@@ -460,6 +492,19 @@ export default function WorkspaceSettingsPage({ params }: { params: { workspaceI
                 transition={{ duration: 0.5 }}
                 className="space-y-6"
               >
+                {/* Success/Error Messages */}
+                {inviteSuccess && (
+                  <Alert className="bg-green-50 border-green-200">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800">{inviteSuccess}</AlertDescription>
+                  </Alert>
+                )}
+                {inviteError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{inviteError}</AlertDescription>
+                  </Alert>
+                )}
+
                 <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -474,6 +519,8 @@ export default function WorkspaceSettingsPage({ params }: { params: { workspaceI
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {[
                         { name: 'LLM Model', connected: true, icon: Brain, color: 'purple', action: () => setIsLLMModalOpen(true), description: 'AI model configuration' },
+                        { name: 'Google Gmail', connected: false, icon: Mail, color: 'blue', action: () => setIsEmailModalOpen(true), description: 'Connect Gmail account' },
+                        { name: 'Microsoft Outlook', connected: false, icon: Mail, color: 'blue', action: () => setIsEmailModalOpen(true), description: 'Connect Outlook account' },
                         { name: 'ActiveCampaign', connected: false, icon: Zap, color: 'orange', description: 'Marketing automation' },
                         { name: 'Zapier', connected: false, icon: Globe, color: 'orange', description: 'Workflow automation' },
                         { name: 'Slack', connected: false, icon: Globe, color: 'purple', description: 'Team communication' },
@@ -721,13 +768,19 @@ export default function WorkspaceSettingsPage({ params }: { params: { workspaceI
       </div>
 
       {/* LLM Configuration Modal */}
-      <LLMConfigModal 
+      <LLMConfigModal
         isOpen={isLLMModalOpen}
         onClose={() => setIsLLMModalOpen(false)}
         onSave={() => {
           console.log('LLM model selection saved for workspace');
           setIsLLMModalOpen(false);
         }}
+      />
+
+      {/* Email Providers Modal */}
+      <EmailProvidersModal
+        isOpen={isEmailModalOpen}
+        onClose={() => setIsEmailModalOpen(false)}
       />
     </div>
   )
