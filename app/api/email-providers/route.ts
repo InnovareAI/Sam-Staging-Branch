@@ -51,35 +51,53 @@ export async function GET(request: NextRequest) {
 
     console.log('📧 Fetching email providers for user:', user.id)
 
-    // Get all Unipile accounts for the user
+    // Get user's current workspace
+    const { data: userData } = await supabase
+      .from('users')
+      .select('current_workspace_id')
+      .eq('id', user.id)
+      .single()
+
+    const workspaceId = userData?.current_workspace_id
+
+    if (!workspaceId) {
+      return NextResponse.json({
+        success: false,
+        error: 'No workspace found for user'
+      }, { status: 400 })
+    }
+
+    console.log('🏢 Workspace ID:', workspaceId)
+
+    // Get workspace email accounts directly from workspace_accounts
+    const { data: workspaceAccounts, error: wsError } = await supabase
+      .from('workspace_accounts')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .eq('account_type', 'email')
+
+    if (wsError) {
+      console.error('❌ Workspace accounts error:', wsError)
+    }
+
+    console.log('💾 Found', workspaceAccounts?.length || 0, 'email accounts in workspace')
+
+    const workspaceAccountIds = new Set(workspaceAccounts?.map(a => a.unipile_account_id) || [])
+    console.log('🔑 Workspace account IDs:', Array.from(workspaceAccountIds))
+
+    // Get all Unipile accounts
     const unipileResponse = await callUnipileAPI('accounts')
     const allAccounts = unipileResponse.items || []
     console.log('📊 Unipile returned', allAccounts.length, 'total accounts')
 
-    // Filter for email accounts (MESSAGING type) and get user's accounts from database
-    const { data: userAccounts, error: dbError } = await supabase
-      .from('user_unipile_accounts')
-      .select('unipile_account_id, platform, account_email')
-      .eq('user_id', user.id)
-
-    if (dbError) {
-      console.error('❌ Database query error:', dbError)
-    }
-
-    console.log('💾 Database has', userAccounts?.length || 0, 'accounts for user')
-    console.log('📋 User accounts:', userAccounts)
-
-    const userAccountIds = new Set(userAccounts?.map(a => a.unipile_account_id) || [])
-    console.log('🔑 User account IDs:', Array.from(userAccountIds))
-
-    // Filter to only show user's email accounts
+    // Filter to only show workspace email accounts
     const emailAccounts = allAccounts
       .filter((account: any) => {
-        // Check if this account belongs to the user
-        const belongsToUser = userAccountIds.has(account.id)
-        console.log(`🔍 Account ${account.id} (${account.type}):`, belongsToUser ? '✅ belongs to user' : '❌ not user\'s')
+        // Check if this account belongs to the workspace
+        const belongsToWorkspace = workspaceAccountIds.has(account.id)
+        console.log(`🔍 Account ${account.id} (${account.type}):`, belongsToWorkspace ? '✅ belongs to workspace' : '❌ not in workspace')
 
-        if (!belongsToUser) return false
+        if (!belongsToWorkspace) return false
 
         // Include GOOGLE, GOOGLE_OAUTH, OUTLOOK, OUTLOOK_OAUTH, and MESSAGING types
         const accountType = account.type?.toUpperCase() || ''
