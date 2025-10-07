@@ -101,14 +101,20 @@ export async function POST(request: NextRequest) {
       : process.env.POSTMARK_INNOVAREAI_API_KEY;
 
     if (postmarkApiKey) {
-      const currentSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://sam.innovareai.com';
-      
+      // Get the origin from the request headers to support multi-tenant domains
+      const origin = request.headers.get('origin') ||
+                     request.headers.get('referer')?.split('/').slice(0, 3).join('/') ||
+                     process.env.NEXT_PUBLIC_SITE_URL ||
+                     'https://app.meet-sam.com';
+
+      console.log(`🌐 Using origin for password reset: ${origin}`);
+
       // Generate a password reset token using Supabase admin
       const { data, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
         type: 'recovery',
         email: email,
         options: {
-          redirectTo: `${currentSiteUrl}/reset-password`
+          redirectTo: `${origin}/reset-password`
         }
       });
 
