@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 
 export async function DELETE(
   request: NextRequest,
@@ -15,16 +16,19 @@ export async function DELETE(
       }, { status: 400 })
     }
 
-    const supabase = supabaseAdmin()
-    
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
+    // Get current user - use the same pattern as other routes
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const { data: { session }, error: authError } = await supabase.auth.getSession()
+
+    if (authError || !session || !session.user) {
       return NextResponse.json({
         success: false,
         error: 'Authentication required'
       }, { status: 401 })
     }
+
+    const user = session.user
 
     // Delete the email provider (RLS will ensure user owns it)
     const { error: deleteError } = await supabase

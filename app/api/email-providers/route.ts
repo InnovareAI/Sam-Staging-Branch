@@ -173,16 +173,19 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const supabase = supabaseAdmin()
-    
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
+    // Get current user - use the same pattern as GET route
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const { data: { session }, error: authError } = await supabase.auth.getSession()
+
+    if (authError || !session || !session.user) {
       return NextResponse.json({
         success: false,
         error: 'Authentication required'
       }, { status: 401 })
     }
+
+    const user = session.user
 
     // Insert new email provider
     const { data: provider, error: insertError } = await supabase
