@@ -317,29 +317,4 @@ async function createTestApprovalSession(supabase: any, userId: string, count: n
   }
 }
 
-// GET endpoint for quick test data generation
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const count = parseInt(searchParams.get('count') || '10')
-  const source = searchParams.get('source') || 'linkedin'
-  
-  // Generate simple test data without authentication for demo purposes
-  const prospects = Array.from({ length: Math.min(count, 50) }, (_, i) => ({
-    id: `demo_${i}`,
-    name: `Test Prospect ${i + 1}`,
-    title: ['CEO', 'CTO', 'VP Sales', 'Marketing Manager'][i % 4],
-    company: `Test Company ${Math.floor(i / 4) + 1}`,
-    email: `test${i + 1}@example.com`,
-    linkedinUrl: `https://linkedin.com/in/test-prospect-${i + 1}`,
-    source,
-    confidence: Math.round((Math.random() * 0.5 + 0.5) * 100) / 100,
-    complianceFlags: i % 10 === 0 ? ['gdpr-review'] : []
-  }))
-
-  return NextResponse.json({
-    success: true,
-    prospects,
-    count: prospects.length,
-    demo: true
-  })
-}
+// GET endpoint removed - test data should only be generated through authenticated POST requests

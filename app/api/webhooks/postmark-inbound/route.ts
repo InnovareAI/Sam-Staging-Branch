@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@supabase/supabase-js'
+import { verifyPostmarkWebhook, getRequestBody } from '@/lib/security/webhook-auth'
 
 interface PostmarkInboundEmail {
   From: string
@@ -44,7 +45,16 @@ interface PostmarkInboundEmail {
 
 export async function POST(request: NextRequest) {
   try {
-    const email: PostmarkInboundEmail = await request.json()
+    // Verify webhook signature
+    const body = await getRequestBody(request);
+    const { valid, error } = await verifyPostmarkWebhook(request, body);
+
+    if (!valid && error) {
+      console.error('❌ Invalid Postmark webhook signature');
+      return error;
+    }
+
+    const email: PostmarkInboundEmail = JSON.parse(body);
 
     console.log('📧 Received inbound email:', {
       from: email.From,

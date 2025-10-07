@@ -826,8 +826,29 @@ export default function Page() {
     };
     setProspectReviewData(updatedData);
 
-    // TODO: Make API call to update prospect status in database
-    alert(`${action === 'approve' ? '✅ Approved' : '❌ Rejected'}: ${updatedData[index].name}`);
+    // Save to database
+    try {
+      const prospect = updatedData[index];
+      const response = await fetch('/api/prospect-approval/decisions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: currentWorkspace?.id,
+          prospect_id: prospect.id,
+          decision: action === 'approve' ? 'approved' : 'rejected',
+          prospect_data: prospect
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save approval decision');
+      }
+
+      showNotification('success', `${action === 'approve' ? '✅ Approved' : '❌ Rejected'}: ${prospect.name}`);
+    } catch (error) {
+      console.error('Approval save error:', error);
+      showNotification('error', 'Failed to save approval decision');
+    }
   };
 
   const handleBulkAction = async (action: string) => {
@@ -892,12 +913,63 @@ export default function Page() {
   const [isDisconnectingLinkedIn, setIsDisconnectingLinkedIn] = useState(false);
 
   // Handler for channel selection confirmation
-  const handleChannelSelectionConfirm = (selection: any) => {
+  const handleChannelSelectionConfirm = async (selection: any) => {
     console.log('Channel selection confirmed:', selection);
     setShowChannelSelectionModal(false);
-    
-    // TODO: Start campaign with selected channels
-    showNotification('success', `Campaign setup complete! Strategy: ${selection.strategy}`);
+
+    try {
+      // Get current workspace
+      const workspaceId = currentWorkspace?.id;
+      if (!workspaceId) {
+        showNotification('error', 'No workspace selected');
+        return;
+      }
+
+      // Create campaign via API
+      const response = await fetch('/api/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: workspaceId,
+          name: selection.campaignName || 'New Campaign',
+          type: selection.strategy === 'linkedin-only' ? 'linkedin' :
+                selection.strategy === 'email-only' ? 'email' : 'multi-channel',
+          channels: selection.channels || [],
+          prospects: approvedProspects || [],
+          status: 'draft'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create campaign');
+      }
+
+      const { campaign } = await response.json();
+
+      // Trigger N8N workflow
+      const n8nResponse = await fetch('/api/campaign/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaign_id: campaign.id,
+          workspace_id: workspaceId
+        })
+      });
+
+      if (!n8nResponse.ok) {
+        throw new Error('Failed to start campaign');
+      }
+
+      showNotification('success', `Campaign "${campaign.name}" launched successfully!`);
+
+      // Refresh campaign list
+      if (typeof handleRefreshCampaigns === 'function') {
+        handleRefreshCampaigns();
+      }
+    } catch (error) {
+      console.error('Campaign launch error:', error);
+      showNotification('error', 'Failed to launch campaign. Please try again.');
+    }
   };
 
   // Check skip preference on mount
@@ -933,17 +1005,20 @@ export default function Page() {
 
   // Check authentication state on mount (strict authentication required)
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
     const getUser = async () => {
       try {
+        console.log('🔐 Starting auth check...');
         const { data: { user } } = await supabase.auth.getUser();
         console.log('Auth check result:', user ? 'authenticated' : 'not authenticated');
         setUser(user);
-        
+
         if (user) {
           // Cache session for token optimization
           const { data: { session } } = await supabase.auth.getSession();
           setSession(session);
-          
+
           const isAdmin = checkSuperAdmin(user.email || '');
           setIsSuperAdmin(isAdmin);
           await loadWorkspaces(user.id, isAdmin);
@@ -955,9 +1030,17 @@ export default function Page() {
         setUser(null);
         setSession(null);
       } finally {
+        console.log('✅ Auth check complete, setting isAuthLoading to false');
+        clearTimeout(timeoutId);
         setIsAuthLoading(false);
       }
     };
+
+    // Failsafe timeout - if auth check takes >5 seconds, assume failure and show UI
+    timeoutId = setTimeout(() => {
+      console.warn('⚠️ Auth check timeout - proceeding without authentication');
+      setIsAuthLoading(false);
+    }, 5000);
 
     getUser();
 
@@ -995,6 +1078,7 @@ export default function Page() {
     );
 
     return () => {
+      clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);
