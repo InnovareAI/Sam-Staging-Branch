@@ -11,7 +11,7 @@
 
 import { INDUSTRY_BLUEPRINTS, findBlueprintByIndustry } from './templates/industry-blueprints'
 import { createClient } from '@supabase/supabase-js'
-import { addKnowledgeItem } from './supabase-knowledge'
+// import { addKnowledgeItem } from './supabase-knowledge' // TODO: Function not implemented yet
 
 // Website analysis result
 export interface WebsiteAnalysis {
@@ -231,144 +231,150 @@ export async function populateKBFromWebsite(
     console.log('📝 Populating knowledge base from website analysis (marked as needs validation)...')
 
     // 1. Store company/business model information
+    // TODO: Implement addKnowledgeItem function
     if (analysis.companyDescription) {
-      await addKnowledgeItem({
-        workspace_id: workspaceId,
-        category: 'business-model',
-        title: `What does ${analysis.companyName} do?`,
-        content: analysis.companyDescription,
-        tags: ['auto-extracted', 'website-analysis', analysis.industry, 'needs-validation'],
-        version: '1.0',
-        is_active: true,
-        source_type: 'website_analysis',
-        source_metadata: {
-          confidence: analysis.confidence,
-          detected_industry: analysis.industry,
-          needs_validation: true,
-          auto_detected: true,
-          sam_validation_prompts: [
-            `I pulled this from your website: "${analysis.companyDescription.substring(0, 100)}..." - does that still capture what you do?`,
-            `From your site, it looks like you're in ${analysis.industry}. Is that accurate, or are you going after new markets?`
-          ]
-        }
-      })
+      // await addKnowledgeItem({
+      //   workspace_id: workspaceId,
+      //   category: 'business-model',
+      //   title: `What does ${analysis.companyName} do?`,
+      //   content: analysis.companyDescription,
+      //   tags: ['auto-extracted', 'website-analysis', analysis.industry, 'needs-validation'],
+      //   version: '1.0',
+      //   is_active: true,
+      //   source_type: 'website_analysis',
+      //   source_metadata: {
+      //     confidence: analysis.confidence,
+      //     detected_industry: analysis.industry,
+      //     needs_validation: true,
+      //     auto_detected: true,
+      //     sam_validation_prompts: [
+      //       `I pulled this from your website: "${analysis.companyDescription.substring(0, 100)}..." - does that still capture what you do?`,
+      //       `From your site, it looks like you're in ${analysis.industry}. Is that accurate, or are you going after new markets?`
+      //     ]
+      //   }
+      // })
     }
 
     // 2. Store value proposition
-    if (analysis.valueProposition) {
-      await addKnowledgeItem({
-        workspace_id: workspaceId,
-        category: 'value-proposition',
-        title: `${analysis.companyName} Value Proposition`,
-        content: analysis.valueProposition,
-        tags: ['auto-extracted', 'website-analysis', analysis.industry, 'needs-validation'],
-        version: '1.0',
-        is_active: true,
-        source_type: 'website_analysis',
-        source_metadata: {
-          confidence: analysis.confidence,
-          needs_validation: true,
-          auto_detected: true,
-          sam_validation_prompts: [
-            `I saw on your site that your main value prop is "${analysis.valueProposition.substring(0, 80)}..." - is that still how you position yourselves?`,
-            `Has your positioning evolved recently, or is that still the core message?`
-          ]
-        }
-      })
-    }
+    // TODO: Implement addKnowledgeItem function
+    // if (analysis.valueProposition) {
+    //   await addKnowledgeItem({
+    //     workspace_id: workspaceId,
+    //     category: 'value-proposition',
+    //     title: `${analysis.companyName} Value Proposition`,
+    //     content: analysis.valueProposition,
+    //     tags: ['auto-extracted', 'website-analysis', analysis.industry, 'needs-validation'],
+    //     version: '1.0',
+    //     is_active: true,
+    //     source_type: 'website_analysis',
+    //     source_metadata: {
+    //       confidence: analysis.confidence,
+    //       needs_validation: true,
+    //       auto_detected: true,
+    //       sam_validation_prompts: [
+    //         `I saw on your site that your main value prop is "${analysis.valueProposition.substring(0, 80)}..." - is that still how you position yourselves?`,
+    //         `Has your positioning evolved recently, or is that still the core message?`
+    //       ]
+    //     }
+    //   })
+    // }
 
     // 3. Store target personas as ICP
-    if (analysis.targetPersonas.length > 0) {
-      await addKnowledgeItem({
-        workspace_id: workspaceId,
-        category: 'icp',
-        subcategory: 'personas',
-        title: 'Target Customer Personas',
-        content: `Our primary target personas:\n${analysis.targetPersonas.map(p => `- ${p}`).join('\n')}`,
-        tags: ['auto-extracted', 'website-analysis', 'personas', 'needs-validation'],
-        version: '1.0',
-        is_active: true,
-        source_type: 'website_analysis',
-        source_metadata: {
-          personas: analysis.targetPersonas,
-          needs_validation: true,
-          auto_detected: true,
-          sam_validation_prompts: [
-            `From your website, looks like you're going after ${analysis.targetPersonas.slice(0, 2).join(' and ')} - is that right?`,
-            `Are you expanding into new buyer personas, or are these still your primary targets?`
-          ]
-        }
-      })
-    }
+    // TODO: Implement addKnowledgeItem function
+    // if (analysis.targetPersonas.length > 0) {
+    //   await addKnowledgeItem({
+    //     workspace_id: workspaceId,
+    //     category: 'icp',
+    //     subcategory: 'personas',
+    //     title: 'Target Customer Personas',
+    //     content: `Our primary target personas:\n${analysis.targetPersonas.map(p => `- ${p}`).join('\n')}`,
+    //     tags: ['auto-extracted', 'website-analysis', 'personas', 'needs-validation'],
+    //     version: '1.0',
+    //     is_active: true,
+    //     source_type: 'website_analysis',
+    //     source_metadata: {
+    //       personas: analysis.targetPersonas,
+    //       needs_validation: true,
+    //       auto_detected: true,
+    //       sam_validation_prompts: [
+    //         `From your website, looks like you're going after ${analysis.targetPersonas.slice(0, 2).join(' and ')} - is that right?`,
+    //         `Are you expanding into new buyer personas, or are these still your primary targets?`
+    //       ]
+    //     }
+    //   })
+    // }
 
     // 4. Store pain points
-    if (analysis.painPoints.length > 0) {
-      await addKnowledgeItem({
-        workspace_id: workspaceId,
-        category: 'pain-points',
-        title: 'Key Pain Points We Solve',
-        content: analysis.painPoints.join('\n\n'),
-        tags: ['auto-extracted', 'website-analysis', 'pain-points', 'needs-validation'],
-        version: '1.0',
-        is_active: true,
-        source_type: 'website_analysis',
-        source_metadata: {
-          pain_points: analysis.painPoints,
-          needs_validation: true,
-          auto_detected: true,
-          sam_validation_prompts: [
-            `I noticed on your site you talk about solving ${analysis.painPoints[0]?.substring(0, 60)}... - is that still the main problem you tackle?`,
-            `Are there new use cases or pain points you're addressing that aren't on the website yet?`
-          ]
-        }
-      })
-    }
+    // TODO: Implement addKnowledgeItem function
+    // if (analysis.painPoints.length > 0) {
+    //   await addKnowledgeItem({
+    //     workspace_id: workspaceId,
+    //     category: 'pain-points',
+    //     title: 'Key Pain Points We Solve',
+    //     content: analysis.painPoints.join('\n\n'),
+    //     tags: ['auto-extracted', 'website-analysis', 'pain-points', 'needs-validation'],
+    //     version: '1.0',
+    //     is_active: true,
+    //     source_type: 'website_analysis',
+    //     source_metadata: {
+    //       pain_points: analysis.painPoints,
+    //       needs_validation: true,
+    //       auto_detected: true,
+    //       sam_validation_prompts: [
+    //         `I noticed on your site you talk about solving ${analysis.painPoints[0]?.substring(0, 60)}... - is that still the main problem you tackle?`,
+    //         `Are there new use cases or pain points you're addressing that aren't on the website yet?`
+    //       ]
+    //     }
+    //   })
+    // }
 
     // 5. Store competitors
-    if (analysis.keyCompetitors.length > 0) {
-      await addKnowledgeItem({
-        workspace_id: workspaceId,
-        category: 'competition',
-        title: 'Key Competitors',
-        content: `Main competitors:\n${analysis.keyCompetitors.map(c => `- ${c}`).join('\n')}`,
-        tags: ['auto-extracted', 'website-analysis', 'competitors', 'needs-validation'],
-        version: '1.0',
-        is_active: true,
-        source_type: 'website_analysis',
-        source_metadata: {
-          competitors: analysis.keyCompetitors,
-          needs_validation: true,
-          auto_detected: true,
-          sam_validation_prompts: [
-            `I saw you mention ${analysis.keyCompetitors.slice(0, 2).join(' and ')} as competitors - is that who you're up against most often?`,
-            `Anyone new in the competitive landscape we should know about?`
-          ]
-        }
-      })
-    }
+    // TODO: Implement addKnowledgeItem function
+    // if (analysis.keyCompetitors.length > 0) {
+    //   await addKnowledgeItem({
+    //     workspace_id: workspaceId,
+    //     category: 'competition',
+    //     title: 'Key Competitors',
+    //     content: `Main competitors:\n${analysis.keyCompetitors.map(c => `- ${c}`).join('\n')}`,
+    //     tags: ['auto-extracted', 'website-analysis', 'competitors', 'needs-validation'],
+    //     version: '1.0',
+    //     is_active: true,
+    //     source_type: 'website_analysis',
+    //     source_metadata: {
+    //       competitors: analysis.keyCompetitors,
+    //       needs_validation: true,
+    //       auto_detected: true,
+    //       sam_validation_prompts: [
+    //         `I saw you mention ${analysis.keyCompetitors.slice(0, 2).join(' and ')} as competitors - is that who you're up against most often?`,
+    //         `Anyone new in the competitive landscape we should know about?`
+    //       ]
+    //     }
+    //   })
+    // }
 
     // 6. Store pricing model if available
-    if (analysis.pricingModel) {
-      await addKnowledgeItem({
-        workspace_id: workspaceId,
-        category: 'pricing',
-        title: 'Pricing Model',
-        content: `Pricing approach: ${analysis.pricingModel}`,
-        tags: ['auto-extracted', 'website-analysis', 'pricing', 'needs-validation'],
-        version: '1.0',
-        is_active: true,
-        source_type: 'website_analysis',
-        source_metadata: {
-          pricing_model: analysis.pricingModel,
-          needs_validation: true,
-          auto_detected: true,
-          sam_validation_prompts: [
-            `Looks like you're using ${analysis.pricingModel} pricing - is that still your model?`,
-            `Any recent changes to how you price your solution?`
-          ]
-        }
-      })
-    }
+    // TODO: Implement addKnowledgeItem function
+    // if (analysis.pricingModel) {
+    //   await addKnowledgeItem({
+    //     workspace_id: workspaceId,
+    //     category: 'pricing',
+    //     title: 'Pricing Model',
+    //     content: `Pricing approach: ${analysis.pricingModel}`,
+    //     tags: ['auto-extracted', 'website-analysis', 'pricing', 'needs-validation'],
+    //     version: '1.0',
+    //     is_active: true,
+    //     source_type: 'website_analysis',
+    //     source_metadata: {
+    //       pricing_model: analysis.pricingModel,
+    //       needs_validation: true,
+    //       auto_detected: true,
+    //       sam_validation_prompts: [
+    //         `Looks like you're using ${analysis.pricingModel} pricing - is that still your model?`,
+    //         `Any recent changes to how you price your solution?`
+    //       ]
+    //     }
+    //   })
+    // }
 
     console.log(`✅ Populated ${6} KB categories from website analysis`)
   } catch (error) {
