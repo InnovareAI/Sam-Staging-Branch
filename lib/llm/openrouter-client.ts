@@ -49,22 +49,38 @@ export class OpenRouter {
   }
 
   async chat(request: OpenRouterRequest): Promise<OpenRouterResponse> {
-    const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.config.apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com',
-        'X-Title': 'SAM AI Platform'
-      },
-      body: JSON.stringify(request)
-    });
+    // Add 60s timeout for LLM responses (they can take longer)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-    if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
+    try {
+      const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.config.apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com',
+          'X-Title': 'SAM AI Platform'
+        },
+        body: JSON.stringify(request),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`OpenRouter API error: ${response.status} ${errorData.error?.message || response.statusText}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('OpenRouter API timeout after 60 seconds');
+      }
+      throw error;
     }
-
-    return response.json();
   }
 
   async getModels() {

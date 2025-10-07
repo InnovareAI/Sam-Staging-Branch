@@ -96,10 +96,13 @@ export class N8NClient {
 
   /**
    * Execute a core funnel with prospect data
+   * Now includes retry logic with exponential backoff
    */
-  async executeCoreFunnel(workflowId: string, prospects: ProspectData[]): Promise<string> {
+  async executeCoreFunnel(workflowId: string, prospects: ProspectData[], retryCount = 0): Promise<string> {
+    const maxRetries = 3;
+
     try {
-      console.log(`⚡ Executing core funnel ${workflowId} for ${prospects.length} prospects`);
+      console.log(`⚡ Executing core funnel ${workflowId} for ${prospects.length} prospects (attempt ${retryCount + 1}/${maxRetries})`);
 
       const execution = await this.executeWorkflow(workflowId, {
         prospects,
@@ -109,10 +112,19 @@ export class N8NClient {
 
       console.log(`✅ Core funnel execution started: ${execution.id}`);
       return execution.id;
-      
+
     } catch (error) {
-      console.error('❌ Core funnel execution failed:', error);
-      throw new Error(`Failed to execute core funnel: ${error.message}`);
+      console.error(`❌ Core funnel execution failed (attempt ${retryCount + 1}/${maxRetries}):`, error);
+
+      // Retry up to maxRetries times
+      if (retryCount < maxRetries - 1) {
+        const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+        console.log(`⏳ Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.executeCoreFunnel(workflowId, prospects, retryCount + 1);
+      }
+
+      throw new Error(`Failed to execute core funnel after ${maxRetries} attempts: ${error.message}`);
     }
   }
 

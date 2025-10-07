@@ -158,7 +158,20 @@ function parseEmailContext(mailboxHash: string, subject: string, body: string) {
   }
 
   // Check if it's a campaign reply
-  // Format: reply-{campaignId}-{prospectId}
+  // Format: campaign-reply-{campaignId}-{prospectId} (NEW FORMAT)
+  if (mailboxHash?.startsWith('campaign-reply-')) {
+    const parts = mailboxHash.split('-');
+    // Extract campaignId and prospectId (skip 'campaign' and 'reply' parts)
+    const campaignId = parts[2];
+    const prospectId = parts[3];
+    return {
+      type: 'campaign-reply' as const,
+      campaignId,
+      prospectId
+    }
+  }
+
+  // Legacy format: reply-{campaignId}-{prospectId} (BACKWARD COMPATIBLE)
   if (mailboxHash?.startsWith('reply-')) {
     const [, campaignId, prospectId] = mailboxHash.split('-')
     return {

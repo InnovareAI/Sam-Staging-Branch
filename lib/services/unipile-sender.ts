@@ -70,15 +70,23 @@ export class UnipileSender {
         platform: 'linkedin'
       };
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'X-API-KEY': this.unipileApiKey,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'X-API-KEY': this.unipileApiKey,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -88,12 +96,19 @@ export class UnipileSender {
       const result = await response.json();
       console.log('✅ LinkedIn message sent successfully:', result);
 
-      return {
-        success: true,
-        messageId: result.message_id || result.id,
-        platform: 'linkedin',
-        timestamp: new Date().toISOString()
-      };
+        return {
+          success: true,
+          messageId: result.message_id || result.id,
+          platform: 'linkedin',
+          timestamp: new Date().toISOString()
+        };
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          throw new Error('Unipile API timeout after 30 seconds');
+        }
+        throw fetchError;
+      }
 
     } catch (error) {
       console.error('❌ Failed to send LinkedIn message:', error);
@@ -128,30 +143,45 @@ export class UnipileSender {
         format: 'html' // Assuming HTML format for rich content
       };
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'X-API-KEY': this.unipileApiKey,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'X-API-KEY': this.unipileApiKey,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`Unipile email send failed: ${response.status} - ${errorText}`);
       }
 
-      const result = await response.json();
-      console.log('✅ Email sent successfully:', result);
+        const result = await response.json();
+        console.log('✅ Email sent successfully:', result);
 
-      return {
-        success: true,
-        messageId: result.message_id || result.id,
-        platform: 'email',
-        timestamp: new Date().toISOString()
-      };
+        return {
+          success: true,
+          messageId: result.message_id || result.id,
+          platform: 'email',
+          timestamp: new Date().toISOString()
+        };
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          throw new Error('Unipile API timeout after 30 seconds');
+        }
+        throw fetchError;
+      }
 
     } catch (error) {
       console.error('❌ Failed to send email:', error);
