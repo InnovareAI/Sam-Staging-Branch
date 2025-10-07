@@ -63,18 +63,27 @@ export async function GET(request: NextRequest) {
 
     // Filter to only show user's email accounts
     const emailAccounts = allAccounts
-      .filter((account: any) => 
-        userAccountIds.has(account.id) &&
-        (account.type === 'MESSAGING' || account.type === 'GOOGLE' || account.type === 'MICROSOFT')
-      )
+      .filter((account: any) => {
+        // Check if this account belongs to the user
+        if (!userAccountIds.has(account.id)) return false
+
+        // Include GOOGLE, OUTLOOK, and MESSAGING types
+        const accountType = account.type?.toUpperCase()
+        return accountType === 'GOOGLE' || accountType === 'OUTLOOK' || accountType === 'MESSAGING'
+      })
       .map((account: any) => {
         const connectionParams = account.connection_params?.im || account.connection_params || {}
         const isConnected = account.sources?.some((source: any) => source.status === 'OK')
-        
+
+        // Determine provider type based on Unipile account type
+        let providerType = 'email'
+        if (account.type === 'GOOGLE') providerType = 'google'
+        else if (account.type === 'OUTLOOK') providerType = 'microsoft'
+
         return {
           id: account.id,
           user_id: user.id,
-          provider_type: account.type.toLowerCase(),
+          provider_type: providerType,
           provider_name: account.name || connectionParams.email || 'Email Account',
           email_address: connectionParams.email || connectionParams.username || '',
           status: isConnected ? 'connected' : 'disconnected',
