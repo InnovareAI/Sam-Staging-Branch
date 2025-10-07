@@ -59,8 +59,8 @@ export class HITLApprovalEmailService {
 
   constructor() {
     this.postmarkApiKey = process.env.POSTMARK_SERVER_TOKEN || ''
-    this.fromEmail = process.env.POSTMARK_FROM_EMAIL || 'sp@innovareai.com'
-    this.fromName = process.env.POSTMARK_FROM_NAME || 'Sarah Powell - SAM AI'
+    this.fromEmail = process.env.POSTMARK_FROM_EMAIL || 'hello@sam.innovareai.com'
+    this.fromName = process.env.POSTMARK_FROM_NAME || 'Sam'
   }
 
   /**
