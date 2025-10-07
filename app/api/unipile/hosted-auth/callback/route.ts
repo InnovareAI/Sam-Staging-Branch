@@ -161,7 +161,7 @@ async function upsertWorkspaceAccount(
 ) {
   if (!workspaceId) return
 
-  const connectionParams = unipileAccount.connection_params?.im || {}
+  const connectionParams = unipileAccount.connection_params?.im || unipileAccount.connection_params || {}
   const accountIdentifier =
     connectionParams.email?.toLowerCase() ||
     connectionParams.username?.toLowerCase() ||
@@ -172,13 +172,19 @@ async function upsertWorkspaceAccount(
     ? 'connected'
     : unipileAccount.sources?.[0]?.status?.toLowerCase() || 'pending'
 
+  // Determine account type based on Unipile account type
+  const accountType = unipileAccount.type?.toLowerCase() === 'linkedin' ? 'linkedin' :
+                      unipileAccount.type?.toLowerCase() === 'google' ? 'email' :
+                      unipileAccount.type?.toLowerCase() === 'outlook' ? 'email' :
+                      'linkedin' // fallback
+
   const { error } = await supabase
     .from('workspace_accounts')
     .upsert(
       {
         workspace_id: workspaceId,
         user_id: userId,
-        account_type: 'linkedin',
+        account_type: accountType,
         account_identifier: accountIdentifier,
         account_name: unipileAccount.name || connectionParams.publicIdentifier || accountIdentifier,
         unipile_account_id: unipileAccount.id,
@@ -186,7 +192,8 @@ async function upsertWorkspaceAccount(
         is_active: true,
         account_metadata: {
           unipile_instance: process.env.UNIPILE_DSN || null,
-          product_type: unipileAccount.connection_params?.product_type || null
+          product_type: unipileAccount.connection_params?.product_type || null,
+          provider: unipileAccount.type // Store original provider type
         }
       },
       { onConflict: 'workspace_id,user_id,account_type,account_identifier', ignoreDuplicates: false }
@@ -194,6 +201,12 @@ async function upsertWorkspaceAccount(
 
   if (error) {
     console.error('⚠️ Failed to upsert workspace account during hosted auth callback', error)
+  } else {
+    console.log('✅ Workspace account upserted successfully:', {
+      accountType,
+      accountId: unipileAccount.id,
+      workspaceId
+    })
   }
 }
 
@@ -228,9 +241,9 @@ export async function GET(request: NextRequest) {
     if (error || status === 'error') {
       const errorMessage = error || 'Authentication failed'
       console.error('❌ Hosted auth failed:', errorMessage)
-      
-      // Redirect to LinkedIn integration page with error
-      const redirectUrl = `/linkedin-integration?error=${encodeURIComponent(errorMessage)}`
+
+      // Redirect to settings page with error
+      const redirectUrl = `/settings?tab=integrations&error=${encodeURIComponent(errorMessage)}`
       return NextResponse.redirect(new URL(redirectUrl, request.url))
     }
 
@@ -256,7 +269,15 @@ export async function GET(request: NextRequest) {
             if (accountResponse.ok) {
               const accountData = await accountResponse.json()
               const accountType = accountData.type // LINKEDIN, GOOGLE, OUTLOOK, etc.
-              
+
+              console.log('📧 Account details fetched:', {
+                accountId,
+                accountType,
+                name: accountData.name,
+                email: accountData.connection_params?.email || accountData.connection_params?.im?.email,
+                userId: parsedUserContext.user_id
+              })
+
               // Check for duplicates before storing (LinkedIn only)
               if (accountType === 'LINKEDIN') {
                 const duplicateCheck = await checkAndHandleDuplicateAccounts(
@@ -384,8 +405,8 @@ export async function GET(request: NextRequest) {
                   const redirectUrl = `/linkedin-integration?success=true&account_id=${accountId}`
                   return NextResponse.redirect(new URL(redirectUrl, request.url))
                 } else if (accountType === 'GOOGLE' || accountType === 'OUTLOOK') {
-                  // Redirect to main page with settings tab open
-                  const redirectUrl = `/?email_connected=true&provider=${accountType.toLowerCase()}`
+                  // Redirect to settings page with email provider section
+                  const redirectUrl = `/settings?tab=integrations&email_connected=true&provider=${accountType.toLowerCase()}&account_id=${accountId}`
                   return NextResponse.redirect(new URL(redirectUrl, request.url))
                 }
               } else {
@@ -399,8 +420,8 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Default redirect (shouldn't reach here if account data was fetched)
-      const redirectUrl = `/linkedin-integration?success=true&account_id=${accountId}`
+      // Default redirect to settings (works for any provider)
+      const redirectUrl = `/settings?tab=integrations&success=true&account_id=${accountId}`
       return NextResponse.redirect(new URL(redirectUrl, request.url))
     }
 
