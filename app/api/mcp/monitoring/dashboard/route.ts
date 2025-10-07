@@ -1,12 +1,13 @@
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * MCP Monitoring Dashboard API
- * 
+ *
  * Provides real-time monitoring data for MCP tools and LinkedIn accounts
  * Used by admin dashboard for production reliability oversight
  */
-
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
