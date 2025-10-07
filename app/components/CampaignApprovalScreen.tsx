@@ -30,7 +30,6 @@ export default function CampaignApprovalScreen({
   const [savedTemplates, setSavedTemplates] = useState<any[]>([]);
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
-    prospects: true,
     messages: true,
     templates: false
   });
@@ -76,68 +75,30 @@ export default function CampaignApprovalScreen({
       <div className="max-w-6xl mx-auto p-6">
         {/* Header */}
         <div className="bg-gradient-to-r from-purple-900 to-blue-900 rounded-lg p-6 mb-6 border border-purple-700">
-          <h1 className="text-3xl font-bold text-white mb-2">Campaign Approval</h1>
-          <p className="text-gray-300">Review and approve your campaign before execution</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Message Approval</h1>
+          <p className="text-gray-300">Review and finalize your campaign messaging before launch</p>
         </div>
 
         {/* Campaign Summary */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-6 border border-gray-700">
-          <h2 className="text-xl font-semibold text-white mb-4">Campaign Details</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-gray-700 rounded-lg p-4">
-              <div className="text-sm text-gray-400 mb-1">Campaign Name</div>
-              <div className="text-lg font-semibold text-white">{campaignData.name}</div>
-            </div>
-            <div className="bg-gray-700 rounded-lg p-4">
-              <div className="text-sm text-gray-400 mb-1">Campaign Type</div>
-              <div className="text-lg font-semibold text-white">{campaignData.type}</div>
-            </div>
-            <div className="bg-gray-700 rounded-lg p-4">
-              <div className="text-sm text-gray-400 mb-1">Total Prospects</div>
-              <div className="text-lg font-semibold text-white">{campaignData.prospects.length}</div>
+        <div className="bg-gray-800 rounded-lg p-4 mb-6 border border-gray-700">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <div>
+                <span className="text-gray-400 text-sm">Campaign:</span>
+                <span className="text-white font-semibold ml-2">{campaignData.name}</span>
+              </div>
+              <div className="h-6 w-px bg-gray-600"></div>
+              <div>
+                <span className="text-gray-400 text-sm">Type:</span>
+                <span className="text-white font-semibold ml-2">{campaignData.type}</span>
+              </div>
+              <div className="h-6 w-px bg-gray-600"></div>
+              <div>
+                <span className="text-gray-400 text-sm">Prospects:</span>
+                <span className="text-white font-semibold ml-2">{campaignData.prospects.length}</span>
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Prospects Preview */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-6 border border-gray-700">
-          <div
-            className="flex items-center justify-between cursor-pointer mb-4"
-            onClick={() => toggleSection('prospects')}
-          >
-            <h2 className="text-xl font-semibold text-white">Approved Prospects</h2>
-            {expandedSections.prospects ? <ChevronUp className="text-gray-400" /> : <ChevronDown className="text-gray-400" />}
-          </div>
-
-          {expandedSections.prospects && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-700 text-gray-300">
-                  <tr>
-                    <th className="px-4 py-2 text-left">Name</th>
-                    <th className="px-4 py-2 text-left">Company</th>
-                    <th className="px-4 py-2 text-left">Title</th>
-                    <th className="px-4 py-2 text-left">Industry</th>
-                  </tr>
-                </thead>
-                <tbody className="text-gray-300">
-                  {campaignData.prospects.slice(0, 10).map((prospect, idx) => (
-                    <tr key={idx} className="border-b border-gray-700 hover:bg-gray-700">
-                      <td className="px-4 py-2">{prospect.firstName} {prospect.lastName}</td>
-                      <td className="px-4 py-2">{prospect.company}</td>
-                      <td className="px-4 py-2">{prospect.title}</td>
-                      <td className="px-4 py-2">{prospect.industry}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {campaignData.prospects.length > 10 && (
-                <div className="text-center text-gray-400 text-sm mt-4">
-                  Showing 10 of {campaignData.prospects.length} prospects
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Messaging Sequence */}
