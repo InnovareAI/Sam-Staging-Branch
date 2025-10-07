@@ -1,9 +1,15 @@
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { requireAdmin } from '@/lib/security/route-auth';
 
 // Admin endpoint to manually associate LinkedIn accounts with users
 export async function POST(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const { user_email, unipile_account_id, account_name, linkedin_username, public_identifier } = await request.json()
     
@@ -116,6 +122,10 @@ export async function POST(request: NextRequest) {
 
 // GET method to check existing associations
 export async function GET(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const url = new URL(request.url)
     const user_email = url.searchParams.get('user_email')

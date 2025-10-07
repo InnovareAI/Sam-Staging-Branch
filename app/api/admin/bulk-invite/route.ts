@@ -1,6 +1,8 @@
+
 import { supabase, supabaseAdmin } from '../../../lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 import { createPostmarkHelper, shouldBypassEmail, getSafeTestEmail } from '../../../../lib/postmark-helper';
+import { requireAdmin } from '@/lib/security/route-auth';
 
 interface InviteUser {
   email: string;
@@ -10,6 +12,10 @@ interface InviteUser {
 }
 
 export async function POST(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     // Get auth header for admin verification
     const authHeader = request.headers.get('authorization');

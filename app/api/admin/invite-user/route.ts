@@ -1,8 +1,10 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import * as postmark from 'postmark';
 import { createPostmarkHelper, EMAIL_BYPASS_MODE, shouldBypassEmail, getSafeTestEmail } from '../../../../lib/postmark-helper';
 import { activeCampaignService } from '../../../../lib/activecampaign';
+import { requireAdmin } from '@/lib/security/route-auth';
 
 // Enhanced type definitions for better error handling
 interface SupabaseUser {
@@ -185,6 +187,10 @@ function extractUserIdFromSupabaseResponse(response: SupabaseInviteResponse, ema
 }
 
 export async function POST(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     // Get auth header for admin verification
     const authHeader = request.headers.get('authorization');

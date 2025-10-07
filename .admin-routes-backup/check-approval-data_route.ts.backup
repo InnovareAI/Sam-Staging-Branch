@@ -1,0 +1,60 @@
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export async function GET() {
+  try {
+    // Get InnovareAI workspace
+    const { data: workspace } = await supabase
+      .from('workspaces')
+      .select('id, name')
+      .ilike('name', '%innovareai%')
+      .single();
+
+    if (!workspace) {
+      return NextResponse.json({ error: 'InnovareAI workspace not found' });
+    }
+
+    // Get prospect approvals
+    const { data: prospectApprovals } = await supabase
+      .from('prospect_approvals')
+      .select('*')
+      .eq('workspace_id', workspace.id)
+      .limit(100);
+
+    // Get message approvals / campaign replies
+    const { data: campaignReplies } = await supabase
+      .from('campaign_replies')
+      .select('*')
+      .eq('workspace_id', workspace.id)
+      .limit(100);
+
+    // Get pending messages
+    const { data: messageApprovals } = await supabase
+      .from('campaign_messages')
+      .select('*')
+      .eq('workspace_id', workspace.id)
+      .eq('approval_status', 'pending')
+      .limit(100);
+
+    return NextResponse.json({
+      workspace: workspace.name,
+      workspace_id: workspace.id,
+      prospect_approvals_count: prospectApprovals?.length || 0,
+      prospect_approvals: prospectApprovals || [],
+      campaign_replies_count: campaignReplies?.length || 0,
+      campaign_replies: campaignReplies || [],
+      message_approvals_count: messageApprovals?.length || 0,
+      message_approvals: messageApprovals || []
+    });
+
+  } catch (error) {
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+  }
+}

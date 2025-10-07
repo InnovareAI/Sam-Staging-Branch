@@ -1,12 +1,17 @@
+
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/security/route-auth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     // Get user stats
     const { data: users, error: usersError } = await supabase

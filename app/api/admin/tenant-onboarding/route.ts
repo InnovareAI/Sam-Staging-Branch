@@ -1,3 +1,5 @@
+import { requireAdmin } from '@/lib/security/route-auth';
+
 /**
  * SCALABLE TENANT ONBOARDING SYSTEM
  * =================================
@@ -5,9 +7,6 @@
  * Ensures ALL tenants are completely separated regardless of how many join
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { createPostmarkHelper } from '@/lib/postmark-helper';
 
 interface TenantOnboardingRequest {
   organizationName: string;
@@ -43,6 +42,10 @@ interface TenantOnboardingRequest {
 }
 
 export async function POST(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     console.log('🏢 Starting new tenant onboarding...');
     
@@ -442,6 +445,10 @@ async function sendWelcomeEmail(
 
 // GET endpoint to list all tenants
 export async function GET(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

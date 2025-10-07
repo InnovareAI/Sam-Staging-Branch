@@ -1,6 +1,8 @@
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { requireAdmin } from '@/lib/security/route-auth';
 
 // Helper function to make Unipile API calls
 async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: any) {
@@ -33,6 +35,10 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
 }
 
 export async function POST(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const supabase = createRouteHandlerClient({ cookies: cookies })
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -261,6 +267,10 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const supabase = createRouteHandlerClient({ cookies: cookies })
     const { data: { user }, error: authError } = await supabase.auth.getUser()

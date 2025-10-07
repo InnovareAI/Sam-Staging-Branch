@@ -1,7 +1,13 @@
+
 import { supabaseAdmin } from '../../../lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/security/route-auth';
 
 export async function GET(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     // Get auth header for admin verification
     const authHeader = request.headers.get('authorization');

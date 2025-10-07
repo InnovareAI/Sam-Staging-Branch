@@ -1,9 +1,7 @@
+import { requireAdmin } from '@/lib/security/route-auth';
+
 // Admin API for Knowledge Classification Statistics and Management
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { knowledgeExtractionService } from '@/lib/services/knowledge-extraction';
-import { knowledgeClassifier } from '@/lib/services/knowledge-classifier';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,6 +16,10 @@ const supabaseAdmin = createClient(
 
 // GET /api/admin/knowledge-stats - Get knowledge classification statistics
 export async function GET(req: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
@@ -139,6 +141,10 @@ export async function GET(req: NextRequest) {
 
 // POST /api/admin/knowledge-stats - Trigger knowledge extraction actions
 export async function POST(req: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const { action, conversationIds, priority } = await req.json();
 
@@ -217,6 +223,10 @@ export async function POST(req: NextRequest) {
 
 // PUT /api/admin/knowledge-stats - Update knowledge classification settings
 export async function PUT(req: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const { userId, privacyPreferences, patternUpdates } = await req.json();
 
@@ -261,6 +271,10 @@ export async function PUT(req: NextRequest) {
 
 // DELETE /api/admin/knowledge-stats - Clean up knowledge data
 export async function DELETE(req: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get('action');

@@ -292,55 +292,106 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // If no invitation or invitation failed, create default workspace
+        // If no invitation or invitation failed, check for domain-based workspace matching
         if (!workspace) {
-          const workspaceSlug = `${companyName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${data.user.id.substring(0, 8)}`
-          const { data: workspaceData, error: workspaceError } = await supabaseAdmin
-            .from('workspaces')
-            .insert({
-              name: companyName,
-              slug: workspaceSlug,
-              owner_id: data.user.id,
-              company_url: companyWebsite
-            })
-            .select()
-            .single();
+          // Extract email domain
+          const emailDomain = email.split('@')[1]?.toLowerCase();
+          console.log('📧 Checking for existing workspace with domain:', emailDomain);
 
-          if (workspaceError) {
-            console.error('Workspace creation error:', workspaceError);
-          } else {
-            workspace = workspaceData;
-            console.log('✅ Workspace created:', workspace.id);
+          // Try to find existing workspace with matching email domain using database function
+          if (emailDomain) {
+            try {
+              const { data: matchedWorkspaces, error: matchError } = await supabaseAdmin
+                .rpc('find_workspace_by_email_domain', {
+                  user_email: email
+                });
+
+              if (!matchError && matchedWorkspaces && matchedWorkspaces.length > 0) {
+                const matchedWorkspace = matchedWorkspaces[0];
+                console.log('✅ Found existing workspace with matching domain:', matchedWorkspace.workspace_name);
+                console.log('   Members in workspace:', matchedWorkspace.member_count);
+
+                // Add user to the existing workspace
+                const { error: memberError } = await supabaseAdmin
+                  .from('workspace_members')
+                  .insert({
+                    workspace_id: matchedWorkspace.workspace_id,
+                    user_id: data.user.id,
+                    role: 'member' // Default to member role
+                  });
+
+                if (!memberError) {
+                  workspace = {
+                    id: matchedWorkspace.workspace_id,
+                    name: matchedWorkspace.workspace_name,
+                    company_url: matchedWorkspace.workspace_company_url
+                  };
+                  console.log('✅ User automatically joined workspace via domain match');
+                } else {
+                  console.error('❌ Failed to add user to matched workspace:', memberError);
+                }
+              } else if (matchError) {
+                console.error('⚠️ Domain matching query failed:', matchError);
+                // Continue to create new workspace if domain matching fails
+              } else {
+                console.log('📧 No existing workspace found with matching domain');
+              }
+            } catch (err) {
+              console.error('⚠️ Domain matching error (non-critical):', err);
+              // Continue to create new workspace if domain matching fails
+            }
           }
 
-          // Add user as workspace member with admin role (owner_id is in workspaces table)
-          if (workspace) {
-            const { error: memberError } = await supabaseAdmin
-              .from('workspace_members')
+          // If no domain match found, create new workspace
+          if (!workspace) {
+            const workspaceSlug = `${companyName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${data.user.id.substring(0, 8)}`
+            const { data: workspaceData, error: workspaceError } = await supabaseAdmin
+              .from('workspaces')
               .insert({
-                workspace_id: workspace.id,
-                user_id: data.user.id,
-                role: 'admin'
-              });
+                name: companyName,
+                slug: workspaceSlug,
+                owner_id: data.user.id,
+                company_url: companyWebsite
+              })
+              .select()
+              .single();
 
-            if (memberError) {
-              console.error('Workspace member creation error:', memberError);
+            if (workspaceError) {
+              console.error('Workspace creation error:', workspaceError);
             } else {
-              console.log('✅ Workspace member added');
+              workspace = workspaceData;
+              console.log('✅ Workspace created:', workspace.id);
             }
 
-            // Trigger website analysis in background (non-blocking)
-            // Note: Results are treated as initial hypotheses that need validation during discovery
-            if (companyWebsite) {
-              console.log('🌐 Triggering website analysis for:', companyWebsite);
-              analyzeWebsiteInBackground({
-                url: companyWebsite,
-                workspaceId: workspace.id,
-                companyName: companyName
-              }).catch(err => {
-                console.error('⚠️ Website analysis trigger failed (non-critical):', err);
-                // Don't fail signup if website analysis fails
-              });
+            // Add user as workspace member with admin role (owner_id is in workspaces table)
+            if (workspace) {
+              const { error: memberError } = await supabaseAdmin
+                .from('workspace_members')
+                .insert({
+                  workspace_id: workspace.id,
+                  user_id: data.user.id,
+                  role: 'admin'
+                });
+
+              if (memberError) {
+                console.error('Workspace member creation error:', memberError);
+              } else {
+                console.log('✅ Workspace member added as admin');
+              }
+
+              // Trigger website analysis in background (non-blocking)
+              // Note: Results are treated as initial hypotheses that need validation during discovery
+              if (companyWebsite) {
+                console.log('🌐 Triggering website analysis for:', companyWebsite);
+                analyzeWebsiteInBackground({
+                  url: companyWebsite,
+                  workspaceId: workspace.id,
+                  companyName: companyName
+                }).catch(err => {
+                  console.error('⚠️ Website analysis trigger failed (non-critical):', err);
+                  // Don't fail signup if website analysis fails
+                });
+              }
             }
           }
         }

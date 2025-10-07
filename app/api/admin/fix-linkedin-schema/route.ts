@@ -1,7 +1,13 @@
+
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/app/lib/supabase'
+import { requireAdmin } from '@/lib/security/route-auth';
 
 export async function POST(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const supabase = supabaseAdmin()
     

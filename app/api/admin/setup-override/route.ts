@@ -1,8 +1,14 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { requireAdmin } from '@/lib/security/route-auth';
 
 export async function POST(req: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     // Create admin client
     const supabase = createClient(

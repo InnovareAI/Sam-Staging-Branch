@@ -1,3 +1,5 @@
+import { requireAdmin } from '@/lib/security/route-auth';
+
 /**
  * Circuit Breaker Database Schema Setup
  * Creates necessary tables and functions for circuit breaker monitoring and metrics
@@ -11,11 +13,12 @@
  * - cleanup_circuit_breaker_metrics: Automatic cleanup of old metrics
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
-import { logger } from '@/lib/logging'
 
 export async function POST(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const supabase = supabaseAdmin()
     

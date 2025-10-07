@@ -1,5 +1,7 @@
+
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/security/route-auth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,7 +31,11 @@ async function callUnipileAPI(endpoint: string) {
   return await response.json();
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     console.log('🔄 Starting email accounts sync...');
 

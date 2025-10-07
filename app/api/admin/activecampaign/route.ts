@@ -1,10 +1,16 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { activeCampaignService } from '@/lib/activecampaign';
+import { requireAdmin } from '@/lib/security/route-auth';
 
 // Super admin emails
 const SUPER_ADMIN_EMAILS = ['tl@innovareai.com', 'cl@innovareai.com'];
 
 export async function GET(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     // Get auth header for admin verification
     const authHeader = request.headers.get('authorization');
@@ -51,6 +57,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     // Get auth header for admin verification
     const authHeader = request.headers.get('authorization');

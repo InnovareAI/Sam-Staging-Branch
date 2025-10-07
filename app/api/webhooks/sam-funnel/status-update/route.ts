@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { verifyN8NWebhook, getRequestBody } from '@/lib/security/webhook-auth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,7 +9,16 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Verify webhook signature
+    const bodyText = await getRequestBody(request);
+    const { valid, error } = await verifyN8NWebhook(request, bodyText);
+
+    if (!valid && error) {
+      console.error('❌ Invalid N8N webhook signature');
+      return error;
+    }
+
+    const body = JSON.parse(bodyText);
     
     const {
       execution_id,

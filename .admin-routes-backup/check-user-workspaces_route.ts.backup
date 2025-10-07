@@ -1,0 +1,50 @@
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const email = searchParams.get('email');
+
+    if (!email) {
+      return NextResponse.json({ error: 'Email parameter required' }, { status: 400 });
+    }
+
+    // Get user by email
+    const { data: authData } = await supabase.auth.admin.listUsers();
+    const user = authData.users.find(u => u.email === email);
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Get all workspace memberships
+    const { data: memberships } = await supabase
+      .from('workspace_members')
+      .select('*, workspaces(id, name)')
+      .eq('user_id', user.id);
+
+    return NextResponse.json({
+      user_id: user.id,
+      email: user.email,
+      workspace_count: memberships?.length || 0,
+      workspaces: memberships?.map(m => ({
+        workspace_id: m.workspaces.id,
+        workspace_name: m.workspaces.name,
+        role: m.role,
+        status: m.status,
+        joined_at: m.joined_at
+      }))
+    });
+
+  } catch (error) {
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+  }
+}

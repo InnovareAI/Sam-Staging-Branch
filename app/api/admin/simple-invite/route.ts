@@ -1,5 +1,7 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/security/route-auth';
 
 // Initialize Supabase client
 const supabase = createClient(
@@ -8,6 +10,10 @@ const supabase = createClient(
 );
 
 export async function POST(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const body = await request.json();
     const { email, workspaceId, organizationId, role = 'member', firstName, lastName, company } = body;

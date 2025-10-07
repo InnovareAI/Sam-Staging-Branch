@@ -1,5 +1,7 @@
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '@/lib/security/route-auth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +10,10 @@ const supabase = createClient(
 
 // Deploy Unipile authentication across all tenants/workspaces
 export async function POST(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const body = await request.json()
     const { 
@@ -207,6 +213,10 @@ async function configureWorkspaceWebhooks(workspace: any, authConfig: any) {
 
 // GET - Check deployment status across tenants
 export async function GET(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const { searchParams } = new URL(request.url)
     const workspaceId = searchParams.get('workspace_id')

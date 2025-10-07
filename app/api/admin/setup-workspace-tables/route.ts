@@ -1,10 +1,16 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/security/route-auth';
 
 // Super admin emails
 const SUPER_ADMIN_EMAILS = ['tl@innovareai.com', 'cl@innovareai.com'];
 
 export async function POST(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     // Create Supabase client with service role for admin operations
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;

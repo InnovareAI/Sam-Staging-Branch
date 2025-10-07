@@ -52,7 +52,8 @@ async function resolveWorkspaceId(
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
     const { searchParams } = new URL(request.url);
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -96,7 +97,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
     const body = await request.json();
     const {
       name,

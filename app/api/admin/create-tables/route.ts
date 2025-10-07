@@ -1,5 +1,7 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/security/route-auth';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,6 +9,10 @@ const supabaseAdmin = createClient(
 );
 
 export async function POST(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     console.log('🚀 Starting table creation...');
     
@@ -147,6 +153,10 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   return NextResponse.json({
     message: 'Use POST to create tables',
     health_check: '/api/admin/check-db',

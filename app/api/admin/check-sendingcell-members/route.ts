@@ -1,0 +1,60 @@
+
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/security/route-auth';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export async function GET(request: Request) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
+  try {
+    // Get SendingCell workspace
+    const { data: workspace } = await supabase
+      .from('workspaces')
+      .select('id, name')
+      .ilike('name', '%sendingcell%')
+      .single();
+
+    if (!workspace) {
+      return NextResponse.json({ error: 'SendingCell workspace not found' });
+    }
+
+    // Get all members of this workspace
+    const { data: members } = await supabase
+      .from('workspace_members')
+      .select('*')
+      .eq('workspace_id', workspace.id);
+
+    // Get user details for each member
+    const memberDetails = await Promise.all(
+      (members || []).map(async (member) => {
+        const { data: user } = await supabase.auth.admin.getUserById(member.user_id);
+        return {
+          user_id: member.user_id,
+          email: user.user?.email,
+          role: member.role,
+          joined_at: member.joined_at,
+          status: member.status
+        };
+      })
+    );
+
+    return NextResponse.json({
+      workspace: workspace.name,
+      workspace_id: workspace.id,
+      member_count: memberDetails.length,
+      members: memberDetails
+    });
+
+  } catch (error) {
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+  }
+}

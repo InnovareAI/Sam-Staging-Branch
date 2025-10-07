@@ -1,5 +1,7 @@
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '@/lib/security/route-auth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +10,10 @@ const supabase = createClient(
 
 // POST - Deploy N8N workflows globally for all users/workspaces
 export async function POST(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const body = await request.json()
     const { 
@@ -208,6 +214,10 @@ export async function POST(request: NextRequest) {
 
 // GET - Get global deployment status
 export async function GET(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     // Get all workspace workflows with deployment status
     const { data: workflows, error } = await supabase

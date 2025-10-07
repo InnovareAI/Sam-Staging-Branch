@@ -1,8 +1,14 @@
+
 import { NextRequest, NextResponse } from 'next/server'
 import { n8nClient, checkN8NConfiguration } from '@/lib/n8n-client'
+import { requireAdmin } from '@/lib/security/route-auth';
 
 // GET - Check N8N health and configuration
 export async function GET(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     // Check configuration
     const config = checkN8NConfiguration()

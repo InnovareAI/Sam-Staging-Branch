@@ -1,4 +1,6 @@
+
 import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/security/route-auth';
 
 async function callUnipileAPI(endpoint: string) {
   const unipileDsn = process.env.UNIPILE_DSN;
@@ -15,7 +17,11 @@ async function callUnipileAPI(endpoint: string) {
   return await response.json();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   const data = await callUnipileAPI('accounts');
   const allAccounts = Array.isArray(data) ? data : (data.items || data.accounts || []);
 

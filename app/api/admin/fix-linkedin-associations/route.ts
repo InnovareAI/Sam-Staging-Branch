@@ -1,9 +1,15 @@
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { requireAdmin } from '@/lib/security/route-auth';
 
 // Admin tool to fix LinkedIn associations for all affected users
 export async function POST(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const supabase = createRouteHandlerClient({ cookies: cookies })
     
@@ -195,6 +201,10 @@ export async function POST(request: NextRequest) {
 
 // GET method to preview what would be fixed without making changes
 export async function GET(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const supabase = createRouteHandlerClient({ cookies: cookies })
     

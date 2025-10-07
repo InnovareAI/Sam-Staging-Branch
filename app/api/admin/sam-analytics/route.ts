@@ -1,5 +1,7 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/security/route-auth';
 
 // SAM Conversation Analytics API - Deep Learning Insights for SAM Optimization
 // Analyzes user behavior, conversation patterns, and SAM performance to optimize AI responses
@@ -126,6 +128,10 @@ interface SAMOptimizationData {
 }
 
 export async function GET(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'overview';
@@ -705,6 +711,10 @@ async function getRealTimeMetrics(supabase: any, organizationId?: string): Promi
 }
 
 export async function POST(request: NextRequest) {
+
+  // Require admin authentication
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
   try {
     const body = await request.json();
     const { action, data } = body;
