@@ -1733,12 +1733,52 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
   const [showApprovalScreen, setShowApprovalScreen] = useState(false);
   const [campaignDataForApproval, setCampaignDataForApproval] = useState<any>(null);
 
+  // Auto-open pending approvals toggle (stored in localStorage)
+  const [autoOpenApprovals, setAutoOpenApprovals] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('autoOpenApprovals');
+      return saved !== null ? saved === 'true' : true; // Default to true
+    }
+    return true;
+  });
+
   // Auto-open campaign builder when initialProspects are provided
   useEffect(() => {
     if (initialProspects && initialProspects.length > 0) {
       setShowBuilder(true);
     }
   }, [initialProspects]);
+
+  // Load approval counts on mount and auto-open if enabled
+  useEffect(() => {
+    const checkPendingApprovals = async () => {
+      try {
+        const response = await fetch('/api/campaigns/messages/approval');
+        if (response.ok) {
+          const result = await response.json();
+          const counts = result.counts || { pending: 0, approved: 0, rejected: 0, total: 0 };
+          setApprovalCounts(counts);
+
+          // Auto-open if there are pending approvals and toggle is enabled
+          if (autoOpenApprovals && counts.pending > 0) {
+            setApprovalMessages(result.grouped || { pending: [], approved: [], rejected: [] });
+            setShowMessageApproval(true);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check pending approvals:', error);
+      }
+    };
+
+    checkPendingApprovals();
+  }, [autoOpenApprovals]);
+
+  // Save auto-open preference to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('autoOpenApprovals', autoOpenApprovals.toString());
+    }
+  }, [autoOpenApprovals]);
   
   // Modal states for campaign management features
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
@@ -2485,13 +2525,46 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
             </h1>
             <p className="text-gray-400">Design, approve, and launch marketing campaigns</p>
           </div>
-          <button
-            onClick={() => setShowBuilder(!showBuilder)}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-          >
-            <Plus size={16} />
-            New Campaign
-          </button>
+          <div className="flex items-center gap-4">
+            {/* Pending Approvals Indicator with Toggle */}
+            {approvalCounts.pending > 0 && (
+              <div className="flex items-center gap-3 bg-yellow-900/30 border border-yellow-500/40 rounded-lg px-4 py-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="text-yellow-400" size={16} />
+                  <span className="text-yellow-300 text-sm font-medium">
+                    {approvalCounts.pending} pending
+                  </span>
+                </div>
+                <button
+                  onClick={openMessageApproval}
+                  className="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded transition-colors"
+                >
+                  Review
+                </button>
+              </div>
+            )}
+
+            {/* Auto-open Toggle */}
+            <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
+              <label className="flex items-center gap-2 cursor-pointer" title="Auto-open approval queue when pending">
+                <input
+                  type="checkbox"
+                  checked={autoOpenApprovals}
+                  onChange={(e) => setAutoOpenApprovals(e.target.checked)}
+                  className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                />
+                <span className="text-gray-300 text-sm">Auto-open approvals</span>
+              </label>
+            </div>
+
+            <button
+              onClick={() => setShowBuilder(!showBuilder)}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+            >
+              <Plus size={16} />
+              New Campaign
+            </button>
+          </div>
         </div>
       )}
 
