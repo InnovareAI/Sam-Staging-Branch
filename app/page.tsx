@@ -1,11 +1,7 @@
 'use client';
 
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
-
-
-const USER_PROXY_SENTINEL = '__USER_PROXY__';
-
-// LinkedIn integration now handled via dedicated page at /linkedin-integration
+import {
   Activity,
   Archive,
   BarChart3,
@@ -47,6 +43,10 @@ const USER_PROXY_SENTINEL = '__USER_PROXY__';
   FileText,
   Search
 } from 'lucide-react';
+
+const USER_PROXY_SENTINEL = '__USER_PROXY__';
+
+// LinkedIn integration now handled via dedicated page at /linkedin-integration
 
 // LinkedIn Logo Component (Official LinkedIn branding)
 const LinkedInLogo = ({ size = 16, className = "" }: { size?: number; className?: string }) => (

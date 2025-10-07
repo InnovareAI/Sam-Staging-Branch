@@ -1,20 +1,20 @@
 'use client';
 
-import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast'
-
-  RefreshCw, 
-  Zap, 
-  CheckCircle, 
-  AlertCircle, 
-  Users, 
-  Settings, 
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+import {
+  RefreshCw,
+  Zap,
+  CheckCircle,
+  AlertCircle,
+  Users,
+  Settings,
   Monitor,
   Activity,
   Shield,
   Database,
   Clock,
   BarChart3
-} from 'lucide-react'
+} from 'lucide-react';
 
 interface DeploymentResult {
   workspace_id: string
