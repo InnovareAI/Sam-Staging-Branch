@@ -104,14 +104,20 @@ export async function POST(request: NextRequest) {
       : process.env.POSTMARK_INNOVAREAI_API_KEY;
 
     if (postmarkApiKey) {
-      const currentSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://sam.innovareai.com';
-      
+      // Get the origin from the request headers to support multi-tenant domains
+      const origin = request.headers.get('origin') ||
+                     request.headers.get('referer')?.split('/').slice(0, 3).join('/') ||
+                     process.env.NEXT_PUBLIC_SITE_URL ||
+                     'https://app.meet-sam.com';
+
+      console.log(`🌐 Using origin for magic link: ${origin}`);
+
       // Generate a magic link token using Supabase admin
       const { data, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
         type: 'magiclink',
         email: email,
         options: {
-          redirectTo: `${currentSiteUrl}/auth/callback`
+          redirectTo: `${origin}/auth/callback`
         }
       });
 
@@ -124,7 +130,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Use the generated magic link
-      const magicLinkUrl = data.properties?.action_link || `${currentSiteUrl}/auth/callback?token=${data.properties?.hashed_token}`;
+      const magicLinkUrl = data.properties?.action_link || `${origin}/auth/callback?token=${data.properties?.hashed_token}`;
       
       const htmlBody = `
         <!DOCTYPE html>
