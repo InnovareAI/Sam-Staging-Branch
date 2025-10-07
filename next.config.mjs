@@ -52,18 +52,24 @@ const nextConfig = {
         fs: false,
       };
     }
-    
+
+    // Externalize pdf-parse for server-side to avoid build issues
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push('pdf-parse', 'canvas');
+    }
+
     // Exclude supabase functions directory and docs directory
     config.module.rules.push({
       test: /supabase\/functions\/.*\.ts$/,
       loader: 'ignore-loader'
     });
-    
+
     config.module.rules.push({
       test: /docs\/.*\.(ts|tsx|js|jsx)$/,
       loader: 'ignore-loader'
     });
-    
+
     return config;
   },
 }

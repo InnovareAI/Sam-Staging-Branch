@@ -176,6 +176,7 @@ export default function Page() {
 
   // Campaign state - for auto-proceed from approval to campaign
   const [pendingCampaignProspects, setPendingCampaignProspects] = useState<any[] | null>(null);
+  const [showCampaignApprovalView, setShowCampaignApprovalView] = useState(false);
 
   // Workspace state
   const [workspaces, setWorkspaces] = useState<any[]>([]);
@@ -337,6 +338,14 @@ export default function Page() {
       return () => clearTimeout(timer);
     }
   }, [isAuthLoading, user, session, showAuthModal]);
+
+  // Smart default view for Campaign Hub - show approval screen if prospects are pending
+  useEffect(() => {
+    if (activeMenuItem === 'campaign') {
+      // Default to approval view if prospects are pending, otherwise show campaign hub
+      setShowCampaignApprovalView(!!pendingCampaignProspects && pendingCampaignProspects.length > 0);
+    }
+  }, [activeMenuItem, pendingCampaignProspects]);
 
   const fetchThreadMessages = useCallback(async (targetThreadId: string) => {
     try {
@@ -2628,10 +2637,45 @@ export default function Page() {
             initialUploadedData={uploadedProspects}
           />
         ) : activeMenuItem === 'campaign' ? (
-          <CampaignHub
-            initialProspects={pendingCampaignProspects}
-            onCampaignCreated={() => setPendingCampaignProspects(null)}
-          />
+          <div className="flex-1 flex flex-col">
+            {/* Toggle Button - Always show */}
+            <div className="bg-gray-900 px-6 py-4 border-b border-gray-700">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold text-white">
+                  {showCampaignApprovalView ? 'Campaign Approval & Review' : 'Campaign Hub'}
+                </h2>
+                <button
+                  onClick={() => setShowCampaignApprovalView(!showCampaignApprovalView)}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <span>{showCampaignApprovalView ? '📊 Go to Campaign Hub' : '✅ Go to Campaign Approval'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Conditional View */}
+            <div className="flex-1 overflow-y-auto">
+              {showCampaignApprovalView ? (
+                <DataCollectionHub
+                  onDataCollected={(data, source) => {
+                    console.log('Data collected:', data, 'Source:', source);
+                  }}
+                  onApprovalComplete={(approvedData) => {
+                    // Store approved prospects and switch to campaign creation view
+                    console.log('Approved prospects:', approvedData);
+                    setPendingCampaignProspects(approvedData);
+                    setShowCampaignApprovalView(false); // Switch to campaign hub after approval
+                  }}
+                  initialUploadedData={uploadedProspects}
+                />
+              ) : (
+                <CampaignHub
+                  initialProspects={pendingCampaignProspects}
+                  onCampaignCreated={() => setPendingCampaignProspects(null)}
+                />
+              )}
+            </div>
+          </div>
         ) : activeMenuItem === 'pipeline' ? (
           <LeadPipeline />
         ) : activeMenuItem === 'analytics' ? (
@@ -4256,9 +4300,9 @@ export default function Page() {
                 </div>
               </div>
             )}
-            {messages.slice().reverse().map((message, index) => {
-              // Only animate the first (newest) assistant message
-              const isNewestAssistantMessage = index === 0 && message.role === 'assistant' && !isSending;
+            {messages.map((message, index) => {
+              // Only animate the last (newest) assistant message
+              const isNewestAssistantMessage = index === messages.length - 1 && message.role === 'assistant' && !isSending;
               
               return (
                 <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
