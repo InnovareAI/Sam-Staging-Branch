@@ -243,7 +243,11 @@ export async function GET(request: NextRequest) {
       console.error('❌ Hosted auth failed:', errorMessage)
 
       // Redirect to settings page with error
-      const redirectUrl = `/settings?tab=integrations&error=${encodeURIComponent(errorMessage)}`
+      // Try to get workspace_id from user context, fallback to generic error page
+      const workspaceId = parsedUserContext?.workspace_id
+      const redirectUrl = workspaceId
+        ? `/workspace/${workspaceId}/settings?tab=integrations&error=${encodeURIComponent(errorMessage)}`
+        : `/?error=${encodeURIComponent(errorMessage)}`
       return NextResponse.redirect(new URL(redirectUrl, request.url))
     }
 
@@ -406,7 +410,7 @@ export async function GET(request: NextRequest) {
                   return NextResponse.redirect(new URL(redirectUrl, request.url))
                 } else if (accountType === 'GOOGLE' || accountType === 'OUTLOOK') {
                   // Redirect to settings page with email provider section
-                  const redirectUrl = `/settings?tab=integrations&email_connected=true&provider=${accountType.toLowerCase()}&account_id=${accountId}`
+                  const redirectUrl = `/workspace/${targetWorkspaceId}/settings?tab=integrations&email_connected=true&provider=${accountType.toLowerCase()}&account_id=${accountId}`
                   return NextResponse.redirect(new URL(redirectUrl, request.url))
                 }
               } else {
@@ -421,7 +425,10 @@ export async function GET(request: NextRequest) {
       }
 
       // Default redirect to settings (works for any provider)
-      const redirectUrl = `/settings?tab=integrations&success=true&account_id=${accountId}`
+      const workspaceId = parsedUserContext?.workspace_id
+      const redirectUrl = workspaceId
+        ? `/workspace/${workspaceId}/settings?tab=integrations&success=true&account_id=${accountId}`
+        : `/?success=true&account_id=${accountId}`
       return NextResponse.redirect(new URL(redirectUrl, request.url))
     }
 
