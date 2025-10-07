@@ -81,9 +81,9 @@ export async function GET(request: NextRequest) {
 
         if (!belongsToUser) return false
 
-        // Include GOOGLE, OUTLOOK, and MESSAGING types
-        const accountType = account.type?.toUpperCase()
-        const isEmailType = accountType === 'GOOGLE' || accountType === 'OUTLOOK' || accountType === 'MESSAGING'
+        // Include GOOGLE, GOOGLE_OAUTH, OUTLOOK, OUTLOOK_OAUTH, and MESSAGING types
+        const accountType = account.type?.toUpperCase() || ''
+        const isEmailType = accountType.includes('GOOGLE') || accountType.includes('OUTLOOK') || accountType === 'MESSAGING'
         console.log(`  Type check: ${accountType} →`, isEmailType ? '✅ email type' : '❌ not email')
 
         return isEmailType
@@ -94,8 +94,9 @@ export async function GET(request: NextRequest) {
 
         // Determine provider type based on Unipile account type
         let providerType = 'email'
-        if (account.type === 'GOOGLE') providerType = 'google'
-        else if (account.type === 'OUTLOOK') providerType = 'microsoft'
+        const accountType = account.type?.toUpperCase() || ''
+        if (accountType.includes('GOOGLE')) providerType = 'google'
+        else if (accountType.includes('OUTLOOK')) providerType = 'microsoft'
 
         return {
           id: account.id,

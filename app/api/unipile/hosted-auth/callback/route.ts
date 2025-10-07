@@ -173,9 +173,11 @@ async function upsertWorkspaceAccount(
     : unipileAccount.sources?.[0]?.status?.toLowerCase() || 'pending'
 
   // Determine account type based on Unipile account type
-  const accountType = unipileAccount.type?.toLowerCase() === 'linkedin' ? 'linkedin' :
-                      unipileAccount.type?.toLowerCase() === 'google' ? 'email' :
-                      unipileAccount.type?.toLowerCase() === 'outlook' ? 'email' :
+  const unipileType = unipileAccount.type?.toLowerCase() || '';
+  const accountType = unipileType === 'linkedin' ? 'linkedin' :
+                      unipileType.includes('google') ? 'email' :
+                      unipileType.includes('outlook') ? 'email' :
+                      unipileType.includes('messaging') ? 'email' :
                       'linkedin' // fallback
 
   const { error } = await supabase
@@ -408,9 +410,11 @@ export async function GET(request: NextRequest) {
                 if (accountType === 'LINKEDIN') {
                   const redirectUrl = `/linkedin-integration?success=true&account_id=${accountId}`
                   return NextResponse.redirect(new URL(redirectUrl, request.url))
-                } else if (accountType === 'GOOGLE' || accountType === 'OUTLOOK') {
+                } else if (accountType.includes('GOOGLE') || accountType.includes('OUTLOOK') || accountType === 'MESSAGING') {
                   // Redirect to settings page with email provider section
-                  const redirectUrl = `/workspace/${targetWorkspaceId}/settings?tab=integrations&email_connected=true&provider=${accountType.toLowerCase()}&account_id=${accountId}`
+                  const providerName = accountType.includes('GOOGLE') ? 'google' :
+                                       accountType.includes('OUTLOOK') ? 'microsoft' : 'email';
+                  const redirectUrl = `/workspace/${targetWorkspaceId}/settings?tab=integrations&email_connected=true&provider=${providerName}&account_id=${accountId}`
                   return NextResponse.redirect(new URL(redirectUrl, request.url))
                 }
               } else {
