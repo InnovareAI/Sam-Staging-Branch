@@ -312,14 +312,14 @@ async function sendApprovalConfirmation(to: string, data: { action: string, coun
   const postmark = new ServerClient(process.env.POSTMARK_INNOVAREAI_API_KEY!)
 
   await postmark.sendEmail({
-    From: 'SAM AI <sam@innovareai.com>',
+    From: 'Sam <hello@sam.innovareai.com>',
     To: to,
     Subject: `✅ ${data.count} Prospects Approved`,
     HtmlBody: `
       <p>Perfect! I've approved all ${data.count} prospects.</p>
       <p>Your campaign will start within the next few minutes.</p>
       <p><a href="https://app.meet-sam.com/campaigns">View Campaign Dashboard</a></p>
-      <p>SAM</p>
+      <p>Sam</p>
     `,
     MessageStream: 'outbound',
     Tag: 'approval-confirmation'
@@ -369,7 +369,7 @@ async function notifyUserOfReply(email: PostmarkInboundEmail, context: { campaig
   const postmark = new ServerClient(process.env.POSTMARK_INNOVAREAI_API_KEY!)
 
   await postmark.sendEmail({
-    From: 'SAM AI <sam@innovareai.com>',
+    From: 'Sam <hello@sam.innovareai.com>',
     To: owner.email,
     Subject: `💬 ${prospect.name} replied to your outreach`,
     HtmlBody: `
@@ -382,7 +382,7 @@ async function notifyUserOfReply(email: PostmarkInboundEmail, context: { campaig
          style="background:#8907FF;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;">
         View & Respond
       </a></p>
-      <p>SAM</p>
+      <p>Sam</p>
     `,
     MessageStream: 'outbound',
     Tag: 'reply-notification'
