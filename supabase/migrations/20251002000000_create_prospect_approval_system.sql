@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS prospect_approval_sessions (
     batch_number INTEGER NOT NULL,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'archived')),
 
     -- Prospect counts
@@ -174,7 +173,7 @@ CREATE TABLE IF NOT EXISTS sam_learning_models (
 -- INDEXES
 -- ================================================================
 CREATE INDEX IF NOT EXISTS idx_prospect_sessions_user_workspace ON prospect_approval_sessions(user_id, workspace_id);
-CREATE INDEX IF NOT EXISTS idx_prospect_sessions_org ON prospect_approval_sessions(organization_id);
+CREATE INDEX IF NOT EXISTS idx_prospect_sessions_workspace ON prospect_approval_sessions(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_prospect_sessions_status ON prospect_approval_sessions(status);
 CREATE INDEX IF NOT EXISTS idx_prospect_data_session ON prospect_approval_data(session_id);
 CREATE INDEX IF NOT EXISTS idx_prospect_decisions_session ON prospect_approval_decisions(session_id);

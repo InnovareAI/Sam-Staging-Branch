@@ -46,7 +46,7 @@ export class HubSpotAdapter extends BaseCRMAdapter {
       })
     });
 
-    const data = await response.json();
+    const data = await response.json() as { access_token: string; refresh_token: string; expires_in: number };
     return {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
@@ -92,7 +92,7 @@ export class HubSpotAdapter extends BaseCRMAdapter {
     if (contact.company) properties.company = contact.company;
     if (contact.jobTitle) properties.jobtitle = contact.jobTitle;
 
-    const response = await this.client!.crm.contacts.basicApi.create({ properties });
+    const response = await this.client!.crm.contacts.basicApi.create({ properties, associations: [] });
     return this.mapHubSpotContact(response);
   }
 
@@ -166,7 +166,7 @@ export class HubSpotAdapter extends BaseCRMAdapter {
     if (company.phone) properties.phone = company.phone;
     if (company.address) properties.address = company.address;
 
-    const response = await this.client!.crm.companies.basicApi.create({ properties });
+    const response = await this.client!.crm.companies.basicApi.create({ properties, associations: [] });
     return this.mapHubSpotCompany(response);
   }
 
@@ -238,7 +238,7 @@ export class HubSpotAdapter extends BaseCRMAdapter {
     if (deal.stage) properties.dealstage = deal.stage;
     if (deal.closeDate) properties.closedate = deal.closeDate.toISOString();
 
-    const response = await this.client!.crm.deals.basicApi.create({ properties });
+    const response = await this.client!.crm.deals.basicApi.create({ properties, associations: [] });
     return this.mapHubSpotDeal(response);
   }
 

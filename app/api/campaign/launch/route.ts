@@ -279,6 +279,32 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', campaignExecution.id);
 
+    // Send campaign launch notification
+    try {
+      const { sendCampaignLaunchNotification } = await import('@/lib/notifications/sam-email');
+
+      // Get user details
+      const { data: userData } = await supabase
+        .from('users')
+        .select('email, first_name')
+        .eq('id', session.user.id)
+        .single();
+
+      if (userData && userData.email) {
+        await sendCampaignLaunchNotification({
+          userEmail: userData.email,
+          userName: userData.first_name || 'there',
+          campaignName: campaignConfig.campaignName,
+          campaignId: campaignExecution.id,
+          prospectCount: prospectData.length
+        });
+        console.log(`✅ Campaign launch notification sent to ${userData.email}`);
+      }
+    } catch (emailError) {
+      // Don't fail the request if email fails
+      console.error('Failed to send campaign launch notification:', emailError);
+    }
+
     // Return campaign execution details
     return NextResponse.json({
       success: true,

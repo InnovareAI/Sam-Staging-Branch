@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Play, Pause, BarChart3, Users, Mail, Megaphone, Target, TrendingUp, Calendar, Settings, Eye, MessageSquare, Zap, FileText, Edit, Copy, Send, Clock, CheckCircle, XCircle, Upload, X, Brain } from 'lucide-react';
+import CampaignApprovalScreen from './CampaignApprovalScreen';
 
 function CampaignList() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
@@ -418,10 +419,12 @@ function CampaignList() {
 // Campaign Builder Component from v1
 function CampaignBuilder({
   onClose,
-  initialProspects
+  initialProspects,
+  onPrepareForApproval
 }: {
   onClose?: () => void;
   initialProspects?: any[] | null;
+  onPrepareForApproval?: (campaignData: any) => void;
 }) {
   // Derive campaign name from initialProspects if available
   const getInitialCampaignName = () => {
@@ -895,8 +898,8 @@ Would you like me to adjust these or create more variations?`
     // Validate prospect data based on source
     const hasProspectData = dataSource === 'upload' ? csvData.length > 0 : selectedProspects.length > 0;
     if (!hasProspectData) {
-      alert(dataSource === 'upload' 
-        ? 'Please upload prospect data before creating campaign' 
+      alert(dataSource === 'upload'
+        ? 'Please upload prospect data before creating campaign'
         : 'Please select approved prospects before creating campaign');
       return;
     }
@@ -905,6 +908,46 @@ Would you like me to adjust these or create more variations?`
       return;
     }
 
+    // Prepare campaign data for approval screen
+    const prospects = dataSource === 'upload' ? csvData : selectedProspects.map(prospect => ({
+      firstName: prospect.name?.split(' ')[0] || '',
+      lastName: prospect.name?.split(' ').slice(1).join(' ') || '',
+      email: prospect.email,
+      company: prospect.company,
+      title: prospect.title,
+      industry: prospect.industry || 'Not specified',
+      linkedin_url: prospect.linkedin_url,
+      linkedin_user_id: prospect.linkedin_user_id
+    }));
+
+    const campaignData = {
+      name: name,
+      type: campaignType === 'connector' ? 'LinkedIn' : campaignType,
+      prospects: prospects,
+      messages: {
+        connection_request: connectionMessage,
+        follow_up_1: followUpMessages[0] || '',
+        follow_up_2: followUpMessages[1] || '',
+        follow_up_3: followUpMessages[2] || ''
+      },
+      // Store additional data needed for execution
+      _executionData: {
+        campaignType,
+        executionType,
+        alternativeMessage,
+        followUpMessages,
+        workspaceTier,
+        workspaceFeatures
+      }
+    };
+
+    // Pass to approval screen
+    if (onPrepareForApproval) {
+      onPrepareForApproval(campaignData);
+      return;
+    }
+
+    // Fallback: if no approval callback, proceed with old flow
     try {
       // Step 1: Create campaign
       const campaignResponse = await fetch('/api/campaigns/create', {
@@ -1687,6 +1730,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
   const [showBuilder, setShowBuilder] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showFullFeatures, setShowFullFeatures] = useState(false);
+  const [showApprovalScreen, setShowApprovalScreen] = useState(false);
+  const [campaignDataForApproval, setCampaignDataForApproval] = useState<any>(null);
 
   // Auto-open campaign builder when initialProspects are provided
   useEffect(() => {
@@ -1793,6 +1838,82 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
   // Template library state
   const [templates, setTemplates] = useState<any[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
+
+  // Handle campaign approval and execution
+  const handleApproveCampaign = async (finalCampaignData: any) => {
+    try {
+      const { _executionData } = finalCampaignData;
+
+      // Step 1: Create campaign
+      const campaignResponse = await fetch('/api/campaigns/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: finalCampaignData.name,
+          type: _executionData.campaignType,
+          connection_message: finalCampaignData.messages.connection_request,
+          alternative_message: _executionData.alternativeMessage,
+          follow_up_messages: [
+            finalCampaignData.messages.follow_up_1,
+            finalCampaignData.messages.follow_up_2,
+            finalCampaignData.messages.follow_up_3
+          ].filter(msg => msg.trim())
+        })
+      });
+
+      if (!campaignResponse.ok) {
+        throw new Error('Failed to create campaign');
+      }
+
+      const campaign = await campaignResponse.json();
+
+      // Step 2: Upload prospects
+      const uploadResponse = await fetch('/api/campaigns/upload-with-resolution', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaign_id: campaign.id,
+          prospects: finalCampaignData.prospects
+        })
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload prospects');
+      }
+
+      const uploadResult = await uploadResponse.json();
+
+      // Step 3: Execute via N8N
+      if (uploadResult.prospects_with_linkedin_ids > 0) {
+        const executeResponse = await fetch('/api/campaigns/linkedin/execute-via-n8n', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            campaignId: campaign.id,
+            executionType: _executionData.executionType
+          })
+        });
+
+        if (executeResponse.ok) {
+          alert(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n🚀 Campaign sent to N8N for execution`);
+        } else {
+          alert(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Manual launch required from campaign dashboard`);
+        }
+      } else {
+        alert(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID discovery needed before messaging`);
+      }
+
+      // Reset and close
+      setShowApprovalScreen(false);
+      setCampaignDataForApproval(null);
+      setShowBuilder(false);
+      onCampaignCreated?.();
+
+    } catch (error) {
+      console.error('Campaign approval error:', error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Failed to execute campaign'}`);
+    }
+  };
 
   // Load templates when modal opens
   const loadTemplates = async () => {
@@ -2375,8 +2496,29 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
       )}
 
       <div className="max-w-6xl space-y-8">
+        {/* Campaign Approval Screen */}
+        {showApprovalScreen && campaignDataForApproval && (
+          <CampaignApprovalScreen
+            campaignData={campaignDataForApproval}
+            onApprove={async (finalCampaignData) => {
+              // Execute campaign creation and N8N trigger
+              await handleApproveCampaign(finalCampaignData);
+            }}
+            onReject={() => {
+              // Go back to campaign builder
+              setShowApprovalScreen(false);
+              setCampaignDataForApproval(null);
+            }}
+            onRequestSAMHelp={(context) => {
+              // TODO: Trigger main SAM chat with context
+              console.log('SAM help requested:', context);
+              alert(`SAM help requested. Context: ${context}\n\nThis will open the main chat window with SAM ready to help you draft your message.`);
+            }}
+          />
+        )}
+
         {/* Campaign Builder */}
-        {showBuilder && (
+        {showBuilder && !showApprovalScreen && (
           <div className="mb-6">
             <CampaignBuilder
               onClose={() => {
@@ -2384,6 +2526,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
                 onCampaignCreated?.();
               }}
               initialProspects={initialProspects}
+              onPrepareForApproval={(campaignData) => {
+                // Show approval screen
+                setCampaignDataForApproval(campaignData);
+                setShowApprovalScreen(true);
+              }}
             />
           </div>
         )}
@@ -2704,92 +2851,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
               </button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Default Message Settings */}
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-3">Default Message Settings</h4>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-1">Connection Request Delay</label>
-                    <select className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
-                      <option>Immediate</option>
-                      <option>1-3 hours</option>
-                      <option>4-8 hours</option>
-                      <option>Next business day</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-1">Follow-up Delay</label>
-                    <select className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
-                      <option>2-3 days</option>
-                      <option>1 week</option>
-                      <option>2 weeks</option>
-                      <option>1 month</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-1">Max Messages per Day</label>
-                    <input type="number" defaultValue="20" className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Timing Optimization */}
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-3">Timing Optimization</h4>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-1">Preferred Send Times</label>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <label className="flex items-center"><input type="checkbox" defaultChecked className="mr-1" /> 9-11 AM</label>
-                      <label className="flex items-center"><input type="checkbox" defaultChecked className="mr-1" /> 1-3 PM</label>
-                      <label className="flex items-center"><input type="checkbox" className="mr-1" /> 3-5 PM</label>
-                      <label className="flex items-center"><input type="checkbox" className="mr-1" /> 6-8 PM</label>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-1">Active Days</label>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <label className="flex items-center"><input type="checkbox" defaultChecked className="mr-1" /> Monday-Friday</label>
-                      <label className="flex items-center"><input type="checkbox" className="mr-1" /> Saturday</label>
-                      <label className="flex items-center"><input type="checkbox" className="mr-1" /> Sunday</label>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-1">Timezone</label>
-                    <select className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
-                      <option>ET (Eastern Time)</option>
-                      <option>CT (Central Time)</option>
-                      <option>MT (Mountain Time)</option>
-                      <option>PT (Pacific Time)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Personalization Settings */}
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-3">Personalization</h4>
-                <div className="space-y-3">
-                  <label className="flex items-center">
-                    <input type="checkbox" defaultChecked className="mr-2" />
-                    <span className="text-gray-300 text-sm">Auto-insert company name</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input type="checkbox" defaultChecked className="mr-2" />
-                    <span className="text-gray-300 text-sm">Use job title in messaging</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input type="checkbox" className="mr-2" />
-                    <span className="text-gray-300 text-sm">Include industry insights</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input type="checkbox" className="mr-2" />
-                    <span className="text-gray-300 text-sm">Reference mutual connections</span>
-                  </label>
-                </div>
-              </div>
-
+            <div className="max-w-md">
               {/* Safety & Compliance */}
               <div className="bg-gray-700 rounded-lg p-4">
                 <h4 className="text-white font-medium mb-3">Safety & Compliance</h4>

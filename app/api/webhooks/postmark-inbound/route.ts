@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { createClient as createServerClient } from '@supabase/supabase-js'
 
 interface PostmarkInboundEmail {
   From: string
@@ -89,10 +89,26 @@ export async function POST(request: NextRequest) {
 }
 
 /**
+ * Create Supabase service role client for webhook operations
+ */
+function getServiceClient() {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  )
+}
+
+/**
  * Save inbound email to database
  */
 async function saveEmailToDatabase(email: PostmarkInboundEmail) {
-  const supabase = createClient()
+  const supabase = getServiceClient()
 
   // Insert email into email_responses table
   const { data, error } = await supabase
@@ -179,7 +195,7 @@ function detectApprovalAction(body: string): 'approve-all' | 'reject-all' | 'rev
  * Handle approval-related replies
  */
 async function handleApprovalReply(email: PostmarkInboundEmail, context: { sessionId: string, action: string }, emailId: string) {
-  const supabase = createClient()
+  const supabase = getServiceClient()
 
   // Get the approval session
   const { data: session } = await supabase
@@ -254,7 +270,7 @@ async function handleApprovalReply(email: PostmarkInboundEmail, context: { sessi
  */
 async function handleCampaignReply(email: PostmarkInboundEmail, context: { campaignId: string, prospectId: string }, emailId: string) {
   // Store the reply in the database for HITL review
-  const supabase = createClient()
+  const supabase = getServiceClient()
 
   await supabase
     .from('campaign_replies')
@@ -314,7 +330,7 @@ async function sendApprovalConfirmation(to: string, data: { action: string, coun
  * Notify user of campaign reply
  */
 async function notifyUserOfReply(email: PostmarkInboundEmail, context: { campaignId: string, prospectId: string }) {
-  const supabase = createClient()
+  const supabase = getServiceClient()
 
   // Get prospect and campaign details
   const { data: prospect } = await supabase

@@ -19,6 +19,9 @@ export interface KnowledgeBaseItem {
   created_at: string;
   updated_at: string;
   workspace_id?: string | null;
+  source_attachment_id?: string | null;
+  source_type?: 'manual' | 'document_upload' | 'sam_discovery' | 'api_import';
+  source_metadata?: Record<string, any>;
 }
 
 export interface SearchResult extends KnowledgeBaseItem {

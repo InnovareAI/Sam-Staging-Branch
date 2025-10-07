@@ -34,14 +34,14 @@ export async function GET(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // Get user's organization/workspace
-    const { data: userOrg } = await supabase
-      .from('user_organizations')
-      .select('organization_id')
+    // Get user's workspace
+    const { data: userWorkspace } = await supabase
+      .from('workspace_members')
+      .select('workspace_id')
       .eq('user_id', user.id)
       .single()
 
-    if (!userOrg) {
+    if (!userWorkspace) {
       return NextResponse.json({
         success: false,
         error: 'User not associated with any workspace'
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       .from('prospect_approval_sessions')
       .select('*')
       .eq('user_id', user.id)
-      .eq('organization_id', userOrg.organization_id)
+      .eq('workspace_id', userWorkspace.workspace_id)
       .eq('status', 'active')
       .single()
 
@@ -106,14 +106,14 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // Get user's organization/workspace
-    const { data: userOrg } = await supabase
-      .from('user_organizations')
-      .select('organization_id')
+    // Get user's workspace
+    const { data: userWorkspace } = await supabase
+      .from('workspace_members')
+      .select('workspace_id')
       .eq('user_id', user.id)
       .single()
 
-    if (!userOrg) {
+    if (!userWorkspace) {
       return NextResponse.json({
         success: false,
         error: 'User not associated with any workspace'
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
       .from('prospect_approval_sessions')
       .select('batch_number')
       .eq('user_id', user.id)
-      .eq('organization_id', userOrg.organization_id)
+      .eq('workspace_id', userWorkspace.workspace_id)
       .order('batch_number', { ascending: false })
       .limit(1)
       .single()
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
       .insert({
         batch_number: nextBatchNumber,
         user_id: user.id,
-        organization_id: userOrg.organization_id,
+        workspace_id: userWorkspace.workspace_id,
         status: 'active',
         total_prospects: 0, // Will be updated when prospects are added
         approved_count: 0,

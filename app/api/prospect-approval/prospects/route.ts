@@ -154,6 +154,21 @@ export async function POST(request: NextRequest) {
 
     if (updateError) throw updateError
 
+    // Schedule email notification for inactive users (2-3 hour randomized delay)
+    // Randomize between 2-3 hours to avoid all emails sending at same time
+    const randomMinutes = 120 + Math.floor(Math.random() * 60) // 120-180 minutes
+    const notificationScheduledFor = new Date(Date.now() + randomMinutes * 60 * 1000)
+
+    await supabase
+      .from('prospect_approval_sessions')
+      .update({
+        notification_scheduled_at: notificationScheduledFor.toISOString(),
+        user_last_active_at: new Date().toISOString()
+      })
+      .eq('id', session_id)
+
+    console.log(`📧 Email notification scheduled for ${notificationScheduledFor.toISOString()} (${randomMinutes} min delay) if user remains inactive`)
+
     return NextResponse.json({
       success: true,
       prospects: insertedProspects,

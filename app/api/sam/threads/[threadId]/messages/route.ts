@@ -432,6 +432,23 @@ export async function POST(
       }
     }
 
+    // Update user activity timestamp (cancels pending email notifications if user is active)
+    if (workspaceId) {
+      try {
+        await supabaseAdmin
+          .from('prospect_approval_sessions')
+          .update({ user_last_active_at: new Date().toISOString() })
+          .eq('user_id', user.id)
+          .eq('workspace_id', workspaceId)
+          .is('notification_sent_at', null) // Only update pending notifications
+
+        console.log(`⏰ User activity tracked for ${user.id}`)
+      } catch (activityError) {
+        // Don't fail the request if activity tracking fails
+        console.error('Activity tracking error:', activityError)
+      }
+    }
+
     // Get message count for ordering
     const { count: messageCount } = await supabase
       .from('sam_conversation_messages')

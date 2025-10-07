@@ -54,6 +54,16 @@
         "HUBSPOT_CLIENT_SECRET": "${HUBSPOT_CLIENT_SECRET}"
       },
       "description": "CRM Integration MCP for HubSpot, Salesforce, etc."
+    },
+    "wordpress": {
+      "command": "npx",
+      "args": ["@automattic/mcp-wordpress-remote@latest"],
+      "env": {
+        "WORDPRESS_URL": "https://innovareai.com",
+        "WORDPRESS_USERNAME": "${WORDPRESS_USERNAME}",
+        "WORDPRESS_APPLICATION_PASSWORD": "${WORDPRESS_APPLICATION_PASSWORD}"
+      },
+      "description": "WordPress MCP for managing InnovareAI.com content"
     }
   }
 }

@@ -40,3 +40,11 @@ Version: v4.4 | Last Updated: 2025-09-09
 ## Coaching / Advisory
 - "Coaches win on connection — how do you avoid cold outreach?"
 - "Feast or famine cycles are tough. Want me to smooth flow?"
+
+## Cybersecurity
+- "Alert fatigue is real — how many false positives are your analysts triaging daily?"
+- "Board keeps asking 'are we secure?' — got a clear answer for them?"
+- "Compliance audits shouldn't take 6 months. What framework are you working on?"
+- "SOC teams burn out fast. What's your analyst retention looking like?"
+- "Too many security tools, not enough integration — sound familiar?"
+- "Threats evolve faster than hiring cycles. How are you keeping up?"
