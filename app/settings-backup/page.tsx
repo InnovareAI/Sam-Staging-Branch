@@ -3,6 +3,8 @@
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useState, useEffect } from 'react';
+import { Settings, Building2, UserCheck, Globe, Plus, Mail, Users, Trash2 } from 'lucide-react';
+import LocationIndicator from '@/components/LocationIndicator';
 
 interface Workspace {
   id: string;
