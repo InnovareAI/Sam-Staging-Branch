@@ -1,8 +1,7 @@
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+
 'use client';
 
-import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { Search, Plus, Send, Users, Eye, CheckCircle, XCircle, Clock, Play, MessageSquare } from 'lucide-react';
 
 export default function CampaignsPage() {
   const supabase = createClientComponentClient();
@@ -33,7 +32,7 @@ export default function CampaignsPage() {
   // Search LinkedIn prospects
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
-      alert('Please enter a search query');
+      toastError('Please enter a search query');
       return;
     }
 
@@ -57,7 +56,7 @@ export default function CampaignsPage() {
       }
     } catch (error) {
       console.error('Search error:', error);
-      alert('Search failed');
+      toastError('Search failed');
     } finally {
       setLoading(false);
     }
@@ -86,7 +85,7 @@ export default function CampaignsPage() {
   // Move to message creation
   const proceedToMessages = () => {
     if (selectedProspects.size === 0) {
-      alert('Please select at least one prospect');
+      toastError('Please select at least one prospect');
       return;
     }
     setCurrentStep('messages');
@@ -114,13 +113,13 @@ export default function CampaignsPage() {
   // Create campaign
   const createCampaign = async () => {
     if (!campaignName.trim()) {
-      alert('Please enter a campaign name');
+      toastError('Please enter a campaign name');
       return;
     }
 
     const validMessages = messages.filter(m => m.trim());
     if (validMessages.length === 0) {
-      alert('Please add at least one message');
+      toastError('Please add at least one message');
       return;
     }
 
@@ -155,11 +154,11 @@ export default function CampaignsPage() {
         
         setCurrentStep('approve');
       } else {
-        alert('Campaign creation failed');
+        toastError('Campaign creation failed');
       }
     } catch (error) {
       console.error('Campaign creation error:', error);
-      alert('Campaign creation failed');
+      toastError('Campaign creation failed');
     } finally {
       setLoading(false);
     }
@@ -183,13 +182,13 @@ export default function CampaignsPage() {
       const data = await response.json();
       if (data.success) {
         setCurrentStep('launch');
-        alert(`✅ Campaign launched! Sending messages to ${selectedProspects.size} prospects.`);
+        toastError(`✅ Campaign launched! Sending messages to ${selectedProspects.size} prospects.`);
       } else {
         alert('Campaign launch failed: ' + data.error);
       }
     } catch (error) {
       console.error('Launch error:', error);
-      alert('Campaign launch failed');
+      toastError('Campaign launch failed');
     } finally {
       setLoading(false);
     }

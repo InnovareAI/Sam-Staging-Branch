@@ -1,9 +1,7 @@
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Play, Pause, BarChart3, Users, Mail, Megaphone, Target, TrendingUp, Calendar, Settings, Eye, MessageSquare, Zap, FileText, Edit, Copy, Send, Clock, CheckCircle, XCircle, Upload, X, Brain, AlertTriangle } from 'lucide-react';
-import CampaignApprovalScreen from './CampaignApprovalScreen';
-import CampaignStepsEditor from './CampaignStepsEditor';
 
 // Helper function to get human-readable campaign type labels
 function getCampaignTypeLabel(type: string): string {
@@ -306,22 +304,22 @@ function CampaignList() {
           c.id === campaignId ? { ...c, status: newStatus } : c
         ));
       } else {
-        alert('Failed to update campaign status');
+        toastError('Failed to update campaign status');
       }
     } catch (error) {
       console.error('Error toggling campaign status:', error);
-      alert('Failed to update campaign status');
+      toastError('Failed to update campaign status');
     }
   };
 
   const showCampaignAnalytics = (campaignId: string) => {
     // TODO: Open analytics modal or navigate to analytics view
-    alert(`Analytics for campaign ${campaignId} - Coming soon!`);
+    toastError(`Analytics for campaign ${campaignId} - Coming soon!`);
   };
 
   const editCampaign = (campaignId: string) => {
     // TODO: Open edit modal or navigate to edit view
-    alert(`Edit campaign ${campaignId} - Coming soon!`);
+    toastError(`Edit campaign ${campaignId} - Coming soon!`);
   };
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -952,7 +950,7 @@ Would you like me to adjust these or create more variations?`
     if (csvFile) {
       processFile(csvFile);
     } else {
-      alert('Please drop a CSV file');
+      toastError('Please drop a CSV file');
     }
   };
   
@@ -966,7 +964,7 @@ Would you like me to adjust these or create more variations?`
       return;
     }
     if (campaignType === 'connector' && !connectionMessage.trim()) {
-      alert('Please add a connection request message');
+      toastError('Please add a connection request message');
       return;
     }
 
@@ -1074,12 +1072,12 @@ Would you like me to adjust these or create more variations?`
           const channels = selectedExecType?.channels[workspaceTier]?.join(', ') || 'LinkedIn';
           const hitlMethod = workspaceFeatures.advanced_hitl ? 'UI-based' : 'Email-based';
           
-          alert(`🎉 V1 Campaign Orchestration Launched!\n\n📊 CAMPAIGN DETAILS:\n• Campaign: "${name}"\n• Execution Mode: ${selectedExecType?.label}\n• Workspace Tier: ${tierInfo}\n• Prospects Uploaded: ${csvData.length}\n• Ready for Messaging: ${uploadResult.prospects_with_linkedin_ids}\n\n🔄 EXECUTION CONFIGURATION:\n• Channels: ${channels}\n• HITL Approval: ${hitlMethod} (Required)\n• Rate Limits: ${selectedExecType?.tierRequirements[workspaceTier]}\n• Estimated Processing: ${selectedExecType?.duration}\n\n⏰ TIMING:\n• HITL Approval: ${executionResult.estimated_times?.hitl_approval_time ? new Date(executionResult.estimated_times.hitl_approval_time).toLocaleString() : '~15-30 minutes'}\n• Campaign Completion: ${executionResult.estimated_times?.approval_to_completion ? new Date(executionResult.estimated_times.approval_to_completion).toLocaleString() : 'calculating...'}\n\n📬 NEXT STEPS:\n• Approval email sent to ${executionResult.hitl_approval?.approver_email || 'workspace admin'}\n• Campaign will start after message approval\n• Real-time status updates via N8N Master Funnel\n• Monitor progress in campaign dashboard\n\n🚀 SAM AI V1 Campaign Orchestration is now active!`);
+          toastError(`🎉 V1 Campaign Orchestration Launched!\n\n📊 CAMPAIGN DETAILS:\n• Campaign: "${name}"\n• Execution Mode: ${selectedExecType?.label}\n• Workspace Tier: ${tierInfo}\n• Prospects Uploaded: ${csvData.length}\n• Ready for Messaging: ${uploadResult.prospects_with_linkedin_ids}\n\n🔄 EXECUTION CONFIGURATION:\n• Channels: ${channels}\n• HITL Approval: ${hitlMethod} (Required)\n• Rate Limits: ${selectedExecType?.tierRequirements[workspaceTier]}\n• Estimated Processing: ${selectedExecType?.duration}\n\n⏰ TIMING:\n• HITL Approval: ${executionResult.estimated_times?.hitl_approval_time ? new Date(executionResult.estimated_times.hitl_approval_time).toLocaleString() : '~15-30 minutes'}\n• Campaign Completion: ${executionResult.estimated_times?.approval_to_completion ? new Date(executionResult.estimated_times.approval_to_completion).toLocaleString() : 'calculating...'}\n\n📬 NEXT STEPS:\n• Approval email sent to ${executionResult.hitl_approval?.approver_email || 'workspace admin'}\n• Campaign will start after message approval\n• Real-time status updates via N8N Master Funnel\n• Monitor progress in campaign dashboard\n\n🚀 SAM AI V1 Campaign Orchestration is now active!`);
         } else {
-          alert(`✅ Campaign "${name}" created!\n\n📊 Upload Results:\n• ${csvData.length} prospects uploaded\n• ${uploadResult.prospects_with_linkedin_ids} with LinkedIn IDs\n• Ready for manual launch`);
+          toastError(`✅ Campaign "${name}" created!\n\n📊 Upload Results:\n• ${csvData.length} prospects uploaded\n• ${uploadResult.prospects_with_linkedin_ids} with LinkedIn IDs\n• Ready for manual launch`);
         }
       } else {
-        alert(`✅ Campaign "${name}" created!\n\n📊 Upload Results:\n• ${csvData.length} prospects uploaded\n• LinkedIn ID discovery needed for messaging\n• Run connection campaign first to capture IDs`);
+        toastError(`✅ Campaign "${name}" created!\n\n📊 Upload Results:\n• ${csvData.length} prospects uploaded\n• LinkedIn ID discovery needed for messaging\n• Run connection campaign first to capture IDs`);
       }
 
       // Reset form and refresh campaign list
@@ -1101,7 +1099,7 @@ Would you like me to adjust these or create more variations?`
       
     } catch (error: any) {
       console.error('Campaign creation error:', error);
-      alert(`❌ Error creating campaign: ${error.message}`);
+      toastError(`❌ Error creating campaign: ${error.message}`);
     }
   };
   
@@ -2013,12 +2011,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
         });
 
         if (executeResponse.ok) {
-          alert(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n🚀 Campaign sent to N8N for execution`);
+          toastError(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n🚀 Campaign sent to N8N for execution`);
         } else {
-          alert(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Manual launch required from campaign dashboard`);
+          toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Manual launch required from campaign dashboard`);
         }
       } else {
-        alert(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID discovery needed before messaging`);
+        toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID discovery needed before messaging`);
       }
 
       // Reset and close
@@ -2029,7 +2027,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
 
     } catch (error) {
       console.error('Campaign approval error:', error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Failed to execute campaign'}`);
+      toastError(`Error: ${error instanceof Error ? error.message : 'Failed to execute campaign'}`);
     }
   };
 
@@ -2080,7 +2078,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
 
   const handleCloneCampaign = async () => {
     if (!selectedCampaignId || !newCampaignName.trim()) {
-      alert('Please select a campaign and enter a new campaign name');
+      toastError('Please select a campaign and enter a new campaign name');
       return;
     }
 
@@ -2103,17 +2101,17 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
 
       if (response.ok) {
         const result = await response.json();
-        alert(`Campaign "${result.cloned_campaign.name}" cloned successfully!`);
+        toastError(`Campaign "${result.cloned_campaign.name}" cloned successfully!`);
         setShowCampaignCloning(false);
         // Refresh campaigns list
         window.dispatchEvent(new Event('refreshCampaigns'));
       } else {
         const error = await response.json();
-        alert(`Failed to clone campaign: ${error.error}`);
+        toastError(`Failed to clone campaign: ${error.error}`);
       }
     } catch (error) {
       console.error('Failed to clone campaign:', error);
-      alert('Failed to clone campaign. Please try again.');
+      toastError('Failed to clone campaign. Please try again.');
     } finally {
       setIsCloning(false);
     }
@@ -2173,11 +2171,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
         loadApprovalMessages();
       } else {
         const error = await response.json();
-        alert(`Failed to approve message: ${error.error}`);
+        toastError(`Failed to approve message: ${error.error}`);
       }
     } catch (error) {
       console.error('Failed to approve message:', error);
-      alert('Failed to approve message. Please try again.');
+      toastError('Failed to approve message. Please try again.');
     }
   };
 
@@ -2200,11 +2198,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
         loadApprovalMessages();
       } else {
         const error = await response.json();
-        alert(`Failed to reject message: ${error.error}`);
+        toastError(`Failed to reject message: ${error.error}`);
       }
     } catch (error) {
       console.error('Failed to reject message:', error);
-      alert('Failed to reject message. Please try again.');
+      toastError('Failed to reject message. Please try again.');
     }
   };
 
@@ -2218,11 +2216,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
         setShowCampaignProspects(true);
       } else {
         console.error('Failed to load campaign prospects');
-        alert('Failed to load prospects for this campaign');
+        toastError('Failed to load prospects for this campaign');
       }
     } catch (error) {
       console.error('Failed to load campaign prospects:', error);
-      alert('Failed to load prospects. Please try again.');
+      toastError('Failed to load prospects. Please try again.');
     } finally {
       setLoadingProspects(false);
     }
@@ -2231,7 +2229,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
   const handleBulkApproval = async (action: 'approve' | 'reject') => {
     const messageIds = approvalMessages.pending.map((msg: any) => msg.id);
     if (messageIds.length === 0) {
-      alert('No pending messages to approve');
+      toastError('No pending messages to approve');
       return;
     }
 
@@ -2255,11 +2253,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
         loadApprovalMessages();
       } else {
         const error = await response.json();
-        alert(`Failed to ${action} messages: ${error.error}`);
+        toastError(`Failed to ${action} messages: ${error.error}`);
       }
     } catch (error) {
       console.error(`Failed to ${action} messages:`, error);
-      alert(`Failed to ${action} messages. Please try again.`);
+      toastError(`Failed to ${action} messages. Please try again.`);
     }
   };
 
@@ -2331,7 +2329,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
 
   const handleScheduleCampaign = async () => {
     if (!selectedScheduleCampaign || !scheduleStartTime) {
-      alert('Please select a campaign and start time');
+      toastError('Please select a campaign and start time');
       return;
     }
 
@@ -2351,7 +2349,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
 
       if (response.ok) {
         const result = await response.json();
-        alert(`Campaign "${result.campaign.name}" scheduled successfully!`);
+        toastError(`Campaign "${result.campaign.name}" scheduled successfully!`);
         // Refresh schedules
         loadScheduledCampaigns();
         // Reset form
@@ -2361,11 +2359,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
         setScheduleNotes('');
       } else {
         const error = await response.json();
-        alert(`Failed to schedule campaign: ${error.error}`);
+        toastError(`Failed to schedule campaign: ${error.error}`);
       }
     } catch (error) {
       console.error('Failed to schedule campaign:', error);
-      alert('Failed to schedule campaign. Please try again.');
+      toastError('Failed to schedule campaign. Please try again.');
     }
   };
 
@@ -2389,11 +2387,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
         loadScheduledCampaigns();
       } else {
         const error = await response.json();
-        alert(`Failed to ${action} schedule: ${error.error}`);
+        toastError(`Failed to ${action} schedule: ${error.error}`);
       }
     } catch (error) {
       console.error(`Failed to ${action} schedule:`, error);
-      alert(`Failed to ${action} schedule. Please try again.`);
+      toastError(`Failed to ${action} schedule. Please try again.`);
     }
   };
 
@@ -2437,7 +2435,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
 
   const handleCreateABTest = async () => {
     if (!testName || !variantA || !variantB || !selectedCampaignId) {
-      alert('Please fill in all required fields');
+      toastError('Please fill in all required fields');
       return;
     }
 
@@ -2463,7 +2461,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
 
       if (response.ok) {
         const result = await response.json();
-        alert(`A/B test "${result.test.test_name}" created successfully!`);
+        toastError(`A/B test "${result.test.test_name}" created successfully!`);
         // Refresh tests
         loadABTests();
         // Reset form
@@ -2473,11 +2471,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
         setSelectedCampaignId('');
       } else {
         const error = await response.json();
-        alert(`Failed to create A/B test: ${error.error}`);
+        toastError(`Failed to create A/B test: ${error.error}`);
       }
     } catch (error) {
       console.error('Failed to create A/B test:', error);
-      alert('Failed to create A/B test. Please try again.');
+      toastError('Failed to create A/B test. Please try again.');
     }
   };
 
@@ -2501,11 +2499,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
         loadABTests();
       } else {
         const error = await response.json();
-        alert(`Failed to ${action} test: ${error.error}`);
+        toastError(`Failed to ${action} test: ${error.error}`);
       }
     } catch (error) {
       console.error(`Failed to ${action} test:`, error);
-      alert(`Failed to ${action} test. Please try again.`);
+      toastError(`Failed to ${action} test. Please try again.`);
     }
   };
 
@@ -2551,16 +2549,16 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
 
       if (response.ok) {
         const result = await response.json();
-        alert('Campaign settings saved successfully!');
+        toastError('Campaign settings saved successfully!');
         setCampaignSettings(result.settings);
         setSettingsChanged(false);
       } else {
         const error = await response.json();
-        alert(`Failed to save settings: ${error.error}`);
+        toastError(`Failed to save settings: ${error.error}`);
       }
     } catch (error) {
       console.error('Failed to save campaign settings:', error);
-      alert('Failed to save settings. Please try again.');
+      toastError('Failed to save settings. Please try again.');
     }
   };
 
@@ -2807,7 +2805,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
             onRequestSAMHelp={(context) => {
               // TODO: Trigger main SAM chat with context
               console.log('SAM help requested:', context);
-              alert(`SAM help requested. Context: ${context}\n\nThis will open the main chat window with SAM ready to help you draft your message.`);
+              toastError(`SAM help requested. Context: ${context}\n\nThis will open the main chat window with SAM ready to help you draft your message.`);
             }}
           />
         )}
@@ -4005,7 +4003,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
                     onClick={() => {
                       // TODO: Open SAM chat with context about this message
                       console.log('Ask SAM for help with message:', selectedMessageForReview);
-                      alert('SAM chat integration coming soon! This will open a chat with SAM to help improve this message.');
+                      toastError('SAM chat integration coming soon! This will open a chat with SAM to help improve this message.');
                     }}
                     className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2"
                   >

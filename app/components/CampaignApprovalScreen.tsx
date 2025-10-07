@@ -1,7 +1,7 @@
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+
 'use client';
 
-import React, { useState } from 'react';
-import { CheckCircle, XCircle, Upload, Save, MessageSquare, Edit, Eye, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface CampaignApprovalScreenProps {
   campaignData: {
@@ -52,7 +52,7 @@ export default function CampaignApprovalScreen({
       created: new Date().toISOString()
     };
     setSavedTemplates(prev => [...prev, template]);
-    alert('Template saved successfully!');
+    toastError('Template saved successfully!');
   };
 
   const handleAskSAM = (messageType: string) => {

@@ -1,6 +1,7 @@
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+
 'use client';
 
-import { useEffect, useState } from 'react';
 
 // Onboarding scripts from Training Room v2 2
 const opener = [
@@ -140,7 +141,7 @@ function OnboardingWizard() {
             <button onClick={()=>setStageIndex(Math.max(0, stageIndex-1))} className="px-3 py-2 border rounded">Back</button>
             <button onClick={nextStage} className="px-3 py-2 border rounded">Skip</button>
             {stageIndex===stages.length-1 && (
-              <button onClick={()=>alert('Onboarding complete')} className="px-3 py-2 bg-emerald-600 text-white rounded">Finish</button>
+              <button onClick={()=>toastError('Onboarding complete')} className="px-3 py-2 bg-emerald-600 text-white rounded">Finish</button>
             )}
           </div>
         </div>

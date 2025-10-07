@@ -1,3 +1,5 @@
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+
 /**
  * MCP Monitoring Dashboard API
  * 
@@ -5,8 +7,6 @@
  * Used by admin dashboard for production reliability oversight
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -301,11 +301,11 @@ function generateDashboardRecommendations(
     const highAlerts = alerts.filter(a => a.severity === 'high');
     
     if (criticalAlerts.length > 0) {
-      recommendations.push(`🚨 ${criticalAlerts.length} critical alert(s) require immediate action`);
+      recommendations.push(`🚨 ${criticalAlerts.length} critical toastError(s) require immediate action`);
     }
     
     if (highAlerts.length > 0) {
-      recommendations.push(`⚡ ${highAlerts.length} high-priority alert(s) need attention`);
+      recommendations.push(`⚡ ${highAlerts.length} high-priority toastError(s) need attention`);
     }
   }
   

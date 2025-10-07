@@ -1,3 +1,5 @@
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+
 /**
  * Conversation History Sidebar for SAM AI
  * 
@@ -6,8 +8,6 @@
 
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { 
   History, 
   X, 
   Save, 
@@ -20,8 +20,6 @@ import {
   Star,
   Clock
 } from 'lucide-react'
-import { SamConversationThread, useSamThreadedChat } from '@/lib/hooks/useSamThreadedChat'
-import ThreadTagger from './ThreadTagger'
 
 interface ConversationHistoryProps {
   isOpen: boolean
@@ -90,12 +88,12 @@ export default function ConversationHistory({
 
   const handleSaveCurrentConversation = async () => {
     if (currentMessages.length === 0) {
-      alert('No conversation to save')
+      toastError('No conversation to save')
       return
     }
 
     if (!saveForm.title.trim()) {
-      alert('Please enter a title for the conversation')
+      toastError('Please enter a title for the conversation')
       return
     }
 
@@ -115,14 +113,14 @@ export default function ConversationHistory({
           // via the API to maintain proper threading
         }
 
-        alert('Conversation saved successfully!')
+        toastError('Conversation saved successfully!')
         setShowSaveDialog(false)
         setSaveForm({ title: '', tags: [], priority: 'medium' })
         loadThreads() // Refresh list
       }
     } catch (error) {
       console.error('Failed to save conversation:', error)
-      alert('Failed to save conversation')
+      toastError('Failed to save conversation')
     }
   }
 
@@ -140,11 +138,11 @@ export default function ConversationHistory({
         onLoadConversation(messages)
         onClose()
       } else {
-        alert('No messages found in this conversation')
+        toastError('No messages found in this conversation')
       }
     } catch (error) {
       console.error('Failed to load conversation:', error)
-      alert('Failed to load conversation')
+      toastError('Failed to load conversation')
     }
   }
 
@@ -155,7 +153,7 @@ export default function ConversationHistory({
         loadThreads() // Refresh list
       } catch (error) {
         console.error('Failed to delete thread:', error)
-        alert('Failed to delete conversation')
+        toastError('Failed to delete conversation')
       }
     }
   }

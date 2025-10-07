@@ -1,7 +1,7 @@
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+
 'use client';
 
-import React, { useState } from 'react';
-import { X, Plus, Trash2, GripVertical, MessageSquare, Calendar, Tag, Upload, FileText, Settings, ArrowLeft } from 'lucide-react';
 
 // Helper to determine if campaign is LinkedIn-based
 function isLinkedInCampaign(type: string): boolean {
@@ -114,7 +114,7 @@ export default function CampaignStepsEditor({
 
   const deleteStep = (stepId: string) => {
     if (steps.length <= 1) {
-      alert('You must have at least one message step');
+      toastError('You must have at least one message step');
       return;
     }
     const newSteps = steps.filter(s => s.id !== stepId).map((s, idx) => ({
@@ -209,7 +209,7 @@ export default function CampaignStepsEditor({
             updateStepMessage(selectedStepId, mockTemplateContent);
           }
           setUploadingTemplate(false);
-          alert(`Template "${file.name}" uploaded and applied to current step!`);
+          toastError(`Template "${file.name}" uploaded and applied to current step!`);
         }, 1000);
       }
     };
@@ -791,7 +791,7 @@ export default function CampaignStepsEditor({
                 <button
                   onClick={() => {
                     // TODO: Save settings to backend
-                    alert('Settings saved! (Backend integration pending)');
+                    toastError('Settings saved! (Backend integration pending)');
                     setShowSettings(false);
                   }}
                   className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium"

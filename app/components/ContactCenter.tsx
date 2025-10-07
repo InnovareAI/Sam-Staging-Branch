@@ -1,7 +1,7 @@
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
   Mail, 
   Calendar, 
   DollarSign, 
@@ -20,13 +20,6 @@ import {
   Plus,
   Bell
 } from 'lucide-react';
-import { LinkedInLogo } from '@/components/ui/LinkedInLogo';
-import { GoogleLogo } from '@/components/ui/GoogleLogo';
-import { MicrosoftLogo } from '@/components/ui/MicrosoftLogo';
-import { CalendlyLogo } from '@/components/ui/CalendlyLogo';
-import { WhatsAppLogo } from '@/components/ui/WhatsAppLogo';
-import { TelegramLogo } from '@/components/ui/TelegramLogo';
-import { TwitterLogo } from '@/components/ui/TwitterLogo';
 
 interface InboundRequest {
   id: string;
@@ -193,7 +186,7 @@ function InboundInbox() {
           message += `• STOP - to cancel`;
         }
         
-        alert(message);
+        toastError(message);
         
         setReplyText('');
         setShowReplyModal(false);
@@ -203,7 +196,7 @@ function InboundInbox() {
       
     } catch (error) {
       console.error('❌ Failed to start SAM reply workflow:', error);
-      alert(`Failed to start reply workflow: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toastError(`Failed to start reply workflow: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -293,14 +286,14 @@ function InboundInbox() {
     const platform = urlParams.get('platform');
 
     if (success === 'email_connected' && email && platform) {
-      alert(`✅ ${platform.toUpperCase()} account connected successfully: ${email}`);
+      toastError(`✅ ${platform.toUpperCase()} account connected successfully: ${email}`);
       // Clean URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
       // Reload email providers to show new connection
       // loadEmailProviders();
     } else if (error) {
       const message = urlParams.get('message') || 'Connection failed';
-      alert(`❌ Email connection failed: ${decodeURIComponent(message)}`);
+      toastError(`❌ Email connection failed: ${decodeURIComponent(message)}`);
       // Clean URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
     }

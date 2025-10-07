@@ -1,8 +1,7 @@
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+
 'use client'
 
-import React, { useState, useRef, useEffect } from 'react'
-import { Upload, Search, Linkedin, Database, FileText, Users, Download, Loader2, Check, X, Eye, ChevronDown, ChevronUp, Tag } from 'lucide-react'
-import ProspectApprovalModal, { ProspectData as ProspectDataType, ApprovalSession } from './ProspectApprovalModal'
 
 // LinkedIn Campaign Types
 type LinkedInCampaignType = 
@@ -125,13 +124,13 @@ export default function DataCollectionHub({
         setShowApprovalPanel(true)
         setActiveTab('approve')
         
-        alert(`✅ CSV uploaded successfully!\n\n📊 Results:\n• ${data.validation_results?.total_records || 0} total records\n• ${data.validation_results?.valid_records || 0} valid prospects\n• ${data.validation_results?.quality_score ? (data.validation_results.quality_score * 100).toFixed(0) : 0}% quality score\n\nProceeding to approval...`)
+        toastError(`✅ CSV uploaded successfully!\n\n📊 Results:\n• ${data.validation_results?.total_records || 0} total records\n• ${data.validation_results?.valid_records || 0} valid prospects\n• ${data.validation_results?.quality_score ? (data.validation_results.quality_score * 100).toFixed(0) : 0}% quality score\n\nProceeding to approval...`)
       } else {
         throw new Error(data.error || 'Failed to upload CSV')
       }
     } catch (error) {
       console.error('CSV upload error:', error)
-      alert(`❌ CSV upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toastError(`❌ CSV upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
       setUploadProgress(0)
@@ -141,7 +140,7 @@ export default function DataCollectionHub({
   // LinkedIn Data Collection via Unipile MCP
   const handleLinkedInSearch = async () => {
     if (!linkedinQuery.trim()) {
-      alert('Please enter a search query for LinkedIn prospects')
+      toastError('Please enter a search query for LinkedIn prospects')
       return
     }
 
@@ -156,13 +155,13 @@ export default function DataCollectionHub({
         setShowApprovalPanel(true)
         setActiveTab('approve')
         
-        alert(`✅ LinkedIn data collected!\n\n📊 Found ${linkedinData.length} prospects\nProceeding to approval...`)
+        toastError(`✅ LinkedIn data collected!\n\n📊 Found ${linkedinData.length} prospects\nProceeding to approval...`)
       } else {
-        alert('No LinkedIn prospects found for your search query.')
+        toastError('No LinkedIn prospects found for your search query.')
       }
     } catch (error) {
       console.error('LinkedIn search error:', error)
-      alert(`❌ LinkedIn search failed: ${error instanceof Error ? error.message : 'Connection error'}`)
+      toastError(`❌ LinkedIn search failed: ${error instanceof Error ? error.message : 'Connection error'}`)
     } finally {
       setLoading(false)
     }
@@ -171,7 +170,7 @@ export default function DataCollectionHub({
   // Bright Data Enrichment
   const handleBrightDataEnrich = async () => {
     if (!searchQuery.trim()) {
-      alert('Please enter a company or industry to search')
+      toastError('Please enter a company or industry to search')
       return
     }
 
@@ -185,10 +184,10 @@ export default function DataCollectionHub({
       setShowApprovalPanel(true)
       setActiveTab('approve')
       
-      alert(`✅ Bright Data enrichment complete!\n\n📊 Found ${enrichedData.length} enriched prospects\nProceeding to approval...`)
+      toastError(`✅ Bright Data enrichment complete!\n\n📊 Found ${enrichedData.length} enriched prospects\nProceeding to approval...`)
     } catch (error) {
       console.error('Bright Data error:', error)
-      alert(`❌ Data enrichment failed: ${error instanceof Error ? error.message : 'Service error'}`)
+      toastError(`❌ Data enrichment failed: ${error instanceof Error ? error.message : 'Service error'}`)
     } finally {
       setLoading(false)
     }
@@ -218,7 +217,7 @@ export default function DataCollectionHub({
       }
     } catch (error) {
       console.error('Test data generation error:', error)
-      alert('Failed to generate test data')
+      toastError('Failed to generate test data')
     } finally {
       setLoading(false)
     }
@@ -315,7 +314,7 @@ export default function DataCollectionHub({
     const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved')
     
     if (approvedProspects.length === 0) {
-      alert('⚠️ No approved prospects found. Please approve at least one prospect before proceeding to Campaign Hub.')
+      toastError('⚠️ No approved prospects found. Please approve at least one prospect before proceeding to Campaign Hub.')
       return
     }
 
@@ -332,7 +331,7 @@ export default function DataCollectionHub({
       onApprovalComplete(approvedProspects)
     }
 
-    alert(`✅ Success!\n\n${approvedProspects.length} approved prospects are ready for campaigns.\n\nProceeding to Campaign Hub...`)
+    toastError(`✅ Success!\n\n${approvedProspects.length} approved prospects are ready for campaigns.\n\nProceeding to Campaign Hub...`)
   }
 
   // Download only approved prospects
@@ -340,7 +339,7 @@ export default function DataCollectionHub({
     const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved')
     
     if (approvedProspects.length === 0) {
-      alert('No approved prospects to download.')
+      toastError('No approved prospects to download.')
       return
     }
 

@@ -1,34 +1,11 @@
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 
 const USER_PROXY_SENTINEL = '__USER_PROXY__';
-import KnowledgeBase from './components/KnowledgeBase';
-import CampaignHub from './components/CampaignHub';
-import LeadPipeline from './components/LeadPipeline';
-import Analytics from './components/Analytics';
-import AuditTrail from './components/AuditTrail';
 
-import ConversationHistory from '../components/ConversationHistory';
-import InviteUserPopup, { InviteFormData } from '../components/InviteUserPopup';
-import { InviteUserModal } from './components/InviteUserModal';
-import { WorkspaceSettingsModal } from './components/WorkspaceSettingsModal';
-import { ManageSubscriptionModal } from './components/ManageSubscriptionModal';
-import { CRMIntegrationModal } from './components/CRMIntegrationModal';
-import AuthModal from '../components/AuthModal';
 // LinkedIn integration now handled via dedicated page at /linkedin-integration
-import { UnipileModal } from '../components/integrations/UnipileModal';
-import { ChannelSelectionModal } from '../components/campaign/ChannelSelectionModal';
-import DataCollectionHub from '../components/DataCollectionHub';
-import ApprovedProspectsDashboard from '../components/ApprovedProspectsDashboard';
-import { DemoModeToggle } from '../components/DemoModeToggle';
-import ConnectionStatusBar from '../components/ConnectionStatusBar';
-import EmailProvidersModal from './components/EmailProvidersModal';
-import ModelSelector from '../components/ModelSelector';
-import LLMConfigModal from '../components/LLMConfigModal';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import {
   Activity,
   Archive,
   BarChart3,
@@ -518,7 +495,7 @@ export default function Page() {
       // Get current session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        alert('❌ Authentication required. Please sign in.');
+        toastError('❌ Authentication required. Please sign in.');
         setProxyTestLoading(false);
         return;
       }
@@ -547,11 +524,11 @@ export default function Page() {
         }));
         alert(`✅ Connection test successful!\nProxy: ${data.proxyConfig.country}${data.proxyConfig.state ? ` (${data.proxyConfig.state})` : ''}\nConfidence: ${Math.round(data.proxyConfig.confidence * 100)}%`);
       } else {
-        alert(`❌ Connection test failed: ${data.error}`);
+        toastError(`❌ Connection test failed: ${data.error}`);
       }
     } catch (error) {
       console.error('Test connection failed:', error);
-      alert('❌ Connection test failed. Please try again.');
+      toastError('❌ Connection test failed. Please try again.');
     } finally {
       setProxyTestLoading(false);
     }
@@ -652,11 +629,11 @@ export default function Page() {
 
   // Data Approval System handlers
   const handleConfigureRules = () => {
-    alert('Configure Rules clicked - This would open the rules configuration modal.');
+    toastError('Configure Rules clicked - This would open the rules configuration modal.');
   };
 
   const handleEnableRule = (ruleType: string) => {
-    alert(`Enable ${ruleType} rule clicked - This would enable the rule via API.`);
+    toastError(`Enable ${ruleType} rule clicked - This would enable the rule via API.`);
   };
 
   const handleQuickAction = async (actionType: string, count: number) => {
@@ -665,7 +642,7 @@ export default function Page() {
       // Get current session for API auth
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        alert('❌ Authentication required. Please sign in.');
+        toastError('❌ Authentication required. Please sign in.');
         setApprovalLoading(false);
         return;
       }
@@ -782,14 +759,14 @@ export default function Page() {
         // Populate prospect review data for individual review
         updateProspectReviewData(filteredProspects);
         
-        alert(`${statusEmoji} ${actionType} completed!\n\nAI Analysis Results:\n• Processed: ${filteredProspects.length} prospects\n• Average Quality Score: ${avgQuality}\n• Status: ${decision}\n• Session: ${sessionData.sessionId.slice(-8)}\n\n💡 Check "Individual Prospect Review" below to review each prospect individually.`);
+        toastError(`${statusEmoji} ${actionType} completed!\n\nAI Analysis Results:\n• Processed: ${filteredProspects.length} prospects\n• Average Quality Score: ${avgQuality}\n• Status: ${decision}\n• Session: ${sessionData.sessionId.slice(-8)}\n\n💡 Check "Individual Prospect Review" below to review each prospect individually.`);
       } else {
         throw new Error(decisionData.error || 'Failed to execute approval decision');
       }
 
     } catch (error) {
       console.error('❌ Quick action failed:', error);
-      alert(`❌ Failed to execute ${actionType}:\n${error instanceof Error ? error.message : 'Unknown error'}`);
+      toastError(`❌ Failed to execute ${actionType}:\n${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setApprovalLoading(false);
     }
@@ -814,7 +791,7 @@ export default function Page() {
 
   const handleIndividualAction = async (index: number, action: string) => {
     if (action === 'view') {
-      alert(`Viewing prospect: ${JSON.stringify(prospectReviewData[index], null, 2)}`);
+      toastError(`Viewing prospect: ${JSON.stringify(prospectReviewData[index], null, 2)}`);
       return;
     }
 
@@ -853,7 +830,7 @@ export default function Page() {
 
   const handleBulkAction = async (action: string) => {
     if (selectedProspects.length === 0) {
-      alert('Please select prospects first');
+      toastError('Please select prospects first');
       return;
     }
 
@@ -871,9 +848,9 @@ export default function Page() {
     setSelectedProspects([]);
     
     if (status === 'approved') {
-      alert(`✅ Approved ${selectedProspects.length} prospects!\n\n🎯 Next Steps:\n1. View all approved prospects in the "Data Approval" section below\n2. Create campaigns using your approved data\n3. Launch outreach campaigns with confidence`);
+      toastError(`✅ Approved ${selectedProspects.length} prospects!\n\n🎯 Next Steps:\n1. View all approved prospects in the "Data Approval" section below\n2. Create campaigns using your approved data\n3. Launch outreach campaigns with confidence`);
     } else {
-      alert(`❌ Rejected ${selectedProspects.length} prospects`);
+      toastError(`❌ Rejected ${selectedProspects.length} prospects`);
     }
   };
 
@@ -881,7 +858,7 @@ export default function Page() {
     const approvedProspects = prospectReviewData.filter(p => p.status === 'approved');
     
     if (approvedProspects.length === 0) {
-      alert('No approved prospects to use in campaign. Please approve some prospects first.');
+      toastError('No approved prospects to use in campaign. Please approve some prospects first.');
       return;
     }
 
@@ -891,7 +868,7 @@ export default function Page() {
     // Switch to campaign tab
     setActiveMenuItem('campaign');
     
-    alert(`✅ ${approvedProspects.length} approved prospects transferred to Campaign Hub!\n\nSwitching to Campaign tab...`);
+    toastError(`✅ ${approvedProspects.length} approved prospects transferred to Campaign Hub!\n\nSwitching to Campaign tab...`);
   };
 
   // Update handleQuickAction to populate prospect review data
@@ -1501,7 +1478,7 @@ export default function Page() {
         
         if (linkedinCampaignType === '1st-degree-direct') {
           connectionDegree = '1st';
-          alert('✓ 1st Degree Campaign\n\nThese prospects should already be connected to you.\nMake sure CSV includes Conversation IDs for threading.');
+          toastError('✓ 1st Degree Campaign\n\nThese prospects should already be connected to you.\nMake sure CSV includes Conversation IDs for threading.');
         } else {
           const degreeChoice = prompt(
             `What connection degree are these prospects?\n\n2 = 2nd Degree (friend of friend)\n3 = 3rd Degree or beyond\n\nEnter 2 or 3:`,
@@ -1652,7 +1629,7 @@ export default function Page() {
         
         if (linkedinCampaignType === '1st-degree-direct') {
           connectionDegree = '1st';
-          alert('✓ 1st Degree Campaign\n\nThese prospects should already be connected to you.\nMake sure CSV includes Conversation IDs for threading.');
+          toastError('✓ 1st Degree Campaign\n\nThese prospects should already be connected to you.\nMake sure CSV includes Conversation IDs for threading.');
         } else {
           const degreeChoice = prompt(
             `What connection degree are these prospects?\n\n2 = 2nd Degree (friend of friend)\n3 = 3rd Degree or beyond\n\nEnter 2 or 3:`,

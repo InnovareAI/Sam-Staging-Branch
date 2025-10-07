@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../app/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, Info } from 'lucide-react';
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 
 export default function SuperAdminInvite() {
   const [workspaces, setWorkspaces] = useState<any[]>([]);
@@ -40,7 +42,7 @@ export default function SuperAdminInvite() {
 
   const handleInvite = async () => {
     if (!selectedWorkspaceId || !emailList.trim()) {
-      alert('Please select a workspace and enter email addresses');
+      toastError('Please select a workspace and enter email addresses');
       return;
     }
 
@@ -60,7 +62,7 @@ export default function SuperAdminInvite() {
       }).filter(user => user.email && user.email.includes('@'));
 
       if (users.length === 0) {
-        alert('No valid email addresses found');
+        toastError('No valid email addresses found');
         setLoading(false);
         return;
       }

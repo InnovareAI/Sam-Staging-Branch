@@ -1,9 +1,7 @@
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Settings, Users, Building2, Mail, Plus, UserCheck, Trash2, Globe } from 'lucide-react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import LocationIndicator from '@/components/LocationIndicator';
 
 interface Workspace {
   id: string;
@@ -121,7 +119,7 @@ export default function SettingsPage() {
       await loadWorkspaces(user.id);
     } catch (error) {
       console.error('Failed to create workspace:', error);
-      alert('Failed to create workspace');
+      toastError('Failed to create workspace');
     }
   };
 
@@ -143,14 +141,14 @@ export default function SettingsPage() {
       if (response.ok) {
         setInviteEmail('');
         setShowInviteUser(false);
-        alert('Invitation sent successfully!');
+        toastError('Invitation sent successfully!');
         await loadWorkspaces(user.id);
       } else {
         throw new Error('Failed to send invitation');
       }
     } catch (error) {
       console.error('Failed to invite user:', error);
-      alert('Failed to send invitation');
+      toastError('Failed to send invitation');
     }
   };
 
