@@ -35,12 +35,21 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('📧 GET /api/email-providers called')
+
     // Get current user
     const cookieStore = await cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const { data: { session }, error: authError } = await supabase.auth.getSession()
 
+    console.log('🔐 Auth check:', {
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      authError: authError?.message
+    })
+
     if (authError || !session || !session.user) {
+      console.log('❌ Auth failed - returning 401')
       return NextResponse.json({
         success: false,
         error: 'Authentication required'
@@ -121,7 +130,7 @@ export async function GET(request: NextRequest) {
         return isEmailType
       })
       .map((account: any) => {
-        const connectionParams = account.connection_params?.im || account.connection_params || {}
+        const connectionParams = account.connection_params || {}
         const isConnected = account.sources?.some((source: any) => source.status === 'OK')
 
         // Determine provider type based on Unipile account type
@@ -130,12 +139,19 @@ export async function GET(request: NextRequest) {
         if (accountType.includes('GOOGLE')) providerType = 'google'
         else if (accountType.includes('OUTLOOK')) providerType = 'microsoft'
 
+        // Extract email from different OAuth formats
+        const email = connectionParams.mail?.username ||
+                     connectionParams.im?.email ||
+                     connectionParams.email ||
+                     account.name ||
+                     ''
+
         return {
           id: account.id,
           user_id: user.id,
           provider_type: providerType,
-          provider_name: account.name || connectionParams.email || 'Email Account',
-          email_address: connectionParams.email || connectionParams.username || '',
+          provider_name: account.name || email || 'Email Account',
+          email_address: email,
           status: isConnected ? 'connected' : 'disconnected',
           config: account.connection_params,
           last_sync: account.updated_at,
