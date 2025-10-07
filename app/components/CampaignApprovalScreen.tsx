@@ -92,11 +92,6 @@ export default function CampaignApprovalScreen({
                 <span className="text-gray-400 text-sm">Type:</span>
                 <span className="text-white font-semibold ml-2">{campaignData.type}</span>
               </div>
-              <div className="h-6 w-px bg-gray-600"></div>
-              <div>
-                <span className="text-gray-400 text-sm">Prospects:</span>
-                <span className="text-white font-semibold ml-2">{campaignData.prospects.length}</span>
-              </div>
             </div>
           </div>
         </div>

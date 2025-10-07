@@ -2638,19 +2638,9 @@ export default function Page() {
           />
         ) : activeMenuItem === 'campaign' ? (
           <div className="flex-1 flex flex-col">
-            {/* Toggle Button - Always show */}
+            {/* Header */}
             <div className="bg-gray-900 px-6 py-4 border-b border-gray-700">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold text-white">
-                  {showCampaignApprovalView ? 'Campaign Approval & Review' : 'Campaign Hub'}
-                </h2>
-                <button
-                  onClick={() => setShowCampaignApprovalView(!showCampaignApprovalView)}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2"
-                >
-                  <span>{showCampaignApprovalView ? '📊 Go to Campaign Hub' : '✅ Go to Campaign Approval'}</span>
-                </button>
-              </div>
+              <h2 className="text-xl font-bold text-white">Campaign Hub</h2>
             </div>
 
             {/* Conditional View */}

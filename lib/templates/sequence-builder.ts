@@ -18,7 +18,8 @@ export interface GeneratedSequence {
   recommendedCTA: string;
 }
 
-const CONNECTION_LIMIT = 300;
+const CONNECTION_LIMIT = 275;
+const MESSAGE_LIMIT = 1000;
 
 export function generateLinkedInSequence(
   payload: ICPDiscoveryPayload,

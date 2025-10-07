@@ -1,8 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Play, Pause, BarChart3, Users, Mail, Megaphone, Target, TrendingUp, Calendar, Settings, Eye, MessageSquare, Zap, FileText, Edit, Copy, Send, Clock, CheckCircle, XCircle, Upload, X, Brain } from 'lucide-react';
+import { Plus, Play, Pause, BarChart3, Users, Mail, Megaphone, Target, TrendingUp, Calendar, Settings, Eye, MessageSquare, Zap, FileText, Edit, Copy, Send, Clock, CheckCircle, XCircle, Upload, X, Brain, AlertTriangle } from 'lucide-react';
 import CampaignApprovalScreen from './CampaignApprovalScreen';
+import CampaignStepsEditor from './CampaignStepsEditor';
+
+// Helper function to get human-readable campaign type labels
+function getCampaignTypeLabel(type: string): string {
+  const typeLabels: Record<string, string> = {
+    'connector': 'Connector',
+    'messenger': 'Messenger',
+    'open_inmail': 'Open InMail',
+    'builder': 'Builder',
+    'group': 'Group',
+    'event_invite': 'Event Invite',
+    'inbound': 'Inbound',
+    'event_participants': 'Event Participants',
+    'recovery': 'Recovery',
+    'company_follow': 'Company Follow',
+    'email': 'Email',
+    'multi_channel': 'Multi-Channel'
+  };
+  return typeLabels[type] || type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
 
 function CampaignList() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
@@ -475,29 +495,71 @@ function CampaignBuilder({
   const [activeTextarea, setActiveTextarea] = useState<HTMLTextAreaElement | null>(null);
   
   const campaignTypes = [
-    { 
-      value: 'connector', 
-      label: 'Connector Campaign', 
+    {
+      value: 'connector',
+      label: 'Connector',
       description: 'Reach out to 2nd and 3rd+ degree connections with personalized connection requests and follow-ups',
       icon: Users
     },
-    { 
-      value: 'messenger', 
-      label: 'Messenger Campaign', 
-      description: 'Send direct messages to contacts that approved your request',
+    {
+      value: 'messenger',
+      label: 'Messenger',
+      description: 'Send direct messages to 1st degree connections',
       icon: MessageSquare
     },
-    { 
-      value: 'inmail', 
-      label: 'Open InMail', 
-      description: 'Send messages to prospects without using a connection request (Premium required)',
+    {
+      value: 'open_inmail',
+      label: 'Open InMail',
+      description: 'Send InMail messages without connection request (Premium required)',
       icon: Mail
     },
-    { 
-      value: 'company_follow', 
-      label: 'Company Follow Invite', 
-      description: 'Invite 1st degree connections to follow your company',
+    {
+      value: 'builder',
+      label: 'Builder',
+      description: 'Custom campaign builder with advanced targeting',
+      icon: Settings
+    },
+    {
+      value: 'group',
+      label: 'Group',
+      description: 'Engage with LinkedIn group members',
+      icon: Users
+    },
+    {
+      value: 'event_invite',
+      label: 'Event Invite',
+      description: 'Invite connections to your LinkedIn events',
+      icon: Calendar
+    },
+    {
+      value: 'inbound',
+      label: 'Inbound',
+      description: 'Automated responses to inbound inquiries',
+      icon: TrendingUp
+    },
+    {
+      value: 'event_participants',
+      label: 'Event Participants',
+      description: 'Target attendees of specific LinkedIn events',
+      icon: Users
+    },
+    {
+      value: 'recovery',
+      label: 'Recovery',
+      description: 'Re-engage dormant connections and prospects',
+      icon: Send
+    },
+    {
+      value: 'company_follow',
+      label: 'Company Follow',
+      description: 'Invite 1st degree connections to follow your company page',
       icon: Target
+    },
+    {
+      value: 'email',
+      label: 'Email',
+      description: 'Email-only outreach campaigns',
+      icon: Mail
     }
   ];
 
@@ -1779,7 +1841,17 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
       localStorage.setItem('autoOpenApprovals', autoOpenApprovals.toString());
     }
   }, [autoOpenApprovals]);
-  
+
+  // Campaign filter state
+  const [campaignFilter, setCampaignFilter] = useState<'active' | 'inactive' | 'archived' | 'approval'>('active');
+
+  // Load approval messages when approval tab is selected
+  useEffect(() => {
+    if (campaignFilter === 'approval' && approvalMessages.pending.length === 0) {
+      loadApprovalMessages();
+    }
+  }, [campaignFilter]);
+
   // Modal states for campaign management features
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
   const [showCampaignCloning, setShowCampaignCloning] = useState(false);
@@ -1787,6 +1859,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
   const [showScheduledCampaigns, setShowScheduledCampaigns] = useState(false);
   const [showABTesting, setShowABTesting] = useState(false);
   const [showCampaignSettings, setShowCampaignSettings] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
+  const [showStepsEditor, setShowStepsEditor] = useState(false);
+  const [selectedMessageForReview, setSelectedMessageForReview] = useState<any>(null);
+  const [showCampaignProspects, setShowCampaignProspects] = useState(false);
+  const [campaignProspects, setCampaignProspects] = useState<any[]>([]);
+  const [loadingProspects, setLoadingProspects] = useState(false);
 
   // Campaign cloning state
   const [campaigns, setCampaigns] = useState<any[]>([]);
@@ -2047,7 +2125,22 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
       const response = await fetch('/api/campaigns/messages/approval');
       if (response.ok) {
         const result = await response.json();
-        setApprovalMessages(result.grouped || { pending: [], approved: [], rejected: [] });
+
+        // Transform the data to include campaign_name from joined campaigns table
+        const transformMessages = (messages: any[]) => messages.map(msg => ({
+          ...msg,
+          campaign_name: msg.campaigns?.name || msg.campaign_name || 'Unknown Campaign',
+          message_content: msg.message_text || msg.message_content || '',
+          step_number: msg.sequence_step || msg.step_number || 1
+        }));
+
+        const transformed = {
+          pending: transformMessages(result.grouped?.pending || []),
+          approved: transformMessages(result.grouped?.approved || []),
+          rejected: transformMessages(result.grouped?.rejected || [])
+        };
+
+        setApprovalMessages(transformed);
         setApprovalCounts(result.counts || { pending: 0, approved: 0, rejected: 0, total: 0 });
       }
     } catch (error) {
@@ -2112,6 +2205,26 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
     } catch (error) {
       console.error('Failed to reject message:', error);
       alert('Failed to reject message. Please try again.');
+    }
+  };
+
+  const loadCampaignProspects = async (campaignId: string) => {
+    setLoadingProspects(true);
+    try {
+      const response = await fetch(`/api/campaigns/${campaignId}/prospects`);
+      if (response.ok) {
+        const result = await response.json();
+        setCampaignProspects(result.prospects || []);
+        setShowCampaignProspects(true);
+      } else {
+        console.error('Failed to load campaign prospects');
+        alert('Failed to load prospects for this campaign');
+      }
+    } catch (error) {
+      console.error('Failed to load campaign prospects:', error);
+      alert('Failed to load prospects. Please try again.');
+    } finally {
+      setLoadingProspects(false);
     }
   };
 
@@ -2474,6 +2587,146 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
 
   // Check if we're in "auto-create mode" (prospects from approval)
   const isAutoCreateMode = initialProspects && initialProspects.length > 0 && showBuilder;
+
+  // Mock campaigns data (use the same from CampaignList component)
+  const mockCampaigns = [
+    {
+      id: '1',
+      name: 'Q4 SaaS Outreach',
+      status: 'active',
+      type: 'connector',
+      prospects: 145,
+      sent: 92,
+      replies: 23,
+      connections: 67,
+      response_rate: 25.0,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '2',
+      name: 'Holiday Networking Campaign',
+      status: 'active',
+      type: 'messenger',
+      prospects: 234,
+      sent: 189,
+      replies: 41,
+      connections: 78,
+      response_rate: 21.7,
+      created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: '3',
+      name: 'FinTech Decision Makers',
+      status: 'paused',
+      type: 'open_inmail',
+      prospects: 178,
+      sent: 134,
+      replies: 19,
+      connections: 0,
+      response_rate: 14.2,
+      created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: '4',
+      name: 'Tech Summit 2025 Invitations',
+      status: 'active',
+      type: 'event_invite',
+      prospects: 298,
+      sent: 267,
+      replies: 58,
+      connections: 0,
+      response_rate: 21.7,
+      created_at: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: '5',
+      name: 'Company Page Growth',
+      status: 'active',
+      type: 'company_follow',
+      prospects: 456,
+      sent: 423,
+      replies: 89,
+      connections: 356,
+      response_rate: 21.0,
+      created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: '6',
+      name: 'Product Launch Group Campaign',
+      status: 'active',
+      type: 'group',
+      prospects: 89,
+      sent: 72,
+      replies: 31,
+      connections: 0,
+      response_rate: 43.1,
+      created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: '7',
+      name: 'Inbound Lead Follow-up',
+      status: 'active',
+      type: 'inbound',
+      prospects: 67,
+      sent: 67,
+      replies: 28,
+      connections: 0,
+      response_rate: 41.8,
+      created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: '8',
+      name: 'Webinar Attendee Follow-up',
+      status: 'active',
+      type: 'event_participants',
+      prospects: 234,
+      sent: 198,
+      replies: 67,
+      connections: 0,
+      response_rate: 33.8,
+      created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: '9',
+      name: 'Re-engagement Campaign',
+      status: 'active',
+      type: 'recovery',
+      prospects: 512,
+      sent: 445,
+      replies: 89,
+      connections: 23,
+      response_rate: 20.0,
+      created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: '10',
+      name: 'Email Newsletter Campaign',
+      status: 'completed',
+      type: 'email',
+      prospects: 1023,
+      sent: 1023,
+      replies: 156,
+      connections: 0,
+      response_rate: 15.2,
+      created_at: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+    }
+  ];
+
+  // Filter campaigns based on selected tab
+  const filteredCampaigns = mockCampaigns.filter(c => {
+    if (campaignFilter === 'active') return c.status === 'active' || c.status === 'paused';
+    if (campaignFilter === 'inactive') return c.status === 'paused';
+    if (campaignFilter === 'archived') return c.status === 'completed';
+    return true;
+  });
+
+  // Handle campaign action menu (open settings)
+  const handleCampaignAction = (campaignId: string) => {
+    console.log('Opening settings for campaign:', campaignId);
+    const campaign = mockCampaigns.find(c => c.id === campaignId);
+    setSelectedCampaign(campaign || null);
+    setShowCampaignSettings(true);
+  };
   const campaignName = initialProspects?.[0]?.campaignTag || 'New Campaign';
 
   return (
@@ -2526,37 +2779,6 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
             <p className="text-gray-400">Design, approve, and launch marketing campaigns</p>
           </div>
           <div className="flex items-center gap-4">
-            {/* Pending Approvals Indicator with Toggle */}
-            {approvalCounts.pending > 0 && (
-              <div className="flex items-center gap-3 bg-yellow-900/30 border border-yellow-500/40 rounded-lg px-4 py-2">
-                <div className="flex items-center gap-2">
-                  <Clock className="text-yellow-400" size={16} />
-                  <span className="text-yellow-300 text-sm font-medium">
-                    {approvalCounts.pending} pending
-                  </span>
-                </div>
-                <button
-                  onClick={openMessageApproval}
-                  className="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded transition-colors"
-                >
-                  Review
-                </button>
-              </div>
-            )}
-
-            {/* Auto-open Toggle */}
-            <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
-              <label className="flex items-center gap-2 cursor-pointer" title="Auto-open approval queue when pending">
-                <input
-                  type="checkbox"
-                  checked={autoOpenApprovals}
-                  onChange={(e) => setAutoOpenApprovals(e.target.checked)}
-                  className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
-                />
-                <span className="text-gray-300 text-sm">Auto-open approvals</span>
-              </label>
-            </div>
-
             <button
               onClick={() => setShowBuilder(!showBuilder)}
               className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
@@ -2608,75 +2830,201 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
           </div>
         )}
 
-        {/* Show full features when: not in auto-create mode OR toggle is enabled */}
-        {(!isAutoCreateMode || showFullFeatures) && (
-          <>
+        {/* Campaign List with Tabs */}
+        {!showBuilder && !showApprovalScreen && (
+          <div className="bg-gray-800 rounded-lg border border-gray-700">
+            {/* Status Tabs */}
+            <div className="flex border-b border-gray-700">
+              <button
+                onClick={() => setCampaignFilter('active')}
+                className={`px-6 py-3 text-sm font-medium transition-colors ${
+                  campaignFilter === 'active'
+                    ? 'text-white border-b-2 border-purple-500'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Active
+              </button>
+              <button
+                onClick={() => setCampaignFilter('inactive')}
+                className={`px-6 py-3 text-sm font-medium transition-colors ${
+                  campaignFilter === 'inactive'
+                    ? 'text-white border-b-2 border-purple-500'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Inactive
+              </button>
+              <button
+                onClick={() => setCampaignFilter('archived')}
+                className={`px-6 py-3 text-sm font-medium transition-colors ${
+                  campaignFilter === 'archived'
+                    ? 'text-white border-b-2 border-purple-500'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Archived
+              </button>
+              {/* Pending Approval Tab - Always visible */}
+              <button
+                onClick={() => setCampaignFilter('approval')}
+                className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
+                  campaignFilter === 'approval'
+                    ? 'text-white border-b-2 border-yellow-500'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Pending Approval
+                {approvalCounts.pending > 0 && (
+                  <span className="px-2 py-0.5 bg-yellow-600 text-white text-xs rounded-full">
+                    {approvalCounts.pending}
+                  </span>
+                )}
+              </button>
+            </div>
 
-        {/* Campaign Management Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div onClick={openTemplateLibrary} className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-            <div className="flex items-center mb-4">
-              <Edit className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-              <h3 className="text-lg font-semibold text-white group-hover:text-white">Template Library</h3>
-            </div>
-            <p className="text-gray-400 group-hover:text-purple-100 mb-4">Browse and customize proven email and LinkedIn message templates</p>
-            <div className="text-xs text-purple-300 group-hover:text-purple-200">15 templates available</div>
+            {/* Conditional Content: Campaign Table OR Approval Table */}
+            {campaignFilter === 'approval' ? (
+              /* Message Approval Table */
+              <div className="overflow-x-auto">
+                {loadingApproval ? (
+                  <div className="text-center py-12">
+                    <div className="text-gray-400">Loading pending approvals...</div>
+                  </div>
+                ) : approvalMessages.pending.length === 0 ? (
+                  <div className="text-center py-12">
+                    <CheckCircle className="mx-auto text-green-400 mb-4" size={48} />
+                    <div className="text-white font-medium mb-2">All messages approved!</div>
+                    <div className="text-gray-400">No pending message approvals at this time.</div>
+                  </div>
+                ) : (
+                  <table className="w-full">
+                    <thead className="bg-gray-750">
+                      <tr className="text-left text-gray-400 text-xs uppercase">
+                        <th className="px-6 py-3 font-medium">Campaign</th>
+                        <th className="px-6 py-3 font-medium">Step</th>
+                        <th className="px-6 py-3 font-medium">Message Preview</th>
+                        <th className="px-6 py-3 font-medium">Created</th>
+                        <th className="px-6 py-3 font-medium">Characters</th>
+                        <th className="px-6 py-3 font-medium"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {approvalMessages.pending.map((msg: any) => (
+                        <tr
+                          key={msg.id}
+                          onClick={() => setSelectedMessageForReview(msg)}
+                          className="border-b border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer"
+                        >
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                              <div>
+                                <div className="text-white font-medium">{msg.campaign_name}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-gray-300">Step {msg.step_number}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-gray-300 text-sm max-w-md truncate">
+                              {msg.message_content}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-gray-400 text-sm">
+                              {new Date(msg.created_at).toLocaleDateString()}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`text-sm ${msg.message_content?.length > 275 && msg.step_number === 1 ? 'text-yellow-400' : 'text-gray-400'}`}>
+                              {msg.message_content?.length || 0}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedMessageForReview(msg);
+                              }}
+                              className="text-purple-400 hover:text-purple-300 transition-colors"
+                            >
+                              <Eye size={18} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            ) : (
+              /* Campaign Table */
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                <thead className="bg-gray-750">
+                  <tr className="text-left text-gray-400 text-xs uppercase">
+                    <th className="px-6 py-3 font-medium">Campaign</th>
+                    <th className="px-6 py-3 font-medium">Type</th>
+                    <th className="px-6 py-3 font-medium">Contacted</th>
+                    <th className="px-6 py-3 font-medium">Connected</th>
+                    <th className="px-6 py-3 font-medium">Replied</th>
+                    <th className="px-6 py-3 font-medium"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCampaigns.map((campaign: any) => (
+                    <tr
+                      key={campaign.id}
+                      onClick={() => handleCampaignAction(campaign.id)}
+                      className="border-t border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                          <div>
+                            <div className="text-white font-medium">{campaign.name}</div>
+                            <div className="text-gray-400 text-sm">Created {new Date(campaign.created_at).toLocaleDateString()}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-gray-300">{getCampaignTypeLabel(campaign.type)}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-white">{campaign.sent || 0}</div>
+                        <div className="text-gray-400 text-sm">of {campaign.prospects || 0}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-white">{campaign.connections || 0}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-white">{campaign.replies || 0}</div>
+                        <div className="text-gray-400 text-sm">{campaign.response_rate?.toFixed(1)}%</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCampaignAction(campaign.id);
+                          }}
+                          className="text-gray-400 hover:text-white transition-colors"
+                        >
+                          <Settings size={20} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              </div>
+            )}
           </div>
-          
-          <div onClick={openCampaignCloning} className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-            <div className="flex items-center mb-4">
-              <Copy className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-              <h3 className="text-lg font-semibold text-white group-hover:text-white">Campaign Cloning</h3>
-            </div>
-            <p className="text-gray-400 group-hover:text-purple-100 mb-4">Duplicate successful campaigns with new target audiences</p>
-            <div className="text-xs text-purple-300 group-hover:text-purple-200">Clone with variations</div>
-          </div>
-          
-          <div onClick={openMessageApproval} className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-            <div className="flex items-center mb-4">
-              <Send className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-              <h3 className="text-lg font-semibold text-white group-hover:text-white">Campaign Messaging Approval</h3>
-            </div>
-            <p className="text-gray-400 group-hover:text-purple-100 mb-4">Review and approve campaign messaging before launch</p>
-            <div className="text-xs text-purple-300 group-hover:text-purple-200">Message approval workflow</div>
-          </div>
-          
-          <div onClick={openScheduledCampaigns} className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-            <div className="flex items-center mb-4">
-              <Clock className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-              <h3 className="text-lg font-semibold text-white group-hover:text-white">Scheduled Campaigns</h3>
-            </div>
-            <p className="text-gray-400 group-hover:text-purple-100 mb-4">Schedule campaigns for optimal timing and frequency</p>
-            <div className="text-xs text-purple-300 group-hover:text-purple-200">Smart timing optimization</div>
-          </div>
-          
-          <div onClick={openABTesting} className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-            <div className="flex items-center mb-4">
-              <Target className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-              <h3 className="text-lg font-semibold text-white group-hover:text-white">A/B Testing Hub</h3>
-            </div>
-            <p className="text-gray-400 group-hover:text-purple-100 mb-4">Test subject lines, messaging, and timing for optimization</p>
-            <div className="text-xs text-purple-300 group-hover:text-purple-200">Split test management</div>
-          </div>
-          
-          <div onClick={openCampaignSettings} className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-            <div className="flex items-center mb-4">
-              <Settings className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-              <h3 className="text-lg font-semibold text-white group-hover:text-white">Campaign Settings</h3>
-            </div>
-            <p className="text-gray-400 group-hover:text-purple-100 mb-4">Configure global campaign preferences and defaults</p>
-            <div className="text-xs text-purple-300 group-hover:text-purple-200">Global configuration</div>
-          </div>
-        </div>
+        )}
 
-        {/* Campaign List */}
-        <div>
-          <h2 className="text-xl font-semibold text-white mb-4">Active Campaigns</h2>
-          <CampaignList />
-        </div>
-
-        {/* Performance Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Performance Metrics - Hidden for now */}
+        <div className="hidden grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
             <div className="flex items-center justify-between mb-4">
               <Mail className="text-blue-400 group-hover:scale-110 transition-transform" size={24} />
@@ -2911,11 +3259,18 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
       )}
 
       {/* Campaign Settings Modal */}
-      {showCampaignSettings && (
+      {showCampaignSettings && selectedCampaign && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 rounded-lg p-6 max-w-3xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-white">Campaign Settings</h3>
+              <div className="flex items-center gap-2">
+                <Settings size={24} className="text-white" />
+                <h3 className="text-xl font-semibold text-white">Settings</h3>
+                <span className="text-xs px-2 py-1 bg-blue-600 text-white rounded ml-2">
+                  {selectedCampaign.type === 'linkedin' ? 'LinkedIn' :
+                   selectedCampaign.type === 'email' ? 'Email' : 'Multi-Channel'}
+                </span>
+              </div>
               <button
                 onClick={() => setShowCampaignSettings(false)}
                 className="text-gray-400 hover:text-white transition-colors"
@@ -2923,49 +3278,216 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
                 <X size={24} />
               </button>
             </div>
-            
-            <div className="max-w-md">
-              {/* Safety & Compliance */}
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-3">Safety & Compliance</h4>
-                <div className="space-y-3">
+
+            <div className="space-y-6">
+              {/* Campaign Name */}
+              <div className="border-b border-gray-700 pb-6">
+                <h4 className="text-white font-medium mb-2">Campaign name</h4>
+                <p className="text-gray-400 text-sm mb-3">Rename your campaign here for easier campaign management.</p>
+                <input
+                  type="text"
+                  defaultValue={selectedCampaign.name}
+                  maxLength={100}
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none"
+                />
+                <div className="text-right text-gray-400 text-xs mt-1">Characters: {selectedCampaign.name.length}/100</div>
+              </div>
+
+              {/* Campaign Limits */}
+              <div className="border-b border-gray-700 pb-6">
+                <h4 className="text-white font-medium mb-2">Campaign limits</h4>
+                <p className="text-gray-400 text-sm mb-4">
+                  Specify the daily limit for this campaign. These limits will be applied to reach out to your leads.
+                </p>
+
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-sm text-gray-300 mb-1">Daily Connection Limit</label>
-                    <input type="number" defaultValue="100" className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" />
+                    <label className="text-gray-300 text-sm mb-2 block">
+                      {selectedCampaign.type === 'linkedin'
+                        ? 'Set the number of new connection requests to send daily:'
+                        : selectedCampaign.type === 'email'
+                        ? 'Set the number of new emails to send daily:'
+                        : 'Set the number of new contacts to reach daily:'}
+                    </label>
+                    <input type="range" min="0" max="100" defaultValue="15" className="w-full" />
+                    <div className="flex justify-between text-gray-400 text-xs mt-1">
+                      <span>0</span>
+                      <span className="text-white font-medium">15</span>
+                      <span>100</span>
+                    </div>
                   </div>
-                  <label className="flex items-center">
-                    <input type="checkbox" defaultChecked className="mr-2" />
-                    <span className="text-gray-300 text-sm">Respect "Do Not Contact" lists</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input type="checkbox" defaultChecked className="mr-2" />
-                    <span className="text-gray-300 text-sm">Auto-pause on high rejection rate</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input type="checkbox" className="mr-2" />
-                    <span className="text-gray-300 text-sm">Require approval for messages</span>
+
+                  <div>
+                    <label className="text-gray-300 text-sm mb-2 block">
+                      {selectedCampaign.type === 'linkedin'
+                        ? 'Set the number of LinkedIn follow-up messages to send daily:'
+                        : selectedCampaign.type === 'email'
+                        ? 'Set the number of follow-up emails to send daily:'
+                        : 'Set the number of follow-up messages to send daily:'}
+                    </label>
+                    <input type="range" min="0" max="100" defaultValue="20" className="w-full" />
+                    <div className="flex justify-between text-gray-400 text-xs mt-1">
+                      <span>0</span>
+                      <span className="text-white font-medium">20</span>
+                      <span>100</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Campaign Priority */}
+              <div className="border-b border-gray-700 pb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-white font-medium">Campaign Priority</h4>
+                  <label className="flex items-center gap-2">
+                    <span className="text-gray-300 text-sm">Use priority</span>
+                    <input type="checkbox" defaultChecked className="w-4 h-4 rounded" />
                   </label>
                 </div>
+                <p className="text-gray-400 text-sm mb-3">If enabled, each campaign will have a default priority value "Medium". If a campaign priority is changed to "High" more actions will be scheduled to be sent from it in comparison to campaigns with lower priority.</p>
+                <select className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm">
+                  <option>Medium</option>
+                  <option>High</option>
+                  <option>Low</option>
+                </select>
+              </div>
+
+              {/* Schedule Campaign */}
+              <div className="border-b border-gray-700 pb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-white font-medium">Schedule campaign</h4>
+                  <label className="flex items-center gap-2">
+                    <span className="text-gray-300 text-sm">Start immediately</span>
+                    <input type="checkbox" defaultChecked className="w-4 h-4 rounded" />
+                  </label>
+                </div>
+                <p className="text-gray-400 text-sm mb-3">
+                  {selectedCampaign.type === 'linkedin' || selectedCampaign.type === 'multi_channel'
+                    ? 'You can schedule when campaign will be active. Once set to active, LinkedIn messages will start being sent during your account\'s active hours.'
+                    : 'You can schedule when campaign will be active. Once set to active, emails will start being sent immediately.'}
+                </p>
+                <input
+                  type="datetime-local"
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                />
+                <p className="text-gray-400 text-xs mt-2">Times are set according to the time zone US/Mountain (GMT -0600), which can also be set from the <span className="text-purple-400">account settings</span>.</p>
+              </div>
+
+              {/* Prospects */}
+              <div className="border-b border-gray-700 pb-6">
+                <h4 className="text-white font-medium mb-2">Prospects</h4>
+                {selectedCampaign.type === 'linkedin' || selectedCampaign.type === 'multi_channel' ? (
+                  <>
+                    <p className="text-gray-400 text-sm mb-3">Override and allow outreaching to LinkedIn profiles from the same company</p>
+                    <label className="flex items-center gap-3">
+                      <input type="checkbox" className="w-4 h-4 rounded" />
+                      <span className="text-white text-sm">Override LinkedIn profiles</span>
+                    </label>
+                    <p className="text-gray-400 text-xs mt-2">Enable duplicating leads between company campaigns</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-gray-400 text-sm mb-3">Email campaign prospect settings</p>
+                    <label className="flex items-center gap-3 mb-2">
+                      <input type="checkbox" className="w-4 h-4 rounded" />
+                      <span className="text-white text-sm">Allow duplicate email addresses</span>
+                    </label>
+                    <label className="flex items-center gap-3">
+                      <input type="checkbox" className="w-4 h-4 rounded" defaultChecked />
+                      <span className="text-white text-sm">Skip bounced emails</span>
+                    </label>
+                    <p className="text-gray-400 text-xs mt-2">Automatically skip previously bounced email addresses</p>
+                  </>
+                )}
+              </div>
+
+              {/* Campaign Steps / Message Sequence */}
+              <div className="border-b border-gray-700 pb-6">
+                <h4 className="text-white font-medium mb-2">Campaign steps</h4>
+                <p className="text-gray-400 text-sm mb-4">
+                  Configure your message sequence, timing, and personalization. Each step includes message text, delay days, and personalization tags.
+                </p>
+
+                {/* Quick Summary */}
+                <div className="bg-gray-700 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-white font-medium mb-1">Current sequence: 3 steps</div>
+                      <div className="text-gray-400 text-sm">Connection request + 2 follow-ups over 10 days</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-green-400 text-sm">✓ Messages configured</div>
+                      <div className="text-gray-400 text-xs">Last edited 2 days ago</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Edit Steps Button */}
+                <button
+                  className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium"
+                  onClick={() => setShowStepsEditor(true)}
+                >
+                  <Edit size={18} />
+                  <span>Edit campaign steps & messages</span>
+                </button>
+
+                <div className="mt-3 text-xs text-gray-400 text-center">
+                  Opens full editor with SAM chat assistant
+                </div>
+              </div>
+
+              {/* Campaign Status */}
+              <div className="border-b border-gray-700 pb-6">
+                <h4 className="text-white font-medium mb-2">Campaign status</h4>
+                <p className="text-gray-400 text-sm mb-3">
+                  {selectedCampaign.type === 'linkedin'
+                    ? 'You can turn this campaign on and off. An active campaign will send LinkedIn connection requests and messages according to your settings.'
+                    : selectedCampaign.type === 'email'
+                    ? 'You can turn this campaign on and off. An active campaign will send emails according to your settings.'
+                    : 'You can turn this campaign on and off. An active campaign will send messages across all channels according to your settings.'}
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600">
+                    <div className={`w-3 h-3 rounded-full ${
+                      selectedCampaign.status === 'active' ? 'bg-green-500' :
+                      selectedCampaign.status === 'paused' ? 'bg-yellow-500' :
+                      selectedCampaign.status === 'completed' ? 'bg-blue-500' :
+                      'bg-gray-500'
+                    }`}></div>
+                    <span className="text-white capitalize">{selectedCampaign.status}</span>
+                  </div>
+                  <select className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm">
+                    <option value="active">Active - Campaign is running</option>
+                    <option value="paused">Paused - Campaign is temporarily stopped</option>
+                    <option value="inactive">Inactive - Campaign draft</option>
+                    <option value="completed">Completed - Campaign finished</option>
+                    <option value="archived">Archived - Campaign archived</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Delete Campaign */}
+              <div>
+                <h4 className="text-white font-medium mb-2">Delete campaign</h4>
+                <p className="text-gray-400 text-sm mb-3">Deleting a campaign will stop all the campaign's activity. Contacts from the campaign will remain in 'My Network' and in your 'Inbox', however, they will no longer receive messages from the deleted campaign. You will be able to continue manual communication with these contacts.</p>
+                <button className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
+                  <X size={16} />
+                  Delete campaign
+                </button>
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setShowCampaignSettings(false)}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors">
-                Save Settings
+            <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-700">
+              <button className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium">
+                Save
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Message Approval Modal */}
-      {showMessageApproval && (
+      {/* Message Approval Modal - REPLACED BY APPROVAL TAB */}
+      {false && showMessageApproval && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
@@ -3369,8 +3891,255 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
           </div>
         </div>
       )}
-        </>
-        )}
+
+      {/* Campaign Steps Editor */}
+      {showStepsEditor && selectedCampaign && (
+        <CampaignStepsEditor
+          campaignId={selectedCampaign.id}
+          campaignName={selectedCampaign.name}
+          campaignType={selectedCampaign.type}
+          onClose={() => setShowStepsEditor(false)}
+          onSave={(steps) => {
+            console.log('Saved campaign steps:', steps);
+            // TODO: Save steps to database
+            setShowStepsEditor(false);
+          }}
+        />
+      )}
+
+      {/* Message Review Detail Modal */}
+      {selectedMessageForReview && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="bg-gray-750 px-6 py-4 border-b border-gray-700 flex items-center justify-between sticky top-0">
+              <div>
+                <h3 className="text-xl font-semibold text-white">{selectedMessageForReview.campaign_name}</h3>
+                <div className="flex items-center gap-3 mt-1">
+                  <p className="text-sm text-gray-400">
+                    Step {selectedMessageForReview.step_number} • {new Date(selectedMessageForReview.created_at).toLocaleString()}
+                  </p>
+                  <span className="text-gray-600">•</span>
+                  <button
+                    onClick={() => loadCampaignProspects(selectedMessageForReview.campaign_id)}
+                    disabled={loadingProspects}
+                    className="text-sm text-purple-400 hover:text-purple-300 underline transition-colors flex items-center gap-1 disabled:opacity-50"
+                  >
+                    <Users size={14} />
+                    {loadingProspects ? 'Loading...' : 'View Approved Prospects'}
+                  </button>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedMessageForReview(null)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Message Content */}
+            <div className="p-6 space-y-6">
+              {/* Message Body */}
+              <div>
+                <label className="text-sm font-medium text-gray-400 mb-2 block">Message Content</label>
+                <div className="bg-gray-900 rounded-lg p-6 border border-gray-700">
+                  <div className="text-gray-100 text-base leading-relaxed whitespace-pre-wrap">
+                    {selectedMessageForReview.message_content}
+                  </div>
+                </div>
+              </div>
+
+              {/* Message Stats */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-gray-750 rounded-lg p-4 border border-gray-700">
+                  <div className="text-gray-400 text-xs uppercase mb-1">Characters</div>
+                  <div className={`text-2xl font-semibold ${selectedMessageForReview.message_content?.length > 275 && selectedMessageForReview.step_number === 1 ? 'text-yellow-400' : 'text-white'}`}>
+                    {selectedMessageForReview.message_content?.length || 0}
+                  </div>
+                  {selectedMessageForReview.message_content?.length > 275 && selectedMessageForReview.step_number === 1 && (
+                    <div className="text-yellow-400 text-xs mt-1 flex items-center gap-1">
+                      <AlertTriangle size={12} />
+                      Exceeds LinkedIn limit
+                    </div>
+                  )}
+                </div>
+                <div className="bg-gray-750 rounded-lg p-4 border border-gray-700">
+                  <div className="text-gray-400 text-xs uppercase mb-1">Personalization Tags</div>
+                  <div className="text-2xl font-semibold text-white">
+                    {(selectedMessageForReview.message_content?.match(/\{\{.*?\}\}/g) || []).length}
+                  </div>
+                  <div className="text-gray-400 text-xs mt-1">Dynamic fields</div>
+                </div>
+                <div className="bg-gray-750 rounded-lg p-4 border border-gray-700">
+                  <div className="text-gray-400 text-xs uppercase mb-1">Status</div>
+                  <div className="text-2xl font-semibold text-yellow-400">Pending</div>
+                  <div className="text-gray-400 text-xs mt-1">Awaiting review</div>
+                </div>
+              </div>
+
+              {/* Personalization Tags Used */}
+              {(selectedMessageForReview.message_content?.match(/\{\{.*?\}\}/g) || []).length > 0 && (
+                <div>
+                  <label className="text-sm font-medium text-gray-400 mb-2 block">Personalization Tags</label>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from(new Set(selectedMessageForReview.message_content?.match(/\{\{.*?\}\}/g) || [])).map((tag: string, idx: number) => (
+                      <span key={idx} className="px-3 py-1 bg-purple-600/20 text-purple-300 text-sm rounded-full border border-purple-500/40">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between pt-4 border-t border-gray-700">
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setSelectedMessageForReview(null)}
+                    className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      // TODO: Open SAM chat with context about this message
+                      console.log('Ask SAM for help with message:', selectedMessageForReview);
+                      alert('SAM chat integration coming soon! This will open a chat with SAM to help improve this message.');
+                    }}
+                    className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <Brain size={18} />
+                    Ask SAM to Improve
+                  </button>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      handleRejectMessage(selectedMessageForReview.id);
+                      setSelectedMessageForReview(null);
+                    }}
+                    className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <XCircle size={18} />
+                    Reject Message
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleApproveMessage(selectedMessageForReview.id);
+                      setSelectedMessageForReview(null);
+                    }}
+                    className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <CheckCircle size={18} />
+                    Approve Message
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Campaign Prospects Modal */}
+      {showCampaignProspects && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="bg-gray-750 px-6 py-4 border-b border-gray-700 flex items-center justify-between sticky top-0">
+              <div>
+                <h3 className="text-xl font-semibold text-white">Approved Prospects</h3>
+                <p className="text-sm text-gray-400 mt-1">
+                  {campaignProspects.length} prospect{campaignProspects.length !== 1 ? 's' : ''} approved for this campaign
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCampaignProspects(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Prospect List */}
+            <div className="p-6">
+              {campaignProspects.length === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="mx-auto text-gray-600 mb-4" size={48} />
+                  <div className="text-white font-medium mb-2">No prospects found</div>
+                  <div className="text-gray-400">This campaign doesn't have any approved prospects yet.</div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {campaignProspects.map((prospect: any) => (
+                    <div
+                      key={prospect.id}
+                      className="bg-gray-750 border border-gray-600 rounded-lg p-4 hover:border-purple-500/50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="text-white font-semibold">{prospect.workspace_prospects?.full_name || prospect.name || 'Unknown'}</h4>
+                            {prospect.approval_status === 'approved' && (
+                              <span className="px-2 py-0.5 bg-green-600/20 text-green-400 text-xs rounded-full border border-green-500/40">
+                                ✓ Approved
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                            {prospect.workspace_prospects?.job_title && (
+                              <div>
+                                <span className="text-gray-400">Title:</span>
+                                <span className="text-gray-300 ml-2">{prospect.workspace_prospects.job_title}</span>
+                              </div>
+                            )}
+                            {prospect.workspace_prospects?.company_name && (
+                              <div>
+                                <span className="text-gray-400">Company:</span>
+                                <span className="text-gray-300 ml-2">{prospect.workspace_prospects.company_name}</span>
+                              </div>
+                            )}
+                            {prospect.workspace_prospects?.email && (
+                              <div>
+                                <span className="text-gray-400">Email:</span>
+                                <span className="text-gray-300 ml-2">{prospect.workspace_prospects.email}</span>
+                              </div>
+                            )}
+                            {prospect.workspace_prospects?.linkedin_url && (
+                              <div>
+                                <span className="text-gray-400">LinkedIn:</span>
+                                <a
+                                  href={prospect.workspace_prospects.linkedin_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-purple-400 hover:text-purple-300 ml-2 underline"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  View Profile
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-750 px-6 py-4 border-t border-gray-700 flex justify-end sticky bottom-0">
+              <button
+                onClick={() => setShowCampaignProspects(false)}
+                className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );
