@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const { data: { session }, error: authError } = await supabase.auth.getSession()
-    
+
     if (authError || !session || !session.user) {
       return NextResponse.json({
         success: false,
@@ -51,14 +51,28 @@ export async function GET(request: NextRequest) {
 
     console.log('📧 Fetching email providers for user:', user.id)
 
-    // Get user's current workspace
+    // Get user's current workspace - try users table first, then workspace_members
+    let workspaceId: string | null = null
+
     const { data: userData } = await supabase
       .from('users')
       .select('current_workspace_id')
       .eq('id', user.id)
       .single()
 
-    const workspaceId = userData?.current_workspace_id
+    if (userData?.current_workspace_id) {
+      workspaceId = userData.current_workspace_id
+    } else {
+      // Fallback: get workspace from workspace_members
+      const { data: memberData } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single()
+
+      workspaceId = memberData?.workspace_id || null
+    }
 
     if (!workspaceId) {
       return NextResponse.json({
