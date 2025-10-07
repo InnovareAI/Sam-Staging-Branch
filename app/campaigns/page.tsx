@@ -1,6 +1,6 @@
-import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
-
 'use client';
+
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 
 
 export default function CampaignsPage() {

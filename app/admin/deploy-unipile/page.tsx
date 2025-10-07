@@ -1,6 +1,6 @@
-import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+'use client';
 
-'use client'
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast'
 
   RefreshCw, 
   Zap, 
