@@ -49,27 +49,44 @@ export async function GET(request: NextRequest) {
 
     const user = session.user
 
+    console.log('📧 Fetching email providers for user:', user.id)
+
     // Get all Unipile accounts for the user
     const unipileResponse = await callUnipileAPI('accounts')
     const allAccounts = unipileResponse.items || []
+    console.log('📊 Unipile returned', allAccounts.length, 'total accounts')
 
     // Filter for email accounts (MESSAGING type) and get user's accounts from database
-    const { data: userAccounts } = await supabase
+    const { data: userAccounts, error: dbError } = await supabase
       .from('user_unipile_accounts')
       .select('unipile_account_id, platform, account_email')
       .eq('user_id', user.id)
 
+    if (dbError) {
+      console.error('❌ Database query error:', dbError)
+    }
+
+    console.log('💾 Database has', userAccounts?.length || 0, 'accounts for user')
+    console.log('📋 User accounts:', userAccounts)
+
     const userAccountIds = new Set(userAccounts?.map(a => a.unipile_account_id) || [])
+    console.log('🔑 User account IDs:', Array.from(userAccountIds))
 
     // Filter to only show user's email accounts
     const emailAccounts = allAccounts
       .filter((account: any) => {
         // Check if this account belongs to the user
-        if (!userAccountIds.has(account.id)) return false
+        const belongsToUser = userAccountIds.has(account.id)
+        console.log(`🔍 Account ${account.id} (${account.type}):`, belongsToUser ? '✅ belongs to user' : '❌ not user\'s')
+
+        if (!belongsToUser) return false
 
         // Include GOOGLE, OUTLOOK, and MESSAGING types
         const accountType = account.type?.toUpperCase()
-        return accountType === 'GOOGLE' || accountType === 'OUTLOOK' || accountType === 'MESSAGING'
+        const isEmailType = accountType === 'GOOGLE' || accountType === 'OUTLOOK' || accountType === 'MESSAGING'
+        console.log(`  Type check: ${accountType} →`, isEmailType ? '✅ email type' : '❌ not email')
+
+        return isEmailType
       })
       .map((account: any) => {
         const connectionParams = account.connection_params?.im || account.connection_params || {}
@@ -93,6 +110,8 @@ export async function GET(request: NextRequest) {
           updated_at: account.updated_at
         }
       })
+
+    console.log('✅ Returning', emailAccounts.length, 'email accounts')
 
     return NextResponse.json({
       success: true,
