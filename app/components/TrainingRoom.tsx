@@ -3,7 +3,7 @@
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { useState, useEffect } from 'react';
 
-// Onboarding scripts from Training Room v2 2
+// Onboarding scripts from Training Room v2.2 - Cache bust Oct 8 2025
 const opener = [
   "Hi, I'm Sam. How's your day going so far?",
   "Good to hear. Before we get started, what should I call you?"
