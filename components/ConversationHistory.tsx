@@ -1,17 +1,11 @@
-import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
-
-/**
- * Conversation History Sidebar for SAM AI
- * 
- * Allows users to save, organize, and access previous conversations
- */
-
 'use client'
 
-  History, 
-  X, 
-  Save, 
-  Hash, 
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+import {
+  History,
+  X,
+  Save,
+  Hash,
   Calendar,
   Search,
   Trash2,
@@ -20,6 +14,12 @@ import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
   Star,
   Clock
 } from 'lucide-react'
+
+/**
+ * Conversation History Sidebar for SAM AI
+ *
+ * Allows users to save, organize, and access previous conversations
+ */
 
 interface ConversationHistoryProps {
   isOpen: boolean
