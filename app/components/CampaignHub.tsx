@@ -2,7 +2,36 @@
 
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { useState, useEffect } from 'react';
-import { Users, Mail, Linkedin, MessageCircle, Calendar, Target, TrendingUp, Activity, CheckCircle, XCircle, Clock, AlertCircle, Megaphone } from 'lucide-react';
+import {
+  Users,
+  Mail,
+  Linkedin,
+  MessageCircle,
+  Calendar,
+  Target,
+  TrendingUp,
+  Activity,
+  CheckCircle,
+  XCircle,
+  Clock,
+  AlertCircle,
+  Megaphone,
+  Pause,
+  Play,
+  BarChart3,
+  Edit,
+  FileText,
+  MessageSquare,
+  Send,
+  Brain,
+  Plus,
+  Settings,
+  Upload,
+  Zap,
+  Eye,
+  Grid3x3,
+  AlertTriangle
+} from 'lucide-react';
 
 // Helper function to get human-readable campaign type labels
 function getCampaignTypeLabel(type: string): string {
