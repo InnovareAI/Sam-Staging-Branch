@@ -1,7 +1,7 @@
 'use client'
 
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 
 // LinkedIn Campaign Types
