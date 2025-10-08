@@ -295,12 +295,12 @@ const Analytics: React.FC = () => {
       </div>
 
       {/* KPI Grid */}
-      <div className="max-w-6xl mb-8">
+      <div className="mb-8">
         <KPIGrid analyticsData={analyticsData} />
       </div>
 
       {/* Chart Views Section */}
-      <div className="max-w-6xl mb-8">
+      <div className="mb-8">
         <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
           <BarChart3 className="mr-2" size={24} />
           Analytics Dashboard
@@ -404,7 +404,7 @@ const Analytics: React.FC = () => {
       </div>
 
       {/* Recent Activity */}
-      <div className="max-w-6xl mb-8">
+      <div className="mb-8">
         <h2 className="text-2xl font-bold text-white mb-4 flex items-center">
           <Target className="mr-2" size={24} />
           Recent Activity (Last 7 Days)
@@ -487,7 +487,7 @@ const Analytics: React.FC = () => {
 
       {/* Data Sources Notice */}
       {!demoMode && analyticsData.length === 0 && (
-        <div className="max-w-6xl">
+        <div>
           <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-6 text-center">
             <Database className="h-12 w-12 text-blue-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-blue-100 mb-2">No Analytics Data Yet</h3>
