@@ -1,6 +1,6 @@
 'use client';
 
-// FORCE COMPLETE REBUILD - Oct 8 2025 11:30 AM - All fixes applied, forcing new chunk generation
+// FORCE REBUILD - Oct 8 2025 12:47 PM - Netlify cache issue workaround
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useState, useEffect, useRef, useCallback } from 'react';
