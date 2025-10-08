@@ -4,6 +4,7 @@ import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSamThreadedChat } from '@/lib/hooks/useSamThreadedChat';
 import { DemoModeToggle } from '@/components/DemoModeToggle';
 import ConnectionStatusBar from '@/components/ConnectionStatusBar';
 import ConversationHistory from '@/components/ConversationHistory';
