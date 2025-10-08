@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import DemoModeToggle from '@/components/DemoModeToggle';
 import ConnectionStatusBar from '@/components/ConnectionStatusBar';
 import ConversationHistory from '@/components/ConversationHistory';
+import InviteUserPopup from '@/components/InviteUserPopup';
 import {
   Activity,
   Archive,
