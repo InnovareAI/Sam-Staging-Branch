@@ -35,9 +35,9 @@ const nextConfig = {
       },
     ]
   },
-  // Skip static page generation for problematic routes
+  // Generate unique build ID to force cache invalidation
   generateBuildId: async () => {
-    return 'sam-ai-build'
+    return `sam-ai-build-${Date.now()}`
   },
   // Disable build-time page data collection
   onDemandEntries: {
