@@ -4,14 +4,14 @@ import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import DemoModeToggle from '@/components/DemoModeToggle';
+import { DemoModeToggle } from '@/components/DemoModeToggle';
 import ConnectionStatusBar from '@/components/ConnectionStatusBar';
 import ConversationHistory from '@/components/ConversationHistory';
 import InviteUserPopup from '@/components/InviteUserPopup';
-import UnipileModal from '@/components/integrations/UnipileModal';
+import { UnipileModal } from '@/components/integrations/UnipileModal';
 import AuthModal from '@/components/AuthModal';
 import LLMConfigModal from '@/components/LLMConfigModal';
-import ChannelSelectionModal from '@/components/campaign/ChannelSelectionModal';
+import { ChannelSelectionModal } from '@/components/campaign/ChannelSelectionModal';
 import EmailProvidersModal from '@/app/components/EmailProvidersModal';
 import {
   Activity,
