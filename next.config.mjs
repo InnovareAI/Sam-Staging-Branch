@@ -37,7 +37,8 @@ const nextConfig = {
   },
   // Generate unique build ID to force cache invalidation
   generateBuildId: async () => {
-    return `sam-ai-build-${Date.now()}`
+    // Force completely new build ID to bypass ALL caching
+    return `build-${Math.random().toString(36).substring(7)}-${Date.now()}`
   },
   // Disable build-time page data collection
   onDemandEntries: {
