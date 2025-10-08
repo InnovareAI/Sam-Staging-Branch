@@ -1,0 +1,14 @@
+## Cache control for JavaScript files
+/_next/static/chunks/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+## Cache control for page JavaScript
+/_next/static/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+## Main pages
+/*
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
