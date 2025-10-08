@@ -4,6 +4,7 @@ import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import DemoModeToggle from '@/components/DemoModeToggle';
 import {
   Activity,
   Archive,
