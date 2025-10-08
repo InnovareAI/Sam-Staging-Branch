@@ -1,7 +1,7 @@
-import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
-
 'use client';
 
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+import { useState, useEffect } from 'react';
 
 // Onboarding scripts from Training Room v2 2
 const opener = [
