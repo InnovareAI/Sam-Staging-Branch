@@ -18,6 +18,8 @@ import KnowledgeBase from '@/app/components/KnowledgeBase';
 import LeadPipeline from '@/app/components/LeadPipeline';
 import Analytics from '@/app/components/Analytics';
 import AuditTrail from '@/app/components/AuditTrail';
+import DataCollectionHub from '@/components/DataCollectionHub';
+import CampaignHub from '@/app/components/CampaignHub';
 import {
   Activity,
   Archive,
