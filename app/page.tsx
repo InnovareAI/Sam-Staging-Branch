@@ -1261,12 +1261,6 @@ export default function Page() {
             icon: Shield,
           },
           {
-            id: 'sam-analytics',
-            label: 'SAM Analytics',
-            description: 'Deep insights into SAM performance and optimization',
-            icon: Activity,
-          },
-          {
             id: 'audit',
             label: 'Audit Trail',
             description: 'Keep every interaction compliant and auditable',
@@ -4284,43 +4278,6 @@ export default function Page() {
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
-          </div>
-        ) : activeMenuItem === 'sam-analytics' ? (
-          /* SAM ANALYTICS PAGE */
-          <div className="flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-7xl px-6 py-8 space-y-8">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/20 text-blue-300">
-                    <Activity className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h1 className="text-3xl font-semibold leading-tight text-white tracking-tight">SAM Analytics</h1>
-                    <p className="text-sm text-gray-400">
-                      Deep insights into SAM performance and optimization opportunities.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    onClick={() => setActiveMenuItem('chat')}
-                    className="inline-flex items-center gap-2 rounded-full border border-gray-700/70 px-4 py-2 text-sm text-gray-300 transition hover:border-purple-500 hover:text-white"
-                  >
-                    ← Back to Chat
-                  </button>
-                </div>
-              </div>
-              
-              {/* SAM Analytics Content */}
-              <div className="w-full h-[calc(100vh-200px)] border border-gray-700/80 rounded-2xl overflow-hidden">
-                <iframe
-                  src="/admin/sam-analytics"
-                  className="w-full h-full"
-                  style={{ border: 'none' }}
-                  title="SAM Analytics Dashboard"
-                />
               </div>
             </div>
           </div>
