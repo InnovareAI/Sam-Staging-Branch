@@ -34,7 +34,8 @@ import {
   Globe,
   Layers,
   PieChart,
-  Activity
+  Activity,
+  Megaphone
 } from 'lucide-react'
 
 export default function DemoCampaignHubPage() {
