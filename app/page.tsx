@@ -8,10 +8,10 @@ import DemoModeToggle from '@/components/DemoModeToggle';
 import ConnectionStatusBar from '@/components/ConnectionStatusBar';
 import ConversationHistory from '@/components/ConversationHistory';
 import InviteUserPopup from '@/components/InviteUserPopup';
-import UnipileModal from '@/components/UnipileModal';
+import UnipileModal from '@/components/integrations/UnipileModal';
 import AuthModal from '@/components/AuthModal';
 import LLMConfigModal from '@/components/LLMConfigModal';
-import ChannelSelectionModal from '@/components/ChannelSelectionModal';
+import ChannelSelectionModal from '@/components/campaign/ChannelSelectionModal';
 import {
   Activity,
   Archive,
