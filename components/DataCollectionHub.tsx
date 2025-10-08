@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, ChevronDown, ChevronUp, Download, Search, Tag, Users } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Download, Search, Tag, Users, X } from 'lucide-react';
 import { toastError } from '@/lib/toast';
 import { useState, useEffect } from 'react';
 
