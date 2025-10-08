@@ -20,6 +20,7 @@ import Analytics from '@/app/components/Analytics';
 import AuditTrail from '@/app/components/AuditTrail';
 import DataCollectionHub from '@/components/DataCollectionHub';
 import CampaignHub from '@/app/components/CampaignHub';
+import { ManageSubscriptionModal } from '@/app/components/ManageSubscriptionModal';
 import {
   Activity,
   Archive,
