@@ -6,6 +6,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import DemoModeToggle from '@/components/DemoModeToggle';
 import ConnectionStatusBar from '@/components/ConnectionStatusBar';
+import ConversationHistory from '@/components/ConversationHistory';
 import {
   Activity,
   Archive,
