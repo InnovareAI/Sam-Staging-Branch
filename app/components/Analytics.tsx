@@ -291,56 +291,6 @@ const Analytics: React.FC = () => {
             </h1>
             <p className="text-gray-400">Performance metrics, insights, and optimization recommendations</p>
           </div>
-          
-          {/* Mode Toggle */}
-          <div className="flex items-center space-x-3">
-            <span className="text-sm text-gray-400">Data Mode:</span>
-            <div className="flex items-center bg-gray-800 rounded-lg p-1">
-              <button
-                onClick={() => setDemoMode(true)}
-                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  demoMode 
-                    ? 'bg-purple-600 text-white' 
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                <Eye className="mr-2" size={16} />
-                Demo
-              </button>
-              <button
-                onClick={() => setDemoMode(false)}
-                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  !demoMode 
-                    ? 'bg-purple-600 text-white' 
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                <Database className="mr-2" size={16} />
-                Live
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        {/* Mode Indicator */}
-        <div className="mt-4">
-          {demoMode ? (
-            <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-3">
-              <div className="flex items-center">
-                <Eye className="h-4 w-4 text-purple-400 mr-2" />
-                <span className="text-purple-300 text-sm font-medium">Demo Mode Active</span>
-                <span className="text-purple-400 text-sm ml-2">- Showing realistic sample data for demonstration</span>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-3">
-              <div className="flex items-center">
-                <Database className="h-4 w-4 text-green-400 mr-2" />
-                <span className="text-green-300 text-sm font-medium">Live Mode Active</span>
-                <span className="text-green-400 text-sm ml-2">- Displaying real workspace analytics data</span>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -554,16 +504,6 @@ const Analytics: React.FC = () => {
         </div>
       )}
 
-      {demoMode && (
-        <div className="max-w-6xl">
-          <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-purple-100 mb-2">🎯 Demo Data Preview</h3>
-            <p className="text-purple-200 text-sm">
-              Currently showing realistic demo data. In production, this dashboard will display real-time analytics from your campaign messages, replies, and engagement across LinkedIn and email platforms powered by Supabase views.
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
