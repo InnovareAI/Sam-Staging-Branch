@@ -14,6 +14,7 @@ import AuthModal from '@/components/AuthModal';
 import LLMConfigModal from '@/components/LLMConfigModal';
 import { ChannelSelectionModal } from '@/components/campaign/ChannelSelectionModal';
 import EmailProvidersModal from '@/app/components/EmailProvidersModal';
+import KnowledgeBase from '@/app/components/KnowledgeBase';
 import {
   Activity,
   Archive,
