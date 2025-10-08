@@ -1,5 +1,6 @@
 'use client';
 
+// Force rebuild - Oct 8 2025 - Cache bust
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useState, useEffect, useRef, useCallback } from 'react';
