@@ -1,6 +1,9 @@
 'use client'
 
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+import { useState, useEffect } from 'react';
+import { useSamThreadedChat } from '@/lib/hooks/useSamThreadedChat';
+import ThreadTagger from '@/components/ThreadTagger';
 import {
   History,
   X,
