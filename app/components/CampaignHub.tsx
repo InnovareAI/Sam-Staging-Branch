@@ -1,6 +1,6 @@
-import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
-
 'use client';
+
+import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 
 
 // Helper function to get human-readable campaign type labels
