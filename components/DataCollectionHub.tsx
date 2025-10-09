@@ -692,16 +692,24 @@ export default function DataCollectionHub({
 
 async function collectLinkedInData(query: string): Promise<ProspectData[]> {
   try {
-    // Get LinkedIn accounts via Unipile MCP
-    const response = await fetch('/api/unipile/linkedin-search', {
+    // Auto-generate campaign name: YYYYMMDD-CLIENT-ProjectName
+    const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
+    const campaignName = `${today}-CLIENT-LinkedIn`
+
+    // Detect if query is a LinkedIn URL or keywords
+    const isUrl = query.startsWith('http') || query.includes('linkedin.com')
+
+    // Call real Unipile API
+    const response = await fetch('/api/linkedin/search', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        query,
-        action: 'search_prospects'
-      })
+      body: JSON.stringify(
+        isUrl
+          ? { url: query, category: 'people' }
+          : { keywords: query, category: 'people' }
+      )
     })
 
     if (!response.ok) {
@@ -709,7 +717,7 @@ async function collectLinkedInData(query: string): Promise<ProspectData[]> {
     }
 
     const data = await response.json()
-    
+
     if (data.success && data.prospects) {
       return data.prospects.map((prospect: any) => ({
         id: `linkedin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -721,13 +729,16 @@ async function collectLinkedInData(query: string): Promise<ProspectData[]> {
         linkedinUrl: prospect.linkedinUrl || prospect.profileUrl || null,
         source: 'unipile' as const,
         confidence: prospect.confidence || 0.7,
-        complianceFlags: prospect.complianceFlags || []
+        complianceFlags: prospect.complianceFlags || [],
+        campaignName: campaignName,
+        campaignTag: campaignName,
+        approvalStatus: 'pending' as const
       }))
     } else {
       throw new Error(data.error || 'No prospects found')
     }
   } catch (error) {
-    console.error('LinkedIn MCP search failed:', error)
+    console.error('LinkedIn API search failed:', error)
     // Fallback to mock data for development
     const titles = ['VP Sales', 'Sales Director', 'Head of Sales', 'Sales Manager', 'Business Development Manager']
     const companies = ['TechCorp', 'SaaS Solutions', 'DataVantage', 'CloudFirst', 'AI Systems']
