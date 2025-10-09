@@ -608,6 +608,78 @@ export async function POST(
 
     const conversationHistory = previousMessages?.slice(-10) || [] // Last 10 messages for context
 
+    // LinkedIn Test Integration - #test-linkedin shortcut
+    if (content.toLowerCase().includes('#test-linkedin')) {
+      console.log('🔄 Detected #test-linkedin command - calling LinkedIn API')
+
+      try {
+        const linkedinResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/pull-connections`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ count: 10 })
+        })
+
+        const linkedinData = await linkedinResponse.json()
+
+        let aiResponse: string
+
+        if (linkedinData.success && linkedinData.connections && linkedinData.connections.length > 0) {
+          // Format successful response
+          const connectionsList = linkedinData.connections
+            .map((conn: any) => `${conn.position}. **${conn.name}** - ${conn.title} at ${conn.company}`)
+            .join('\n')
+
+          aiResponse = `✅ **LinkedIn Integration Working!**\n\nHere are your first ${linkedinData.count} connections:\n\n${connectionsList}\n\nYour LinkedIn account is connected and functional. Ready to run campaigns whenever you are!`
+        } else if (linkedinData.success && linkedinData.count === 0) {
+          aiResponse = `✅ **LinkedIn Connected** but no conversation history yet.\n\n${linkedinData.message || 'Try messaging some connections first, then I can show them here!'}`
+        } else {
+          // Handle error
+          aiResponse = `❌ **LinkedIn Integration Issue**\n\n${linkedinData.error || 'Failed to connect to LinkedIn'}\n\n${linkedinData.help || 'Please check your LinkedIn connection in Settings.'}`
+        }
+
+        // Save assistant response
+        await supabase
+          .from('sam_conversation_messages')
+          .insert({
+            thread_id: resolvedParams.threadId,
+            user_id: user.id,
+            role: 'assistant',
+            content: aiResponse,
+            message_order: nextOrder + 1
+          })
+
+        return NextResponse.json({
+          success: true,
+          samMessage: {
+            role: 'assistant',
+            content: aiResponse
+          }
+        })
+
+      } catch (error) {
+        console.error('❌ LinkedIn test failed:', error)
+        const errorResponse = `❌ **LinkedIn Test Failed**\n\nTechnical error: ${error instanceof Error ? error.message : 'Unknown error'}\n\nThe integration may need configuration or LinkedIn may be temporarily unavailable.`
+
+        await supabase
+          .from('sam_conversation_messages')
+          .insert({
+            thread_id: resolvedParams.threadId,
+            user_id: user.id,
+            role: 'assistant',
+            content: errorResponse,
+            message_order: nextOrder + 1
+          })
+
+        return NextResponse.json({
+          success: true,
+          samMessage: {
+            role: 'assistant',
+            content: errorResponse
+          }
+        })
+      }
+    }
+
     // ICP Discovery Flow
     const activeDiscovery = await getActiveDiscoverySession(user.id, supabase)
     const discoveryIntent = detectDiscoveryIntent(content, thread, activeDiscovery)
@@ -850,7 +922,7 @@ RESPONSE GUIDELINES
 - **CRITICAL: Keep ALL responses to a maximum of 6 lines across 2 paragraphs. Be concise and impactful.**
 - Format responses as 2 short paragraphs maximum (3 lines each)
 - Vary your responses: sometimes start with affirmation ("Got it!"), sometimes dive right in, sometimes reflect back what you heard
-- Recognize shortcuts: '#clear' (reset chat), '#icp' (ICP research), '#leads' (prospect search), '#messaging' (draft sequences)
+- Recognize shortcuts: '#clear' (reset chat), '#icp' (ICP research), '#leads' (prospect search), '#messaging' (draft sequences), '#test-linkedin' (test LinkedIn integration)
 - Never mention internal tech (MCP, n8n, vendor names) unless explicitly asked
 - Every response must fit within 6 lines total when displayed
 
