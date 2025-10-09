@@ -692,9 +692,10 @@ export default function DataCollectionHub({
 
 async function collectLinkedInData(query: string): Promise<ProspectData[]> {
   try {
-    // Auto-generate campaign name: YYYYMMDD-CLIENT-ProjectName
+    // Auto-generate campaign name: YYYYMMDD-XXX-ProjectName (XXX = 3-digit code)
     const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
-    const campaignName = `${today}-CLIENT-LinkedIn`
+    const clientCode = Math.random().toString(36).substring(2, 5).toUpperCase()
+    const campaignName = `${today}-${clientCode}-LinkedIn`
 
     // Detect if query is a LinkedIn URL or keywords
     const isUrl = query.startsWith('http') || query.includes('linkedin.com')
