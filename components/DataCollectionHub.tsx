@@ -34,14 +34,37 @@ interface DataCollectionHubProps {
 
 // REMOVED: Dummy prospect data generation function
 
-export default function DataCollectionHub({ 
-  onDataCollected, 
+// Generate 3-letter code from workspace name
+function generateWorkspaceCode(workspaceName: string): string {
+  if (!workspaceName) return 'CLI'
+
+  // Remove spaces and special characters
+  const cleanName = workspaceName.replace(/[^a-zA-Z0-9]/g, '')
+
+  // Extract uppercase letters from camelCase (e.g., InnovareAI → IAI)
+  const capitals = cleanName.match(/[A-Z]/g)
+  if (capitals && capitals.length >= 3) {
+    return capitals.slice(0, 3).join('')
+  }
+
+  // If starts with number (e.g., 3Cubed → 3CU)
+  if (/^\d/.test(cleanName)) {
+    return (cleanName.substring(0, 1) + cleanName.substring(1, 3).toUpperCase()).padEnd(3, 'X')
+  }
+
+  // Default: first 3 letters (e.g., SendingCell → SEN)
+  return cleanName.substring(0, 3).toUpperCase().padEnd(3, 'X')
+}
+
+export default function DataCollectionHub({
+  onDataCollected,
   onApprovalComplete,
   className = '',
   initialUploadedData = []
 }: DataCollectionHubProps) {
   // Initialize with uploaded data from chat only (no dummy data)
   const [loading, setLoading] = useState(false)
+  const [workspaceCode, setWorkspaceCode] = useState<string>('CLI')
   const initializeProspects = () => {
     const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
     const uploadedProspects = initialUploadedData.map(p => ({
@@ -71,6 +94,26 @@ export default function DataCollectionHub({
   const [linkedinQuery, setLinkedinQuery] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   
+  // Fetch workspace information to generate code
+  useEffect(() => {
+    async function fetchWorkspace() {
+      try {
+        const response = await fetch('/api/workspace/current')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.workspace?.name) {
+            const code = generateWorkspaceCode(data.workspace.name)
+            setWorkspaceCode(code)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch workspace:', error)
+        // Keep default 'CLI' code
+      }
+    }
+    fetchWorkspace()
+  }, [])
+
   // Update prospects when new data is uploaded from chat
   useEffect(() => {
     if (initialUploadedData && initialUploadedData.length > 0) {
@@ -78,7 +121,7 @@ export default function DataCollectionHub({
       const uploadedProspects = initialUploadedData.map(p => ({
         ...p,
         approvalStatus: (p.approvalStatus || 'pending') as const,
-        campaignTag: p.campaignTag || `${today}-CLIENT-Demo`,
+        campaignTag: p.campaignTag || `${today}-${workspaceCode}-Demo`,
         uploaded: true
       }))
       // Add uploaded prospects to the beginning of the list
@@ -89,7 +132,7 @@ export default function DataCollectionHub({
         return [...newProspects, ...prev]
       })
     }
-  }, [initialUploadedData])
+  }, [initialUploadedData, workspaceCode])
 
   // CSV Upload Handler
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,7 +192,7 @@ export default function DataCollectionHub({
     setLoading(true)
     try {
       // First, get LinkedIn accounts via MCP
-      const linkedinData = await collectLinkedInData(linkedinQuery)
+      const linkedinData = await collectLinkedInData(linkedinQuery, workspaceCode)
       
       if (linkedinData.length > 0) {
         setProspectData(linkedinData)
@@ -690,12 +733,11 @@ export default function DataCollectionHub({
 
 // Helper functions for data collection
 
-async function collectLinkedInData(query: string): Promise<ProspectData[]> {
+async function collectLinkedInData(query: string, workspaceCode: string): Promise<ProspectData[]> {
   try {
-    // Auto-generate campaign name: YYYYMMDD-XXX-ProjectName (XXX = 3-digit code)
+    // Auto-generate campaign name: YYYYMMDD-XXX-ProjectName (XXX = workspace code)
     const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
-    const clientCode = Math.random().toString(36).substring(2, 5).toUpperCase()
-    const campaignName = `${today}-${clientCode}-LinkedIn`
+    const campaignName = `${today}-${workspaceCode}-LinkedIn`
 
     // Detect if query is a LinkedIn URL or keywords
     const isUrl = query.startsWith('http') || query.includes('linkedin.com')
