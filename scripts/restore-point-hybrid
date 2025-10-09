@@ -1,0 +1,160 @@
+#!/bin/bash
+
+# Hybrid Restore Point Script
+# Creates restore points with both Supabase Pro PITR + Airtable backup
+
+DESCRIPTION="${1:-Restore point}"
+TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+TIMESTAMP_FILE=$(date -u +"%Y%m%d_%H%M%S")
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📸 Creating Hybrid Restore Point (Maximum Safety)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "📝 Description: $DESCRIPTION"
+echo "🕒 Timestamp: $TIMESTAMP"
+echo ""
+
+# Layer 1: Git snapshot (code)
+echo "1️⃣  Creating Git snapshot..."
+git add -A
+git commit -m "Restore point: $DESCRIPTION"
+COMMIT_HASH=$(git rev-parse HEAD)
+echo "   ✅ Code: $COMMIT_HASH"
+echo ""
+
+# Layer 2: Airtable backup (critical data - visual)
+echo "2️⃣  Backing up to Airtable..."
+node scripts/backup-to-airtable.cjs "$DESCRIPTION"
+AIRTABLE_STATUS=$?
+echo ""
+
+# Layer 3: Supabase Pro PITR (automatic - comprehensive)
+echo "3️⃣  Supabase Pro PITR (automatic)..."
+echo "   ✅ Point-in-time recovery available: $TIMESTAMP"
+echo ""
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ Hybrid Restore Point Created"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "📋 Backup Layers:"
+echo "   1. Code: Git commit $COMMIT_HASH"
+echo "   2. Data (Visual): Airtable backup"
+if [ $AIRTABLE_STATUS -eq 0 ]; then
+  echo "      Status: ✅ Success"
+else
+  echo "      Status: ⚠️  Skipped (not configured)"
+fi
+echo "   3. Data (PITR): Supabase Pro at $TIMESTAMP"
+echo ""
+
+# Save restore instructions
+mkdir -p .restore-points
+cat > ".restore-points/restore-$TIMESTAMP_FILE.txt" <<EOF
+═══════════════════════════════════════════════════════════
+HYBRID RESTORE POINT: $DESCRIPTION
+═══════════════════════════════════════════════════════════
+
+Created: $TIMESTAMP
+Git Commit: $COMMIT_HASH
+
+═══════════════════════════════════════════════════════════
+RESTORE OPTIONS (Choose based on what you need):
+═══════════════════════════════════════════════════════════
+
+OPTION A: Full Restore (Supabase Pro PITR) - RECOMMENDED
+──────────────────────────────────────────────────────────
+
+Best for: Complete database restoration including all data
+
+Steps:
+1. Restore Code:
+   git checkout $COMMIT_HASH
+
+2. Restore Database (Supabase Pro):
+   • Go to: https://supabase.com/dashboard/project/latxadqrvrrrcvkktrog
+   • Settings → Database → Backups → Point-in-Time Recovery
+   • Select time: $TIMESTAMP
+   • Click "Restore"
+   • Wait 5-30 minutes
+
+3. Verify restoration
+
+
+OPTION B: Selective Restore (Airtable)
+──────────────────────────────────────────────────────────
+
+Best for: Restoring specific tables or verifying data visually
+
+Steps:
+1. View data in Airtable:
+   • Check what was backed up
+   • Verify data integrity visually
+
+2. Restore specific tables:
+   node scripts/restore-from-airtable.cjs "$DESCRIPTION"
+
+3. Restore code if needed:
+   git checkout $COMMIT_HASH
+
+
+OPTION C: Emergency Restore (Both)
+──────────────────────────────────────────────────────────
+
+Best for: When PITR window expired (>7 days) or Supabase issues
+
+Steps:
+1. Restore code:
+   git checkout $COMMIT_HASH
+
+2. Restore critical tables from Airtable:
+   node scripts/restore-from-airtable.cjs "$DESCRIPTION"
+
+3. Verify and fill gaps manually if needed
+
+═══════════════════════════════════════════════════════════
+VERIFICATION CHECKLIST:
+═══════════════════════════════════════════════════════════
+
+After restoration, verify:
+□ workspace_accounts - All Unipile connections present
+□ workspace_members - Team access intact
+□ users - All user accounts present
+□ campaigns - Active campaigns preserved
+□ Application runs without errors
+□ Can log in and access features
+
+═══════════════════════════════════════════════════════════
+IMPORTANT NOTES:
+═══════════════════════════════════════════════════════════
+
+• Supabase PITR available for 7 days: Until $(date -u -v+7d +"%Y-%m-%d" 2>/dev/null || date -u -d "+7 days" +"%Y-%m-%d" 2>/dev/null || echo "7 days from now")
+• Airtable backup available: Indefinitely
+• For restores >7 days old: Use Airtable or monthly backup downloads
+• Always test in development before production restore
+• Consider creating monthly backup downloads for long-term archive
+
+═══════════════════════════════════════════════════════════
+EOF
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📋 TO RESTORE THIS STATE:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Option A (Full - Recommended):"
+echo "  1. git checkout $COMMIT_HASH"
+echo "  2. Use Supabase PITR to $TIMESTAMP"
+echo ""
+echo "Option B (Selective):"
+echo "  1. node scripts/restore-from-airtable.cjs \"$DESCRIPTION\""
+echo ""
+echo "Option C (Emergency):"
+echo "  1. git checkout $COMMIT_HASH"
+echo "  2. node scripts/restore-from-airtable.cjs \"$DESCRIPTION\""
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "💾 Full instructions: .restore-points/restore-$TIMESTAMP_FILE.txt"
+echo "⏰ PITR available until: $(date -u -v+7d +"%Y-%m-%d %H:%M" 2>/dev/null || date -u -d "+7 days" +"%Y-%m-%d %H:%M" 2>/dev/null || echo "7 days from now")"
+echo ""

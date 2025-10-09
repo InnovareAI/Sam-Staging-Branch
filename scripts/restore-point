@@ -1,0 +1,104 @@
+#!/bin/bash
+
+# Enhanced Restore Point Script with Supabase PITR Support
+# Creates both Git snapshot and records database timestamp for PITR
+
+DESCRIPTION="${1:-Restore point}"
+TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+TIMESTAMP_FILE=$(date -u +"%Y%m%d_%H%M%S")
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📸 Creating Restore Point"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "📝 Description: $DESCRIPTION"
+echo "🕒 Database Timestamp: $TIMESTAMP"
+echo ""
+
+# Create git commit
+git add -A
+git commit -m "Restore point: $DESCRIPTION"
+
+COMMIT_HASH=$(git rev-parse HEAD)
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ Restore Point Created"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Git Commit: $COMMIT_HASH"
+echo "DB Timestamp: $TIMESTAMP"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📋 To Restore This State:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "1️⃣  Restore Code:"
+echo "    git checkout $COMMIT_HASH"
+echo ""
+echo "2️⃣  Restore Database (Supabase Pro PITR):"
+echo "    • Go to: https://supabase.com/dashboard/project/latxadqrvrrrcvkktrog"
+echo "    • Settings → Database → Backups → Point-in-Time Recovery"
+echo "    • Select time: $TIMESTAMP"
+echo "    • Click Restore"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Save restore instructions
+mkdir -p .restore-points
+cat > ".restore-points/restore-$TIMESTAMP_FILE.txt" <<EOF
+═══════════════════════════════════════════════════════════
+RESTORE POINT: $DESCRIPTION
+═══════════════════════════════════════════════════════════
+
+Created: $TIMESTAMP
+Git Commit: $COMMIT_HASH
+
+═══════════════════════════════════════════════════════════
+TO RESTORE THIS STATE:
+═══════════════════════════════════════════════════════════
+
+1. RESTORE CODE:
+   git checkout $COMMIT_HASH
+
+2. RESTORE DATABASE:
+
+   a) Go to Supabase Dashboard:
+      https://supabase.com/dashboard/project/latxadqrvrrrcvkktrog
+
+   b) Navigate to:
+      Settings → Database → Backups → Point-in-Time Recovery
+
+   c) Select timestamp:
+      $TIMESTAMP
+
+   d) Click "Restore" and confirm
+
+   e) Wait 5-30 minutes for restoration
+
+3. VERIFY RESTORATION:
+
+   Check critical tables:
+   • workspace_accounts (should have correct associations)
+   • workspace_members (team access intact)
+   • users (all user accounts present)
+   • campaigns (active campaigns preserved)
+
+═══════════════════════════════════════════════════════════
+NOTES:
+═══════════════════════════════════════════════════════════
+
+• PITR available for 7 days from creation date
+• After 7 days, use monthly backup downloads
+• Always restore database BEFORE running migrations
+• Test in development before production restore
+
+═══════════════════════════════════════════════════════════
+EOF
+
+echo ""
+echo "💾 Restore instructions saved:"
+echo "   .restore-points/restore-$TIMESTAMP_FILE.txt"
+echo ""
+echo "⏰ PITR available until: $(date -u -v+7d +"%Y-%m-%d %H:%M:%S UTC" 2>/dev/null || date -u -d "+7 days" +"%Y-%m-%d %H:%M:%S UTC" 2>/dev/null || echo "7 days from now")"
+echo ""

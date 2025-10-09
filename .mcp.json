@@ -64,6 +64,14 @@
         "WORDPRESS_APPLICATION_PASSWORD": "${WORDPRESS_APPLICATION_PASSWORD}"
       },
       "description": "WordPress MCP for managing InnovareAI.com content"
+    },
+    "airtable": {
+      "command": "npx",
+      "args": ["airtable-mcp-server@latest"],
+      "env": {
+        "AIRTABLE_API_KEY": "${AIRTABLE_API_KEY}"
+      },
+      "description": "Airtable MCP for database backups and management"
     }
   }
 }
