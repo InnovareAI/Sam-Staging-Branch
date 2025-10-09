@@ -30,7 +30,22 @@ export async function GET() {
       }, { status: 404 })
     }
 
-    // Get workspace details
+    // CRITICAL: Verify user is actually a member of this workspace
+    const { data: membership, error: membershipError } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', userData.current_workspace_id)
+      .eq('user_id', user.id)
+      .single()
+
+    if (membershipError || !membership) {
+      return NextResponse.json({
+        success: false,
+        error: 'Access denied - not a workspace member'
+      }, { status: 403 })
+    }
+
+    // Get workspace details (RLS policies will also enforce access)
     const { data: workspace, error: workspaceError } = await supabase
       .from('workspaces')
       .select('id, name, company_name')
