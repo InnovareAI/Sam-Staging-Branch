@@ -139,6 +139,13 @@ export class MCPRegistry {
       })
     }
 
+    if (this.googleSearchServer) {
+      const googleSearchTools = await this.googleSearchServer.listTools()
+      googleSearchTools.tools.forEach(tool => {
+        allTools.push({ ...tool, server: 'google-search' })
+      })
+    }
+
     if (this.webSearchServer) {
       const webSearchTools = await this.webSearchServer.listTools()
       webSearchTools.tools.forEach(tool => {
@@ -234,6 +241,7 @@ export class MCPRegistry {
     let effectiveRequest: MCPCallToolRequest & { server?: string } = request
 
     // Fallback mapping when a preferred server is unavailable
+    if (server === 'google-search' && !this.googleSearchServer && this.webSearchServer) {
       const tool = request.params.name
       // Use same tool name if supported by WebSearch
       if (['boolean_linkedin_search'].includes(tool)) {
@@ -281,6 +289,18 @@ export class MCPRegistry {
           }
         }
         return await this.apifyServer.callTool(effectiveRequest)
+
+      case 'google-search':
+        if (!this.googleSearchServer) {
+          return {
+            content: [{
+              type: 'text',
+              text: 'Google Search MCP server not available'
+            }],
+            isError: true
+          }
+        }
+        return await this.googleSearchServer.callTool(effectiveRequest)
 
       case 'websearch':
         if (!this.webSearchServer) {
@@ -360,7 +380,15 @@ export class MCPRegistry {
       'check_apify_status'
     ]
 
-    // WebSearch tools (fallback for prospect discovery)
+    // Google Search tools
+    const googleSearchTools = [
+      'boolean_linkedin_search',
+      'company_research_search', 
+      'icp_prospect_discovery',
+      'verify_search_quota'
+    ]
+
+    // WebSearch tools (mock/fallback)
     const webSearchTools = [
       'validate_linkedin_url',
       'boolean_linkedin_search',
@@ -415,6 +443,8 @@ export class MCPRegistry {
       return 'apify'
     }
 
+    if (googleSearchTools.includes(toolName)) {
+      return this.googleSearchServer ? 'google-search' : (this.webSearchServer ? 'websearch' : 'unknown')
     }
 
     if (webSearchTools.includes(toolName)) {
@@ -607,6 +637,9 @@ export class MCPRegistry {
       servers.push('apify')
     }
 
+    if (this.googleSearchServer) {
+      servers.push('google-search')
+    }
     if (this.webSearchServer) {
       servers.push('websearch')
     }
@@ -632,6 +665,7 @@ export class MCPRegistry {
   async getServerStatus(): Promise<{
     brightData: { available: boolean; tools: number }
     apify: { available: boolean; tools: number }
+    googleSearch: { available: boolean; tools: number }
     webSearch: { available: boolean; tools: number }
     unipile: { available: boolean; tools: number }
     n8n: { available: boolean; tools: number }
@@ -642,6 +676,7 @@ export class MCPRegistry {
   }> {
     const brightDataTools = this.brightDataServer ? (await this.brightDataServer.listTools()).tools.length : 0
     const apifyTools = this.apifyServer ? (await this.apifyServer.listTools()).tools.length : 0
+    const googleSearchTools = this.googleSearchServer ? (await this.googleSearchServer.listTools()).tools.length : 0
     const webSearchTools = this.webSearchServer ? (await this.webSearchServer.listTools()).tools.length : 0
     const unipileTools = this.unipileServer ? (await this.unipileServer.listTools()).tools.length : 0
     const n8nTools = this.n8nServer ? (await this.n8nServer.listTools()).tools.length : 0
@@ -652,6 +687,7 @@ export class MCPRegistry {
     return {
       brightData: { available: !!this.brightDataServer, tools: brightDataTools },
       apify: { available: !!this.apifyServer, tools: apifyTools },
+      googleSearch: { available: !!this.googleSearchServer, tools: googleSearchTools },
       webSearch: { available: !!this.webSearchServer, tools: webSearchTools },
       unipile: { available: !!this.unipileServer, tools: unipileTools },
       n8n: { available: !!this.n8nServer, tools: n8nTools },
@@ -660,6 +696,7 @@ export class MCPRegistry {
       samAI: { available: true, tools: samAITools },
       total: {
         servers: this.getAvailableServers().length,
+        tools: brightDataTools + apifyTools + googleSearchTools + webSearchTools + unipileTools + n8nTools + reachInboxTools + replyTools + samAITools
       }
     }
   }
@@ -725,8 +762,9 @@ export class MCPRegistry {
           })
         }
 
-        // Use ICP prospect discovery via available search tool
-        return await this.callTool({
+        // If Google Search available, use ICP discovery
+        if (this.googleSearchServer) {
+          return await this.googleSearchServer.callTool({
             method: 'tools/call',
             params: {
               name: 'icp_prospect_discovery',
@@ -822,11 +860,21 @@ export function createMCPConfig(): MCPServerConfig {
     
     apify: {
       apiToken: process.env.APIFY_API_TOKEN || 'mock-api-token',
-      organizationId: process.env.ORGANIZATION_ID || 'default-org',
+      organizationId: process.env.ORGANIZATION_ID || 'default-org', 
       userId: process.env.USER_ID || 'default-user'
     },
 
-    // WebSearch as fallback for prospect discovery
+    googleSearch: process.env.GOOGLE_API_KEY && process.env.GOOGLE_CSE_ID ? {
+      googleApiKey: process.env.GOOGLE_API_KEY!,
+      googleCseId: process.env.GOOGLE_CSE_ID!,
+      serpApiKey: process.env.SERP_API_KEY,
+      organizationId: process.env.ORGANIZATION_ID || 'default-org',
+      userId: process.env.USER_ID || 'default-user',
+      maxResults: 20,
+      searchTimeout: 30000
+    } : undefined,
+
+    // Always provide WebSearch mock as a safe fallback when Google keys are missing
     webSearch: {
       organizationId: process.env.ORGANIZATION_ID || 'default-org',
       userId: process.env.USER_ID || 'default-user',

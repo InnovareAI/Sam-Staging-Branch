@@ -100,21 +100,6 @@ export interface ApifyProspectRequest {
   input?: Record<string, unknown>
 }
 
-// Google Search specific types
-export interface GoogleSearchMCPConfig {
-  // Google Custom Search API
-  googleApiKey: string
-  googleCseId: string
-  
-  // SerpAPI for advanced searches (optional)
-  serpApiKey?: string
-  
-  organizationId: string
-  userId: string
-  maxResults?: number
-  searchTimeout?: number
-}
-
 // Unipile specific types
 export interface UnipileMCPConfig {
   dsn: string
