@@ -1,27 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 
 // Helper function to check existing LinkedIn accounts for user
 async function checkExistingLinkedInAccounts(userId: string) {
   try {
     const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          }
-        }
-      }
-    )
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     
     const { data, error } = await supabase
       .from('user_unipile_accounts')
@@ -85,31 +70,17 @@ export async function POST(request: NextRequest) {
     
     // Authenticate user first
     const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          }
-        }
-      }
-    )
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    console.log('🔍 Auth check:', {
-      hasUser: !!user,
-      userId: user?.id,
-      authError: authError?.message
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const { data: { session }, error: authError } = await supabase.auth.getSession()
+    
+    console.log('🔍 Auth check:', { 
+      hasSession: !!session, 
+      hasUser: !!session?.user,
+      userId: session?.user?.id,
+      authError: authError?.message 
     })
-
-    if (authError || !user) {
+    
+    if (authError || !session || !session.user) {
       console.error('❌ Authentication failed:', authError)
       return NextResponse.json({
         success: false,
@@ -117,6 +88,8 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString()
       }, { status: 401 })
     }
+
+    const user = session.user
 
     console.log(`🔗 User ${user.email} (${user.id}) requesting hosted auth link`)
 
