@@ -1,42 +1,43 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
 
 // InnovareAI workspace ID - only members of this workspace can access /admin routes
 const INNOVARE_AI_WORKSPACE_ID = 'babdcab8-1a78-4b2f-913e-6e9fd9821009';
 
 export async function middleware(request: NextRequest) {
+  let response = NextResponse.next({ request });
+
+  // CRITICAL: Create Supabase client with middleware cookie handling
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value);
+            response.cookies.set(name, value, options);
+          });
+        }
+      }
+    }
+  );
+
+  // Refresh session (updates cookies if needed)
+  await supabase.auth.getUser();
+
   // Check if this is an admin route
   if (request.nextUrl.pathname.startsWith('/admin')) {
     try {
-      // Get the session token from cookies
-      const token = request.cookies.get('sb-access-token')?.value ||
-                    request.cookies.get('sb-latxadqrvrrrcvkktrog-auth-token')?.value;
-      
-      if (!token) {
-        // No auth token - redirect to login
-        const loginUrl = new URL('/', request.url);
-        loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
-        return NextResponse.redirect(loginUrl);
-      }
+      // Get user from session
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-      // Create Supabase client
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false
-          }
-        }
-      );
-
-      // Verify the user
-      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-      
       if (authError || !user) {
-        // Invalid token - redirect to login
+        // Not authenticated - redirect to login
         const loginUrl = new URL('/', request.url);
         loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
         return NextResponse.redirect(loginUrl);
@@ -65,9 +66,6 @@ export async function middleware(request: NextRequest) {
         );
       }
 
-      // User is authorized - allow access
-      return NextResponse.next();
-      
     } catch (error) {
       console.error('Auth middleware error:', error);
       // On error, redirect to login for safety
@@ -76,8 +74,8 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Let all other requests through
-  return NextResponse.next();
+  // Return response with updated cookies
+  return response;
 }
 
 export const config = {
