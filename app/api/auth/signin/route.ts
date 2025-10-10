@@ -1,31 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    let response = NextResponse.next();
-
-    // Create Supabase client with SSR cookie handling
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-              // ALSO set on response to ensure they're sent to client
-              response.cookies.set(name, value, options);
-            });
-          }
-        }
-      }
-    );
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
     const { email, password } = await request.json();
 
@@ -73,7 +53,7 @@ export async function POST(request: NextRequest) {
     if (data.session && data.user) {
       console.log('User signed in successfully:', data.user.id);
 
-      // Return response with cookies set
+      // Return response with user data
       return NextResponse.json({
         message: 'Sign-in successful!',
         user: {
@@ -82,8 +62,6 @@ export async function POST(request: NextRequest) {
           firstName: data.user.user_metadata?.first_name,
           lastName: data.user.user_metadata?.last_name
         }
-      }, {
-        headers: response.headers
       });
     }
 
