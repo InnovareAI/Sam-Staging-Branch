@@ -262,6 +262,15 @@ export async function POST(request: NextRequest) {
       console.log('📋 Creating approval session...');
       const sessionId = crypto.randomUUID(); // CORRECTED: Must be UUID not string
 
+      // Use campaign name from search criteria (SAM asks user for this)
+      // Fallback to auto-generated if not provided
+      const today = new Date().toISOString().split('T')[0].replace(/-/g, ''); // 20251011
+      const jobTitle = search_criteria.title || 'Prospects';
+      const campaignName = search_criteria.campaignName || `${today}-WORKSPACE-${jobTitle}`;
+      const campaignTag = search_criteria.keywords || api; // Use keywords or API type as tag
+
+      console.log(`📋 Campaign: ${campaignName}, Tag: ${campaignTag}`);
+
       const { error: sessionError } = await supabase
         .from('prospect_approval_sessions')
         .insert({
@@ -270,6 +279,8 @@ export async function POST(request: NextRequest) {
           user_id: user.id,
           workspace_id: workspaceId, // CORRECTED: workspace_id not organization_id
           prospect_source: 'linkedin_search',
+          campaign_name: campaignName,  // NEW: Proper campaign name
+          campaign_tag: campaignTag,     // NEW: Campaign tag
           total_prospects: validProspects.length,
           pending_count: validProspects.length,
           approved_count: 0,
