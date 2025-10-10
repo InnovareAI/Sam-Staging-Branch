@@ -141,18 +141,19 @@ export default function DataCollectionHub({
                   const prospectsData = await prospectsResponse.json()
                   if (prospectsData.success && prospectsData.prospects) {
                     // Map approval data to ProspectData format
+                    // CORRECTED: company and contact are JSONB objects, not strings
                     const mappedProspects = prospectsData.prospects.map((p: any) => ({
                       id: p.prospect_id,
                       name: p.name,
                       title: p.title || '',
-                      company: p.company || '',
-                      email: p.contact || '',
-                      linkedinUrl: p.contact || '',
+                      company: p.company?.name || '',  // FIXED: Extract name from JSONB
+                      email: p.contact?.email || '',    // FIXED: Extract email from JSONB
+                      linkedinUrl: p.contact?.linkedin_url || '',  // FIXED: Extract URL from JSONB
                       source: p.source || 'linkedin',
-                      confidence: p.enrichment_score || 0.8,
-                      approvalStatus: p.approval_status || 'pending',
+                      confidence: (p.enrichment_score || 80) / 100,  // FIXED: Convert integer to decimal
+                      approvalStatus: 'pending' as const,  // FIXED: approval_status column doesn't exist
                       campaignName: `Session-${session.id.slice(0, 8)}`,
-                      campaignTag: session.source || 'linkedin',
+                      campaignTag: session.prospect_source || 'linkedin',  // FIXED: Use prospect_source not source
                       uploaded: false
                     }))
                     allProspects.push(...mappedProspects)
