@@ -1382,7 +1382,10 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
 
       try {
         const searchCriteria = JSON.parse(triggerSearchMatch[1])
-        const cookieHeader = request.headers.get('cookie') || ''
+
+        // Get all cookies from the cookie store to forward to create-job endpoint
+        const allCookies = cookieStore.getAll()
+        const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ')
 
         const createJobResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/search/create-job`, {
           method: 'POST',
