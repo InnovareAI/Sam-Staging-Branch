@@ -154,9 +154,28 @@ export async function GET(request: NextRequest) {
       member_count: workspace.workspace_members?.length || 0
     })) || [];
 
+    // CRITICAL FIX: Get user's current_workspace_id to enable auto-selection
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const { data: { user } } = await supabase.auth.getUser();
+
+    let currentWorkspaceId = null;
+    if (user) {
+      // Use admin client to fetch current_workspace_id (bypasses RLS)
+      const { data: userData } = await adminSupabase
+        .from('users')
+        .select('current_workspace_id')
+        .eq('id', user.id)
+        .single();
+
+      currentWorkspaceId = userData?.current_workspace_id;
+      console.log(`✅ User's current_workspace_id: ${currentWorkspaceId}`);
+    }
+
     return NextResponse.json({
       workspaces: enrichedWorkspaces,
-      total: enrichedWorkspaces.length
+      total: enrichedWorkspaces.length,
+      currentWorkspaceId: currentWorkspaceId  // CRITICAL: Include for auto-selection
     });
 
   } catch (error) {

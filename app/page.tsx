@@ -1824,8 +1824,22 @@ export default function Page() {
           console.log('📋 Workspace names:', data.workspaces?.map((w: any) => w.name) || []);
           setWorkspaces(data.workspaces || []);
 
-          // CRITICAL FIX: Auto-select user's current workspace
-          await autoSelectWorkspace(userId, data.workspaces || []);
+          // CRITICAL FIX: Use currentWorkspaceId from API response (bypasses RLS)
+          if (data.currentWorkspaceId) {
+            const workspaceExists = data.workspaces?.some((ws: any) => ws.id === data.currentWorkspaceId);
+            if (workspaceExists) {
+              console.log('✅ Auto-selecting workspace from API:', data.currentWorkspaceId);
+              setSelectedWorkspaceId(data.currentWorkspaceId);
+            } else {
+              console.log('⚠️ current_workspace_id not in loaded workspaces, using first');
+              if (data.workspaces && data.workspaces.length > 0) {
+                setSelectedWorkspaceId(data.workspaces[0].id);
+              }
+            }
+          } else if (data.workspaces && data.workspaces.length > 0) {
+            console.log('ℹ️ No current_workspace_id, selecting first workspace');
+            setSelectedWorkspaceId(data.workspaces[0].id);
+          }
         } else {
           console.error('❌ Failed to fetch admin workspaces');
           // Fall back to regular user workspaces
@@ -1839,50 +1853,6 @@ export default function Page() {
       console.error('Failed to load workspaces:', error);
     } finally {
       setWorkspacesLoading(false);
-    }
-  };
-
-  // CRITICAL FIX: Auto-select workspace from current_workspace_id
-  const autoSelectWorkspace = async (userId: string, loadedWorkspaces: any[]) => {
-    try {
-      console.log('🔄 Auto-selecting workspace for user:', userId);
-
-      // Get user's current_workspace_id from database
-      const { data: userData, error } = await supabase
-        .from('users')
-        .select('current_workspace_id')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('❌ Error fetching current_workspace_id:', error);
-        return;
-      }
-
-      const currentWorkspaceId = userData?.current_workspace_id;
-
-      if (currentWorkspaceId) {
-        // Verify this workspace is in the loaded list
-        const workspaceExists = loadedWorkspaces.some(ws => ws.id === currentWorkspaceId);
-
-        if (workspaceExists) {
-          console.log('✅ Auto-selecting workspace:', currentWorkspaceId);
-          setSelectedWorkspaceId(currentWorkspaceId);
-        } else {
-          console.log('⚠️ current_workspace_id not in loaded workspaces, using first available');
-          if (loadedWorkspaces.length > 0) {
-            setSelectedWorkspaceId(loadedWorkspaces[0].id);
-          }
-        }
-      } else {
-        // No current_workspace_id set - select first workspace
-        console.log('ℹ️ No current_workspace_id, selecting first workspace');
-        if (loadedWorkspaces.length > 0) {
-          setSelectedWorkspaceId(loadedWorkspaces[0].id);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error in autoSelectWorkspace:', error);
     }
   };
 
@@ -1964,8 +1934,11 @@ export default function Page() {
       console.log('📊 User workspaces loaded:', workspacesWithInvitations.length, 'workspaces');
       setWorkspaces(workspacesWithInvitations);
 
-      // CRITICAL FIX: Auto-select user's current workspace
-      await autoSelectWorkspace(userId, workspacesWithInvitations);
+      // CRITICAL FIX: Auto-select first workspace (user endpoint doesn't return current_workspace_id)
+      if (workspacesWithInvitations.length > 0) {
+        console.log('✅ Auto-selecting first workspace:', workspacesWithInvitations[0].id);
+        setSelectedWorkspaceId(workspacesWithInvitations[0].id);
+      }
 
       // Check if user is workspace admin (owner or admin role in any workspace)
       const isOwner = allWorkspaces.some(ws => ws.owner_id === userId);
