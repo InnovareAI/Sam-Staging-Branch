@@ -8,54 +8,80 @@ import { cookies } from 'next/headers';
  * Force rebuild: 2025-10-10-v2
  */
 export async function POST(request: NextRequest) {
+  console.log('🔵 SIMPLE SEARCH START');
   try {
     const cookieStore = await cookies();
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
     // Auth
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    console.log('🔵 Auth check:', { hasUser: !!user, userId: user?.id, authError: authError?.message });
+
     if (!user) {
+      console.log('❌ No user - returning 401');
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
+
+    console.log(`✅ User authenticated: ${user.email}`);
 
     const { search_criteria, target_count = 50 } = await request.json();
 
     // Get workspace (with fallback)
     let workspaceId: string | null = null;
 
-    const { data: userProfile } = await supabase
+    console.log('🔵 Querying users table for workspace...');
+    const { data: userProfile, error: profileError } = await supabase
       .from('users')
       .select('current_workspace_id')
       .eq('id', user.id)
       .single();
 
+    console.log('🔵 Users table result:', {
+      hasProfile: !!userProfile,
+      workspaceId: userProfile?.current_workspace_id,
+      error: profileError?.message
+    });
+
     if (userProfile?.current_workspace_id) {
       workspaceId = userProfile.current_workspace_id;
+      console.log('✅ Got workspace from users table:', workspaceId);
     } else {
+      console.log('⚠️ No workspace in users table, trying fallback...');
       // Fallback: get first workspace
-      const { data: membership } = await supabase
+      const { data: membership, error: membershipError } = await supabase
         .from('workspace_members')
         .select('workspace_id')
         .eq('user_id', user.id)
         .limit(1)
         .maybeSingle();
 
+      console.log('🔵 Workspace_members result:', {
+        hasMembership: !!membership,
+        workspaceId: membership?.workspace_id,
+        error: membershipError?.message
+      });
+
       if (membership?.workspace_id) {
         workspaceId = membership.workspace_id;
+        console.log('✅ Got workspace from memberships:', workspaceId);
         // Update for next time
         await supabase
           .from('users')
           .update({ current_workspace_id: membership.workspace_id })
           .eq('id', user.id);
+        console.log('💾 Updated users table');
       }
     }
 
     if (!workspaceId) {
+      console.log('❌ NO WORKSPACE FOUND');
       return NextResponse.json({
         error: 'No workspace',
         debug: { userId: user.id, checked: 'users + workspace_members' }
       }, { status: 400 });
     }
+
+    console.log('✅ Final workspace:', workspaceId);
 
     // Get LinkedIn account
     const { data: linkedinAccount } = await supabase
