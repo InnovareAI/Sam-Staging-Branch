@@ -36,17 +36,26 @@ export async function POST(request: NextRequest) {
     let workspaceId: string | null = null;
 
     // Try to get current workspace from users table
-    const { data: userProfile } = await supabase
+    const { data: userProfile, error: profileError } = await supabase
       .from('users')
       .select('current_workspace_id')
       .eq('id', user.id)
       .single();
 
+    console.log('📊 Workspace check:', {
+      userId: user.id,
+      currentWorkspaceId: userProfile?.current_workspace_id,
+      profileError: profileError?.message
+    });
+
     if (userProfile?.current_workspace_id) {
       workspaceId = userProfile.current_workspace_id;
+      console.log('✅ Using workspace from users table:', workspaceId);
     } else {
       // Fallback: get first workspace from memberships
-      const { data: membership } = await supabase
+      console.log('⚠️ No current_workspace_id, trying workspace_members...');
+
+      const { data: membership, error: membershipError } = await supabase
         .from('workspace_members')
         .select('workspace_id')
         .eq('user_id', user.id)
@@ -54,23 +63,41 @@ export async function POST(request: NextRequest) {
         .limit(1)
         .maybeSingle();
 
+      console.log('📊 Membership check:', {
+        found: !!membership,
+        workspaceId: membership?.workspace_id,
+        error: membershipError?.message
+      });
+
       if (membership?.workspace_id) {
         workspaceId = membership.workspace_id;
+        console.log('✅ Using workspace from memberships:', workspaceId);
 
         // Update user's current workspace for next time
         await supabase
           .from('users')
           .update({ current_workspace_id: membership.workspace_id })
           .eq('id', user.id);
+
+        console.log('💾 Updated user current_workspace_id');
       }
     }
 
     if (!workspaceId) {
+      console.error('❌ No workspace found for user:', user.id);
       return NextResponse.json({
         success: false,
-        error: 'No workspace found. Please create or join a workspace first.'
+        error: 'No workspace found. Please create or join a workspace first.',
+        debug: {
+          userId: user.id,
+          userEmail: user.email,
+          hadCurrentWorkspace: !!userProfile?.current_workspace_id,
+          checkedMemberships: true
+        }
       }, { status: 400 });
     }
+
+    console.log('✅ Final workspace ID:', workspaceId);
 
     // Get user's LinkedIn account
     const { data: linkedinAccount } = await supabase
