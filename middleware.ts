@@ -8,6 +8,11 @@ const INNOVARE_AI_WORKSPACE_ID = 'babdcab8-1a78-4b2f-913e-6e9fd9821009';
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
+  // Skip middleware for API routes - they handle their own auth
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    return response;
+  }
+
   // CRITICAL: Create Supabase client with middleware cookie handling
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,9 +31,6 @@ export async function middleware(request: NextRequest) {
       }
     }
   );
-
-  // Refresh session (updates cookies if needed)
-  await supabase.auth.getUser();
 
   // Check if this is an admin route
   if (request.nextUrl.pathname.startsWith('/admin')) {
