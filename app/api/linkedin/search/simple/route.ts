@@ -133,26 +133,49 @@ export async function POST(request: NextRequest) {
     });
 
     const data = await response.json();
-    const prospects = (data.items || []).map((item: any) => ({
-      name: item.name,
-      title: item.title || item.headline,
-      company: item.company_name,
-      linkedinUrl: item.profile_url
-    }));
+    console.log('🔵 Unipile response:', JSON.stringify(data).substring(0, 200));
 
-    // Save to workspace_prospects
+    const prospects = (data.items || []).map((item: any) => {
+      // Split name into first/last (simple split on space)
+      const fullName = item.name || '';
+      const nameParts = fullName.trim().split(' ');
+      const firstName = nameParts[0] || 'Unknown';
+      const lastName = nameParts.slice(1).join(' ') || 'Unknown';
+
+      return {
+        firstName,
+        lastName,
+        fullName,
+        title: item.title || item.headline,
+        company: item.company_name,
+        linkedinUrl: item.profile_url
+      };
+    });
+
+    console.log(`🔵 Mapped ${prospects.length} prospects`);
+
+    // Save to workspace_prospects with correct column names
     if (prospects.length > 0) {
       const toInsert = prospects.map((p: any) => ({
         workspace_id: workspaceId,
-        name: p.name,
-        title: p.title,
-        company: p.company,
-        linkedin_url: p.linkedinUrl,
-        source: 'linkedin_simple_search',
-        approval_status: 'pending'
+        first_name: p.firstName,
+        last_name: p.lastName,
+        job_title: p.title,
+        company_name: p.company,
+        linkedin_profile_url: p.linkedinUrl
       }));
 
-      await supabase.from('workspace_prospects').insert(toInsert);
+      console.log('🔵 Inserting to database:', JSON.stringify(toInsert[0]));
+      const { data: inserted, error: insertError } = await supabase
+        .from('workspace_prospects')
+        .insert(toInsert)
+        .select();
+
+      if (insertError) {
+        console.error('❌ Insert error:', insertError);
+      } else {
+        console.log(`✅ Inserted ${inserted?.length || 0} prospects`);
+      }
     }
 
     return NextResponse.json({
