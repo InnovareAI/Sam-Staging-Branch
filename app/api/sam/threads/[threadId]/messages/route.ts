@@ -650,9 +650,15 @@ export async function POST(
       console.log('🔄 Detected #test-linkedin command - calling LinkedIn API')
 
       try {
+        // Forward authentication cookies from incoming request
+        const cookieHeader = request.headers.get('cookie') || ''
+
         const linkedinResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/pull-connections`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': cookieHeader // Forward session cookies for auth
+          },
           body: JSON.stringify({ count: 10 })
         })
 
