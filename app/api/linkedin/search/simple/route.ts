@@ -95,12 +95,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'LinkedIn not connected' }, { status: 400 });
     }
 
-    // Call Unipile (simple version - no fancy API detection)
+    // Call Unipile - format payload correctly
     const unipileUrl = `https://${process.env.UNIPILE_DSN}.unipile.com:13443/api/v1/linkedin/search`;
     const params = new URLSearchParams({
       account_id: linkedinAccount.unipile_account_id,
       limit: String(Math.min(target_count, 50))
     });
+
+    // Build proper Unipile payload
+    const unipilePayload: any = {
+      api: 'classic',
+      category: 'people' // Default to people search
+    };
+
+    // Combine title + keywords into single keywords field
+    const keywordParts = [];
+    if (search_criteria.title) keywordParts.push(search_criteria.title);
+    if (search_criteria.keywords) keywordParts.push(search_criteria.keywords);
+    if (keywordParts.length > 0) {
+      unipilePayload.keywords = keywordParts.join(' ');
+    }
+
+    console.log('🔵 Unipile payload:', JSON.stringify(unipilePayload));
 
     const response = await fetch(`${unipileUrl}?${params}`, {
       method: 'POST',
@@ -108,10 +124,7 @@ export async function POST(request: NextRequest) {
         'X-API-KEY': process.env.UNIPILE_API_KEY!,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        ...search_criteria,
-        api: 'classic'
-      })
+      body: JSON.stringify(unipilePayload)
     });
 
     const data = await response.json();
