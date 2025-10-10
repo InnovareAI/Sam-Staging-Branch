@@ -1182,9 +1182,7 @@ CRITICAL: PROSPECT SEARCH WORKFLOW - AUTO-TRIGGER SEARCHES
   - ✅ "The search is running - you'll see X prospects populate in Y seconds..."
 
 - **Search Trigger Format:**
-  ```
   #trigger-search:{"title":"CEO","keywords":"tech startups","location":["103644278"],"connectionDegree":"1st","targetCount":20}
-  ```
 
 - **Examples:**
   - Small search (20-50): "I've started searching for 20 CEOs at tech startups. Head to **Data Approval** (left sidebar) to watch them populate in real-time - should take about 10-15 seconds."
