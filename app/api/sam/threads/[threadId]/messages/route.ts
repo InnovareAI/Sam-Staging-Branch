@@ -762,92 +762,8 @@ export async function POST(
       }
     }
 
-    // Prospect Search Trigger - #trigger-search:{JSON} shortcut
-    const triggerSearchMatch = content.match(/#trigger-search:(\{[^}]+\})/i)
-    if (triggerSearchMatch) {
-      console.log('🔄 Detected prospect search trigger request')
-
-      try {
-        const searchCriteria = JSON.parse(triggerSearchMatch[1])
-        const cookieHeader = request.headers.get('cookie') || ''
-
-        const createJobResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/search/create-job`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cookie': cookieHeader
-          },
-          body: JSON.stringify({
-            search_criteria: searchCriteria,
-            search_type: 'linkedin',
-            target_count: searchCriteria.targetCount || 100
-          })
-        })
-
-        const jobData = await createJobResponse.json()
-
-        let aiResponse: string
-
-        if (jobData.success) {
-          const estimatedMinutes = Math.ceil((jobData.metadata?.estimated_time_seconds || 30) / 60)
-          const targetCount = searchCriteria.targetCount || 100
-
-          aiResponse = `✅ **Search Started!**\n\n`
-          aiResponse += `I'm searching for ${targetCount} ${searchCriteria.title || 'prospects'}${searchCriteria.keywords ? ` in ${searchCriteria.keywords}` : ''}.\n\n`
-          aiResponse += `**Next Step:** Head to the **Data Approval** tab (left sidebar) to watch the prospects populate in real-time.\n\n`
-          aiResponse += `⏱️ Estimated time: ${estimatedMinutes} minute${estimatedMinutes > 1 ? 's' : ''}\n`
-          aiResponse += `📊 You'll see a progress bar showing: X/${targetCount} prospects found`
-        } else {
-          aiResponse = `❌ **Search Failed**\n\n`
-          aiResponse += jobData.error || 'Unable to start the search. '
-
-          if (jobData.action === 'connect_linkedin') {
-            aiResponse += `\n\n**Action needed:** Please connect your LinkedIn account in Settings > Integrations first.`
-          }
-        }
-
-        // Save assistant response
-        await supabase
-          .from('sam_conversation_messages')
-          .insert({
-            thread_id: resolvedParams.threadId,
-            user_id: user.id,
-            role: 'assistant',
-            content: aiResponse,
-            message_order: nextOrder + 1
-          })
-
-        return NextResponse.json({
-          success: true,
-          samMessage: {
-            role: 'assistant',
-            content: aiResponse
-          }
-        })
-
-      } catch (error) {
-        console.error('❌ Prospect search trigger failed:', error)
-        const errorResponse = `❌ **Search Trigger Failed**\n\nCouldn't start the prospect search. Try heading to the **Data Approval** tab and entering your search criteria directly in the chat there.`
-
-        await supabase
-          .from('sam_conversation_messages')
-          .insert({
-            thread_id: resolvedParams.threadId,
-            user_id: user.id,
-            role: 'assistant',
-            content: errorResponse,
-            message_order: nextOrder + 1
-          })
-
-        return NextResponse.json({
-          success: true,
-          samMessage: {
-            role: 'assistant',
-            content: errorResponse
-          }
-        })
-      }
-    }
+    // Note: Prospect search triggers are now handled AFTER AI response generation
+    // This allows SAM to naturally include triggers in its responses
 
     // LinkedIn Test Integration - #test-linkedin shortcut
     if (content.toLowerCase().includes('#test-linkedin')) {
@@ -1181,7 +1097,6 @@ YOUR WORKFLOW (present naturally, not as a checklist)
 5. Execute & follow through: Confirm approvals, outline next actions, stay available for adjustments
 
 LINKEDIN INTEGRATION & PROSPECT SEARCH
-- **YOU CANNOT EXECUTE PROSPECT SEARCHES** - All searches happen in the Data Approval tab
 - **When checking connection:** Use the shortcut command approach: just check status when asked
 - **Example:** User says "check linkedin connection" → You respond with connection status from API
 - **NEVER mention:**
@@ -1189,41 +1104,50 @@ LINKEDIN INTEGRATION & PROSPECT SEARCH
   - Costs, pricing, or "premium" features
   - Technical implementation details
   - Data source names
-  - That you can "search for prospects" or "pull results"
 - **DO mention:**
-  - "Head to the Data Approval tab to run that search"
   - "Connect LinkedIn for better prospect data" (if disconnected)
   - "All included in your plan" (if they ask about costs)
-- **Philosophy:** You help strategize, Data Approval tab executes searches
 
-CRITICAL: PROSPECT SEARCH WORKFLOW - AUTO-TRIGGER SEARCHES
-- **NEW BEHAVIOR:** When user asks for prospects, you TRIGGER the search automatically
+CRITICAL: PROSPECT SEARCH WORKFLOW - AUTO-TRIGGER SEARCHES (MANDATORY BEHAVIOR)
+⚠️ **YOU MUST AUTOMATICALLY TRIGGER SEARCHES** - Do NOT tell users to go to Data Approval manually!
 
-- **How it works:**
-  1. User: "Find 20 CEOs at tech startups, 1st degree connections"
-  2. You parse the intent: { title: "CEO", keywords: "tech startups", connectionDegree: "1st", targetCount: 20 }
-  3. You trigger the search using: #trigger-search:{JSON criteria}
-  4. You respond: "Perfect! I'm starting that search now. Head to the **Data Approval** tab to watch the 20 prospects populate in real-time (about 10-15 seconds)."
-  5. User goes to Data Approval and sees search already running with progress bar
+**When user requests prospects:**
+1. Parse the search criteria from their message
+2. **IMMEDIATELY OUTPUT** the trigger in your response: #trigger-search:{JSON}
+3. Tell them the search is starting and where to watch progress
 
-- **Response Pattern:**
-  - ✅ "I'm starting that search now..."
-  - ✅ "Head to **Data Approval** tab to watch progress..."
-  - ✅ "The search is running - you'll see X prospects populate in Y seconds..."
+**MANDATORY Response Format:**
+```
+[Your natural response about starting the search]
 
-- **Search Trigger Format:**
-  #trigger-search:{"title":"CEO","keywords":"tech startups","location":["103644278"],"connectionDegree":"1st","targetCount":20}
+#trigger-search:{"title":"[JOB TITLE]","keywords":"[KEYWORDS]","connectionDegree":"[1st/2nd/3rd]","targetCount":[NUMBER]}
 
-- **Examples:**
-  - Small search (20-50): "I've started searching for 20 CEOs at tech startups. Head to **Data Approval** (left sidebar) to watch them populate in real-time - should take about 10-15 seconds."
-  - Large search (500-1000): "Search is running for 1000 VPs in SaaS! Go to **Data Approval** tab to watch the progress bar. This typically takes 60-90 seconds."
+The search is running! Head to the **Data Approval** tab to watch prospects populate in real-time.
+```
 
-- **Key Rules:**
-  - ALWAYS trigger the search first using #trigger-search
-  - ALWAYS mention "Data Approval tab" where they'll see results
-  - Give time estimates (10-15 sec for <50, 60-90 sec for 500-1000)
-  - Say "I'm starting..." or "I've started..." (present/past tense, not future)
-  - Explain they'll "watch it populate in real-time"
+**Examples of CORRECT responses:**
+
+User: "Find 20 CEOs at tech startups"
+You: "Perfect! I'm starting that search now.
+
+#trigger-search:{"title":"CEO","keywords":"tech startups","targetCount":20}
+
+Head to the **Data Approval** tab (left sidebar) to watch the 20 prospects populate in real-time - should take about 10-15 seconds."
+
+User: "can you find me 30 VPs of Sales, 1st degree connections"
+You: "Absolutely! Searching for 30 VP Sales from your 1st degree network now.
+
+#trigger-search:{"title":"VP Sales","connectionDegree":"1st","targetCount":30}
+
+Go to **Data Approval** to watch the progress bar. This usually takes about 15-20 seconds."
+
+**CRITICAL RULES:**
+- ✅ ALWAYS include the #trigger-search:{JSON} line in your response
+- ✅ Put the trigger on its own line AFTER your initial response
+- ✅ Mention "Data Approval tab" where they'll see results
+- ✅ Use present/past tense: "I'm starting..." or "I've started..." (NOT future)
+- ❌ NEVER say "Head to Data Approval to run the search" (that's old behavior)
+- ❌ NEVER skip the trigger - it's MANDATORY for all prospect requests
 
 CONVERSATIONAL RULES
 - Echo back key details naturally ("So if I'm hearing right, you're targeting...")
@@ -1449,6 +1373,60 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         } else {
           aiResponse = "I'm experiencing some technical difficulties right now, but I'm here to help with your sales challenges. What specific area would you like to discuss?"
         }
+      }
+    }
+
+    // Check if SAM's AI response contains a search trigger and execute it
+    const triggerSearchMatch = aiResponse.match(/#trigger-search:(\{[^}]+\})/i)
+    if (triggerSearchMatch) {
+      console.log('🔄 Detected search trigger in SAM response:', triggerSearchMatch[1])
+
+      try {
+        const searchCriteria = JSON.parse(triggerSearchMatch[1])
+        const cookieHeader = request.headers.get('cookie') || ''
+
+        const createJobResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/search/create-job`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': cookieHeader
+          },
+          body: JSON.stringify({
+            search_criteria: searchCriteria,
+            search_type: 'linkedin',
+            target_count: searchCriteria.targetCount || 100
+          })
+        })
+
+        const jobData = await createJobResponse.json()
+
+        if (jobData.success) {
+          const estimatedMinutes = Math.ceil((jobData.metadata?.estimated_time_seconds || 30) / 60)
+          const targetCount = searchCriteria.targetCount || 100
+
+          // Replace trigger in AI response with success message
+          aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
+            `\n\n✅ **Search Started!** I'm searching for ${targetCount} ${searchCriteria.title || 'prospects'}${searchCriteria.keywords ? ` in ${searchCriteria.keywords}` : ''}.\n\n` +
+            `**Next Step:** Head to the **Data Approval** tab (left sidebar) to watch the prospects populate in real-time.\n\n` +
+            `⏱️ Estimated time: ${estimatedMinutes} minute${estimatedMinutes > 1 ? 's' : ''}\n` +
+            `📊 You'll see a progress bar showing: X/${targetCount} prospects found`
+          ).trim()
+        } else {
+          // Replace trigger with error message
+          let errorMsg = `\n\n❌ **Search Failed:** ${jobData.error || 'Unable to start the search.'}`
+          if (jobData.action === 'connect_linkedin') {
+            errorMsg += `\n\n**Action needed:** Please connect your LinkedIn account in Settings > Integrations first.`
+          }
+          aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i, errorMsg).trim()
+        }
+
+        console.log('✅ Search trigger executed, response updated')
+      } catch (error) {
+        console.error('❌ Search trigger execution failed:', error)
+        // Remove trigger from response if execution fails
+        aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
+          '\n\n❌ **Search Failed:** Technical error while starting the search. Try heading to the **Data Approval** tab and entering your criteria directly.'
+        ).trim()
       }
     }
 
