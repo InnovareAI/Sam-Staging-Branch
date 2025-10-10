@@ -169,6 +169,20 @@ export async function GET(request: NextRequest) {
           get(name: string) {
             return cookieStore.get(name)?.value
           },
+          set(name: string, value: string, options: any) {
+            try {
+              cookieStore.set({ name, value, ...options })
+            } catch (error) {
+              // Cookie setting might fail in middleware
+            }
+          },
+          remove(name: string, options: any) {
+            try {
+              cookieStore.set({ name, value: '', ...options })
+            } catch (error) {
+              // Cookie removal might fail in middleware
+            }
+          },
         },
       }
     )
@@ -248,6 +262,20 @@ export async function POST(request: NextRequest) {
         cookies: {
           get(name: string) {
             return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            try {
+              cookieStore.set({ name, value, ...options })
+            } catch (error) {
+              // Cookie setting might fail in middleware
+            }
+          },
+          remove(name: string, options: any) {
+            try {
+              cookieStore.set({ name, value: '', ...options })
+            } catch (error) {
+              // Cookie removal might fail in middleware
+            }
           },
         },
       }
