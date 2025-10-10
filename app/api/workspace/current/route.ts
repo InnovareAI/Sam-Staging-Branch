@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 
+// Force rebuild: 2025-10-10
 export async function GET() {
   try {
     const cookieStore = await cookies()
