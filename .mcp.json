@@ -72,6 +72,15 @@
         "AIRTABLE_API_KEY": "${AIRTABLE_API_KEY}"
       },
       "description": "Airtable MCP for database backups and management"
+    },
+    "google-search": {
+      "command": "npx",
+      "args": ["google-search-mcp@latest"],
+      "env": {
+        "GOOGLE_API_KEY": "${GOOGLE_API_KEY}",
+        "GOOGLE_CSE_ID": "${GOOGLE_CSE_ID}"
+      },
+      "description": "Google Custom Search Engine MCP for web research"
     }
   }
 }

@@ -513,12 +513,49 @@ export async function POST(
 
     // Trigger ICP research for interactive building sessions
     if (isICPRequest && !linkedInUrls) {
+      // CHECK: Is LinkedIn connected before proceeding with ICP discovery?
+      const { data: linkedInAccount } = await supabase
+        .from('user_unipile_accounts')
+        .select('unipile_account_id, connection_status')
+        .eq('user_id', user.id)
+        .eq('platform', 'LINKEDIN')
+        .eq('connection_status', 'active')
+        .maybeSingle()
+
+      if (!linkedInAccount) {
+        // LinkedIn not connected - provide helpful message with connection link
+        const connectUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings/integrations?connect=linkedin`
+
+        const linkedInPromptMessage = {
+          role: 'assistant' as const,
+          content: `To find prospects and run ICP discovery, I need access to your LinkedIn account.\n\n**Why LinkedIn?**\n- Search the full LinkedIn database for your ideal prospects\n- Unlimited searches (no quota limits)\n- Access to real-time prospect data\n\n**Connect your LinkedIn account here:**\n[Connect LinkedIn Now](${connectUrl})\n\nOnce connected, I'll be able to search for prospects and help you build your ICP!`
+        }
+
+        // Save the assistant's prompt message
+        await supabase
+          .from('sam_conversation_messages')
+          .insert({
+            thread_id: resolvedParams.threadId,
+            role: 'assistant',
+            content: linkedInPromptMessage.content,
+            created_at: new Date().toISOString()
+          })
+
+        return NextResponse.json({
+          success: true,
+          message: linkedInPromptMessage.content,
+          requiresLinkedIn: true,
+          connectUrl
+        })
+      }
+
+      // LinkedIn is connected - proceed with ICP discovery
       try {
         // Extract job titles and criteria from user message
         const jobTitles = extractJobTitles(content)
         const industry = extractIndustry(content)
         const companySize = extractCompanySize(content)
-        
+
         if (jobTitles.length > 0) {
           const intelligenceResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/sam/prospect-intelligence`, {
             method: 'POST',

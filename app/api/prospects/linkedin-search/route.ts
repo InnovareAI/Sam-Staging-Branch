@@ -39,16 +39,17 @@ export async function POST(request: NextRequest) {
 
     // Check if Unipile is configured
     if (!UNIPILE_API_KEY || !UNIPILE_DSN) {
-      console.warn('Unipile not configured - returning mock data');
+      console.error('Unipile not configured - LinkedIn search unavailable');
       return NextResponse.json({
-        success: true,
-        prospects: generateMockProspects(searchQuery, limit),
-        metadata: {
-          source: 'mock',
-          query: searchQuery,
-          note: 'Unipile not configured. Using mock data.'
+        success: false,
+        error: 'LinkedIn search is not configured. Please contact support to enable Unipile integration.',
+        details: {
+          missingConfig: [
+            !UNIPILE_API_KEY ? 'UNIPILE_API_KEY' : null,
+            !UNIPILE_DSN ? 'UNIPILE_DSN' : null
+          ].filter(Boolean)
         }
-      });
+      }, { status: 503 });
     }
 
     // Get user's LinkedIn account from database
@@ -343,19 +344,22 @@ async function saveProspectSearch(supabase: any, data: any) {
   }
 }
 
-// Generate mock prospects for testing
-function generateMockProspects(query: string, count: number) {
-  const titles = ['CEO', 'CTO', 'VP Sales', 'VP Marketing', 'Director', 'Manager'];
-  const companies = ['TechCorp', 'InnovateLabs', 'GrowthHub', 'DataPro', 'CloudSystems'];
-  
-  return Array.from({ length: count }, (_, i) => ({
-    id: `mock_${i}`,
-    name: `Prospect ${i + 1}`,
-    title: titles[i % titles.length],
-    company: companies[i % companies.length],
-    email: `prospect${i + 1}@example.com`,
-    linkedinUrl: `https://linkedin.com/in/prospect-${i + 1}`,
-    confidence: 0.75,
-    source: 'mock'
-  }));
-}
+// DEPRECATED: Mock data generator removed - no longer returns fake prospects
+// This function was causing "lookalike data" issues where fake prospects
+// (Prospect 1, Prospect 2, TechCorp, InnovateLabs) were shown instead of real data
+//
+// function generateMockProspects(query: string, count: number) {
+//   const titles = ['CEO', 'CTO', 'VP Sales', 'VP Marketing', 'Director', 'Manager'];
+//   const companies = ['TechCorp', 'InnovateLabs', 'GrowthHub', 'DataPro', 'CloudSystems'];
+//
+//   return Array.from({ length: count }, (_, i) => ({
+//     id: `mock_${i}`,
+//     name: `Prospect ${i + 1}`,
+//     title: titles[i % titles.length],
+//     company: companies[i % companies.length],
+//     email: `prospect${i + 1}@example.com`,
+//     linkedinUrl: `https://linkedin.com/in/prospect-${i + 1}`,
+//     confidence: 0.75,
+//     source: 'mock'
+//   }));
+// }

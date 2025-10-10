@@ -140,12 +140,12 @@ class ActiveCampaignService {
   // Find or create a tag
   async findOrCreateTag(tagName: string) {
     try {
-      // First, try to find existing tag
-      const tagsResponse = await this.request('tags');
-      const existingTag = tagsResponse.tags?.find((tag: any) => tag.tag === tagName);
-      
+      // First, try to find existing tag by searching
+      const searchResponse = await this.request(`tags?search=${encodeURIComponent(tagName)}`);
+      const existingTag = searchResponse.tags?.find((tag: any) => tag.tag === tagName);
+
       if (existingTag) {
-        console.log(`Tag "${tagName}" already exists in ActiveCampaign`);
+        console.log(`Tag "${tagName}" already exists in ActiveCampaign (ID: ${existingTag.id})`);
         return existingTag;
       }
 
@@ -159,10 +159,22 @@ class ActiveCampaignService {
       };
 
       const createResponse = await this.request('tags', 'POST', createData);
-      console.log(`Created new tag in ActiveCampaign: ${tagName}`);
+      console.log(`Created new tag in ActiveCampaign: ${tagName} (ID: ${createResponse.tag.id})`);
       return createResponse.tag;
-      
-    } catch (error) {
+
+    } catch (error: any) {
+      // If tag creation fails due to duplicate, it means it exists - fetch it by search
+      if (error.message && error.message.includes('Duplicate entry')) {
+        console.log(`Tag "${tagName}" already exists (duplicate error), fetching it...`);
+        const searchResponse = await this.request(`tags?search=${encodeURIComponent(tagName)}`);
+        const tag = searchResponse.tags?.find((t: any) => t.tag === tagName);
+        if (tag) {
+          console.log(`Found existing tag: ${tagName} (ID: ${tag.id})`);
+          return tag;
+        }
+        console.error(`Tag "${tagName}" exists but couldn't be found!`);
+      }
+
       console.error(`Error finding/creating tag ${tagName}:`, error);
       throw error;
     }

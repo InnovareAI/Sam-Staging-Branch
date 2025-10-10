@@ -413,10 +413,27 @@ export class GoogleSearchMCPServer {
     url.searchParams.set('num', Math.min(maxResults, 10).toString())
 
     const response = await fetch(url.toString())
-    
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      throw new Error(`Google CSE API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`)
+      const errorMessage = errorData.error?.message || 'Unknown error'
+
+      // Enhanced error messages for common issues
+      if (response.status === 429) {
+        throw new Error(
+          `Google CSE daily quota exceeded (100 free searches/day). ` +
+          `To enable unlimited searches, upgrade at: https://console.cloud.google.com/apis/api/customsearch.googleapis.com ` +
+          `Error: ${errorMessage}`
+        )
+      } else if (response.status === 403) {
+        throw new Error(
+          `Google CSE API access denied. Please verify API key has Custom Search API enabled. ` +
+          `Configure at: https://console.cloud.google.com/apis/credentials ` +
+          `Error: ${errorMessage}`
+        )
+      } else {
+        throw new Error(`Google CSE API error: ${response.status} - ${errorMessage}`)
+      }
     }
 
     const data = await response.json()

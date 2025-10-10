@@ -9,11 +9,11 @@ import { createClient } from '@/utils/supabase/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { 
-      search_type = 'brightdata',
+    const {
+      search_type = 'unipile_linkedin_search', // Default to Unipile (no quota limits!)
       search_criteria,
       campaign_config,
-      auto_send = false 
+      auto_send = false
     } = body;
 
     const supabase = createClient();
@@ -117,6 +117,45 @@ export async function POST(request: NextRequest) {
           prospectResults = rawGoogleResults;
         }
 
+        break;
+      }
+
+      case 'unipile_linkedin_search': {
+        // Full LinkedIn database search via Unipile (RECOMMENDED - No quota limits!)
+        const linkedinSearchResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/linkedin/search`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            category: 'people',
+            keywords: search_criteria.keywords,
+            title: search_criteria.job_titles?.join(' OR '),
+            industry: search_criteria.industries,
+            location: search_criteria.locations,
+            company_headcount: mapCompanySizeToHeadcount(search_criteria.company_size),
+            seniority_level: search_criteria.seniority_levels,
+            limit: search_criteria.max_results || 50,
+            enrichProfiles: true
+          })
+        });
+
+        const linkedinResults = await linkedinSearchResponse.json();
+
+        if (!linkedinResults.success) {
+          // Check if it's because LinkedIn not connected
+          if (linkedinResults.error?.includes('No active LinkedIn account')) {
+            return NextResponse.json({
+              success: false,
+              error: 'LinkedIn account not connected',
+              action_required: 'connect_linkedin',
+              message: 'Please connect your LinkedIn account to enable ICP prospect discovery.',
+              connect_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/integrations`
+            }, { status: 400 });
+          }
+
+          prospectResults = linkedinResults;
+        } else {
+          prospectResults = linkedinResults;
+        }
         break;
       }
 
@@ -238,6 +277,31 @@ async function standardizeProspectData(prospectResults: any, searchType: string)
       }
       break;
 
+    case 'unipile_linkedin_search':
+      // Unipile returns structured LinkedIn profile data
+      if (prospectResults.results) {
+        for (const profile of prospectResults.results) {
+          prospects.push({
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            company_name: profile.current_position?.company_name || profile.company,
+            job_title: profile.current_position?.title || profile.headline,
+            linkedin_url: profile.url || profile.linkedin_url,
+            linkedin_user_id: profile.id,
+            location: profile.location,
+            industry: profile.industry,
+            profile_picture: profile.profile_picture_url,
+            summary: profile.summary,
+            experience: profile.experience,
+            education: profile.education,
+            skills: profile.skills,
+            source: 'unipile_linkedin_search',
+            connection_degree: profile.distance
+          });
+        }
+      }
+      break;
+
     case 'unipile_network':
       if (prospectResults.contacts) {
         for (const contact of prospectResults.contacts) {
@@ -256,6 +320,24 @@ async function standardizeProspectData(prospectResults: any, searchType: string)
   }
 
   return prospects.filter(p => p.first_name && p.company_name);
+}
+
+/**
+ * Map generic company size to LinkedIn headcount codes
+ */
+function mapCompanySizeToHeadcount(companySize?: string): string[] | undefined {
+  if (!companySize) return undefined;
+
+  const sizeMap: { [key: string]: string[] } = {
+    'small': ['A', 'B'],        // 1-10, 11-50
+    'medium': ['C', 'D', 'E'],  // 51-200, 201-500, 501-1000
+    'large': ['F', 'G', 'H', 'I'], // 1001-5000, 5001-10000, 10001+
+    'startup': ['A', 'B'],      // 1-10, 11-50
+    'enterprise': ['G', 'H', 'I'], // 5001-10000, 10001+
+    'any': undefined
+  };
+
+  return sizeMap[companySize.toLowerCase()] || undefined;
 }
 
 /**

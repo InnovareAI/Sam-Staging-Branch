@@ -396,6 +396,32 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // Sync to ActiveCampaign for InnovareAI customers (non-blocking)
+        if (workspace) {
+          try {
+            console.log('🔄 Syncing user to ActiveCampaign...');
+
+            const syncResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/activecampaign/sync-user`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: data.user.id })
+            });
+
+            const syncResult = await syncResponse.json();
+
+            if (syncResult.success) {
+              console.log('✅ User synced to ActiveCampaign');
+            } else if (syncResult.skipped) {
+              console.log(`⚠️ ActiveCampaign sync skipped: ${syncResult.reason}`);
+            } else {
+              console.error('❌ ActiveCampaign sync failed:', syncResult.error);
+            }
+          } catch (acError) {
+            console.error('⚠️ ActiveCampaign sync failed (non-critical):', acError);
+            // Don't fail signup if ActiveCampaign is down
+          }
+        }
+
       } catch (profileErr) {
         console.error('Error creating user profile:', profileErr);
       }
