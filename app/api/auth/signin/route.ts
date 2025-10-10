@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies();
+    let response = NextResponse.next();
 
     // Create Supabase client with SSR cookie handling
     const supabase = createServerClient(
@@ -16,13 +17,11 @@ export async function POST(request: NextRequest) {
             return cookieStore.getAll();
           },
           setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {
-              // Cookie setting can fail in middleware context
-            }
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+              // ALSO set on response to ensure they're sent to client
+              response.cookies.set(name, value, options);
+            });
           }
         }
       }
@@ -74,7 +73,7 @@ export async function POST(request: NextRequest) {
     if (data.session && data.user) {
       console.log('User signed in successfully:', data.user.id);
 
-      // The session is automatically stored in cookies by the Supabase client
+      // Return response with cookies set
       return NextResponse.json({
         message: 'Sign-in successful!',
         user: {
@@ -83,6 +82,8 @@ export async function POST(request: NextRequest) {
           firstName: data.user.user_metadata?.first_name,
           lastName: data.user.user_metadata?.last_name
         }
+      }, {
+        headers: response.headers
       });
     }
 
