@@ -234,6 +234,60 @@ export async function POST(request: NextRequest) {
       } else {
         console.log(`✅ Inserted ${inserted?.length || 0} prospects`);
       }
+
+      // CRITICAL: Create approval session so prospects show in Data Approval tab
+      console.log('📋 Creating approval session...');
+      const sessionId = `linkedin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      const { error: sessionError } = await supabase
+        .from('prospect_approval_sessions')
+        .insert({
+          id: sessionId,
+          user_id: user.id,
+          organization_id: workspaceId, // Note: Using workspaceId for organization_id
+          source: 'linkedin_search',
+          total_prospects: validProspects.length,
+          pending_count: validProspects.length,
+          approved_count: 0,
+          rejected_count: 0,
+          session_status: 'active',
+          created_at: new Date().toISOString()
+        });
+
+      if (sessionError) {
+        console.error('❌ Session creation error:', sessionError);
+      } else {
+        console.log('✅ Approval session created:', sessionId);
+
+        // Add prospects to approval data table
+        const approvalProspects = validProspects.map((p: any) => ({
+          session_id: sessionId,
+          prospect_id: `prospect_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          name: p.fullName,
+          title: p.title || '',
+          company: p.company || '',
+          contact: p.linkedinUrl || '',
+          location: '',
+          profile_image: '',
+          recent_activity: '',
+          connection_degree: '',
+          enrichment_score: 0.8,
+          source: `linkedin_${api}`,
+          enriched_at: new Date().toISOString(),
+          approval_status: 'pending',
+          created_at: new Date().toISOString()
+        }));
+
+        const { error: prospectsError } = await supabase
+          .from('prospect_approval_data')
+          .insert(approvalProspects);
+
+        if (prospectsError) {
+          console.error('❌ Approval prospects error:', prospectsError);
+        } else {
+          console.log(`✅ Added ${approvalProspects.length} prospects to approval session`);
+        }
+      }
     }
 
     return NextResponse.json({
