@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   return NextResponse.json({
-    version: 'typescript-import-fix-THE-REAL-BUG',
+    version: 'workspace-auto-select-FINAL-FIX',
     timestamp: new Date().toISOString()
   });
 }
