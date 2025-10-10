@@ -18,28 +18,37 @@ export const supabase = new Proxy({}, {
   get(target, prop) {
     if (!_supabase) {
       const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
-      // Use createBrowserClient from @supabase/ssr with cookie storage
-      _supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
-        cookies: {
-          getAll() {
-            return document.cookie.split(';').map(c => {
-              const [name, ...rest] = c.trim().split('=');
-              return { name, value: rest.join('=') };
-            }).filter(c => c.name);
-          },
-          setAll(cookies) {
-            cookies.forEach(({ name, value, options }) => {
-              let cookie = `${name}=${value}`;
-              if (options?.maxAge) cookie += `; max-age=${options.maxAge}`;
-              if (options?.path) cookie += `; path=${options.path}`;
-              if (options?.domain) cookie += `; domain=${options.domain}`;
-              if (options?.sameSite) cookie += `; samesite=${options.sameSite}`;
-              if (options?.secure) cookie += '; secure';
-              document.cookie = cookie;
-            });
+
+      // CRITICAL: Check if running in browser before using document.cookie
+      if (typeof window === 'undefined') {
+        // Server-side: use basic client (no auth persistence needed server-side)
+        _supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey);
+      } else {
+        // Browser: Use createBrowserClient with cookie storage
+        _supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+          cookies: {
+            getAll() {
+              if (typeof document === 'undefined') return [];
+              return document.cookie.split(';').map(c => {
+                const [name, ...rest] = c.trim().split('=');
+                return { name, value: rest.join('=') };
+              }).filter(c => c.name);
+            },
+            setAll(cookies) {
+              if (typeof document === 'undefined') return;
+              cookies.forEach(({ name, value, options }) => {
+                let cookie = `${name}=${value}`;
+                if (options?.maxAge) cookie += `; max-age=${options.maxAge}`;
+                if (options?.path) cookie += `; path=${options.path}`;
+                if (options?.domain) cookie += `; domain=${options.domain}`;
+                if (options?.sameSite) cookie += `; samesite=${options.sameSite}`;
+                if (options?.secure) cookie += '; secure';
+                document.cookie = cookie;
+              });
+            }
           }
-        }
-      });
+        });
+      }
     }
     return _supabase[prop];
   }
