@@ -26,6 +26,8 @@ export async function POST(request: NextRequest) {
 
     const { search_criteria, target_count = 50 } = await request.json();
 
+    console.log('🔵 Received search_criteria:', JSON.stringify(search_criteria));
+
     // Get workspace (with fallback)
     let workspaceId: string | null = null;
 
@@ -157,18 +159,23 @@ export async function POST(request: NextRequest) {
 
     // CRITICAL FIX: Parse and add connection degree filter
     if (search_criteria.connectionDegree) {
-      // Convert "1st", "2nd", "3rd" to array of numbers for Unipile
-      const degreeMap: Record<string, number[]> = {
-        '1st': [1],
-        '2nd': [2],
-        '3rd': [3],
-        '1': [1],
-        '2': [2],
-        '3': [3]
+      // Convert "1st", "2nd", "3rd" to proper format for Unipile
+      const degreeMap: Record<string, string[]> = {
+        '1st': ['F'],      // First-degree (F = First)
+        '2nd': ['S'],      // Second-degree (S = Second)
+        '3rd': ['O'],      // Third-degree (O = Out of network)
+        '1': ['F'],
+        '2': ['S'],
+        '3': ['O']
       };
 
-      unipilePayload.network_distance = degreeMap[search_criteria.connectionDegree] || [1, 2, 3];
-      console.log('🎯 Connection degree filter:', search_criteria.connectionDegree, '→', unipilePayload.network_distance);
+      // Unipile uses 'network' parameter with values: F, S, O
+      // F = First degree, S = Second degree, O = Third+ degree
+      unipilePayload.network = degreeMap[search_criteria.connectionDegree] || ['F', 'S', 'O'];
+      console.log('🎯 Connection degree filter:', search_criteria.connectionDegree, '→', unipilePayload.network);
+    } else {
+      // Default: search all connection degrees
+      console.log('🎯 No connection degree specified, searching all degrees');
     }
 
     console.log('🔵 Unipile payload:', JSON.stringify(unipilePayload));
@@ -186,7 +193,11 @@ export async function POST(request: NextRequest) {
     console.log('🔵 Unipile response:', JSON.stringify(data).substring(0, 500));
 
     // Extract requested connection degree for saving
-    const requestedDegree = unipilePayload.network_distance?.[0] || 2;
+    // Convert network notation back to numeric degree: F→1, S→2, O→3
+    const networkToNumber: Record<string, number> = { 'F': 1, 'S': 2, 'O': 3 };
+    const requestedDegree = unipilePayload.network?.[0]
+      ? (networkToNumber[unipilePayload.network[0]] || 2)
+      : 2;
 
     const prospects = (data.items || []).map((item: any) => {
       // Handle name - Classic gives full name, Sales Nav gives first/last
@@ -216,7 +227,13 @@ export async function POST(request: NextRequest) {
       const linkedinUrl = item.profile_url || item.public_profile_url || '';
 
       // Connection degree from Unipile data (or use requested degree as fallback)
-      const connectionDegree = item.network_distance || requestedDegree;
+      // Unipile returns network as 'F', 'S', 'O' - convert to number
+      let connectionDegree = requestedDegree;
+      if (item.network) {
+        connectionDegree = networkToNumber[item.network] || requestedDegree;
+      } else if (item.network_distance) {
+        connectionDegree = item.network_distance;
+      }
 
       return {
         firstName,
