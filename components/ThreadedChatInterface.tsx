@@ -36,7 +36,8 @@ export default function ThreadedChatInterface() {
     threads,
     loadThreads,
     sendMessage,
-    isLoading
+    isLoading,
+    getRecentThreads
   } = useSamThreadedChat()
 
   const [currentThread, setCurrentThread] = useState<SamConversationThread | null>(null)
@@ -63,6 +64,35 @@ export default function ThreadedChatInterface() {
   useEffect(() => {
     loadThreads()
   }, [loadThreads])
+
+  // Auto-resume most recent conversation after threads load
+  useEffect(() => {
+    if (threads.length > 0 && !currentThread) {
+      // Try to restore last active thread from localStorage
+      const lastThreadId = localStorage.getItem('sam_last_thread_id')
+      const lastThread = lastThreadId ? threads.find(t => t.id === lastThreadId) : null
+
+      if (lastThread) {
+        console.log('🔄 Restoring previous conversation:', lastThread.title)
+        setCurrentThread(lastThread)
+      } else {
+        // Fall back to most recent thread
+        const recentThreads = getRecentThreads(1)
+        if (recentThreads.length > 0) {
+          console.log('🔄 Auto-resuming most recent conversation:', recentThreads[0].title)
+          setCurrentThread(recentThreads[0])
+        }
+      }
+    }
+  }, [threads, currentThread, getRecentThreads])
+
+  // Save current thread to localStorage when it changes
+  useEffect(() => {
+    if (currentThread) {
+      localStorage.setItem('sam_last_thread_id', currentThread.id)
+      console.log('💾 Saved thread to memory:', currentThread.title)
+    }
+  }, [currentThread])
 
   // Load messages when thread changes
   useEffect(() => {
