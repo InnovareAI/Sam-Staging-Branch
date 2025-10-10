@@ -96,7 +96,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Call Unipile - format payload correctly
-    const unipileUrl = `https://${process.env.UNIPILE_DSN}.unipile.com:13443/api/v1/linkedin/search`;
+    // UNIPILE_DSN can be either "api6" or "api6.unipile.com:13443" (full domain)
+    const unipileDSN = process.env.UNIPILE_DSN!;
+    const unipileUrl = unipileDSN.includes('.')
+      ? `https://${unipileDSN}/api/v1/linkedin/search`  // Full domain already provided
+      : `https://${unipileDSN}.unipile.com:13443/api/v1/linkedin/search`;  // Just subdomain
+
     const params = new URLSearchParams({
       account_id: linkedinAccount.unipile_account_id,
       limit: String(Math.min(target_count, 50))
