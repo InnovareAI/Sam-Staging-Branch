@@ -4,21 +4,22 @@ import { Check, ChevronDown, ChevronUp, Download, Search, Tag, Users, X } from '
 import { toastError } from '@/lib/toast';
 import { useState, useEffect } from 'react';
 import ProspectSearchChat from '@/components/ProspectSearchChat';
+import { ProspectData as BaseProspectData } from '@/components/ProspectApprovalModal';
+import React from 'react';
 
 
 // LinkedIn Campaign Types
-type LinkedInCampaignType = 
+type LinkedInCampaignType =
   | '1st-degree-direct'      // Direct messages to existing connections
   | '2nd-3rd-connection'     // Connection requests
   | '2nd-3rd-group'          // Group messages (shared groups)
   | 'open-inmail'            // InMail campaigns (requires premium)
 
-// Using ProspectData from ProspectApprovalModal
-type ProspectData = ProspectDataType & {
+// FIXED: Import ProspectData from ProspectApprovalModal and extend it
+type ProspectData = BaseProspectData & {
   campaignName?: string            // Primary: e.g., "20251001-IFC-College Campaign"
   campaignTag?: string             // Secondary: for A/B testing e.g., "Industry-FinTech", "Region-West"
   linkedinCampaignType?: LinkedInCampaignType  // LinkedIn campaign type
-  connectionDegree?: '1st' | '2nd' | '3rd' | 'unknown'
   conversationId?: string          // For 1st degree follow-ups
   sharedGroups?: string[]          // For group campaigns
   inmailEligible?: boolean         // Has Open Profile or InMail available

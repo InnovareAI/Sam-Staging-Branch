@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Approval APIs - Production</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #fff; }
+    .log { padding: 10px; margin: 5px 0; border-radius: 5px; }
+    .success { background: #0a4; }
+    .error { background: #a04; }
+    .info { background: #047; }
+    button { padding: 10px 20px; margin: 10px 5px 10px 0; font-size: 16px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>🔍 Test SAM Approval APIs - Production</h1>
+  <p>This page tests the approval APIs in production to debug the "0 pending" issue.</p>
+
+  <button onclick="testSessionsList()">1. Test Sessions List API</button>
+  <button onclick="testProspectsAPI()">2. Test Prospects API</button>
+  <button onclick="clearLogs()">Clear Logs</button>
+
+  <div id="logs"></div>
+
+  <script>
+    const API_BASE = 'https://app.meet-sam.com';
+
+    function log(message, type = 'info') {
+      const logs = document.getElementById('logs');
+      const div = document.createElement('div');
+      div.className = `log ${type}`;
+      div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logs.appendChild(div);
+      logs.scrollTop = logs.scrollHeight;
+      console.log(message);
+    }
+
+    function clearLogs() {
+      document.getElementById('logs').innerHTML = '';
+    }
+
+    async function testSessionsList() {
+      log('🔵 Testing GET /api/prospect-approval/sessions/list', 'info');
+
+      try {
+        const response = await fetch(`${API_BASE}/api/prospect-approval/sessions/list`, {
+          method: 'GET',
+          credentials: 'include', // Important: include cookies for auth
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        log(`Status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+
+        const data = await response.json();
+        log(`Response: ${JSON.stringify(data, null, 2)}`, response.ok ? 'success' : 'error');
+
+        if (data.success && data.sessions) {
+          log(`✅ Found ${data.sessions.length} sessions`, 'success');
+          data.sessions.forEach((s, i) => {
+            log(`   ${i+1}. ${s.id.slice(0, 20)}... - status: ${s.status} - ${s.total_prospects} prospects`, 'info');
+          });
+
+          // Save first session ID for next test
+          if (data.sessions.length > 0) {
+            window.testSessionId = data.sessions[0].id;
+            log(`💾 Saved session ID for prospects test: ${window.testSessionId.slice(0, 20)}...`, 'info');
+          }
+        } else {
+          log(`⚠️  No sessions found or error: ${data.error}`, 'error');
+        }
+      } catch (error) {
+        log(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function testProspectsAPI() {
+      if (!window.testSessionId) {
+        log('❌ No session ID saved. Run "Test Sessions List" first!', 'error');
+        return;
+      }
+
+      log(`🔵 Testing GET /api/prospect-approval/prospects?session_id=${window.testSessionId.slice(0, 20)}...`, 'info');
+
+      try {
+        const response = await fetch(`${API_BASE}/api/prospect-approval/prospects?session_id=${window.testSessionId}`, {
+          method: 'GET',
+          credentials: 'include', // Important: include cookies for auth
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        log(`Status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+
+        const data = await response.json();
+
+        if (response.ok && data.success && data.prospects) {
+          log(`✅ Found ${data.prospects.length} prospects`, 'success');
+
+          if (data.prospects.length > 0) {
+            // Show first 3 prospects with details
+            log('First 3 prospects:', 'info');
+            data.prospects.slice(0, 3).forEach((p, i) => {
+              log(`   ${i+1}. ${p.name} - ${p.title}`, 'info');
+              log(`      Company: ${JSON.stringify(p.company)}`, 'info');
+              log(`      Contact: ${JSON.stringify(p.contact)}`, 'info');
+              log(`      Score: ${p.enrichment_score}`, 'info');
+            });
+          }
+        } else {
+          log(`Response: ${JSON.stringify(data, null, 2)}`, 'error');
+          log(`❌ Failed or no prospects: ${data.error}`, 'error');
+        }
+      } catch (error) {
+        log(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    log('✅ Ready to test. Click buttons above to run tests.', 'success');
+    log('⚠️  IMPORTANT: You must be logged into https://app.meet-sam.com in another tab for auth to work!', 'info');
+  </script>
+</body>
+</html>
