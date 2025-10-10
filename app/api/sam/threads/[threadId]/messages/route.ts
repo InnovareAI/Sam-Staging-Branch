@@ -732,6 +732,93 @@ export async function POST(
       }
     }
 
+    // Prospect Search Trigger - #trigger-search:{JSON} shortcut
+    const triggerSearchMatch = content.match(/#trigger-search:(\{[^}]+\})/i)
+    if (triggerSearchMatch) {
+      console.log('🔄 Detected prospect search trigger request')
+
+      try {
+        const searchCriteria = JSON.parse(triggerSearchMatch[1])
+        const cookieHeader = request.headers.get('cookie') || ''
+
+        const createJobResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/search/create-job`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': cookieHeader
+          },
+          body: JSON.stringify({
+            search_criteria: searchCriteria,
+            search_type: 'linkedin',
+            target_count: searchCriteria.targetCount || 100
+          })
+        })
+
+        const jobData = await createJobResponse.json()
+
+        let aiResponse: string
+
+        if (jobData.success) {
+          const estimatedMinutes = Math.ceil((jobData.metadata?.estimated_time_seconds || 30) / 60)
+          const targetCount = searchCriteria.targetCount || 100
+
+          aiResponse = `✅ **Search Started!**\n\n`
+          aiResponse += `I'm searching for ${targetCount} ${searchCriteria.title || 'prospects'}${searchCriteria.keywords ? ` in ${searchCriteria.keywords}` : ''}.\n\n`
+          aiResponse += `**Next Step:** Head to the **Data Approval** tab (left sidebar) to watch the prospects populate in real-time.\n\n`
+          aiResponse += `⏱️ Estimated time: ${estimatedMinutes} minute${estimatedMinutes > 1 ? 's' : ''}\n`
+          aiResponse += `📊 You'll see a progress bar showing: X/${targetCount} prospects found`
+        } else {
+          aiResponse = `❌ **Search Failed**\n\n`
+          aiResponse += jobData.error || 'Unable to start the search. '
+
+          if (jobData.action === 'connect_linkedin') {
+            aiResponse += `\n\n**Action needed:** Please connect your LinkedIn account in Settings > Integrations first.`
+          }
+        }
+
+        // Save assistant response
+        await supabase
+          .from('sam_conversation_messages')
+          .insert({
+            thread_id: resolvedParams.threadId,
+            user_id: user.id,
+            role: 'assistant',
+            content: aiResponse,
+            message_order: nextOrder + 1
+          })
+
+        return NextResponse.json({
+          success: true,
+          samMessage: {
+            role: 'assistant',
+            content: aiResponse
+          }
+        })
+
+      } catch (error) {
+        console.error('❌ Prospect search trigger failed:', error)
+        const errorResponse = `❌ **Search Trigger Failed**\n\nCouldn't start the prospect search. Try heading to the **Data Approval** tab and entering your search criteria directly in the chat there.`
+
+        await supabase
+          .from('sam_conversation_messages')
+          .insert({
+            thread_id: resolvedParams.threadId,
+            user_id: user.id,
+            role: 'assistant',
+            content: errorResponse,
+            message_order: nextOrder + 1
+          })
+
+        return NextResponse.json({
+          success: true,
+          samMessage: {
+            role: 'assistant',
+            content: errorResponse
+          }
+        })
+      }
+    }
+
     // LinkedIn Test Integration - #test-linkedin shortcut
     if (content.toLowerCase().includes('#test-linkedin')) {
       console.log('🔄 Detected #test-linkedin command - calling LinkedIn API')
@@ -1079,29 +1166,36 @@ LINKEDIN INTEGRATION & PROSPECT SEARCH
   - "All included in your plan" (if they ask about costs)
 - **Philosophy:** You help strategize, Data Approval tab executes searches
 
-CRITICAL: PROSPECT SEARCH WORKFLOW - YOU CANNOT RUN SEARCHES
-- **ABSOLUTELY FORBIDDEN PHRASES:**
-  - ❌ "Let me search for..."
-  - ❌ "Searching now..."
-  - ❌ "Give me a moment to pull these results"
-  - ❌ "Stand by while I..."
-  - ❌ "I'll run that search"
-  - ❌ Any phrase suggesting YOU will execute the search
+CRITICAL: PROSPECT SEARCH WORKFLOW - AUTO-TRIGGER SEARCHES
+- **NEW BEHAVIOR:** When user asks for prospects, you TRIGGER the search automatically
 
-- **REQUIRED RESPONSE PATTERN:**
-  - ✅ "Head to the **Data Approval** tab (left sidebar)"
-  - ✅ "Enter that query in Data Approval"
-  - ✅ "Run that search in the Data Approval tab"
+- **How it works:**
+  1. User: "Find 20 CEOs at tech startups, 1st degree connections"
+  2. You parse the intent: { title: "CEO", keywords: "tech startups", connectionDegree: "1st", targetCount: 20 }
+  3. You trigger the search using: #trigger-search:{JSON criteria}
+  4. You respond: "Perfect! I'm starting that search now. Head to the **Data Approval** tab to watch the 20 prospects populate in real-time (about 10-15 seconds)."
+  5. User goes to Data Approval and sees search already running with progress bar
 
-- **For ALL searches (any size):** Direct user to Data Approval tab
-  - Example for 20 prospects: "Got it - 20 CEOs at tech startups. Head to the **Data Approval** tab (left sidebar) and type that in the chat there. Results will populate in about 10-15 seconds."
-  - Example for 1000 prospects: "Perfect! To find 1000 VPs in SaaS, go to **Data Approval** tab and enter that query. Results populate in real-time (typically 60-90 seconds)."
+- **Response Pattern:**
+  - ✅ "I'm starting that search now..."
+  - ✅ "Head to **Data Approval** tab to watch progress..."
+  - ✅ "The search is running - you'll see X prospects populate in Y seconds..."
+
+- **Search Trigger Format:**
+  ```
+  #trigger-search:{"title":"CEO","keywords":"tech startups","location":["103644278"],"connectionDegree":"1st","targetCount":20}
+  ```
+
+- **Examples:**
+  - Small search (20-50): "I've started searching for 20 CEOs at tech startups. Head to **Data Approval** (left sidebar) to watch them populate in real-time - should take about 10-15 seconds."
+  - Large search (500-1000): "Search is running for 1000 VPs in SaaS! Go to **Data Approval** tab to watch the progress bar. This typically takes 60-90 seconds."
 
 - **Key Rules:**
-  - ALWAYS mention "Data Approval tab" explicitly
-  - NEVER promise to execute searches yourself
-  - Give time estimates so they know what to expect
-  - Explain that results populate in real-time in the Data Approval interface
+  - ALWAYS trigger the search first using #trigger-search
+  - ALWAYS mention "Data Approval tab" where they'll see results
+  - Give time estimates (10-15 sec for <50, 60-90 sec for 500-1000)
+  - Say "I'm starting..." or "I've started..." (present/past tense, not future)
+  - Explain they'll "watch it populate in real-time"
 
 CONVERSATIONAL RULES
 - Echo back key details naturally ("So if I'm hearing right, you're targeting...")
