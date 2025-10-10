@@ -1117,13 +1117,12 @@ CRITICAL: PROSPECT SEARCH WORKFLOW - AUTO-TRIGGER SEARCHES (MANDATORY BEHAVIOR)
 3. Tell them the search is starting and where to watch progress
 
 **MANDATORY Response Format:**
-```
-[Your natural response about starting the search]
 
-#trigger-search:{"title":"[JOB TITLE]","keywords":"[KEYWORDS]","connectionDegree":"[1st/2nd/3rd]","targetCount":[NUMBER]}
+Your natural response about starting the search
+
+#trigger-search:{"title":"JOB_TITLE","keywords":"KEYWORDS","connectionDegree":"1st/2nd/3rd","targetCount":NUMBER}
 
 The search is running! Head to the **Data Approval** tab to watch prospects populate in real-time.
-```
 
 **Examples of CORRECT responses:**
 
