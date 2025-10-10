@@ -120,6 +120,7 @@ export default function DataCollectionHub({
   }, [])
 
   // CRITICAL: Load existing approval sessions from database
+  // Force rebuild: 2025-10-10-v2
   useEffect(() => {
     async function loadExistingApprovalSessions() {
       try {
