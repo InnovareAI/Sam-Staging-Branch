@@ -98,15 +98,43 @@ export async function POST(request: NextRequest) {
         const linkedinResults = await linkedinSearchResponse.json();
 
         if (!linkedinResults.success) {
-          // Check if it's because LinkedIn not connected
+          // Automatic fallback to Bright Data MCP when LinkedIn not available
           if (linkedinResults.error?.includes('No active LinkedIn account')) {
-            return NextResponse.json({
-              success: false,
-              error: 'LinkedIn account not connected',
-              action_required: 'connect_linkedin',
-              message: 'Please connect your LinkedIn account to enable ICP prospect discovery.',
-              connect_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/integrations`
-            }, { status: 400 });
+            console.log('LinkedIn not connected, falling back to Bright Data MCP...');
+
+            // Automatically use Bright Data as fallback
+            const brightDataResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/leads/brightdata-scraper`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+              },
+              body: JSON.stringify({
+                action: 'scrape_prospects',
+                search_params: {
+                  target_sites: ['linkedin', 'apollo'],
+                  search_criteria: {
+                    keywords: search_criteria.keywords,
+                    job_titles: search_criteria.job_titles,
+                    industries: search_criteria.industries,
+                    locations: search_criteria.locations || ['United States'],
+                    company_size: search_criteria.company_size
+                  },
+                  scraping_options: {
+                    max_results: search_criteria.max_results || 50,
+                    include_emails: true,
+                    include_phone: false,
+                    depth: 'detailed'
+                  }
+                },
+                use_premium_proxies: true
+              })
+            });
+
+            prospectResults = await brightDataResponse.json();
+            prospectResults.fallback_used = 'brightdata';
+            prospectResults.fallback_reason = 'LinkedIn account not connected';
+            break;
           }
 
           prospectResults = linkedinResults;
@@ -145,7 +173,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Process and standardize prospect data
-    const standardizedProspects = await standardizeProspectData(prospectResults, search_type);
+    const effectiveSearchType = prospectResults.fallback_used || search_type;
+    const standardizedProspects = await standardizeProspectData(prospectResults, effectiveSearchType);
     const sampleProspects = standardizedProspects.slice(0, Math.min(standardizedProspects.length, 7));
 
     // If auto_send is enabled, create campaign and send templates
@@ -159,18 +188,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Build response with fallback information
+    const responseMessage = prospectResults.fallback_used
+      ? `🔄 Fallback to Bright Data MCP (${prospectResults.fallback_reason}). Found ${sampleProspects.length} prospects (${standardizedProspects.length} total)`
+      : auto_send
+        ? `Sent templates to ${standardizedProspects.length} prospects (showing ${sampleProspects.length} sample matches)`
+        : `Here are ${sampleProspects.length} sample prospects (${standardizedProspects.length} total discovered) ready for review`;
+
     return NextResponse.json({
       success: true,
       search_type,
+      fallback_used: prospectResults.fallback_used || null,
+      fallback_reason: prospectResults.fallback_reason || null,
+      effective_search_type: effectiveSearchType,
       search_criteria,
       prospects_found: sampleProspects.length,
       total_prospects_available: standardizedProspects.length,
       prospects: sampleProspects,
       campaign_created: auto_send,
       campaign_result: campaignResult,
-      message: auto_send 
-        ? `Sent templates to ${standardizedProspects.length} prospects (showing ${sampleProspects.length} sample matches)`
-        : `Here are ${sampleProspects.length} sample prospects (${standardizedProspects.length} total discovered) ready for review`
+      message: responseMessage
     });
 
   } catch (error) {
@@ -330,14 +367,21 @@ export async function GET(request: NextRequest) {
       {
         type: 'unipile_linkedin_search',
         description: 'LinkedIn database search via Unipile (RECOMMENDED)',
-        features: ['Full LinkedIn database access', 'Unlimited searches', 'Real-time prospect data', 'No quota limits'],
-        cost: 'Included - no additional cost'
+        features: [
+          'Full LinkedIn database access',
+          'Unlimited searches',
+          'Real-time prospect data',
+          'No quota limits',
+          '🔄 Auto-fallback to Bright Data if LinkedIn not connected'
+        ],
+        cost: 'Included - no additional cost',
+        fallback: 'brightdata'
       },
       {
         type: 'brightdata',
         description: 'Comprehensive scraping from LinkedIn, Apollo, Crunchbase, ZoomInfo',
         features: ['Email enrichment', 'Contact verification', 'Company intelligence'],
-        cost: 'Premium - high accuracy'
+        cost: 'Premium - high accuracy (~$0.50-2 per search)'
       },
       {
         type: 'unipile_network',
