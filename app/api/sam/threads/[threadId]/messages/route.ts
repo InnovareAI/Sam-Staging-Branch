@@ -1353,11 +1353,11 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
       try {
         const searchCriteria = JSON.parse(triggerSearchMatch[1])
 
-        // Get all cookies from the cookie store to forward to create-job endpoint
+        // Get all cookies from the cookie store to forward to direct search endpoint
         const allCookies = cookieStore.getAll()
         const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ')
 
-        const createJobResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/search/create-job`, {
+        const searchResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/search/direct`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1365,28 +1365,27 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
           },
           body: JSON.stringify({
             search_criteria: searchCriteria,
-            search_type: 'linkedin',
-            target_count: searchCriteria.targetCount || 100
+            target_count: searchCriteria.targetCount || 100,
+            save_to_approval: true // Save prospects to Data Approval tab
           })
         })
 
-        const jobData = await createJobResponse.json()
+        const searchData = await searchResponse.json()
 
-        if (jobData.success) {
-          const estimatedMinutes = Math.ceil((jobData.metadata?.estimated_time_seconds || 30) / 60)
+        if (searchData.success) {
+          const prospectCount = searchData.count || 0
           const targetCount = searchCriteria.targetCount || 100
 
           // Replace trigger in AI response with success message
           aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
-            `\n\n✅ **Search Started!** I'm searching for ${targetCount} ${searchCriteria.title || 'prospects'}${searchCriteria.keywords ? ` in ${searchCriteria.keywords}` : ''}.\n\n` +
-            `**Next Step:** Head to the **Data Approval** tab (left sidebar) to watch the prospects populate in real-time.\n\n` +
-            `⏱️ Estimated time: ${estimatedMinutes} minute${estimatedMinutes > 1 ? 's' : ''}\n` +
-            `📊 You'll see a progress bar showing: X/${targetCount} prospects found`
+            `\n\n✅ **Search Complete!** I found **${prospectCount} ${searchCriteria.title || 'prospects'}**${searchCriteria.keywords ? ` matching "${searchCriteria.keywords}"` : ''}.\n\n` +
+            `**Next Step:** Head to the **Data Approval** tab (left sidebar) to review and approve the prospects.\n\n` +
+            `📊 **Ready to review:** ${prospectCount} prospects waiting for your approval`
           ).trim()
         } else {
           // Replace trigger with error message
-          let errorMsg = `\n\n❌ **Search Failed:** ${jobData.error || 'Unable to start the search.'}`
-          if (jobData.action === 'connect_linkedin') {
+          let errorMsg = `\n\n❌ **Search Failed:** ${searchData.error || 'Unable to complete the search.'}`
+          if (searchData.action === 'connect_linkedin') {
             errorMsg += `\n\n**Action needed:** Please connect your LinkedIn account in Settings > Integrations first.`
           }
           aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i, errorMsg).trim()
