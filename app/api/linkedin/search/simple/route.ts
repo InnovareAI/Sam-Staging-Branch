@@ -262,11 +262,39 @@ export async function POST(request: NextRequest) {
       console.log('📋 Creating approval session...');
       const sessionId = crypto.randomUUID(); // CORRECTED: Must be UUID not string
 
-      // Use campaign name from search criteria (SAM asks user for this)
-      // Fallback to auto-generated if not provided
+      // Generate campaign name: YYYYMMDD-COMPANYCODE-CampaignName
       const today = new Date().toISOString().split('T')[0].replace(/-/g, ''); // 20251011
+
+      // Get workspace name for company code
+      const { data: workspace } = await supabase
+        .from('workspaces')
+        .select('name')
+        .eq('id', workspaceId)
+        .single();
+
+      // Generate company code from workspace name (e.g., "InnovareAI" → "IAI")
+      const generateCompanyCode = (name: string): string => {
+        if (!name) return 'CLI';
+        const cleanName = name.replace(/[^a-zA-Z0-9]/g, '');
+        const capitals = cleanName.match(/[A-Z]/g);
+        if (capitals && capitals.length >= 3) {
+          return capitals.slice(0, 3).join('');
+        }
+        if (/^\d/.test(cleanName)) {
+          return (cleanName.substring(0, 1) + cleanName.substring(1, 3).toUpperCase()).padEnd(3, 'X');
+        }
+        return cleanName.substring(0, 3).toUpperCase().padEnd(3, 'X');
+      };
+
+      const companyCode = generateCompanyCode(workspace?.name || '');
+
+      // Format: YYYYMMDD-COMPANYCODE-CampaignName
+      // User provides just the campaign name part (e.g., "CR CEOS NYC")
       const jobTitle = search_criteria.title || 'Prospects';
-      const campaignName = search_criteria.campaignName || `${today}-WORKSPACE-${jobTitle}`;
+      const campaignName = search_criteria.campaignName
+        ? `${today}-${companyCode}-${search_criteria.campaignName}`
+        : `${today}-${companyCode}-${jobTitle}`;
+
       const campaignTag = search_criteria.keywords || api; // Use keywords or API type as tag
 
       console.log(`📋 Campaign: ${campaignName}, Tag: ${campaignTag}`);

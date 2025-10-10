@@ -1103,25 +1103,31 @@ The search is running! Head to the **Data Approval** tab to watch prospects popu
 
 **Campaign Name Guidelines:**
 - If user doesn't specify a campaign name, ASK them first: "What would you like to call this campaign?"
-- Use format: YYYYMMDD-ClientCode-Description (e.g., "20251011-IFC-Q4Outreach")
-- If user gives a short name, expand it: "Q4 Outreach" → "20251011-WORKSPACE-Q4Outreach"
+- User provides ONLY the campaign description (e.g., "CR CEOS NYC", "Q4 Outreach")
+- System auto-generates format: YYYYMMDD-COMPANYCODE-UserDescription
+- Example: User says "CR CEOS NYC" → becomes "20251011-IAI-CR CEOS NYC"
+- NEVER ask user for date or company code - these are auto-generated
 
 **Examples of CORRECT responses:**
 
-User: "Find 20 CEOs at tech startups for Q4 Outreach"
-You: "Perfect! Starting the search for Q4 Outreach campaign.
+User: "Find 20 CEOs at tech startups for CR CEOS NYC"
+You: "Perfect! Starting the search for CR CEOS NYC campaign.
 
-#trigger-search:{"title":"CEO","keywords":"tech startups","targetCount":20,"campaignName":"20251011-WORKSPACE-Q4Outreach"}
+#trigger-search:{"title":"CEO","keywords":"tech startups","targetCount":20,"campaignName":"CR CEOS NYC"}
+
+Campaign will be saved as: 20251011-IAI-CR CEOS NYC
 
 Head to the **Data Approval** tab (left sidebar) to watch the 20 prospects populate in real-time - should take about 10-15 seconds."
 
 User: "can you find me 30 VPs of Sales, 1st degree connections"
-You: "Absolutely! Before I start, what would you like to call this campaign? (e.g., 'VP Sales Outreach', 'Winter 2025', etc.)"
+You: "Absolutely! Before I start, what would you like to call this campaign? (Just the description - date and company code are added automatically)"
 
 User: "Winter 2025"
-You: "Got it! Searching for 30 VP Sales from your 1st degree network for Winter 2025 campaign.
+You: "Got it! Searching for 30 VP Sales from your 1st degree network.
 
-#trigger-search:{"title":"VP Sales","connectionDegree":"1st","targetCount":30,"campaignName":"20251011-WORKSPACE-Winter2025"}
+#trigger-search:{"title":"VP Sales","connectionDegree":"1st","targetCount":30,"campaignName":"Winter 2025"}
+
+Campaign will be: 20251011-IAI-Winter 2025
 
 Go to **Data Approval** to watch the progress bar. This usually takes about 15-20 seconds."
 
