@@ -237,12 +237,13 @@ export async function POST(request: NextRequest) {
 
       // CRITICAL: Create approval session so prospects show in Data Approval tab
       console.log('📋 Creating approval session...');
-      const sessionId = `linkedin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const sessionId = crypto.randomUUID(); // CORRECTED: Must be UUID not string
 
       const { error: sessionError } = await supabase
         .from('prospect_approval_sessions')
         .insert({
           id: sessionId,
+          batch_number: 1, // REQUIRED: NOT NULL constraint
           user_id: user.id,
           workspace_id: workspaceId, // CORRECTED: workspace_id not organization_id
           prospect_source: 'linkedin_search',
@@ -250,7 +251,9 @@ export async function POST(request: NextRequest) {
           pending_count: validProspects.length,
           approved_count: 0,
           rejected_count: 0,
-          status: 'pending', // CORRECTED: status not session_status
+          status: 'active', // CORRECTED: Valid values are 'active' or 'completed'
+          icp_criteria: {}, // REQUIRED: Default empty object
+          learning_insights: {}, // REQUIRED: Default empty object
           created_at: new Date().toISOString()
         });
 
@@ -265,16 +268,24 @@ export async function POST(request: NextRequest) {
           prospect_id: `prospect_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           name: p.fullName,
           title: p.title || '',
-          company: p.company || '',
-          contact: p.linkedinUrl || '',
+          company: {  // CORRECTED: company is JSONB object
+            name: p.company || '',
+            size: '',
+            website: '',
+            industry: ''
+          },
+          contact: {  // CORRECTED: contact is JSONB object
+            email: '',
+            linkedin_url: p.linkedinUrl || ''
+          },
           location: '',
           profile_image: '',
           recent_activity: '',
-          connection_degree: '',
-          enrichment_score: 0.8,
+          connection_degree: 2,  // CORRECTED: number not string
+          enrichment_score: 80,  // CORRECTED: number not decimal
           source: `linkedin_${api}`,
           enriched_at: new Date().toISOString(),
-          approval_status: 'pending',
+          // NO approval_status column!
           created_at: new Date().toISOString()
         }));
 

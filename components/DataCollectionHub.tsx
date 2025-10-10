@@ -134,7 +134,7 @@ export default function DataCollectionHub({
             const allProspects: ProspectData[] = []
 
             for (const session of data.sessions) {
-              if (session.status === 'pending') { // CORRECTED: status column, pending for active sessions
+              if (session.status === 'active') { // CORRECTED: Valid status values are 'active' or 'completed'
                 const prospectsResponse = await fetch(`/api/prospect-approval/prospects?session_id=${session.id}`)
                 if (prospectsResponse.ok) {
                   const prospectsData = await prospectsResponse.json()
