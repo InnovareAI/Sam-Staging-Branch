@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
 
     // Trigger background function (fire and forget)
     const backgroundFunctionUrl = process.env.NODE_ENV === 'production'
-      ? `${process.env.NEXT_PUBLIC_APP_URL}/.netlify/functions/process-linkedin-search-background`
+      ? `${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/.netlify/functions/process-linkedin-search-background`
       : 'http://localhost:8888/.netlify/functions/process-linkedin-search-background';
 
     fetch(backgroundFunctionUrl, {
