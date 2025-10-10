@@ -20,16 +20,41 @@ export async function POST(request: NextRequest) {
 
     const { search_criteria, target_count = 50 } = await request.json();
 
-    // Get workspace
+    // Get workspace (with fallback)
+    let workspaceId: string | null = null;
+
     const { data: userProfile } = await supabase
       .from('users')
       .select('current_workspace_id')
       .eq('id', user.id)
       .single();
 
-    const workspaceId = userProfile?.current_workspace_id;
+    if (userProfile?.current_workspace_id) {
+      workspaceId = userProfile.current_workspace_id;
+    } else {
+      // Fallback: get first workspace
+      const { data: membership } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (membership?.workspace_id) {
+        workspaceId = membership.workspace_id;
+        // Update for next time
+        await supabase
+          .from('users')
+          .update({ current_workspace_id: membership.workspace_id })
+          .eq('id', user.id);
+      }
+    }
+
     if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace' }, { status: 400 });
+      return NextResponse.json({
+        error: 'No workspace',
+        debug: { userId: user.id, checked: 'users + workspace_members' }
+      }, { status: 400 });
     }
 
     // Get LinkedIn account
