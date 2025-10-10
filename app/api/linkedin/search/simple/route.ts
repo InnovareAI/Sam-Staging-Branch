@@ -95,6 +95,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'LinkedIn not connected' }, { status: 400 });
     }
 
+    // Auto-detect LinkedIn capabilities (Sales Navigator, Recruiter, or Classic)
+    let api = 'classic';
+    try {
+      const unipileDSN = process.env.UNIPILE_DSN!;
+      const accountUrl = unipileDSN.includes('.')
+        ? `https://${unipileDSN}/api/v1/accounts/${linkedinAccount.unipile_account_id}`
+        : `https://${unipileDSN}.unipile.com:13443/api/v1/accounts/${linkedinAccount.unipile_account_id}`;
+
+      const accountInfoResponse = await fetch(accountUrl, {
+        headers: {
+          'X-API-KEY': process.env.UNIPILE_API_KEY!,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (accountInfoResponse.ok) {
+        const accountInfo = await accountInfoResponse.json();
+        const premiumFeatures = accountInfo.connection_params?.im?.premiumFeatures || [];
+
+        if (premiumFeatures.includes('recruiter')) {
+          api = 'recruiter';
+        } else if (premiumFeatures.includes('sales_navigator')) {
+          api = 'sales_navigator';
+        }
+      }
+    } catch (error) {
+      console.warn('Could not detect LinkedIn capabilities, using classic:', error);
+    }
+
+    console.log(`🎯 Using LinkedIn API: ${api}`);
+
     // Call Unipile - format payload correctly
     // UNIPILE_DSN can be either "api6" or "api6.unipile.com:13443" (full domain)
     const unipileDSN = process.env.UNIPILE_DSN!;
@@ -102,14 +133,17 @@ export async function POST(request: NextRequest) {
       ? `https://${unipileDSN}/api/v1/linkedin/search`  // Full domain already provided
       : `https://${unipileDSN}.unipile.com:13443/api/v1/linkedin/search`;  // Just subdomain
 
+    // Sales Navigator and Recruiter can handle up to 100, Classic limited to 50
+    const maxLimit = (api === 'sales_navigator' || api === 'recruiter') ? 100 : 50;
+
     const params = new URLSearchParams({
       account_id: linkedinAccount.unipile_account_id,
-      limit: String(Math.min(target_count, 50))
+      limit: String(Math.min(target_count, maxLimit))
     });
 
-    // Build proper Unipile payload
+    // Build proper Unipile payload with detected API
     const unipilePayload: any = {
-      api: 'classic',
+      api: api,  // Use detected API (sales_navigator, recruiter, or classic)
       category: 'people' // Default to people search
     };
 
@@ -206,7 +240,8 @@ export async function POST(request: NextRequest) {
       success: true,
       prospects: validProspects,
       count: validProspects.length,
-      total_found: prospects.length
+      total_found: prospects.length,
+      api: api  // Show which API was used
     });
 
   } catch (error) {
