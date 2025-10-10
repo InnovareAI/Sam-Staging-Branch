@@ -288,12 +288,21 @@ export async function POST(request: NextRequest) {
 
       const companyCode = generateCompanyCode(workspace?.name || '');
 
-      // Format: YYYYMMDD-COMPANYCODE-CampaignName
-      // User provides just the campaign name part (e.g., "CR CEOS NYC")
-      const jobTitle = search_criteria.title || 'Prospects';
-      const campaignName = search_criteria.campaignName
-        ? `${today}-${companyCode}-${search_criteria.campaignName}`
-        : `${today}-${companyCode}-${jobTitle}`;
+      // If user provides campaign name, use it. Otherwise auto-number: "Search 01", "Search 02"
+      let campaignName: string;
+      if (search_criteria.campaignName) {
+        // User provided a name
+        campaignName = `${today}-${companyCode}-${search_criteria.campaignName}`;
+      } else {
+        // Auto-generate: Count existing sessions and increment
+        const { count } = await supabase
+          .from('prospect_approval_sessions')
+          .select('*', { count: 'exact', head: true })
+          .eq('workspace_id', workspaceId);
+
+        const searchNumber = String((count || 0) + 1).padStart(2, '0'); // 01, 02, 03...
+        campaignName = `${today}-${companyCode}-Search ${searchNumber}`;
+      }
 
       const campaignTag = search_criteria.keywords || api; // Use keywords or API type as tag
 
