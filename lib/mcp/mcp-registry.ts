@@ -64,7 +64,7 @@ export class MCPRegistry {
         initializedServers.push('Bright Data MCP')
       }
 
-      // Initialize Apify MCP Server  
+      // Initialize Apify MCP Server
       if (config.apify) {
         this.apifyServer = new ApifyMCPServer(config.apify)
         initializedServers.push('Apify MCP')
@@ -230,32 +230,8 @@ export class MCPRegistry {
     }
 
     // Auto-detect server based on tool name if not specified
-    let server = request.server || this.detectServerFromTool(request.params.name)
-    let effectiveRequest: MCPCallToolRequest & { server?: string } = request
-
-    // Fallback mapping when a preferred server is unavailable
-      const tool = request.params.name
-      // Use same tool name if supported by WebSearch
-      if (['boolean_linkedin_search'].includes(tool)) {
-        server = 'websearch'
-      }
-      // Map comparable tools
-      if (tool === 'company_research_search') {
-        server = 'websearch'
-        effectiveRequest = { ...effectiveRequest, params: { name: 'company_intelligence_search', arguments: request.params.arguments } }
-      }
-      if (tool === 'icp_prospect_discovery') {
-        server = 'websearch'
-        const args = effectiveRequest.params.arguments || {}
-        effectiveRequest = { ...effectiveRequest, params: { name: 'icp_research_search', arguments: {
-          industry: Array.isArray(args.industries) && args.industries.length ? args.industries[0] : (args.industry || 'Technology'),
-          jobTitles: args.jobTitles || [],
-          companySize: args.companySize || 'any',
-          geography: args.location || 'United States',
-          maxResults: args.maxResults || 15
-        } } }
-      }
-    }
+    const server = request.server || this.detectServerFromTool(request.params.name)
+    const effectiveRequest: MCPCallToolRequest & { server?: string } = request
 
     switch (server) {
       case 'bright-data':
@@ -360,7 +336,7 @@ export class MCPRegistry {
       'check_apify_status'
     ]
 
-    // WebSearch tools (fallback for prospect discovery)
+    // WebSearch tools (mock/fallback)
     const webSearchTools = [
       'validate_linkedin_url',
       'boolean_linkedin_search',
@@ -413,8 +389,6 @@ export class MCPRegistry {
     
     if (apifyTools.includes(toolName)) {
       return 'apify'
-    }
-
     }
 
     if (webSearchTools.includes(toolName)) {
@@ -660,6 +634,7 @@ export class MCPRegistry {
       samAI: { available: true, tools: samAITools },
       total: {
         servers: this.getAvailableServers().length,
+        tools: brightDataTools + apifyTools + webSearchTools + unipileTools + n8nTools + reachInboxTools + replyTools + samAITools
       }
     }
   }
@@ -719,22 +694,6 @@ export class MCPRegistry {
               name: 'search_linkedin_prospects',
               arguments: {
                 searchCriteria: request.searchCriteria,
-                maxResults: volume
-              }
-            }
-          })
-        }
-
-        // Use ICP prospect discovery via available search tool
-        return await this.callTool({
-            method: 'tools/call',
-            params: {
-              name: 'icp_prospect_discovery',
-              arguments: {
-                jobTitles: request.searchCriteria.jobTitles || [request.searchCriteria.jobTitle].filter(Boolean),
-                industries: request.searchCriteria.industries || [request.searchCriteria.industry].filter(Boolean),
-                companySize: request.searchCriteria.companySize || 'any',
-                location: request.searchCriteria.location || 'United States',
                 maxResults: volume
               }
             }
@@ -826,7 +785,7 @@ export function createMCPConfig(): MCPServerConfig {
       userId: process.env.USER_ID || 'default-user'
     },
 
-    // WebSearch as fallback for prospect discovery
+    // WebSearch mock as fallback
     webSearch: {
       organizationId: process.env.ORGANIZATION_ID || 'default-org',
       userId: process.env.USER_ID || 'default-user',
