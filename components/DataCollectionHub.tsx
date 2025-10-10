@@ -19,6 +19,7 @@ type LinkedInCampaignType =
 type ProspectData = BaseProspectData & {
   campaignName?: string            // Primary: e.g., "20251001-IFC-College Campaign"
   campaignTag?: string             // Secondary: for A/B testing e.g., "Industry-FinTech", "Region-West"
+  sessionId?: string               // Session ID for updating campaign names
   linkedinCampaignType?: LinkedInCampaignType  // LinkedIn campaign type
   conversationId?: string          // For 1st degree follow-ups
   sharedGroups?: string[]          // For group campaigns
@@ -99,7 +100,37 @@ export default function DataCollectionHub({
   // ProspectSearchChat integration
   const [searchJobId, setSearchJobId] = useState<string | null>(null)
   const [searchProspects, setSearchProspects] = useState<any[]>([])
-  
+
+  // Campaign name editing
+  const [editingCampaignName, setEditingCampaignName] = useState<string | null>(null)
+  const [editedCampaignNameValue, setEditedCampaignNameValue] = useState('')
+
+  // Update campaign name
+  const updateCampaignName = async (sessionId: string, newCampaignName: string) => {
+    try {
+      const response = await fetch('/api/prospect-approval/sessions/update-campaign', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, campaign_name: newCampaignName })
+      })
+
+      if (response.ok) {
+        // Update local prospect data
+        setProspectData(prev => prev.map(p =>
+          p.sessionId === sessionId ? { ...p, campaignName: newCampaignName } : p
+        ))
+        setEditingCampaignName(null)
+        console.log('✅ Campaign name updated:', newCampaignName)
+      } else {
+        console.error('Failed to update campaign name')
+        toastError('Failed to update campaign name')
+      }
+    } catch (error) {
+      console.error('Error updating campaign name:', error)
+      toastError('Error updating campaign name')
+    }
+  }
+
   // Fetch workspace information to generate code
   useEffect(() => {
     async function fetchWorkspace() {
@@ -153,8 +184,9 @@ export default function DataCollectionHub({
                       source: p.source || 'linkedin',
                       confidence: (p.enrichment_score || 80) / 100,  // FIXED: Convert integer to decimal
                       approvalStatus: 'pending' as const,  // FIXED: approval_status column doesn't exist
-                      campaignName: `Session-${session.id.slice(0, 8)}`,
-                      campaignTag: session.prospect_source || 'linkedin',  // FIXED: Use prospect_source not source
+                      campaignName: session.campaign_name || `Session-${session.id.slice(0, 8)}`,  // Use actual campaign_name from DB
+                      campaignTag: session.campaign_tag || session.prospect_source || 'linkedin',
+                      sessionId: session.id,  // Track session ID for campaign name updates
                       uploaded: false
                     }))
                     allProspects.push(...mappedProspects)
@@ -543,6 +575,77 @@ export default function DataCollectionHub({
           </div>
         </div>
       </div>
+
+      {/* Campaign Names - Editable */}
+      {(() => {
+        // Group prospects by sessionId to show unique campaigns
+        const campaignsBySession = prospectData.reduce((acc, p) => {
+          if (p.sessionId && p.campaignName) {
+            if (!acc[p.sessionId]) {
+              acc[p.sessionId] = { sessionId: p.sessionId, campaignName: p.campaignName, count: 0 }
+            }
+            acc[p.sessionId].count++
+          }
+          return acc
+        }, {} as Record<string, { sessionId: string, campaignName: string, count: number }>)
+
+        const campaigns = Object.values(campaignsBySession)
+
+        if (campaigns.length > 0) {
+          return (
+            <div className="border-b border-gray-700 px-6 py-3 bg-gray-850">
+              <div className="mb-2">
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Campaign Names</h3>
+              </div>
+              <div className="space-y-2">
+                {campaigns.map(campaign => (
+                  <div key={campaign.sessionId} className="flex items-center space-x-3 bg-gray-700/50 px-4 py-2 rounded-lg">
+                    {editingCampaignName === campaign.sessionId ? (
+                      <>
+                        <input
+                          type="text"
+                          value={editedCampaignNameValue}
+                          onChange={(e) => setEditedCampaignNameValue(e.target.value)}
+                          className="flex-1 px-3 py-1.5 bg-gray-700 border border-purple-500 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          placeholder="Enter campaign name..."
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => updateCampaignName(campaign.sessionId, editedCampaignNameValue)}
+                          className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-sm font-medium"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingCampaignName(null)}
+                          className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex-1 text-white font-medium text-sm">{campaign.campaignName}</span>
+                        <span className="px-2 py-0.5 bg-purple-600 text-white rounded-full text-xs">{campaign.count} prospects</span>
+                        <button
+                          onClick={() => {
+                            setEditingCampaignName(campaign.sessionId)
+                            setEditedCampaignNameValue(campaign.campaignName)
+                          }}
+                          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium"
+                        >
+                          Edit
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        }
+        return null
+      })()}
 
       {/* Campaign Tag Tabs */}
       <div className="border-b-2 border-purple-500/20 px-6 py-4 bg-gray-900">
