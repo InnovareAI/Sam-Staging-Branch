@@ -1,8 +1,8 @@
 'use client'
 
-import { Check, ChevronDown, ChevronUp, Download, Search, Tag, Users, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Download, Search, Tag, Users, X, Upload, FileText, Link } from 'lucide-react';
 import { toastError } from '@/lib/toast';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ProspectSearchChat from '@/components/ProspectSearchChat';
 import { ProspectData as BaseProspectData } from '@/components/ProspectApprovalModal';
 import React from 'react';
@@ -105,6 +105,15 @@ export default function DataCollectionHub({
   const [editingCampaignName, setEditingCampaignName] = useState<string | null>(null)
   const [editedCampaignNameValue, setEditedCampaignNameValue] = useState('')
 
+  // Data input methods
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [pasteText, setPasteText] = useState('')
+  const [linkedinSearchUrl, setLinkedinSearchUrl] = useState('')
+  const [isUploadingCsv, setIsUploadingCsv] = useState(false)
+  const [isProcessingPaste, setIsProcessingPaste] = useState(false)
+  const [isProcessingUrl, setIsProcessingUrl] = useState(false)
+  const csvFileInputRef = useRef<HTMLInputElement>(null)
+
   // Update campaign name
   const updateCampaignName = async (sessionId: string, newCampaignName: string) => {
     try {
@@ -128,6 +137,166 @@ export default function DataCollectionHub({
     } catch (error) {
       console.error('Error updating campaign name:', error)
       toastError('Error updating campaign name')
+    }
+  }
+
+  // Handle CSV file upload
+  const handleCsvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setIsUploadingCsv(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/prospects/parse-csv', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.prospects && data.prospects.length > 0) {
+          // Add prospects to the list
+          const newProspects: ProspectData[] = data.prospects.map((p: any) => ({
+            name: p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
+            title: p.title || p.job_title || '',
+            company: p.company || p.company_name || '',
+            location: p.location || '',
+            contact: {
+              email: p.email || '',
+              linkedin_url: p.linkedin_url || p.linkedinUrl || ''
+            },
+            approvalStatus: 'pending' as const,
+            campaignName: `${today}-${workspaceCode}-CSV Upload`,
+            campaignTag: 'csv-import',
+            uploaded: true
+          }))
+
+          setProspectData(prev => [...newProspects, ...prev])
+          console.log(`✅ Uploaded ${newProspects.length} prospects from CSV`)
+        }
+      } else {
+        toastError('Failed to parse CSV file')
+      }
+    } catch (error) {
+      console.error('CSV upload error:', error)
+      toastError('Error uploading CSV file')
+    } finally {
+      setIsUploadingCsv(false)
+      setCsvFile(null)
+      if (csvFileInputRef.current) {
+        csvFileInputRef.current.value = ''
+      }
+    }
+  }
+
+  // Handle copy/paste text data
+  const handlePasteData = async () => {
+    if (!pasteText.trim()) {
+      toastError('Please paste some prospect data first')
+      return
+    }
+
+    setIsProcessingPaste(true)
+    try {
+      // Parse pasted text - expecting format like:
+      // Name, Title, Company, Email, LinkedIn
+      // or tab-separated values
+      const lines = pasteText.trim().split('\n')
+      const newProspects: ProspectData[] = []
+
+      for (const line of lines) {
+        if (!line.trim()) continue
+
+        // Try comma-separated first, then tab-separated
+        const parts = line.includes('\t') ? line.split('\t') : line.split(',')
+        const cleanParts = parts.map(p => p.trim())
+
+        if (cleanParts.length >= 2) {
+          newProspects.push({
+            name: cleanParts[0] || 'Unknown',
+            title: cleanParts[1] || '',
+            company: cleanParts[2] || '',
+            location: '',
+            contact: {
+              email: cleanParts[3] || '',
+              linkedin_url: cleanParts[4] || ''
+            },
+            approvalStatus: 'pending' as const,
+            campaignName: `${today}-${workspaceCode}-Pasted Data`,
+            campaignTag: 'paste-import',
+            uploaded: true
+          })
+        }
+      }
+
+      if (newProspects.length > 0) {
+        setProspectData(prev => [...newProspects, ...prev])
+        console.log(`✅ Added ${newProspects.length} prospects from pasted data`)
+        setPasteText('') // Clear the textarea
+      } else {
+        toastError('No valid prospect data found')
+      }
+    } catch (error) {
+      console.error('Paste processing error:', error)
+      toastError('Error processing pasted data')
+    } finally {
+      setIsProcessingPaste(false)
+    }
+  }
+
+  // Handle LinkedIn search URL
+  const handleLinkedInUrl = async () => {
+    if (!linkedinSearchUrl.trim()) {
+      toastError('Please enter a LinkedIn search URL')
+      return
+    }
+
+    setIsProcessingUrl(true)
+    try {
+      const response = await fetch('/api/linkedin/search/simple', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          search_criteria: {
+            url: linkedinSearchUrl
+          },
+          target_count: 50
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.prospects && data.prospects.length > 0) {
+          const newProspects: ProspectData[] = data.prospects.map((p: any) => ({
+            name: p.fullName || p.name || 'Unknown',
+            title: p.title || '',
+            company: p.company || '',
+            location: '',
+            contact: {
+              email: '',
+              linkedin_url: p.linkedinUrl || ''
+            },
+            approvalStatus: 'pending' as const,
+            campaignName: `${today}-${workspaceCode}-LinkedIn Search`,
+            campaignTag: 'linkedin-url',
+            uploaded: true
+          }))
+
+          setProspectData(prev => [...newProspects, ...prev])
+          console.log(`✅ Found ${newProspects.length} prospects from LinkedIn URL`)
+          setLinkedinSearchUrl('') // Clear the input
+        }
+      } else {
+        toastError('Failed to search LinkedIn')
+      }
+    } catch (error) {
+      console.error('LinkedIn URL processing error:', error)
+      toastError('Error processing LinkedIn URL')
+    } finally {
+      setIsProcessingUrl(false)
     }
   }
 
@@ -572,6 +741,80 @@ export default function DataCollectionHub({
               <Check className="w-4 h-4" />
               <span>Proceed to Campaign Hub</span>
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Add Prospects Section - CSV, Copy/Paste, LinkedIn URL */}
+      <div className="border-b border-gray-700 px-6 py-4 bg-gray-850">
+        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Add Prospects</h3>
+        <div className="grid grid-cols-3 gap-4">
+          {/* CSV Upload */}
+          <div className="bg-gray-700/50 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-3">
+              <Upload className="w-4 h-4 text-purple-400" />
+              <span className="text-sm font-medium text-white">CSV Upload</span>
+            </div>
+            <input
+              ref={csvFileInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleCsvUpload}
+              className="hidden"
+            />
+            <button
+              onClick={() => csvFileInputRef.current?.click()}
+              disabled={isUploadingCsv}
+              className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isUploadingCsv ? 'Uploading...' : 'Choose CSV File'}
+            </button>
+            <p className="text-xs text-gray-400 mt-2">Upload prospect list from CSV</p>
+          </div>
+
+          {/* Copy/Paste Text */}
+          <div className="bg-gray-700/50 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-3">
+              <FileText className="w-4 h-4 text-purple-400" />
+              <span className="text-sm font-medium text-white">Copy & Paste</span>
+            </div>
+            <textarea
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              placeholder="Name, Title, Company, Email, LinkedIn&#10;John Doe, CEO, Acme Inc, john@acme.com, linkedin.com/in/johndoe"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+              rows={3}
+            />
+            <button
+              onClick={handlePasteData}
+              disabled={isProcessingPaste || !pasteText.trim()}
+              className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+            >
+              {isProcessingPaste ? 'Processing...' : 'Add Prospects'}
+            </button>
+          </div>
+
+          {/* LinkedIn Search URL */}
+          <div className="bg-gray-700/50 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-3">
+              <Link className="w-4 h-4 text-purple-400" />
+              <span className="text-sm font-medium text-white">LinkedIn URL</span>
+            </div>
+            <input
+              type="text"
+              value={linkedinSearchUrl}
+              onChange={(e) => setLinkedinSearchUrl(e.target.value)}
+              placeholder="Paste LinkedIn search URL..."
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+            <button
+              onClick={handleLinkedInUrl}
+              disabled={isProcessingUrl || !linkedinSearchUrl.trim()}
+              className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+            >
+              {isProcessingUrl ? 'Searching...' : 'Search LinkedIn'}
+            </button>
+            <p className="text-xs text-gray-400 mt-2">Sales Nav or Recruiter URL</p>
           </div>
         </div>
       </div>

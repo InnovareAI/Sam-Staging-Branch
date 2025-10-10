@@ -1752,7 +1752,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                     ref={fileInputRef}
                     type="file"
                     onChange={handleFileSelect}
-                    accept=".pdf,.doc,.docx,.txt,.csv,.json,.md,.ppt,.pptx,.xls,.xlsx"
+                    accept=".pdf,.doc,.docx,.txt,.json,.md,.ppt,.pptx"
                     className="hidden"
                   />
                   <button 
