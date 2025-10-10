@@ -155,6 +155,22 @@ export async function POST(request: NextRequest) {
       unipilePayload.keywords = keywordParts.join(' ');
     }
 
+    // CRITICAL FIX: Parse and add connection degree filter
+    if (search_criteria.connectionDegree) {
+      // Convert "1st", "2nd", "3rd" to array of numbers for Unipile
+      const degreeMap: Record<string, number[]> = {
+        '1st': [1],
+        '2nd': [2],
+        '3rd': [3],
+        '1': [1],
+        '2': [2],
+        '3': [3]
+      };
+
+      unipilePayload.network_distance = degreeMap[search_criteria.connectionDegree] || [1, 2, 3];
+      console.log('🎯 Connection degree filter:', search_criteria.connectionDegree, '→', unipilePayload.network_distance);
+    }
+
     console.log('🔵 Unipile payload:', JSON.stringify(unipilePayload));
 
     const response = await fetch(`${unipileUrl}?${params}`, {
@@ -168,6 +184,9 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
     console.log('🔵 Unipile response:', JSON.stringify(data).substring(0, 500));
+
+    // Extract requested connection degree for saving
+    const requestedDegree = unipilePayload.network_distance?.[0] || 2;
 
     const prospects = (data.items || []).map((item: any) => {
       // Handle name - Classic gives full name, Sales Nav gives first/last
@@ -196,13 +215,17 @@ export async function POST(request: NextRequest) {
       // LinkedIn URL - both APIs use profile_url
       const linkedinUrl = item.profile_url || item.public_profile_url || '';
 
+      // Connection degree from Unipile data (or use requested degree as fallback)
+      const connectionDegree = item.network_distance || requestedDegree;
+
       return {
         firstName,
         lastName,
         fullName: `${firstName} ${lastName}`,
         title,
         company,
-        linkedinUrl
+        linkedinUrl,
+        connectionDegree
       };
     });
 
@@ -281,7 +304,7 @@ export async function POST(request: NextRequest) {
           location: '',
           profile_image: '',
           recent_activity: '',
-          connection_degree: 2,  // CORRECTED: number not string
+          connection_degree: p.connectionDegree,  // FIXED: Use actual connection degree from search
           enrichment_score: 80,  // CORRECTED: number not decimal
           source: `linkedin_${api}`,
           enriched_at: new Date().toISOString(),
