@@ -119,6 +119,66 @@ export default function DataCollectionHub({
     fetchWorkspace()
   }, [])
 
+  // CRITICAL: Load existing approval sessions from database
+  useEffect(() => {
+    async function loadExistingApprovalSessions() {
+      try {
+        console.log('📥 Loading existing approval sessions...')
+        const response = await fetch('/api/prospect-approval/sessions/list')
+        if (response.ok) {
+          const data = await response.json()
+          console.log('📊 Found approval sessions:', data)
+
+          if (data.success && data.sessions && data.sessions.length > 0) {
+            // Load prospects for all active sessions
+            const allProspects: ProspectData[] = []
+
+            for (const session of data.sessions) {
+              if (session.session_status === 'active') {
+                const prospectsResponse = await fetch(`/api/prospect-approval/prospects?session_id=${session.id}`)
+                if (prospectsResponse.ok) {
+                  const prospectsData = await prospectsResponse.json()
+                  if (prospectsData.success && prospectsData.prospects) {
+                    // Map approval data to ProspectData format
+                    const mappedProspects = prospectsData.prospects.map((p: any) => ({
+                      id: p.prospect_id,
+                      name: p.name,
+                      title: p.title || '',
+                      company: p.company || '',
+                      email: p.contact || '',
+                      linkedinUrl: p.contact || '',
+                      source: p.source || 'linkedin',
+                      confidence: p.enrichment_score || 0.8,
+                      approvalStatus: p.approval_status || 'pending',
+                      campaignName: `Session-${session.id.slice(0, 8)}`,
+                      campaignTag: session.source || 'linkedin',
+                      uploaded: false
+                    }))
+                    allProspects.push(...mappedProspects)
+                  }
+                }
+              }
+            }
+
+            if (allProspects.length > 0) {
+              console.log(`✅ Loaded ${allProspects.length} prospects from approval sessions`)
+              setProspectData(prev => {
+                // Merge with existing, avoiding duplicates
+                const existingIds = new Set(prev.map(p => p.id))
+                const newProspects = allProspects.filter(p => !existingIds.has(p.id))
+                return [...newProspects, ...prev]
+              })
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load approval sessions:', error)
+      }
+    }
+
+    loadExistingApprovalSessions()
+  }, [])
+
   // Update prospects when new data is uploaded from chat
   useEffect(() => {
     if (initialUploadedData && initialUploadedData.length > 0) {
