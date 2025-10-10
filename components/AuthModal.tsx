@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/app/lib/supabase';
 import { X, Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
 
 interface AuthModalProps {
@@ -31,7 +31,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
 
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
 
   // Reset form when modal opens/closes
   React.useEffect(() => {

@@ -1,9 +1,5 @@
+import { createBrowserClient as createBrowserSupabaseClient } from '@supabase/ssr';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { createBrowserClient } from '@supabase/ssr';
-
-// Lazy initialization to avoid build-time issues
-let _supabase: any = null;
-let _supabaseAdmin: any = null;
 
 function getSupabaseConfig() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://latxadqrvrrrcvkktrog.supabase.co';
@@ -13,69 +9,63 @@ function getSupabaseConfig() {
   return { supabaseUrl, supabaseAnonKey, supabaseServiceKey };
 }
 
-// Client-side Supabase client with COOKIES (not localStorage) - matches server-side SSR
+// Browser client - use @supabase/ssr createBrowserClient
+export function createClient() {
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
+
+  // Only use cookie-based auth in browser
+  if (typeof window !== 'undefined') {
+    return createBrowserSupabaseClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        cookies: {
+          getAll() {
+            return document.cookie.split(';').map(cookie => {
+              const [name, ...v] = cookie.trim().split('=');
+              return { name, value: v.join('=') };
+            });
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              document.cookie = `${name}=${value}; path=${options?.path || '/'}; max-age=${options?.maxAge || 31536000}; SameSite=${options?.sameSite || 'Lax'}; ${options?.secure ? 'Secure' : ''}`;
+            });
+          }
+        }
+      }
+    );
+  }
+
+  // Server-side: return basic client (no auth needed for server components importing this)
+  return createSupabaseClient(supabaseUrl, supabaseAnonKey);
+}
+
+// Admin client with service role key (server-side only)
+export function supabaseAdmin() {
+  const { supabaseUrl, supabaseServiceKey } = getSupabaseConfig();
+
+  if (!supabaseServiceKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured');
+  }
+
+  return createSupabaseClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+}
+
+// Server-side route helper - export for routes that need it
+export { createServerClient } from '@supabase/ssr';
+
+// Legacy exports for backward compatibility
+let _supabase: any = null;
 export const supabase = new Proxy({}, {
   get(target, prop) {
     if (!_supabase) {
-      const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
-
-      // CRITICAL: Check if running in browser before using document.cookie
-      if (typeof window === 'undefined') {
-        // Server-side: use basic client (no auth persistence needed server-side)
-        _supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey);
-      } else {
-        // Browser: Use createBrowserClient with cookie storage
-        _supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
-          cookies: {
-            getAll() {
-              if (typeof document === 'undefined') return [];
-              return document.cookie.split(';').map(c => {
-                const [name, ...rest] = c.trim().split('=');
-                return { name, value: rest.join('=') };
-              }).filter(c => c.name);
-            },
-            setAll(cookies) {
-              if (typeof document === 'undefined') return;
-              cookies.forEach(({ name, value, options }) => {
-                let cookie = `${name}=${value}`;
-                if (options?.maxAge) cookie += `; max-age=${options.maxAge}`;
-                if (options?.path) cookie += `; path=${options.path}`;
-                if (options?.domain) cookie += `; domain=${options.domain}`;
-                if (options?.sameSite) cookie += `; samesite=${options.sameSite}`;
-                if (options?.secure) cookie += '; secure';
-                document.cookie = cookie;
-              });
-            }
-          }
-        });
-      }
+      _supabase = createClient();
     }
     return _supabase[prop];
   }
 });
-
-// Server-side Supabase client with service role key (for admin operations)
-export const supabaseAdmin = () => {
-  if (!_supabaseAdmin) {
-    const { supabaseUrl, supabaseServiceKey } = getSupabaseConfig();
-    if (!supabaseServiceKey) {
-      throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured');
-    }
-    _supabaseAdmin = createSupabaseClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    });
-  }
-  return _supabaseAdmin;
-};
-
-// Export function for server routes compatibility
-export function createServerClient() {
-  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
-  return createSupabaseClient(supabaseUrl, supabaseAnonKey);
-}
-
-// Also export the proxy as createClient for backward compatibility
-export { supabase as createClient };

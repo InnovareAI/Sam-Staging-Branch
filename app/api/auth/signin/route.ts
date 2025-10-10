@@ -1,11 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies });
-    
+    const cookieStore = await cookies();
+
+    // Create Supabase client with SSR cookie handling
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
+            } catch {
+              // Cookie setting can fail in middleware context
+            }
+          }
+        }
+      }
+    );
+
     const { email, password } = await request.json();
 
     // Validate input
@@ -26,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Supabase signin error:', error);
-      
+
       // Handle specific error types
       if (error.message.includes('Invalid login credentials')) {
         return NextResponse.json(
@@ -41,7 +63,7 @@ export async function POST(request: NextRequest) {
           { status: 401 }
         );
       }
-      
+
       return NextResponse.json(
         { error: error.message },
         { status: 400 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { AutoIPAssignmentService } from '@/lib/services/auto-ip-assignment';
@@ -7,7 +7,28 @@ import { analyzeWebsiteInBackground } from '@/lib/website-intelligence';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies });
+    const cookieStore = await cookies();
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
+            } catch {
+              // Cookie setting can fail in middleware context
+            }
+          }
+        }
+      }
+    );
 
     const { email, password, firstName, lastName, companyName, companyWebsite, country, inviteToken } = await request.json();
 
