@@ -77,49 +77,6 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      case 'google_search': {
-        // Use Google Custom Search for LinkedIn profiles
-        const googleResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/test/google-search`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            toolName: 'icp_prospect_discovery',
-            arguments: {
-              jobTitles: search_criteria.job_titles,
-              industries: search_criteria.industries,
-              companySize: search_criteria.company_size,
-              location: search_criteria.locations?.[0],
-              maxResults: search_criteria.max_results || 20
-            }
-          })
-        });
-
-        const rawGoogleResults = await googleResponse.json();
-
-        if (rawGoogleResults.success) {
-          const payloadText = rawGoogleResults.result?.content?.[0]?.text;
-          try {
-            const parsedPayload = payloadText ? JSON.parse(payloadText) : null;
-            prospectResults = {
-              success: !!parsedPayload,
-              parsedPayload,
-              raw: rawGoogleResults
-            };
-          } catch (parseError) {
-            console.error('Failed to parse Google Search MCP payload:', parseError);
-            prospectResults = {
-              success: false,
-              error: 'Invalid response from Google Custom Search MCP',
-              raw: rawGoogleResults
-            };
-          }
-        } else {
-          prospectResults = rawGoogleResults;
-        }
-
-        break;
-      }
-
       case 'unipile_linkedin_search': {
         // Full LinkedIn database search via Unipile (RECOMMENDED - No quota limits!)
         const linkedinSearchResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/linkedin/search`, {
@@ -251,32 +208,6 @@ async function standardizeProspectData(prospectResults: any, searchType: string)
       }
       break;
 
-    case 'google_search':
-      {
-        const payload = prospectResults.parsedPayload || prospectResults.result || prospectResults.raw?.result;
-        const prospectsFromPayload = payload?.prospects || payload?.result?.prospects;
-
-        if (Array.isArray(prospectsFromPayload)) {
-          for (const prospect of prospectsFromPayload) {
-            const nameParts = (prospect.name || '').trim().split(' ');
-            const firstName = nameParts[0];
-            const lastName = nameParts.slice(1).join(' ');
-
-            prospects.push({
-              first_name: firstName,
-              last_name: lastName || undefined,
-              company_name: prospect.company,
-              job_title: prospect.title,
-              linkedin_url: prospect.linkedin_url || prospect.profileUrl,
-              location: prospect.location,
-              source: 'google_search',
-              relevance_score: prospect.relevanceScore
-            });
-          }
-        }
-      }
-      break;
-
     case 'unipile_linkedin_search':
       // Unipile returns structured LinkedIn profile data
       if (prospectResults.results) {
@@ -397,16 +328,16 @@ export async function GET(request: NextRequest) {
     description: "Find prospects using multiple data sources and send template messages",
     available_search_types: [
       {
+        type: 'unipile_linkedin_search',
+        description: 'LinkedIn database search via Unipile (RECOMMENDED)',
+        features: ['Full LinkedIn database access', 'Unlimited searches', 'Real-time prospect data', 'No quota limits'],
+        cost: 'Included - no additional cost'
+      },
+      {
         type: 'brightdata',
         description: 'Comprehensive scraping from LinkedIn, Apollo, Crunchbase, ZoomInfo',
         features: ['Email enrichment', 'Contact verification', 'Company intelligence'],
         cost: 'Premium - high accuracy'
-      },
-      {
-        type: 'google_search',
-        description: 'Google Custom Search for LinkedIn profiles',
-        features: ['LinkedIn profile discovery', 'Company research', 'ICP matching'],
-        cost: 'Low cost - good coverage'
       },
       {
         type: 'unipile_network',
@@ -430,9 +361,9 @@ export async function GET(request: NextRequest) {
       }
     },
     integration_status: {
+      unipile_linkedin_search: "✅ Active - Unlimited LinkedIn searches (RECOMMENDED)",
       brightdata: "✅ Active - Premium prospect scraping",
-      google_search: "✅ Configured - Needs API keys",
-      unipile: "✅ Connected - LinkedIn network access"
+      unipile_network: "✅ Connected - LinkedIn network access"
     }
   });
 }

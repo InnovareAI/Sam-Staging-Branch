@@ -62,7 +62,6 @@
     "csv-parse": "^6.1.0",
     "dotenv": "^17.2.2",
     "framer-motion": "^12.23.12",
-    "google-search-mcp": "^1.0.0",
     "jspdf": "^3.0.3",
     "lucide-react": "^0.344.0",
     "node-fetch": "^3.3.2",
