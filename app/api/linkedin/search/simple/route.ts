@@ -133,35 +133,59 @@ export async function POST(request: NextRequest) {
     });
 
     const data = await response.json();
-    console.log('🔵 Unipile response:', JSON.stringify(data).substring(0, 200));
+    console.log('🔵 Unipile response:', JSON.stringify(data).substring(0, 500));
 
     const prospects = (data.items || []).map((item: any) => {
-      // Split name into first/last (simple split on space)
-      const fullName = item.name || '';
-      const nameParts = fullName.trim().split(' ');
-      const firstName = nameParts[0] || 'Unknown';
-      const lastName = nameParts.slice(1).join(' ') || 'Unknown';
+      // Handle name - Classic gives full name, Sales Nav gives first/last
+      let firstName = item.first_name || 'Unknown';
+      let lastName = item.last_name || 'Unknown';
+
+      if (!item.first_name && item.name) {
+        // Classic API - split full name
+        const nameParts = item.name.trim().split(' ');
+        firstName = nameParts[0] || 'Unknown';
+        lastName = nameParts.slice(1).join(' ') || 'Unknown';
+      }
+
+      // Handle title - Classic uses "headline", Sales Nav uses "current_positions"
+      let title = item.headline || '';
+      if (item.current_positions && item.current_positions.length > 0) {
+        title = item.current_positions[0].role || item.headline || '';
+      }
+
+      // Handle company - only in Sales Nav current_positions
+      let company = '';
+      if (item.current_positions && item.current_positions.length > 0) {
+        company = item.current_positions[0].company || '';
+      }
+
+      // LinkedIn URL - both APIs use profile_url
+      const linkedinUrl = item.profile_url || item.public_profile_url || '';
 
       return {
         firstName,
         lastName,
-        fullName,
-        title: item.title || item.headline,
-        company: item.company_name,
-        linkedinUrl: item.profile_url
+        fullName: `${firstName} ${lastName}`,
+        title,
+        company,
+        linkedinUrl
       };
     });
 
     console.log(`🔵 Mapped ${prospects.length} prospects`);
 
     // Save to workspace_prospects with correct column names
-    if (prospects.length > 0) {
-      const toInsert = prospects.map((p: any) => ({
+    // Filter out prospects without LinkedIn URLs (required field)
+    const validProspects = prospects.filter((p: any) => p.linkedinUrl);
+    console.log(`🔵 Valid prospects with LinkedIn URLs: ${validProspects.length}/${prospects.length}`);
+
+    if (validProspects.length > 0) {
+      const toInsert = validProspects.map((p: any) => ({
         workspace_id: workspaceId,
         first_name: p.firstName,
         last_name: p.lastName,
-        job_title: p.title,
-        company_name: p.company,
+        job_title: p.title || null,
+        company_name: p.company || null,
         linkedin_profile_url: p.linkedinUrl
       }));
 
@@ -180,8 +204,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      prospects,
-      count: prospects.length
+      prospects: validProspects,
+      count: validProspects.length,
+      total_found: prospects.length
     });
 
   } catch (error) {
