@@ -144,17 +144,48 @@ export async function POST(request: NextRequest) {
 
     console.log(`📊 Using LinkedIn API: ${api}`);
 
+    // Validate Unipile configuration
+    if (!process.env.UNIPILE_DSN || !process.env.UNIPILE_API_KEY) {
+      console.error('❌ Missing Unipile credentials:', {
+        hasDSN: !!process.env.UNIPILE_DSN,
+        hasAPIKey: !!process.env.UNIPILE_API_KEY
+      });
+      return NextResponse.json({
+        success: false,
+        error: 'LinkedIn integration not configured. Please contact support.',
+        debug: {
+          missingUnipileDSN: !process.env.UNIPILE_DSN,
+          missingUnipileAPIKey: !process.env.UNIPILE_API_KEY
+        }
+      }, { status: 500 });
+    }
+
     // Call Unipile directly
-    const searchUrl = new URL(`https://${process.env.UNIPILE_DSN}.unipile.com:13443/api/v1/linkedin/search`);
-    searchUrl.searchParams.append('account_id', linkedinAccount.unipile_account_id);
-    searchUrl.searchParams.append('limit', limitedTarget.toString());
+    let searchUrl;
+    try {
+      searchUrl = new URL(`https://${process.env.UNIPILE_DSN}.unipile.com:13443/api/v1/linkedin/search`);
+      searchUrl.searchParams.append('account_id', linkedinAccount.unipile_account_id);
+      searchUrl.searchParams.append('limit', limitedTarget.toString());
+      console.log(`🔗 Unipile URL: ${searchUrl.toString().substring(0, 80)}...`);
+    } catch (urlError) {
+      console.error('❌ Failed to construct Unipile URL:', urlError);
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid URL configuration',
+        debug: {
+          error: urlError instanceof Error ? urlError.message : String(urlError),
+          unipileDSN: process.env.UNIPILE_DSN?.substring(0, 10) + '...',
+          accountId: linkedinAccount.unipile_account_id?.substring(0, 10) + '...'
+        }
+      }, { status: 500 });
+    }
 
     const searchPayload = {
       ...search_criteria,
       api
     };
 
-    console.log(`🚀 Calling Unipile: ${searchUrl.toString()}`);
+    console.log(`🚀 Calling Unipile with payload:`, JSON.stringify(searchPayload).substring(0, 200));
 
     const unipileResponse = await fetch(searchUrl.toString(), {
       method: 'POST',
