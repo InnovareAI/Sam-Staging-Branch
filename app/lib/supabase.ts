@@ -18,8 +18,28 @@ export const supabase = new Proxy({}, {
   get(target, prop) {
     if (!_supabase) {
       const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
-      // Use createBrowserClient from @supabase/ssr to store auth in cookies
-      _supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+      // Use createBrowserClient from @supabase/ssr with cookie storage
+      _supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+        cookies: {
+          getAll() {
+            return document.cookie.split(';').map(c => {
+              const [name, ...rest] = c.trim().split('=');
+              return { name, value: rest.join('=') };
+            }).filter(c => c.name);
+          },
+          setAll(cookies) {
+            cookies.forEach(({ name, value, options }) => {
+              let cookie = `${name}=${value}`;
+              if (options?.maxAge) cookie += `; max-age=${options.maxAge}`;
+              if (options?.path) cookie += `; path=${options.path}`;
+              if (options?.domain) cookie += `; domain=${options.domain}`;
+              if (options?.sameSite) cookie += `; samesite=${options.sameSite}`;
+              if (options?.secure) cookie += '; secure';
+              document.cookie = cookie;
+            });
+          }
+        }
+      });
     }
     return _supabase[prop];
   }
