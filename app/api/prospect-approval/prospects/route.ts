@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { supabaseAdmin } from '@/app/lib/supabase'
 
 /**
  * GET /api/prospect-approval/prospects?session_id=xxx
@@ -34,8 +35,9 @@ export async function GET(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // Get user's workspace - FIXED: Use workspace_members not user_organizations
-    const { data: userProfile } = await supabase
+    // CRITICAL FIX: Use admin client to bypass RLS when querying users table
+    const adminClient = supabaseAdmin()
+    const { data: userProfile } = await adminClient
       .from('users')
       .select('current_workspace_id')
       .eq('id', user.id)
