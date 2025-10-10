@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   return NextResponse.json({
-    version: 'data-input-reorganization',
+    version: 'connection-degree-filter-fixed',
     timestamp: new Date().toISOString()
   });
 }
