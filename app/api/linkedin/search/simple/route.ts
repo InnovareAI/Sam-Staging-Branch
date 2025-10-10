@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 /**
  * SIMPLE LinkedIn Search - Minimal version that just works
  * No fancy features, just get results
+ * Force rebuild: 2025-10-10-v2
  */
 export async function POST(request: NextRequest) {
   try {
