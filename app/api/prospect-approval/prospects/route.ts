@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
+/**
+ * GET /api/prospect-approval/prospects?session_id=xxx
+ * Returns all prospects for a specific approval session
+ * FIXED: Use createRouteHandlerClient instead of Authorization header
+ * FIXED: Use workspace_members table instead of non-existent user_organizations
+ * FIXED: Use workspace_id column instead of non-existent organization_id
+ */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -18,50 +21,51 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // 🚨 SECURITY: Get user authentication for workspace filtering
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader) {
+    // FIXED: Use same auth pattern as sessions/list route
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+
+    // Authenticate user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
       return NextResponse.json({
         success: false,
         error: 'Authentication required'
       }, { status: 401 })
     }
 
-    // Create user client to get authenticated user
-    const userSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: { headers: { Authorization: authHeader } }
-      }
-    )
-
-    const { data: { user }, error: authError } = await userSupabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Invalid authentication'
-      }, { status: 401 })
-    }
-
-    // Get user's organization/workspace
-    const { data: userOrg } = await supabase
-      .from('user_organizations')
-      .select('organization_id')
-      .eq('user_id', user.id)
+    // Get user's workspace - FIXED: Use workspace_members not user_organizations
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('current_workspace_id')
+      .eq('id', user.id)
       .single()
 
-    if (!userOrg) {
-      return NextResponse.json({
-        success: false,
-        error: 'User not associated with any workspace'
-      }, { status: 403 })
+    let workspaceId = userProfile?.current_workspace_id
+
+    // Fallback: get first workspace from memberships
+    if (!workspaceId) {
+      const { data: membership } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle()
+
+      workspaceId = membership?.workspace_id
     }
 
-    // 🛡️ SECURITY: First verify the session belongs to the user's workspace
+    if (!workspaceId) {
+      return NextResponse.json({
+        success: false,
+        error: 'No workspace found'
+      }, { status: 404 })
+    }
+
+    // FIXED: Verify session belongs to user's workspace using workspace_id not organization_id
     const { data: session, error: sessionError } = await supabase
       .from('prospect_approval_sessions')
-      .select('user_id, organization_id')
+      .select('user_id, workspace_id')
       .eq('id', sessionId)
       .single()
 
@@ -72,11 +76,11 @@ export async function GET(request: NextRequest) {
       }, { status: 404 })
     }
 
-    // Only allow access if session belongs to user's workspace OR user is super admin
+    // Security check: session must belong to user's workspace
     const userEmail = user.email?.toLowerCase() || ''
     const isSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(userEmail)
-    
-    if (!isSuperAdmin && session.organization_id !== userOrg.organization_id) {
+
+    if (!isSuperAdmin && session.workspace_id !== workspaceId) {
       return NextResponse.json({
         success: false,
         error: 'Access denied - session belongs to different workspace'
@@ -91,6 +95,8 @@ export async function GET(request: NextRequest) {
       .order('enrichment_score', { ascending: false })
 
     if (error) throw error
+
+    console.log(`✅ Loaded ${prospects?.length || 0} prospects for session ${sessionId}`)
 
     return NextResponse.json({
       success: true,
