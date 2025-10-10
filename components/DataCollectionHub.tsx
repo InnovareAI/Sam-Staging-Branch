@@ -3,6 +3,7 @@
 import { Check, ChevronDown, ChevronUp, Download, Search, Tag, Users, X } from 'lucide-react';
 import { toastError } from '@/lib/toast';
 import { useState, useEffect } from 'react';
+import ProspectSearchChat from '@/components/ProspectSearchChat';
 
 
 // LinkedIn Campaign Types
@@ -93,6 +94,10 @@ export default function DataCollectionHub({
   const [activeTab, setActiveTab] = useState('approve')
   const [linkedinQuery, setLinkedinQuery] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+
+  // ProspectSearchChat integration
+  const [searchJobId, setSearchJobId] = useState<string | null>(null)
+  const [searchProspects, setSearchProspects] = useState<any[]>([])
   
   // Fetch workspace information to generate code
   useEffect(() => {
@@ -382,7 +387,7 @@ export default function DataCollectionHub({
   // Download only approved prospects
   const downloadApprovedCSV = () => {
     const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved')
-    
+
     if (approvedProspects.length === 0) {
       toastError('No approved prospects to download.')
       return
@@ -414,10 +419,36 @@ export default function DataCollectionHub({
     window.URL.revokeObjectURL(url)
   }
 
+  // ProspectSearchChat callbacks
+  const handleSearchTriggered = (jobId: string, criteria: any) => {
+    console.log('Search job started:', jobId, criteria)
+    setSearchJobId(jobId)
+  }
+
+  const handleProspectsReceived = (prospects: any[]) => {
+    console.log('Prospects received:', prospects.length)
+    setSearchProspects(prospects)
+    setProspectData(prospects) // Populate existing approval UI
+    setShowApprovalPanel(true)
+    setActiveTab('approve')
+    onDataCollected(prospects, 'linkedin_search_job')
+  }
+
   return (
-    <div className={`bg-gray-800 rounded-lg ${className}`}>
-      {/* Header */}
-      <div className="border-b border-gray-700 px-6 py-4">
+    <div className={`grid grid-cols-12 gap-4 h-full ${className}`}>
+      {/* Left: ProspectSearchChat (4 columns - 33%) */}
+      <div className="col-span-4 h-full">
+        <ProspectSearchChat
+          onSearchTriggered={handleSearchTriggered}
+          onProspectsReceived={handleProspectsReceived}
+        />
+      </div>
+
+      {/* Right: Prospect Approval Dashboard (8 columns - 67%) */}
+      <div className="col-span-8 h-full overflow-y-auto">
+        <div className="bg-gray-800 rounded-lg h-full">
+          {/* Header */}
+          <div className="border-b border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Users className="w-5 h-5 text-purple-400" />
@@ -726,6 +757,8 @@ export default function DataCollectionHub({
             </p>
           </div>
         )}
+      </div>
+        </div>
       </div>
     </div>
   )

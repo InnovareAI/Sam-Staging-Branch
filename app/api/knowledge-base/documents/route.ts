@@ -35,7 +35,8 @@ async function getWorkspaceId(supabase: ReturnType<typeof createRouteHandlerClie
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies });
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) {
