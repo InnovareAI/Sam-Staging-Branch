@@ -32,14 +32,38 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔍 Direct search for ${user.email}: ${limitedTarget} prospects`);
 
-    // Get user's workspace
+    // Get user's workspace with fallback logic
+    let workspaceId: string | null = null;
+
+    // Try to get current workspace from users table
     const { data: userProfile } = await supabase
       .from('users')
       .select('current_workspace_id')
       .eq('id', user.id)
       .single();
 
-    const workspaceId = userProfile?.current_workspace_id;
+    if (userProfile?.current_workspace_id) {
+      workspaceId = userProfile.current_workspace_id;
+    } else {
+      // Fallback: get first workspace from memberships
+      const { data: membership } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (membership?.workspace_id) {
+        workspaceId = membership.workspace_id;
+
+        // Update user's current workspace for next time
+        await supabase
+          .from('users')
+          .update({ current_workspace_id: membership.workspace_id })
+          .eq('id', user.id);
+      }
+    }
 
     if (!workspaceId) {
       return NextResponse.json({
