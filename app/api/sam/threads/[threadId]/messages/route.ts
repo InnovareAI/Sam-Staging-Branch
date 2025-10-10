@@ -645,6 +645,93 @@ export async function POST(
 
     const conversationHistory = previousMessages?.slice(-10) || [] // Last 10 messages for context
 
+    // LinkedIn Connection Check - #check-linkedin shortcut
+    if (content.toLowerCase().includes('#check') && content.toLowerCase().includes('linkedin')) {
+      console.log('🔄 Detected LinkedIn connection check request')
+
+      try {
+        // Forward authentication cookies from incoming request
+        const cookieHeader = request.headers.get('cookie') || ''
+
+        const statusResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/status`, {
+          method: 'GET',
+          headers: {
+            'Cookie': cookieHeader // Forward session cookies for auth
+          }
+        })
+
+        const statusData = await statusResponse.json()
+
+        let aiResponse: string
+
+        if (statusData.success && statusData.has_linkedin) {
+          const accountCount = statusData.connection_status?.workspace_accounts || 0
+          const healthScore = statusData.connection_status?.health_score || 0
+
+          aiResponse = `✅ **LinkedIn Connected!**\n\n`
+          aiResponse += `Health Score: ${healthScore}/100\n`
+          aiResponse += `Connected Accounts: ${accountCount}\n\n`
+
+          if (statusData.accounts?.workspace && statusData.accounts.workspace.length > 0) {
+            aiResponse += `**Your LinkedIn Account${accountCount > 1 ? 's' : ''}:**\n`
+            statusData.accounts.workspace.forEach((acc: any, i: number) => {
+              aiResponse += `${i + 1}. ${acc.account_name || acc.account_identifier} (${acc.connection_status})\n`
+            })
+          }
+
+          aiResponse += `\nReady to search for prospects and run campaigns! 🚀`
+        } else {
+          aiResponse = `❌ **LinkedIn Not Connected**\n\n`
+          aiResponse += `To unlock unlimited LinkedIn searches and messaging:\n\n`
+          aiResponse += `1. Go to Settings > Integrations\n`
+          aiResponse += `2. Click "Connect LinkedIn"\n`
+          aiResponse += `3. Authorize your account\n\n`
+          aiResponse += `Don't worry - I can still search for prospects using our built-in tools in the meantime!`
+        }
+
+        // Save assistant response
+        await supabase
+          .from('sam_conversation_messages')
+          .insert({
+            thread_id: resolvedParams.threadId,
+            user_id: user.id,
+            role: 'assistant',
+            content: aiResponse,
+            message_order: nextOrder + 1
+          })
+
+        return NextResponse.json({
+          success: true,
+          samMessage: {
+            role: 'assistant',
+            content: aiResponse
+          }
+        })
+
+      } catch (error) {
+        console.error('❌ LinkedIn status check failed:', error)
+        const errorResponse = `❌ **Status Check Failed**\n\nCouldn't check LinkedIn connection status. This might be a temporary issue. Try again in a moment!`
+
+        await supabase
+          .from('sam_conversation_messages')
+          .insert({
+            thread_id: resolvedParams.threadId,
+            user_id: user.id,
+            role: 'assistant',
+            content: errorResponse,
+            message_order: nextOrder + 1
+          })
+
+        return NextResponse.json({
+          success: true,
+          samMessage: {
+            role: 'assistant',
+            content: errorResponse
+          }
+        })
+      }
+    }
+
     // LinkedIn Test Integration - #test-linkedin shortcut
     if (content.toLowerCase().includes('#test-linkedin')) {
       console.log('🔄 Detected #test-linkedin command - calling LinkedIn API')
@@ -976,14 +1063,21 @@ YOUR WORKFLOW (present naturally, not as a checklist)
 4. Create messaging: Help pick channels (LinkedIn, email, both). Draft copy that sounds like them, remind about approval steps
 5. Execute & follow through: Confirm approvals, outline next actions, stay available for adjustments
 
-LINKEDIN INTEGRATION & DATA SOURCES
-- **Primary:** Unipile LinkedIn Search (unlimited) - use this FIRST for prospect discovery
-- **Fallback:** Bright Data MCP - automatically used if LinkedIn not connected (seamless, no action needed)
-- **Before ICP discovery:** Check if LinkedIn is connected. If not, explain: "I can search LinkedIn for prospects right now using our built-in tools. For even better results and unlimited searches, you can connect your LinkedIn account in Settings > Integrations."
-- **During prospect search:** If using fallback, simply proceed without mentioning it - results are high quality regardless of source
-- **After showing prospects:** If fallback was used, casually offer: "By the way, connecting your LinkedIn account gives you even more search capabilities. You can do that anytime in Settings."
-- NEVER mention costs, pricing, or "premium" services - all prospect discovery is included in their plan
-- NEVER force connection - always proceed seamlessly with available tools
+LINKEDIN INTEGRATION & PROSPECT SEARCH
+- **If LinkedIn connected:** Use Unipile for unlimited searches - this is the best experience
+- **If LinkedIn NOT connected:** Seamlessly use built-in search tools - works great, no mention needed
+- **When checking connection:** Use the shortcut command approach: just check status when asked
+- **Example:** User says "check linkedin connection" → You respond with connection status from API
+- **NEVER mention:**
+  - Bright Data, scraping services, or fallback systems
+  - Costs, pricing, or "premium" features
+  - Technical implementation details
+  - Data source names
+- **DO mention:**
+  - "I can search for prospects right now" (regardless of connection status)
+  - "Connect LinkedIn for even better results" (casual, optional)
+  - "All included in your plan" (if they ask about costs)
+- **Philosophy:** Seamless experience - users shouldn't worry about technical details or data sources
 
 CONVERSATIONAL RULES
 - Echo back key details naturally ("So if I'm hearing right, you're targeting...")

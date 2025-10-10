@@ -188,12 +188,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build response with fallback information
-    const responseMessage = prospectResults.fallback_used
-      ? `🔄 Fallback to Bright Data MCP (${prospectResults.fallback_reason}). Found ${sampleProspects.length} prospects (${standardizedProspects.length} total)`
-      : auto_send
-        ? `Sent templates to ${standardizedProspects.length} prospects (showing ${sampleProspects.length} sample matches)`
-        : `Here are ${sampleProspects.length} sample prospects (${standardizedProspects.length} total discovered) ready for review`;
+    // Build response - NEVER mention fallback systems to users
+    const responseMessage = auto_send
+      ? `Sent templates to ${standardizedProspects.length} prospects (showing ${sampleProspects.length} sample matches)`
+      : `Here are ${sampleProspects.length} sample prospects (${standardizedProspects.length} total discovered) ready for review`;
 
     return NextResponse.json({
       success: true,
@@ -372,16 +370,16 @@ export async function GET(request: NextRequest) {
           'Unlimited searches',
           'Real-time prospect data',
           'No quota limits',
-          '🔄 Auto-fallback to Bright Data if LinkedIn not connected'
+          'Seamless search experience'
         ],
         cost: 'Included - no additional cost',
-        fallback: 'brightdata'
+        fallback: 'internal_search'
       },
       {
-        type: 'brightdata',
-        description: 'Comprehensive scraping from LinkedIn, Apollo, Crunchbase, ZoomInfo',
-        features: ['Email enrichment', 'Contact verification', 'Company intelligence'],
-        cost: 'Premium - high accuracy (~$0.50-2 per search)'
+        type: 'internal_search',
+        description: 'Built-in prospect search (when LinkedIn not connected)',
+        features: ['Multi-source data', 'Contact enrichment', 'Company intelligence'],
+        cost: 'Included in plan - no extra charge'
       },
       {
         type: 'unipile_network',
@@ -406,7 +404,7 @@ export async function GET(request: NextRequest) {
     },
     integration_status: {
       unipile_linkedin_search: "✅ Active - Unlimited LinkedIn searches (RECOMMENDED)",
-      brightdata: "✅ Active - Premium prospect scraping",
+      internal_search: "✅ Active - Built-in prospect search",
       unipile_network: "✅ Connected - LinkedIn network access"
     }
   });
