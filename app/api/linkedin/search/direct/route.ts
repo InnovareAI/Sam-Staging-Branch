@@ -297,11 +297,14 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ Direct search error:', error);
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack');
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to search LinkedIn',
       debug: {
-        error_type: error instanceof Error ? error.constructor.name : typeof error
+        error_type: error instanceof Error ? error.constructor.name : typeof error,
+        error_stack: error instanceof Error ? error.stack?.split('\n')[0] : 'No stack',
+        user_authenticated: true // We got past auth to reach here
       }
     }, { status: 500 });
   }

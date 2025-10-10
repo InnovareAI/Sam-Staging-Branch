@@ -1357,7 +1357,7 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         const allCookies = cookieStore.getAll()
         const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ')
 
-        const searchResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/search/direct`, {
+        const searchResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/search/simple`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1365,8 +1365,7 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
           },
           body: JSON.stringify({
             search_criteria: searchCriteria,
-            target_count: searchCriteria.targetCount || 100,
-            save_to_approval: true // Save prospects to Data Approval tab
+            target_count: searchCriteria.targetCount || 50 // Simple route limited to 50
           })
         })
 
