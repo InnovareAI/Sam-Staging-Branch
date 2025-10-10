@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { mcpRegistry, createMCPConfig } from '@/lib/mcp/mcp-registry'
 
@@ -28,26 +29,31 @@ async function ensureMCPInitialized() {
 
 export async function POST(request: NextRequest) {
   try {
-    // Authentication check
-    const supabase = createRouteHandlerClient({ cookies: cookies })
+    const body = await request.json()
+    const {
+      type,
+      data,
+      methodology = 'meddic',
+      urgency = 'medium',
+      budget = 100,
+      conversationId,
+      user_id  // Support server-to-server auth
+    } = body
+
+    // Authentication check - support both cookie-based and user_id-based auth
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+
+    // Use user from auth OR user_id from request (for server-to-server calls)
+    const effectiveUserId = user?.id || user_id
+
+    if (!effectiveUserId) {
       return NextResponse.json({
         success: false,
         error: 'Authentication required'
       }, { status: 401 })
     }
-
-    const body = await request.json()
-    const { 
-      type, 
-      data, 
-      methodology = 'meddic',
-      urgency = 'medium',
-      budget = 100,
-      conversationId 
-    } = body
 
     // Validate request
     if (!type || !data) {
@@ -95,7 +101,7 @@ export async function POST(request: NextRequest) {
         break
 
       case 'icp_research_search':
-        intelligenceResult = await executeICPResearchSearch(data, methodology, urgency, budget)
+        intelligenceResult = await executeICPResearchSearch(data, methodology, urgency, budget, effectiveUserId, supabase)
         break
       
       default:
@@ -487,60 +493,157 @@ async function executeCompanyIntelligenceSearch(
   }
 }
 
-// Execute ICP Research search using WebSearch MCP
+// Execute ICP Research search using direct Unipile API
 async function executeICPResearchSearch(
-  data: { 
-    industry: string, 
-    jobTitles: string[], 
-    companySize?: string, 
+  data: {
+    industry: string,
+    jobTitles: string[],
+    companySize?: string,
     geography?: string,
-    maxResults?: number 
+    maxResults?: number,
+    connectionDegree?: number[]
   },
   methodology: string,
   urgency: string,
-  budget: number
+  budget: number,
+  userId: string,
+  supabaseClient: any
 ) {
   const startTime = Date.now()
-  
+
   try {
-    const searchResult = await mcpRegistry.callTool({
-      method: 'tools/call',
-      params: {
-        name: 'icp_prospect_discovery',
-        arguments: {
-          industries: [data.industry],
-          jobTitles: data.jobTitles,
-          companySize: data.companySize || 'any',
-          location: data.geography || 'United States',
-          maxResults: data.maxResults || 15
-        }
-      }
+    console.log('🔍 LinkedIn search - User lookup:', userId)
+
+    // Get user's LinkedIn account from database
+    const { data: linkedinAccount, error: accountError } = await supabaseClient
+      .from('user_unipile_accounts')
+      .select('unipile_account_id')
+      .eq('user_id', userId)
+      .eq('platform', 'LINKEDIN')
+      .eq('connection_status', 'active')
+      .single()
+
+    console.log('🔍 LinkedIn account lookup:', {
+      found: !!linkedinAccount,
+      account_id: linkedinAccount?.unipile_account_id,
+      error: accountError?.message
     })
 
-    if (searchResult.isError) {
+    if (!linkedinAccount || accountError) {
       return {
         success: false,
-        error: searchResult.content[0]?.text || 'ICP research search failed',
+        error: 'No active LinkedIn account connected',
+        needsLinkedInConnection: true,
+        instructions: {
+          message: 'To search LinkedIn, you need to connect your LinkedIn account first.',
+          steps: [
+            'Click your profile icon in the top right',
+            'Go to Settings → Integrations',
+            'Click "Connect LinkedIn Account"',
+            'Authorize access through Unipile'
+          ]
+        },
         data: null,
         processingTime: Date.now() - startTime
       }
     }
 
-    const searchData = JSON.parse(searchResult.content[0]?.text || '{}')
+    // Build search keywords
+    const keywords = data.jobTitles.join(' OR ')
+    const advancedKeywords: any = {
+      title: keywords
+    }
+
+    // Add geography if provided
+    if (data.geography) {
+      advancedKeywords.location = data.geography
+    }
+
+    // Call Unipile API directly
+    const UNIPILE_DSN = process.env.UNIPILE_DSN
+    const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY
+
+    console.log('🔍 Calling Unipile API:', {
+      account_id: linkedinAccount.unipile_account_id,
+      keywords,
+      limit: data.maxResults || 20
+    })
+
+    const response = await fetch(`https://${UNIPILE_DSN}/api/v1/users/search`, {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': UNIPILE_API_KEY!,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        account_id: linkedinAccount.unipile_account_id,
+        keywords,
+        advanced_keywords: advancedKeywords,
+        network_distance: data.connectionDegree || [1, 2, 3],
+        limit: data.maxResults || 20
+      })
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Unipile API error:', errorText)
+      return {
+        success: false,
+        error: `LinkedIn search failed: ${response.statusText}`,
+        data: null,
+        processingTime: Date.now() - startTime
+      }
+    }
+
+    const unipileData = await response.json()
+    console.log('✅ Unipile response:', {
+      itemsCount: unipileData.items?.length || 0,
+      totalCount: unipileData.paging?.total_count
+    })
+
+    // Transform Unipile results to SAM format
+    const prospects = (unipileData.items || []).map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      headline: item.headline,
+      company: item.company_name,
+      location: item.location,
+      profileUrl: item.profile_url,
+      connectionDegree: item.network_distance,
+      mutualConnections: item.num_of_mutual_connections
+    }))
+
+    // Calculate market size estimate
+    const totalMarketSize = unipileData.paging?.total_count || prospects.length
+    const marketSizeEstimate = {
+      totalAddressableMarket: totalMarketSize,
+      reachableProspects: prospects.length,
+      confidence: totalMarketSize > 100 ? 0.85 : 0.70
+    }
 
     return {
       success: true,
-      data: searchData,
+      data: {
+        prospects,
+        marketSize: marketSizeEstimate,
+        searchCriteria: {
+          jobTitles: data.jobTitles,
+          industry: data.industry,
+          geography: data.geography,
+          connectionDegree: data.connectionDegree
+        }
+      },
       processingTime: Date.now() - startTime,
-      confidence: searchData.marketSize?.confidence || 0.85,
-      source: 'websearch-mcp',
-      costEstimate: '$0.03'
+      confidence: 0.90,
+      source: 'unipile-linkedin-api',
+      costEstimate: '$0.00'
     }
 
   } catch (error) {
+    console.error('❌ LinkedIn search error:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'ICP research search failed',
+      error: error instanceof Error ? error.message : 'LinkedIn search failed',
       data: null,
       processingTime: Date.now() - startTime
     }

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test LinkedIn Search</title>
+</head>
+<body>
+    <h1>Test LinkedIn Search (Logged In)</h1>
+    <button onclick="testSearch()">Run Search</button>
+    <pre id="output"></pre>
+
+    <script>
+        async function testSearch() {
+            const output = document.getElementById('output');
+            output.textContent = 'Testing search...\n';
+
+            try {
+                const response = await fetch('https://app.meet-sam.com/api/linkedin/search/simple', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include', // Include cookies
+                    body: JSON.stringify({
+                        search_criteria: {
+                            title: 'CEO',
+                            keywords: 'tech startups'
+                        },
+                        target_count: 20
+                    })
+                });
+
+                const data = await response.json();
+
+                output.textContent += `\nStatus: ${response.status}\n`;
+                output.textContent += `\nResponse:\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                output.textContent += `\nError: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
