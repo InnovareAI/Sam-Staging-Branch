@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     const { data: sessions, error: sessionsError } = await supabase
       .from('prospect_approval_sessions')
       .select('*')
-      .eq('organization_id', workspaceId) // Using organization_id to match workspace
+      .eq('workspace_id', workspaceId) // CORRECTED: workspace_id not organization_id
       .order('created_at', { ascending: false });
 
     if (sessionsError) {

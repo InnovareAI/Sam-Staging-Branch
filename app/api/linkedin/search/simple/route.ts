@@ -244,13 +244,13 @@ export async function POST(request: NextRequest) {
         .insert({
           id: sessionId,
           user_id: user.id,
-          organization_id: workspaceId, // Note: Using workspaceId for organization_id
-          source: 'linkedin_search',
+          workspace_id: workspaceId, // CORRECTED: workspace_id not organization_id
+          prospect_source: 'linkedin_search',
           total_prospects: validProspects.length,
           pending_count: validProspects.length,
           approved_count: 0,
           rejected_count: 0,
-          session_status: 'active',
+          status: 'pending', // CORRECTED: status not session_status
           created_at: new Date().toISOString()
         });
 
