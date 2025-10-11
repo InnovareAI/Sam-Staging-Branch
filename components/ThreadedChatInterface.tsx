@@ -105,10 +105,27 @@ export default function ThreadedChatInterface() {
 
   // Auto-scroll to bottom for new messages (traditional chat behavior)
   useEffect(() => {
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+    // Use setTimeout to ensure DOM is fully updated before scrolling
+    const scrollToBottom = () => {
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+      }
     }
+
+    // Scroll after a brief delay to ensure DOM is painted
+    setTimeout(scrollToBottom, 100)
   }, [messages])
+
+  // Also scroll when thread changes (chat window opens)
+  useEffect(() => {
+    if (currentThread) {
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+        }
+      }, 200) // Longer delay for thread load
+    }
+  }, [currentThread])
 
   const loadThreadMessages = async (threadId: string) => {
     setIsLoadingMessages(true)
