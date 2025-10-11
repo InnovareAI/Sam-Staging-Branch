@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   return NextResponse.json({
-    version: 'chat-auto-scroll-fix',
+    version: 'chat-scroll-into-view-fix',
     timestamp: new Date().toISOString()
   });
 }

@@ -59,6 +59,7 @@ export default function ThreadedChatInterface() {
   const [showDocumentApproval, setShowDocumentApproval] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Load threads on mount
   useEffect(() => {
@@ -103,29 +104,26 @@ export default function ThreadedChatInterface() {
     }
   }, [currentThread])
 
-  // Auto-scroll to bottom for new messages (traditional chat behavior)
+  // Auto-scroll to bottom for new messages using scrollIntoView
   useEffect(() => {
-    // Use setTimeout to ensure DOM is fully updated before scrolling
     const scrollToBottom = () => {
-      if (messagesContainerRef.current) {
-        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
-      }
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
 
-    // Scroll after a brief delay to ensure DOM is painted
-    setTimeout(scrollToBottom, 100)
+    // Scroll after a brief delay to ensure DOM is fully rendered
+    const timeoutId = setTimeout(scrollToBottom, 150)
+    return () => clearTimeout(timeoutId)
   }, [messages])
 
   // Also scroll when thread changes (chat window opens)
   useEffect(() => {
-    if (currentThread) {
-      setTimeout(() => {
-        if (messagesContainerRef.current) {
-          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
-        }
-      }, 200) // Longer delay for thread load
+    if (currentThread && messages.length > 0) {
+      const timeoutId = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+      }, 300)
+      return () => clearTimeout(timeoutId)
     }
-  }, [currentThread])
+  }, [currentThread, messages.length])
 
   const loadThreadMessages = async (threadId: string) => {
     setIsLoadingMessages(true)
@@ -1720,7 +1718,8 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                     </div>
                   ))}
 
-                  {/* Sending state removed - no more "Sam is thinking..." box */}
+                  {/* Invisible anchor for auto-scroll */}
+                  <div ref={messagesEndRef} />
                 </div>
               )}
             </div>
