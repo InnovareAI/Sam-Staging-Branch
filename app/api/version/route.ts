@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   return NextResponse.json({
-    version: 'advanced-search-filters',
+    version: 'profile-language-and-tenure-filters',
     timestamp: new Date().toISOString()
   });
 }

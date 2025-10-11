@@ -205,6 +205,41 @@ export async function POST(request: NextRequest) {
       console.log('🎯 No connection degree specified, searching all degrees');
     }
 
+    // Profile Language filter
+    if (search_criteria.profileLanguage) {
+      unipilePayload.profile_language = [search_criteria.profileLanguage];
+      console.log('🎯 Profile language filter:', search_criteria.profileLanguage);
+    }
+
+    // Tenure (Years of Experience) filter
+    if (search_criteria.yearsOfExperience) {
+      // Parse years of experience from various formats:
+      // "5-10", "5+", "10", "3 to 7"
+      const exp = search_criteria.yearsOfExperience.toString();
+
+      if (exp.includes('-')) {
+        // Format: "5-10"
+        const [min, max] = exp.split('-').map(n => parseInt(n.trim()));
+        unipilePayload.tenure = [{ min, max }];
+        console.log('🎯 Tenure filter (range):', { min, max });
+      } else if (exp.includes('+')) {
+        // Format: "5+"
+        const min = parseInt(exp.replace('+', '').trim());
+        unipilePayload.tenure = [{ min }];
+        console.log('🎯 Tenure filter (minimum):', { min });
+      } else if (exp.toLowerCase().includes('to')) {
+        // Format: "3 to 7"
+        const [min, max] = exp.toLowerCase().split('to').map(n => parseInt(n.trim()));
+        unipilePayload.tenure = [{ min, max }];
+        console.log('🎯 Tenure filter (range):', { min, max });
+      } else {
+        // Format: "10" (exact or minimum)
+        const years = parseInt(exp);
+        unipilePayload.tenure = [{ min: years }];
+        console.log('🎯 Tenure filter (minimum):', { min: years });
+      }
+    }
+
     console.log('🔵 Unipile payload:', JSON.stringify(unipilePayload));
 
     const response = await fetch(`${unipileUrl}?${params}`, {

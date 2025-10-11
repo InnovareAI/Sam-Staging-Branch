@@ -1,18 +1,22 @@
 # Rolling TODO List - Sam AI Project
 
-**Last Updated**: October 8, 2025
+**Last Updated**: October 11, 2025
 
 ---
 
 ## 🔥 URGENT - Do Today
 
-- [ ] Monitor Netlify deployment for ContactCenter.tsx fix (commit b0a9207)
-- [ ] Verify production site still functional after latest deploy
+- [ ] Review ESLint warnings and clean up unused imports
+- [ ] Test all LinkedIn search scenarios in production (1st/2nd/3rd degree, location filters)
 
 ---
 
 ## 📋 This Week
 
+- [ ] **SAM UX Improvement**: Update SAM's prompt to suggest filter options for general searches
+  - When user requests broad search (e.g., "Find CEOs"), SAM should ask clarifying questions
+  - Suggest: location, company, industry, connection degree, etc.
+  - Make searches more targeted and reduce irrelevant results
 - [ ] Clean up ESLint warnings (50+ unused imports/variables across codebase)
 - [ ] Fix TypeScript configuration warnings (4 tsconfig composite settings)
 - [ ] Review and consolidate duplicate documentation files (120+ recent docs)
@@ -36,15 +40,61 @@
 
 ## ✨ Feature Requests
 
-- [ ] (None currently)
+### LinkedIn Search - Foundational Filters (High Priority)
+
+**✅ Currently Implemented (7 filters):**
+1. Connection degree (1st, 2nd, 3rd) - `network: ['F', 'S', 'O']`
+2. Location (city, state, country) - `locations: [ids]`
+3. Company (current company) - `current_company: [names]`
+4. Industry - `industries: {include: [], exclude: []}`
+5. School/University - `schools: [names]`
+6. Job title - `title: string`
+7. Keywords - `keywords: string`
+
+**⬜ Ready to Implement - Prioritized:**
+
+**Phase 1 - Quick Wins (This Week):**
+- [ ] **SAM UX: Suggest filters for broad searches** - When user says "Find CEOs", SAM asks about location, company, industry
+- [ ] **Profile Language** - `profile_language: ["en"]` (simple string array)
+- [ ] **Tenure** (Years of Experience) - `tenure: [{min: 3, max: 10}]` (min/max object)
+
+**Phase 2 - Medium Complexity (Next Sprint):**
+- [ ] **Company Size** (Sales Navigator) - `headcount: [codes]` (requires Sales Nav account)
+- [ ] **Role/Function with Scope** - `role: [{keywords: "...", priority: "MUST_HAVE", scope: "CURRENT_OR_PAST"}]`
+- [ ] **Skills Filter** - `skills: [{id: "50517", priority: "MUST_HAVE"}]` (requires skill ID lookup service)
+- [ ] **Build Parameter ID Lookup Service** - `/api/linkedin/search/parameters` wrapper for location/industry/skill IDs
+
+**Phase 3 - Advanced (Future):**
+- [ ] **Better Location/Industry** - Use IDs instead of names for more accurate filtering
+- [ ] **Seniority Keywords** - Auto-detect "C-level OR VP OR Director" from natural language
+- [ ] **Past Company Search** - Use `role.scope: "CURRENT_OR_PAST"` + keywords
+- [ ] **Has Job Offers** - `has_job_offers: true` (companies actively hiring signal)
+
+**🚫 Dropped (Not Available in Unipile):**
+- ~~LinkedIn Group membership~~ - Not supported by Unipile API
+- ~~Event participation~~ - Not supported by Unipile API
+
+**Implementation Files:**
+- API: `/app/api/linkedin/search/simple/route.ts`
+- SAM Prompt: `/app/api/sam/threads/[threadId]/messages/route.ts`
+- TypeScript: Update `search_criteria` interface
+- Documentation: Update `LINKEDIN_SEARCH_FUNCTIONALITY.md`
+
+**Testing:**
+- Verify each new filter with test searches
+- Update integration tests
+- Test SAM's natural language extraction
 
 ---
 
 ## 📝 Documentation Needed
 
-- [ ] Consolidate Oct 7 handover docs into single comprehensive guide
+- [x] ~~Consolidate Oct 7 handover docs into single comprehensive guide~~ (superseded by Oct 11 docs)
+- [x] Document LinkedIn search functionality - **COMPLETED** (LINKEDIN_SEARCH_FUNCTIONALITY.md)
+- [x] Document data input methods - **COMPLETED** (DATA_INPUT_METHODS.md)
+- [x] Create changelog for Oct 11 improvements - **COMPLETED** (CHANGELOG_OCT11_2025.md)
 - [ ] Archive old implementation summaries to /docs/archive/
-- [ ] Document today's production build fix process for future reference
+- [ ] Document production build fix process for future reference (Oct 8 toast script issue)
 
 ---
 
@@ -58,7 +108,19 @@
 
 ## ✅ Recently Completed
 
-### Week of Oct 8, 2025 (Today)
+### Week of Oct 11, 2025 (Today)
+- [x] **LinkedIn Search Improvements**: Fixed connection degree filtering (1st/2nd/3rd now works correctly)
+- [x] **Advanced Search Filters**: Added location, company, industry, school parameters
+- [x] **Data Input Reorganization**: Removed CSV from SAM chat, added CSV/Paste/URL to Data Approval
+- [x] **Fixed Duplicate Prospects**: Different searches now return unique results based on all criteria
+- [x] **Campaign Management**: Added editable campaign names with auto-generation (YYYYMMDD-CODE-Description)
+- [x] **RLS Fix**: Fixed permission errors in Data Approval using supabaseAdmin() for workspace lookups
+- [x] **CSV Parser**: Created flexible CSV parser with multi-format column mapping
+- [x] **Documentation**: Created 3 comprehensive docs (LINKEDIN_SEARCH_FUNCTIONALITY.md, DATA_INPUT_METHODS.md, CHANGELOG_OCT11_2025.md)
+- [x] **Deployment**: Deployed all changes to production (commits: 5da5ab9, a1a41ae, 212291b, 62b7883, 4fececa)
+- [x] Verified production site functional after all deployments
+
+### Week of Oct 8, 2025
 - [x] **CRITICAL**: Fixed production build failure caused by toast replacement script
 - [x] Fixed 21 files with malformed imports (missing 'use client', missing React hooks)
 - [x] Fixed ContactCenter.tsx malformed imports (commit 1e20cd1)
@@ -90,16 +152,28 @@ When a section gets too long (>20 items), move completed items to:
 
 **Site**: https://app.meet-sam.com
 **Status**: ✅ FULLY OPERATIONAL
-**Latest Deploy**: commit b0a9207 (Oct 8, 2025 9:15 AM)
+**Latest Deploy**: commit 4fececa (Oct 11, 2025 - advanced-search-filters)
 **Build Status**: Passing
 **Critical Features**:
 - ✅ Authentication working
 - ✅ Workspace loading (8 workspaces)
-- ✅ LinkedIn integration intact
+- ✅ LinkedIn search with advanced filters (location, company, industry)
+- ✅ Connection degree filtering (1st/2nd/3rd) working correctly
+- ✅ Data Approval with CSV/Paste/URL input methods
+- ✅ Editable campaign names with auto-generation
 - ✅ SAM conversation history functional
 - ✅ All modals and components rendering
 
+**Recent Deployments**:
+- Oct 11: Advanced search filters (location, company, industry) - **LIVE**
+- Oct 11: Connection degree filter fix (F/S/O notation) - **LIVE**
+- Oct 11: Data input reorganization (CSV to Data Approval) - **LIVE**
+- Oct 11: Editable campaign names - **LIVE**
+
 **Recent Issues**:
+- Oct 11: Duplicate prospects from different searches - **RESOLVED**
+- Oct 11: Connection degree filter not working - **RESOLVED**
+- Oct 11: RLS permission errors in Data Approval - **RESOLVED**
 - Oct 8: Toast replacement script broke 21 files - **RESOLVED**
 - Oct 8: CDN caching prevented latest deploy - **RESOLVED**
 
