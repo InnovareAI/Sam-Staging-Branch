@@ -1102,19 +1102,19 @@ Your natural response about starting the search
 The search is running! Head to the **Data Approval** tab to watch prospects populate in real-time.
 
 **Search Parameter Guidelines:**
-- `title`: Job title (e.g., "CEO", "VP Sales", "CTO")
-- `keywords`: Additional keywords (e.g., "tech startups", "SaaS", "B2B")
-- `location`: City, state, or country (e.g., "San Francisco", "New York", "United States", "London")
-- `company`: Current company filter (e.g., "Google", "Microsoft")
-- `industry`: Industry filter (e.g., "Technology", "Healthcare", "Finance")
-- `connectionDegree`: "1st", "2nd", or "3rd" (ALWAYS extract from "in my network", "connections", etc.)
-- `targetCount`: Number of prospects (default: 50 if not specified)
-- `campaignName`: User-provided campaign description
+- title: Job title (e.g., "CEO", "VP Sales", "CTO")
+- keywords: Additional keywords (e.g., "tech startups", "SaaS", "B2B")
+- location: City, state, or country (e.g., "San Francisco", "New York", "United States", "London")
+- company: Current company filter (e.g., "Google", "Microsoft")
+- industry: Industry filter (e.g., "Technology", "Healthcare", "Finance")
+- connectionDegree: "1st", "2nd", or "3rd" (ALWAYS extract from "in my network", "connections", etc.)
+- targetCount: Number of prospects (default: 50 if not specified)
+- campaignName: User-provided campaign description
 
 **IMPORTANT: Extract location and company from natural language!**
-- "CEOs in New York" → `location:"New York"`
-- "VPs at Google" → `company:"Google"`
-- "CTOs in tech startups in San Francisco" → `keywords:"tech startups"`, `location:"San Francisco"`
+- "CEOs in New York" → location:"New York"
+- "VPs at Google" → company:"Google"
+- "CTOs in tech startups in San Francisco" → keywords:"tech startups", location:"San Francisco"
 
 **Campaign Name Guidelines:**
 - If user doesn't specify a campaign name, ASK them first: "What would you like to call this campaign?"
