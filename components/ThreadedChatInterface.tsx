@@ -1177,10 +1177,10 @@ export default function ThreadedChatInterface() {
       has_prospect_intelligence: true,
     }
 
-    // Add after a short delay for better UX
+    // Add after a short delay for better UX (reduced from 1500ms)
     setTimeout(() => {
       setMessages(prev => [...prev, savePromptMessage])
-    }, 1500)
+    }, 300)
   }
 
   const executeLinkedInAutomation = async (input: string) => {
@@ -1703,25 +1703,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                     </div>
                   ))}
 
-                  {/* Sending state - styled like a real message */}
-                  {isSending && (
-                    <div className="flex items-start justify-start">
-                      <img
-                        src="/SAM.jpg"
-                        alt="Sam AI"
-                        className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1 mr-2"
-                        style={{ objectPosition: 'center 30%' }}
-                      />
-                      <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl max-w-[70%]">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                          <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                          <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                          <span className="text-sm text-gray-300 ml-2">Sam is thinking...</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  {/* Sending state removed - no more "Sam is thinking..." box */}
                 </div>
               )}
             </div>
