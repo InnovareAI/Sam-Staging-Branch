@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   return NextResponse.json({
-    version: 'connection-degree-filter-fixed',
+    version: 'advanced-search-filters',
     timestamp: new Date().toISOString()
   });
 }
