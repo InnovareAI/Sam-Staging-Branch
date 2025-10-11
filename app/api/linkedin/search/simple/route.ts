@@ -149,12 +149,39 @@ export async function POST(request: NextRequest) {
       category: 'people' // Default to people search
     };
 
-    // Combine title + keywords into single keywords field
-    const keywordParts = [];
-    if (search_criteria.title) keywordParts.push(search_criteria.title);
-    if (search_criteria.keywords) keywordParts.push(search_criteria.keywords);
-    if (keywordParts.length > 0) {
-      unipilePayload.keywords = keywordParts.join(' ');
+    // Add search parameters to Unipile payload
+    // Title (job title filter)
+    if (search_criteria.title) {
+      unipilePayload.title = search_criteria.title;
+    }
+
+    // Keywords (general search keywords)
+    if (search_criteria.keywords) {
+      unipilePayload.keywords = search_criteria.keywords;
+    }
+
+    // Location (city, state, country)
+    if (search_criteria.location) {
+      unipilePayload.locations = [search_criteria.location];
+      console.log('🎯 Location filter:', search_criteria.location);
+    }
+
+    // Company (current company filter)
+    if (search_criteria.company) {
+      unipilePayload.current_company = [search_criteria.company];
+      console.log('🎯 Company filter:', search_criteria.company);
+    }
+
+    // Industry
+    if (search_criteria.industry) {
+      unipilePayload.industries = [search_criteria.industry];
+      console.log('🎯 Industry filter:', search_criteria.industry);
+    }
+
+    // School/University
+    if (search_criteria.school) {
+      unipilePayload.schools = [search_criteria.school];
+      console.log('🎯 School filter:', search_criteria.school);
     }
 
     // CRITICAL FIX: Parse and add connection degree filter
