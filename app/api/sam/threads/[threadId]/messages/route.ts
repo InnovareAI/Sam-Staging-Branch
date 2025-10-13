@@ -588,11 +588,11 @@ export async function POST(
     // Trigger ICP research for interactive building sessions
     if (isICPRequest && !linkedInUrls) {
       // CHECK: Is LinkedIn connected before proceeding with ICP discovery?
-      const { data: linkedInAccount } = await supabase
-        .from('user_unipile_accounts')
-        .select('unipile_account_id, connection_status')
-        .eq('user_id', user.id)
-        .eq('platform', 'LINKEDIN')
+      const { data: linkedInAccount } = await supabaseAdmin
+        .from('workspace_accounts')
+        .select('account_id, connection_status')
+        .eq('workspace_id', workspaceId)
+        .eq('account_type', 'linkedin')
         .eq('connection_status', 'active')
         .maybeSingle()
 
