@@ -1871,9 +1871,10 @@ export default function Page() {
       }
 
       // Get workspaces where user is a member
-      const { data: memberWorkspaces, error: memberError } = await supabase
+      // Query memberships first (without join to avoid schema cache issues)
+      const { data: memberships, error: memberError } = await supabase
         .from('workspace_members')
-        .select('workspace_id, workspaces(*)')
+        .select('workspace_id')
         .eq('user_id', userId);
 
       if (memberError) {
@@ -1881,13 +1882,29 @@ export default function Page() {
         throw memberError;
       }
 
+      // Then fetch workspace details separately
+      let memberWorkspaces: any[] = [];
+      if (memberships && memberships.length > 0) {
+        const workspaceIds = memberships.map(m => m.workspace_id);
+        const { data: workspaceData, error: workspaceError } = await supabase
+          .from('workspaces')
+          .select('*')
+          .in('id', workspaceIds);
+
+        if (workspaceError) {
+          console.error('❌ Error fetching workspace details:', workspaceError);
+        } else {
+          memberWorkspaces = workspaceData || [];
+        }
+      }
+
       // Combine and deduplicate workspaces
       const allWorkspaces = [...(ownedWorkspaces || [])];
-      
+
       // Add member workspaces that aren't already included
-      memberWorkspaces?.forEach((member: any) => {
-        if (member.workspaces && !allWorkspaces.find((ws: any) => ws.id === member.workspaces.id)) {
-          allWorkspaces.push(member.workspaces);
+      memberWorkspaces?.forEach((workspace: any) => {
+        if (!allWorkspaces.find((ws: any) => ws.id === workspace.id)) {
+          allWorkspaces.push(workspace);
         }
       });
 
@@ -1896,7 +1913,7 @@ export default function Page() {
         allWorkspaces.map(async (workspace) => {
           // Fetch pending invitations
           const { data: invitationsData, error: invitationsError } = await supabase
-            .from('invitations')
+            .from('workspace_invitations')
             .select('email, status')
             .eq('workspace_id', workspace.id)
             .eq('status', 'pending');
