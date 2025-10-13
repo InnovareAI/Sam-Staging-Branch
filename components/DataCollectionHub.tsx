@@ -1180,7 +1180,7 @@ export default function DataCollectionHub({
             onClick={() => setQuickFilter('all')}
           >
             <Users className="w-3 h-3 mr-1" />
-            All ({filteredProspects.length})
+            All ({prospectsWithScores.length})
           </Badge>
           <Badge
             variant={quickFilter === 'high-quality' ? 'default' : 'outline'}
