@@ -1704,7 +1704,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                   <p className="text-gray-400 text-sm">Ask about prospects, strategies, or anything sales-related.</p>
                 </div>
               ) : (
-                <div className="w-full max-w-3xl mx-auto flex flex-col space-y-4">
+                <div className="w-full px-4 flex flex-col space-y-4">
                   {messages.map((message) => (
                     <div key={message.id} className={`flex items-start ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                       {/* Avatar for assistant messages only */}
@@ -1751,7 +1751,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
             {/* Chat Input */}
             <div className="flex-shrink-0 p-6 bg-gray-900 border-t border-gray-700">
               {pendingProspectData.length > 0 && (
-                <div className="mb-4 max-w-4xl mx-auto">
+                <div className="mb-4 px-4">
                   <button
                     onClick={() => setShowDataApproval(true)}
                     className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
@@ -1761,7 +1761,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                 </div>
               )}
               
-              <div className="max-w-4xl mx-auto">
+              <div className="px-4">
                 {/* LinkedIn Character Limits Infobox */}
                 <LinkedInLimitsInfobox 
                   messageLength={inputMessage.length}
