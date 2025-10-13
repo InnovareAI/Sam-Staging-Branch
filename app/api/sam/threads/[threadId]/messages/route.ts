@@ -551,6 +551,59 @@ export async function POST(
       }
     }
 
+    // Create user message FIRST (before any early returns)
+    console.log('📝 Creating user message...', {
+      threadId: resolvedParams.threadId,
+      userId: user.id,
+      contentLength: content.trim().length,
+      contentPreview: content.trim().substring(0, 50)
+    });
+
+    const { data: userMessage, error: userError } = await supabase
+      .from('sam_conversation_messages')
+      .insert({
+        thread_id: resolvedParams.threadId,
+        user_id: user.id,
+        role: 'user',
+        content: content.trim(),
+        message_order: nextOrder,
+        has_prospect_intelligence: hasProspectIntelligence,
+        prospect_intelligence_data: prospectIntelligence
+      })
+      .select()
+      .single()
+
+    console.log('✅ User message created:', {
+      success: !!userMessage,
+      hasError: !!userError,
+      messageId: userMessage?.id,
+      role: userMessage?.role,
+      contentLength: userMessage?.content?.length
+    });
+
+    if (userError) {
+      console.error('❌ Failed to save user message:', JSON.stringify({
+        error: userError,
+        message: userError.message,
+        details: userError.details,
+        hint: userError.hint,
+        code: userError.code,
+        insertData: {
+          thread_id: resolvedParams.threadId,
+          user_id: user.id,
+          role: 'user',
+          message_order: nextOrder,
+          has_prospect_intelligence: hasProspectIntelligence
+        }
+      }, null, 2))
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to save message',
+        details: userError.message,
+        hint: userError.hint
+      }, { status: 500 })
+    }
+
     // Trigger ICP research for interactive building sessions
     if (isICPRequest && !linkedInUrls) {
       // CHECK: Is LinkedIn connected before proceeding with ICP discovery?
@@ -566,24 +619,29 @@ export async function POST(
         // LinkedIn not connected - provide helpful message with connection link
         const connectUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings/integrations?connect=linkedin`
 
-        const linkedInPromptMessage = {
-          role: 'assistant' as const,
-          content: `To find prospects and run ICP discovery, I need access to your LinkedIn account.\n\n**Why LinkedIn?**\n- Search the full LinkedIn database for your ideal prospects\n- Unlimited searches (no quota limits)\n- Access to real-time prospect data\n\n**Connect your LinkedIn account here:**\n[Connect LinkedIn Now](${connectUrl})\n\nOnce connected, I'll be able to search for prospects and help you build your ICP!`
-        }
+        const linkedInPromptContent = `To find prospects and run ICP discovery, I need access to your LinkedIn account.\n\n**Why LinkedIn?**\n- Search the full LinkedIn database for your ideal prospects\n- Unlimited searches (no quota limits)\n- Access to real-time prospect data\n\n**Connect your LinkedIn account here:**\n[Connect LinkedIn Now](${connectUrl})\n\nOnce connected, I'll be able to search for prospects and help you build your ICP!`
 
         // Save the assistant's prompt message
-        await supabase
+        const { data: samMessage, error: samError } = await supabase
           .from('sam_conversation_messages')
           .insert({
             thread_id: resolvedParams.threadId,
+            user_id: user.id,
             role: 'assistant',
-            content: linkedInPromptMessage.content,
-            created_at: new Date().toISOString()
+            content: linkedInPromptContent,
+            message_order: nextOrder + 1
           })
+          .select()
+          .single()
+
+        if (samError) {
+          console.error('❌ Failed to save LinkedIn prompt message:', samError)
+        }
 
         return NextResponse.json({
           success: true,
-          message: linkedInPromptMessage.content,
+          userMessage,
+          samMessage,
           requiresLinkedIn: true,
           connectUrl
         })
@@ -638,59 +696,7 @@ export async function POST(
       }
     }
 
-    // Create user message
-    console.log('📝 Creating user message...', {
-      threadId: resolvedParams.threadId,
-      userId: user.id,
-      contentLength: content.trim().length,
-      contentPreview: content.trim().substring(0, 50)
-    });
-
-    const { data: userMessage, error: userError } = await supabase
-      .from('sam_conversation_messages')
-      .insert({
-        thread_id: resolvedParams.threadId,
-        user_id: user.id,
-        role: 'user',
-        content: content.trim(),
-        message_order: nextOrder,
-        has_prospect_intelligence: hasProspectIntelligence,
-        prospect_intelligence_data: prospectIntelligence
-      })
-      .select()
-      .single()
-
-    console.log('✅ User message created:', {
-      success: !!userMessage,
-      hasError: !!userError,
-      messageId: userMessage?.id,
-      role: userMessage?.role,
-      contentLength: userMessage?.content?.length
-    });
-
-    if (userError) {
-      console.error('❌ Failed to save user message:', JSON.stringify({
-        error: userError,
-        message: userError.message,
-        details: userError.details,
-        hint: userError.hint,
-        code: userError.code,
-        insertData: {
-          thread_id: resolvedParams.threadId,
-          user_id: user.id,
-          role: 'user',
-          message_order: nextOrder,
-          has_prospect_intelligence: hasProspectIntelligence
-        }
-      }, null, 2))
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to save message',
-        details: userError.message,
-        hint: userError.hint
-      }, { status: 500 })
-    }
-
+    // User message already created above, continue with conversation history
     // Get conversation history for AI context
     const { data: previousMessages } = await supabase
       .from('sam_conversation_messages')
