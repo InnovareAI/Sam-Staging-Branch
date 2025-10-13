@@ -28,7 +28,7 @@ export default function ProspectSearchChat({
     {
       id: '1',
       role: 'assistant',
-      content: "Hi! I'll help you find prospects. Tell me who you're looking for - like 'CEOs at tech startups in California' or '500 VPs in SaaS companies'.",
+      content: "Hi! I'll help you find prospects. Tell me who you're looking for - like 'CEOs at tech startups in California' or '100 1st degree connections who are VPs'.\n\nTip: Specify '1st degree', '2nd degree', or '3rd degree' to filter by connection level!",
       timestamp: new Date()
     }
   ]);
@@ -153,15 +153,30 @@ export default function ProspectSearchChat({
     else if (lowerInput.includes('texas') || lowerInput.includes('tx')) location.push('102748797');
     else location.push('103644278'); // Default to United States
 
+    // Extract connection degree
+    let connectionDegree = '2nd'; // Default to 2nd degree
+    if (lowerInput.includes('1st degree') || lowerInput.includes('first degree') || 
+        lowerInput.includes('1st connection') || lowerInput.includes('first connection') ||
+        lowerInput.includes('my connections') || lowerInput.includes('direct connection')) {
+      connectionDegree = '1st';
+    } else if (lowerInput.includes('3rd degree') || lowerInput.includes('third degree') ||
+               lowerInput.includes('3rd connection') || lowerInput.includes('third connection')) {
+      connectionDegree = '3rd';
+    } else if (lowerInput.includes('2nd degree') || lowerInput.includes('second degree') ||
+               lowerInput.includes('2nd connection') || lowerInput.includes('second connection')) {
+      connectionDegree = '2nd';
+    }
+
     // Extract industry/keywords
-    const keywords = input.replace(/\d+/g, '').replace(/(ceo|vp|director|manager|founder|in|at)/gi, '').trim();
+    const keywords = input.replace(/\d+/g, '').replace(/(ceo|vp|director|manager|founder|in|at|1st|2nd|3rd|degree|connection)/gi, '').trim();
 
     return {
       category: 'people',
       title,
       keywords,
       location,
-      targetCount
+      targetCount,
+      connectionDegree
     };
   };
 
@@ -194,7 +209,7 @@ export default function ProspectSearchChat({
             title: criteria.title,
             keywords: criteria.keywords,
             location: criteria.location?.[0], // Simple endpoint takes single location
-            connectionDegree: '2nd' // Default to 2nd degree
+            connectionDegree: criteria.connectionDegree // Use parsed connection degree from user input
           },
           target_count: Math.min(criteria.targetCount, 50) // Simple endpoint limited to 50
         })

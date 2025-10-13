@@ -127,6 +127,7 @@ export default function DataCollectionHub({
   const [defaultCampaignTag, setDefaultCampaignTag] = useState('')
   const [selectedCampaignName, setSelectedCampaignName] = useState<string>('all')
   const [selectedCampaignTag, setSelectedCampaignTag] = useState<string>('all')
+  const [showLatestSessionOnly, setShowLatestSessionOnly] = useState<boolean>(true) // Default to showing only latest search
   
   // Missing state variables
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -778,6 +779,18 @@ export default function DataCollectionHub({
     // ALWAYS exclude rejected prospects from view (unless explicitly filtering for rejected)
     if (filterStatus !== 'rejected' && p.approvalStatus === 'rejected') return false
 
+    // Latest session filter - show only most recent session
+    if (showLatestSessionOnly && selectedCampaignName === 'all') {
+      // Find the most recent campaign name (sorted by date prefix YYYYMMDD)
+      const allCampaignNames = Array.from(new Set(prospectsWithScores.map(p => p.campaignName).filter(Boolean)))
+      const sortedCampaigns = allCampaignNames.sort((a, b) => b!.localeCompare(a!))
+      const latestCampaign = sortedCampaigns[0]
+      if (latestCampaign && p.campaignName !== latestCampaign) return false
+    }
+
+    // Campaign name filter (when user explicitly selects a campaign)
+    if (selectedCampaignName !== 'all' && p.campaignName !== selectedCampaignName) return false
+
     // Campaign tag filter
     if (selectedCampaignTag !== 'all' && p.campaignTag !== selectedCampaignTag) return false
 
@@ -1205,7 +1218,7 @@ export default function DataCollectionHub({
         </div>
       </div>
 
-      {/* Campaign Selector */}
+      {/* Campaign Selector with Latest Search Toggle */}
       {(() => {
         // Group prospects by campaign name to show unique campaigns
         const campaignsByName = prospectData.reduce((acc, p) => {
@@ -1222,23 +1235,65 @@ export default function DataCollectionHub({
           return b.campaignName.localeCompare(a.campaignName)
         })
 
+        // Get latest campaign for display
+        const latestCampaign = campaigns[0]
+
         return (
           <div className="border-b border-gray-700 px-6 py-4 bg-gray-850">
-            <div className="flex items-center space-x-4">
-              <label className="text-sm font-semibold text-gray-300">Select Campaign:</label>
-              <select
-                value={selectedCampaignName}
-                onChange={(e) => setSelectedCampaignName(e.target.value)}
-                className="flex-1 max-w-md px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="all">All Campaigns ({prospectData.length} prospects)</option>
-                {campaigns.map((campaign) => (
-                  <option key={campaign.campaignName} value={campaign.campaignName}>
-                    {campaign.campaignName} ({campaign.count} prospects)
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4 flex-1">
+                <label className="text-sm font-semibold text-gray-300">Select Campaign:</label>
+                <select
+                  value={selectedCampaignName}
+                  onChange={(e) => {
+                    setSelectedCampaignName(e.target.value)
+                    // When user manually selects a campaign, disable "latest only" mode
+                    if (e.target.value !== 'all') {
+                      setShowLatestSessionOnly(false)
+                    }
+                  }}
+                  className="flex-1 max-w-md px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  disabled={showLatestSessionOnly && selectedCampaignName === 'all'}
+                >
+                  <option value="all">
+                    {showLatestSessionOnly && latestCampaign
+                      ? `Latest: ${latestCampaign.campaignName} (${latestCampaign.count} prospects)`
+                      : `All Campaigns (${prospectData.length} prospects)`}
                   </option>
-                ))}
-              </select>
+                  {campaigns.map((campaign) => (
+                    <option key={campaign.campaignName} value={campaign.campaignName}>
+                      {campaign.campaignName} ({campaign.count} prospects)
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Latest Search Only Toggle */}
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant={showLatestSessionOnly ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setShowLatestSessionOnly(!showLatestSessionOnly)
+                    // Reset campaign selection when toggling
+                    if (!showLatestSessionOnly) {
+                      setSelectedCampaignName('all')
+                    }
+                  }}
+                  className="whitespace-nowrap"
+                >
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  {showLatestSessionOnly ? 'Latest Search Only' : 'Show All Searches'}
+                </Button>
+              </div>
             </div>
+            
+            {showLatestSessionOnly && latestCampaign && (
+              <div className="mt-2 text-xs text-gray-400">
+                Showing only: <span className="font-semibold text-purple-400">{latestCampaign.campaignName}</span>
+                {' '}({latestCampaign.count} prospects)
+              </div>
+            )}
           </div>
         )
       })()}

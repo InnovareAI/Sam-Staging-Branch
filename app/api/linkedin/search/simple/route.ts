@@ -295,14 +295,19 @@ export async function POST(request: NextRequest) {
 
     const prospects = (data.items || []).map((item: any) => {
       // Handle name - Classic gives full name, Sales Nav gives first/last
-      let firstName = item.first_name || 'Unknown';
-      let lastName = item.last_name || 'Unknown';
+      let firstName = item.first_name || '';
+      let lastName = item.last_name || '';
 
       if (!item.first_name && item.name) {
         // Classic API - split full name
         const nameParts = item.name.trim().split(' ');
-        firstName = nameParts[0] || 'Unknown';
-        lastName = nameParts.slice(1).join(' ') || 'Unknown';
+        firstName = nameParts[0] || '';
+        lastName = nameParts.slice(1).join(' ') || '';
+      }
+      
+      // CRITICAL: Skip if no name available - we can't use prospects without names
+      if (!firstName || firstName === 'Unknown') {
+        return null; // Will be filtered out
       }
 
       // Handle title - Classic uses "headline", Sales Nav uses "current_positions"
@@ -367,9 +372,15 @@ export async function POST(request: NextRequest) {
         linkedinUrl,
         connectionDegree
       };
-    });
+    }).filter(p => p !== null); // Remove prospects without names
 
-    console.log(`🔵 Mapped ${prospects.length} prospects`);
+    console.log(`🔵 Mapped ${prospects.length} prospects (filtered out prospects without names)`);
+    
+    // Log how many were rejected due to missing data
+    const rejectedCount = (data.items?.length || 0) - prospects.length;
+    if (rejectedCount > 0) {
+      console.log(`⚠️ Rejected ${rejectedCount} prospects due to missing name data`);
+    }
 
     // Save to workspace_prospects with correct column names
     // Filter out prospects without LinkedIn URLs (required field)
