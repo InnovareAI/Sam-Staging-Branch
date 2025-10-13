@@ -1781,18 +1781,6 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                     accept=".pdf,.doc,.docx,.txt,.json,.md,.ppt,.pptx"
                     className="hidden"
                   />
-                  <button 
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploadingFile}
-                    className="text-gray-400 hover:text-white disabled:text-gray-600 disabled:cursor-not-allowed transition-colors shrink-0"
-                    title="Upload document to knowledge base"
-                  >
-                    {isUploadingFile ? (
-                      <div className="w-5 h-5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Paperclip size={20} />
-                    )}
-                  </button>
                   <textarea
                     ref={inputTextAreaRef}
                     value={inputMessage}
