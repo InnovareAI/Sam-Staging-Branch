@@ -348,6 +348,11 @@ export async function POST(request: NextRequest) {
     const validProspects = prospects.filter((p: any) => p.linkedinUrl);
     console.log(`🔵 Valid prospects with LinkedIn URLs: ${validProspects.length}/${prospects.length}`);
 
+    // Track persistence outcome to surface failures to caller
+    let sessionId: string | null = null;
+    let persistenceFailed = false;
+    const persistenceErrors: string[] = [];
+
     if (validProspects.length > 0) {
       const toInsert = validProspects.map((p: any) => ({
         workspace_id: workspaceId,
@@ -366,13 +371,15 @@ export async function POST(request: NextRequest) {
 
       if (insertError) {
         console.error('❌ Insert error:', insertError);
+        persistenceFailed = true;
+        persistenceErrors.push(`workspace_prospects: ${insertError.message}`);
       } else {
         console.log(`✅ Inserted ${inserted?.length || 0} prospects`);
       }
 
       // CRITICAL: Create approval session so prospects show in Data Approval tab
       console.log('📋 Creating approval session...');
-      const sessionId = crypto.randomUUID(); // CORRECTED: Must be UUID not string
+      sessionId = crypto.randomUUID(); // CORRECTED: Must be UUID not string
 
       // Generate campaign name: YYYYMMDD-COMPANYCODE-CampaignName
       const today = new Date().toISOString().split('T')[0].replace(/-/g, ''); // 20251011
@@ -442,6 +449,8 @@ export async function POST(request: NextRequest) {
 
       if (sessionError) {
         console.error('❌ Session creation error:', sessionError);
+        persistenceFailed = true;
+        persistenceErrors.push(`prospect_approval_sessions: ${sessionError.message}`);
       } else {
         console.log('✅ Approval session created:', sessionId);
 
@@ -478,10 +487,20 @@ export async function POST(request: NextRequest) {
 
         if (prospectsError) {
           console.error('❌ Approval prospects error:', prospectsError);
+          persistenceFailed = true;
+          persistenceErrors.push(`prospect_approval_data: ${prospectsError.message}`);
         } else {
           console.log(`✅ Added ${approvalProspects.length} prospects to approval session`);
         }
       }
+    }
+
+    if (validProspects.length > 0 && persistenceFailed) {
+      return NextResponse.json({
+        success: false,
+        error: 'Prospect persistence failed',
+        details: persistenceErrors
+      }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -489,7 +508,8 @@ export async function POST(request: NextRequest) {
       prospects: validProspects,
       count: validProspects.length,
       total_found: prospects.length,
-      api: api  // Show which API was used
+      api: api,  // Show which API was used
+      session_id: sessionId
     });
 
   } catch (error) {

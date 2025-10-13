@@ -89,8 +89,9 @@ export async function POST(request: NextRequest) {
               title: search_criteria.job_titles?.join(' OR '),
               industry: search_criteria.industries?.[0], // Simple only takes single value
               location: search_criteria.locations?.[0], // Simple only takes single value
-              connectionDegree: '2nd', // Required by /simple
-              yearsOfExperience: search_criteria.years_experience
+              connectionDegree: (search_criteria?.connection_degree || search_criteria?.connectionDegree), // Pass through user-selected degree
+              yearsOfExperience: search_criteria.years_experience,
+              profileLanguage: search_criteria?.profile_language || search_criteria?.profileLanguage
             },
             target_count: search_criteria.max_results || 50
           })
