@@ -306,14 +306,29 @@ export async function POST(request: NextRequest) {
         title = item.current_positions[0].role || item.headline || '';
       }
 
-      // Handle company - only in Sales Nav current_positions
+      // Handle company and industry - only in Sales Nav current_positions
       let company = '';
+      let industry = '';
       if (item.current_positions && item.current_positions.length > 0) {
         company = item.current_positions[0].company || '';
+        industry = item.current_positions[0].industry || item.industry || '';
+      } else {
+        industry = item.industry || '';
       }
 
-      // LinkedIn URL - both APIs use profile_url
-      const linkedinUrl = item.profile_url || item.public_profile_url || '';
+      // LinkedIn URL - convert Sales Navigator URLs to public LinkedIn
+      let linkedinUrl = item.profile_url || item.public_profile_url || '';
+      
+      // Convert Sales Navigator URL to regular LinkedIn profile URL
+      // From: https://www.linkedin.com/sales/lead/...
+      // To: https://www.linkedin.com/in/[username]
+      if (linkedinUrl.includes('/sales/lead/') || linkedinUrl.includes('/sales/people/')) {
+        // Extract LinkedIn username from Sales Nav URL or use public_identifier
+        const publicId = item.public_identifier || item.linkedin_id || '';
+        if (publicId) {
+          linkedinUrl = `https://www.linkedin.com/in/${publicId}`;
+        }
+      }
 
       // Connection degree from Unipile data (or use requested degree as fallback)
       // Unipile returns network as 'F', 'S', 'O' - convert to number
@@ -333,12 +348,17 @@ export async function POST(request: NextRequest) {
       // Ensure connectionDegree is always a valid integer
       connectionDegree = parseInt(String(connectionDegree)) || requestedDegree;
 
+      // Extract location
+      const location = item.location || item.geo_region || '';
+
       return {
         firstName,
         lastName,
         fullName: `${firstName} ${lastName}`,
         title,
         company,
+        industry,
+        location,
         linkedinUrl,
         connectionDegree
       };
@@ -487,13 +507,13 @@ export async function POST(request: NextRequest) {
             name: p.company || '',
             size: '',
             website: '',
-            industry: ''
+            industry: p.industry || ''  // FIXED: Save industry from LinkedIn data
           },
           contact: {  // CORRECTED: contact is JSONB object
             email: '',
             linkedin_url: p.linkedinUrl || ''
           },
-          location: '',
+          location: p.location || '',
           profile_image: '',
           recent_activity: '',
           connection_degree: p.connectionDegree,  // FIXED: Use actual connection degree from search
