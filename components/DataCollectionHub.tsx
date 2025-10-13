@@ -1205,91 +1205,49 @@ export default function DataCollectionHub({
         </div>
       </div>
 
-      {/* Campaign Names - Editable */}
+      {/* Campaign Selector */}
       {(() => {
-        // Group prospects by sessionId to show unique campaigns
-        const campaignsBySession = prospectData.reduce((acc, p) => {
-          if (p.sessionId && p.campaignName) {
-            if (!acc[p.sessionId]) {
-              acc[p.sessionId] = { sessionId: p.sessionId, campaignName: p.campaignName, count: 0 }
-            }
-            acc[p.sessionId].count++
+        // Group prospects by campaign name to show unique campaigns
+        const campaignsByName = prospectData.reduce((acc, p) => {
+          const campName = p.campaignName || 'Unnamed Campaign'
+          if (!acc[campName]) {
+            acc[campName] = { campaignName: campName, count: 0, sessionId: p.sessionId }
           }
+          acc[campName].count++
           return acc
-        }, {} as Record<string, { sessionId: string, campaignName: string, count: number }>)
+        }, {} as Record<string, { campaignName: string, count: number, sessionId?: string }>)
 
-        const campaigns = Object.values(campaignsBySession)
+        const campaigns = Object.values(campaignsByName).sort((a, b) => {
+          // Sort by name (which includes date) descending - newest first
+          return b.campaignName.localeCompare(a.campaignName)
+        })
 
-        if (campaigns.length > 0) {
-          return (
-            <div className="border-b border-gray-700 px-6 py-3 bg-gray-850">
-              <div className="mb-2">
-                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Campaign Names</h3>
-              </div>
-              <div className="space-y-2">
-                {campaigns.map(campaign => (
-                  <div key={campaign.sessionId} className="flex items-center space-x-3 bg-gray-700/50 px-4 py-2 rounded-lg">
-                    {editingCampaignName === campaign.sessionId ? (
-                      <>
-                        <input
-                          type="text"
-                          value={editedCampaignNameValue}
-                          onChange={(e) => setEditedCampaignNameValue(e.target.value)}
-                          className="flex-1 px-3 py-1.5 bg-gray-700 border border-purple-500 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                          placeholder="Enter campaign name..."
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => updateCampaignName(campaign.sessionId, editedCampaignNameValue)}
-                          className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-sm font-medium"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setEditingCampaignName(null)}
-                          className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm"
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="flex-1 text-white font-medium text-sm">{campaign.campaignName}</span>
-                        <span className="px-2 py-0.5 bg-purple-600 text-white rounded-full text-xs">{campaign.count} prospects</span>
-                        <button
-                          onClick={() => {
-                            setEditingCampaignName(campaign.sessionId)
-                            setEditedCampaignNameValue(campaign.campaignName)
-                          }}
-                          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium"
-                        >
-                          Edit
-                        </button>
-                      </>
-                    )}
-                  </div>
+        return (
+          <div className="border-b border-gray-700 px-6 py-4 bg-gray-850">
+            <div className="flex items-center space-x-4">
+              <label className="text-sm font-semibold text-gray-300">Select Campaign:</label>
+              <select
+                value={selectedCampaignName}
+                onChange={(e) => setSelectedCampaignName(e.target.value)}
+                className="flex-1 max-w-md px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="all">All Campaigns ({prospectData.length} prospects)</option>
+                {campaigns.map((campaign) => (
+                  <option key={campaign.campaignName} value={campaign.campaignName}>
+                    {campaign.campaignName} ({campaign.count} prospects)
+                  </option>
                 ))}
-              </div>
+              </select>
             </div>
-          )
-        }
-        return null
+          </div>
+        )
       })()}
 
 
-      {/* Filters and Search */}
+      {/* Status Filter Only */}
       <div className="border-b border-gray-700 px-6 py-3 bg-gray-750">
         <div className="flex items-center space-x-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by name, company, title, industry, email..."
-              className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
+          <label className="text-sm font-semibold text-gray-300">Status:</label>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as any)}
