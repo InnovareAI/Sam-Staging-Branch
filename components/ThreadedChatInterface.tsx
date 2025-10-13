@@ -1605,7 +1605,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {currentThread ? (
           <>
             {/* Chat Header */}
@@ -1669,8 +1669,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
             {/* Messages Area - Fixed Layout */}
             <div 
               ref={messagesContainerRef}
-              className="flex-1 overflow-y-auto p-6 flex flex-col"
-              style={{ maxHeight: 'calc(100vh - 300px)', minHeight: '400px' }}
+              className="flex-1 min-h-0 overflow-y-auto p-6 flex flex-col"
             >
               {isLoadingMessages ? (
                 <div className="flex justify-center py-8">
