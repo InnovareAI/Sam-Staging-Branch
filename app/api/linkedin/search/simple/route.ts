@@ -280,6 +280,11 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
     console.log('🔵 Unipile response:', JSON.stringify(data).substring(0, 500));
+    
+    // Log sample item structure to debug data issues
+    if (data.items && data.items.length > 0) {
+      console.log('🔵 Sample prospect structure:', JSON.stringify(data.items[0], null, 2));
+    }
 
     // Extract requested connection degree for saving
     // Convert network notation back to numeric degree: F→1, S→2, O→3
