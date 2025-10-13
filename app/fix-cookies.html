@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Emergency Cookie Fix</title>
+  <style>
+    body {
+      font-family: system-ui;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #0f172a;
+      color: white;
+    }
+    .status {
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 8px;
+      background: #1e293b;
+    }
+    button {
+      padding: 12px 24px;
+      background: #3b82f6;
+      border: none;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔧 Emergency Cookie Fix</h1>
+  <div id="status" class="status">Initializing...</div>
+  <button onclick="manualFix()">Clear & Fix Cookies</button>
+  <button onclick="window.location.href='/signin'">Go to Sign In</button>
+
+  <script>
+    const log = (msg) => {
+      document.getElementById('status').innerHTML += `<br>${msg}`;
+      console.log(msg);
+    };
+
+    // Intercept document.cookie writes
+    const originalCookieDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie');
+    Object.defineProperty(document, 'cookie', {
+      get: function() {
+        return originalCookieDescriptor.get.call(this);
+      },
+      set: function(value) {
+        // Intercept cookie writes and fix base64- prefix
+        if (value.includes('base64-')) {
+          console.warn('⚠️ Intercepted corrupted cookie write, fixing...');
+          value = value.replace(/=base64-/g, '=');
+        }
+        return originalCookieDescriptor.set.call(this, value);
+      }
+    });
+
+    function manualFix() {
+      log('🧹 Clearing all storage...');
+
+      // 1. Clear cookies
+      document.cookie.split(";").forEach((c) => {
+        const name = c.split("=")[0].trim();
+        document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+        log(`  Deleted cookie: ${name}`);
+      });
+
+      // 2. Clear localStorage
+      localStorage.clear();
+      log('  ✅ Cleared localStorage');
+
+      // 3. Clear sessionStorage
+      sessionStorage.clear();
+      log('  ✅ Cleared sessionStorage');
+
+      // 4. Clear IndexedDB
+      indexedDB.databases().then((dbs) => {
+        dbs.forEach((db) => {
+          if (db.name) {
+            indexedDB.deleteDatabase(db.name);
+            log(`  Deleted IndexedDB: ${db.name}`);
+          }
+        });
+        log('✅ ALL CLEARED! Cookie write interceptor active.');
+        log('👉 Click "Go to Sign In" and try signing in again.');
+      });
+    }
+
+    // Auto-clear on load
+    window.addEventListener('load', () => {
+      log('🔧 Cookie write interceptor installed');
+      log('This will prevent corrupted cookies from being written');
+      manualFix();
+    });
+  </script>
+</body>
+</html>

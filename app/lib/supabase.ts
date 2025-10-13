@@ -9,6 +9,28 @@ function getSupabaseConfig() {
   return { supabaseUrl, supabaseAnonKey, supabaseServiceKey };
 }
 
+// Utility to clean cookie values - removes base64- prefix and decodes if needed
+function cleanCookieValue(value: string): string {
+  if (!value) return value;
+
+  // If value starts with "base64-", it's corrupted
+  if (value.startsWith('base64-')) {
+    try {
+      // Remove prefix and try to decode
+      const base64Value = value.substring(7);
+      const decoded = atob(base64Value);
+      console.log('🔧 Fixed corrupted cookie (decoded base64)');
+      return decoded;
+    } catch (e) {
+      // If decode fails, just remove prefix
+      console.log('🔧 Fixed corrupted cookie (removed prefix)');
+      return value.substring(7);
+    }
+  }
+
+  return value;
+}
+
 // Browser client - use @supabase/ssr createBrowserClient
 export function createClient() {
   const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
@@ -23,33 +45,16 @@ export function createClient() {
           getAll() {
             return document.cookie.split(';').map(cookie => {
               const [name, ...v] = cookie.trim().split('=');
-              let value = v.join('=');
-
-              // FIX: Remove "base64-" prefix and decode if present (corrupted cookie bug)
-              if (value && value.startsWith('base64-')) {
-                console.warn(`Fixing corrupted cookie: ${name} - decoding base64`);
-                try {
-                  // Strip "base64-" prefix and decode the base64 string
-                  const base64Value = value.substring(7);
-                  value = atob(base64Value); // Decode base64 to original JSON string
-                } catch (e) {
-                  console.error(`Failed to decode corrupted cookie ${name}:`, e);
-                  // If decoding fails, just remove the prefix
-                  value = value.substring(7);
-                }
-              }
-
+              const value = cleanCookieValue(v.join('='));
               return { name, value };
             });
           },
           setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) => {
-              // FIX: Ensure we never write "base64-" prefix
-              let cleanValue = value;
-              if (cleanValue && cleanValue.startsWith('base64-')) {
-                console.warn(`Preventing corrupted cookie write: ${name}`);
-                cleanValue = cleanValue.substring(7);
-              }
+              // NEVER write base64- prefix - clean before writing
+              const cleanValue = value && value.startsWith('base64-')
+                ? value.substring(7)
+                : value;
 
               let cookie = `${name}=${cleanValue}`;
               if (options?.path) cookie += `; path=${options.path}`;
