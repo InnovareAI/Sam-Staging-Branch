@@ -60,6 +60,9 @@ export default function ThreadedChatInterface() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  // Chat input UX (Brand Assistant style)
+  const inputTextAreaRef = useRef<HTMLTextAreaElement>(null)
+  const [inputFocused, setInputFocused] = useState(false)
 
   // Load threads on mount
   useEffect(() => {
@@ -142,6 +145,15 @@ export default function ThreadedChatInterface() {
       setIsLoadingMessages(false)
     }
   }
+
+  // Auto-resize input textarea when message changes
+  useEffect(() => {
+    if (inputTextAreaRef.current) {
+      const el = inputTextAreaRef.current
+      el.style.height = 'auto'
+      el.style.height = `${Math.min(el.scrollHeight, 200)}px`
+    }
+  }, [inputMessage])
 
   // Load memory snapshots
   const loadMemorySnapshots = async () => {
@@ -1757,7 +1769,9 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                   messageContent={inputMessage}
                 />
                 
-                <div className="flex items-end bg-gray-600 rounded-lg px-4 py-2 mt-6">
+                <div className={`flex items-end p-2 rounded-2xl border-2 transition-all duration-200 mt-6 ${
+                  inputFocused ? 'border-purple-500 bg-gray-600/50' : 'border-gray-600 bg-gray-600'
+                }`}>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -1778,13 +1792,21 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                     )}
                   </button>
                   <textarea
+                    ref={inputTextAreaRef}
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Write a message..."
-                    className="flex-1 bg-transparent text-white placeholder-gray-400 text-base pl-3 pr-3 py-3 outline-none resize-vertical min-h-[72px] max-h-40 leading-5"
-                    style={{ textAlign: 'left' }}
-                    rows={3}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        handleSendMessage()
+                      }
+                    }}
+                    onFocus={() => setInputFocused(true)}
+                    onBlur={() => setInputFocused(false)}
+                    placeholder="Type your message... (Press Enter to send)"
+                    className="flex-1 resize-none bg-transparent border-none outline-none px-2 py-2 text-base leading-relaxed text-white placeholder-gray-400"
+                    style={{ maxHeight: '200px', textAlign: 'left' }}
+                    rows={1}
                   />
                   <button
                     onClick={handleSendMessage}
@@ -1797,8 +1819,8 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                     <Send size={16} />
                   </button>
                 </div>
-                <div className="max-w-4xl mx-auto mt-2 text-xs text-gray-400 flex items-center justify-between">
-                  <span>Press Enter to send, Shift + Enter for new line</span>
+                <div className="max-w-4xl mx-auto mt-2 text-xs text-gray-400 px-2">
+                  Press <kbd className="px-1.5 py-0.5 bg-gray-700 rounded border border-gray-600">Enter</kbd> to send, <kbd className="px-1.5 py-0.5 bg-gray-700 rounded border border-gray-600">Shift + Enter</kbd> for new line
                 </div>
               </div>
             </div>
