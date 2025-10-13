@@ -25,10 +25,18 @@ export function createClient() {
               const [name, ...v] = cookie.trim().split('=');
               let value = v.join('=');
 
-              // FIX: Remove "base64-" prefix if present (corrupted cookie bug)
+              // FIX: Remove "base64-" prefix and decode if present (corrupted cookie bug)
               if (value && value.startsWith('base64-')) {
-                console.warn(`Fixing corrupted cookie: ${name}`);
-                value = value.substring(7); // Remove "base64-" prefix
+                console.warn(`Fixing corrupted cookie: ${name} - decoding base64`);
+                try {
+                  // Strip "base64-" prefix and decode the base64 string
+                  const base64Value = value.substring(7);
+                  value = atob(base64Value); // Decode base64 to original JSON string
+                } catch (e) {
+                  console.error(`Failed to decode corrupted cookie ${name}:`, e);
+                  // If decoding fails, just remove the prefix
+                  value = value.substring(7);
+                }
               }
 
               return { name, value };
