@@ -316,6 +316,16 @@ export default function Page() {
     }
   }, [activeMenuItem, pendingCampaignProspects]);
 
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (messagesContainerRef.current && messages.length > 0) {
+      const container = messagesContainerRef.current.parentElement;
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+  }, [messages]);
+
   const fetchThreadMessages = useCallback(async (targetThreadId: string) => {
     try {
       const response = await fetch(`/api/sam/threads/${targetThreadId}/messages`);
