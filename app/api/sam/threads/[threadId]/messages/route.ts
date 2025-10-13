@@ -392,10 +392,6 @@ export async function POST(
 ) {
   try {
     const resolvedParams = await params
-    console.log('🔵 POST /api/sam/threads/[threadId]/messages - START', {
-      threadId: resolvedParams.threadId
-    });
-
     const cookieStore = await cookies()
 
     // Use @supabase/ssr createServerClient (matches browser client)
@@ -552,13 +548,6 @@ export async function POST(
     }
 
     // Create user message FIRST (before any early returns)
-    console.log('📝 Creating user message...', {
-      threadId: resolvedParams.threadId,
-      userId: user.id,
-      contentLength: content.trim().length,
-      contentPreview: content.trim().substring(0, 50)
-    });
-
     const { data: userMessage, error: userError } = await supabase
       .from('sam_conversation_messages')
       .insert({
@@ -572,14 +561,6 @@ export async function POST(
       })
       .select()
       .single()
-
-    console.log('✅ User message created:', {
-      success: !!userMessage,
-      hasError: !!userError,
-      messageId: userMessage?.id,
-      role: userMessage?.role,
-      contentLength: userMessage?.content?.length
-    });
 
     if (userError) {
       console.error('❌ Failed to save user message:', JSON.stringify({
@@ -617,7 +598,7 @@ export async function POST(
 
       if (!linkedInAccount) {
         // LinkedIn not connected - provide helpful message with connection link
-        const connectUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings/integrations?connect=linkedin`
+        const connectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com'}/settings/integrations?connect=linkedin`
 
         const linkedInPromptContent = `To find prospects and run ICP discovery, I need access to your LinkedIn account.\n\n**Why LinkedIn?**\n- Search the full LinkedIn database for your ideal prospects\n- Unlimited searches (no quota limits)\n- Access to real-time prospect data\n\n**Connect your LinkedIn account here:**\n[Connect LinkedIn Now](${connectUrl})\n\nOnce connected, I'll be able to search for prospects and help you build your ICP!`
 
@@ -1857,14 +1838,6 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
       .select()
       .single()
 
-    console.log('✅ SAM message created:', {
-      success: !!samMessage,
-      hasError: !!samError,
-      messageId: samMessage?.id,
-      role: samMessage?.role,
-      contentLength: samMessage?.content?.length
-    });
-
     if (samError) {
       console.error('❌ Failed to save Sam message (DETAILED ERROR):', JSON.stringify({
         error: samError,
@@ -1896,13 +1869,6 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
       console.error('❌ Knowledge extraction failed:', error)
       // Don't fail the main response if knowledge extraction fails
     })
-
-    console.log('✅ FINAL RETURN - userMessage and samMessage:', {
-      hasUserMessage: !!userMessage,
-      hasSamMessage: !!samMessage,
-      userMessageId: userMessage?.id,
-      samMessageId: samMessage?.id
-    });
 
     return NextResponse.json({
       success: true,

@@ -1366,42 +1366,21 @@ export default function Page() {
       }
 
       const data = await response.json();
-      console.log('📥 API Response data:', {
-        hasUserMessage: !!data.userMessage,
-        hasSamMessage: !!data.samMessage,
-        userMessageRole: data.userMessage?.role,
-        userMessageContent: data.userMessage?.content?.substring(0, 50)
-      });
-
       const newMessages: any[] = [];
 
       if (data.userMessage) {
-        const userMsg = {
+        newMessages.push({
           ...data.userMessage,
           display_content: expansion ? rawInput : data.userMessage.content
-        };
-        console.log('➕ Adding user message:', {
-          role: userMsg.role,
-          hasContent: !!userMsg.content,
-          hasDisplayContent: !!userMsg.display_content
         });
-        newMessages.push(userMsg);
-      } else {
-        console.warn('⚠️ No userMessage in API response!');
       }
 
       if (data.samMessage) {
         newMessages.push(data.samMessage);
       }
 
-      console.log('📊 New messages to add:', newMessages.length, 'messages');
       setThreadId(targetThreadId);
-      setMessages(prev => {
-        const updated = [...prev, ...newMessages];
-        console.log('✅ Messages state updated. Total messages:', updated.length);
-        console.log('Last 3 messages:', updated.slice(-3).map(m => ({ role: m.role, content: m.content?.substring(0, 30) })));
-        return updated;
-      });
+      setMessages(prev => [...prev, ...newMessages]);
       setShowStarterScreen(false);
     } catch (error) {
       console.error('❌ Chat API error (full details):', error);
@@ -4361,11 +4340,6 @@ export default function Page() {
             ref={messagesContainerRef}
             className="space-y-4"
           >
-            {(() => {
-              console.log('🎨 Rendering messages. Total:', messages.length);
-              console.log('Message roles:', messages.map(m => ({ role: m.role, id: m.id })));
-              return null;
-            })()}
             {messages.map((message, index) => {
               // Only animate the last (newest) assistant message
               const isNewestAssistantMessage = index === messages.length - 1 && message.role === 'assistant' && !isSending;
@@ -4391,11 +4365,6 @@ export default function Page() {
                     )}
                     {message.role === 'user' && (
                       <>
-                        {console.log('👤 Rendering user message:', {
-                          id: message.id,
-                          contentLength: (message.display_content ?? message.content)?.length,
-                          content: (message.display_content ?? message.content)?.substring(0, 50)
-                        })}
                         <div className="flex items-center justify-end space-x-2 mb-1">
                           <span className="text-gray-400 text-sm font-medium">You</span>
                         </div>
