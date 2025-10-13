@@ -184,25 +184,35 @@ export async function POST(request: NextRequest) {
       console.log('🎯 School filter:', search_criteria.school);
     }
 
-    // CRITICAL FIX: Parse and add connection degree filter
-    if (search_criteria.connectionDegree) {
-      // Convert "1st", "2nd", "3rd" to proper format for Unipile
-      const degreeMap: Record<string, string[]> = {
-        '1st': ['F'],      // First-degree (F = First)
-        '2nd': ['S'],      // Second-degree (S = Second)
-        '3rd': ['O'],      // Third-degree (O = Out of network)
-        '1': ['F'],
-        '2': ['S'],
-        '3': ['O']
-      };
+    // CRITICAL: Connection degree must be specified by user
+    // Convert "1st", "2nd", "3rd" to proper format for Unipile
+    const degreeMap: Record<string, string[]> = {
+      '1st': ['F'],      // First-degree (F = First)
+      '2nd': ['S'],      // Second-degree (S = Second)
+      '3rd': ['O'],      // Third-degree (O = Out of network)
+      '1': ['F'],
+      '2': ['S'],
+      '3': ['O']
+    };
 
+    if (search_criteria.connectionDegree) {
       // Unipile uses 'network' parameter with values: F, S, O
       // F = First degree, S = Second degree, O = Third+ degree
-      unipilePayload.network = degreeMap[search_criteria.connectionDegree] || ['F', 'S', 'O'];
+      unipilePayload.network = degreeMap[search_criteria.connectionDegree];
       console.log('🎯 Connection degree filter:', search_criteria.connectionDegree, '→', unipilePayload.network);
+
+      if (!unipilePayload.network) {
+        console.error('❌ Invalid connection degree format:', search_criteria.connectionDegree);
+        return NextResponse.json({
+          error: 'Invalid connection degree. Must be "1st", "2nd", or "3rd"'
+        }, { status: 400 });
+      }
     } else {
-      // Default: search all connection degrees
-      console.log('🎯 No connection degree specified, searching all degrees');
+      // No connection degree specified - SAM should have asked the user first
+      console.error('❌ No connection degree specified in search');
+      return NextResponse.json({
+        error: 'Connection degree is required. Please specify 1st, 2nd, or 3rd degree connections.'
+      }, { status: 400 });
     }
 
     // Profile Language filter
