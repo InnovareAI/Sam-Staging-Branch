@@ -1,13 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
+/**
+ * GET /api/prospect-approval/decisions?session_id=xxx
+ * Get all decisions for a session
+ */
 export async function GET(request: NextRequest) {
   try {
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options)
+            })
+          }
+        }
+      }
+    )
+
     const { searchParams } = new URL(request.url)
     const sessionId = searchParams.get('session_id')
 
@@ -39,4 +57,129 @@ export async function GET(request: NextRequest) {
       error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
+}
+
+/**
+ * POST /api/prospect-approval/decisions
+ * Save approval/rejection decision for a prospect
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options)
+            })
+          }
+        }
+      }
+    )
+
+    // Authenticate
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { session_id, prospect_id, decision, reason } = body
+
+    if (!session_id || !prospect_id || !decision) {
+      return NextResponse.json({
+        success: false,
+        error: 'Missing required fields: session_id, prospect_id, decision'
+      }, { status: 400 })
+    }
+
+    if (!['approved', 'rejected'].includes(decision)) {
+      return NextResponse.json({
+        success: false,
+        error: 'Decision must be "approved" or "rejected"'
+      }, { status: 400 })
+    }
+
+    // Insert or update decision (upsert to handle changing mind)
+    const { data, error } = await supabase
+      .from('prospect_approval_decisions')
+      .upsert({
+        session_id,
+        prospect_id,
+        decision,
+        reason: reason || null,
+        decided_by: user.id,
+        decided_at: new Date().toISOString()
+      }, {
+        onConflict: 'session_id,prospect_id',
+        ignoreDuplicates: false
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error saving decision:', error)
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to save decision'
+      }, { status: 500 })
+    }
+
+    // Update session counts in background (non-blocking)
+    updateSessionCounts(supabase, session_id).catch(console.error)
+
+    return NextResponse.json({
+      success: true,
+      decision: data
+    })
+
+  } catch (error) {
+    console.error('Decisions API error:', error)
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}
+
+// Helper function to update session counts
+async function updateSessionCounts(supabase: any, sessionId: string) {
+  // Count decisions
+  const { count: approvedCount } = await supabase
+    .from('prospect_approval_decisions')
+    .select('*', { count: 'exact', head: true })
+    .eq('session_id', sessionId)
+    .eq('decision', 'approved')
+
+  const { count: rejectedCount } = await supabase
+    .from('prospect_approval_decisions')
+    .select('*', { count: 'exact', head: true })
+    .eq('session_id', sessionId)
+    .eq('decision', 'rejected')
+
+  const { count: totalCount } = await supabase
+    .from('prospect_approval_data')
+    .select('*', { count: 'exact', head: true })
+    .eq('session_id', sessionId)
+
+  const pendingCount = (totalCount || 0) - (approvedCount || 0) - (rejectedCount || 0)
+
+  // Update session
+  await supabase
+    .from('prospect_approval_sessions')
+    .update({
+      approved_count: approvedCount || 0,
+      rejected_count: rejectedCount || 0,
+      pending_count: pendingCount
+    })
+    .eq('id', sessionId)
 }

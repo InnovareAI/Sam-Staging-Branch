@@ -105,19 +105,38 @@ export async function GET(request: NextRequest) {
     }
 
     // Get prospects for this session (now workspace-validated)
-    const { data: prospects, error } = await supabase
+    // LEFT JOIN with decisions table to get approval status
+    const { data: prospectsRaw, error } = await supabase
       .from('prospect_approval_data')
-      .select('*')
+      .select(`
+        *,
+        decision:prospect_approval_decisions!left(
+          decision,
+          decided_by,
+          decided_at,
+          reason
+        )
+      `)
       .eq('session_id', sessionId)
       .order('enrichment_score', { ascending: false })
 
     if (error) throw error
 
-    console.log(`✅ Loaded ${prospects?.length || 0} prospects for session ${sessionId}`)
+    // Map the decision data (from array to object since it's 1:1)
+    const prospects = prospectsRaw?.map((p: any) => ({
+      ...p,
+      approval_status: p.decision?.[0]?.decision || 'pending',
+      decision_reason: p.decision?.[0]?.reason || null,
+      decided_by: p.decision?.[0]?.decided_by || null,
+      decided_at: p.decision?.[0]?.decided_at || null,
+      decision: undefined // Remove nested object
+    })) || []
+
+    console.log(`✅ Loaded ${prospects.length} prospects for session ${sessionId}`)
 
     return NextResponse.json({
       success: true,
-      prospects: prospects || []
+      prospects
     })
 
   } catch (error) {

@@ -403,7 +403,7 @@ export default function DataCollectionHub({
                       linkedinUrl: p.contact?.linkedin_url || '',  // FIXED: Extract URL from JSONB
                       source: p.source || 'linkedin',
                       confidence: (p.enrichment_score || 80) / 100,  // FIXED: Convert integer to decimal
-                      approvalStatus: 'pending' as const,  // FIXED: approval_status column doesn't exist
+                      approvalStatus: (p.approval_status || 'pending') as 'pending' | 'approved' | 'rejected',  // FIXED: Load from database
                       campaignName: session.campaign_name || `Session-${session.id.slice(0, 8)}`,  // Use actual campaign_name from DB
                       campaignTag: session.campaign_tag || session.campaign_name || session.prospect_source || 'linkedin',  // FIXED: Use campaign_name as fallback tag
                       sessionId: session.id,  // Track session ID for campaign name updates
@@ -588,21 +588,125 @@ export default function DataCollectionHub({
     }
   }
 
-  const handleReject = (prospectId: string) => {
-    setProspectData(prev => prev.map(p => 
+  const handleReject = async (prospectId: string) => {
+    const prospect = prospectData.find(p => p.id === prospectId)
+    if (!prospect || !prospect.sessionId) return
+
+    // Optimistic UI update
+    setProspectData(prev => prev.map(p =>
       p.id === prospectId ? { ...p, approvalStatus: 'rejected' as const } : p
     ))
+
+    try {
+      // Save to database
+      const response = await fetch('/api/prospect-approval/decisions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: prospect.sessionId,
+          prospect_id: prospectId,
+          decision: 'rejected'
+        })
+      })
+
+      if (!response.ok) {
+        console.error('Failed to save rejection')
+        // Revert on error
+        setProspectData(prev => prev.map(p =>
+          p.id === prospectId ? { ...p, approvalStatus: 'pending' as const } : p
+        ))
+      }
+    } catch (error) {
+      console.error('Error rejecting prospect:', error)
+    }
   }
 
-  const handleApproveAll = () => {
-    setProspectData(prev => prev.map(p => 
-      p.approvalStatus !== 'rejected' ? { ...p, approvalStatus: 'approved' as const } : p
+  const handleApprove = async (prospectId: string) => {
+    const prospect = prospectData.find(p => p.id === prospectId)
+    if (!prospect || !prospect.sessionId) return
+
+    // Optimistic UI update
+    setProspectData(prev => prev.map(p =>
+      p.id === prospectId ? { ...p, approvalStatus: 'approved' as const } : p
     ))
+
+    try {
+      // Save to database
+      const response = await fetch('/api/prospect-approval/decisions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: prospect.sessionId,
+          prospect_id: prospectId,
+          decision: 'approved'
+        })
+      })
+
+      if (!response.ok) {
+        console.error('Failed to save approval')
+        // Revert on error
+        setProspectData(prev => prev.map(p =>
+          p.id === prospectId ? { ...p, approvalStatus: 'pending' as const } : p
+        ))
+      }
+    } catch (error) {
+      console.error('Error approving prospect:', error)
+    }
   }
 
-  const handleRejectAll = () => {
-    if (confirm('Are you sure you want to reject all prospects?')) {
-      setProspectData(prev => prev.map(p => ({ ...p, approvalStatus: 'rejected' as const })))
+  const handleApproveAll = async () => {
+    const pendingProspects = prospectData.filter(p => p.approvalStatus === 'pending')
+
+    // Optimistic UI update
+    setProspectData(prev => prev.map(p =>
+      p.approvalStatus === 'pending' ? { ...p, approvalStatus: 'approved' as const } : p
+    ))
+
+    // Save all to database
+    for (const prospect of pendingProspects) {
+      if (prospect.sessionId) {
+        try {
+          await fetch('/api/prospect-approval/decisions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              session_id: prospect.sessionId,
+              prospect_id: prospect.id,
+              decision: 'approved'
+            })
+          })
+        } catch (error) {
+          console.error('Error approving prospect:', prospect.id, error)
+        }
+      }
+    }
+  }
+
+  const handleRejectAll = async () => {
+    if (!confirm('Are you sure you want to reject all prospects?')) return
+
+    const pendingProspects = prospectData.filter(p => p.approvalStatus === 'pending')
+
+    // Optimistic UI update
+    setProspectData(prev => prev.map(p => ({ ...p, approvalStatus: 'rejected' as const })))
+
+    // Save all to database
+    for (const prospect of pendingProspects) {
+      if (prospect.sessionId) {
+        try {
+          await fetch('/api/prospect-approval/decisions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              session_id: prospect.sessionId,
+              prospect_id: prospect.id,
+              decision: 'rejected'
+            })
+          })
+        } catch (error) {
+          console.error('Error rejecting prospect:', prospect.id, error)
+        }
+      }
     }
   }
 
@@ -745,22 +849,68 @@ export default function DataCollectionHub({
     toastSuccess(`Selected ${firstDegree.length} 1st degree connections`)
   }
 
-  const bulkApproveSelected = () => {
+  const bulkApproveSelected = async () => {
     if (selectedProspectIds.size === 0) return
+
+    const selectedProspects = prospectData.filter(p => selectedProspectIds.has(p.id))
+
+    // Optimistic UI update
     setProspectData(prev => prev.map(p =>
       selectedProspectIds.has(p.id) ? { ...p, approvalStatus: 'approved' as const } : p
     ))
     toastSuccess(`Approved ${selectedProspectIds.size} prospects`)
     deselectAll()
+
+    // Save all to database
+    for (const prospect of selectedProspects) {
+      if (prospect.sessionId) {
+        try {
+          await fetch('/api/prospect-approval/decisions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              session_id: prospect.sessionId,
+              prospect_id: prospect.id,
+              decision: 'approved'
+            })
+          })
+        } catch (error) {
+          console.error('Error approving prospect:', prospect.id, error)
+        }
+      }
+    }
   }
 
-  const bulkRejectSelected = () => {
+  const bulkRejectSelected = async () => {
     if (selectedProspectIds.size === 0) return
+
+    const selectedProspects = prospectData.filter(p => selectedProspectIds.has(p.id))
+
+    // Optimistic UI update
     setProspectData(prev => prev.map(p =>
       selectedProspectIds.has(p.id) ? { ...p, approvalStatus: 'rejected' as const } : p
     ))
     toastSuccess(`Rejected ${selectedProspectIds.size} prospects`)
     deselectAll()
+
+    // Save all to database
+    for (const prospect of selectedProspects) {
+      if (prospect.sessionId) {
+        try {
+          await fetch('/api/prospect-approval/decisions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              session_id: prospect.sessionId,
+              prospect_id: prospect.id,
+              decision: 'rejected'
+            })
+          })
+        } catch (error) {
+          console.error('Error rejecting prospect:', prospect.id, error)
+        }
+      }
+    }
   }
 
   // Proceed to Campaign Hub with approved prospects
@@ -1371,13 +1521,22 @@ export default function DataCollectionHub({
                           approved
                         </span>
                       ) : (
-                        <button
-                          onClick={() => handleReject(prospect.id)}
-                          className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
-                          title="Reject"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleApprove(prospect.id)}
+                            className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+                            title="Approve"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleReject(prospect.id)}
+                            className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
+                            title="Reject"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>

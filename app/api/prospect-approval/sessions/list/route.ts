@@ -68,14 +68,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all approval sessions for this workspace
+    console.log(`🔍 Fetching sessions for workspace: ${workspaceId}, user: ${user.email}`);
+
     const { data: sessions, error: sessionsError } = await supabase
       .from('prospect_approval_sessions')
       .select('*')
       .eq('workspace_id', workspaceId) // CORRECTED: workspace_id not organization_id
       .order('created_at', { ascending: false });
 
+    console.log(`📊 Query result: ${sessions?.length || 0} sessions found`);
+    console.log('Sessions:', sessions?.map(s => ({ id: s.id.substring(0, 8), campaign: s.campaign_name, prospects: s.total_prospects })));
+
     if (sessionsError) {
-      console.error('Error fetching sessions:', sessionsError);
+      console.error('❌ Error fetching sessions:', sessionsError);
       return NextResponse.json({
         success: false,
         error: 'Failed to fetch sessions'
