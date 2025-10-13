@@ -365,6 +365,7 @@ export default function Page() {
 
   const createDefaultThread = useCallback(async () => {
     try {
+      console.log('🔵 Creating default thread...');
       const response = await fetch('/api/sam/threads', {
         method: 'POST',
         headers: {
@@ -378,18 +379,29 @@ export default function Page() {
         })
       });
 
+      console.log('🔵 Thread creation response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to create conversation thread');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Thread creation failed:', errorData);
+        throw new Error(errorData.error || `Failed to create conversation thread (${response.status})`);
       }
 
       const data = await response.json();
+      console.log('✅ Thread created:', data);
+
       if (data?.thread?.id) {
         setThreadId(data.thread.id);
         await fetchThreadMessages(data.thread.id);
         return data.thread;
+      } else {
+        console.error('❌ Thread created but no ID returned:', data);
+        throw new Error('Thread created but no ID returned');
       }
     } catch (error) {
-      console.error('Unable to create default thread:', error);
+      console.error('❌ Unable to create default thread:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      showNotification('error', `Failed to create conversation: ${errorMessage}`);
     }
     return null;
   }, [fetchThreadMessages]);
