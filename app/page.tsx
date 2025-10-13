@@ -4330,28 +4330,6 @@ export default function Page() {
             ref={messagesContainerRef}
             className="space-y-4"
           >
-            {isSending && (
-              <div className="flex justify-start">
-                <div className="max-w-[70%]">
-                  <div className="flex items-start space-x-3 min-w-0">
-                    <img
-                      src="/SAM.jpg"
-                      alt="Sam AI"
-                      className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1"
-                      style={{ objectPosition: 'center 30%' }}
-                    />
-                    <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl overflow-hidden min-w-0 flex-1">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                        <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                        <span className="text-sm text-gray-300 ml-2">Sam is thinking...</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
             {messages.map((message, index) => {
               // Only animate the last (newest) assistant message
               const isNewestAssistantMessage = index === messages.length - 1 && message.role === 'assistant' && !isSending;
