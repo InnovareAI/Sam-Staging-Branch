@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { Minimize2, MessageCircle } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -31,6 +32,7 @@ export default function ProspectSearchChat({
   const [isLoading, setIsLoading] = useState(false);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
+  const [isMinimized, setIsMinimized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -214,12 +216,51 @@ export default function ProspectSearchChat({
     }
   };
 
+  // Minimized bubble view
+  if (isMinimized) {
+    return (
+      <div className="fixed bottom-6 left-6 z-50">
+        <button
+          onClick={() => setIsMinimized(false)}
+          className="group relative flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all duration-300 hover:scale-110"
+          title="Expand Prospect Search Chat"
+        >
+          <img
+            src="/SAM.jpg"
+            alt="SAM AI"
+            className="w-14 h-14 rounded-full object-cover border-2 border-white/20"
+            style={{ objectPosition: 'center 30%' }}
+          />
+          {/* Notification badge if there are new messages or progress */}
+          {(progress || isLoading) && (
+            <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+            </div>
+          )}
+          {/* Tooltip */}
+          <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 px-3 py-1 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+            Click to open chat
+          </div>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full bg-gray-900 border border-gray-700 rounded-lg">
       {/* Header */}
-      <div className="p-4 border-b border-gray-700">
-        <h3 className="text-lg font-semibold text-white">Prospect Search</h3>
-        <p className="text-sm text-gray-400">Ask me to find prospects - I'll handle the rest</p>
+      <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-white">Prospect Search</h3>
+          <p className="text-sm text-gray-400">Ask me to find prospects - I'll handle the rest</p>
+        </div>
+        <button
+          onClick={() => setIsMinimized(true)}
+          className="p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+          title="Minimize chat"
+        >
+          <Minimize2 size={18} />
+        </button>
       </div>
 
       {/* Messages */}
