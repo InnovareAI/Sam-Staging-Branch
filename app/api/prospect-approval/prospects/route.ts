@@ -105,34 +105,38 @@ export async function GET(request: NextRequest) {
     }
 
     // Get prospects for this session (now workspace-validated)
-    // LEFT JOIN with decisions table to get approval status
     const { data: prospectsRaw, error } = await supabase
       .from('prospect_approval_data')
-      .select(`
-        *,
-        decision:prospect_approval_decisions!left(
-          decision,
-          decided_by,
-          decided_at,
-          reason
-        )
-      `)
+      .select('*')
       .eq('session_id', sessionId)
       .order('enrichment_score', { ascending: false })
 
     if (error) throw error
 
-    // Map the decision data (from array to object since it's 1:1)
-    const prospects = prospectsRaw?.map((p: any) => ({
-      ...p,
-      approval_status: p.decision?.[0]?.decision || 'pending',
-      decision_reason: p.decision?.[0]?.reason || null,
-      decided_by: p.decision?.[0]?.decided_by || null,
-      decided_at: p.decision?.[0]?.decided_at || null,
-      decision: undefined // Remove nested object
-    })) || []
+    // Get all decisions for this session
+    const { data: decisions } = await supabase
+      .from('prospect_approval_decisions')
+      .select('prospect_id, decision, reason, decided_by, decided_at')
+      .eq('session_id', sessionId)
 
-    console.log(`✅ Loaded ${prospects.length} prospects for session ${sessionId}`)
+    // Create a map of decisions by prospect_id for fast lookup
+    const decisionsMap = new Map(
+      (decisions || []).map(d => [d.prospect_id, d])
+    )
+
+    // Merge prospects with their decisions
+    const prospects = (prospectsRaw || []).map((p: any) => {
+      const decision = decisionsMap.get(p.prospect_id)
+      return {
+        ...p,
+        approval_status: decision?.decision || 'approved', // Default to approved (opt-out system)
+        decision_reason: decision?.reason || null,
+        decided_by: decision?.decided_by || null,
+        decided_at: decision?.decided_at || null
+      }
+    })
+
+    console.log(`✅ Loaded ${prospects.length} prospects for session ${sessionId} (${decisions?.length || 0} with decisions)`)
 
     return NextResponse.json({
       success: true,
