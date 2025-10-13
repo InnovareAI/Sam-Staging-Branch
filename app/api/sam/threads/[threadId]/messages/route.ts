@@ -392,6 +392,10 @@ export async function POST(
 ) {
   try {
     const resolvedParams = await params
+    console.log('🔵 POST /api/sam/threads/[threadId]/messages - START', {
+      threadId: resolvedParams.threadId
+    });
+
     const cookieStore = await cookies()
 
     // Use @supabase/ssr createServerClient (matches browser client)
@@ -635,6 +639,13 @@ export async function POST(
     }
 
     // Create user message
+    console.log('📝 Creating user message...', {
+      threadId: resolvedParams.threadId,
+      userId: user.id,
+      contentLength: content.trim().length,
+      contentPreview: content.trim().substring(0, 50)
+    });
+
     const { data: userMessage, error: userError } = await supabase
       .from('sam_conversation_messages')
       .insert({
@@ -648,6 +659,14 @@ export async function POST(
       })
       .select()
       .single()
+
+    console.log('✅ User message created:', {
+      success: !!userMessage,
+      hasError: !!userError,
+      messageId: userMessage?.id,
+      role: userMessage?.role,
+      contentLength: userMessage?.content?.length
+    });
 
     if (userError) {
       console.error('❌ Failed to save user message:', JSON.stringify({
@@ -1832,6 +1851,14 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
       .select()
       .single()
 
+    console.log('✅ SAM message created:', {
+      success: !!samMessage,
+      hasError: !!samError,
+      messageId: samMessage?.id,
+      role: samMessage?.role,
+      contentLength: samMessage?.content?.length
+    });
+
     if (samError) {
       console.error('❌ Failed to save Sam message (DETAILED ERROR):', JSON.stringify({
         error: samError,
@@ -1863,6 +1890,13 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
       console.error('❌ Knowledge extraction failed:', error)
       // Don't fail the main response if knowledge extraction fails
     })
+
+    console.log('✅ FINAL RETURN - userMessage and samMessage:', {
+      hasUserMessage: !!userMessage,
+      hasSamMessage: !!samMessage,
+      userMessageId: userMessage?.id,
+      samMessageId: samMessage?.id
+    });
 
     return NextResponse.json({
       success: true,
