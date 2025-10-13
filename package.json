@@ -20,6 +20,8 @@
     "monitoring:health": "curl -s https://app.meet-sam.com/api/monitoring/health | jq .",
     "monitoring:metrics": "curl -s https://app.meet-sam.com/api/monitoring/metrics | jq .",
     "monitoring:alerts": "curl -s https://app.meet-sam.com/api/monitoring/alerts | jq .",
+    "monitoring:workspace-integrity": "npx tsx scripts/monitor-workspace-integrity.ts",
+    "monitoring:workspace-integrity:shell": "./scripts/monitor-workspace-integrity.sh",
     "test:integration": "node test-integration.js",
     "test:email": "node test-complete-flow.js",
     "test:kb-crud": "node tests/knowledge-base-crud.test.js",

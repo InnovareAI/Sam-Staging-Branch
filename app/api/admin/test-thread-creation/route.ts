@@ -26,7 +26,8 @@ export async function GET(request: NextRequest) {
 
     const diagnostics: any = {
       timestamp: new Date().toISOString(),
-      deployment_commit: process.env.VERCEL_GIT_COMMIT_SHA || 'unknown',
+      deployment_commit: process.env.VERCEL_GIT_COMMIT_SHA || process.env.COMMIT_REF || 'unknown',
+      deployment_env: process.env.NETLIFY ? 'netlify' : process.env.VERCEL ? 'vercel' : 'local',
       auth: {
         hasUser: !!user,
         userId: user?.id,
