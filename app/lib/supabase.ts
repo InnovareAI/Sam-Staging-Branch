@@ -37,6 +37,22 @@ export function createClient() {
 
   // Only use cookie-based auth in browser
   if (typeof window !== 'undefined') {
+    // CRITICAL: Clean corrupted localStorage on initialization
+    try {
+      const storageKeys = Object.keys(localStorage);
+      storageKeys.forEach(key => {
+        if (key.includes('supabase') || key.includes('sb-')) {
+          const value = localStorage.getItem(key);
+          if (value && value.startsWith('base64-')) {
+            console.log(`🔧 Removing corrupted localStorage: ${key}`);
+            localStorage.removeItem(key);
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('Could not clean localStorage:', e);
+    }
+
     return createBrowserSupabaseClient(
       supabaseUrl,
       supabaseAnonKey,
@@ -64,6 +80,14 @@ export function createClient() {
               if (options?.secure) cookie += '; secure';
               document.cookie = cookie;
             });
+          }
+        },
+        cookieOptions: {
+          // Force cookies to be used as primary storage
+          // This prevents localStorage corruption issues
+          global: {
+            secure: true,
+            sameSite: 'lax'
           }
         }
       }
