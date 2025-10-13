@@ -661,10 +661,13 @@ export default function DataCollectionHub({
 
   // Filter prospects
   let filteredProspects = prospectsWithScores.filter(p => {
+    // ALWAYS exclude rejected prospects from view (unless explicitly filtering for rejected)
+    if (filterStatus !== 'rejected' && p.approvalStatus === 'rejected') return false
+
     // Campaign tag filter
     if (selectedCampaignTag !== 'all' && p.campaignTag !== selectedCampaignTag) return false
 
-    // Approval status filter
+    // Approval status filter (for viewing approved/pending/rejected specifically)
     if (filterStatus !== 'all' && p.approvalStatus !== filterStatus) return false
 
     // Quick filter
@@ -1290,10 +1293,10 @@ export default function DataCollectionHub({
             onChange={(e) => setFilterStatus(e.target.value as any)}
             className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
+            <option value="all">All Status ({prospectData.length - rejectedCount} visible)</option>
+            <option value="pending">Pending ({pendingCount})</option>
+            <option value="approved">Approved ({approvedCount})</option>
+            <option value="rejected">Rejected ({rejectedCount})</option>
           </select>
         </div>
       </div>
