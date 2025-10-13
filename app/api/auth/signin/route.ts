@@ -1,11 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          }
+        }
+      }
+    );
 
     const { email, password } = await request.json();
 
@@ -53,8 +68,8 @@ export async function POST(request: NextRequest) {
     if (data.session && data.user) {
       console.log('User signed in successfully:', data.user.id);
 
-      // Return response with user data
-      return NextResponse.json({
+      // Create response with user data
+      const response = NextResponse.json({
         message: 'Sign-in successful!',
         user: {
           id: data.user.id,
@@ -63,6 +78,9 @@ export async function POST(request: NextRequest) {
           lastName: data.user.user_metadata?.last_name
         }
       });
+
+      // Ensure cookies are set in the response
+      return response;
     }
 
     return NextResponse.json(
@@ -80,7 +98,11 @@ export async function POST(request: NextRequest) {
 }
 
 // Handle GET requests - redirect to signin page
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Get redirect URL from query params
+  const { searchParams } = new URL(request.url);
+  const redirectTo = searchParams.get('redirect') || '/';
+
   // For now, just return a simple HTML signin form
   const html = `
 <!DOCTYPE html>
@@ -98,80 +120,84 @@ export async function GET() {
             <h1 class="text-2xl font-bold text-white">Welcome Back</h1>
             <p class="text-gray-400">Sign in to SAM AI Platform</p>
         </div>
-        
+
         <form id="signin-form" class="space-y-6">
+            <input type="hidden" id="redirect-to" value="${redirectTo}">
+
             <div>
                 <label for="email" class="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
-                <input 
-                    type="email" 
-                    id="email" 
+                <input
+                    type="email"
+                    id="email"
                     name="email"
                     required
                     class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="Enter your email"
                 >
             </div>
-            
+
             <div>
                 <label for="password" class="block text-sm font-medium text-gray-300 mb-2">Password</label>
-                <input 
-                    type="password" 
-                    id="password" 
+                <input
+                    type="password"
+                    id="password"
                     name="password"
                     required
                     class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="Enter your password"
                 >
             </div>
-            
-            <button 
+
+            <button
                 type="submit"
                 class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
             >
                 Sign In
             </button>
-            
+
             <div class="text-center">
                 <a href="/api/auth/reset-password" class="text-purple-400 hover:text-purple-300 text-sm">Forgot your password?</a>
             </div>
         </form>
-        
+
         <div id="error-message" class="hidden mt-4 p-4 bg-red-600 text-white rounded-lg"></div>
         <div id="success-message" class="hidden mt-4 p-4 bg-green-600 text-white rounded-lg"></div>
     </div>
-    
+
     <script>
         document.getElementById('signin-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            
+            const redirectTo = document.getElementById('redirect-to').value;
+
             const errorDiv = document.getElementById('error-message');
             const successDiv = document.getElementById('success-message');
-            
+
             // Clear previous messages
             errorDiv.classList.add('hidden');
             successDiv.classList.add('hidden');
-            
+
             try {
                 const response = await fetch('/api/auth/signin', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
+                    credentials: 'include',
                     body: JSON.stringify({ email, password })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     successDiv.textContent = data.message;
                     successDiv.classList.remove('hidden');
-                    
-                    // Redirect to main app after successful sign-in
+
+                    // Redirect to intended page after successful sign-in
                     setTimeout(() => {
-                        window.location.href = '/';
+                        window.location.href = redirectTo;
                     }, 1000);
                 } else {
                     errorDiv.textContent = data.error;
@@ -186,7 +212,7 @@ export async function GET() {
 </body>
 </html>
   `;
-  
+
   return new NextResponse(html, {
     headers: { 'Content-Type': 'text/html' },
   });

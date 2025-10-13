@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   return NextResponse.json({
-    version: 'guide-me-interactive-search',
+    version: 'fix-auth-loop-supabase-ssr',
     timestamp: new Date().toISOString()
   });
 }
