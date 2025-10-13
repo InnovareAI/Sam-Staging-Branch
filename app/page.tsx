@@ -328,7 +328,9 @@ export default function Page() {
 
   const fetchThreadMessages = useCallback(async (targetThreadId: string) => {
     try {
-      const response = await fetch(`/api/sam/threads/${targetThreadId}/messages`);
+      const response = await fetch(`/api/sam/threads/${targetThreadId}/messages`, {
+        credentials: 'include' // Include cookies for authentication
+      });
       if (!response.ok) {
         throw new Error('Failed to load conversation history');
       }
@@ -1346,6 +1348,7 @@ export default function Page() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // CRITICAL: Include cookies for authentication
         body: JSON.stringify({ content: messageForSam })
       });
 
