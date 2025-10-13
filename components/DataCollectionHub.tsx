@@ -889,15 +889,11 @@ export default function DataCollectionHub({
       </div>
 
       {/* Add Prospects Section - CSV, Copy/Paste, LinkedIn URL */}
-      <div className="border-b border-gray-700 px-6 py-4 bg-gray-850">
+      <div className="border-b border-gray-700 px-6 py-4 bg-gray-900">
         <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Add Prospects</h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="flex items-center space-x-4">
           {/* CSV Upload */}
-          <div className="bg-gray-700/50 rounded-lg p-4">
-            <div className="flex items-center space-x-2 mb-3">
-              <Upload className="w-4 h-4 text-purple-400" />
-              <span className="text-sm font-medium text-white">CSV Upload</span>
-            </div>
+          <div className="flex flex-col space-y-2">
             <input
               ref={csvFileInputRef}
               type="file"
@@ -905,59 +901,141 @@ export default function DataCollectionHub({
               onChange={handleCsvUpload}
               className="hidden"
             />
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => csvFileInputRef.current?.click()}
               disabled={isUploadingCsv}
-              className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isUploadingCsv ? 'Uploading...' : 'Choose CSV File'}
-            </button>
-            <p className="text-xs text-gray-400 mt-2">Upload prospect list from CSV</p>
+              <Upload className="w-3 h-3 mr-1" />
+              {isUploadingCsv ? 'Uploading...' : 'CSV Upload'}
+            </Button>
           </div>
 
-          {/* Copy/Paste Text */}
-          <div className="bg-gray-700/50 rounded-lg p-4">
-            <div className="flex items-center space-x-2 mb-3">
-              <FileText className="w-4 h-4 text-purple-400" />
-              <span className="text-sm font-medium text-white">Copy & Paste</span>
-            </div>
-            <textarea
-              value={pasteText}
-              onChange={(e) => setPasteText(e.target.value)}
-              placeholder="Name, Title, Company, Email, LinkedIn&#10;John Doe, CEO, Acme Inc, john@acme.com, linkedin.com/in/johndoe"
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-              rows={3}
-            />
-            <button
-              onClick={handlePasteData}
-              disabled={isProcessingPaste || !pasteText.trim()}
-              className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+          {/* Copy/Paste Text - Opens modal */}
+          <div className="flex flex-col space-y-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                const text = prompt('Paste prospect data (Name, Title, Company, Email, LinkedIn):\nExample: John Doe, CEO, Acme Inc, john@acme.com, linkedin.com/in/johndoe')
+                if (text && text.trim()) {
+                  setIsProcessingPaste(true)
+                  try {
+                    const lines = text.trim().split('\n')
+                    const newProspects: ProspectData[] = []
+
+                    for (const line of lines) {
+                      if (!line.trim()) continue
+                      const parts = line.includes('\t') ? line.split('\t') : line.split(',')
+                      const cleanParts = parts.map(p => p.trim())
+
+                      if (cleanParts.length >= 2) {
+                        newProspects.push({
+                          id: `paste_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                          name: cleanParts[0] || 'Unknown',
+                          title: cleanParts[1] || '',
+                          company: cleanParts[2] || '',
+                          location: '',
+                          email: cleanParts[3] || '',
+                          linkedinUrl: cleanParts[4] || '',
+                          contact: {
+                            email: cleanParts[3] || '',
+                            linkedin_url: cleanParts[4] || ''
+                          },
+                          source: 'manual' as const,
+                          approvalStatus: 'pending' as const,
+                          campaignName: `${today}-${workspaceCode}-Pasted Data`,
+                          campaignTag: 'paste-import',
+                          uploaded: true
+                        })
+                      }
+                    }
+
+                    if (newProspects.length > 0) {
+                      setProspectData(prev => [...newProspects, ...prev])
+                      toastSuccess(`Added ${newProspects.length} prospects from pasted data`)
+                    } else {
+                      toastError('No valid prospect data found')
+                    }
+                  } catch (error) {
+                    console.error('Paste processing error:', error)
+                    toastError('Error processing pasted data')
+                  } finally {
+                    setIsProcessingPaste(false)
+                  }
+                }
+              }}
+              disabled={isProcessingPaste}
             >
-              {isProcessingPaste ? 'Processing...' : 'Add Prospects'}
-            </button>
+              <FileText className="w-3 h-3 mr-1" />
+              {isProcessingPaste ? 'Processing...' : 'Copy & Paste'}
+            </Button>
           </div>
 
-          {/* LinkedIn Search URL */}
-          <div className="bg-gray-700/50 rounded-lg p-4">
-            <div className="flex items-center space-x-2 mb-3">
-              <Link className="w-4 h-4 text-purple-400" />
-              <span className="text-sm font-medium text-white">LinkedIn URL</span>
-            </div>
-            <input
-              type="text"
-              value={linkedinSearchUrl}
-              onChange={(e) => setLinkedinSearchUrl(e.target.value)}
-              placeholder="Paste LinkedIn search URL..."
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-            <button
-              onClick={handleLinkedInUrl}
-              disabled={isProcessingUrl || !linkedinSearchUrl.trim()}
-              className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+          {/* LinkedIn Search URL - Opens modal */}
+          <div className="flex flex-col space-y-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                const url = prompt('Paste LinkedIn search URL (Sales Nav or Recruiter):')
+                if (url && url.trim()) {
+                  setIsProcessingUrl(true)
+                  try {
+                    const response = await fetch('/api/linkedin/search/simple', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        search_criteria: { url: url.trim() },
+                        target_count: 50
+                      })
+                    })
+
+                    if (response.ok) {
+                      const data = await response.json()
+                      if (data.success && data.prospects && data.prospects.length > 0) {
+                        const newProspects: ProspectData[] = data.prospects.map((p: any, index: number) => ({
+                          id: `linkedin_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+                          name: p.fullName || p.name || 'Unknown',
+                          title: p.title || '',
+                          company: p.company || '',
+                          location: '',
+                          email: p.email || '',
+                          linkedinUrl: p.linkedinUrl || '',
+                          contact: {
+                            email: p.email || '',
+                            linkedin_url: p.linkedinUrl || ''
+                          },
+                          source: 'linkedin' as const,
+                          confidence: p.confidence || 0.7,
+                          approvalStatus: 'pending' as const,
+                          campaignName: `${today}-${workspaceCode}-LinkedIn Search`,
+                          campaignTag: 'linkedin-url',
+                          uploaded: true
+                        }))
+
+                        setProspectData(prev => [...newProspects, ...prev])
+                        toastSuccess(`Found ${newProspects.length} prospects from LinkedIn URL`)
+                      } else {
+                        toastError('No prospects found in LinkedIn URL')
+                      }
+                    } else {
+                      toastError('Failed to search LinkedIn')
+                    }
+                  } catch (error) {
+                    console.error('LinkedIn URL processing error:', error)
+                    toastError('Error processing LinkedIn URL')
+                  } finally {
+                    setIsProcessingUrl(false)
+                  }
+                }
+              }}
+              disabled={isProcessingUrl}
             >
-              {isProcessingUrl ? 'Searching...' : 'Search LinkedIn'}
-            </button>
-            <p className="text-xs text-gray-400 mt-2">Sales Nav or Recruiter URL</p>
+              <Link className="w-3 h-3 mr-1" />
+              {isProcessingUrl ? 'Searching...' : 'LinkedIn URL'}
+            </Button>
           </div>
         </div>
       </div>
@@ -1033,41 +1111,29 @@ export default function DataCollectionHub({
         return null
       })()}
 
-      {/* Campaign Tag Tabs */}
-      <div className="border-b-2 border-purple-500/20 px-6 py-4 bg-gray-900">
-        <div className="mb-2">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Campaign Filter</h3>
-        </div>
-        <div className="flex items-center space-x-2 overflow-x-auto pb-1">
+      {/* Campaign Filter Dropdown */}
+      <div className="border-b border-gray-700 px-6 py-4 bg-gray-900">
+        <div className="flex items-center space-x-4">
+          <Tag className="w-4 h-4 text-purple-400" />
+          <label className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Campaign Filter:</label>
+          <select
+            value={selectedCampaignTag}
+            onChange={(e) => setSelectedCampaignTag(e.target.value)}
+            className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            <option value="all">All Campaigns ({prospectData.length} prospects)</option>
+            {campaignTags.filter(tag => tag !== 'all').map((tag) => {
+              const tagCount = prospectData.filter(p => p.campaignTag === tag).length
+              return (
+                <option key={tag} value={tag}>
+                  {tag} ({tagCount} prospects)
+                </option>
+              )
+            })}
+          </select>
           {campaignTags.length === 1 && (
-            <p className="text-sm text-gray-500 italic">Upload CSV files to create campaigns</p>
+            <p className="text-sm text-gray-500 italic">No campaigns yet - upload CSV or search LinkedIn to create campaigns</p>
           )}
-          {campaignTags.map((tag) => {
-            const tagCount = tag === 'all' 
-              ? prospectData.length 
-              : prospectData.filter(p => p.campaignTag === tag).length
-            return (
-              <button
-                key={tag}
-                onClick={() => setSelectedCampaignTag(tag)}
-                className={`flex items-center space-x-2 px-5 py-3 rounded-lg text-sm font-semibold whitespace-nowrap transition-all duration-200 shadow-sm ${
-                  selectedCampaignTag === tag
-                    ? 'bg-purple-600 text-white shadow-purple-500/50 scale-105'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:scale-102'
-                }`}
-              >
-                <Tag className="w-3 h-3" />
-                <span>{tag === 'all' ? 'All Campaigns' : tag}</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs ${
-                  selectedCampaignTag === tag
-                    ? 'bg-purple-700 text-purple-100'
-                    : 'bg-gray-600 text-gray-300'
-                }`}>
-                  {tagCount}
-                </span>
-              </button>
-            )
-          })}
         </div>
       </div>
 
