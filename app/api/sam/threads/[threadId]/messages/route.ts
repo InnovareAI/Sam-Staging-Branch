@@ -594,6 +594,18 @@ export async function POST(
         userEmail: user.email
       })
 
+      // First check ALL workspace accounts for this workspace
+      const { data: allAccounts } = await supabaseAdmin
+        .from('workspace_accounts')
+        .select('id, account_type, connection_status, account_name, workspace_id')
+        .eq('workspace_id', workspaceId)
+
+      console.log('🔍 DEBUG: ALL workspace accounts:', {
+        workspaceId,
+        totalAccounts: allAccounts?.length || 0,
+        accounts: allAccounts
+      })
+
       const { data: linkedInAccount, error: linkedInError } = await supabaseAdmin
         .from('workspace_accounts')
         .select('id, connection_status, account_name, unipile_account_id')
@@ -610,7 +622,14 @@ export async function POST(
 
       if (!linkedInAccount) {
         // LinkedIn not connected - provide helpful message with connection link
-        const connectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com'}/settings/integrations?connect=linkedin`
+        const connectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com'}/workspace/${workspaceId}/settings?tab=integrations`
+
+        console.log('❌ LinkedIn not found. Details:', {
+          workspaceId,
+          userId: user.id,
+          connectUrl,
+          note: 'User needs to connect LinkedIn account'
+        })
 
         const linkedInPromptContent = `To find prospects and run ICP discovery, I need access to your LinkedIn account.\n\n**Why LinkedIn?**\n- Search the full LinkedIn database for your ideal prospects\n- Unlimited searches (no quota limits)\n- Access to real-time prospect data\n\n**Connect your LinkedIn account here:**\n[Connect LinkedIn Now](${connectUrl})\n\nOnce connected, I'll be able to search for prospects and help you build your ICP!`
 
