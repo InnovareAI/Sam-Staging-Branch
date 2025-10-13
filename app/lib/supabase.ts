@@ -23,12 +23,27 @@ export function createClient() {
           getAll() {
             return document.cookie.split(';').map(cookie => {
               const [name, ...v] = cookie.trim().split('=');
-              return { name, value: v.join('=') };
+              let value = v.join('=');
+
+              // FIX: Remove "base64-" prefix if present (corrupted cookie bug)
+              if (value && value.startsWith('base64-')) {
+                console.warn(`Fixing corrupted cookie: ${name}`);
+                value = value.substring(7); // Remove "base64-" prefix
+              }
+
+              return { name, value };
             });
           },
           setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) => {
-              let cookie = `${name}=${value}`;
+              // FIX: Ensure we never write "base64-" prefix
+              let cleanValue = value;
+              if (cleanValue && cleanValue.startsWith('base64-')) {
+                console.warn(`Preventing corrupted cookie write: ${name}`);
+                cleanValue = cleanValue.substring(7);
+              }
+
+              let cookie = `${name}=${cleanValue}`;
               if (options?.path) cookie += `; path=${options.path}`;
               if (options?.maxAge) cookie += `; max-age=${options.maxAge}`;
               if (options?.domain) cookie += `; domain=${options.domain}`;
