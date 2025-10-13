@@ -514,22 +514,39 @@ async function executeICPResearchSearch(
   try {
     console.log('🔍 LinkedIn search - User lookup:', userId)
 
-    // Get user's LinkedIn account from database
-    const { data: linkedinAccount, error: accountError } = await supabaseClient
-      .from('user_unipile_accounts')
-      .select('unipile_account_id')
-      .eq('user_id', userId)
-      .eq('platform', 'LINKEDIN')
-      .eq('connection_status', 'active')
+    // Get user's workspace
+    const { data: userProfile } = await supabaseClient
+      .from('users')
+      .select('current_workspace_id')
+      .eq('id', userId)
       .single()
 
+    const workspaceId = userProfile?.current_workspace_id
+    if (!workspaceId) {
+      return {
+        success: false,
+        error: 'No workspace found',
+        needsLinkedInConnection: false,
+        data: null,
+        processingTime: Date.now() - startTime
+      }
+    }
+
+    // Get LinkedIn account from workspace_accounts table
+    const { data: linkedinAccounts, error: accountError } = await supabaseClient
+      .from('workspace_accounts')
+      .select('unipile_account_id, account_name, account_identifier')
+      .eq('workspace_id', workspaceId)
+      .eq('account_type', 'linkedin')
+      .eq('connection_status', 'connected')
+
     console.log('🔍 LinkedIn account lookup:', {
-      found: !!linkedinAccount,
-      account_id: linkedinAccount?.unipile_account_id,
+      found: linkedinAccounts?.length || 0,
+      account_id: linkedinAccounts?.[0]?.unipile_account_id,
       error: accountError?.message
     })
 
-    if (!linkedinAccount || accountError) {
+    if (!linkedinAccounts || linkedinAccounts.length === 0 || accountError) {
       return {
         success: false,
         error: 'No active LinkedIn account connected',
@@ -547,6 +564,9 @@ async function executeICPResearchSearch(
         processingTime: Date.now() - startTime
       }
     }
+
+    const linkedinAccount = linkedinAccounts[0]
+    console.log('✅ Using LinkedIn account:', linkedinAccount.account_name || linkedinAccount.account_identifier)
 
     // Build search keywords
     const keywords = data.jobTitles.join(' OR ')

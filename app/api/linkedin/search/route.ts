@@ -85,25 +85,43 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Get user's LinkedIn account
+    // Get user's workspace
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('current_workspace_id')
+      .eq('id', session.user.id)
+      .single();
+
+    const workspaceId = userProfile?.current_workspace_id;
+    if (!workspaceId) {
+      return NextResponse.json({
+        success: false,
+        error: 'No workspace found'
+      }, { status: 400 });
+    }
+
+    // Get LinkedIn account from workspace_accounts table
     let linkedinAccountId = accountId;
     if (!linkedinAccountId) {
-      const { data: linkedinAccount } = await supabase
-        .from('user_unipile_accounts')
-        .select('unipile_account_id')
-        .eq('user_id', session.user.id)
-        .eq('platform', 'LINKEDIN')
-        .eq('connection_status', 'active')
-        .single();
-      
-      if (!linkedinAccount?.unipile_account_id) {
+      const { data: linkedinAccounts } = await supabase
+        .from('workspace_accounts')
+        .select('unipile_account_id, account_name, account_identifier')
+        .eq('workspace_id', workspaceId)
+        .eq('account_type', 'linkedin')
+        .eq('connection_status', 'connected');
+
+      console.log('🔵 LinkedIn accounts found:', linkedinAccounts?.length || 0);
+
+      if (!linkedinAccounts || linkedinAccounts.length === 0) {
         return NextResponse.json({
           success: false,
           error: 'No active LinkedIn account found. Please connect your LinkedIn account first.',
           action: 'connect_linkedin'
         }, { status: 400 });
       }
-      
+
+      const linkedinAccount = linkedinAccounts[0];
+      console.log('✅ Using LinkedIn account:', linkedinAccount.account_name || linkedinAccount.account_identifier);
       linkedinAccountId = linkedinAccount.unipile_account_id;
     }
 

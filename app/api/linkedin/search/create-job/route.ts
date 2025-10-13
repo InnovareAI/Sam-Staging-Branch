@@ -37,23 +37,33 @@ export async function POST(request: NextRequest) {
       .single();
 
     const workspaceId = userProfile?.current_workspace_id;
+    if (!workspaceId) {
+      return NextResponse.json({
+        success: false,
+        error: 'No workspace found'
+      }, { status: 400 });
+    }
 
-    // Get user's LinkedIn account
-    const { data: linkedinAccount } = await supabase
-      .from('user_unipile_accounts')
-      .select('unipile_account_id')
-      .eq('user_id', session.user.id)
-      .eq('platform', 'LINKEDIN')
-      .eq('connection_status', 'active')
-      .single();
+    // Get LinkedIn account from workspace_accounts table
+    const { data: linkedinAccounts } = await supabase
+      .from('workspace_accounts')
+      .select('unipile_account_id, account_name, account_identifier')
+      .eq('workspace_id', workspaceId)
+      .eq('account_type', 'linkedin')
+      .eq('connection_status', 'connected');
 
-    if (!linkedinAccount?.unipile_account_id) {
+    console.log('🔵 LinkedIn accounts found:', linkedinAccounts?.length || 0);
+
+    if (!linkedinAccounts || linkedinAccounts.length === 0) {
       return NextResponse.json({
         success: false,
         error: 'No active LinkedIn account found. Please connect your LinkedIn account first.',
         action: 'connect_linkedin'
       }, { status: 400 });
     }
+
+    const linkedinAccount = linkedinAccounts[0];
+    console.log('✅ Using LinkedIn account:', linkedinAccount.account_name || linkedinAccount.account_identifier);
 
     // Auto-detect LinkedIn capabilities (Sales Navigator, Recruiter, etc.)
     let api = 'classic';
