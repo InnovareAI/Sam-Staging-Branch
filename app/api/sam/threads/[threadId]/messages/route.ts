@@ -1764,18 +1764,26 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
             `📊 **Ready to review:** ${prospectCount} prospects waiting for your approval`
           ).trim()
         } else {
-          // Replace trigger with error message
+          // Replace trigger with error message including details
           let errorMsg = `\n\n❌ **Search Failed:** ${searchData.error || 'Unable to complete the search.'}`
+          
+          // Add detailed error information if available
+          if (searchData.details && Array.isArray(searchData.details)) {
+            errorMsg += `\n\n**Error Details:**\n${searchData.details.map((d: string) => `• ${d}`).join('\n')}`
+          }
+          
           if (searchData.action === 'connect_linkedin') {
             errorMsg += `\n\n**Action needed:** Please connect your LinkedIn account in Settings > Integrations first.`
           }
+          
+          // Log full error for debugging
+          console.error('❌ Search failed:', JSON.stringify(searchData, null, 2))
+          
           aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i, errorMsg).trim()
         }
 
         console.log('✅ Search trigger executed, response updated')
       } catch (error) {
-        console.error('❌ Search trigger execution failed:', error)
-        // Remove trigger from response if execution fails
         aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
           '\n\n❌ **Search Failed:** Technical error while starting the search. Try heading to the **Data Approval** tab and entering your criteria directly.'
         ).trim()
