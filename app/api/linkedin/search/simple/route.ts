@@ -494,11 +494,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Return response - include persistence errors as warnings if any
     if (validProspects.length > 0 && persistenceFailed) {
       return NextResponse.json({
         success: false,
         error: 'Prospect persistence failed',
-        details: persistenceErrors
+        details: persistenceErrors,
+        prospects: validProspects,
+        count: validProspects.length
       }, { status: 500 });
     }
 
@@ -507,8 +510,9 @@ export async function POST(request: NextRequest) {
       prospects: validProspects,
       count: validProspects.length,
       total_found: prospects.length,
-      api: api,  // Show which API was used
-      session_id: sessionId
+      api: api,
+      session_id: sessionId,
+      persistence_warnings: persistenceErrors.length > 0 ? persistenceErrors : undefined
     });
 
   } catch (error) {
