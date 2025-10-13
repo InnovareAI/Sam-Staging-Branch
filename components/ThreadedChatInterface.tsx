@@ -1761,7 +1761,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                 </div>
               )}
               
-              <div className="bg-gray-700 p-4 rounded-lg max-w-4xl mx-auto">
+              <div className="max-w-4xl mx-auto">
                 {/* LinkedIn Character Limits Infobox */}
                 <LinkedInLimitsInfobox 
                   messageLength={inputMessage.length}
@@ -1769,8 +1769,10 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                   messageContent={inputMessage}
                 />
                 
-                <div className={`flex items-end p-2 rounded-2xl border-2 transition-all duration-200 mt-6 ${
-                  inputFocused ? 'border-purple-500 bg-gray-600/50' : 'border-gray-600 bg-gray-600'
+                <div className={`flex gap-3 items-end p-3 rounded-2xl border-2 transition-all duration-200 mt-4 ${
+                  inputFocused 
+                    ? 'border-purple-500 bg-gray-800/50' 
+                    : 'border-gray-700 bg-gray-800'
                 }`}>
                   <input
                     ref={fileInputRef}
@@ -1782,13 +1784,13 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                   <button 
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploadingFile}
-                    className="text-gray-300 hover:text-white disabled:text-gray-600 disabled:cursor-not-allowed transition-colors p-1 mr-2"
+                    className="text-gray-400 hover:text-white disabled:text-gray-600 disabled:cursor-not-allowed transition-colors shrink-0"
                     title="Upload document to knowledge base"
                   >
                     {isUploadingFile ? (
-                      <div className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+                      <div className="w-5 h-5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
                     ) : (
-                      <Paperclip size={18} />
+                      <Paperclip size={20} />
                     )}
                   </button>
                   <textarea
@@ -1803,24 +1805,27 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                     }}
                     onFocus={() => setInputFocused(true)}
                     onBlur={() => setInputFocused(false)}
-                    placeholder="Type your message... (Press Enter to send)"
-                    className="flex-1 resize-none bg-transparent border-none outline-none px-2 py-2 text-base leading-relaxed text-white placeholder-gray-400"
-                    style={{ maxHeight: '200px', textAlign: 'left' }}
+                    placeholder={isSending ? "Sending..." : "Type your message..."}
+                    disabled={isSending}
+                    className="flex-1 resize-none bg-transparent border-none outline-none px-2 py-2 text-[15px] leading-relaxed text-white placeholder:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ maxHeight: '200px' }}
                     rows={1}
                   />
                   <button
                     onClick={handleSendMessage}
                     disabled={isSending || !inputMessage.trim()}
-                    className="text-white bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:text-gray-400 transition-colors ml-2 px-3 py-2 rounded-lg flex items-center space-x-1"
+                    className={`shrink-0 h-10 w-10 rounded-xl transition-all duration-200 flex items-center justify-center ${
+                      inputMessage.trim() && !isSending
+                        ? 'bg-purple-600 hover:bg-purple-700 scale-100'
+                        : 'bg-gray-700 scale-95 opacity-50'
+                    }`}
+                    title="Send message"
                   >
-                    <span className="text-sm font-medium">
-                      {isSending ? 'Sending...' : 'Send'}
-                    </span>
-                    <Send size={16} />
+                    <Send size={20} className="text-white" />
                   </button>
                 </div>
-                <div className="max-w-4xl mx-auto mt-2 text-xs text-gray-400 px-2">
-                  Press <kbd className="px-1.5 py-0.5 bg-gray-700 rounded border border-gray-600">Enter</kbd> to send, <kbd className="px-1.5 py-0.5 bg-gray-700 rounded border border-gray-600">Shift + Enter</kbd> for new line
+                <div className="mt-2 px-2 text-xs text-gray-500">
+                  Press <kbd className="px-1.5 py-0.5 bg-gray-800 rounded border border-gray-700">Enter</kbd> to send, <kbd className="px-1.5 py-0.5 bg-gray-800 rounded border border-gray-700">Shift + Enter</kbd> for new line
                 </div>
               </div>
             </div>
