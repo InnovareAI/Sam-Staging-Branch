@@ -98,7 +98,7 @@ async function checkDatabase(): Promise<HealthStatus> {
 
     // Test basic connectivity
     const { data, error } = await supabase
-      .from('profiles')
+      .from('users')
       .select('count')
       .limit(1);
 
@@ -111,9 +111,9 @@ async function checkDatabase(): Promise<HealthStatus> {
     }
 
     // Test critical tables
-    const tables = ['profiles', 'workspaces', 'invitations', 'organizations'];
+    const tables = ['users', 'workspaces', 'workspace_invitations', 'workspace_members'];
     const tableChecks = await Promise.allSettled(
-      tables.map(table => 
+      tables.map(table =>
         supabase.from(table).select('count').limit(1)
       )
     );
@@ -266,7 +266,7 @@ async function checkInvitations(): Promise<HealthStatus> {
 
     // Check invitation system functionality
     const { data, error } = await supabase
-      .from('invitations')
+      .from('workspace_invitations')
       .select('id, status, created_at')
       .order('created_at', { ascending: false })
       .limit(5);
