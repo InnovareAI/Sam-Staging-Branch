@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/app/lib/supabase'
 
 /**
  * GET /api/prospect-approval/prospects?session_id=xxx
  * Returns all prospects for a specific approval session
- * FIXED: Use createRouteHandlerClient instead of Authorization header
+ * FIXED: Use createServerClient (@supabase/ssr) for consistent auth with browser
  * FIXED: Use workspace_members table instead of non-existent user_organizations
  * FIXED: Use workspace_id column instead of non-existent organization_id
  */
@@ -22,9 +22,24 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // FIXED: Use same auth pattern as sessions/list route
+    // Use @supabase/ssr createServerClient (matches browser client)
     const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          }
+        }
+      }
+    )
 
     // Authenticate user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -125,6 +140,9 @@ export async function POST(request: NextRequest) {
         error: 'Invalid request data'
       }, { status: 400 })
     }
+
+    // Use admin client for POST operations (bypasses RLS)
+    const supabase = supabaseAdmin()
 
     // Insert prospects data
     const prospectRecords = prospects_data.map(prospect => ({
