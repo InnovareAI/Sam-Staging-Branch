@@ -96,6 +96,7 @@ export default function DataCollectionHub({
   const [activeTab, setActiveTab] = useState('approve')
   const [linkedinQuery, setLinkedinQuery] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [isChatMinimized, setIsChatMinimized] = useState(false)
 
   // ProspectSearchChat integration
   const [searchJobId, setSearchJobId] = useState<string | null>(null)
@@ -700,16 +701,30 @@ export default function DataCollectionHub({
 
   return (
     <div className={`grid grid-cols-12 gap-4 h-full ${className}`}>
-      {/* Left: ProspectSearchChat (4 columns - 33%) */}
-      <div className="col-span-4 h-full">
+      {/* Left: ProspectSearchChat (4 columns - 33%, hidden when minimized) */}
+      {!isChatMinimized && (
+        <div className="col-span-4 h-full">
+          <ProspectSearchChat
+            onSearchTriggered={handleSearchTriggered}
+            onProspectsReceived={handleProspectsReceived}
+            isMinimized={isChatMinimized}
+            onMinimizeChange={setIsChatMinimized}
+          />
+        </div>
+      )}
+
+      {/* ProspectSearchChat minimized bubble (shown when minimized) */}
+      {isChatMinimized && (
         <ProspectSearchChat
           onSearchTriggered={handleSearchTriggered}
           onProspectsReceived={handleProspectsReceived}
+          isMinimized={isChatMinimized}
+          onMinimizeChange={setIsChatMinimized}
         />
-      </div>
+      )}
 
-      {/* Right: Prospect Approval Dashboard (8 columns - 67%) */}
-      <div className="col-span-8 h-full overflow-y-auto">
+      {/* Right: Prospect Approval Dashboard (8 columns normally, 12 when chat minimized) */}
+      <div className={`${isChatMinimized ? 'col-span-12' : 'col-span-8'} h-full overflow-y-auto`}>
         <div className="bg-gray-800 rounded-lg h-full">
           {/* Header */}
           <div className="border-b border-gray-700 px-6 py-4">

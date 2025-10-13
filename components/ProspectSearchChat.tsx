@@ -14,11 +14,15 @@ interface Message {
 interface ProspectSearchChatProps {
   onSearchTriggered?: (jobId: string, criteria: any) => void;
   onProspectsReceived?: (prospects: any[]) => void;
+  isMinimized?: boolean;
+  onMinimizeChange?: (minimized: boolean) => void;
 }
 
 export default function ProspectSearchChat({
   onSearchTriggered,
-  onProspectsReceived
+  onProspectsReceived,
+  isMinimized: externalIsMinimized,
+  onMinimizeChange
 }: ProspectSearchChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -32,8 +36,18 @@ export default function ProspectSearchChat({
   const [isLoading, setIsLoading] = useState(false);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [internalIsMinimized, setInternalIsMinimized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Use external state if provided, otherwise use internal state
+  const isMinimized = externalIsMinimized !== undefined ? externalIsMinimized : internalIsMinimized;
+  const setIsMinimized = (value: boolean) => {
+    if (onMinimizeChange) {
+      onMinimizeChange(value);
+    } else {
+      setInternalIsMinimized(value);
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -222,18 +236,24 @@ export default function ProspectSearchChat({
       <div className="fixed bottom-6 left-6 z-50">
         <button
           onClick={() => setIsMinimized(false)}
-          className="group relative flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all duration-300 hover:scale-110"
+          className="group relative flex items-center justify-center w-16 h-16 rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all duration-300 hover:scale-110"
           title="Expand Prospect Search Chat"
         >
+          {/* Pulsating border ring */}
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 animate-pulse" />
+          <div className="absolute inset-[2px] rounded-full bg-gray-900" />
+
+          {/* SAM image */}
           <img
             src="/SAM.jpg"
             alt="SAM AI"
-            className="w-14 h-14 rounded-full object-cover border-2 border-white/20"
+            className="relative w-14 h-14 rounded-full object-cover z-10"
             style={{ objectPosition: 'center 30%' }}
           />
+
           {/* Notification badge if there are new messages or progress */}
           {(progress || isLoading) && (
-            <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+            <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center z-20">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
             </div>
           )}
