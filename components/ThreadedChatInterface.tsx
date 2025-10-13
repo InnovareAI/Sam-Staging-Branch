@@ -1582,6 +1582,16 @@ Would you like me to search for different prospects or refine the search criteri
 Ready to help you automate your LinkedIn prospecting! What would you like to start with?`
   }
 
+  // Lightweight time formatter for message timestamps
+  const formatMessageTime = (iso: string) => {
+    try {
+      const d = new Date(iso)
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    } catch {
+      return ''
+    }
+  }
+
   // Get all unique tags from threads for filtering
   const allTags = Array.from(new Set(
     threads.flatMap(thread => thread.tags || [])
@@ -1682,7 +1692,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                   <p className="text-gray-400 text-sm">Ask about prospects, strategies, or anything sales-related.</p>
                 </div>
               ) : (
-                <div className="flex flex-col space-y-4">
+                <div className="w-full max-w-3xl mx-auto flex flex-col space-y-4">
                   {messages.map((message) => (
                     <div key={message.id} className={`flex items-start ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                       {/* Avatar for assistant messages only */}
@@ -1696,22 +1706,25 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                       )}
 
                       {/* Message bubble */}
-                      <div className={`max-w-[70%] ${message.role === 'user' ? 'ml-auto' : ''}`}>
-                        <div className={`px-4 py-3 rounded-2xl ${
+                      <div className={`${message.role === 'user' ? 'ml-auto' : ''} max-w-full` }>
+                        <div className={`px-4 py-3 rounded-2xl shadow-sm ${
                           message.role === 'user'
                             ? 'bg-purple-600 text-white'
-                            : 'bg-gray-700 text-white'
+                            : 'bg-white/5 text-gray-100 border border-white/10 backdrop-blur-sm'
                         }`}>
                           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words m-0">
                             {message.content}
                           </p>
                           {message.has_prospect_intelligence && (
-                            <div className="mt-2 p-2 bg-purple-600 bg-opacity-20 rounded-lg border border-purple-600 border-opacity-30">
+                            <div className="mt-2 p-2 bg-purple-600/20 rounded-lg border border-purple-600/30">
                               <div className="flex items-center space-x-1 text-xs text-purple-300">
                                 <span>📊 Prospect intelligence included</span>
                               </div>
                             </div>
                           )}
+                        </div>
+                        <div className={`mt-1 text-xs ${message.role === 'user' ? 'text-purple-200 text-right' : 'text-gray-400'}`}>
+                          {formatMessageTime(message.created_at)}
                         </div>
                       </div>
                     </div>
@@ -1755,7 +1768,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                   <button 
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploadingFile}
-                    className="text-gray-400 hover:text-gray-200 disabled:text-gray-600 disabled:cursor-not-allowed transition-colors p-1 mr-2"
+                    className="text-gray-300 hover:text-white disabled:text-gray-600 disabled:cursor-not-allowed transition-colors p-1 mr-2"
                     title="Upload document to knowledge base"
                   >
                     {isUploadingFile ? (
@@ -1768,21 +1781,24 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Continue the conversation..."
-                    className="flex-1 bg-transparent text-white placeholder-gray-400 text-base pl-3 pr-3 py-3 outline-none resize-vertical min-h-[80px] max-h-48 leading-5"
+                    placeholder="Write a message..."
+                    className="flex-1 bg-transparent text-white placeholder-gray-400 text-base pl-3 pr-3 py-3 outline-none resize-vertical min-h-[72px] max-h-40 leading-5"
                     style={{ textAlign: 'left' }}
-                    rows={4}
+                    rows={3}
                   />
                   <button
                     onClick={handleSendMessage}
                     disabled={isSending || !inputMessage.trim()}
-                    className="text-gray-400 hover:text-gray-200 disabled:text-gray-600 disabled:cursor-not-allowed transition-colors ml-2 px-3 py-1 flex items-center space-x-1"
+                    className="text-white bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:text-gray-400 transition-colors ml-2 px-3 py-2 rounded-lg flex items-center space-x-1"
                   >
                     <span className="text-sm font-medium">
                       {isSending ? 'Sending...' : 'Send'}
                     </span>
                     <Send size={16} />
                   </button>
+                </div>
+                <div className="max-w-4xl mx-auto mt-2 text-xs text-gray-400 flex items-center justify-between">
+                  <span>Press Enter to send, Shift + Enter for new line</span>
                 </div>
               </div>
             </div>
