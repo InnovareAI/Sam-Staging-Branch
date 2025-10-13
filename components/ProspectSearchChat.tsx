@@ -185,31 +185,35 @@ export default function ProspectSearchChat({
         content: `Got it! Searching for ${criteria.targetCount} ${criteria.title || 'prospects'}${criteria.keywords ? ` in ${criteria.keywords}` : ''}...`
       });
 
-      // Create search job
-      const response = await fetch('/api/linkedin/search/create-job', {
+      // Use simple search endpoint (working with authentication)
+      const response = await fetch('/api/linkedin/search/simple', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          search_criteria: criteria,
-          search_type: 'linkedin',
-          target_count: criteria.targetCount
+          search_criteria: {
+            title: criteria.title,
+            keywords: criteria.keywords,
+            location: criteria.location?.[0], // Simple endpoint takes single location
+            connectionDegree: '2nd' // Default to 2nd degree
+          },
+          target_count: Math.min(criteria.targetCount, 50) // Simple endpoint limited to 50
         })
       });
 
       const data = await response.json();
 
-      if (data.success) {
-        setCurrentJobId(data.job_id);
-        onSearchTriggered?.(data.job_id, criteria);
-
+      if (data.success && data.prospects) {
+        // Simple endpoint returns results immediately
+        onProspectsReceived?.(data.prospects);
+        
         addMessage({
           role: 'assistant',
-          content: `🚀 Search started! This will take about ${Math.ceil(data.metadata.estimated_time_seconds / 60)} minute${data.metadata.estimated_time_seconds > 60 ? 's' : ''}. You'll see results appear in real-time below.`
+          content: `✅ Found ${data.count} prospects! They've been added to the approval table. The campaign "${data.session_id ? data.session_id.substring(0, 8) : 'New Search'}" is ready for review in the Data Approval tab.\n\nWant to search for more prospects?`
         });
       } else {
         addMessage({
           role: 'assistant',
-          content: `❌ ${data.error || 'Search failed'}. ${data.action === 'connect_linkedin' ? 'Please connect your LinkedIn account in Settings first.' : 'Please try again.'}`
+          content: `❌ ${data.error || 'Search failed'}. ${data.error?.includes('Authentication') || data.error?.includes('LinkedIn not connected') ? 'Please make sure you\'re logged in and LinkedIn is connected in Settings.' : 'Please try again.'}`
         });
       }
     } catch (error) {
