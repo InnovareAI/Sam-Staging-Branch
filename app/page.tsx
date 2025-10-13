@@ -4359,7 +4359,7 @@ export default function Page() {
                           <span className="text-gray-400 text-sm font-medium">You</span>
                         </div>
                         <div className="bg-gray-800 text-white px-4 py-3 rounded-2xl break-words overflow-hidden">
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere line-clamp-6">{message.display_content ?? message.content}</p>
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">{message.display_content ?? message.content}</p>
                         </div>
                       </>
                     )}
