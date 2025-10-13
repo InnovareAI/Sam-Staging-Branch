@@ -372,17 +372,25 @@ export default function DataCollectionHub({
         const response = await fetch('/api/prospect-approval/sessions/list')
         if (response.ok) {
           const data = await response.json()
-          console.log('📊 Found approval sessions:', data)
+          console.log('📊 Found approval sessions:', data.sessions?.length || 0, 'sessions')
+          console.log('Session details:', data.sessions?.map((s: any) => ({
+            id: s.id.substring(0, 8),
+            campaign: s.campaign_name,
+            prospects: s.total_prospects
+          })))
 
           if (data.success && data.sessions && data.sessions.length > 0) {
             // Load prospects for all active sessions
             const allProspects: ProspectData[] = []
 
             for (const session of data.sessions) {
+              console.log(`Processing session: ${session.id.substring(0, 8)} - ${session.campaign_name} (${session.total_prospects} prospects)`)
               if (session.status === 'active') { // CORRECTED: Valid status values are 'active' or 'completed'
                 const prospectsResponse = await fetch(`/api/prospect-approval/prospects?session_id=${session.id}`)
+                console.log(`Prospects API response for ${session.id.substring(0, 8)}:`, prospectsResponse.status)
                 if (prospectsResponse.ok) {
                   const prospectsData = await prospectsResponse.json()
+                  console.log(`Fetched ${prospectsData.prospects?.length || 0} prospects from session ${session.id.substring(0, 8)}`)
                   if (prospectsData.success && prospectsData.prospects) {
                     // Map approval data to ProspectData format
                     // CORRECTED: company and contact are JSONB objects, not strings
