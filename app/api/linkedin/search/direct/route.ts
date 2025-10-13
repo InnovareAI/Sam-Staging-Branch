@@ -252,42 +252,85 @@ export async function POST(request: NextRequest) {
     }));
 
     // If requested, save to prospect approval system
+    let sessionId = null;
     if (save_to_approval && prospects.length > 0) {
       console.log(`💾 Saving ${prospects.length} prospects to approval system...`);
 
-      // Generate campaign name
+      // Generate campaign name and tag
       const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
       const campaignName = `${today}-LinkedIn-Search`;
+      const campaignTag = search_criteria.keywords || search_criteria.title || 'LinkedIn Search';
 
-      // Save to workspace_prospects table for approval
-      const prospectsToInsert = prospects.map(p => ({
-        workspace_id: workspaceId,
-        name: p.name,
-        first_name: p.firstName,
-        last_name: p.lastName,
-        title: p.title,
-        company: p.company,
-        linkedin_url: p.linkedinUrl,
-        location: p.location,
-        headline: p.headline,
-        industry: p.industry,
-        connection_degree: p.connectionDegree,
-        source: p.source,
-        campaign_name: campaignName,
-        approval_status: 'pending',
-        created_at: new Date().toISOString()
-      }));
+      try {
+        // Step 1: Create approval session
+        const { data: session, error: sessionError } = await supabase
+          .from('prospect_approval_sessions')
+          .insert({
+            user_id: user.id,
+            workspace_id: workspaceId,
+            campaign_name: campaignName,
+            campaign_tag: campaignTag,
+            status: 'active',
+            total_prospects: prospects.length,
+            pending_count: prospects.length,
+            approved_count: 0,
+            rejected_count: 0,
+            source: 'linkedin_direct_search',
+            icp_criteria: search_criteria,
+            created_at: new Date().toISOString()
+          })
+          .select()
+          .single();
 
-      const { data: insertedProspects, error: insertError } = await supabase
-        .from('workspace_prospects')
-        .insert(prospectsToInsert)
-        .select();
+        if (sessionError) {
+          console.error('❌ Failed to create approval session:', sessionError);
+          throw sessionError;
+        }
 
-      if (insertError) {
-        console.error('❌ Failed to save prospects:', insertError);
+        sessionId = session.id;
+        console.log(`✅ Created approval session: ${sessionId.substring(0, 8)}`);
+
+        // Step 2: Insert prospects into approval_data
+        const prospectsToInsert = prospects.map((p, index) => ({
+          session_id: sessionId,
+          prospect_id: `linkedin_${p.publicIdentifier || index}_${Date.now()}`,
+          name: p.name,
+          title: p.title,
+          company: p.company,
+          location: p.location,
+          profile_image: null, // LinkedIn doesn't provide images via search API
+          contact: {
+            linkedin: p.linkedinUrl,
+            email: null // Not available from search
+          },
+          recent_activity: p.headline,
+          connection_degree: p.connectionDegree || 'Unknown',
+          enrichment_score: 50, // Default score
+          source: 'linkedin_direct_search',
+          enriched_at: new Date().toISOString(),
+          created_at: new Date().toISOString()
+        }));
+
+        const { data: insertedProspects, error: insertError } = await supabase
+          .from('prospect_approval_data')
+          .insert(prospectsToInsert)
+          .select();
+
+        if (insertError) {
+          console.error('❌ Failed to save prospects to approval_data:', insertError);
+          // Clean up session on failure
+          await supabase
+            .from('prospect_approval_sessions')
+            .delete()
+            .eq('id', sessionId);
+          throw insertError;
+        }
+
+        console.log(`✅ Saved ${insertedProspects?.length || 0} prospects to approval system (session: ${sessionId.substring(0, 8)})`);
+
+      } catch (saveError) {
+        console.error('❌ Error saving to approval system:', saveError);
         // Don't fail the request - we still have the data
-      } else {
-        console.log(`✅ Saved ${insertedProspects?.length || 0} prospects to approval system`);
       }
     }
 
@@ -297,6 +340,7 @@ export async function POST(request: NextRequest) {
       count: prospects.length,
       api: api,
       saved_to_approval: save_to_approval,
+      session_id: sessionId,
       message: `Found ${prospects.length} prospects${save_to_approval ? ' and saved to Data Approval' : ''}`
     });
 
