@@ -399,16 +399,26 @@ export default function DataCollectionHub({
                       name: p.name,
                       title: p.title || '',
                       company: p.company?.name || '',  // FIXED: Extract name from JSONB
+                      industry: p.company?.industry || '',  // FIXED: Extract industry from JSONB
+                      location: p.location || '',
                       email: p.contact?.email || '',    // FIXED: Extract email from JSONB
                       linkedinUrl: p.contact?.linkedin_url || '',  // FIXED: Extract URL from JSONB
+                      phone: p.contact?.phone || '',
+                      connectionDegree: p.connection_degree ? `${p.connection_degree}${p.connection_degree === 1 ? 'st' : p.connection_degree === 2 ? 'nd' : 'rd'}` : undefined,
                       source: p.source || 'linkedin',
+                      enrichmentScore: p.enrichment_score || 0,
                       confidence: (p.enrichment_score || 80) / 100,  // FIXED: Convert integer to decimal
                       approvalStatus: (p.approval_status || 'approved') as 'pending' | 'approved' | 'rejected',  // DEFAULT: approved (opt-out system)
                       campaignName: session.campaign_name || `Session-${session.id.slice(0, 8)}`,  // Use actual campaign_name from DB
                       campaignTag: session.campaign_tag || session.campaign_name || session.prospect_source || 'linkedin',  // FIXED: Use campaign_name as fallback tag
                       sessionId: session.id,  // Track session ID for campaign name updates
-                      uploaded: false
+                      uploaded: false,
+                      qualityScore: 0  // Will be calculated below
                     }))
+                    // Calculate quality scores for each prospect
+                    mappedProspects.forEach(p => {
+                      p.qualityScore = calculateQualityScore(p)
+                    })
                     allProspects.push(...mappedProspects)
                   }
                 }
@@ -1464,7 +1474,7 @@ export default function DataCollectionHub({
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Company</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Title</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Industry</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Campaign Tag</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Campaign</th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Details</th>
             </tr>
@@ -1495,16 +1505,12 @@ export default function DataCollectionHub({
                   <td className="px-4 py-3 text-sm text-gray-300">{prospect.title}</td>
                   <td className="px-4 py-3 text-sm text-gray-300">{prospect.industry || '-'}</td>
                   <td className="px-4 py-3">
-                    <select
-                      value={prospect.campaignTag || ''}
-                      onChange={(e) => handleCampaignTagChange(prospect.id, e.target.value)}
-                      className="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-                    >
-                      <option value="">Select tag...</option>
-                      {Array.from(new Set(prospectData.map(p => p.campaignTag).filter(Boolean))).map(tag => (
-                        <option key={tag} value={tag}>{tag}</option>
-                      ))}
-                    </select>
+                    <div className="text-sm text-gray-300">
+                      <div className="font-medium text-white">{prospect.campaignName || 'Unnamed Campaign'}</div>
+                      {prospect.campaignTag && prospect.campaignTag !== prospect.campaignName && (
+                        <div className="text-xs text-gray-400 mt-0.5">{prospect.campaignTag}</div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center space-x-2">
