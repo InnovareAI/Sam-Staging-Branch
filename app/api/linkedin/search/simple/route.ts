@@ -383,12 +383,27 @@ export async function POST(request: NextRequest) {
       // Generate campaign name: YYYYMMDD-COMPANYCODE-CampaignName
       const today = new Date().toISOString().split('T')[0].replace(/-/g, ''); // 20251011
 
-      // Get workspace name for company code
+      // Get workspace name for company code and calculate next batch number
       const { data: workspace } = await supabase
         .from('workspaces')
         .select('name')
         .eq('id', workspaceId)
         .single();
+
+      // Get next batch_number for this user/workspace combination
+      const { data: existingSessions } = await supabase
+        .from('prospect_approval_sessions')
+        .select('batch_number')
+        .eq('user_id', user.id)
+        .eq('workspace_id', workspaceId)
+        .order('batch_number', { ascending: false })
+        .limit(1);
+
+      const nextBatchNumber = existingSessions && existingSessions.length > 0
+        ? (existingSessions[0].batch_number + 1)
+        : 1;
+
+      console.log('📋 Next batch number:', nextBatchNumber);
 
       // Generate company code from workspace name (e.g., "InnovareAI" → "IAI")
       const generateCompanyCode = (name: string): string => {
@@ -430,7 +445,7 @@ export async function POST(request: NextRequest) {
         .from('prospect_approval_sessions')
         .insert({
           id: sessionId,
-          batch_number: 1, // REQUIRED: NOT NULL constraint
+          batch_number: nextBatchNumber, // Auto-incremented to avoid duplicates
           user_id: user.id,
           workspace_id: workspaceId, // CORRECTED: workspace_id not organization_id
           prospect_source: 'linkedin_search',
