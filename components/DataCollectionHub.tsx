@@ -354,7 +354,7 @@ export default function DataCollectionHub({
                       confidence: (p.enrichment_score || 80) / 100,  // FIXED: Convert integer to decimal
                       approvalStatus: 'pending' as const,  // FIXED: approval_status column doesn't exist
                       campaignName: session.campaign_name || `Session-${session.id.slice(0, 8)}`,  // Use actual campaign_name from DB
-                      campaignTag: session.campaign_tag || session.prospect_source || 'linkedin',
+                      campaignTag: session.campaign_tag || session.campaign_name || session.prospect_source || 'linkedin',  // FIXED: Use campaign_name as fallback tag
                       sessionId: session.id,  // Track session ID for campaign name updates
                       uploaded: false
                     }))
