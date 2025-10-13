@@ -588,13 +588,25 @@ export async function POST(
     // Trigger ICP research for interactive building sessions
     if (isICPRequest && !linkedInUrls) {
       // CHECK: Is LinkedIn connected before proceeding with ICP discovery?
-      const { data: linkedInAccount } = await supabaseAdmin
+      console.log('🔍 DEBUG: Checking LinkedIn connection...', {
+        workspaceId,
+        userId: user.id,
+        userEmail: user.email
+      })
+
+      const { data: linkedInAccount, error: linkedInError } = await supabaseAdmin
         .from('workspace_accounts')
-        .select('account_id, connection_status')
+        .select('id, connection_status, account_name, unipile_account_id')
         .eq('workspace_id', workspaceId)
         .eq('account_type', 'linkedin')
-        .eq('connection_status', 'active')
+        .eq('connection_status', 'connected')
         .maybeSingle()
+
+      console.log('🔍 DEBUG: LinkedIn check result:', {
+        hasAccount: !!linkedInAccount,
+        account: linkedInAccount,
+        error: linkedInError?.message
+      })
 
       if (!linkedInAccount) {
         // LinkedIn not connected - provide helpful message with connection link
