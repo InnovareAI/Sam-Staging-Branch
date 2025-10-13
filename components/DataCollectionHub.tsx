@@ -30,6 +30,8 @@ type ProspectData = BaseProspectData & {
   approvalStatus?: 'pending' | 'approved' | 'rejected'
   uploaded?: boolean
   qualityScore?: number            // 0-100 quality score
+  draftMessage?: string            // SAM-generated outreach message
+  messageGenerating?: boolean      // Is message currently being generated
 }
 
 // Quality Score Calculation (0-100)

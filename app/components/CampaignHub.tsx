@@ -1832,12 +1832,13 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
     return true;
   });
 
-  // Auto-open campaign builder when initialProspects are provided
-  useEffect(() => {
-    if (initialProspects && initialProspects.length > 0) {
-      setShowBuilder(true);
-    }
-  }, [initialProspects]);
+  // Don't auto-open builder - show Pending Approval section instead
+  // Users will click "Draft Messages" to open builder for each campaign
+  // useEffect(() => {
+  //   if (initialProspects && initialProspects.length > 0) {
+  //     setShowBuilder(true);
+  //   }
+  // }, [initialProspects]);
 
   // Load approval counts on mount and auto-open if enabled
   useEffect(() => {
@@ -2819,6 +2820,83 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
       )}
 
       <div className="max-w-6xl space-y-8">
+        {/* Pending Approval Section - Shows campaigns from Data Approval */}
+        {initialProspects && initialProspects.length > 0 && !showBuilder && (
+          <div className="bg-gray-800 rounded-lg border border-gray-700">
+            <div className="px-6 py-4 border-b border-gray-700">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <CheckCircle className="text-green-400" size={24} />
+                  <div>
+                    <h2 className="text-lg font-bold text-white">Pending Approval</h2>
+                    <p className="text-sm text-gray-400">Campaigns ready for message creation</p>
+                  </div>
+                </div>
+                <div className="text-sm text-gray-400">
+                  {initialProspects.length} prospects approved
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {(() => {
+                // Group prospects by campaign name
+                const campaignGroups = initialProspects.reduce((acc: any, prospect: any) => {
+                  const campaignName = prospect.campaignName || prospect.campaignTag || 'Unnamed Campaign';
+                  if (!acc[campaignName]) {
+                    acc[campaignName] = [];
+                  }
+                  acc[campaignName].push(prospect);
+                  return acc;
+                }, {});
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {Object.entries(campaignGroups).map(([campaignName, prospects]: [string, any]) => (
+                      <div key={campaignName} className="bg-gray-750 rounded-lg border border-gray-700 p-5 hover:border-purple-500/50 transition-all">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <h3 className="text-white font-semibold mb-1">{campaignName}</h3>
+                            <div className="flex items-center space-x-2 text-sm text-gray-400">
+                              <Users size={14} />
+                              <span>{prospects.length} prospects</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => {
+                              // Open campaign builder with these prospects
+                              setShowBuilder(true);
+                            }}
+                            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium"
+                          >
+                            <MessageSquare size={14} />
+                            <span>Draft Messages</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              // Show prospect details
+                              console.log('Show prospects:', prospects);
+                              toastInfo(`${prospects.length} prospects in ${campaignName}`);
+                            }}
+                            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
+                          >
+                            <Eye size={14} />
+                            <span>View Prospects</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
         {/* Campaign Approval Screen */}
         {showApprovalScreen && campaignDataForApproval && (
           <CampaignApprovalScreen
