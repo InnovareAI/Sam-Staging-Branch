@@ -79,19 +79,20 @@ export async function POST(request: NextRequest) {
 
       case 'unipile_linkedin_search': {
         // Full LinkedIn database search via Unipile (RECOMMENDED - No quota limits!)
-        const linkedinSearchResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/linkedin/search`, {
+        // CRITICAL: Use /simple endpoint which saves to approval tables
+        const linkedinSearchResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/linkedin/search/simple`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            category: 'people',
-            keywords: search_criteria.keywords,
-            title: search_criteria.job_titles?.join(' OR '),
-            industry: search_criteria.industries,
-            location: search_criteria.locations,
-            company_headcount: mapCompanySizeToHeadcount(search_criteria.company_size),
-            seniority_level: search_criteria.seniority_levels,
-            limit: search_criteria.max_results || 50,
-            enrichProfiles: true
+            search_criteria: {
+              keywords: search_criteria.keywords,
+              title: search_criteria.job_titles?.join(' OR '),
+              industry: search_criteria.industries?.[0], // Simple only takes single value
+              location: search_criteria.locations?.[0], // Simple only takes single value
+              connectionDegree: '2nd', // Required by /simple
+              yearsOfExperience: search_criteria.years_experience
+            },
+            target_count: search_criteria.max_results || 50
           })
         });
 
