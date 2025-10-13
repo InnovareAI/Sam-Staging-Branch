@@ -587,79 +587,15 @@ export async function POST(
 
     // Trigger ICP research for interactive building sessions
     if (isICPRequest && !linkedInUrls) {
-      // CHECK: Is LinkedIn connected before proceeding with ICP discovery?
-      console.log('🔍 DEBUG: Checking LinkedIn connection...', {
+      // REMOVED: Proactive LinkedIn check - let the search API handle connection errors
+      // If LinkedIn isn't connected, the actual search will fail and we'll show error then
+      console.log('🚀 ICP request detected - proceeding without proactive LinkedIn check', {
         workspaceId,
-        userId: user.id,
-        userEmail: user.email
+        userId: user.id
       })
 
-      // First check ALL workspace accounts for this workspace
-      const { data: allAccounts } = await supabaseAdmin
-        .from('workspace_accounts')
-        .select('id, account_type, connection_status, account_name, workspace_id')
-        .eq('workspace_id', workspaceId)
-
-      console.log('🔍 DEBUG: ALL workspace accounts:', {
-        workspaceId,
-        totalAccounts: allAccounts?.length || 0,
-        accounts: allAccounts
-      })
-
-      const { data: linkedInAccount, error: linkedInError } = await supabaseAdmin
-        .from('workspace_accounts')
-        .select('id, connection_status, account_name, unipile_account_id')
-        .eq('workspace_id', workspaceId)
-        .eq('account_type', 'linkedin')
-        .eq('connection_status', 'connected')
-        .maybeSingle()
-
-      console.log('🔍 DEBUG: LinkedIn check result:', {
-        hasAccount: !!linkedInAccount,
-        account: linkedInAccount,
-        error: linkedInError?.message
-      })
-
-      if (!linkedInAccount) {
-        // LinkedIn not connected - provide helpful message with connection link
-        const connectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com'}/workspace/${workspaceId}/settings?tab=integrations`
-
-        console.log('❌ LinkedIn not found. Details:', {
-          workspaceId,
-          userId: user.id,
-          connectUrl,
-          note: 'User needs to connect LinkedIn account'
-        })
-
-        const linkedInPromptContent = `To find prospects and run ICP discovery, I need access to your LinkedIn account.\n\n**Why LinkedIn?**\n- Search the full LinkedIn database for your ideal prospects\n- Unlimited searches (no quota limits)\n- Access to real-time prospect data\n\n**Connect your LinkedIn account here:**\n[Connect LinkedIn Now](${connectUrl})\n\nOnce connected, I'll be able to search for prospects and help you build your ICP!`
-
-        // Save the assistant's prompt message
-        const { data: samMessage, error: samError } = await supabase
-          .from('sam_conversation_messages')
-          .insert({
-            thread_id: resolvedParams.threadId,
-            user_id: user.id,
-            role: 'assistant',
-            content: linkedInPromptContent,
-            message_order: nextOrder + 1
-          })
-          .select()
-          .single()
-
-        if (samError) {
-          console.error('❌ Failed to save LinkedIn prompt message:', samError)
-        }
-
-        return NextResponse.json({
-          success: true,
-          userMessage,
-          samMessage,
-          requiresLinkedIn: true,
-          connectUrl
-        })
-      }
-
-      // LinkedIn is connected - proceed with ICP discovery
+      // PROCEED DIRECTLY TO AI PROCESSING - no blocker
+      // LinkedIn connection will be validated by the actual search API
       try {
         // Extract job titles and criteria from user message
         const jobTitles = extractJobTitles(content)
