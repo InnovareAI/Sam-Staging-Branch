@@ -321,8 +321,17 @@ export async function POST(request: NextRequest) {
       if (item.network) {
         connectionDegree = networkToNumber[item.network] || requestedDegree;
       } else if (item.network_distance) {
-        connectionDegree = item.network_distance;
+        // Parse network_distance which might be string like "DISTANCE_2" or number 2
+        if (typeof item.network_distance === 'string') {
+          const match = item.network_distance.match(/(\d+)/);
+          connectionDegree = match ? parseInt(match[1]) : requestedDegree;
+        } else if (typeof item.network_distance === 'number') {
+          connectionDegree = item.network_distance;
+        }
       }
+      
+      // Ensure connectionDegree is always a valid integer
+      connectionDegree = parseInt(String(connectionDegree)) || requestedDegree;
 
       return {
         firstName,
