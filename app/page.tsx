@@ -83,40 +83,11 @@ const LinkedInLogo = ({ size = 16, className = "" }: { size?: number; className?
 );
 
 // Animated Message Component - typewriter effect character by character
-const AnimatedMessage = ({ content, animate = false }: { content: string; animate?: boolean }) => {
-  const [displayedContent, setDisplayedContent] = useState(animate ? '' : content);
-  const [currentIndex, setCurrentIndex] = useState(animate ? 0 : content.length);
-
-  useEffect(() => {
-    if (!animate) {
-      // If not animating, show content immediately
-      setDisplayedContent(content);
-      setCurrentIndex(content.length);
-      return;
-    }
-
-    // Reset animation when content changes
-    setDisplayedContent('');
-    setCurrentIndex(0);
-  }, [content, animate]);
-
-  useEffect(() => {
-    if (animate && currentIndex < content.length) {
-      const timer = setTimeout(() => {
-        setDisplayedContent(prev => prev + content[currentIndex]);
-        setCurrentIndex(prev => prev + 1);
-      }, 20); // 20ms between each character (50 chars per second)
-
-      return () => clearTimeout(timer);
-    }
-  }, [currentIndex, content, animate]);
-
+const AnimatedMessage = ({ content }: { content: string; animate?: boolean }) => {
+  // No animation - show content immediately for instant response
   return (
     <div className="text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">
-      {displayedContent}
-      {animate && currentIndex < content.length && (
-        <span className="inline-block w-1 h-4 bg-purple-400 animate-pulse ml-0.5" />
-      )}
+      {content}
     </div>
   );
 };
