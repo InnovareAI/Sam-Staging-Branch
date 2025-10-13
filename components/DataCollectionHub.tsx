@@ -403,7 +403,7 @@ export default function DataCollectionHub({
                       linkedinUrl: p.contact?.linkedin_url || '',  // FIXED: Extract URL from JSONB
                       source: p.source || 'linkedin',
                       confidence: (p.enrichment_score || 80) / 100,  // FIXED: Convert integer to decimal
-                      approvalStatus: (p.approval_status || 'pending') as 'pending' | 'approved' | 'rejected',  // FIXED: Load from database
+                      approvalStatus: (p.approval_status || 'approved') as 'pending' | 'approved' | 'rejected',  // DEFAULT: approved (opt-out system)
                       campaignName: session.campaign_name || `Session-${session.id.slice(0, 8)}`,  // Use actual campaign_name from DB
                       campaignTag: session.campaign_tag || session.campaign_name || session.prospect_source || 'linkedin',  // FIXED: Use campaign_name as fallback tag
                       sessionId: session.id,  // Track session ID for campaign name updates
@@ -1314,19 +1314,15 @@ export default function DataCollectionHub({
           </div>
           <div className="flex items-center space-x-2">
             <button
-              onClick={handleApproveAll}
-              className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium"
-            >
-              <Check className="w-4 h-4" />
-              <span>Approve All</span>
-            </button>
-            <button
               onClick={handleRejectAll}
               className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium"
             >
               <X className="w-4 h-4" />
               <span>Reject All</span>
             </button>
+            <span className="text-sm text-gray-400 ml-2">
+              💡 All prospects approved by default — only reject what you don't want
+            </span>
           </div>
         </div>
       </div>
@@ -1516,27 +1512,14 @@ export default function DataCollectionHub({
                         <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-600 text-red-100">
                           rejected
                         </span>
-                      ) : prospect.approvalStatus === 'approved' ? (
-                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-600 text-green-100">
-                          approved
-                        </span>
                       ) : (
-                        <>
-                          <button
-                            onClick={() => handleApprove(prospect.id)}
-                            className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
-                            title="Approve"
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleReject(prospect.id)}
-                            className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
-                            title="Reject"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </>
+                        <button
+                          onClick={() => handleReject(prospect.id)}
+                          className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
+                          title="Reject (all prospects approved by default)"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       )}
                     </div>
                   </td>
