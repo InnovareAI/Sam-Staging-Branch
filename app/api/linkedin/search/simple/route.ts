@@ -219,25 +219,18 @@ export async function POST(request: NextRequest) {
       '3': ['O']
     };
 
-    if (search_criteria.connectionDegree) {
-      // Unipile uses 'network' parameter with values: F, S, O
-      // F = First degree, S = Second degree, O = Third+ degree
-      unipilePayload.network = degreeMap[search_criteria.connectionDegree];
-      console.log('🎯 Connection degree filter:', search_criteria.connectionDegree, '→', unipilePayload.network);
-
-      if (!unipilePayload.network) {
-        console.error('❌ Invalid connection degree format:', search_criteria.connectionDegree);
-        return NextResponse.json({
-          error: 'Invalid connection degree. Must be "1st", "2nd", or "3rd"'
-        }, { status: 400 });
-      }
-    } else {
-      // No connection degree specified - SAM should have asked the user first
-      console.error('❌ No connection degree specified in search');
+    // Use provided connection degree or default to 2nd degree
+    const connectionDegree = search_criteria.connectionDegree || '2nd';
+    unipilePayload.network = degreeMap[connectionDegree];
+    
+    if (!unipilePayload.network) {
+      console.error('❌ Invalid connection degree format:', connectionDegree);
       return NextResponse.json({
-        error: 'Connection degree is required. Please specify 1st, 2nd, or 3rd degree connections.'
+        error: 'Invalid connection degree. Must be "1st", "2nd", or "3rd"'
       }, { status: 400 });
     }
+    
+    console.log('🎯 Connection degree filter:', connectionDegree, '→', unipilePayload.network);
 
     // Profile Language filter
     if (search_criteria.profileLanguage) {
