@@ -1660,17 +1660,18 @@ async function collectLinkedInData(query: string, workspaceCode: string): Promis
     // Detect if query is a LinkedIn URL or keywords
     const isUrl = query.startsWith('http') || query.includes('linkedin.com')
 
-    // Call real Unipile API
-    const response = await fetch('/api/linkedin/search', {
+    // Call working API that saves to approval tables
+    const response = await fetch('/api/linkedin/search/simple', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(
-        isUrl
-          ? { url: query, category: 'people' }
-          : { keywords: query, category: 'people' }
-      )
+      body: JSON.stringify({
+        search_criteria: isUrl
+          ? { keywords: query, connectionDegree: '2nd' } // URL searches treated as keywords
+          : { keywords: query, connectionDegree: '2nd' }, // Default to 2nd connections
+        target_count: 50
+      })
     })
 
     if (!response.ok) {
@@ -1682,15 +1683,15 @@ async function collectLinkedInData(query: string, workspaceCode: string): Promis
     if (data.success && data.prospects) {
       return data.prospects.map((prospect: any) => ({
         id: `linkedin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        name: prospect.name || 'Unknown',
+        name: prospect.fullName || prospect.name || 'Unknown',
         title: prospect.title || 'Not specified',
         company: prospect.company || 'Unknown Company',
-        email: prospect.email || null,
-        phone: prospect.phone || null,
-        linkedinUrl: prospect.linkedinUrl || prospect.profileUrl || null,
-        source: 'unipile' as const,
-        confidence: prospect.confidence || 0.7,
-        complianceFlags: prospect.complianceFlags || [],
+        email: null, // Not available from LinkedIn search
+        phone: null, // Not available from LinkedIn search
+        linkedinUrl: prospect.linkedinUrl || prospect.linkedin_profile_url || null,
+        source: 'linkedin_search' as const,
+        confidence: 0.8, // High confidence since from official LinkedIn API
+        complianceFlags: [],
         campaignName: campaignName,
         campaignTag: campaignName,
         approvalStatus: 'pending' as const
