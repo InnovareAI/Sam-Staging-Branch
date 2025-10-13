@@ -1,11 +1,14 @@
 'use client'
 
-import { Check, ChevronDown, ChevronUp, Download, Search, Tag, Users, X, Upload, FileText, Link } from 'lucide-react';
-import { toastError } from '@/lib/toast';
+import { Check, ChevronDown, ChevronUp, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star } from 'lucide-react';
+import { toastError, toastSuccess } from '@/lib/toast';
 import { useState, useEffect, useRef } from 'react';
 import ProspectSearchChat from '@/components/ProspectSearchChat';
 import { ProspectData as BaseProspectData } from '@/components/ProspectApprovalModal';
 import React from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 // LinkedIn Campaign Types
@@ -26,6 +29,39 @@ type ProspectData = BaseProspectData & {
   inmailEligible?: boolean         // Has Open Profile or InMail available
   approvalStatus?: 'pending' | 'approved' | 'rejected'
   uploaded?: boolean
+  qualityScore?: number            // 0-100 quality score
+}
+
+// Quality Score Calculation (0-100)
+function calculateQualityScore(prospect: ProspectData): number {
+  let score = 0
+
+  // Has email: +30 points
+  if (prospect.email) score += 30
+
+  // Has phone: +20 points
+  if (prospect.phone) score += 20
+
+  // Connection degree: 1st=+25, 2nd=+15, 3rd=+5
+  if (prospect.connectionDegree === '1st') score += 25
+  else if (prospect.connectionDegree === '2nd') score += 15
+  else if (prospect.connectionDegree === '3rd') score += 5
+
+  // Confidence/enrichment score: +15 if > 80%
+  if (prospect.confidence && prospect.confidence > 0.8) score += 15
+  else if (prospect.enrichmentScore && prospect.enrichmentScore > 80) score += 15
+
+  // Complete profile (location + industry): +10
+  if (prospect.location && prospect.industry) score += 10
+
+  return Math.min(score, 100)
+}
+
+// Get quality badge variant and label
+function getQualityBadge(score: number): { variant: 'default' | 'secondary' | 'destructive', label: string, icon: React.ReactNode } {
+  if (score >= 85) return { variant: 'default', label: 'High', icon: <Star className="w-3 h-3 fill-green-500 text-green-500" /> }
+  if (score >= 60) return { variant: 'secondary', label: 'Medium', icon: <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" /> }
+  return { variant: 'destructive', label: 'Low', icon: <Star className="w-3 h-3 fill-gray-500 text-gray-500" /> }
 }
 
 interface DataCollectionHubProps {
@@ -97,6 +133,10 @@ export default function DataCollectionHub({
   const [linkedinQuery, setLinkedinQuery] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [isChatMinimized, setIsChatMinimized] = useState(false)
+
+  // Bulk selection state
+  const [selectedProspectIds, setSelectedProspectIds] = useState<Set<string>>(new Set())
+  const [quickFilter, setQuickFilter] = useState<string>('all') // 'all', 'high-quality', 'has-email', '1st-degree', etc.
 
   // ProspectSearchChat integration
   const [searchJobId, setSearchJobId] = useState<string | null>(null)
@@ -594,13 +634,36 @@ export default function DataCollectionHub({
     window.URL.revokeObjectURL(url)
   }
 
+  // Calculate quality scores for all prospects
+  const prospectsWithScores = prospectData.map(p => ({
+    ...p,
+    qualityScore: p.qualityScore ?? calculateQualityScore(p)
+  }))
+
   // Get unique campaign tags
-  const campaignTags = ['all', ...Array.from(new Set(prospectData.map(p => p.campaignTag).filter(Boolean))) as string[]]
-  
+  const campaignTags = ['all', ...Array.from(new Set(prospectsWithScores.map(p => p.campaignTag).filter(Boolean))) as string[]]
+
+  // Calculate filter counts
+  const highQualityCount = prospectsWithScores.filter(p => (p.qualityScore ?? 0) >= 85).length
+  const hasEmailCount = prospectsWithScores.filter(p => p.email).length
+  const firstDegreeCount = prospectsWithScores.filter(p => p.connectionDegree === '1st').length
+  const missingInfoCount = prospectsWithScores.filter(p => !p.email || !p.phone).length
+
   // Filter prospects
-  const filteredProspects = prospectData.filter(p => {
+  let filteredProspects = prospectsWithScores.filter(p => {
+    // Campaign tag filter
     if (selectedCampaignTag !== 'all' && p.campaignTag !== selectedCampaignTag) return false
+
+    // Approval status filter
     if (filterStatus !== 'all' && p.approvalStatus !== filterStatus) return false
+
+    // Quick filter
+    if (quickFilter === 'high-quality' && (p.qualityScore ?? 0) < 85) return false
+    if (quickFilter === 'has-email' && !p.email) return false
+    if (quickFilter === '1st-degree' && p.connectionDegree !== '1st') return false
+    if (quickFilter === 'missing-info' && p.email && p.phone) return false
+
+    // Search term
     if (searchTerm) {
       const search = searchTerm.toLowerCase()
       return (
@@ -614,6 +677,9 @@ export default function DataCollectionHub({
     return true
   })
 
+  // Sort by quality score (highest first)
+  filteredProspects = filteredProspects.sort((a, b) => (b.qualityScore ?? 0) - (a.qualityScore ?? 0))
+
   const approvedCount = prospectData.filter(p => p.approvalStatus === 'approved').length
   const rejectedCount = prospectData.filter(p => p.approvalStatus === 'rejected').length
   const pendingCount = prospectData.filter(p => p.approvalStatus === 'pending').length
@@ -622,6 +688,66 @@ export default function DataCollectionHub({
     if (defaultCampaignTag.trim()) {
       setProspectData(prev => prev.map(p => ({ ...p, campaignTag: defaultCampaignTag })))
     }
+  }
+
+  // Bulk selection handlers
+  const toggleSelectProspect = (prospectId: string) => {
+    setSelectedProspectIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(prospectId)) {
+        newSet.delete(prospectId)
+      } else {
+        newSet.add(prospectId)
+      }
+      return newSet
+    })
+  }
+
+  const selectAllVisible = () => {
+    setSelectedProspectIds(new Set(filteredProspects.map(p => p.id)))
+  }
+
+  const deselectAll = () => {
+    setSelectedProspectIds(new Set())
+  }
+
+  const selectTopQuality = (count: number = 50) => {
+    const topProspects = filteredProspects
+      .sort((a, b) => (b.qualityScore ?? 0) - (a.qualityScore ?? 0))
+      .slice(0, count)
+      .map(p => p.id)
+    setSelectedProspectIds(new Set(topProspects))
+    toastSuccess(`Selected top ${topProspects.length} quality prospects`)
+  }
+
+  const selectWithEmail = () => {
+    const prospectsWithEmail = filteredProspects.filter(p => p.email).map(p => p.id)
+    setSelectedProspectIds(new Set(prospectsWithEmail))
+    toastSuccess(`Selected ${prospectsWithEmail.length} prospects with email`)
+  }
+
+  const selectFirstDegree = () => {
+    const firstDegree = filteredProspects.filter(p => p.connectionDegree === '1st').map(p => p.id)
+    setSelectedProspectIds(new Set(firstDegree))
+    toastSuccess(`Selected ${firstDegree.length} 1st degree connections`)
+  }
+
+  const bulkApproveSelected = () => {
+    if (selectedProspectIds.size === 0) return
+    setProspectData(prev => prev.map(p =>
+      selectedProspectIds.has(p.id) ? { ...p, approvalStatus: 'approved' as const } : p
+    ))
+    toastSuccess(`Approved ${selectedProspectIds.size} prospects`)
+    deselectAll()
+  }
+
+  const bulkRejectSelected = () => {
+    if (selectedProspectIds.size === 0) return
+    setProspectData(prev => prev.map(p =>
+      selectedProspectIds.has(p.id) ? { ...p, approvalStatus: 'rejected' as const } : p
+    ))
+    toastSuccess(`Rejected ${selectedProspectIds.size} prospects`)
+    deselectAll()
   }
 
   // Proceed to Campaign Hub with approved prospects
@@ -982,6 +1108,100 @@ export default function DataCollectionHub({
         </div>
       </div>
 
+      {/* Quick Filter Pills */}
+      <div className="border-b border-gray-700 px-6 py-4 bg-gray-850">
+        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Quick Filters</h3>
+        <div className="flex flex-wrap gap-2">
+          <Badge
+            variant={quickFilter === 'all' ? 'default' : 'outline'}
+            className="cursor-pointer text-sm px-4 py-2 hover:bg-purple-600/20"
+            onClick={() => setQuickFilter('all')}
+          >
+            <Users className="w-3 h-3 mr-1" />
+            All ({filteredProspects.length})
+          </Badge>
+          <Badge
+            variant={quickFilter === 'high-quality' ? 'default' : 'outline'}
+            className="cursor-pointer text-sm px-4 py-2 hover:bg-green-600/20"
+            onClick={() => setQuickFilter('high-quality')}
+          >
+            <Sparkles className="w-3 h-3 mr-1" />
+            High Quality ({highQualityCount})
+          </Badge>
+          <Badge
+            variant={quickFilter === 'has-email' ? 'default' : 'outline'}
+            className="cursor-pointer text-sm px-4 py-2 hover:bg-blue-600/20"
+            onClick={() => setQuickFilter('has-email')}
+          >
+            <Mail className="w-3 h-3 mr-1" />
+            Has Email ({hasEmailCount})
+          </Badge>
+          <Badge
+            variant={quickFilter === '1st-degree' ? 'default' : 'outline'}
+            className="cursor-pointer text-sm px-4 py-2 hover:bg-yellow-600/20"
+            onClick={() => setQuickFilter('1st-degree')}
+          >
+            <Linkedin className="w-3 h-3 mr-1" />
+            1st Degree ({firstDegreeCount})
+          </Badge>
+          <Badge
+            variant={quickFilter === 'missing-info' ? 'default' : 'outline'}
+            className="cursor-pointer text-sm px-4 py-2 hover:bg-orange-600/20"
+            onClick={() => setQuickFilter('missing-info')}
+          >
+            ⚠️ Missing Info ({missingInfoCount})
+          </Badge>
+        </div>
+      </div>
+
+      {/* Smart Select + Bulk Actions */}
+      <div className="border-b border-gray-700 px-6 py-4 bg-gray-900">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-semibold text-gray-400">Smart Select:</span>
+            <Button variant="outline" size="sm" onClick={() => selectTopQuality(50)}>
+              <Sparkles className="w-3 h-3 mr-1" />
+              Top 50 Quality
+            </Button>
+            <Button variant="outline" size="sm" onClick={selectWithEmail}>
+              <Mail className="w-3 h-3 mr-1" />
+              All with Email
+            </Button>
+            <Button variant="outline" size="sm" onClick={selectFirstDegree}>
+              <Linkedin className="w-3 h-3 mr-1" />
+              1st Degree
+            </Button>
+            <Button variant="outline" size="sm" onClick={selectAllVisible}>
+              <Check className="w-3 h-3 mr-1" />
+              All Visible ({filteredProspects.length})
+            </Button>
+            {selectedProspectIds.size > 0 && (
+              <Button variant="ghost" size="sm" onClick={deselectAll}>
+                <X className="w-3 h-3 mr-1" />
+                Clear
+              </Button>
+            )}
+          </div>
+
+          {selectedProspectIds.size > 0 && (
+            <div className="flex items-center space-x-2 bg-purple-600/20 px-4 py-2 rounded-lg border border-purple-500/30">
+              <span className="text-sm font-semibold text-purple-300">
+                {selectedProspectIds.size} selected
+              </span>
+              <div className="h-4 w-px bg-purple-500/30" />
+              <Button variant="default" size="sm" onClick={bulkApproveSelected}>
+                <Check className="w-3 h-3 mr-1" />
+                Approve
+              </Button>
+              <Button variant="destructive" size="sm" onClick={bulkRejectSelected}>
+                <X className="w-3 h-3 mr-1" />
+                Reject
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Filters and Search */}
       <div className="border-b border-gray-700 px-6 py-3 bg-gray-750">
         <div className="flex items-center space-x-4">
@@ -1013,6 +1233,14 @@ export default function DataCollectionHub({
         <table className="w-full">
           <thead className="bg-gray-750 border-b border-gray-700">
             <tr>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider w-12">
+                <Checkbox
+                  checked={selectedProspectIds.size === filteredProspects.length && filteredProspects.length > 0}
+                  onChange={selectedProspectIds.size === filteredProspects.length ? deselectAll : selectAllVisible}
+                  aria-label="Select all"
+                />
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Quality</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Name</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Company</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Title</th>
@@ -1023,9 +1251,26 @@ export default function DataCollectionHub({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
-            {filteredProspects.map((prospect) => (
+            {filteredProspects.map((prospect) => {
+              const qualityBadge = getQualityBadge(prospect.qualityScore ?? 0)
+              return (
               <React.Fragment key={prospect.id}>
-                <tr className="hover:bg-gray-750 transition-colors">
+                <tr className={`hover:bg-gray-750 transition-colors ${selectedProspectIds.has(prospect.id) ? 'bg-purple-600/10' : ''}`}>
+                  <td className="px-4 py-3 text-center">
+                    <Checkbox
+                      checked={selectedProspectIds.has(prospect.id)}
+                      onChange={() => toggleSelectProspect(prospect.id)}
+                      aria-label={`Select ${prospect.name}`}
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center space-x-1">
+                      {qualityBadge.icon}
+                      <Badge variant={qualityBadge.variant} className="text-xs">
+                        {prospect.qualityScore}
+                      </Badge>
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-sm text-white font-medium">{prospect.name}</td>
                   <td className="px-4 py-3 text-sm text-gray-300">{prospect.company}</td>
                   <td className="px-4 py-3 text-sm text-gray-300">{prospect.title}</td>
@@ -1080,7 +1325,7 @@ export default function DataCollectionHub({
                 {/* Expanded Detail Row */}
                 {expandedProspect === prospect.id && (
                   <tr className="bg-gray-750">
-                    <td colSpan={7} className="px-4 py-4">
+                    <td colSpan={9} className="px-4 py-4">
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-gray-400">Email:</span>
@@ -1169,7 +1414,8 @@ export default function DataCollectionHub({
                   </tr>
                 )}
               </React.Fragment>
-            ))}
+              )
+            })}
           </tbody>
         </table>
         {filteredProspects.length === 0 && (
