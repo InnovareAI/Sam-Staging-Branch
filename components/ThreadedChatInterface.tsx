@@ -1769,10 +1769,10 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                   messageContent={inputMessage}
                 />
                 
-                <div className={`flex gap-3 items-end p-3 rounded-2xl border-2 transition-all duration-200 mt-4 ${
+                <div className={`flex gap-3 items-end p-2 rounded-2xl border-2 transition-all duration-200 mt-4 ${
                   inputFocused 
                     ? 'border-purple-500 bg-gray-800/50' 
-                    : 'border-gray-700 bg-gray-800'
+                    : 'border-gray-700 bg-gray-900'
                 }`}>
                   <input
                     ref={fileInputRef}
