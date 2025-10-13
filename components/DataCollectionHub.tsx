@@ -891,152 +891,146 @@ export default function DataCollectionHub({
       {/* Add Prospects Section - CSV, Copy/Paste, LinkedIn URL */}
       <div className="border-b border-gray-700 px-6 py-4 bg-gray-900">
         <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Add Prospects</h3>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
           {/* CSV Upload */}
-          <div className="flex flex-col space-y-2">
-            <input
-              ref={csvFileInputRef}
-              type="file"
-              accept=".csv"
-              onChange={handleCsvUpload}
-              className="hidden"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => csvFileInputRef.current?.click()}
-              disabled={isUploadingCsv}
-            >
-              <Upload className="w-3 h-3 mr-1" />
-              {isUploadingCsv ? 'Uploading...' : 'CSV Upload'}
-            </Button>
-          </div>
+          <input
+            ref={csvFileInputRef}
+            type="file"
+            accept=".csv"
+            onChange={handleCsvUpload}
+            className="hidden"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => csvFileInputRef.current?.click()}
+            disabled={isUploadingCsv}
+          >
+            <Upload className="w-3 h-3 mr-1" />
+            {isUploadingCsv ? 'Uploading...' : 'CSV Upload'}
+          </Button>
 
           {/* Copy/Paste Text - Opens modal */}
-          <div className="flex flex-col space-y-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                const text = prompt('Paste prospect data (Name, Title, Company, Email, LinkedIn):\nExample: John Doe, CEO, Acme Inc, john@acme.com, linkedin.com/in/johndoe')
-                if (text && text.trim()) {
-                  setIsProcessingPaste(true)
-                  try {
-                    const lines = text.trim().split('\n')
-                    const newProspects: ProspectData[] = []
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              const text = prompt('Paste prospect data (Name, Title, Company, Email, LinkedIn):\nExample: John Doe, CEO, Acme Inc, john@acme.com, linkedin.com/in/johndoe')
+              if (text && text.trim()) {
+                setIsProcessingPaste(true)
+                try {
+                  const lines = text.trim().split('\n')
+                  const newProspects: ProspectData[] = []
 
-                    for (const line of lines) {
-                      if (!line.trim()) continue
-                      const parts = line.includes('\t') ? line.split('\t') : line.split(',')
-                      const cleanParts = parts.map(p => p.trim())
+                  for (const line of lines) {
+                    if (!line.trim()) continue
+                    const parts = line.includes('\t') ? line.split('\t') : line.split(',')
+                    const cleanParts = parts.map(p => p.trim())
 
-                      if (cleanParts.length >= 2) {
-                        newProspects.push({
-                          id: `paste_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                          name: cleanParts[0] || 'Unknown',
-                          title: cleanParts[1] || '',
-                          company: cleanParts[2] || '',
-                          location: '',
+                    if (cleanParts.length >= 2) {
+                      newProspects.push({
+                        id: `paste_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                        name: cleanParts[0] || 'Unknown',
+                        title: cleanParts[1] || '',
+                        company: cleanParts[2] || '',
+                        location: '',
+                        email: cleanParts[3] || '',
+                        linkedinUrl: cleanParts[4] || '',
+                        contact: {
                           email: cleanParts[3] || '',
-                          linkedinUrl: cleanParts[4] || '',
-                          contact: {
-                            email: cleanParts[3] || '',
-                            linkedin_url: cleanParts[4] || ''
-                          },
-                          source: 'manual' as const,
-                          approvalStatus: 'pending' as const,
-                          campaignName: `${today}-${workspaceCode}-Pasted Data`,
-                          campaignTag: 'paste-import',
-                          uploaded: true
-                        })
-                      }
+                          linkedin_url: cleanParts[4] || ''
+                        },
+                        source: 'manual' as const,
+                        approvalStatus: 'pending' as const,
+                        campaignName: `${today}-${workspaceCode}-Pasted Data`,
+                        campaignTag: 'paste-import',
+                        uploaded: true
+                      })
                     }
-
-                    if (newProspects.length > 0) {
-                      setProspectData(prev => [...newProspects, ...prev])
-                      toastSuccess(`Added ${newProspects.length} prospects from pasted data`)
-                    } else {
-                      toastError('No valid prospect data found')
-                    }
-                  } catch (error) {
-                    console.error('Paste processing error:', error)
-                    toastError('Error processing pasted data')
-                  } finally {
-                    setIsProcessingPaste(false)
                   }
+
+                  if (newProspects.length > 0) {
+                    setProspectData(prev => [...newProspects, ...prev])
+                    toastSuccess(`Added ${newProspects.length} prospects from pasted data`)
+                  } else {
+                    toastError('No valid prospect data found')
+                  }
+                } catch (error) {
+                  console.error('Paste processing error:', error)
+                  toastError('Error processing pasted data')
+                } finally {
+                  setIsProcessingPaste(false)
                 }
-              }}
-              disabled={isProcessingPaste}
-            >
-              <FileText className="w-3 h-3 mr-1" />
-              {isProcessingPaste ? 'Processing...' : 'Copy & Paste'}
-            </Button>
-          </div>
+              }
+            }}
+            disabled={isProcessingPaste}
+          >
+            <FileText className="w-3 h-3 mr-1" />
+            {isProcessingPaste ? 'Processing...' : 'Copy & Paste'}
+          </Button>
 
           {/* LinkedIn Search URL - Opens modal */}
-          <div className="flex flex-col space-y-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                const url = prompt('Paste LinkedIn search URL (Sales Nav or Recruiter):')
-                if (url && url.trim()) {
-                  setIsProcessingUrl(true)
-                  try {
-                    const response = await fetch('/api/linkedin/search/simple', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        search_criteria: { url: url.trim() },
-                        target_count: 50
-                      })
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              const url = prompt('Paste LinkedIn search URL (Sales Nav or Recruiter):')
+              if (url && url.trim()) {
+                setIsProcessingUrl(true)
+                try {
+                  const response = await fetch('/api/linkedin/search/simple', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      search_criteria: { url: url.trim() },
+                      target_count: 50
                     })
+                  })
 
-                    if (response.ok) {
-                      const data = await response.json()
-                      if (data.success && data.prospects && data.prospects.length > 0) {
-                        const newProspects: ProspectData[] = data.prospects.map((p: any, index: number) => ({
-                          id: `linkedin_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
-                          name: p.fullName || p.name || 'Unknown',
-                          title: p.title || '',
-                          company: p.company || '',
-                          location: '',
+                  if (response.ok) {
+                    const data = await response.json()
+                    if (data.success && data.prospects && data.prospects.length > 0) {
+                      const newProspects: ProspectData[] = data.prospects.map((p: any, index: number) => ({
+                        id: `linkedin_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+                        name: p.fullName || p.name || 'Unknown',
+                        title: p.title || '',
+                        company: p.company || '',
+                        location: '',
+                        email: p.email || '',
+                        linkedinUrl: p.linkedinUrl || '',
+                        contact: {
                           email: p.email || '',
-                          linkedinUrl: p.linkedinUrl || '',
-                          contact: {
-                            email: p.email || '',
-                            linkedin_url: p.linkedinUrl || ''
-                          },
-                          source: 'linkedin' as const,
-                          confidence: p.confidence || 0.7,
-                          approvalStatus: 'pending' as const,
-                          campaignName: `${today}-${workspaceCode}-LinkedIn Search`,
-                          campaignTag: 'linkedin-url',
-                          uploaded: true
-                        }))
+                          linkedin_url: p.linkedinUrl || ''
+                        },
+                        source: 'linkedin' as const,
+                        confidence: p.confidence || 0.7,
+                        approvalStatus: 'pending' as const,
+                        campaignName: `${today}-${workspaceCode}-LinkedIn Search`,
+                        campaignTag: 'linkedin-url',
+                        uploaded: true
+                      }))
 
-                        setProspectData(prev => [...newProspects, ...prev])
-                        toastSuccess(`Found ${newProspects.length} prospects from LinkedIn URL`)
-                      } else {
-                        toastError('No prospects found in LinkedIn URL')
-                      }
+                      setProspectData(prev => [...newProspects, ...prev])
+                      toastSuccess(`Found ${newProspects.length} prospects from LinkedIn URL`)
                     } else {
-                      toastError('Failed to search LinkedIn')
+                      toastError('No prospects found in LinkedIn URL')
                     }
-                  } catch (error) {
-                    console.error('LinkedIn URL processing error:', error)
-                    toastError('Error processing LinkedIn URL')
-                  } finally {
-                    setIsProcessingUrl(false)
+                  } else {
+                    toastError('Failed to search LinkedIn')
                   }
+                } catch (error) {
+                  console.error('LinkedIn URL processing error:', error)
+                  toastError('Error processing LinkedIn URL')
+                } finally {
+                  setIsProcessingUrl(false)
                 }
-              }}
-              disabled={isProcessingUrl}
-            >
-              <Link className="w-3 h-3 mr-1" />
-              {isProcessingUrl ? 'Searching...' : 'LinkedIn URL'}
-            </Button>
-          </div>
+              }
+            }}
+            disabled={isProcessingUrl}
+          >
+            <Link className="w-3 h-3 mr-1" />
+            {isProcessingUrl ? 'Searching...' : 'LinkedIn URL'}
+          </Button>
         </div>
       </div>
 
