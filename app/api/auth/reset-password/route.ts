@@ -128,7 +128,10 @@ export async function POST(request: NextRequest) {
 
       // Use the Supabase-generated recovery link (contains actual token)
       const resetUrl = data.properties.action_link;
-      
+
+      console.log('🔗 Supabase generated action_link:', resetUrl);
+      console.log('🔗 Expected redirect:', `${origin}/auth/callback`);
+
       const htmlBody = `
         <!DOCTYPE html>
         <html>
