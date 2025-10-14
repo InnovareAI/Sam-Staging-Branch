@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 
-export default function SignInPage() {
+function SignInForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -13,6 +13,20 @@ export default function SignInPage() {
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Check for error messages in URL params
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    const messageParam = searchParams.get('message');
+
+    if (errorParam === 'reset_expired' && messageParam) {
+      setError(decodeURIComponent(messageParam));
+      setForgotPasswordMode(true);
+    } else if (errorParam) {
+      setError('Authentication error. Please try again.');
+    }
+  }, [searchParams]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,5 +199,17 @@ export default function SignInPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    }>
+      <SignInForm />
+    </Suspense>
   );
 }

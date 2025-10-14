@@ -17,13 +17,15 @@ export async function GET(request: NextRequest) {
     console.error('Auth callback error:', error, errorDescription);
 
     if (error === 'access_denied' && errorDescription?.includes('expired')) {
+      // Password reset link expired - redirect to signin with message
       return NextResponse.redirect(
-        new URL('/api/auth/reset-password?error=expired', request.url)
+        new URL('/signin?error=reset_expired&message=' + encodeURIComponent('Your password reset link has expired. Please request a new one.'), request.url)
       );
     }
 
+    // Redirect all other auth errors to signin
     return NextResponse.redirect(
-      new URL('/api/auth/signin?error=' + error, request.url)
+      new URL('/signin?error=' + error, request.url)
     );
   }
 
@@ -57,7 +59,7 @@ export async function GET(request: NextRequest) {
       if (error) {
         console.error('Auth callback error:', error);
         return NextResponse.redirect(
-          new URL('/api/auth/signin?error=callback_error', request.url)
+          new URL('/signin?error=callback_error', request.url)
         );
       }
 
@@ -223,11 +225,11 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       console.error('Callback processing error:', error);
       return NextResponse.redirect(
-        new URL('/api/auth/signin?error=callback_processing_error', request.url)
+        new URL('/signin?error=callback_processing_error', request.url)
       );
     }
   }
 
   // If no code provided, redirect to signin
-  return NextResponse.redirect(new URL('/api/auth/signin', request.url));
+  return NextResponse.redirect(new URL('/signin', request.url));
 }
