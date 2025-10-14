@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Brain, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, FileText, Package, MessageSquare, Cpu, Clock, AlertCircle, Mic, Briefcase, Trophy, GitBranch, Mail, Shield, UserCheck, MessageCircle, DollarSign, Zap, BarChart, Bot, HelpCircle, Globe, ArrowLeft } from 'lucide-react';
+import { Brain, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, FileText, Package, MessageSquare, Cpu, Clock, AlertCircle, Mic, Briefcase, Trophy, GitBranch, Mail, Shield, UserCheck, MessageCircle, DollarSign, Zap, BarChart, Bot, HelpCircle, Globe, ArrowLeft, Trash2 } from 'lucide-react';
 import SAMOnboarding from './SAMOnboarding';
 import InquiryResponses from './InquiryResponses';
 
@@ -1618,6 +1618,30 @@ const KnowledgeBase: React.FC = () => {
     }
   }, []);
 
+  const deleteDocument = useCallback(async (documentId: string) => {
+    if (!confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/knowledge-base/documents?id=${documentId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        alert(`Failed to delete document: ${error.error || 'Unknown error'}`);
+        return;
+      }
+
+      // Reload documents after successful deletion
+      await loadDocuments();
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      alert('Failed to delete document. Please try again.');
+    }
+  }, [loadDocuments]);
+
   const loadIcpProfiles = useCallback(async () => {
     try {
       const response = await fetch('/api/knowledge-base/icps');
@@ -1900,15 +1924,24 @@ const KnowledgeBase: React.FC = () => {
         {sectionDocs.map((doc) => (
           <div key={doc.id} className="bg-gray-700 border border-gray-600 rounded-lg p-4">
             <div className="flex items-start justify-between">
-              <div>
+              <div className="flex-1">
                 <p className="text-white font-semibold">{doc.title}</p>
                 {doc.summary && <p className="text-gray-300 text-sm mt-2">{doc.summary}</p>}
               </div>
-              {doc.updatedAt && (
-                <span className="text-xs text-gray-400">
-                  {formatRelativeTime(doc.updatedAt)}
-                </span>
-              )}
+              <div className="flex items-center gap-2 ml-4">
+                {doc.updatedAt && (
+                  <span className="text-xs text-gray-400">
+                    {formatRelativeTime(doc.updatedAt)}
+                  </span>
+                )}
+                <button
+                  onClick={() => deleteDocument(doc.id)}
+                  className="text-gray-400 hover:text-red-400 transition-colors p-1"
+                  title="Delete document"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
             {doc.tags && doc.tags.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-3">
@@ -2329,14 +2362,23 @@ const KnowledgeBase: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {latestDocuments.map((doc) => (
                     <div key={doc.id} className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
                           <p className="text-white text-sm font-semibold">{doc.title}</p>
                           <p className="text-gray-400 text-xs">Section: {doc.section}</p>
                         </div>
-                        <span className="text-xs text-gray-300">
-                          {doc.updatedAt ? new Date(doc.updatedAt).toLocaleDateString() : ''}
-                        </span>
+                        <div className="flex items-center gap-2 ml-2">
+                          <span className="text-xs text-gray-300">
+                            {doc.updatedAt ? new Date(doc.updatedAt).toLocaleDateString() : ''}
+                          </span>
+                          <button
+                            onClick={() => deleteDocument(doc.id)}
+                            className="text-gray-400 hover:text-red-400 transition-colors p-1"
+                            title="Delete document"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                       <p className="text-gray-300 text-xs mb-3 line-clamp-3">{doc.summary || 'No summary available.'}</p>
                       <div className="flex flex-wrap gap-2">

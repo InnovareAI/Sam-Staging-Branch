@@ -93,3 +93,44 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = await createSupabaseRouteClient();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'Document ID is required' }, { status: 400 });
+    }
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const workspaceId = await getWorkspaceId(supabase, user.id);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
+    }
+
+    const { error } = await supabase
+      .from('knowledge_base_documents')
+      .update({
+        is_active: false,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('workspace_id', workspaceId);
+
+    if (error) {
+      console.error('Error deleting document:', error);
+      return NextResponse.json({ error: 'Failed to delete document' }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: 'Document deleted successfully' });
+  } catch (error) {
+    console.error('Unexpected error in documents DELETE:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
