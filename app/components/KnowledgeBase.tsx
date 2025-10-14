@@ -292,7 +292,7 @@ function DocumentUpload({ section, onComplete }: { section: string; onComplete?:
             className="text-gray-300 text-sm w-full"
           />
           <p className="text-xs text-gray-400 mt-2">
-            Supported: PDF, TXT, MD files
+            Supported: PDF, TXT, MD files (max 10MB)
           </p>
         </div>
       )}
@@ -1532,7 +1532,7 @@ function DocumentsTable() {
           <FileText size={48} className="mx-auto text-gray-500 mb-4" />
           <h3 className="text-lg font-medium text-gray-300 mb-2">No Documents Uploaded</h3>
           <p className="text-gray-400 text-sm max-w-md mx-auto">
-            Upload your first document to start building your knowledge base. Supported formats: PDF, TXT, MD
+            Upload your first document to start building your knowledge base. Supported formats: PDF, TXT, MD (max 10MB)
           </p>
         </div>
       )}
