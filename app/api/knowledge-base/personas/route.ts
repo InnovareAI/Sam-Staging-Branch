@@ -17,7 +17,7 @@ const toRecord = (value: unknown): Record<string, unknown> => {
 };
 
 async function resolveWorkspaceId(
-  supabase: RouteSupabaseClient,
+  supabase: any,
   userId: string,
   providedWorkspaceId?: string | null
 ): Promise<string> {
