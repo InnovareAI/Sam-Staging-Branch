@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
       const decision = decisionsMap.get(p.prospect_id)
       return {
         ...p,
-        approval_status: decision?.decision || 'approved', // Default to approved (opt-out system)
+        approval_status: decision?.decision || 'pending', // Default to pending - requires user approval
         decision_reason: decision?.reason || null,
         decided_by: decision?.decided_by || null,
         decided_at: decision?.decided_at || null

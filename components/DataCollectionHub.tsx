@@ -409,7 +409,7 @@ export default function DataCollectionHub({
                       source: p.source || 'linkedin',
                       enrichmentScore: p.enrichment_score || 0,
                       confidence: (p.enrichment_score || 80) / 100,  // FIXED: Convert integer to decimal
-                      approvalStatus: (p.approval_status || 'approved') as 'pending' | 'approved' | 'rejected',  // DEFAULT: approved (opt-out system)
+                      approvalStatus: (p.approval_status || 'pending') as 'pending' | 'approved' | 'rejected',  // DEFAULT: pending - requires user approval
                       campaignName: session.campaign_name || `Session-${session.id.slice(0, 8)}`,  // Use actual campaign_name from DB
                       campaignTag: session.campaign_tag || session.campaign_name || session.prospect_source || 'linkedin',  // FIXED: Use campaign_name as fallback tag
                       sessionId: session.id,  // Track session ID for campaign name updates
