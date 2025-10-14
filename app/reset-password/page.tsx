@@ -13,48 +13,34 @@ export default function ResetPasswordPage() {
   const [validToken, setValidToken] = useState<boolean | null>(null);
   const [email, setEmail] = useState('');
 
-  // Check for Supabase recovery token or hash fragment
+  // Check for active session established by auth callback
   useEffect(() => {
     const initializeSession = async () => {
-      // Supabase recovery links use hash fragments (#access_token=...)
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const urlParams = new URLSearchParams(window.location.search);
+      try {
+        // Check if user already has an active session from the auth callback
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
-      const type = hashParams.get('type');
-      const urlEmail = urlParams.get('email');
-
-      if (accessToken && type === 'recovery') {
-        // Set the session using the tokens from the URL
-        try {
-          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken || ''
-          });
-
-          if (sessionError) {
-            console.error('Session error:', sessionError);
-            setValidToken(false);
-            setError('Invalid or expired reset link - please request a new password reset');
-            return;
-          }
-
-          // Valid Supabase recovery token and session established
-          setValidToken(true);
-          setEmail(sessionData.user?.email || urlEmail || 'your account');
-        } catch (err) {
-          console.error('Session setup error:', err);
+        if (sessionError) {
+          console.error('Session error:', sessionError);
           setValidToken(false);
-          setError('Failed to establish session - please request a new password reset');
+          setError('Invalid or expired reset link - please request a new password reset');
+          return;
         }
-      } else if (urlEmail && urlParams.get('recovery') === 'true') {
-        // Fallback: old-style recovery link
-        setEmail(urlEmail);
-        setValidToken(true);
-      } else {
+
+        if (session && session.user) {
+          // Valid session exists - user can reset password
+          setValidToken(true);
+          setEmail(session.user.email || 'your account');
+          console.log('✅ Active recovery session found for:', session.user.email);
+        } else {
+          // No session found
+          setValidToken(false);
+          setError('Invalid reset link - please request a new password reset');
+        }
+      } catch (err) {
+        console.error('Session check error:', err);
         setValidToken(false);
-        setError('Invalid reset link - please request a new password reset');
+        setError('Failed to validate session - please request a new password reset');
       }
     };
 
