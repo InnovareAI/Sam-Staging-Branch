@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { AutoIPAssignmentService } from '@/lib/services/auto-ip-assignment';
@@ -10,25 +10,45 @@ export async function GET(request: NextRequest) {
   const type = requestUrl.searchParams.get('type');
   const error = requestUrl.searchParams.get('error');
   const errorDescription = requestUrl.searchParams.get('error_description');
-  
+
 
   // Handle authentication errors
   if (error) {
     console.error('Auth callback error:', error, errorDescription);
-    
+
     if (error === 'access_denied' && errorDescription?.includes('expired')) {
       return NextResponse.redirect(
         new URL('/api/auth/reset-password?error=expired', request.url)
       );
     }
-    
+
     return NextResponse.redirect(
       new URL('/api/auth/signin?error=' + error, request.url)
     );
   }
 
   if (code) {
-    const supabase = createRouteHandlerClient({ cookies: cookies });
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
+            } catch {
+              // Cookie setting can fail in middleware
+            }
+          },
+        },
+      }
+    );
 
     try {
       // Exchange the auth code for a session
