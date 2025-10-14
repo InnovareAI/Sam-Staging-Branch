@@ -1849,6 +1849,42 @@ const KnowledgeBase: React.FC = () => {
     loadPersonas();
   }, [loadDocuments, loadIcpProfiles, loadProducts, loadCompetitors, loadPersonas]);
 
+  const SECTION_ALIAS_MAP: Record<string, string[]> = {
+    buying: ['process', 'buying-process'],
+    company: ['company-info', 'company', 'about'],
+    competition: ['competition', 'competitors'],
+    compliance: ['compliance', 'regulatory'],
+    documents: ['documents', 'general'],
+    icp: ['icp'],
+    inquiry_responses: ['inquiry-responses', 'faq', 'customer-questions'],
+    messaging: ['messaging', 'templates'],
+    metrics: ['metrics', 'success-metrics'],
+    objections: ['objections'],
+    personas: ['personas', 'buyer-personas', 'roles'],
+    pricing: ['pricing', 'roi'],
+    products: ['products', 'product'],
+    sam_onboarding: ['sam-onboarding', 'sam_onboarding'],
+    collateral: ['collateral', 'sales-collateral', 'battlecards', 'one-pagers', 'decks', 'email-templates', 'snippets', 'templates', 'inquiry-responses'],
+    success: ['stories', 'success-stories', 'case-studies'],
+    tone: ['tone', 'tone-of-voice', 'brand-voice']
+  };
+
+  const getSectionMatches = (sectionId: string) => {
+    const matches = SECTION_ALIAS_MAP[sectionId];
+    if (matches && matches.length > 0) {
+      return matches;
+    }
+    return [sectionId];
+  };
+
+  const getDocumentsForSection = (sectionId: string) => {
+    const normalizedMatches = getSectionMatches(sectionId).map((slug) => slug.toLowerCase());
+    return documents.filter((doc) => {
+      if (!doc.section) return false;
+      return normalizedMatches.includes(doc.section.toLowerCase());
+    });
+  };
+
   // Meaningful KB Completeness Scoring System
   // Based on what SAM actually needs to function effectively in sales conversations
 
@@ -1909,42 +1945,6 @@ const KnowledgeBase: React.FC = () => {
   const completionWidth = isKnowledgeLoading ? '0%' : `${knowledgeCompletion}%`;
   const latestDocuments = documents.slice(0, 4);
   const recentActivity = documents.slice(0, 6);
-
-  const SECTION_ALIAS_MAP: Record<string, string[]> = {
-    buying: ['process', 'buying-process'],
-    company: ['company-info', 'company', 'about'],
-    competition: ['competition', 'competitors'],
-    compliance: ['compliance', 'regulatory'],
-    documents: ['documents', 'general'],
-    icp: ['icp'],
-    inquiry_responses: ['inquiry-responses', 'faq', 'customer-questions'],
-    messaging: ['messaging', 'templates'],
-    metrics: ['metrics', 'success-metrics'],
-    objections: ['objections'],
-    personas: ['personas', 'buyer-personas', 'roles'],
-    pricing: ['pricing', 'roi'],
-    products: ['products', 'product'],
-    sam_onboarding: ['sam-onboarding', 'sam_onboarding'],
-    collateral: ['collateral', 'sales-collateral', 'battlecards', 'one-pagers', 'decks', 'email-templates', 'snippets', 'templates', 'inquiry-responses'],
-    success: ['stories', 'success-stories', 'case-studies'],
-    tone: ['tone', 'tone-of-voice', 'brand-voice']
-  };
-
-  const getSectionMatches = (sectionId: string) => {
-    const matches = SECTION_ALIAS_MAP[sectionId];
-    if (matches && matches.length > 0) {
-      return matches;
-    }
-    return [sectionId];
-  };
-
-  const getDocumentsForSection = (sectionId: string) => {
-    const normalizedMatches = getSectionMatches(sectionId).map((slug) => slug.toLowerCase());
-    return documents.filter((doc) => {
-      if (!doc.section) return false;
-      return normalizedMatches.includes(doc.section.toLowerCase());
-    });
-  };
 
   const formatRelativeTime = (input?: string | null) => {
     if (!input) return 'Just now';
