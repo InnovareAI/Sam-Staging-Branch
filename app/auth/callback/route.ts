@@ -30,6 +30,16 @@ export async function GET(request: NextRequest) {
   }
 
   if (code) {
+    // CRITICAL: Check if this is a recovery flow BEFORE exchanging the code
+    // Recovery codes can only be used once, so we must not consume them here
+    if (type === 'recovery') {
+      console.log('🔑 Recovery flow detected - passing code to reset password page WITHOUT exchanging');
+      const resetUrl = new URL('/reset-password', request.url);
+      resetUrl.searchParams.set('code', code);
+      resetUrl.searchParams.set('type', 'recovery');
+      return NextResponse.redirect(resetUrl);
+    }
+
     const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -53,7 +63,7 @@ export async function GET(request: NextRequest) {
     );
 
     try {
-      // Exchange the auth code for a session (not for recovery flows)
+      // Exchange the auth code for a session (only for non-recovery flows)
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
       if (error) {
@@ -204,25 +214,6 @@ export async function GET(request: NextRequest) {
         } catch (profileErr) {
           console.error('Error creating user profile:', profileErr);
         }
-      }
-
-      // Check if this is a password recovery session
-      // Recovery sessions are created by Supabase when user clicks reset link
-      const isRecoverySession = data.session?.user?.app_metadata?.provider === 'email' &&
-                                 data.session?.user?.recovery_sent_at;
-
-      // Also check AMR (Authentication Method Reference) for recovery
-      const hasRecoveryAMR = data.session?.amr?.some((amr: any) =>
-        amr.method === 'recovery' || amr.method === 'password_reset'
-      );
-
-      if (isRecoverySession || hasRecoveryAMR || type === 'recovery') {
-        // Password recovery - pass code to reset password page for client-side handling
-        console.log('Password recovery session detected, redirecting to reset password page');
-        const resetUrl = new URL('/reset-password', request.url);
-        resetUrl.searchParams.set('code', code);
-        resetUrl.searchParams.set('type', 'recovery');
-        return NextResponse.redirect(resetUrl);
       }
 
       // Check if this is a magic link

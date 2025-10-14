@@ -110,11 +110,13 @@ export async function POST(request: NextRequest) {
       console.log(`🌐 Using origin for password reset: ${origin}`);
 
       // Generate a password reset token using Supabase admin
+      // The action_link will go to /auth/callback with code and type parameters
+      // Then callback will redirect to /reset-password with the code
       const { data, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
         type: 'recovery',
         email: email,
         options: {
-          redirectTo: `${origin}/reset-password`
+          redirectTo: `${origin}/auth/callback`
         }
       });
 
