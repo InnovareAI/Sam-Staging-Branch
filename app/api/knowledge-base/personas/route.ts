@@ -1,8 +1,7 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import { NextRequest, NextResponse } from 'next/server';
 
-type RouteSupabaseClient = ReturnType<typeof createRouteHandlerClient>;
+
+import { NextRequest, NextResponse } from 'next/server';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
 const toStringArray = (value: unknown): string[] => {
   if (Array.isArray(value)) {
@@ -52,8 +51,7 @@ async function resolveWorkspaceId(
 
 export async function GET(request: NextRequest) {
   try {
-    // cookieStore removed;
-    const supabase = createRouteHandlerClient({ cookies: await cookies() });
+    const supabase = await createSupabaseRouteClient();
     const { searchParams } = new URL(request.url);
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -102,8 +100,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // cookieStore removed;
-    const supabase = createRouteHandlerClient({ cookies: await cookies() });
+    const supabase = await createSupabaseRouteClient();
     const body = await request.json();
     const {
       icp_id,
@@ -173,8 +170,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    // cookieStore removed;
-    const supabase = createRouteHandlerClient({ cookies: await cookies() });
+    const supabase = await createSupabaseRouteClient();
     const body = await request.json();
     const {
       id,
@@ -248,8 +244,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    // cookieStore removed;
-    const supabase = createRouteHandlerClient({ cookies: await cookies() });
+    const supabase = await createSupabaseRouteClient();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

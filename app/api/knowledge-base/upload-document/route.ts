@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { v4 as uuidv4 } from 'uuid';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -58,7 +57,7 @@ async function extractContentFromURL(url: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: await cookies() });
+    const supabase = await createSupabaseRouteClient();
     const { data: { session }, error: authError } = await supabase.auth.getSession();
 
     if (authError || !session?.user) {

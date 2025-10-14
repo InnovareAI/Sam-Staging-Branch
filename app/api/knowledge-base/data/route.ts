@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
 export async function GET(request: NextRequest) {
   try {
-    // cookieStore removed;
-    const supabase = createRouteHandlerClient({ cookies: await cookies() });
+    const supabase = await createSupabaseRouteClient();
     const { searchParams } = new URL(request.url);
     const workspaceId = searchParams.get('workspace_id');
     const category = searchParams.get('category');
@@ -59,8 +57,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // cookieStore removed;
-    const supabase = createRouteHandlerClient({ cookies: await cookies() });
+    const supabase = await createSupabaseRouteClient();
     const body = await request.json();
     const { workspace_id, category, subcategory, title, content, tags } = body;
 

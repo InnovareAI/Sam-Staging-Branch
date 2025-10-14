@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
-async function getWorkspaceId(supabase: ReturnType<typeof createRouteHandlerClient>, userId: string) {
+async function getWorkspaceId(supabase: any, userId: string) {
   const { data: profile, error: profileError } = await supabase
     .from('users')
     .select('current_workspace_id')
@@ -35,8 +34,7 @@ async function getWorkspaceId(supabase: ReturnType<typeof createRouteHandlerClie
 
 export async function GET(request: NextRequest) {
   try {
-    // cookieStore removed
-    const supabase = createRouteHandlerClient({ cookies: await cookies() });
+    const supabase = await createSupabaseRouteClient();
 
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) {
