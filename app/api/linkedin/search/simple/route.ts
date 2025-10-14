@@ -399,52 +399,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Connection degree filter - REQUIRED
-    // Must be explicitly specified by user
-    if (!search_criteria.connectionDegree) {
-      console.error('❌ Connection degree not specified');
-      return NextResponse.json({
-        success: false,
-        error: 'Connection degree is required. Please specify "1st", "2nd", or "3rd" degree connections.'
-      }, { status: 400 });
-    }
-    
-    const connectionDegree = search_criteria.connectionDegree;
-    
-    // Map user input to numeric values
-    const degreeToNumber: Record<string, number> = {
-      '1st': 1,
-      '2nd': 2,
-      '3rd': 3,
-      '1': 1,
-      '2': 2,
-      '3': 3
-    };
-    
-    const numericDegree = degreeToNumber[connectionDegree];
-    
-    if (!numericDegree) {
-      console.error('❌ Invalid connection degree format:', connectionDegree);
-      return NextResponse.json({
-        success: false,
-        error: 'Invalid connection degree. Must be "1st", "2nd", or "3rd"'
-      }, { status: 400 });
-    }
-    
-    // Set the appropriate field based on API type
+    // Connection degree filter - SEARCH ALL DEGREES
+    // Always search for 1st, 2nd, and 3rd degree connections
+    // Display whatever comes back in the UI
+    const requestedDegree = 0; // 0 = all degrees (not used for filtering)
+
+    // Set the appropriate field based on API type to search ALL degrees
     if (api === 'sales_navigator' || api === 'recruiter') {
       // Sales Navigator and Recruiter use network_distance with numeric array
-      unipilePayload.network_distance = [numericDegree];
-      console.log('🎯 Connection degree filter (Sales Nav/Recruiter):', connectionDegree, '→ network_distance:', unipilePayload.network_distance);
+      unipilePayload.network_distance = [1, 2, 3];  // Search all connection degrees
+      console.log('🎯 Connection degree: Searching ALL degrees (1st, 2nd, 3rd)');
     } else {
-      // Classic uses network with letter codes
-      const classicMap: Record<number, string[]> = {
-        1: ['F'],  // First
-        2: ['S'],  // Second
-        3: ['O']   // Out of network (3rd)
-      };
-      unipilePayload.network = classicMap[numericDegree];
-      console.log('🎯 Connection degree filter (Classic):', connectionDegree, '→ network:', unipilePayload.network);
+      // Classic uses network with letter codes - search all
+      unipilePayload.network = ['F', 'S', 'O'];  // First, Second, Out of network (all)
+      console.log('🎯 Connection degree: Searching ALL degrees (F, S, O)');
     }
 
     // Profile Language filter
@@ -663,15 +631,13 @@ export async function POST(request: NextRequest) {
       }
 
       // Ensure connectionDegree is always a valid integer between 1-3
-      const finalDegree = Math.max(1, Math.min(3, parseInt(String(connectionDegree)) || requestedDegree));
+      const finalDegree = Math.max(1, Math.min(3, parseInt(String(connectionDegree)) || 2));
       console.log(`  📌 FINAL connectionDegree: ${finalDegree}`);
       connectionDegree = finalDegree;
-      
-      // STRICT FILTERING: Only return prospects matching requested degree
-      if (connectionDegree !== requestedDegree) {
-        console.log(`⚠️ FILTERING OUT: ${firstName} ${lastName} - connection degree ${connectionDegree} doesn't match requested ${requestedDegree}`);
-        return null; // Filter out mismatched degrees
-      }
+
+      // NO FILTERING: Accept all connection degrees (1st, 2nd, 3rd)
+      // Display whatever comes back from the search
+      console.log(`✅ Including prospect: ${firstName} ${lastName} - connection degree: ${connectionDegree}`);
 
       // Extract location
       const location = item.location || item.geo_region || '';

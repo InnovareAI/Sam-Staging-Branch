@@ -136,7 +136,7 @@ export default function DataCollectionHub({
   const [linkedinQuery, setLinkedinQuery] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [isChatMinimized, setIsChatMinimized] = useState(false)
-  const [connectionDegree, setConnectionDegree] = useState<'1st' | '2nd' | '3rd'>('1st') // Default to 1st degree connections
+  const [connectionDegree] = useState<'1st' | '2nd' | '3rd'>('1st') // Not used - search returns all degrees
 
   // Bulk selection state
   const [selectedProspectIds, setSelectedProspectIds] = useState<Set<string>>(new Set())
@@ -1095,29 +1095,7 @@ export default function DataCollectionHub({
 
       {/* Add Prospects Section - CSV, Copy/Paste, LinkedIn URL */}
       <div className="border-b border-gray-700 px-6 py-4 bg-gray-900">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Add Prospects</h3>
-
-          {/* Connection Degree Selector */}
-          <div className="flex items-center space-x-2">
-            <span className="text-xs text-gray-400">LinkedIn Connection:</span>
-            <div className="flex items-center space-x-1 bg-gray-800 rounded-lg p-1">
-              {(['1st', '2nd', '3rd'] as const).map((degree) => (
-                <button
-                  key={degree}
-                  onClick={() => setConnectionDegree(degree)}
-                  className={`px-3 py-1 rounded text-xs font-semibold transition-all ${
-                    connectionDegree === degree
-                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  {degree}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Add Prospects</h3>
         <div className="flex items-center space-x-2">
           {/* CSV Upload */}
           <input
