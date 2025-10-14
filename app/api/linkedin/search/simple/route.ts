@@ -500,9 +500,6 @@ export async function POST(request: NextRequest) {
       })));
     }
 
-    // Use the numeric degree we already calculated
-    const requestedDegree = numericDegree;
-    
     // Keep networkToNumber for parsing response data
     const networkToNumber: Record<string, number> = { 'F': 1, 'S': 2, 'O': 3 };
 
