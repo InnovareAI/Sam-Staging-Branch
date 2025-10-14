@@ -123,12 +123,15 @@ export async function POST(request: NextRequest) {
 
     // Auto-detect LinkedIn capabilities (Sales Navigator, Recruiter, or Classic)
     let api = 'classic';
+    let accountInfo: any = null;
     try {
       const unipileDSN = process.env.UNIPILE_DSN!;
       const accountUrl = unipileDSN.includes('.')
         ? `https://${unipileDSN}/api/v1/accounts/${linkedinAccount.unipile_account_id}`
         : `https://${unipileDSN}.unipile.com:13443/api/v1/accounts/${linkedinAccount.unipile_account_id}`;
 
+      console.log('🔍 Checking LinkedIn account capabilities:', accountUrl);
+      
       const accountInfoResponse = await fetch(accountUrl, {
         headers: {
           'X-API-KEY': process.env.UNIPILE_API_KEY!,
@@ -137,17 +140,32 @@ export async function POST(request: NextRequest) {
       });
 
       if (accountInfoResponse.ok) {
-        const accountInfo = await accountInfoResponse.json();
+        accountInfo = await accountInfoResponse.json();
+        console.log('📊 Account info received:', JSON.stringify({
+          id: accountInfo.id,
+          provider: accountInfo.provider,
+          premiumFeatures: accountInfo.connection_params?.im?.premiumFeatures
+        }));
+        
         const premiumFeatures = accountInfo.connection_params?.im?.premiumFeatures || [];
+        
+        console.log('🔍 Premium features detected:', premiumFeatures);
 
         if (premiumFeatures.includes('recruiter')) {
           api = 'recruiter';
+          console.log('✅ Detected LinkedIn Recruiter account');
         } else if (premiumFeatures.includes('sales_navigator')) {
           api = 'sales_navigator';
+          console.log('✅ Detected LinkedIn Sales Navigator account');
+        } else {
+          console.log('ℹ️ No premium features detected, using Classic LinkedIn');
         }
+      } else {
+        console.error('❌ Failed to fetch account info:', accountInfoResponse.status, await accountInfoResponse.text());
       }
     } catch (error) {
-      console.warn('Could not detect LinkedIn capabilities, using classic:', error);
+      console.error('❌ Error detecting LinkedIn capabilities:', error);
+      console.log('⚠️ Falling back to classic LinkedIn');
     }
 
     console.log(`🎯 Using LinkedIn API: ${api}`);
@@ -267,7 +285,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('🔵 Unipile payload:', JSON.stringify(unipilePayload));
+    console.log('🔵 ═══════════════════════════════════════════════════');
+    console.log('🔵 UNIPILE SEARCH REQUEST');
+    console.log('🔵 API Type:', api);
+    console.log('🔵 URL:', `${unipileUrl}?${params}`);
+    console.log('🔵 Full Payload:', JSON.stringify(unipilePayload, null, 2));
+    console.log('🔵 ═══════════════════════════════════════════════════');
 
     const response = await fetch(`${unipileUrl}?${params}`, {
       method: 'POST',
@@ -278,12 +301,34 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(unipilePayload)
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Unipile API error:', response.status, errorText);
+      return NextResponse.json({
+        success: false,
+        error: `LinkedIn search failed: ${response.status}`,
+        details: errorText
+      }, { status: 500 });
+    }
+
     const data = await response.json();
-    console.log('🔵 Unipile response:', JSON.stringify(data).substring(0, 500));
+    console.log('🔵 ═══════════════════════════════════════════════════');
+    console.log('🔵 UNIPILE RESPONSE');
+    console.log('🔵 Status:', response.status);
+    console.log('🔵 Items returned:', data.items?.length || 0);
+    console.log('🔵 Response preview:', JSON.stringify(data).substring(0, 500));
+    console.log('🔵 ═══════════════════════════════════════════════════');
     
     // Log sample item structure to debug data issues
     if (data.items && data.items.length > 0) {
       console.log('🔵 Sample prospect structure:', JSON.stringify(data.items[0], null, 2));
+      console.log('🔵 All prospect connection degrees:', data.items.map((item: any, idx: number) => ({
+        index: idx,
+        name: item.name || `${item.first_name} ${item.last_name}`,
+        network: item.network,
+        distance: item.distance,
+        network_distance: item.network_distance
+      })));
     }
 
     // Extract requested connection degree for saving
@@ -340,7 +385,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Connection degree from Unipile data (or use requested degree as fallback)
+      // Connection degree from Unipile data
       // Unipile returns network as 'F', 'S', 'O' - convert to number
       let connectionDegree = requestedDegree;
       if (item.network) {
@@ -353,10 +398,20 @@ export async function POST(request: NextRequest) {
         } else if (typeof item.network_distance === 'number') {
           connectionDegree = item.network_distance;
         }
+      } else if (item.distance) {
+        // Some APIs use 'distance' field
+        connectionDegree = parseInt(String(item.distance)) || requestedDegree;
       }
       
       // Ensure connectionDegree is always a valid integer
       connectionDegree = parseInt(String(connectionDegree)) || requestedDegree;
+      
+      // CRITICAL: Filter out prospects that don't match the requested degree
+      // This ensures we only return what the user asked for
+      if (connectionDegree !== requestedDegree) {
+        console.log(`⚠️ Filtering out prospect ${firstName} ${lastName} - wrong degree (got ${connectionDegree}, requested ${requestedDegree})`);
+        return null; // Will be filtered out
+      }
 
       // Extract location
       const location = item.location || item.geo_region || '';
