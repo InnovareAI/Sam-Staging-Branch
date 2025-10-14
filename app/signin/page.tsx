@@ -35,29 +35,57 @@ function SignInForm() {
     setSuccess('');
 
     try {
-      // Use Supabase client directly for proper session management
+      // BULLETPROOF SIGNIN - Try multiple methods to GUARANTEE access
+      console.log('🔐 Starting signin process...');
+
+      // Method 1: Direct Supabase client signin (primary method)
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        setError(error.message);
-      } else if (data.user && data.session) {
+        console.error('❌ Supabase signin error:', error);
+
+        // Method 2: Fallback to API endpoint if Supabase client fails
+        console.log('🔄 Trying fallback API signin...');
+
+        const apiResponse = await fetch('/api/auth/signin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const apiData = await apiResponse.json();
+
+        if (!apiResponse.ok) {
+          setError(apiData.error || error.message);
+          return;
+        }
+
+        // API signin successful - force page reload to establish session
+        console.log('✅ API signin successful - reloading...');
+        setSuccess('Sign in successful! Redirecting...');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1000);
+        return;
+      }
+
+      if (data.user && data.session) {
         console.log('✅ Sign in successful:', data.user.id);
         setSuccess('Sign in successful! Redirecting...');
-        
-        // Wait a moment for session to be fully established
+
+        // Force full page reload to ensure session is established
         setTimeout(() => {
-          // Use router.push instead of window.location.href for better state management
-          router.push('/');
+          window.location.href = '/';
         }, 1000);
       } else {
-        setError('Sign-in failed - no session created');
+        setError('Sign-in failed - no session created. Please try again.');
       }
     } catch (error) {
-      setError('Network error. Please try again.');
-      console.error('Sign-in error:', error);
+      console.error('🚨 Fatal signin error:', error);
+      setError('Network error. Please refresh the page and try again.');
     } finally {
       setLoading(false);
     }
