@@ -101,11 +101,9 @@ export async function POST(request: NextRequest) {
       : process.env.POSTMARK_INNOVAREAI_API_KEY;
 
     if (postmarkApiKey) {
-      // Get the origin from the request headers to support multi-tenant domains
-      const origin = request.headers.get('origin') ||
-                     request.headers.get('referer')?.split('/').slice(0, 3).join('/') ||
-                     process.env.NEXT_PUBLIC_SITE_URL ||
-                     'https://app.meet-sam.com';
+      // CRITICAL: Always use production URL for password reset emails
+      // Do NOT use request origin/referer as it could be a preview/staging URL
+      const origin = process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com';
 
       console.log(`🌐 Using origin for password reset: ${origin}`);
 
