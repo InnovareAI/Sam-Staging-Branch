@@ -2,32 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
 async function getWorkspaceId(supabase: any, userId: string) {
-  const { data: profile, error: profileError } = await supabase
+  // Try to get workspace from user profile first
+  const { data: profile } = await supabase
     .from('users')
     .select('current_workspace_id')
     .eq('id', userId)
     .single();
 
-  if (profileError) {
-    console.error('Failed to load user profile:', profileError);
-    return null;
-  }
-
   if (profile?.current_workspace_id) {
     return profile.current_workspace_id;
   }
 
-  const { data: membership, error: membershipError } = await supabase
+  // If no workspace in profile, check workspace_members
+  const { data: membership } = await supabase
     .from('workspace_members')
     .select('workspace_id')
     .eq('user_id', userId)
     .limit(1)
     .maybeSingle();
-
-  if (membershipError) {
-    console.error('Workspace membership lookup failed:', membershipError);
-    return null;
-  }
 
   return membership?.workspace_id ?? null;
 }
