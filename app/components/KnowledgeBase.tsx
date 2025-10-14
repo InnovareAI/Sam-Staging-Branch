@@ -1831,9 +1831,61 @@ const KnowledgeBase: React.FC = () => {
     loadPersonas();
   }, [loadDocuments, loadIcpProfiles, loadProducts, loadCompetitors, loadPersonas]);
 
-  const docScore = Math.min(40, documents.length * 8);
-  const icpScore = Math.min(30, (icpCount || 0) * 15);
-  const knowledgeCompletion = Math.min(100, Math.round(20 + docScore + icpScore));
+  // Meaningful KB Completeness Scoring System
+  // Based on what SAM actually needs to function effectively in sales conversations
+
+  const getSectionScore = (sectionId: string, icpCountOverride?: number): number => {
+    if (sectionId === 'icp') {
+      const count = icpCountOverride ?? icpCount ?? 0;
+      if (count === 0) return 0;
+      if (count === 1) return 40;
+      if (count === 2) return 70;
+      return 100;
+    }
+
+    const docCount = getDocumentsForSection(sectionId).length;
+    if (docCount === 0) return 0;
+    if (docCount === 1) return 40;
+    if (docCount <= 3) return 70;
+    return 100;
+  };
+
+  // Critical sections (60% total) - Required for SAM to function
+  const criticalSections = [
+    { id: 'products', weight: 15, label: 'Products/Services' },
+    { id: 'icp', weight: 15, label: 'ICP/Target Profile' },
+    { id: 'messaging', weight: 15, label: 'Messaging/Value Prop' },
+    { id: 'pricing', weight: 15, label: 'Pricing' }
+  ];
+
+  // Important sections (30% total) - High value for effectiveness
+  const importantSections = [
+    { id: 'objections', weight: 10, label: 'Objection Handling' },
+    { id: 'success', weight: 10, label: 'Success Stories' },
+    { id: 'competition', weight: 10, label: 'Competitive Intel' }
+  ];
+
+  // Supporting sections (10% total) - Nice to have
+  const supportingSections = [
+    { id: 'company', weight: 2, label: 'Company Info' },
+    { id: 'buying', weight: 2, label: 'Buying Process' },
+    { id: 'personas', weight: 2, label: 'Buyer Personas' },
+    { id: 'compliance', weight: 2, label: 'Compliance' },
+    { id: 'tone', weight: 2, label: 'Brand Voice' }
+  ];
+
+  const calculateCategoryScore = (sections: typeof criticalSections) => {
+    return sections.reduce((total, section) => {
+      const sectionCompletion = getSectionScore(section.id);
+      return total + (sectionCompletion * section.weight / 100);
+    }, 0);
+  };
+
+  const criticalScore = calculateCategoryScore(criticalSections);
+  const importantScore = calculateCategoryScore(importantSections);
+  const supportingScore = calculateCategoryScore(supportingSections);
+
+  const knowledgeCompletion = Math.round(criticalScore + importantScore + supportingScore);
   const isKnowledgeLoading = documentsLoading || icpCount === null;
   const completionDisplay = isKnowledgeLoading ? '—' : `${knowledgeCompletion}%`;
   const completionWidth = isKnowledgeLoading ? '0%' : `${knowledgeCompletion}%`;
@@ -2141,9 +2193,19 @@ const KnowledgeBase: React.FC = () => {
               </div>
             </div>
             
-            <p className="text-xs text-gray-400 mt-2">
-              Based on content volume, quality, and coverage across all sections
-            </p>
+            {!isKnowledgeLoading && (
+              <div className="text-xs text-gray-400 mt-3 space-y-1">
+                <p className="font-medium text-gray-300">Score Breakdown:</p>
+                <p>• Critical Sections: {Math.round(criticalScore)}/60% (Products, ICP, Messaging, Pricing)</p>
+                <p>• Important Sections: {Math.round(importantScore)}/30% (Objections, Success Stories, Competition)</p>
+                <p>• Supporting Sections: {Math.round(supportingScore)}/10% (Company, Personas, Compliance, etc.)</p>
+              </div>
+            )}
+            {isKnowledgeLoading && (
+              <p className="text-xs text-gray-400 mt-2">
+                Calculating coverage based on critical sales enablement content...
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -2196,9 +2258,16 @@ const KnowledgeBase: React.FC = () => {
                   </div>
                   <BarChart className="text-green-400" size={24} />
                 </div>
-                <p className="text-yellow-400 text-xs mt-2">
-                  {isKnowledgeLoading ? 'Calculating coverage…' : `Powered by ${documents.length} docs + ${icpCount || 0} ICP records`}
-                </p>
+                <div className="text-xs mt-2 space-y-1">
+                  {isKnowledgeLoading ? (
+                    <p className="text-yellow-400">Calculating coverage…</p>
+                  ) : (
+                    <>
+                      <p className="text-green-400">Critical: {Math.round(criticalScore)}% • Important: {Math.round(importantScore)}%</p>
+                      <p className="text-gray-400">{documents.length} docs across {[...new Set(documents.map(d => d.section))].length} sections</p>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* SAM Conversations */}
