@@ -365,22 +365,21 @@ export default function DataCollectionHub({
   }, [])
 
   // CRITICAL: Load existing approval sessions from database
-  // Force rebuild: 2025-10-10-v2
-  useEffect(() => {
-    async function loadExistingApprovalSessions() {
-      try {
-        console.log('📥 Loading existing approval sessions...')
-        const response = await fetch('/api/prospect-approval/sessions/list')
-        if (response.ok) {
-          const data = await response.json()
-          console.log('📊 Found approval sessions:', data.sessions?.length || 0, 'sessions')
-          console.log('Session details:', data.sessions?.map((s: any) => ({
-            id: s.id.substring(0, 8),
-            campaign: s.campaign_name,
-            prospects: s.total_prospects
-          })))
+  // Force rebuild: 2025-10-14-visibility-fix
+  const loadExistingApprovalSessions = async () => {
+    try {
+      console.log('📥 Loading existing approval sessions...')
+      const response = await fetch('/api/prospect-approval/sessions/list')
+      if (response.ok) {
+        const data = await response.json()
+        console.log('📊 Found approval sessions:', data.sessions?.length || 0, 'sessions')
+        console.log('Session details:', data.sessions?.map((s: any) => ({
+          id: s.id.substring(0, 8),
+          campaign: s.campaign_name,
+          prospects: s.total_prospects
+        })))
 
-          if (data.success && data.sessions && data.sessions.length > 0) {
+        if (data.success && data.sessions && data.sessions.length > 0) {
             // Load prospects for all active sessions
             const allProspects: ProspectData[] = []
 
@@ -426,23 +425,37 @@ export default function DataCollectionHub({
               }
             }
 
-            if (allProspects.length > 0) {
-              console.log(`✅ Loaded ${allProspects.length} prospects from approval sessions`)
-              setProspectData(prev => {
-                // Merge with existing, avoiding duplicates
-                const existingIds = new Set(prev.map(p => p.id))
-                const newProspects = allProspects.filter(p => !existingIds.has(p.id))
-                return [...newProspects, ...prev]
-              })
-            }
+          if (allProspects.length > 0) {
+            console.log(`✅ Loaded ${allProspects.length} prospects from approval sessions`)
+            // Replace all data instead of merging to avoid duplicates on reload
+            setProspectData(allProspects)
+          } else {
+            // No prospects found, keep empty
+            setProspectData([])
           }
         }
-      } catch (error) {
-        console.error('Failed to load approval sessions:', error)
+      }
+    } catch (error) {
+      console.error('Failed to load approval sessions:', error)
+    }
+  }
+
+  // Load data on mount
+  useEffect(() => {
+    loadExistingApprovalSessions()
+  }, [])
+
+  // Reload data when window becomes visible (user returns to tab/page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('🔄 Page became visible, reloading data...')
+        loadExistingApprovalSessions()
       }
     }
 
-    loadExistingApprovalSessions()
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [])
 
   // Update prospects when new data is uploaded from chat
