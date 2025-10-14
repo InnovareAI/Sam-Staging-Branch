@@ -78,39 +78,14 @@ export async function GET(request: NextRequest) {
           // If user doesn't have a workspace, create one automatically
           if (!userCheckError && existingUser && !existingUser.current_workspace_id) {
             console.log('Creating default workspace for new user:', data.user.email);
-            
-            // Check if there's an InnovareAI workspace to add them to
-            const { data: innovareWorkspace } = await supabaseAdmin
-              .from('workspaces')
-              .select('*')
-              .eq('name', 'InnovareAI')
-              .single();
 
-            if (innovareWorkspace) {
-              // Add user to InnovareAI workspace
-              await supabaseAdmin
-                .from('workspace_members')
-                .insert({
-                  workspace_id: innovareWorkspace.id,
-                  user_id: data.user.id,
-                  role: 'member'
-                });
+            // SECURITY FIX: ALWAYS create personal workspace for each user
+            // NEVER add users to shared workspaces automatically (multi-tenant isolation)
 
-              // Update user with InnovareAI workspace
-              await supabaseAdmin
-                .from('users')
-                .update({
-                  current_workspace_id: innovareWorkspace.id,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', data.user.id);
-
-              console.log('✅ Added user to InnovareAI workspace');
-            } else {
-              // Create personal workspace as fallback
-              const firstName = data.user.user_metadata?.first_name || 'User';
-              const lastName = data.user.user_metadata?.last_name || '';
-              const workspaceName = `${firstName} ${lastName}`.trim() + "'s Workspace";
+            // Extract user info from metadata
+            const firstName = data.user.user_metadata?.first_name || 'User';
+            const lastName = data.user.user_metadata?.last_name || '';
+            const workspaceName = `${firstName} ${lastName}`.trim() + "'s Workspace";
               
               const { data: newWorkspace, error: workspaceError } = await supabaseAdmin
                 .from('workspaces')
@@ -145,7 +120,6 @@ export async function GET(request: NextRequest) {
                 console.log('✅ Created personal workspace for user');
               }
             }
-          }
 
           // Automatically assign Bright Data dedicated IP for email-verified users
           try {
