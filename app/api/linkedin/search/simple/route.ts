@@ -167,9 +167,10 @@ export async function POST(request: NextRequest) {
     console.log(`📊 Total LinkedIn accounts in Unipile: ${allLinkedInAccounts.length}`);
 
     // Step 3: Get workspace members to match accounts by email
+    // First, get the user_id list from workspace_members
     const { data: workspaceMembers, error: membersError } = await supabase
       .from('workspace_members')
-      .select('user_id, users!inner(email)')
+      .select('user_id')
       .eq('workspace_id', workspaceId);
 
     if (membersError || !workspaceMembers || workspaceMembers.length === 0) {
@@ -181,7 +182,26 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    const workspaceMemberEmails = workspaceMembers.map((m: any) => m.users?.email?.toLowerCase()).filter(Boolean);
+    const userIds = workspaceMembers.map((m: any) => m.user_id).filter(Boolean);
+    console.log(`📊 Workspace member user_ids:`, userIds);
+
+    // Second, use admin client to fetch user emails (bypasses RLS)
+    const admin = supabaseAdmin();
+    const { data: users, error: usersError } = await admin
+      .from('users')
+      .select('id, email')
+      .in('id', userIds);
+
+    if (usersError || !users || users.length === 0) {
+      console.error('❌ Failed to fetch user emails:', usersError?.message);
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to load workspace member emails',
+        details: usersError?.message
+      }, { status: 500 });
+    }
+
+    const workspaceMemberEmails = users.map((u: any) => u.email?.toLowerCase()).filter(Boolean);
     console.log(`📊 Workspace member emails:`, workspaceMemberEmails);
 
     // Step 4: Match LinkedIn accounts to workspace by email/identifier
