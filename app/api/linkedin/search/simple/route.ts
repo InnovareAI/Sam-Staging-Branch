@@ -205,15 +205,67 @@ export async function POST(request: NextRequest) {
     console.log(`📊 Workspace member emails:`, workspaceMemberEmails);
 
     // Step 4: Match LinkedIn accounts to workspace by email/identifier
-    const workspaceLinkedInAccounts = allLinkedInAccounts.filter((account: any) => {
-      const connectionParams = account.connection_params?.im || {};
-      const accountEmail = (connectionParams.email || connectionParams.username || '').toLowerCase();
+    console.log('🔍 ═══════════════════════════════════════════════════');
+    console.log('🔍 ACCOUNT MATCHING DEBUG - ALL LINKEDIN ACCOUNTS FROM UNIPILE');
+    console.log('🔍 ═══════════════════════════════════════════════════');
 
-      // Check if account belongs to any workspace member
-      const belongsToWorkspace = workspaceMemberEmails.includes(accountEmail);
+    // Log FULL structure of each LinkedIn account BEFORE filtering
+    allLinkedInAccounts.forEach((account: any, idx: number) => {
+      console.log(`\n📋 LinkedIn Account #${idx + 1}:`);
+      console.log('  Account ID:', account.id);
+      console.log('  Account Name:', account.name);
+      console.log('  Account Type:', account.type);
+      console.log('  Display Name:', account.display_name);
+      console.log('  Identifier:', account.identifier);
+      console.log('  Username:', account.username);
+      console.log('  Email:', account.email);
+      console.log('  Connection Params:', JSON.stringify(account.connection_params, null, 2));
+      console.log('  Sources:', JSON.stringify(account.sources, null, 2));
+      console.log('  Full Account Object:', JSON.stringify(account, null, 2));
+    });
+
+    console.log('\n🎯 Workspace member emails we\'re matching against:', workspaceMemberEmails);
+    console.log('🔍 ═══════════════════════════════════════════════════\n');
+
+    const workspaceLinkedInAccounts = allLinkedInAccounts.filter((account: any) => {
+      console.log(`\n🔎 Checking account: ${account.id} (${account.name})`);
+
+      // Try ALL possible email field locations
+      const possibleEmails = [
+        account.connection_params?.im?.email,
+        account.connection_params?.im?.username,
+        account.connection_params?.email,
+        account.connection_params?.username,
+        account.identifier,
+        account.display_name,
+        account.email,
+        account.username,
+        account.name
+      ].filter(Boolean);
+
+      console.log(`  📋 All possible email fields found:`, possibleEmails);
+
+      // Check each possible email against workspace member emails
+      let belongsToWorkspace = false;
+      let matchedEmail = '';
+
+      for (const possibleEmail of possibleEmails) {
+        const normalizedEmail = String(possibleEmail).toLowerCase().trim();
+        console.log(`    🔍 Checking: "${normalizedEmail}"`);
+
+        if (workspaceMemberEmails.includes(normalizedEmail)) {
+          belongsToWorkspace = true;
+          matchedEmail = normalizedEmail;
+          console.log(`    ✅ MATCH FOUND! "${normalizedEmail}" is in workspace members`);
+          break;
+        }
+      }
 
       if (belongsToWorkspace) {
-        console.log(`  ✓ Account ${account.id} (${account.name}) belongs to workspace (${accountEmail})`);
+        console.log(`  ✅ Account ${account.id} (${account.name}) BELONGS to workspace via: ${matchedEmail}`);
+      } else {
+        console.log(`  ❌ Account ${account.id} (${account.name}) does NOT belong to workspace`);
+        console.log(`  ❌ None of these matched workspace emails:`, possibleEmails);
       }
 
       return belongsToWorkspace;
