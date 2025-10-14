@@ -95,11 +95,41 @@ export default function ResetPasswordPage() {
         throw new Error(data.error || 'Failed to update password');
       }
 
-      setMessage('✅ Password updated successfully! Redirecting to sign in...');
+      setMessage('✅ Password updated successfully! Signing you in...');
       setError('');
-      setTimeout(() => {
-        window.location.href = '/signin';
-      }, 2000);
+
+      // Automatically sign in with the new password
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
+      if (signInError) {
+        console.error('Auto sign-in error:', signInError);
+        setMessage('✅ Password updated! Redirecting to sign in...');
+        setTimeout(() => {
+          window.location.href = '/signin';
+        }, 2000);
+        return;
+      }
+
+      // Get user's workspace and redirect
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('current_workspace_id')
+          .eq('id', user.id)
+          .single();
+
+        if (userData?.current_workspace_id) {
+          window.location.href = `/workspace/${userData.current_workspace_id}`;
+        } else {
+          window.location.href = '/';
+        }
+      } else {
+        window.location.href = '/';
+      }
     } catch (err) {
       console.error('Password reset error:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
