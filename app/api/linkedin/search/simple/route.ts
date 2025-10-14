@@ -485,9 +485,13 @@ export async function POST(request: NextRequest) {
     // Log sample item structure to debug data issues
     if (data.items && data.items.length > 0) {
       console.log('🔵 Sample prospect structure:', JSON.stringify(data.items[0], null, 2));
+      console.log('🔵 Available fields in first item:', Object.keys(data.items[0]));
       console.log('🔵 All prospect connection degrees:', data.items.map((item: any, idx: number) => ({
         index: idx,
         name: item.name || `${item.first_name} ${item.last_name}`,
+        company: item.company || item.company_name || item.current_positions?.[0]?.company || 'N/A',
+        industry: item.industry || item.current_positions?.[0]?.industry || 'N/A',
+        headline: item.headline?.substring(0, 50) || 'N/A',
         network: item.network,
         distance: item.distance,
         network_distance: item.network_distance
@@ -523,14 +527,29 @@ export async function POST(request: NextRequest) {
         title = item.current_positions[0].role || item.headline || '';
       }
 
-      // Handle company and industry - only in Sales Nav current_positions
+      // Handle company and industry - different sources per API type
       let company = '';
       let industry = '';
+      
       if (item.current_positions && item.current_positions.length > 0) {
+        // Sales Navigator API - has detailed current_positions array
         company = item.current_positions[0].company || '';
         industry = item.current_positions[0].industry || item.industry || '';
       } else {
+        // Classic LinkedIn API - company/industry in headline or separate fields
+        // Try multiple fallback sources
+        company = item.company || item.company_name || '';
         industry = item.industry || '';
+        
+        // If still no company, try parsing from headline
+        // Headlines often contain "Position at Company"
+        if (!company && item.headline && item.headline.includes(' at ')) {
+          const parts = item.headline.split(' at ');
+          if (parts.length > 1) {
+            company = parts[parts.length - 1].trim();
+            console.log(`📌 Extracted company from headline: "${company}"`);
+          }
+        }
       }
 
       // LinkedIn URL - convert Sales Navigator URLs to public LinkedIn
