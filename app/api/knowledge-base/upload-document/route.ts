@@ -66,18 +66,26 @@ export async function POST(request: NextRequest) {
 
     const userId = session.user.id;
 
-    const { data: userProfile, error: profileError } = await supabase
+    // Try to get workspace from user profile first
+    const { data: userProfile } = await supabase
       .from('users')
       .select('current_workspace_id')
       .eq('id', userId)
       .single();
 
-    if (profileError) {
-      console.error('Failed to load user workspace profile:', profileError);
-      return NextResponse.json({ error: 'Unable to determine workspace' }, { status: 500 });
-    }
+    let workspaceId = userProfile?.current_workspace_id;
 
-    const workspaceId = userProfile?.current_workspace_id;
+    // If no workspace in profile, check workspace_members
+    if (!workspaceId) {
+      const { data: membership } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', userId)
+        .limit(1)
+        .maybeSingle();
+
+      workspaceId = membership?.workspace_id;
+    }
 
     if (!workspaceId) {
       return NextResponse.json({ error: 'Please select a workspace before uploading knowledge base documents.' }, { status: 400 });
