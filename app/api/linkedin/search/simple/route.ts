@@ -170,6 +170,58 @@ export async function POST(request: NextRequest) {
 
     console.log(`🎯 Using LinkedIn API: ${api}`);
 
+    // Helper function to lookup parameter IDs from Unipile
+    // Supports LOCATION, COMPANY, INDUSTRY, SCHOOL, etc.
+    async function lookupParameterIds(
+      paramType: 'LOCATION' | 'COMPANY' | 'INDUSTRY' | 'SCHOOL',
+      keywords: string
+    ): Promise<string[] | null> {
+      try {
+        const unipileDSN = process.env.UNIPILE_DSN!;
+        const paramUrl = unipileDSN.includes('.')
+          ? `https://${unipileDSN}/api/v1/linkedin/search/parameters`
+          : `https://${unipileDSN}.unipile.com:13443/api/v1/linkedin/search/parameters`;
+        
+        const params = new URLSearchParams({
+          account_id: linkedinAccount.unipile_account_id,
+          type: paramType,
+          keywords: keywords,
+          limit: '5' // Get top 5 matches
+        });
+
+        console.log(`🔍 Looking up ${paramType} IDs for: "${keywords}"`);
+        console.log(`🔍 Request URL: ${paramUrl}?${params}`);
+
+        const response = await fetch(`${paramUrl}?${params}`, {
+          headers: {
+            'X-API-KEY': process.env.UNIPILE_API_KEY!,
+            'Accept': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          console.error(`❌ ${paramType} lookup failed: ${response.status}`, await response.text());
+          return null;
+        }
+
+        const data = await response.json();
+        console.log(`✅ ${paramType} lookup results:`, JSON.stringify(data, null, 2));
+
+        // Extract IDs from results
+        if (data.items && data.items.length > 0) {
+          const ids = data.items.map((item: any) => item.id);
+          console.log(`✅ Found ${ids.length} ${paramType} ID(s):`, ids);
+          return ids;
+        } else {
+          console.log(`⚠️ No ${paramType} matches found for "${keywords}"`);
+          return null;
+        }
+      } catch (error) {
+        console.error(`❌ Error looking up ${paramType} IDs:`, error);
+        return null;
+      }
+    }
+
     // Call Unipile - format payload correctly
     // UNIPILE_DSN can be either "api6" or "api6.unipile.com:13443" (full domain)
     const unipileDSN = process.env.UNIPILE_DSN!;
@@ -202,28 +254,123 @@ export async function POST(request: NextRequest) {
       unipilePayload.keywords = search_criteria.keywords;
     }
 
-    // Location (city, state, country)
+    // Location (city, state, country) - REQUIRES NUMERIC IDs
     if (search_criteria.location) {
-      unipilePayload.locations = [search_criteria.location];
-      console.log('🎯 Location filter:', search_criteria.location);
+      console.log('🎯 Processing location filter:', search_criteria.location);
+      const locationIds = await lookupParameterIds('LOCATION', search_criteria.location);
+      
+      if (locationIds && locationIds.length > 0) {
+        // Use the location IDs for the appropriate API type
+        if (api === 'sales_navigator') {
+          // Sales Navigator uses location.include array
+          unipilePayload.location = {
+            include: locationIds
+          };
+          console.log('✅ Location filter (Sales Nav):', unipilePayload.location);
+        } else if (api === 'recruiter') {
+          // Recruiter uses location array with id objects
+          unipilePayload.location = locationIds.map(id => ({ id }));
+          console.log('✅ Location filter (Recruiter):', unipilePayload.location);
+        } else {
+          // Classic LinkedIn uses simple location array
+          unipilePayload.location = locationIds;
+          console.log('✅ Location filter (Classic):', unipilePayload.location);
+        }
+      } else {
+        console.warn(`⚠️ Could not find location ID for "${search_criteria.location}" - proceeding without location filter`);
+      }
     }
 
-    // Company (current company filter)
+    // Company (current company filter) - REQUIRES NUMERIC IDs
     if (search_criteria.company) {
-      unipilePayload.current_company = [search_criteria.company];
-      console.log('🎯 Company filter:', search_criteria.company);
+      console.log('🎯 Processing company filter:', search_criteria.company);
+      const companyIds = await lookupParameterIds('COMPANY', search_criteria.company);
+      
+      if (companyIds && companyIds.length > 0) {
+        // Use the company IDs for the appropriate API type
+        if (api === 'sales_navigator') {
+          // Sales Navigator uses company.include array
+          unipilePayload.company = {
+            include: companyIds
+          };
+          console.log('✅ Company filter (Sales Nav):', unipilePayload.company);
+        } else if (api === 'recruiter') {
+          // Recruiter uses company array with id objects
+          unipilePayload.company = companyIds.map(id => ({
+            id,
+            priority: 'MUST_HAVE',
+            scope: 'CURRENT'
+          }));
+          console.log('✅ Company filter (Recruiter):', unipilePayload.company);
+        } else {
+          // Classic LinkedIn uses simple company array
+          unipilePayload.company = companyIds;
+          console.log('✅ Company filter (Classic):', unipilePayload.company);
+        }
+      } else {
+        console.warn(`⚠️ Could not find company ID for "${search_criteria.company}" - proceeding without company filter`);
+      }
     }
 
-    // Industry
+    // Industry - REQUIRES NUMERIC IDs
     if (search_criteria.industry) {
-      unipilePayload.industries = [search_criteria.industry];
-      console.log('🎯 Industry filter:', search_criteria.industry);
+      console.log('🎯 Processing industry filter:', search_criteria.industry);
+      // Use SALES_INDUSTRY for Sales Navigator, INDUSTRY for Classic/Recruiter
+      const industryType = api === 'sales_navigator' ? 'INDUSTRY' : 'INDUSTRY';
+      const industryIds = await lookupParameterIds('INDUSTRY', search_criteria.industry);
+      
+      if (industryIds && industryIds.length > 0) {
+        // Use the industry IDs for the appropriate API type
+        if (api === 'sales_navigator') {
+          // Sales Navigator uses industry.include array
+          unipilePayload.industry = {
+            include: industryIds
+          };
+          console.log('✅ Industry filter (Sales Nav):', unipilePayload.industry);
+        } else if (api === 'recruiter') {
+          // Recruiter uses industry.include array
+          unipilePayload.industry = {
+            include: industryIds
+          };
+          console.log('✅ Industry filter (Recruiter):', unipilePayload.industry);
+        } else {
+          // Classic LinkedIn uses simple industry array
+          unipilePayload.industry = industryIds;
+          console.log('✅ Industry filter (Classic):', unipilePayload.industry);
+        }
+      } else {
+        console.warn(`⚠️ Could not find industry ID for "${search_criteria.industry}" - proceeding without industry filter`);
+      }
     }
 
-    // School/University
+    // School/University - REQUIRES NUMERIC IDs
     if (search_criteria.school) {
-      unipilePayload.schools = [search_criteria.school];
-      console.log('🎯 School filter:', search_criteria.school);
+      console.log('🎯 Processing school filter:', search_criteria.school);
+      const schoolIds = await lookupParameterIds('SCHOOL', search_criteria.school);
+      
+      if (schoolIds && schoolIds.length > 0) {
+        // Use the school IDs for the appropriate API type
+        if (api === 'sales_navigator') {
+          // Sales Navigator uses school.include array
+          unipilePayload.school = {
+            include: schoolIds
+          };
+          console.log('✅ School filter (Sales Nav):', unipilePayload.school);
+        } else if (api === 'recruiter') {
+          // Recruiter uses school array with id objects
+          unipilePayload.school = schoolIds.map(id => ({
+            id,
+            priority: 'MUST_HAVE'
+          }));
+          console.log('✅ School filter (Recruiter):', unipilePayload.school);
+        } else {
+          // Classic LinkedIn uses simple school array
+          unipilePayload.school = schoolIds;
+          console.log('✅ School filter (Classic):', unipilePayload.school);
+        }
+      } else {
+        console.warn(`⚠️ Could not find school ID for "${search_criteria.school}" - proceeding without school filter`);
+      }
     }
 
     // CRITICAL: Connection degree must be specified by user
