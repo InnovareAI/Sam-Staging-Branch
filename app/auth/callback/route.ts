@@ -30,16 +30,6 @@ export async function GET(request: NextRequest) {
   }
 
   if (code) {
-    // For password recovery, pass the code to the reset password page
-    // It will handle the session exchange client-side for better cookie handling
-    if (type === 'recovery') {
-      console.log('Password recovery flow detected, passing code to reset password page');
-      const resetUrl = new URL('/reset-password', request.url);
-      resetUrl.searchParams.set('code', code);
-      resetUrl.searchParams.set('type', 'recovery');
-      return NextResponse.redirect(resetUrl);
-    }
-
     const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -216,7 +206,26 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Check if this is a magic link (recovery is handled above)
+      // Check if this is a password recovery session
+      // Recovery sessions are created by Supabase when user clicks reset link
+      const isRecoverySession = data.session?.user?.app_metadata?.provider === 'email' &&
+                                 data.session?.user?.recovery_sent_at;
+
+      // Also check AMR (Authentication Method Reference) for recovery
+      const hasRecoveryAMR = data.session?.amr?.some((amr: any) =>
+        amr.method === 'recovery' || amr.method === 'password_reset'
+      );
+
+      if (isRecoverySession || hasRecoveryAMR || type === 'recovery') {
+        // Password recovery - pass code to reset password page for client-side handling
+        console.log('Password recovery session detected, redirecting to reset password page');
+        const resetUrl = new URL('/reset-password', request.url);
+        resetUrl.searchParams.set('code', code);
+        resetUrl.searchParams.set('type', 'recovery');
+        return NextResponse.redirect(resetUrl);
+      }
+
+      // Check if this is a magic link
       if (type === 'magiclink') {
         // For magic link authentication, user should be automatically signed in
         // No password change needed - redirect directly to the app
