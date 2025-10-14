@@ -454,26 +454,41 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Connection degree filter - OPTIONAL
-    // If specified, search only that degree. If not specified, search ALL degrees.
+    // Connection degree filter - REQUIRED (no default)
+    // User MUST specify connection degree - reject search if not provided
     const connectionDegree = search_criteria.connectionDegree;
-    let requestedDegree = 0; // 0 = all degrees
-    let searchDegrees: number[] = [1, 2, 3]; // Default: all degrees
 
-    if (connectionDegree) {
-      // User specified a specific degree - search only that one
-      const degreeToNumber: Record<string, number> = {
-        '1st': 1, '2nd': 2, '3rd': 3,
-        '1': 1, '2': 2, '3': 3
-      };
-      const numericDegree = degreeToNumber[connectionDegree];
-      if (numericDegree) {
-        requestedDegree = numericDegree;
-        searchDegrees = [numericDegree];
-        console.log(`🎯 Connection degree: Searching ONLY ${connectionDegree} degree connections`);
-      }
-    } else {
+    if (!connectionDegree) {
+      return NextResponse.json({
+        success: false,
+        error: 'Connection degree is required. Please specify "1st", "2nd", or "3rd" degree connections.',
+        requiresConnectionDegree: true
+      }, { status: 400 });
+    }
+
+    const degreeToNumber: Record<string, number> = {
+      '1st': 1, '2nd': 2, '3rd': 3,
+      '1': 1, '2': 2, '3': 3,
+      'all': 0 // Allow explicit "all" to search all degrees
+    };
+
+    const numericDegree = degreeToNumber[connectionDegree];
+    let requestedDegree = numericDegree || 0;
+    let searchDegrees: number[] = [];
+
+    if (numericDegree === 0) {
+      // Special case: search all degrees
+      searchDegrees = [1, 2, 3];
       console.log('🎯 Connection degree: Searching ALL degrees (1st, 2nd, 3rd)');
+    } else if (numericDegree) {
+      requestedDegree = numericDegree;
+      searchDegrees = [numericDegree];
+      console.log(`🎯 Connection degree: Searching ONLY ${connectionDegree} degree connections`);
+    } else {
+      return NextResponse.json({
+        success: false,
+        error: `Invalid connection degree "${connectionDegree}". Must be "1st", "2nd", "3rd", or "all".`
+      }, { status: 400 });
     }
 
     // Set the appropriate field based on API type
