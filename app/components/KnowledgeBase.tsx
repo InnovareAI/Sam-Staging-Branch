@@ -245,7 +245,6 @@ function DocumentUpload({ section, onComplete }: { section: string; onComplete?:
         setUrl('');
         setStatus('idle');
         setProgress(0);
-        setExtractedContent(null);
         setAiTags([]);
       }, 3000);
       
