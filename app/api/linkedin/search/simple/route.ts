@@ -406,11 +406,12 @@ export async function POST(request: NextRequest) {
       // Ensure connectionDegree is always a valid integer
       connectionDegree = parseInt(String(connectionDegree)) || requestedDegree;
       
-      // CRITICAL: Filter out prospects that don't match the requested degree
-      // This ensures we only return what the user asked for
+      // DIAGNOSTIC MODE: Log degree mismatches but don't filter yet
+      // This helps us understand if Unipile is returning wrong data
       if (connectionDegree !== requestedDegree) {
-        console.log(`⚠️ Filtering out prospect ${firstName} ${lastName} - wrong degree (got ${connectionDegree}, requested ${requestedDegree})`);
-        return null; // Will be filtered out
+        console.log(`⚠️ DEGREE MISMATCH: ${firstName} ${lastName} - got ${connectionDegree}, requested ${requestedDegree} (KEEPING FOR NOW)`);
+        // TODO: Re-enable strict filtering after diagnosis:
+        // return null; // Will be filtered out
       }
 
       // Extract location
