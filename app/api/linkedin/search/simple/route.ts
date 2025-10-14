@@ -227,28 +227,44 @@ export async function POST(request: NextRequest) {
     }
 
     // CRITICAL: Connection degree must be specified by user
-    // Convert "1st", "2nd", "3rd" to proper format for Unipile
-    const degreeMap: Record<string, string[]> = {
-      '1st': ['F'],      // First-degree (F = First)
-      '2nd': ['S'],      // Second-degree (S = Second)
-      '3rd': ['O'],      // Third-degree (O = Out of network)
-      '1': ['F'],
-      '2': ['S'],
-      '3': ['O']
-    };
-
-    // Use provided connection degree or default to 2nd degree
+    // Sales Navigator and Recruiter use numeric network_distance [1,2,3]
+    // Classic uses network codes ['F', 'S', 'O']
     const connectionDegree = search_criteria.connectionDegree || '2nd';
-    unipilePayload.network = degreeMap[connectionDegree];
     
-    if (!unipilePayload.network) {
+    // Map user input to numeric values
+    const degreeToNumber: Record<string, number> = {
+      '1st': 1,
+      '2nd': 2,
+      '3rd': 3,
+      '1': 1,
+      '2': 2,
+      '3': 3
+    };
+    
+    const numericDegree = degreeToNumber[connectionDegree];
+    
+    if (!numericDegree) {
       console.error('❌ Invalid connection degree format:', connectionDegree);
       return NextResponse.json({
         error: 'Invalid connection degree. Must be "1st", "2nd", or "3rd"'
       }, { status: 400 });
     }
     
-    console.log('🎯 Connection degree filter:', connectionDegree, '→', unipilePayload.network);
+    // Set the appropriate field based on API type
+    if (api === 'sales_navigator' || api === 'recruiter') {
+      // Sales Navigator and Recruiter use network_distance with numeric array
+      unipilePayload.network_distance = [numericDegree];
+      console.log('🎯 Connection degree filter (Sales Nav/Recruiter):', connectionDegree, '→ network_distance:', unipilePayload.network_distance);
+    } else {
+      // Classic uses network with letter codes
+      const classicMap: Record<number, string[]> = {
+        1: ['F'],  // First
+        2: ['S'],  // Second
+        3: ['O']   // Out of network (3rd)
+      };
+      unipilePayload.network = classicMap[numericDegree];
+      console.log('🎯 Connection degree filter (Classic):', connectionDegree, '→ network:', unipilePayload.network);
+    }
 
     // Profile Language filter
     if (search_criteria.profileLanguage) {
@@ -331,12 +347,11 @@ export async function POST(request: NextRequest) {
       })));
     }
 
-    // Extract requested connection degree for saving
-    // Convert network notation back to numeric degree: F→1, S→2, O→3
+    // Use the numeric degree we already calculated
+    const requestedDegree = numericDegree;
+    
+    // Keep networkToNumber for parsing response data
     const networkToNumber: Record<string, number> = { 'F': 1, 'S': 2, 'O': 3 };
-    const requestedDegree = unipilePayload.network?.[0]
-      ? (networkToNumber[unipilePayload.network[0]] || 2)
-      : 2;
 
     const prospects = (data.items || []).map((item: any) => {
       // Handle name - Classic gives full name, Sales Nav gives first/last
