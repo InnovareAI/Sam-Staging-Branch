@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { randomBytes } from 'crypto';
 
 // Create Supabase admin client for generating reset tokens
 const supabaseAdmin = createServiceClient(
@@ -107,23 +108,86 @@ export async function POST(request: NextRequest) {
 
       console.log(`🌐 Using origin for password reset: ${origin}`);
 
-      // Use resetPasswordForEmail instead of generateLink
-      // This properly respects the redirectTo parameter
-      const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
-        redirectTo: `${origin}/auth/callback`
-      });
+      // Generate a secure random token (bypasses Supabase rate limits)
+      const resetToken = randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-      if (resetError) {
-        console.error('Password reset error:', resetError);
+      // Store token in database
+      const { error: tokenError } = await supabaseAdmin
+        .from('password_reset_tokens')
+        .upsert({
+          email: email.toLowerCase(),
+          token: resetToken,
+          expires_at: expiresAt.toISOString(),
+          created_at: new Date().toISOString()
+        }, {
+          onConflict: 'email'
+        });
+
+      if (tokenError) {
+        console.error('Token storage error:', tokenError);
         return NextResponse.json(
-          { error: 'Unable to send password reset email. Please try again later.' },
-          { status: 503 }
+          { error: 'Unable to generate password reset token' },
+          { status: 500 }
         );
       }
 
-      console.log('✅ Supabase password reset email sent successfully');
+      // Build reset URL pointing directly to our app (no Supabase verify endpoint)
+      const resetUrl = `${origin}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
 
-      // Supabase will send its own email, so we don't need to send via Postmark
+      console.log('🔗 Generated custom reset URL:', resetUrl);
+
+      const htmlBody = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Reset Your SAM AI Password</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { text-align: center; margin-bottom: 30px; }
+                .button { display: inline-block; padding: 12px 24px; background: #dc2626; color: white; text-decoration: none; border-radius: 6px; }
+                .footer { margin-top: 30px; font-size: 14px; color: #666; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🔑 Reset Your SAM AI Password</h1>
+                </div>
+
+                <p>Hi there,</p>
+
+                <p>We received a request to <strong>reset your password</strong> for your SAM AI account (<strong>${email}</strong>).</p>
+
+                <p>Click the button below to reset your password:</p>
+
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="${resetUrl}" class="button">Reset My Password</a>
+                </p>
+
+                <p><small>If the button doesn't work, copy and paste this link:</small></p>
+                <p style="word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 12px;">
+                    ${resetUrl}
+                </p>
+
+                <p><em>This link will expire in 1 hour for security.</em></p>
+
+                <p>If you didn't request this password reset, you can safely ignore this email.</p>
+
+                <div class="footer">
+                    <p>Best regards,<br><strong>The SAM AI Team</strong></p>
+                    <p style="color: #999; font-size: 12px;">SAM AI - Your AI-powered Sales Agent Platform</p>
+                </div>
+            </div>
+        </body>
+        </html>
+      `;
+
+      await sendEmail(email, '🔑 Reset Your SAM AI Password', htmlBody);
+
+      console.log('✅ Password reset email sent via Postmark successfully');
       return NextResponse.json({
         success: true,
         message: 'Password reset email sent! Check your email and click the link to reset your password.'

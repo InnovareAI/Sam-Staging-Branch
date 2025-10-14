@@ -9,24 +9,55 @@ const supabaseAdmin = createServiceClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const { token } = await request.json();
+    const { token, email } = await request.json();
 
-    if (!token) {
-      return NextResponse.json({ error: 'Token required' }, { status: 400 });
+    if (!token || !email) {
+      return NextResponse.json(
+        { error: 'Token and email are required', valid: false },
+        { status: 400 }
+      );
     }
 
-    // For password reset via Supabase recovery links, we just validate the format
-    // The actual token validation happens during the password update
-    // This endpoint is kept for backward compatibility but doesn't use a separate table
+    // Query token from database
+    const { data: tokenData, error: queryError } = await supabaseAdmin
+      .from('password_reset_tokens')
+      .select('*')
+      .eq('email', email.toLowerCase())
+      .eq('token', token)
+      .single();
 
-    if (!token || token.length < 10) {
-      return NextResponse.json({ error: 'Invalid token format' }, { status: 400 });
+    if (queryError || !tokenData) {
+      return NextResponse.json(
+        { error: 'Invalid or expired reset token', valid: false },
+        { status: 400 }
+      );
     }
 
-    return NextResponse.json({ valid: true });
+    // Check if token is expired
+    const expiresAt = new Date(tokenData.expires_at);
+    if (expiresAt < new Date()) {
+      // Delete expired token
+      await supabaseAdmin
+        .from('password_reset_tokens')
+        .delete()
+        .eq('email', email.toLowerCase());
+
+      return NextResponse.json(
+        { error: 'Reset link has expired - please request a new one', valid: false },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({
+      valid: true,
+      message: 'Token is valid'
+    });
 
   } catch (error) {
     console.error('Token validation error:', error);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to validate token', valid: false },
+      { status: 500 }
+    );
   }
 }

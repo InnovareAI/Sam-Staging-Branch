@@ -13,68 +13,48 @@ export default function ResetPasswordPage() {
   const [validToken, setValidToken] = useState<boolean | null>(null);
   const [email, setEmail] = useState('');
 
-  // Check for recovery code and establish session
+  // Check for custom reset token
   useEffect(() => {
-    const initializeSession = async () => {
+    const validateToken = async () => {
       try {
-        // Check URL for recovery code from auth callback
         const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        const type = urlParams.get('type');
+        const token = urlParams.get('token');
+        const emailParam = urlParams.get('email');
 
-        if (code && type === 'recovery') {
-          console.log('🔑 Found recovery code, exchanging for session...');
-
-          // Exchange code for session
-          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-
-          if (exchangeError) {
-            console.error('Code exchange error:', exchangeError);
-            setValidToken(false);
-            setError('Invalid or expired reset link - please request a new password reset');
-            return;
-          }
-
-          if (data.session && data.user) {
-            setValidToken(true);
-            setEmail(data.user.email || 'your account');
-            console.log('✅ Recovery session established for:', data.user.email);
-
-            // Clean up URL
-            window.history.replaceState({}, '', '/reset-password');
-            return;
-          }
-        }
-
-        // If no code, check for existing session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-        if (sessionError) {
-          console.error('Session error:', sessionError);
+        if (!token || !emailParam) {
           setValidToken(false);
-          setError('Invalid or expired reset link - please request a new password reset');
+          setError('Invalid reset link - please request a new password reset');
           return;
         }
 
-        if (session && session.user) {
-          // Valid session exists - user can reset password
+        console.log('🔑 Validating custom reset token...');
+
+        // Validate token via API
+        const response = await fetch('/api/auth/validate-reset-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, email: emailParam })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.valid) {
           setValidToken(true);
-          setEmail(session.user.email || 'your account');
-          console.log('✅ Active recovery session found for:', session.user.email);
+          setEmail(emailParam);
+          console.log('✅ Reset token validated for:', emailParam);
         } else {
-          // No session found
           setValidToken(false);
-          setError('Invalid reset link - please request a new password reset');
+          setError(data.error || 'Invalid or expired reset link - please request a new password reset');
         }
       } catch (err) {
-        console.error('Session check error:', err);
+        console.error('Token validation error:', err);
         setValidToken(false);
-        setError('Failed to validate session - please request a new password reset');
+        setError('Failed to validate reset link - please request a new password reset');
       }
     };
 
-    initializeSession();
-  }, [supabase]);
+    validateToken();
+  }, []);
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,20 +74,31 @@ export default function ResetPasswordPage() {
     setMessage('');
 
     try {
-      // Use Supabase auth to update password directly
-      // This works with the recovery token from the URL hash
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password
+      // Get token from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+
+      // Call our custom API to update password
+      const response = await fetch('/api/auth/reset-password-confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          email,
+          password
+        })
       });
 
-      if (updateError) {
-        throw updateError;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update password');
       }
 
-      setMessage('✅ Password updated successfully! Redirecting to your dashboard...');
+      setMessage('✅ Password updated successfully! Redirecting to sign in...');
       setError('');
       setTimeout(() => {
-        window.location.href = '/';  // Redirect to main app - user is already authenticated
+        window.location.href = '/signin';
       }, 2000);
     } catch (err) {
       console.error('Password reset error:', err);
