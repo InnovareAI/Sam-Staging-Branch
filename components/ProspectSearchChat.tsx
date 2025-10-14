@@ -153,18 +153,18 @@ export default function ProspectSearchChat({
     else if (lowerInput.includes('texas') || lowerInput.includes('tx')) location.push('102748797');
     else location.push('103644278'); // Default to United States
 
-    // Extract connection degree
-    let connectionDegree = '2nd'; // Default to 2nd degree
+    // Extract connection degree - REQUIRED, must clarify if not specified
+    let connectionDegree: string | null = null;
     if (lowerInput.includes('1st degree') || lowerInput.includes('first degree') || 
         lowerInput.includes('1st connection') || lowerInput.includes('first connection') ||
         lowerInput.includes('my connections') || lowerInput.includes('direct connection')) {
       connectionDegree = '1st';
-    } else if (lowerInput.includes('3rd degree') || lowerInput.includes('third degree') ||
-               lowerInput.includes('3rd connection') || lowerInput.includes('third connection')) {
-      connectionDegree = '3rd';
     } else if (lowerInput.includes('2nd degree') || lowerInput.includes('second degree') ||
                lowerInput.includes('2nd connection') || lowerInput.includes('second connection')) {
       connectionDegree = '2nd';
+    } else if (lowerInput.includes('3rd degree') || lowerInput.includes('third degree') ||
+               lowerInput.includes('3rd connection') || lowerInput.includes('third connection')) {
+      connectionDegree = '3rd';
     }
 
     // Extract industry/keywords
@@ -194,10 +194,20 @@ export default function ProspectSearchChat({
       // Parse search intent
       const criteria = parseSearchIntent(userMessage);
 
+      // CRITICAL: Always require connection degree clarification
+      if (!criteria.connectionDegree) {
+        addMessage({
+          role: 'assistant',
+          content: `Before I search, I need to know: Which connection degree do you want to target?\n\n**1st degree** - Your direct connections\n**2nd degree** - Friends of friends (most common)\n**3rd degree** - Extended network\n\nPlease specify "1st", "2nd", or "3rd" degree connections.`
+        });
+        setIsLoading(false);
+        return;
+      }
+
       // Add thinking message
       addMessage({
         role: 'assistant',
-        content: `Got it! Searching for ${criteria.targetCount} ${criteria.title || 'prospects'}${criteria.keywords ? ` in ${criteria.keywords}` : ''}...`
+        content: `Got it! Searching for ${criteria.targetCount} ${criteria.title || 'prospects'}${criteria.keywords ? ` in ${criteria.keywords}` : ''} (${criteria.connectionDegree} degree connections)...`
       });
 
       // Use simple search endpoint (working with authentication)

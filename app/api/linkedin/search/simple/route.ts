@@ -373,10 +373,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // CRITICAL: Connection degree must be specified by user
-    // Sales Navigator and Recruiter use numeric network_distance [1,2,3]
-    // Classic uses network codes ['F', 'S', 'O']
-    const connectionDegree = search_criteria.connectionDegree || '2nd';
+    // Connection degree filter - REQUIRED
+    // Must be explicitly specified by user
+    if (!search_criteria.connectionDegree) {
+      console.error('❌ Connection degree not specified');
+      return NextResponse.json({
+        success: false,
+        error: 'Connection degree is required. Please specify "1st", "2nd", or "3rd" degree connections.'
+      }, { status: 400 });
+    }
+    
+    const connectionDegree = search_criteria.connectionDegree;
     
     // Map user input to numeric values
     const degreeToNumber: Record<string, number> = {
@@ -393,6 +400,7 @@ export async function POST(request: NextRequest) {
     if (!numericDegree) {
       console.error('❌ Invalid connection degree format:', connectionDegree);
       return NextResponse.json({
+        success: false,
         error: 'Invalid connection degree. Must be "1st", "2nd", or "3rd"'
       }, { status: 400 });
     }
@@ -569,23 +577,39 @@ export async function POST(request: NextRequest) {
       // Connection degree from Unipile data
       // Unipile returns network as 'F', 'S', 'O' - convert to number
       let connectionDegree = requestedDegree;
+      
+      console.log(`🔍 RAW DATA for ${firstName} ${lastName}:`, {
+        network: item.network,
+        network_distance: item.network_distance,
+        distance: item.distance,
+        requestedDegree
+      });
+      
       if (item.network) {
         connectionDegree = networkToNumber[item.network] || requestedDegree;
+        console.log(`  ✓ Used item.network: ${item.network} → ${connectionDegree}`);
       } else if (item.network_distance) {
         // Parse network_distance which might be string like "DISTANCE_2" or number 2
         if (typeof item.network_distance === 'string') {
           const match = item.network_distance.match(/(\d+)/);
           connectionDegree = match ? parseInt(match[1]) : requestedDegree;
+          console.log(`  ✓ Used item.network_distance (string): ${item.network_distance} → ${connectionDegree}`);
         } else if (typeof item.network_distance === 'number') {
           connectionDegree = item.network_distance;
+          console.log(`  ✓ Used item.network_distance (number): ${item.network_distance} → ${connectionDegree}`);
         }
       } else if (item.distance) {
         // Some APIs use 'distance' field
         connectionDegree = parseInt(String(item.distance)) || requestedDegree;
+        console.log(`  ✓ Used item.distance: ${item.distance} → ${connectionDegree}`);
+      } else {
+        console.log(`  ⚠️ No degree field found, using requested: ${requestedDegree}`);
       }
       
       // Ensure connectionDegree is always a valid integer
-      connectionDegree = parseInt(String(connectionDegree)) || requestedDegree;
+      const finalDegree = parseInt(String(connectionDegree)) || requestedDegree;
+      console.log(`  📌 FINAL connectionDegree: ${finalDegree}`);
+      connectionDegree = finalDegree;
       
       // DIAGNOSTIC MODE: Log degree mismatches but don't filter yet
       // This helps us understand if Unipile is returning wrong data
