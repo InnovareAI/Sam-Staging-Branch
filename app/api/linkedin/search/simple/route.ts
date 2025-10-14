@@ -166,184 +166,80 @@ export async function POST(request: NextRequest) {
     const allLinkedInAccounts = allAccounts.filter((account: any) => account.type === 'LINKEDIN');
     console.log(`📊 Total LinkedIn accounts in Unipile: ${allLinkedInAccounts.length}`);
 
-    // Step 3: Get workspace members to match accounts by email
-    // First, get the user_id list from workspace_members
-    const { data: workspaceMembers, error: membersError } = await supabase
-      .from('workspace_members')
-      .select('user_id')
-      .eq('workspace_id', workspaceId);
+    // Step 3: Get the authenticated user's LinkedIn accounts from database
+    // The workspace_accounts table has user_id showing which user owns each account
+    console.log(`🔍 Finding LinkedIn accounts for authenticated user: ${user.email} (${user.id})`);
 
-    if (membersError || !workspaceMembers || workspaceMembers.length === 0) {
-      console.error('❌ Failed to fetch workspace members:', membersError?.message);
+    const { data: userLinkedInAccounts, error: userAccountsError } = await supabase
+      .from('workspace_accounts')
+      .select('unipile_account_id, account_name')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .eq('account_type', 'linkedin')
+      .eq('connection_status', 'connected');
+
+    if (userAccountsError || !userLinkedInAccounts || userLinkedInAccounts.length === 0) {
+      console.error('❌ No LinkedIn accounts found for this user');
       return NextResponse.json({
         success: false,
-        error: 'Failed to load workspace members',
-        details: membersError?.message
-      }, { status: 500 });
-    }
-
-    const userIds = workspaceMembers.map((m: any) => m.user_id).filter(Boolean);
-    console.log(`📊 Workspace member user_ids:`, userIds);
-
-    // Second, use admin client to fetch user emails (bypasses RLS)
-    const admin = supabaseAdmin();
-    const { data: users, error: usersError } = await admin
-      .from('users')
-      .select('id, email')
-      .in('id', userIds);
-
-    if (usersError || !users || users.length === 0) {
-      console.error('❌ Failed to fetch user emails:', usersError?.message);
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to load workspace member emails',
-        details: usersError?.message
-      }, { status: 500 });
-    }
-
-    const workspaceMemberEmails = users.map((u: any) => u.email?.toLowerCase()).filter(Boolean);
-    console.log(`📊 Workspace member emails:`, workspaceMemberEmails);
-
-    // Step 4: Match LinkedIn accounts to workspace by email/identifier
-    console.log('🔍 ═══════════════════════════════════════════════════');
-    console.log('🔍 ACCOUNT MATCHING DEBUG - ALL LINKEDIN ACCOUNTS FROM UNIPILE');
-    console.log('🔍 ═══════════════════════════════════════════════════');
-
-    // Log FULL structure of each LinkedIn account BEFORE filtering
-    allLinkedInAccounts.forEach((account: any, idx: number) => {
-      console.log(`\n📋 LinkedIn Account #${idx + 1}:`);
-      console.log('  Account ID:', account.id);
-      console.log('  Account Name:', account.name);
-      console.log('  Account Type:', account.type);
-      console.log('  Display Name:', account.display_name);
-      console.log('  Identifier:', account.identifier);
-      console.log('  Username:', account.username);
-      console.log('  Email:', account.email);
-      console.log('  Connection Params:', JSON.stringify(account.connection_params, null, 2));
-      console.log('  Sources:', JSON.stringify(account.sources, null, 2));
-      console.log('  Full Account Object:', JSON.stringify(account, null, 2));
-    });
-
-    console.log('\n🎯 Workspace member emails we\'re matching against:', workspaceMemberEmails);
-    console.log('🔍 ═══════════════════════════════════════════════════\n');
-
-    const workspaceLinkedInAccounts = allLinkedInAccounts.filter((account: any) => {
-      console.log(`\n🔎 Checking account: ${account.id} (${account.name})`);
-
-      // Try ALL possible email field locations
-      const possibleEmails = [
-        account.connection_params?.im?.email,
-        account.connection_params?.im?.username,
-        account.connection_params?.email,
-        account.connection_params?.username,
-        account.identifier,
-        account.display_name,
-        account.email,
-        account.username,
-        account.name
-      ].filter(Boolean);
-
-      console.log(`  📋 All possible email fields found:`, possibleEmails);
-
-      // Check each possible email against workspace member emails
-      let belongsToWorkspace = false;
-      let matchedEmail = '';
-
-      for (const possibleEmail of possibleEmails) {
-        const normalizedEmail = String(possibleEmail).toLowerCase().trim();
-        console.log(`    🔍 Checking: "${normalizedEmail}"`);
-
-        if (workspaceMemberEmails.includes(normalizedEmail)) {
-          belongsToWorkspace = true;
-          matchedEmail = normalizedEmail;
-          console.log(`    ✅ MATCH FOUND! "${normalizedEmail}" is in workspace members`);
-          break;
-        }
-      }
-
-      if (belongsToWorkspace) {
-        console.log(`  ✅ Account ${account.id} (${account.name}) BELONGS to workspace via: ${matchedEmail}`);
-      } else {
-        console.log(`  ❌ Account ${account.id} (${account.name}) does NOT belong to workspace`);
-        console.log(`  ❌ None of these matched workspace emails:`, possibleEmails);
-      }
-
-      return belongsToWorkspace;
-    });
-
-    console.log(`📊 LinkedIn accounts belonging to workspace: ${workspaceLinkedInAccounts.length}`);
-
-    if (workspaceLinkedInAccounts.length === 0) {
-      console.error('❌ No LinkedIn accounts found for this workspace');
-      return NextResponse.json({
-        success: false,
-        error: 'No LinkedIn accounts connected to this workspace',
-        details: 'Please connect a LinkedIn account first',
-        debug: {
-          totalUnipileAccounts: allAccounts.length,
-          totalLinkedInAccounts: allLinkedInAccounts.length,
-          workspaceMemberCount: workspaceMembers.length
-        }
+        error: 'No LinkedIn account connected',
+        details: 'You must connect your LinkedIn account to use this feature'
       }, { status: 400 });
     }
 
-    // Step 5: Find the account with Sales Navigator or Recruiter
-    console.log('🔍 Checking workspace LinkedIn accounts for Sales Navigator/Recruiter...');
+    console.log(`📊 Found ${userLinkedInAccounts.length} LinkedIn account(s) for user in database`);
 
-    let selectedAccount: any = null;
+    // Step 4: Match database accounts to Unipile accounts and find one with Sales Navigator
+    let selectedAccount = null;
+
+    for (const dbAccount of userLinkedInAccounts) {
+      console.log(`\n  🔍 Checking database account: ${dbAccount.account_name} (${dbAccount.unipile_account_id})`);
+
+      // Find this account in the Unipile accounts list
+      const unipileAccount = allLinkedInAccounts.find(a => a.id === dbAccount.unipile_account_id);
+
+      if (!unipileAccount) {
+        console.log(`     ⚠️ Account not found in Unipile (may be disconnected)`);
+        continue;
+      }
+
+      const premiumFeatures = unipileAccount.connection_params?.im?.premiumFeatures || [];
+      console.log(`     Features: ${premiumFeatures.join(', ') || 'none'}`);
+
+      if (premiumFeatures.includes('recruiter')) {
+        selectedAccount = unipileAccount;
+        console.log(`     ✅ SELECTED - Has Recruiter`);
+        break;
+      } else if (premiumFeatures.includes('sales_navigator')) {
+        selectedAccount = unipileAccount;
+        console.log(`     ✅ SELECTED - Has Sales Navigator`);
+        break;
+      }
+    }
+
+    if (!selectedAccount) {
+      console.error('❌ No Sales Navigator or Recruiter found on your LinkedIn account');
+      return NextResponse.json({
+        success: false,
+        error: 'Sales Navigator required',
+        details: 'Your LinkedIn account does not have Sales Navigator or Recruiter. Please upgrade your LinkedIn subscription to use advanced search features.'
+      }, { status: 400 });
+    }
+
+    console.log(`✅ Using ${user.email}'s LinkedIn account: ${selectedAccount.name}`);
+
+    // Continue with selected account
+    const workspaceLinkedInAccounts = [selectedAccount];
+
+    console.log(`📊 LinkedIn accounts belonging to user: ${workspaceLinkedInAccounts.length}`);
+
+    // Determine API type based on selected account's premium features
+    const premiumFeatures = selectedAccount.connection_params?.im?.premiumFeatures || [];
     let api = 'classic';
-
-    for (const account of workspaceLinkedInAccounts) {
-      try {
-        const premiumFeatures = account.connection_params?.im?.premiumFeatures || [];
-        const accountName = account.name || account.connection_params?.im?.publicIdentifier || account.id;
-
-        console.log(`  📋 Account: ${accountName}`);
-        console.log(`     ID: ${account.id}`);
-        console.log(`     Features: ${premiumFeatures.join(', ') || 'none'}`);
-        console.log(`     Status: ${account.sources?.[0]?.status || 'unknown'}`);
-
-        // Prioritize: Recruiter > Sales Navigator > Classic
-        if (premiumFeatures.includes('recruiter')) {
-          selectedAccount = account;
-          api = 'recruiter';
-          console.log('     ✅ HAS RECRUITER - SELECTED');
-          break; // Recruiter is best, stop searching
-        } else if (premiumFeatures.includes('sales_navigator')) {
-          selectedAccount = account;
-          api = 'sales_navigator';
-          console.log('     ✅ HAS SALES NAVIGATOR - SELECTED');
-          // Don't break - continue checking in case there's a Recruiter account
-        } else {
-          console.log('     ❌ No premium features');
-        }
-      } catch (error) {
-        console.error(`     ❌ Error checking account:`, error);
-      }
-    }
-
-    // REJECT if no Sales Navigator or Recruiter account found
-    if (!selectedAccount || (api !== 'sales_navigator' && api !== 'recruiter')) {
-      console.error('❌ No Sales Navigator or Recruiter account found - SEARCH REJECTED');
-      console.error(`   Workspace: ${workspaceId}`);
-      console.error(`   Accounts checked: ${workspaceLinkedInAccounts.length}`);
-      console.error(`   Member emails: ${workspaceMemberEmails.join(', ')}`);
-
-      return NextResponse.json({
-        success: false,
-        error: 'Sales Navigator or Recruiter required',
-        details: 'No Sales Navigator or Recruiter account found in workspace. LinkedIn searches require a premium account. Please ensure a LinkedIn account with Sales Navigator or Recruiter is connected to this workspace.',
-        debug: {
-          workspaceId,
-          accountsChecked: workspaceLinkedInAccounts.length,
-          workspaceMemberCount: workspaceMemberEmails.length,
-          accountsCheckedDetails: workspaceLinkedInAccounts.map((a: any) => ({
-            id: a.id,
-            name: a.name,
-            features: a.connection_params?.im?.premiumFeatures || []
-          }))
-        }
-      }, { status: 400 });
+    if (premiumFeatures.includes('recruiter')) {
+      api = 'recruiter';
+    } else if (premiumFeatures.includes('sales_navigator')) {
+      api = 'sales_navigator';
     }
 
     console.log('✅ Selected LinkedIn account:', selectedAccount.name || selectedAccount.id);
