@@ -183,16 +183,16 @@ export async function POST(request: NextRequest) {
         } else if (premiumFeatures.includes('sales_navigator')) {
           api = 'sales_navigator';
           console.log('✅ Detected LinkedIn Sales Navigator account');
-        } else if (premiumFeatures.includes('premium')) {
-          // Assume 'premium' means Sales Navigator access
-          api = 'sales_navigator';
-          console.log('✅ Detected LinkedIn Premium (using Sales Navigator API)');
         } else {
-          // REJECT search if no premium features - user requires Sales Navigator
+          // Premium = Classic search (just more connection requests)
+          // REJECT search - user requires Sales Navigator
           console.error('❌ No Sales Navigator detected - SEARCH REJECTED');
+          console.error('   Account only has:', premiumFeatures);
+          console.error('   Note: "premium" = Classic search API (not Sales Navigator)');
           return NextResponse.json({
             success: false,
-            error: 'Sales Navigator required. Please configure your LinkedIn account with Sales Navigator access in Unipile.'
+            error: 'Sales Navigator required. This account only has ' + (premiumFeatures.includes('premium') ? 'Premium (Classic search)' : 'Basic LinkedIn') + '. Please configure Sales Navigator in Unipile.',
+            accountFeatures: premiumFeatures
           }, { status: 400 });
         }
       } else {
