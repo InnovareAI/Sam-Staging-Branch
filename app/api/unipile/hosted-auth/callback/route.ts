@@ -303,27 +303,12 @@ export async function GET(request: NextRequest) {
                 }
               }
               
-              // Find the correct user by LinkedIn email
-              const linkedinEmail = accountData.connection_params?.im?.email || accountData.connection_params?.email;
-              let targetUserId = parsedUserContext.user_id;
-              let targetWorkspaceId = parsedUserContext.workspace_id;
-              
-              if (linkedinEmail) {
-                console.log(`🔍 Looking for user with email: ${linkedinEmail}`);
-                const { data: matchedUser } = await supabase
-                  .from('users')
-                  .select('id, current_workspace_id')
-                  .eq('email', linkedinEmail.toLowerCase())
-                  .single();
-                
-                if (matchedUser) {
-                  targetUserId = matchedUser.id;
-                  targetWorkspaceId = matchedUser.current_workspace_id || parsedUserContext.workspace_id;
-                  console.log(`✅ Matched LinkedIn account to user: ${linkedinEmail} -> ${targetUserId}`);
-                } else {
-                  console.log(`⚠️ No user found with email ${linkedinEmail}, using connector's account`);
-                }
-              }
+              // CRITICAL FIX: Always use the connector's workspace (person who clicked "Connect")
+              // DO NOT try to match by LinkedIn email - this causes cross-workspace pollution
+              const targetUserId = parsedUserContext.user_id;
+              const targetWorkspaceId = parsedUserContext.workspace_id;
+
+              console.log(`✅ Assigning account to connector: user=${targetUserId}, workspace=${targetWorkspaceId}`);
               
               // Auto-set profile_country from LinkedIn location if not already set
               if (accountType === 'LINKEDIN' && accountData.connection_params?.im?.location) {
