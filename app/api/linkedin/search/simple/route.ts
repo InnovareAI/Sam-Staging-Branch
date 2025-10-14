@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
         }));
         
         const premiumFeatures = accountInfo.connection_params?.im?.premiumFeatures || [];
-        
+
         console.log('🔍 Premium features detected:', premiumFeatures);
 
         if (premiumFeatures.includes('recruiter')) {
@@ -183,8 +183,17 @@ export async function POST(request: NextRequest) {
         } else if (premiumFeatures.includes('sales_navigator')) {
           api = 'sales_navigator';
           console.log('✅ Detected LinkedIn Sales Navigator account');
+        } else if (premiumFeatures.includes('premium')) {
+          // Assume 'premium' means Sales Navigator access
+          api = 'sales_navigator';
+          console.log('✅ Detected LinkedIn Premium (using Sales Navigator API)');
         } else {
-          console.log('ℹ️ No premium features detected, using Classic LinkedIn');
+          // REJECT search if no premium features - user requires Sales Navigator
+          console.error('❌ No Sales Navigator detected - SEARCH REJECTED');
+          return NextResponse.json({
+            success: false,
+            error: 'Sales Navigator required. Please configure your LinkedIn account with Sales Navigator access in Unipile.'
+          }, { status: 400 });
         }
       } else {
         console.error('❌ Failed to fetch account info:', accountInfoResponse.status, await accountInfoResponse.text());
