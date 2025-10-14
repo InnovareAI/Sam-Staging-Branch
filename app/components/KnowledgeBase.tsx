@@ -288,12 +288,12 @@ function DocumentUpload({ section, onComplete }: { section: string; onComplete?:
           <Upload className="mx-auto mb-2 text-gray-400" size={24} />
           <input 
             type="file" 
-            accept=".pdf,.txt,.md,.docx,.pptx,.csv,.xlsx"
+            accept=".pdf,.txt,.md"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)} 
             className="text-gray-300 text-sm w-full"
           />
           <p className="text-xs text-gray-400 mt-2">
-            Supported: PDF, DOC, PPT, TXT, MD, CSV, Excel files
+            Supported: PDF, TXT, MD files
           </p>
         </div>
       )}

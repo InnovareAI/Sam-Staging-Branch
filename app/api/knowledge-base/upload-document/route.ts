@@ -1,29 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
-import fs from 'fs';
-import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
 // Document content extraction functions
-async function extractContentFromFile(filePath: string, mimeType: string): Promise<string> {
+async function extractContentFromFile(buffer: Buffer, mimeType: string): Promise<string> {
   try {
     if (mimeType.includes('text/')) {
-      // Text files
-      return fs.readFileSync(filePath, 'utf-8');
+      return new TextDecoder().decode(buffer);
     } else if (mimeType.includes('application/pdf')) {
-      // PDF files - would need PDF parser library like pdf-parse
-      // For now, return placeholder - implement pdf-parse integration
-      return `[PDF Content Extraction] - Implement pdf-parse library for PDF processing`;
+      const pdfParse = (await import('pdf-parse')).default;
+      const pdfData = await pdfParse(buffer);
+      return pdfData.text;
     } else if (mimeType.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document')) {
-      // DOCX files - would need docx parser
       return `[DOCX Content Extraction] - Implement docx library for Word document processing`;
     } else if (mimeType.includes('application/vnd.openxmlformats-officedocument.presentationml.presentation')) {
-      // PPTX files - would need pptx parser
       return `[PPTX Content Extraction] - Implement pptx library for PowerPoint processing`;
     } else {
-      // Generic text extraction
-      return fs.readFileSync(filePath, 'utf-8');
+      return new TextDecoder().decode(buffer);
     }
   } catch (error) {
     console.error('Content extraction error:', error);
@@ -62,7 +58,7 @@ async function extractContentFromURL(url: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies });
+    const supabase = createRouteHandlerClient({ cookies: await cookies() });
     const { data: { session }, error: authError } = await supabase.auth.getSession();
 
     if (authError || !session?.user) {
@@ -87,6 +83,11 @@ export async function POST(request: NextRequest) {
     if (!workspaceId) {
       return NextResponse.json({ error: 'Please select a workspace before uploading knowledge base documents.' }, { status: 400 });
     }
+
+    // Ensure KB sections are initialized for this workspace
+    await supabase.rpc('initialize_knowledge_base_sections', {
+      p_workspace_id: workspaceId
+    });
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -117,27 +118,15 @@ export async function POST(request: NextRequest) {
       mimeType = file.type;
       fileSize = file.size;
 
-      // Create temporary file
-      const tempDir = path.join(process.cwd(), 'temp');
-      if (!fs.existsSync(tempDir)) {
-        fs.mkdirSync(tempDir, { recursive: true });
+      if (fileSize > MAX_FILE_SIZE) {
+        return NextResponse.json({
+          error: `File too large. Maximum size: ${MAX_FILE_SIZE / 1024 / 1024}MB`
+        }, { status: 400 });
       }
 
-      const tempFilePath = path.join(tempDir, `${uuidv4()}-${filename}`);
-      
-      // Save file to temp location
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
-      fs.writeFileSync(tempFilePath, buffer);
-
-      try {
-        extractedContent = await extractContentFromFile(tempFilePath, mimeType);
-      } finally {
-        // Clean up temp file
-        if (fs.existsSync(tempFilePath)) {
-          fs.unlinkSync(tempFilePath);
-        }
-      }
+      extractedContent = await extractContentFromFile(buffer, mimeType);
     } else if (uploadMode === 'url' && url) {
       // Handle URL processing
       filename = new URL(url).pathname.split('/').pop() || 'web-content';
@@ -158,7 +147,6 @@ export async function POST(request: NextRequest) {
         id: documentId,
         workspace_id: workspaceId,
         section_id: section,
-        section,
         filename,
         original_filename: filename,
         file_type: mimeType || 'text/plain',
@@ -167,14 +155,11 @@ export async function POST(request: NextRequest) {
         extracted_content: extractedContent,
         metadata: {
           upload_mode: uploadMode,
-          source_url: uploadMode === 'url' ? url : null
+          source_url: uploadMode === 'url' ? url : null,
+          mime_type: mimeType || 'text/plain',
+          status: 'extracted'
         },
-        mime_type: mimeType || 'text/plain',
-        upload_mode: uploadMode,
-        source_url: uploadMode === 'url' ? url : null,
-        uploaded_by: userId,
-        created_at: new Date().toISOString(),
-        status: 'extracted'
+        uploaded_by: userId
       })
       .select('id, workspace_id, section_id')
       .single();

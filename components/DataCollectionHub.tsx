@@ -9,6 +9,7 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useQuery } from '@tanstack/react-query';
 
 
 // LinkedIn Campaign Types
@@ -32,6 +33,9 @@ type ProspectData = BaseProspectData & {
   qualityScore?: number            // 0-100 quality score
   draftMessage?: string            // SAM-generated outreach message
   messageGenerating?: boolean      // Is message currently being generated
+  createdAt?: Date                 // Timestamp for sorting (newest first)
+  researchedBy?: string            // User who researched/created this prospect
+  researchedByInitials?: string    // User initials (e.g., "CL" for Charissa L.)
 }
 
 // Quality Score Calculation (0-100)
@@ -97,6 +101,88 @@ function generateWorkspaceCode(workspaceName: string): string {
   return cleanName.substring(0, 3).toUpperCase().padEnd(3, 'X')
 }
 
+// Helper function to get initials from name or email
+function getInitials(nameOrEmail: string): string {
+  if (!nameOrEmail) return 'U'
+
+  // If it's an email, extract the part before @
+  if (nameOrEmail.includes('@')) {
+    const emailPart = nameOrEmail.split('@')[0]
+    const parts = emailPart.split(/[._-]/)
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase()
+    }
+    return emailPart.substring(0, 2).toUpperCase()
+  }
+
+  // If it's a name, take first letter of each word
+  const words = nameOrEmail.trim().split(/\s+/)
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase()
+  }
+  return nameOrEmail.substring(0, 2).toUpperCase()
+}
+
+// React Query function to fetch approval sessions
+async function fetchApprovalSessions(): Promise<ProspectData[]> {
+  try {
+    const response = await fetch('/api/prospect-approval/sessions/list')
+    if (!response.ok) throw new Error('Failed to fetch sessions')
+
+    const data = await response.json()
+    if (!data.success || !data.sessions || data.sessions.length === 0) {
+      return []
+    }
+
+    const allProspects: ProspectData[] = []
+
+    for (const session of data.sessions) {
+      if (session.status === 'active') {
+        const prospectsResponse = await fetch(`/api/prospect-approval/prospects?session_id=${session.id}`)
+        if (prospectsResponse.ok) {
+          const prospectsData = await prospectsResponse.json()
+          if (prospectsData.success && prospectsData.prospects) {
+            const mappedProspects = prospectsData.prospects.map((p: any) => ({
+              id: p.prospect_id,
+              name: p.name,
+              title: p.title || '',
+              company: p.company?.name || '',
+              industry: p.company?.industry || '',
+              location: p.location || '',
+              email: p.contact?.email || '',
+              linkedinUrl: p.contact?.linkedin_url || '',
+              phone: p.contact?.phone || '',
+              connectionDegree: p.connection_degree ? `${p.connection_degree}${p.connection_degree === 1 ? 'st' : p.connection_degree === 2 ? 'nd' : 'rd'}` : undefined,
+              source: p.source || 'linkedin',
+              enrichmentScore: p.enrichment_score || 0,
+              confidence: (p.enrichment_score || 80) / 100,
+              approvalStatus: (p.approval_status || 'pending') as 'pending' | 'approved' | 'rejected',
+              campaignName: session.campaign_name || `Session-${session.id.slice(0, 8)}`,
+              campaignTag: session.campaign_tag || session.campaign_name || session.prospect_source || 'linkedin',
+              sessionId: session.id,
+              uploaded: false,
+              qualityScore: 0,
+              createdAt: p.created_at ? new Date(p.created_at) : session.created_at ? new Date(session.created_at) : new Date(),
+              researchedBy: session.user_email || session.user_name || 'Unknown',
+              researchedByInitials: session.user_initials || getInitials(session.user_email || session.user_name || 'U')
+            }))
+            // Calculate quality scores
+            mappedProspects.forEach(p => {
+              p.qualityScore = calculateQualityScore(p)
+            })
+            allProspects.push(...mappedProspects)
+          }
+        }
+      }
+    }
+
+    return allProspects
+  } catch (error) {
+    console.error('Failed to fetch approval sessions:', error)
+    return []
+  }
+}
+
 export default function DataCollectionHub({
   onDataCollected,
   onApprovalComplete,
@@ -106,18 +192,16 @@ export default function DataCollectionHub({
   // Initialize with uploaded data from chat only (no dummy data)
   const [loading, setLoading] = useState(false)
   const [workspaceCode, setWorkspaceCode] = useState<string>('CLI')
-  const initializeProspects = () => {
-    const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
-    const uploadedProspects = initialUploadedData.map(p => ({
-      ...p,
-      approvalStatus: (p.approvalStatus || 'pending') as const,
-      campaignName: p.campaignName || `${today}-CLIENT-Demo`,
-      campaignTag: p.campaignTag,
-      uploaded: true
-    }))
-    return uploadedProspects
-  }
-  const [prospectData, setProspectData] = useState<ProspectData[]>(initializeProspects())
+
+  // REACT QUERY: Fetch and cache approval sessions
+  const { data: serverProspects = [], isLoading: isLoadingSessions, refetch } = useQuery({
+    queryKey: ['approval-sessions'],
+    queryFn: fetchApprovalSessions,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true, // Auto-refresh when tab becomes visible
+  })
+
+  const [prospectData, setProspectData] = useState<ProspectData[]>([])
   const [expandedProspect, setExpandedProspect] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
@@ -125,7 +209,7 @@ export default function DataCollectionHub({
   const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
   const [defaultCampaignName, setDefaultCampaignName] = useState(`${today}-CLIENT-Demo`)
   const [defaultCampaignTag, setDefaultCampaignTag] = useState('')
-  const [selectedCampaignName, setSelectedCampaignName] = useState<string>('all')
+  const [selectedCampaignName, setSelectedCampaignName] = useState<string>('latest')
   const [selectedCampaignTag, setSelectedCampaignTag] = useState<string>('all')
   const [showLatestSessionOnly, setShowLatestSessionOnly] = useState<boolean>(true) // Default to showing only latest search
   
@@ -185,7 +269,7 @@ export default function DataCollectionHub({
     }
   }
 
-  // Handle CSV file upload
+  // Handle CSV file upload - SAVES TO DATABASE
   const handleCsvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
@@ -194,36 +278,24 @@ export default function DataCollectionHub({
     try {
       const formData = new FormData()
       formData.append('file', file)
+      formData.append('campaign_name', `${today}-${workspaceCode}-CSV Upload`)
+      formData.append('source', 'csv-upload')
 
-      const response = await fetch('/api/prospects/parse-csv', {
+      // Use the approval session API to save to database
+      const response = await fetch('/api/prospect-approval/upload-csv', {
         method: 'POST',
         body: formData
       })
 
       if (response.ok) {
         const data = await response.json()
-        if (data.prospects && data.prospects.length > 0) {
-          // Add prospects to the list
-          const newProspects: ProspectData[] = data.prospects.map((p: any) => ({
-            name: p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
-            title: p.title || p.job_title || '',
-            company: p.company || p.company_name || '',
-            location: p.location || '',
-            contact: {
-              email: p.email || '',
-              linkedin_url: p.linkedin_url || p.linkedinUrl || ''
-            },
-            approvalStatus: 'pending' as const,
-            campaignName: `${today}-${workspaceCode}-CSV Upload`,
-            campaignTag: 'csv-import',
-            uploaded: true
-          }))
-
-          setProspectData(prev => [...newProspects, ...prev])
-          console.log(`✅ Uploaded ${newProspects.length} prospects from CSV`)
+        if (data.success) {
+          toastSuccess(`✅ Uploaded ${data.count || 0} prospects from CSV and saved to database`)
+          // Immediately refetch to show new data
+          await refetch()
         }
       } else {
-        toastError('Failed to parse CSV file')
+        toastError('Failed to upload CSV file')
       }
     } catch (error) {
       console.error('CSV upload error:', error)
@@ -237,7 +309,7 @@ export default function DataCollectionHub({
     }
   }
 
-  // Handle copy/paste text data
+  // Handle copy/paste text data - SAVES TO DATABASE
   const handlePasteData = async () => {
     if (!pasteText.trim()) {
       toastError('Please paste some prospect data first')
@@ -250,7 +322,7 @@ export default function DataCollectionHub({
       // Name, Title, Company, Email, LinkedIn
       // or tab-separated values
       const lines = pasteText.trim().split('\n')
-      const newProspects: ProspectData[] = []
+      const prospects: any[] = []
 
       for (const line of lines) {
         if (!line.trim()) continue
@@ -260,27 +332,44 @@ export default function DataCollectionHub({
         const cleanParts = parts.map(p => p.trim())
 
         if (cleanParts.length >= 2) {
-          newProspects.push({
+          prospects.push({
             name: cleanParts[0] || 'Unknown',
             title: cleanParts[1] || '',
-            company: cleanParts[2] || '',
+            company: { name: cleanParts[2] || '' },
             location: '',
             contact: {
               email: cleanParts[3] || '',
               linkedin_url: cleanParts[4] || ''
             },
-            approvalStatus: 'pending' as const,
-            campaignName: `${today}-${workspaceCode}-Pasted Data`,
-            campaignTag: 'paste-import',
-            uploaded: true
+            source: 'paste-import',
+            enrichment_score: 70,
+            approval_status: 'pending'
           })
         }
       }
 
-      if (newProspects.length > 0) {
-        setProspectData(prev => [...newProspects, ...prev])
-        console.log(`✅ Added ${newProspects.length} prospects from pasted data`)
-        setPasteText('') // Clear the textarea
+      if (prospects.length > 0) {
+        // Save to database via API
+        const response = await fetch('/api/prospect-approval/upload-prospects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            campaign_name: `${today}-${workspaceCode}-Pasted Data`,
+            campaign_tag: 'paste-import',
+            source: 'paste-import',
+            prospects
+          })
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          toastSuccess(`✅ Added ${data.count || 0} prospects from pasted data and saved to database`)
+          setPasteText('') // Clear the textarea
+          // Immediately refetch to show new data
+          await refetch()
+        } else {
+          toastError('Failed to save pasted data')
+        }
       } else {
         toastError('No valid prospect data found')
       }
@@ -314,25 +403,11 @@ export default function DataCollectionHub({
 
       if (response.ok) {
         const data = await response.json()
-        if (data.success && data.prospects && data.prospects.length > 0) {
-          const newProspects: ProspectData[] = data.prospects.map((p: any) => ({
-            name: p.fullName || p.name || 'Unknown',
-            title: p.title || '',
-            company: p.company || '',
-            location: '',
-            contact: {
-              email: '',
-              linkedin_url: p.linkedinUrl || ''
-            },
-            approvalStatus: 'pending' as const,
-            campaignName: `${today}-${workspaceCode}-LinkedIn Search`,
-            campaignTag: 'linkedin-url',
-            uploaded: true
-          }))
-
-          setProspectData(prev => [...newProspects, ...prev])
-          console.log(`✅ Found ${newProspects.length} prospects from LinkedIn URL`)
+        if (data.success) {
+          toastSuccess(`✅ Found ${data.count || 0} prospects from LinkedIn search and saved to database`)
           setLinkedinSearchUrl('') // Clear the input
+          // Immediately refetch to show new data
+          await refetch()
         }
       } else {
         toastError('Failed to search LinkedIn')
@@ -344,6 +419,13 @@ export default function DataCollectionHub({
       setIsProcessingUrl(false)
     }
   }
+
+  // Sync React Query data to local state
+  useEffect(() => {
+    if (serverProspects.length > 0) {
+      setProspectData(serverProspects)
+    }
+  }, [serverProspects])
 
   // Fetch workspace information to generate code
   useEffect(() => {
@@ -363,100 +445,6 @@ export default function DataCollectionHub({
       }
     }
     fetchWorkspace()
-  }, [])
-
-  // CRITICAL: Load existing approval sessions from database
-  // Force rebuild: 2025-10-14-visibility-fix
-  const loadExistingApprovalSessions = async () => {
-    try {
-      console.log('📥 Loading existing approval sessions...')
-      const response = await fetch('/api/prospect-approval/sessions/list')
-      if (response.ok) {
-        const data = await response.json()
-        console.log('📊 Found approval sessions:', data.sessions?.length || 0, 'sessions')
-        console.log('Session details:', data.sessions?.map((s: any) => ({
-          id: s.id.substring(0, 8),
-          campaign: s.campaign_name,
-          prospects: s.total_prospects
-        })))
-
-        if (data.success && data.sessions && data.sessions.length > 0) {
-            // Load prospects for all active sessions
-            const allProspects: ProspectData[] = []
-
-            for (const session of data.sessions) {
-              console.log(`Processing session: ${session.id.substring(0, 8)} - ${session.campaign_name} (${session.total_prospects} prospects)`)
-              if (session.status === 'active') { // CORRECTED: Valid status values are 'active' or 'completed'
-                const prospectsResponse = await fetch(`/api/prospect-approval/prospects?session_id=${session.id}`)
-                console.log(`Prospects API response for ${session.id.substring(0, 8)}:`, prospectsResponse.status)
-                if (prospectsResponse.ok) {
-                  const prospectsData = await prospectsResponse.json()
-                  console.log(`Fetched ${prospectsData.prospects?.length || 0} prospects from session ${session.id.substring(0, 8)}`)
-                  if (prospectsData.success && prospectsData.prospects) {
-                    // Map approval data to ProspectData format
-                    // CORRECTED: company and contact are JSONB objects, not strings
-                    const mappedProspects = prospectsData.prospects.map((p: any) => ({
-                      id: p.prospect_id,
-                      name: p.name,
-                      title: p.title || '',
-                      company: p.company?.name || '',  // FIXED: Extract name from JSONB
-                      industry: p.company?.industry || '',  // FIXED: Extract industry from JSONB
-                      location: p.location || '',
-                      email: p.contact?.email || '',    // FIXED: Extract email from JSONB
-                      linkedinUrl: p.contact?.linkedin_url || '',  // FIXED: Extract URL from JSONB
-                      phone: p.contact?.phone || '',
-                      connectionDegree: p.connection_degree ? `${p.connection_degree}${p.connection_degree === 1 ? 'st' : p.connection_degree === 2 ? 'nd' : 'rd'}` : undefined,
-                      source: p.source || 'linkedin',
-                      enrichmentScore: p.enrichment_score || 0,
-                      confidence: (p.enrichment_score || 80) / 100,  // FIXED: Convert integer to decimal
-                      approvalStatus: (p.approval_status || 'pending') as 'pending' | 'approved' | 'rejected',  // DEFAULT: pending - requires user approval
-                      campaignName: session.campaign_name || `Session-${session.id.slice(0, 8)}`,  // Use actual campaign_name from DB
-                      campaignTag: session.campaign_tag || session.campaign_name || session.prospect_source || 'linkedin',  // FIXED: Use campaign_name as fallback tag
-                      sessionId: session.id,  // Track session ID for campaign name updates
-                      uploaded: false,
-                      qualityScore: 0  // Will be calculated below
-                    }))
-                    // Calculate quality scores for each prospect
-                    mappedProspects.forEach(p => {
-                      p.qualityScore = calculateQualityScore(p)
-                    })
-                    allProspects.push(...mappedProspects)
-                  }
-                }
-              }
-            }
-
-          if (allProspects.length > 0) {
-            console.log(`✅ Loaded ${allProspects.length} prospects from approval sessions`)
-            // Replace all data instead of merging to avoid duplicates on reload
-            setProspectData(allProspects)
-          } else {
-            // No prospects found, keep empty
-            setProspectData([])
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load approval sessions:', error)
-    }
-  }
-
-  // Load data on mount
-  useEffect(() => {
-    loadExistingApprovalSessions()
-  }, [])
-
-  // Reload data when window becomes visible (user returns to tab/page)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('🔄 Page became visible, reloading data...')
-        loadExistingApprovalSessions()
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [])
 
   // Update prospects when new data is uploaded from chat
@@ -788,10 +776,21 @@ export default function DataCollectionHub({
   const firstDegreeCount = prospectsWithScores.filter(p => p.connectionDegree === '1st').length
   const missingInfoCount = prospectsWithScores.filter(p => !p.email || !p.phone).length
 
+  // Get latest campaign name for "latest" filter
+  const latestCampaignName = prospectData.length > 0
+    ? prospectData.sort((a, b) => {
+        const dateA = a.createdAt ? a.createdAt.getTime() : 0
+        const dateB = b.createdAt ? b.createdAt.getTime() : 0
+        return dateB - dateA
+      })[0]?.campaignName
+    : null
+
   // Filter prospects - USER CONTROLS ALL FILTERS INDEPENDENTLY
   let filteredProspects = prospectsWithScores.filter(p => {
     // Campaign name filter - user explicitly selects which campaign to view
-    if (selectedCampaignName !== 'all' && p.campaignName !== selectedCampaignName) {
+    if (selectedCampaignName === 'latest' && latestCampaignName && p.campaignName !== latestCampaignName) {
+      return false
+    } else if (selectedCampaignName !== 'all' && selectedCampaignName !== 'latest' && p.campaignName !== selectedCampaignName) {
       return false
     }
 
@@ -825,8 +824,12 @@ export default function DataCollectionHub({
     return true
   })
 
-  // Sort by quality score (highest first)
-  filteredProspects = filteredProspects.sort((a, b) => (b.qualityScore ?? 0) - (a.qualityScore ?? 0))
+  // Sort by newest first (most recent at top)
+  filteredProspects = filteredProspects.sort((a, b) => {
+    const dateA = a.createdAt ? a.createdAt.getTime() : 0
+    const dateB = b.createdAt ? b.createdAt.getTime() : 0
+    return dateB - dateA // Descending order (newest first)
+  })
 
   // Debug logging for campaign filtering
   console.log('🔍 Campaign Filter Debug:', {
@@ -1269,6 +1272,7 @@ export default function DataCollectionHub({
                   onChange={(e) => setSelectedCampaignName(e.target.value)}
                   className="flex-1 max-w-md px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
+                  <option value="latest">Latest Search ({latestCampaignName ? campaigns.find(c => c.campaignName === latestCampaignName)?.count || 0 : 0} prospects)</option>
                   <option value="all">All Campaigns ({prospectData.length} prospects)</option>
                   {campaigns.map((campaign) => (
                     <option key={campaign.campaignName} value={campaign.campaignName}>
@@ -1318,6 +1322,7 @@ export default function DataCollectionHub({
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Title</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Industry</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Campaign</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Researched By</th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Details</th>
             </tr>
@@ -1355,6 +1360,13 @@ export default function DataCollectionHub({
                       )}
                     </div>
                   </td>
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-600/20 text-purple-300 text-xs font-bold" title={prospect.researchedBy || 'Unknown'}>
+                        {prospect.researchedByInitials || 'U'}
+                      </div>
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center space-x-2">
                       {prospect.approvalStatus === 'rejected' ? (
@@ -1389,7 +1401,7 @@ export default function DataCollectionHub({
                 {/* Expanded Detail Row */}
                 {expandedProspect === prospect.id && (
                   <tr className="bg-gray-750">
-                    <td colSpan={9} className="px-4 py-4">
+                    <td colSpan={10} className="px-4 py-4">
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-gray-400">Email:</span>

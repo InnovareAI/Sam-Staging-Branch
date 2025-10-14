@@ -28,7 +28,7 @@ export default function ProspectSearchChat({
     {
       id: '1',
       role: 'assistant',
-      content: "Hi! I'll help you find prospects. Tell me who you're looking for - like 'CEOs at tech startups in California' or '100 1st degree connections who are VPs'.\n\nTip: Specify '1st degree', '2nd degree', or '3rd degree' to filter by connection level!",
+      content: "You don't need to jump back to the main window. Just chat with me here about your current search, updates, or new searches. You can minimize me for a distraction free experience.",
       timestamp: new Date()
     }
   ]);
@@ -36,12 +36,24 @@ export default function ProspectSearchChat({
   const [isLoading, setIsLoading] = useState(false);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
-  const [internalIsMinimized, setInternalIsMinimized] = useState(false);
+  const [internalIsMinimized, setInternalIsMinimized] = useState(() => {
+    // Load minimized state from localStorage (sticky across reloads)
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('prospecting_assistant_minimized')
+      return saved === 'true'
+    }
+    return false
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Use external state if provided, otherwise use internal state
   const isMinimized = externalIsMinimized !== undefined ? externalIsMinimized : internalIsMinimized;
   const setIsMinimized = (value: boolean) => {
+    // Save to localStorage (sticky across reloads)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('prospecting_assistant_minimized', value.toString())
+    }
+
     if (onMinimizeChange) {
       onMinimizeChange(value);
     } else {
@@ -50,12 +62,28 @@ export default function ProspectSearchChat({
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Use setTimeout to ensure DOM is updated before scrolling
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    }, 0);
   };
 
+  // Auto-scroll when messages change
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Auto-scroll when progress updates
+  useEffect(() => {
+    if (progress) {
+      scrollToBottom();
+    }
+  }, [progress]);
+
+  // Auto-scroll on initial mount (when chat opens)
+  useEffect(() => {
+    scrollToBottom();
+  }, []);
 
   // Subscribe to job progress
   useEffect(() => {
@@ -300,8 +328,8 @@ export default function ProspectSearchChat({
       {/* Header */}
       <div className="p-4 border-b border-gray-700 flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-white">Prospect Search</h3>
-          <p className="text-sm text-gray-400">Ask me to find prospects - I'll handle the rest</p>
+          <h3 className="text-lg font-semibold text-white">Prospecting Assistant</h3>
+          <p className="text-sm text-gray-400">Ask me to find or refine prospects - I'll handle the rest</p>
         </div>
         <button
           onClick={() => setIsMinimized(true)}

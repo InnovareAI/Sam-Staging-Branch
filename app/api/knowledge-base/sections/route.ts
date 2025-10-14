@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createRouteHandlerClient({ cookies: await cookies() });
     const { searchParams } = new URL(request.url);
     const workspaceId = searchParams.get('workspace_id');
 
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createRouteHandlerClient({ cookies: await cookies() });
     const body = await request.json();
     const { workspace_id, section_id, title, description, icon, sort_order } = body;
 
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createRouteHandlerClient({ cookies: await cookies() });
     const body = await request.json();
     const { id, title, description, icon, sort_order, is_active } = body;
 

@@ -189,7 +189,8 @@ export async function POST(request: NextRequest) {
 
     console.log(`📊 Found ${userLinkedInAccounts.length} LinkedIn account(s) for user in database`);
 
-    // Step 4: Match database accounts to Unipile accounts and find one with Sales Navigator
+    // Step 4: Match database accounts to Unipile accounts - use first available
+    // We trust Unipile to handle feature detection on their end
     let selectedAccount = null;
 
     for (const dbAccount of userLinkedInAccounts) {
@@ -204,25 +205,20 @@ export async function POST(request: NextRequest) {
       }
 
       const premiumFeatures = unipileAccount.connection_params?.im?.premiumFeatures || [];
-      console.log(`     Features: ${premiumFeatures.join(', ') || 'none'}`);
+      console.log(`     Features detected: ${premiumFeatures.join(', ') || 'none (Unipile will auto-detect)'}`);
 
-      if (premiumFeatures.includes('recruiter')) {
-        selectedAccount = unipileAccount;
-        console.log(`     ✅ SELECTED - Has Recruiter`);
-        break;
-      } else if (premiumFeatures.includes('sales_navigator')) {
-        selectedAccount = unipileAccount;
-        console.log(`     ✅ SELECTED - Has Sales Navigator`);
-        break;
-      }
+      // Use first available account - let Unipile handle feature detection
+      selectedAccount = unipileAccount;
+      console.log(`     ✅ SELECTED - Using this account for search`);
+      break;
     }
 
     if (!selectedAccount) {
-      console.error('❌ No Sales Navigator or Recruiter found on your LinkedIn account');
+      console.error('❌ No connected LinkedIn accounts found');
       return NextResponse.json({
         success: false,
-        error: 'Sales Navigator required',
-        details: 'Your LinkedIn account does not have Sales Navigator or Recruiter. Please upgrade your LinkedIn subscription to use advanced search features.'
+        error: 'No LinkedIn account connected',
+        details: 'Please connect your LinkedIn account first.'
       }, { status: 400 });
     }
 
@@ -672,7 +668,7 @@ export async function POST(request: NextRequest) {
       // Connection degree from Unipile data
       // Unipile returns network_distance as "DISTANCE_1", "DISTANCE_2", "DISTANCE_3" (Classic)
       // OR numeric 1, 2, 3 (Sales Nav/Recruiter)
-      let connectionDegree = requestedDegree;
+      let connectionDegree: number | null = null;
 
       console.log(`🔍 RAW DATA for ${firstName} ${lastName}:`, {
         network: item.network,
@@ -681,7 +677,7 @@ export async function POST(request: NextRequest) {
         requestedDegree
       });
 
-      // Priority order: network_distance > network > distance > requestedDegree
+      // Extract actual degree from Unipile's response
       if (item.network_distance !== undefined && item.network_distance !== null) {
         // Parse network_distance - Classic returns "DISTANCE_2", Sales Nav returns 2
         if (typeof item.network_distance === 'string') {
@@ -693,8 +689,10 @@ export async function POST(request: NextRequest) {
           } else {
             // Try to extract any number if format doesn't match expected pattern
             const numMatch = item.network_distance.match(/(\d+)/);
-            connectionDegree = numMatch ? parseInt(numMatch[1]) : requestedDegree;
-            console.log(`  ⚠️ Parsed number from network_distance: ${item.network_distance} → ${connectionDegree}`);
+            if (numMatch) {
+              connectionDegree = parseInt(numMatch[1]);
+              console.log(`  ⚠️ Parsed number from network_distance: ${item.network_distance} → ${connectionDegree}`);
+            }
           }
         } else if (typeof item.network_distance === 'number') {
           connectionDegree = item.network_distance;
@@ -702,26 +700,36 @@ export async function POST(request: NextRequest) {
         }
       } else if (item.network) {
         // Classic API: 'F' (1st), 'S' (2nd), 'O' (3rd)
-        connectionDegree = networkToNumber[item.network] || requestedDegree;
-        console.log(`  ✓ Used item.network: ${item.network} → ${connectionDegree}`);
+        if (networkToNumber[item.network]) {
+          connectionDegree = networkToNumber[item.network];
+          console.log(`  ✓ Used item.network: ${item.network} → ${connectionDegree}`);
+        }
       } else if (item.distance !== undefined && item.distance !== null) {
         // Some APIs use 'distance' field
-        connectionDegree = parseInt(String(item.distance)) || requestedDegree;
-        console.log(`  ✓ Used item.distance: ${item.distance} → ${connectionDegree}`);
-      } else {
-        console.log(`  ⚠️ No degree field found, using requested: ${requestedDegree}`);
+        const parsed = parseInt(String(item.distance));
+        if (!isNaN(parsed) && parsed >= 1 && parsed <= 3) {
+          connectionDegree = parsed;
+          console.log(`  ✓ Used item.distance: ${item.distance} → ${connectionDegree}`);
+        }
+      }
+
+      // If we couldn't extract degree from response, assume it matches request
+      if (connectionDegree === null) {
+        connectionDegree = requestedDegree;
+        console.log(`  ℹ️ No degree metadata found, assuming requested: ${requestedDegree}`);
       }
 
       // Ensure connectionDegree is always a valid integer between 1-3
-      const finalDegree = Math.max(1, Math.min(3, parseInt(String(connectionDegree)) || 2));
-      console.log(`  📌 FINAL connectionDegree: ${finalDegree}`);
-      connectionDegree = finalDegree;
+      connectionDegree = Math.max(1, Math.min(3, connectionDegree));
+      console.log(`  📌 FINAL connectionDegree: ${connectionDegree}`);
 
-      // Filter by requested degree if specified
+      // CRITICAL: Verify the degree matches what was requested
+      // This catches cases where Unipile returns wrong degree results
       if (requestedDegree > 0 && connectionDegree !== requestedDegree) {
-        console.log(`⚠️ Filtering out: ${firstName} ${lastName} - degree ${connectionDegree} doesn't match requested ${requestedDegree}`);
+        console.log(`❌ FILTERING OUT: ${firstName} ${lastName} - Unipile returned degree ${connectionDegree} but we requested ${requestedDegree}`);
         return null;
       }
+
       console.log(`✅ Including: ${firstName} ${lastName} - connection degree: ${connectionDegree}`);
 
       // Extract location

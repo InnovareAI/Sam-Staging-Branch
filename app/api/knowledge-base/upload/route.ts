@@ -2,10 +2,22 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
+async function extractText(file: File): Promise<string> {
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  if (file.type === 'application/pdf') {
+    const pdfParse = (await import('pdf-parse')).default;
+    const pdfData = await pdfParse(buffer);
+    return pdfData.text;
+  }
+
+  return new TextDecoder().decode(buffer);
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    
+    const supabase = createRouteHandlerClient({ cookies: await cookies() });
+
     // Get user session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session) {
@@ -32,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Read file content
-    const text = await file.text();
+    const text = await extractText(file);
     const fileName = file.name;
     const fileSize = file.size;
     
@@ -89,7 +101,7 @@ export async function POST(request: NextRequest) {
 // GET method to retrieve upload history for a section
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createRouteHandlerClient({ cookies: await cookies() });
     const { searchParams } = new URL(request.url);
     const workspaceId = searchParams.get('workspace_id');
     const sectionId = searchParams.get('section_id');

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { DemoProvider } from '@/lib/contexts/DemoContext'
 import ToastContainer from '@/components/ToastContainer'
+import { Providers } from './providers'
 
 export const metadata: Metadata = {
   title: 'SAM AI - Sales Assistant',
@@ -21,10 +22,12 @@ export default function RootLayout({
         <meta httpEquiv="Expires" content="0" />
       </head>
       <body className="bg-background text-foreground antialiased">
-        <DemoProvider>
-          {children}
-          <ToastContainer />
-        </DemoProvider>
+        <Providers>
+          <DemoProvider>
+            {children}
+            <ToastContainer />
+          </DemoProvider>
+        </Providers>
       </body>
     </html>
   )

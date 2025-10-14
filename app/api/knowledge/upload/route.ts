@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseKnowledge } from '@/lib/supabase-knowledge';
 
+async function extractText(file: File): Promise<string> {
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  if (file.type === 'application/pdf') {
+    const pdfParse = (await import('pdf-parse')).default;
+    const pdfData = await pdfParse(buffer);
+    return pdfData.text;
+  }
+
+  return new TextDecoder().decode(buffer);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -9,7 +21,7 @@ export async function POST(req: NextRequest) {
 
     if (!file) {
       return NextResponse.json(
-        { error: 'No file provided' }, 
+        { error: 'No file provided' },
         { status: 400 }
       );
     }
@@ -22,7 +34,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Read file content
-    const text = await file.text();
+    const text = await extractText(file);
     
     // Create knowledge base entry
     const title = file.name.replace(/\.[^/.]+$/, ''); // Remove file extension

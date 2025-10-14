@@ -159,7 +159,10 @@ async function upsertWorkspaceAccount(
   userId: string,
   unipileAccount: any
 ) {
-  if (!workspaceId) return
+  if (!workspaceId) {
+    console.log('⚠️ No workspace ID provided, skipping workspace account upsert')
+    return
+  }
 
   const connectionParams = unipileAccount.connection_params?.im || unipileAccount.connection_params || {}
   const accountIdentifier =
@@ -180,6 +183,30 @@ async function upsertWorkspaceAccount(
                       unipileType.includes('messaging') ? 'email' :
                       'linkedin' // fallback
 
+  // First, check if there's an existing account with different Unipile ID (reconnection case)
+  const { data: existingAccounts } = await supabase
+    .from('workspace_accounts')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .eq('account_type', accountType)
+    .eq('account_identifier', accountIdentifier)
+
+  if (existingAccounts && existingAccounts.length > 0) {
+    // Found existing account(s) with same identifier
+    for (const existing of existingAccounts) {
+      if (existing.unipile_account_id !== unipileAccount.id) {
+        // Different Unipile ID = reconnection, delete old entry
+        console.log(`🔄 Reconnection detected - removing old account: ${existing.unipile_account_id}`)
+        await supabase
+          .from('workspace_accounts')
+          .delete()
+          .eq('id', existing.id)
+      }
+    }
+  }
+
+  // Now insert/update the new account
   const { error } = await supabase
     .from('workspace_accounts')
     .upsert(
@@ -192,22 +219,37 @@ async function upsertWorkspaceAccount(
         unipile_account_id: unipileAccount.id,
         connection_status: connectionStatus,
         is_active: true,
+        connected_at: new Date().toISOString(), // Update connection timestamp
         account_metadata: {
           unipile_instance: process.env.UNIPILE_DSN || null,
           product_type: unipileAccount.connection_params?.product_type || null,
-          provider: unipileAccount.type // Store original provider type
+          provider: unipileAccount.type, // Store original provider type
+          premium_features: connectionParams.premiumFeatures || [] // Store detected features
         }
       },
       { onConflict: 'workspace_id,user_id,account_type,account_identifier', ignoreDuplicates: false }
     )
 
   if (error) {
-    console.error('⚠️ Failed to upsert workspace account during hosted auth callback', error)
+    console.error('❌ FAILED to upsert workspace account during hosted auth callback:', {
+      error: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+      accountType,
+      accountId: unipileAccount.id,
+      workspaceId,
+      userId,
+      accountIdentifier
+    })
   } else {
     console.log('✅ Workspace account upserted successfully:', {
       accountType,
       accountId: unipileAccount.id,
-      workspaceId
+      accountName: unipileAccount.name,
+      workspaceId,
+      userId,
+      connectionStatus
     })
   }
 }

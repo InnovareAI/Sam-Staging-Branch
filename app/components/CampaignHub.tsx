@@ -2,6 +2,7 @@
 
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { useState, useEffect } from 'react';
+import CampaignAssistantChat from '@/components/CampaignAssistantChat';
 import {
   Users,
   Mail,
@@ -1822,6 +1823,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
   const [showFullFeatures, setShowFullFeatures] = useState(false);
   const [showApprovalScreen, setShowApprovalScreen] = useState(false);
   const [campaignDataForApproval, setCampaignDataForApproval] = useState<any>(null);
+  const [isChatMinimized, setIsChatMinimized] = useState(false);
 
   // Auto-open pending approvals toggle (stored in localStorage)
   const [autoOpenApprovals, setAutoOpenApprovals] = useState(() => {
@@ -2759,7 +2761,29 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
   const campaignName = initialProspects?.[0]?.campaignTag || 'New Campaign';
 
   return (
-    <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
+    <div className="grid grid-cols-12 gap-4 h-full bg-gray-900 p-6">
+      {/* Left: Campaign Assistant (4 columns - 33%, hidden when minimized) */}
+      {!isChatMinimized && (
+        <div className="col-span-4 h-full">
+          <CampaignAssistantChat
+            isMinimized={isChatMinimized}
+            onMinimizeChange={setIsChatMinimized}
+            onCampaignCreated={onCampaignCreated}
+          />
+        </div>
+      )}
+
+      {/* Campaign Assistant minimized bubble (shown when minimized) */}
+      {isChatMinimized && (
+        <CampaignAssistantChat
+          isMinimized={isChatMinimized}
+          onMinimizeChange={setIsChatMinimized}
+          onCampaignCreated={onCampaignCreated}
+        />
+      )}
+
+      {/* Right: Main Campaign Hub Content (8 columns normally, 12 when chat minimized) */}
+      <div className={`${isChatMinimized ? 'col-span-12' : 'col-span-8'} h-full overflow-y-auto`}>
       {/* Header - Different for auto-create mode */}
       {isAutoCreateMode ? (
         <div className="mb-8">
@@ -4247,6 +4271,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
         </div>
       )}
       </div>
+    </div>
     </div>
   );
 };

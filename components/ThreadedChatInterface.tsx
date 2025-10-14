@@ -254,7 +254,7 @@ export default function ThreadedChatInterface() {
       // Upload document to knowledge base
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('section', 'general')
+      formData.append('section', 'documents') // Use valid section ID from knowledge_base_sections
       formData.append('uploadMode', 'file')
 
       const uploadResponse = await fetch('/api/knowledge-base/upload-document', {
@@ -263,7 +263,8 @@ export default function ThreadedChatInterface() {
       })
 
       if (!uploadResponse.ok) {
-        throw new Error('File upload failed')
+        const errorData = await uploadResponse.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `Upload failed with status ${uploadResponse.status}`)
       }
 
       const uploadResult = await uploadResponse.json()
@@ -283,7 +284,8 @@ export default function ThreadedChatInterface() {
       })
 
       if (!processResponse.ok) {
-        throw new Error('Document processing failed')
+        const errorData = await processResponse.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `Processing failed with status ${processResponse.status}`)
       }
 
       const processResult = await processResponse.json()
@@ -1778,7 +1780,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                     ref={fileInputRef}
                     type="file"
                     onChange={handleFileSelect}
-                    accept=".pdf,.doc,.docx,.txt,.json,.md,.ppt,.pptx"
+                    accept=".pdf,.txt,.md"
                     className="hidden"
                   />
                   <textarea

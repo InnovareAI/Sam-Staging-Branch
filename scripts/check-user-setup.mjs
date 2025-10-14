@@ -1,53 +1,59 @@
-#!/usr/bin/env node
 import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+
+dotenv.config({ path: '.env.local' });
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-async function checkSetup() {
-  // Get auth user
-  const { data: authUsers } = await supabase.auth.admin.listUsers();
-  const authUser = authUsers.users.find(u => u.id === 'f6885ff3-deef-4781-8721-93011c990b1b');
-  
-  console.log('🔐 Auth user:');
-  console.log(`   Email: ${authUser?.email}`);
-  console.log(`   Created: ${authUser?.created_at}\n`);
+async function checkUser(email) {
+  const { data: { users } } = await supabase.auth.admin.listUsers();
+  const user = users.find(u => u.email === email);
 
-  // Check users table
-  const { data: dbUser } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', 'f6885ff3-deef-4781-8721-93011c990b1b')
-    .single();
+  console.log(`👤 ${email}:\n`);
 
-  console.log('💾 Database user:');
-  console.log(`   Exists: ${!!dbUser}`);
-  console.log(`   Email: ${dbUser?.email || 'N/A'}`);
-  console.log(`   Workspace: ${dbUser?.current_workspace_id || 'NULL'}\n`);
+  if (!user) {
+    console.log('❌ User does NOT exist in auth system');
+    return;
+  }
 
-  // Get all workspaces
-  const { data: workspaces } = await supabase
-    .from('workspaces')
-    .select('*')
-    .limit(5);
+  console.log('✅ User exists:');
+  console.log(`   ID: ${user.id}`);
+  console.log('');
 
-  console.log(`📁 Available workspaces (${workspaces?.length || 0}):`);
-  workspaces?.forEach(w => {
-    console.log(`   - ${w.id}: ${w.name}`);
-  });
+  // Check workspace membership
+  const { data: memberships } = await supabase
+    .from('workspace_members')
+    .select('workspace_id, role, workspaces(name)')
+    .eq('user_id', user.id);
 
-  // Check if user owns any Unipile accounts
+  console.log(`Workspace Memberships: ${memberships?.length || 0}`);
+  if (memberships?.length > 0) {
+    memberships.forEach(m => {
+      console.log(`   - ${m.workspaces.name} (role: ${m.role})`);
+    });
+  } else {
+    console.log('   ❌ NOT a member of any workspace');
+  }
+  console.log('');
+
+  // Check accounts
   const { data: accounts } = await supabase
-    .from('user_unipile_accounts')
-    .select('*')
-    .eq('user_id', 'f6885ff3-deef-4781-8721-93011c990b1b');
+    .from('workspace_accounts')
+    .select('account_type, account_name, account_identifier, workspace_id, workspaces(name)')
+    .eq('user_id', user.id);
 
-  console.log(`\n📱 User's Unipile accounts (${accounts?.length || 0}):`);
-  accounts?.forEach(a => {
-    console.log(`   - ${a.platform}: ${a.unipile_account_id}`);
-  });
+  console.log(`Workspace Accounts: ${accounts?.length || 0}`);
+  if (accounts?.length > 0) {
+    accounts.forEach(a => {
+      console.log(`   - ${a.account_type}: ${a.account_name || a.account_identifier} → ${a.workspaces.name}`);
+    });
+  } else {
+    console.log('   ❌ NO accounts connected');
+  }
 }
 
-checkSetup().catch(console.error);
+const email = process.argv[2] || 'samantha@truepeopleconsulting.com';
+checkUser(email);

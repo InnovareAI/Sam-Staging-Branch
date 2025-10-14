@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createRouteHandlerClient({ cookies: await cookies() });
     const { searchParams } = new URL(request.url);
     const workspaceId = searchParams.get('workspace_id');
     const query = searchParams.get('q');

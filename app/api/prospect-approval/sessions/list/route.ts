@@ -67,14 +67,26 @@ export async function GET(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Get all approval sessions for this workspace
+    // Get all approval sessions for this workspace with user info
     console.log(`🔍 Fetching sessions for workspace: ${workspaceId}, user: ${user.email}`);
 
+    // Fetch sessions
     const { data: sessions, error: sessionsError } = await supabase
       .from('prospect_approval_sessions')
       .select('*')
       .eq('workspace_id', workspaceId) // CORRECTED: workspace_id not organization_id
       .order('created_at', { ascending: false });
+
+    // Enrich with user info (use admin client to bypass RLS on auth.users)
+    if (sessions && sessions.length > 0) {
+      const userIds = [...new Set(sessions.map(s => s.user_id))]
+      const { data: users } = await adminClient.auth.admin.listUsers()
+      const userMap = new Map(users.users.map(u => [u.id, u.email]))
+
+      sessions.forEach(session => {
+        session.user_email = userMap.get(session.user_id) || 'Unknown'
+      })
+    }
 
     console.log(`📊 Query result: ${sessions?.length || 0} sessions found`);
     console.log('Sessions:', sessions?.map(s => ({ id: s.id.substring(0, 8), campaign: s.campaign_name, prospects: s.total_prospects })));

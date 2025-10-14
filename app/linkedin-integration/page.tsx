@@ -284,17 +284,37 @@ function LinkedInIntegrationContent() {
   };
 
   const handleDisconnect = async () => {
-    if (!confirm('Are you sure you want to disconnect all LinkedIn accounts?')) {
+    if (!confirm('Are you sure you want to disconnect all LinkedIn accounts? This will remove all LinkedIn integrations from your workspace.')) {
       return;
     }
 
     try {
       setLoading(true);
-      // This would need to be implemented to disconnect accounts
-      setMessage('Disconnect functionality coming soon. Please contact support if you need to disconnect your LinkedIn account.');
+      setMessage('Disconnecting LinkedIn accounts...');
+
+      const response = await fetch('/api/linkedin/disconnect', {
+        method: 'POST',
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to disconnect LinkedIn accounts');
+      }
+
+      setMessage(`Successfully disconnected ${data.disconnected_accounts} LinkedIn account(s)`);
+      setConnectionStatus('disconnected');
+
+      // Refresh connection status after a moment
+      setTimeout(() => {
+        checkLinkedInConnection();
+      }, 1000);
+
     } catch (error) {
       console.error('Disconnect failed:', error);
-      setMessage('Failed to disconnect LinkedIn account.');
+      setMessage(`Failed to disconnect LinkedIn account: ${error.message}`);
+      setConnectionStatus('error');
     } finally {
       setLoading(false);
     }
