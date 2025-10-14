@@ -774,28 +774,22 @@ export default function DataCollectionHub({
   const firstDegreeCount = prospectsWithScores.filter(p => p.connectionDegree === '1st').length
   const missingInfoCount = prospectsWithScores.filter(p => !p.email || !p.phone).length
 
-  // Filter prospects
+  // Filter prospects - USER CONTROLS ALL FILTERS INDEPENDENTLY
   let filteredProspects = prospectsWithScores.filter(p => {
-    // ALWAYS exclude rejected prospects from view (unless explicitly filtering for rejected)
-    if (filterStatus !== 'rejected' && p.approvalStatus === 'rejected') return false
-
-    // Latest session filter - show only most recent session
-    if (showLatestSessionOnly && selectedCampaignName === 'all') {
-      // Find the most recent campaign name (sorted by date prefix YYYYMMDD)
-      const allCampaignNames = Array.from(new Set(prospectsWithScores.map(p => p.campaignName).filter(Boolean)))
-      const sortedCampaigns = allCampaignNames.sort((a, b) => b!.localeCompare(a!))
-      const latestCampaign = sortedCampaigns[0]
-      if (latestCampaign && p.campaignName !== latestCampaign) return false
+    // Campaign name filter - user explicitly selects which campaign to view
+    if (selectedCampaignName !== 'all' && p.campaignName !== selectedCampaignName) {
+      return false
     }
 
-    // Campaign name filter (when user explicitly selects a campaign)
-    if (selectedCampaignName !== 'all' && p.campaignName !== selectedCampaignName) return false
+    // Campaign tag filter - independent of campaign name
+    if (selectedCampaignTag !== 'all' && p.campaignTag !== selectedCampaignTag) {
+      return false
+    }
 
-    // Campaign tag filter
-    if (selectedCampaignTag !== 'all' && p.campaignTag !== selectedCampaignTag) return false
-
-    // Approval status filter (for viewing approved/pending/rejected specifically)
-    if (filterStatus !== 'all' && p.approvalStatus !== filterStatus) return false
+    // Approval status filter - user decides which status to view
+    if (filterStatus !== 'all' && p.approvalStatus !== filterStatus) {
+      return false
+    }
 
     // Quick filter
     if (quickFilter === 'high-quality' && (p.qualityScore ?? 0) < 85) return false
@@ -820,9 +814,22 @@ export default function DataCollectionHub({
   // Sort by quality score (highest first)
   filteredProspects = filteredProspects.sort((a, b) => (b.qualityScore ?? 0) - (a.qualityScore ?? 0))
 
-  const approvedCount = prospectData.filter(p => p.approvalStatus === 'approved').length
-  const rejectedCount = prospectData.filter(p => p.approvalStatus === 'rejected').length
-  const pendingCount = prospectData.filter(p => p.approvalStatus === 'pending').length
+  // Debug logging for campaign filtering
+  console.log('🔍 Campaign Filter Debug:', {
+    selectedCampaignName,
+    showLatestSessionOnly,
+    totalProspects: prospectData.length,
+    filteredProspects: filteredProspects.length,
+    uniqueCampaigns: Array.from(new Set(prospectData.map(p => p.campaignName).filter(Boolean)))
+  })
+
+  // Calculate counts based on the currently filtered prospects (respects campaign selection)
+  const approvedCount = filteredProspects.filter(p => p.approvalStatus === 'approved').length
+  const rejectedCount = prospectData.filter(p => p.approvalStatus === 'rejected').length // Always use full data for rejected count
+  const pendingCount = filteredProspects.filter(p => p.approvalStatus === 'pending').length
+  
+  // Total visible count (excluding rejected unless explicitly filtering for them)
+  const visibleCount = filterStatus === 'rejected' ? rejectedCount : filteredProspects.length
 
   const applyDefaultTagToAll = () => {
     if (defaultCampaignTag.trim()) {
@@ -1245,21 +1252,10 @@ export default function DataCollectionHub({
                 <label className="text-sm font-semibold text-gray-300">Select Campaign:</label>
                 <select
                   value={selectedCampaignName}
-                  onChange={(e) => {
-                    setSelectedCampaignName(e.target.value)
-                    // When user manually selects a campaign, disable "latest only" mode
-                    if (e.target.value !== 'all') {
-                      setShowLatestSessionOnly(false)
-                    }
-                  }}
+                  onChange={(e) => setSelectedCampaignName(e.target.value)}
                   className="flex-1 max-w-md px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  disabled={showLatestSessionOnly && selectedCampaignName === 'all'}
                 >
-                  <option value="all">
-                    {showLatestSessionOnly && latestCampaign
-                      ? `Latest: ${latestCampaign.campaignName} (${latestCampaign.count} prospects)`
-                      : `All Campaigns (${prospectData.length} prospects)`}
-                  </option>
+                  <option value="all">All Campaigns ({prospectData.length} prospects)</option>
                   {campaigns.map((campaign) => (
                     <option key={campaign.campaignName} value={campaign.campaignName}>
                       {campaign.campaignName} ({campaign.count} prospects)
@@ -1267,33 +1263,7 @@ export default function DataCollectionHub({
                   ))}
                 </select>
               </div>
-              
-              {/* Latest Search Only Toggle */}
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant={showLatestSessionOnly ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => {
-                    setShowLatestSessionOnly(!showLatestSessionOnly)
-                    // Reset campaign selection when toggling
-                    if (!showLatestSessionOnly) {
-                      setSelectedCampaignName('all')
-                    }
-                  }}
-                  className="whitespace-nowrap"
-                >
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  {showLatestSessionOnly ? 'Latest Search Only' : 'Show All Searches'}
-                </Button>
-              </div>
             </div>
-            
-            {showLatestSessionOnly && latestCampaign && (
-              <div className="mt-2 text-xs text-gray-400">
-                Showing only: <span className="font-semibold text-purple-400">{latestCampaign.campaignName}</span>
-                {' '}({latestCampaign.count} prospects)
-              </div>
-            )}
           </div>
         )
       })()}
@@ -1308,7 +1278,7 @@ export default function DataCollectionHub({
             onChange={(e) => setFilterStatus(e.target.value as any)}
             className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
-            <option value="all">All Status ({prospectData.length - rejectedCount} visible)</option>
+            <option value="all">All Status ({visibleCount} visible)</option>
             <option value="pending">Pending ({pendingCount})</option>
             <option value="approved">Approved ({approvedCount})</option>
             <option value="rejected">Rejected ({rejectedCount})</option>
