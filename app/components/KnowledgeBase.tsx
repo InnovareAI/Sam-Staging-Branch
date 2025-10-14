@@ -1944,7 +1944,6 @@ const KnowledgeBase: React.FC = () => {
   const completionDisplay = isKnowledgeLoading ? '—' : `${knowledgeCompletion}%`;
   const completionWidth = isKnowledgeLoading ? '0%' : `${knowledgeCompletion}%`;
   const latestDocuments = documents.slice(0, 4);
-  const recentActivity = documents.slice(0, 6);
 
   const formatRelativeTime = (input?: string | null) => {
     if (!input) return 'Just now';
@@ -2436,30 +2435,6 @@ const KnowledgeBase: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                </div>
-              </div>
-
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-                <h3 className="text-white text-lg font-semibold mb-4">Recent Activity</h3>
-                <div className="space-y-3">
-                  {documentsLoading ? (
-                    <div className="text-gray-400 text-sm">Loading activity…</div>
-                  ) : documentsError ? (
-                    <div className="text-red-400 text-sm">{documentsError}</div>
-                  ) : recentActivity.length === 0 ? (
-                    <div className="text-gray-500 text-sm">Upload knowledge assets to populate the activity feed.</div>
-                  ) : (
-                    recentActivity.map((activity) => (
-                      <div key={activity.id} className="flex items-start text-sm">
-                        <div className="w-2 h-2 bg-blue-400 rounded-full mr-3 mt-1"></div>
-                        <div className="flex-1">
-                          <span className="text-gray-200 block font-medium">{activity.title}</span>
-                          <span className="text-gray-400 text-xs">{getSectionLabel(activity.section)}</span>
-                        </div>
-                        <span className="text-gray-500 text-xs">{formatRelativeTime(activity.updatedAt)}</span>
-                      </div>
-                    ))
-                  )}
                 </div>
               </div>
             </div>
