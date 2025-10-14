@@ -1596,6 +1596,23 @@ const KnowledgeBase: React.FC = () => {
   const [products, setProducts] = useState<KnowledgeBaseProduct[]>([]);
   const [competitors, setCompetitors] = useState<KnowledgeBaseCompetitor[]>([]);
   const [personas, setPersonas] = useState<KnowledgeBasePersona[]>([]);
+  const [kbFeedback, setKbFeedback] = useState<any>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+
+  const loadKBFeedback = useCallback(async () => {
+    setFeedbackLoading(true);
+    try {
+      const response = await fetch('/api/sam/kb-feedback');
+      if (response.ok) {
+        const data = await response.json();
+        setKbFeedback(data);
+      }
+    } catch (error) {
+      console.error('Failed to load KB feedback:', error);
+    } finally {
+      setFeedbackLoading(false);
+    }
+  }, []);
 
   const loadDocuments = useCallback(async () => {
     setDocumentsLoading(true);
@@ -1610,13 +1627,15 @@ const KnowledgeBase: React.FC = () => {
       }
       const data = await response.json();
       setDocuments((data.documents || []) as KnowledgeDocument[]);
+      // Load feedback after documents load
+      loadKBFeedback();
     } catch (error) {
       // Silently handle error - this is not critical functionality
       setDocuments([]);
     } finally {
       setDocumentsLoading(false);
     }
-  }, []);
+  }, [loadKBFeedback]);
 
   const deleteDocument = useCallback(async (documentId: string) => {
     if (!confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
@@ -1973,42 +1992,85 @@ const KnowledgeBase: React.FC = () => {
 
     return (
       <div className="space-y-3">
-        {sectionDocs.map((doc) => (
-          <div key={doc.id} className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <p className="text-white font-semibold">{doc.title}</p>
-                {doc.summary && <p className="text-gray-300 text-sm mt-2">{doc.summary}</p>}
+        {sectionDocs.map((doc) => {
+          const docFeedback = kbFeedback?.documentFeedback?.[doc.id] || [];
+          const hasCritical = docFeedback.some((f: any) => f.type === 'critical');
+          const hasWarning = docFeedback.some((f: any) => f.type === 'warning');
+          const hasSuccess = docFeedback.some((f: any) => f.type === 'success');
+
+          return (
+            <div key={doc.id} className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-white font-semibold">{doc.title}</p>
+                    {hasCritical && (
+                      <span className="text-[10px] bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full border border-red-500/30" title="Critical issue">
+                        ⚠️ Critical
+                      </span>
+                    )}
+                    {!hasCritical && hasWarning && (
+                      <span className="text-[10px] bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full border border-yellow-500/30" title="Needs attention">
+                        ⚠️ Warning
+                      </span>
+                    )}
+                    {!hasCritical && !hasWarning && hasSuccess && (
+                      <span className="text-[10px] bg-green-500/20 text-green-300 px-2 py-0.5 rounded-full border border-green-500/30" title="Good">
+                        ✓ Ready
+                      </span>
+                    )}
+                  </div>
+                  {doc.summary && <p className="text-gray-300 text-sm mt-2">{doc.summary}</p>}
+
+                  {/* SAM's Feedback */}
+                  {docFeedback.length > 0 && (
+                    <div className="mt-3 p-3 bg-gray-800/50 rounded border border-gray-600">
+                      <p className="text-[11px] text-gray-400 font-medium mb-2">💬 SAM's Feedback:</p>
+                      <div className="space-y-1">
+                        {docFeedback.map((feedback: any, idx: number) => (
+                          <p key={idx} className={`text-xs ${
+                            feedback.type === 'critical' ? 'text-red-300' :
+                            feedback.type === 'warning' ? 'text-yellow-300' :
+                            feedback.type === 'suggestion' ? 'text-blue-300' :
+                            'text-green-300'
+                          }`}>
+                            • {feedback.message}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 ml-4">
+                  {doc.updatedAt && (
+                    <span className="text-xs text-gray-400">
+                      {formatRelativeTime(doc.updatedAt)}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => deleteDocument(doc.id)}
+                    className="text-gray-400 hover:text-red-400 transition-colors p-1"
+                    title="Delete document"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2 ml-4">
-                {doc.updatedAt && (
-                  <span className="text-xs text-gray-400">
-                    {formatRelativeTime(doc.updatedAt)}
-                  </span>
-                )}
-                <button
-                  onClick={() => deleteDocument(doc.id)}
-                  className="text-gray-400 hover:text-red-400 transition-colors p-1"
-                  title="Delete document"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
+              {doc.tags && doc.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {doc.tags.slice(0, 6).map((tag: string) => (
+                    <span key={`${doc.id}-${tag}`} className="text-[11px] bg-blue-500/10 text-blue-200 px-2 py-1 rounded-full">
+                      {tag}
+                    </span>
+                  ))}
+                  {doc.tags.length > 6 && (
+                    <span className="text-[11px] text-gray-400">+{doc.tags.length - 6} more</span>
+                  )}
+                </div>
+              )}
             </div>
-            {doc.tags && doc.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                {doc.tags.slice(0, 6).map((tag: string) => (
-                  <span key={`${doc.id}-${tag}`} className="text-[11px] bg-blue-500/10 text-blue-200 px-2 py-1 rounded-full">
-                    {tag}
-                  </span>
-                ))}
-                {doc.tags.length > 6 && (
-                  <span className="text-[11px] text-gray-400">+{doc.tags.length - 6} more</span>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
@@ -2487,13 +2549,30 @@ const KnowledgeBase: React.FC = () => {
                 >
                   <ArrowLeft size={20} />
                 </button>
-                <h2 className="text-2xl font-semibold text-white flex items-center">
-                  <Package className="mr-2" size={24} />
-                  Products & Services
-                </h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <Package className="mr-2" size={24} />
+                    Products & Services
+                  </h2>
+                  {kbFeedback?.sectionFeedback?.products && (
+                    <span className={`text-xs px-3 py-1 rounded-full font-medium ${
+                      kbFeedback.sectionFeedback.products.status === 'critical' ? 'bg-red-500/20 text-red-300 border border-red-500/40' :
+                      kbFeedback.sectionFeedback.products.status === 'needs-attention' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40' :
+                      kbFeedback.sectionFeedback.products.status === 'good' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' :
+                      'bg-green-500/20 text-green-300 border border-green-500/40'
+                    }`}>
+                      {kbFeedback.sectionFeedback.products.message}
+                    </span>
+                  )}
+                </div>
+                {kbFeedback?.sectionFeedback?.products?.suggestion && (
+                  <p className="text-sm text-gray-400 mt-2">
+                    💬 SAM: {kbFeedback.sectionFeedback.products.suggestion}
+                  </p>
+                )}
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
