@@ -205,7 +205,13 @@ export async function GET(request: NextRequest) {
       }
 
       // Check if this is a password recovery flow or magic link
-      if (type === 'recovery' || type === 'magiclink') {
+      if (type === 'recovery') {
+        // Password recovery - redirect to reset password page
+        console.log('Password recovery flow, redirecting to reset password page');
+        return NextResponse.redirect(new URL('/reset-password', request.url));
+      }
+
+      if (type === 'magiclink') {
         // For magic link authentication, user should be automatically signed in
         // No password change needed - redirect directly to the app
         console.log('Magic link authentication successful, redirecting to app');
