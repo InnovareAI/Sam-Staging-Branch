@@ -143,66 +143,72 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'LinkedIn not connected' }, { status: 400 });
     }
 
-    // Use the first available LinkedIn account
-    const linkedinAccount = linkedinAccounts[0];
-    console.log('✅ Using LinkedIn account:', linkedinAccount.account_name || linkedinAccount.account_identifier);
+    // CRITICAL: Find the account with Sales Navigator
+    // User requirement: "only tl@innovareai.com has Sales Navigator"
+    // Check ALL accounts and select the one with Sales Nav capabilities
+    console.log('🔍 Checking all LinkedIn accounts for Sales Navigator...');
 
-    // Auto-detect LinkedIn capabilities (Sales Navigator, Recruiter, or Classic)
+    let linkedinAccount: any = null;
     let api = 'classic';
     let accountInfo: any = null;
-    try {
-      const unipileDSN = process.env.UNIPILE_DSN!;
-      const accountUrl = unipileDSN.includes('.')
-        ? `https://${unipileDSN}/api/v1/accounts/${linkedinAccount.unipile_account_id}`
-        : `https://${unipileDSN}.unipile.com:13443/api/v1/accounts/${linkedinAccount.unipile_account_id}`;
+    const unipileDSN = process.env.UNIPILE_DSN!;
 
-      console.log('🔍 Checking LinkedIn account capabilities:', accountUrl);
-      
-      const accountInfoResponse = await fetch(accountUrl, {
-        headers: {
-          'X-API-KEY': process.env.UNIPILE_API_KEY!,
-          'Accept': 'application/json'
-        }
-      });
+    for (const account of linkedinAccounts) {
+      try {
+        console.log(`  📋 Checking account: ${account.account_name || account.account_identifier}`);
 
-      if (accountInfoResponse.ok) {
-        accountInfo = await accountInfoResponse.json();
-        console.log('📊 Account info received:', JSON.stringify({
-          id: accountInfo.id,
-          provider: accountInfo.provider,
-          premiumFeatures: accountInfo.connection_params?.im?.premiumFeatures
-        }));
-        
-        const premiumFeatures = accountInfo.connection_params?.im?.premiumFeatures || [];
+        const accountUrl = unipileDSN.includes('.')
+          ? `https://${unipileDSN}/api/v1/accounts/${account.unipile_account_id}`
+          : `https://${unipileDSN}.unipile.com:13443/api/v1/accounts/${account.unipile_account_id}`;
 
-        console.log('🔍 Premium features detected:', premiumFeatures);
+        const accountInfoResponse = await fetch(accountUrl, {
+          headers: {
+            'X-API-KEY': process.env.UNIPILE_API_KEY!,
+            'Accept': 'application/json'
+          }
+        });
 
-        if (premiumFeatures.includes('recruiter')) {
-          api = 'recruiter';
-          console.log('✅ Detected LinkedIn Recruiter account');
-        } else if (premiumFeatures.includes('sales_navigator')) {
-          api = 'sales_navigator';
-          console.log('✅ Detected LinkedIn Sales Navigator account');
+        if (accountInfoResponse.ok) {
+          const tempAccountInfo = await accountInfoResponse.json();
+          const premiumFeatures = tempAccountInfo.connection_params?.im?.premiumFeatures || [];
+
+          console.log(`     Features: ${premiumFeatures.join(', ') || 'none'}`);
+
+          // Prioritize: Recruiter > Sales Navigator
+          if (premiumFeatures.includes('recruiter')) {
+            linkedinAccount = account;
+            accountInfo = tempAccountInfo;
+            api = 'recruiter';
+            console.log('✅ Found LinkedIn Recruiter account - using this one');
+            break; // Recruiter is best, stop searching
+          } else if (premiumFeatures.includes('sales_navigator')) {
+            linkedinAccount = account;
+            accountInfo = tempAccountInfo;
+            api = 'sales_navigator';
+            console.log('✅ Found LinkedIn Sales Navigator account - using this one');
+            // Don't break - continue checking in case there's a Recruiter account
+          }
         } else {
-          // Premium = Classic search (just more connection requests)
-          // REJECT search - user requires Sales Navigator
-          console.error('❌ No Sales Navigator detected - SEARCH REJECTED');
-          console.error('   Account only has:', premiumFeatures);
-          console.error('   Note: "premium" = Classic search API (not Sales Navigator)');
-          return NextResponse.json({
-            success: false,
-            error: 'Sales Navigator required. This account only has ' + (premiumFeatures.includes('premium') ? 'Premium (Classic search)' : 'Basic LinkedIn') + '. Please configure Sales Navigator in Unipile.',
-            accountFeatures: premiumFeatures
-          }, { status: 400 });
+          console.error(`     ❌ Failed to fetch account info: ${accountInfoResponse.status}`);
         }
-      } else {
-        console.error('❌ Failed to fetch account info:', accountInfoResponse.status, await accountInfoResponse.text());
+      } catch (error) {
+        console.error(`     ❌ Error checking account:`, error);
       }
-    } catch (error) {
-      console.error('❌ Error detecting LinkedIn capabilities:', error);
-      console.log('⚠️ Falling back to classic LinkedIn');
     }
 
+    // REJECT if no Sales Navigator or Recruiter account found
+    if (!linkedinAccount || (api !== 'sales_navigator' && api !== 'recruiter')) {
+      console.error('❌ No Sales Navigator or Recruiter account found - SEARCH REJECTED');
+      console.error('   User requirement: Only tl@innovareai.com has Sales Navigator');
+      console.error('   Accounts checked:', linkedinAccounts.length);
+      return NextResponse.json({
+        success: false,
+        error: 'Sales Navigator required. No Sales Navigator or Recruiter account found in workspace. Please ensure tl@innovareai.com LinkedIn account is connected in Unipile with Sales Navigator enabled.',
+        accountsChecked: linkedinAccounts.length
+      }, { status: 400 });
+    }
+
+    console.log('✅ Using LinkedIn account:', linkedinAccount.account_name || linkedinAccount.account_identifier);
     console.log(`🎯 Using LinkedIn API: ${api}`);
 
     // Helper function to lookup parameter IDs from Unipile
@@ -212,7 +218,6 @@ export async function POST(request: NextRequest) {
       keywords: string
     ): Promise<string[] | null> {
       try {
-        const unipileDSN = process.env.UNIPILE_DSN!;
         const paramUrl = unipileDSN.includes('.')
           ? `https://${unipileDSN}/api/v1/linkedin/search/parameters`
           : `https://${unipileDSN}.unipile.com:13443/api/v1/linkedin/search/parameters`;
@@ -259,7 +264,6 @@ export async function POST(request: NextRequest) {
 
     // Call Unipile - format payload correctly
     // UNIPILE_DSN can be either "api6" or "api6.unipile.com:13443" (full domain)
-    const unipileDSN = process.env.UNIPILE_DSN!;
     const unipileUrl = unipileDSN.includes('.')
       ? `https://${unipileDSN}/api/v1/linkedin/search`  // Full domain already provided
       : `https://${unipileDSN}.unipile.com:13443/api/v1/linkedin/search`;  // Just subdomain
