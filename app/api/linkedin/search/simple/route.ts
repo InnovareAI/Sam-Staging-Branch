@@ -103,6 +103,32 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Final workspace:', workspaceId);
 
+    // SECURITY: Verify workspace isolation - user MUST be a member of this workspace
+    const { data: membershipCheck, error: membershipError } = await supabase
+      .from('workspace_members')
+      .select('role, workspace_id')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!membershipCheck || membershipError) {
+      console.error('❌ SECURITY: User is not a member of workspace:', {
+        userId: user.id,
+        workspaceId,
+        error: membershipError?.message
+      });
+      return NextResponse.json({
+        error: 'Access denied: You are not a member of this workspace',
+        debug: { userId: user.id, workspaceId }
+      }, { status: 403 });
+    }
+
+    console.log('✅ Workspace membership verified:', {
+      workspaceId,
+      role: membershipCheck.role,
+      userId: user.id
+    });
+
     // Get LinkedIn account from workspace_accounts table
     const { data: linkedinAccounts } = await supabase
       .from('workspace_accounts')
@@ -538,25 +564,44 @@ export async function POST(request: NextRequest) {
       // Handle company and industry - different sources per API type
       let company = '';
       let industry = '';
-      
+
       if (item.current_positions && item.current_positions.length > 0) {
         // Sales Navigator API - has detailed current_positions array
         company = item.current_positions[0].company || '';
         industry = item.current_positions[0].industry || item.industry || '';
       } else {
-        // Classic LinkedIn API - company/industry in headline or separate fields
-        // Try multiple fallback sources
-        company = item.company || item.company_name || '';
+        // Classic LinkedIn API - company is NOT in separate field!
+        // Unipile Classic returns: industry: null, no company field
+        // Company is ALWAYS in headline: "Title at Company"
         industry = item.industry || '';
-        
-        // If still no company, try parsing from headline
-        // Headlines often contain "Position at Company"
-        if (!company && item.headline && item.headline.includes(' at ')) {
-          const parts = item.headline.split(' at ');
-          if (parts.length > 1) {
-            company = parts[parts.length - 1].trim();
-            console.log(`📌 Extracted company from headline: "${company}"`);
+
+        // ALWAYS parse company from headline for Classic LinkedIn
+        if (item.headline) {
+          // Headlines format: "Director of Creative Operations at WKNY"
+          // Split on " at " and take everything after
+          if (item.headline.includes(' at ')) {
+            const parts = item.headline.split(' at ');
+            if (parts.length > 1) {
+              // Take everything after the last " at " (handles "Title at Company at Location")
+              company = parts.slice(1).join(' at ').trim();
+              console.log(`📌 Extracted company from headline: "${company}"`);
+            }
+          } else if (item.headline.includes(' | ')) {
+            // Alternative format: "Title | Company"
+            const parts = item.headline.split(' | ');
+            if (parts.length > 1) {
+              company = parts[parts.length - 1].trim();
+              console.log(`📌 Extracted company from headline (pipe format): "${company}"`);
+            }
+          } else {
+            // No " at " or " | " - might be freelancer or unemployed
+            console.log(`⚠️ No company in headline: "${item.headline}"`);
           }
+        }
+
+        // Fallback to separate company fields (Sales Navigator older format)
+        if (!company) {
+          company = item.company || item.company_name || item.current_company || '';
         }
       }
 
@@ -575,48 +620,57 @@ export async function POST(request: NextRequest) {
       }
 
       // Connection degree from Unipile data
-      // Unipile returns network as 'F', 'S', 'O' - convert to number
+      // Unipile returns network_distance as "DISTANCE_1", "DISTANCE_2", "DISTANCE_3" (Classic)
+      // OR numeric 1, 2, 3 (Sales Nav/Recruiter)
       let connectionDegree = requestedDegree;
-      
+
       console.log(`🔍 RAW DATA for ${firstName} ${lastName}:`, {
         network: item.network,
         network_distance: item.network_distance,
         distance: item.distance,
         requestedDegree
       });
-      
-      if (item.network) {
-        connectionDegree = networkToNumber[item.network] || requestedDegree;
-        console.log(`  ✓ Used item.network: ${item.network} → ${connectionDegree}`);
-      } else if (item.network_distance) {
-        // Parse network_distance which might be string like "DISTANCE_2" or number 2
+
+      // Priority order: network_distance > network > distance > requestedDegree
+      if (item.network_distance !== undefined && item.network_distance !== null) {
+        // Parse network_distance - Classic returns "DISTANCE_2", Sales Nav returns 2
         if (typeof item.network_distance === 'string') {
-          const match = item.network_distance.match(/(\d+)/);
-          connectionDegree = match ? parseInt(match[1]) : requestedDegree;
-          console.log(`  ✓ Used item.network_distance (string): ${item.network_distance} → ${connectionDegree}`);
+          // Extract number from "DISTANCE_1", "DISTANCE_2", "DISTANCE_3" format
+          const match = item.network_distance.match(/DISTANCE[_\s-]?(\d+)/i);
+          if (match && match[1]) {
+            connectionDegree = parseInt(match[1]);
+            console.log(`  ✓ Used item.network_distance (string): ${item.network_distance} → ${connectionDegree}`);
+          } else {
+            // Try to extract any number if format doesn't match expected pattern
+            const numMatch = item.network_distance.match(/(\d+)/);
+            connectionDegree = numMatch ? parseInt(numMatch[1]) : requestedDegree;
+            console.log(`  ⚠️ Parsed number from network_distance: ${item.network_distance} → ${connectionDegree}`);
+          }
         } else if (typeof item.network_distance === 'number') {
           connectionDegree = item.network_distance;
           console.log(`  ✓ Used item.network_distance (number): ${item.network_distance} → ${connectionDegree}`);
         }
-      } else if (item.distance) {
+      } else if (item.network) {
+        // Classic API: 'F' (1st), 'S' (2nd), 'O' (3rd)
+        connectionDegree = networkToNumber[item.network] || requestedDegree;
+        console.log(`  ✓ Used item.network: ${item.network} → ${connectionDegree}`);
+      } else if (item.distance !== undefined && item.distance !== null) {
         // Some APIs use 'distance' field
         connectionDegree = parseInt(String(item.distance)) || requestedDegree;
         console.log(`  ✓ Used item.distance: ${item.distance} → ${connectionDegree}`);
       } else {
         console.log(`  ⚠️ No degree field found, using requested: ${requestedDegree}`);
       }
-      
-      // Ensure connectionDegree is always a valid integer
-      const finalDegree = parseInt(String(connectionDegree)) || requestedDegree;
+
+      // Ensure connectionDegree is always a valid integer between 1-3
+      const finalDegree = Math.max(1, Math.min(3, parseInt(String(connectionDegree)) || requestedDegree));
       console.log(`  📌 FINAL connectionDegree: ${finalDegree}`);
       connectionDegree = finalDegree;
       
-      // DIAGNOSTIC MODE: Log degree mismatches but don't filter yet
-      // This helps us understand if Unipile is returning wrong data
+      // STRICT FILTERING: Only return prospects matching requested degree
       if (connectionDegree !== requestedDegree) {
-        console.log(`⚠️ DEGREE MISMATCH: ${firstName} ${lastName} - got ${connectionDegree}, requested ${requestedDegree} (KEEPING FOR NOW)`);
-        // TODO: Re-enable strict filtering after diagnosis:
-        // return null; // Will be filtered out
+        console.log(`⚠️ FILTERING OUT: ${firstName} ${lastName} - connection degree ${connectionDegree} doesn't match requested ${requestedDegree}`);
+        return null; // Filter out mismatched degrees
       }
 
       // Extract location
@@ -633,14 +687,14 @@ export async function POST(request: NextRequest) {
         linkedinUrl,
         connectionDegree
       };
-    }).filter(p => p !== null); // Remove prospects without names
+    }).filter(p => p !== null); // Remove prospects without names AND mismatched connection degrees
 
-    console.log(`🔵 Mapped ${prospects.length} prospects (filtered out prospects without names)`);
-    
-    // Log how many were rejected due to missing data
+    console.log(`🔵 Mapped ${prospects.length} prospects (filtered out prospects without names and mismatched connection degrees)`);
+
+    // Log how many were rejected due to missing data or degree mismatch
     const rejectedCount = (data.items?.length || 0) - prospects.length;
     if (rejectedCount > 0) {
-      console.log(`⚠️ Rejected ${rejectedCount} prospects due to missing name data`);
+      console.log(`⚠️ Rejected ${rejectedCount} prospects due to missing name data or connection degree mismatch`);
     }
 
     // Save to workspace_prospects with correct column names
@@ -690,11 +744,43 @@ export async function POST(request: NextRequest) {
       const today = new Date().toISOString().split('T')[0].replace(/-/g, ''); // 20251011
 
       // Get workspace name for company code and calculate next batch number
-      const { data: workspace } = await supabase
+      const { data: workspace, error: workspaceError } = await supabase
         .from('workspaces')
-        .select('name')
+        .select('name, id, owner_id')
         .eq('id', workspaceId)
         .single();
+
+      if (workspaceError || !workspace) {
+        console.error('❌ CRITICAL: Cannot fetch workspace for company code:', {
+          workspaceId,
+          error: workspaceError?.message
+        });
+        return NextResponse.json({
+          error: 'Failed to fetch workspace information',
+          debug: { workspaceId, error: workspaceError?.message }
+        }, { status: 500 });
+      }
+
+      console.log('📋 Workspace for company code generation:', {
+        workspaceId: workspace.id,
+        workspaceName: workspace.name,
+        ownerId: workspace.owner_id,
+        currentUserId: user.id
+      });
+
+      // SECURITY ASSERTION: Verify this is NOT InnovareAI workspace (unless user is owner)
+      if (workspace.name === 'InnovareAI' && workspace.owner_id !== user.id) {
+        console.error('❌ SECURITY VIOLATION: User accessing InnovareAI workspace without ownership!', {
+          userId: user.id,
+          userEmail: user.email,
+          workspaceId: workspace.id,
+          ownerId: workspace.owner_id
+        });
+        return NextResponse.json({
+          error: 'Workspace access violation detected',
+          debug: { userId: user.id, workspaceId }
+        }, { status: 403 });
+      }
 
       // Get next batch_number for this user/workspace combination
       const { data: existingSessions } = await supabase
@@ -713,19 +799,39 @@ export async function POST(request: NextRequest) {
 
       // Generate company code from workspace name (e.g., "InnovareAI" → "IAI")
       const generateCompanyCode = (name: string): string => {
-        if (!name) return 'CLI';
+        console.log('🏢 Generating company code for workspace:', name);
+
+        if (!name) {
+          console.warn('⚠️ No workspace name provided, defaulting to CLI');
+          return 'CLI';
+        }
+
         const cleanName = name.replace(/[^a-zA-Z0-9]/g, '');
+        console.log('🏢 Cleaned name:', cleanName);
+
+        // Extract capital letters (e.g., "InnovareAI" → "IAI")
         const capitals = cleanName.match(/[A-Z]/g);
         if (capitals && capitals.length >= 3) {
-          return capitals.slice(0, 3).join('');
+          const code = capitals.slice(0, 3).join('');
+          console.log('✅ Company code from capitals:', code);
+          return code;
         }
+
+        // Handle names starting with numbers
         if (/^\d/.test(cleanName)) {
-          return (cleanName.substring(0, 1) + cleanName.substring(1, 3).toUpperCase()).padEnd(3, 'X');
+          const code = (cleanName.substring(0, 1) + cleanName.substring(1, 3).toUpperCase()).padEnd(3, 'X');
+          console.log('✅ Company code from number-prefixed name:', code);
+          return code;
         }
-        return cleanName.substring(0, 3).toUpperCase().padEnd(3, 'X');
+
+        // Default: first 3 characters uppercased
+        const code = cleanName.substring(0, 3).toUpperCase().padEnd(3, 'X');
+        console.log('✅ Company code from first 3 chars:', code);
+        return code;
       };
 
-      const companyCode = generateCompanyCode(workspace?.name || '');
+      const companyCode = generateCompanyCode(workspace.name);
+      console.log('📋 Final company code:', companyCode, 'for workspace:', workspace.name);
 
       // If user provides campaign name, use it. Otherwise auto-number: "Search 01", "Search 02"
       let campaignName: string;

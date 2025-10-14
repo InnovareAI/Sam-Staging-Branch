@@ -136,6 +136,7 @@ export default function DataCollectionHub({
   const [linkedinQuery, setLinkedinQuery] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [isChatMinimized, setIsChatMinimized] = useState(false)
+  const [connectionDegree, setConnectionDegree] = useState<'1st' | '2nd' | '3rd'>('2nd') // Default to 2nd degree
 
   // Bulk selection state
   const [selectedProspectIds, setSelectedProspectIds] = useState<Set<string>>(new Set())
@@ -536,7 +537,7 @@ export default function DataCollectionHub({
     setLoading(true)
     try {
       // First, get LinkedIn accounts via MCP
-      const linkedinData = await collectLinkedInData(linkedinQuery, workspaceCode)
+      const linkedinData = await collectLinkedInData(linkedinQuery, workspaceCode, connectionDegree)
       
       if (linkedinData.length > 0) {
         setProspectData(linkedinData)
@@ -1499,7 +1500,7 @@ export default function DataCollectionHub({
 
 // Helper functions for data collection
 
-async function collectLinkedInData(query: string, workspaceCode: string): Promise<ProspectData[]> {
+async function collectLinkedInData(query: string, workspaceCode: string, connectionDegree: '1st' | '2nd' | '3rd' = '2nd'): Promise<ProspectData[]> {
   try {
     // Auto-generate campaign name: YYYYMMDD-XXX-ProjectName (XXX = workspace code)
     const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
@@ -1516,8 +1517,8 @@ async function collectLinkedInData(query: string, workspaceCode: string): Promis
       },
       body: JSON.stringify({
         search_criteria: isUrl
-          ? { keywords: query, connectionDegree: '2nd' } // URL searches treated as keywords
-          : { keywords: query, connectionDegree: '2nd' }, // Default to 2nd connections
+          ? { keywords: query, connectionDegree } // URL searches treated as keywords with user-selected degree
+          : { keywords: query, connectionDegree }, // Use user-selected connection degree
         target_count: 50
       })
     })
