@@ -13,11 +13,40 @@ export default function ResetPasswordPage() {
   const [validToken, setValidToken] = useState<boolean | null>(null);
   const [email, setEmail] = useState('');
 
-  // Check for active session established by auth callback
+  // Check for recovery code and establish session
   useEffect(() => {
     const initializeSession = async () => {
       try {
-        // Check if user already has an active session from the auth callback
+        // Check URL for recovery code from auth callback
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const type = urlParams.get('type');
+
+        if (code && type === 'recovery') {
+          console.log('🔑 Found recovery code, exchanging for session...');
+
+          // Exchange code for session
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+          if (exchangeError) {
+            console.error('Code exchange error:', exchangeError);
+            setValidToken(false);
+            setError('Invalid or expired reset link - please request a new password reset');
+            return;
+          }
+
+          if (data.session && data.user) {
+            setValidToken(true);
+            setEmail(data.user.email || 'your account');
+            console.log('✅ Recovery session established for:', data.user.email);
+
+            // Clean up URL
+            window.history.replaceState({}, '', '/reset-password');
+            return;
+          }
+        }
+
+        // If no code, check for existing session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
         if (sessionError) {

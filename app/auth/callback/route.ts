@@ -30,6 +30,16 @@ export async function GET(request: NextRequest) {
   }
 
   if (code) {
+    // For password recovery, pass the code to the reset password page
+    // It will handle the session exchange client-side for better cookie handling
+    if (type === 'recovery') {
+      console.log('Password recovery flow detected, passing code to reset password page');
+      const resetUrl = new URL('/reset-password', request.url);
+      resetUrl.searchParams.set('code', code);
+      resetUrl.searchParams.set('type', 'recovery');
+      return NextResponse.redirect(resetUrl);
+    }
+
     const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -53,7 +63,7 @@ export async function GET(request: NextRequest) {
     );
 
     try {
-      // Exchange the auth code for a session
+      // Exchange the auth code for a session (not for recovery flows)
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
       if (error) {
@@ -206,13 +216,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Check if this is a password recovery flow or magic link
-      if (type === 'recovery') {
-        // Password recovery - redirect to reset password page
-        console.log('Password recovery flow, redirecting to reset password page');
-        return NextResponse.redirect(new URL('/reset-password', request.url));
-      }
-
+      // Check if this is a magic link (recovery is handled above)
       if (type === 'magiclink') {
         // For magic link authentication, user should be automatically signed in
         // No password change needed - redirect directly to the app
