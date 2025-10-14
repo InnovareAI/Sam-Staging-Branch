@@ -14,12 +14,11 @@ interface AuthModalProps {
  *
  * Sign In ONLY - no signup option
  * - For InnovareAI trial signup: Use /signup/innovareai
- * - For 3cubed enterprise: Admin sends magic link
+ * - For 3cubed enterprise: Admin invites users
  *
  * Available options:
  * 1. Email/Password Sign In
  * 2. Password Reset
- * 3. Magic Link Sign In
  */
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [email, setEmail] = useState('');
@@ -111,34 +110,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   };
 
-  const handleMagicLink = async (emailToUse: string) => {
-    setLoading(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      const response = await fetch('/api/auth/magic-link', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: emailToUse })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccess('✨ Magic link sent! Check your email and click the link to instantly sign in.');
-      } else {
-        setError(data.error || 'Magic link failed');
-      }
-    } catch (err) {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
@@ -167,7 +138,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             </h1>
             <p className="text-gray-400 text-sm">
               {showPasswordReset
-                ? (success ? 'We sent you an email with instructions' : 'Enter your email to reset password or get magic link')
+                ? (success ? 'We sent you an email with instructions' : 'Enter your email to reset password')
                 : 'Sign in to your Sales Agent Platform'
               }
             </p>
@@ -206,24 +177,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   >
                     {loading ? 'Sending...' : '🔑 Send Password Reset'}
                   </button>
-
-                  <div className="text-center text-gray-500 text-sm py-2">or</div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!resetEmail) {
-                        setError('Please enter your email address first');
-                        return;
-                      }
-                      handleMagicLink(resetEmail);
-                    }}
-                    disabled={loading || !resetEmail}
-                    className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-green-400 disabled:to-green-500 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
-                  >
-                    {loading ? 'Sending...' : '✨ Send Magic Link'}
-                  </button>
-                  <p className="text-gray-500 text-xs text-center mt-2">No password needed - instant access via email</p>
                 </>
               )}
 
