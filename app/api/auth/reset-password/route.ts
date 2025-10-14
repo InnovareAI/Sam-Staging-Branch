@@ -107,83 +107,23 @@ export async function POST(request: NextRequest) {
 
       console.log(`🌐 Using origin for password reset: ${origin}`);
 
-      // Generate a password reset token using Supabase admin
-      // CRITICAL: Use redirect_to (snake_case) not redirectTo (camelCase)
-      // The action_link will go to /auth/callback with code and type parameters
-      // Then callback will redirect to /reset-password with the code
-      const { data, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'recovery',
-        email: email,
-        options: {
-          redirect_to: `${origin}/auth/callback`
-        }
+      // Use resetPasswordForEmail instead of generateLink
+      // This properly respects the redirectTo parameter
+      const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
+        redirectTo: `${origin}/auth/callback`
       });
 
-      if (linkError) {
-        console.error('Password reset generation error:', linkError);
+      if (resetError) {
+        console.error('Password reset error:', resetError);
         return NextResponse.json(
-          { error: 'Unable to generate password reset. Please try again later.' },
+          { error: 'Unable to send password reset email. Please try again later.' },
           { status: 503 }
         );
       }
 
-      // Use the Supabase-generated recovery link (contains actual token)
-      const resetUrl = data.properties.action_link;
+      console.log('✅ Supabase password reset email sent successfully');
 
-      console.log('🔗 Supabase generated action_link:', resetUrl);
-      console.log('🔗 Expected redirect:', `${origin}/auth/callback`);
-
-      const htmlBody = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <title>Reset Your SAM AI Password</title>
-            <style>
-                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                .header { text-align: center; margin-bottom: 30px; }
-                .button { display: inline-block; padding: 12px 24px; background: #dc2626; color: white; text-decoration: none; border-radius: 6px; }
-                .footer { margin-top: 30px; font-size: 14px; color: #666; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h1>🔑 Reset Your SAM AI Password</h1>
-                </div>
-
-                <p>Hi there,</p>
-
-                <p>We received a request to <strong>reset your password</strong> for your SAM AI account (<strong>${email}</strong>).</p>
-
-                <p>Click the button below to reset your password:</p>
-
-                <p style="text-align: center; margin: 30px 0;">
-                    <a href="${resetUrl}" class="button">Reset My Password</a>
-                </p>
-
-                <p><small>If the button doesn't work, copy and paste this link:</small></p>
-                <p style="word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 12px;">
-                    ${resetUrl}
-                </p>
-
-                <p><em>This link will expire in 24 hours for security.</em></p>
-
-                <p>If you didn't request this password reset, you can safely ignore this email.</p>
-
-                <div class="footer">
-                    <p>Best regards,<br><strong>The SAM AI Team</strong></p>
-                    <p style="color: #999; font-size: 12px;">SAM AI - Your AI-powered Sales Agent Platform</p>
-                </div>
-            </div>
-        </body>
-        </html>
-      `;
-
-      await sendEmail(email, '🔑 Reset Your SAM AI Password', htmlBody);
-      
-      console.log('✅ Password reset email sent via Postmark successfully');
+      // Supabase will send its own email, so we don't need to send via Postmark
       return NextResponse.json({
         success: true,
         message: 'Password reset email sent! Check your email and click the link to reset your password.'
