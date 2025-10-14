@@ -4,8 +4,8 @@ import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    // cookieStore removed;
+    const supabase = createRouteHandlerClient({ cookies: await cookies() });
     const { searchParams } = new URL(request.url);
     const workspaceId = searchParams.get('workspace_id');
     const category = searchParams.get('category');
@@ -59,8 +59,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    // cookieStore removed;
+    const supabase = createRouteHandlerClient({ cookies: await cookies() });
     const body = await request.json();
     const { workspace_id, category, subcategory, title, content, tags } = body;
 

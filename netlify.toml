@@ -25,11 +25,5 @@
 [functions]
   node_bundler = "esbuild"
 
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-  force = false
-
 [functions."*"]
   body_size_limit = "10mb"

@@ -52,8 +52,8 @@ async function resolveWorkspaceId(
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    // cookieStore removed;
+    const supabase = createRouteHandlerClient({ cookies: await cookies() });
     const { searchParams } = new URL(request.url);
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -97,8 +97,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    // cookieStore removed;
+    const supabase = createRouteHandlerClient({ cookies: await cookies() });
     const body = await request.json();
     const {
       name,
@@ -164,8 +164,8 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    // cookieStore removed;
+    const supabase = createRouteHandlerClient({ cookies: await cookies() });
     const body = await request.json();
     const {
       id,
@@ -235,8 +235,8 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    // cookieStore removed;
+    const supabase = createRouteHandlerClient({ cookies: await cookies() });
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
