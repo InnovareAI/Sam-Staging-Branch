@@ -1926,7 +1926,7 @@ const KnowledgeBase: React.FC = () => {
     pricing: ['pricing', 'roi'],
     products: ['products', 'product'],
     sam_onboarding: ['sam-onboarding', 'sam_onboarding'],
-    setup: ['setup', 'crm-setup', 'configuration'],
+    collateral: ['collateral', 'sales-collateral', 'battlecards', 'one-pagers', 'decks', 'email-templates', 'snippets', 'templates', 'inquiry-responses'],
     success: ['stories', 'success-stories', 'case-studies'],
     tone: ['tone', 'tone-of-voice', 'brand-voice']
   };
@@ -2090,7 +2090,7 @@ const KnowledgeBase: React.FC = () => {
     pricing: 'Manage pricing info',
     products: 'Add documentation',
     sam_onboarding: 'Train SAM AI',
-    setup: 'Configure system',
+    collateral: 'Upload battlecards, decks, email templates & snippets',
     success: 'Share case studies',
     tone: 'Set voice guidelines'
   };
@@ -2159,7 +2159,6 @@ const KnowledgeBase: React.FC = () => {
     { id: 'compliance', label: 'Compliance', icon: Shield },
     { id: 'documents', label: 'Documents', icon: FileText },
     { id: 'icp', label: 'ICP Config', icon: Target },
-    { id: 'inquiry_responses', label: 'Inquiry Responses', icon: HelpCircle },
     { id: 'messaging', label: 'Messaging', icon: MessageSquare },
     { id: 'metrics', label: 'Success Metrics', icon: BarChart },
     { id: 'objections', label: 'Objections', icon: MessageCircle },
@@ -2167,7 +2166,7 @@ const KnowledgeBase: React.FC = () => {
     { id: 'pricing', label: 'Pricing', icon: DollarSign },
     { id: 'products', label: 'Products', icon: Package },
     { id: 'sam_onboarding', label: 'SAM Onboarding', icon: Bot },
-    { id: 'setup', label: 'Setup', icon: Settings },
+    { id: 'collateral', label: 'Sales Collateral', icon: Briefcase },
     { id: 'success', label: 'Success Stories', icon: Trophy },
     { id: 'tone', label: 'Tone of Voice', icon: Mic }
   ];
@@ -3598,28 +3597,6 @@ const KnowledgeBase: React.FC = () => {
             </div>
             <p className="text-gray-400 mb-6">Interactive conversational onboarding to collect company data and build your knowledge base</p>
             <SAMOnboarding onComplete={(data) => console.log('Onboarding completed:', data)} />
-          </div>
-        )}
-
-        {activeSection === 'inquiry_responses' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setActiveSection('overview')}
-                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledgebase"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <h2 className="text-2xl font-semibold text-white flex items-center">
-                  <HelpCircle className="mr-2" size={24} />
-                  Industry-Specific Inquiry Responses
-                </h2>
-              </div>
-            </div>
-            <p className="text-gray-400 mb-6">Role-based FAQ and objection handling for different industries and decision makers</p>
-            <InquiryResponses />
           </div>
         )}
 
