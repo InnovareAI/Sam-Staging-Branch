@@ -84,9 +84,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Ensure KB sections are initialized for this workspace
-    await supabase.rpc('initialize_knowledge_base_sections', {
+    const { error: rpcError } = await supabase.rpc('initialize_knowledge_base_sections', {
       p_workspace_id: workspaceId
     });
+
+    if (rpcError) {
+      console.error('RPC initialize_knowledge_base_sections error:', rpcError);
+      // Continue anyway - sections might already exist
+    }
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -180,8 +185,10 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Upload error:', error);
-    return NextResponse.json({ 
-      error: error instanceof Error ? error.message : 'Upload failed' 
+    console.error('Upload error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Upload failed',
+      details: error instanceof Error ? error.stack : String(error)
     }, { status: 500 });
   }
 }
