@@ -100,13 +100,14 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get LinkedIn account from workspace_accounts table
+    // Get LinkedIn account from workspace_accounts table - ONLY user's own accounts
     let linkedinAccountId = accountId;
     if (!linkedinAccountId) {
       const { data: linkedinAccounts } = await supabase
         .from('workspace_accounts')
         .select('unipile_account_id, account_name, account_identifier')
         .eq('workspace_id', workspaceId)
+        .eq('user_id', user.id) // CRITICAL: Only user's own accounts
         .eq('account_type', 'linkedin')
         .eq('connection_status', 'connected');
 
