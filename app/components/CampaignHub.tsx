@@ -2769,23 +2769,6 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
         onCampaignCreated={onCampaignCreated}
       />
 
-      {/* Floating New Campaign Button */}
-      {!showBuilder && (
-        <button
-          onClick={() => setShowBuilder(true)}
-          className="fixed bottom-24 right-6 z-[9999] group relative w-14 h-14 rounded-full transition-transform hover:scale-110 active:scale-95 shadow-2xl"
-          style={{ position: 'fixed', bottom: '96px', right: '24px' }}
-          title="New Campaign"
-        >
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-600 to-emerald-600 animate-pulse" />
-          <div className="absolute inset-[2px] rounded-full bg-gray-900" />
-          <Plus className="relative w-8 h-8 text-white z-10" style={{ margin: '12px' }} />
-          <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 px-3 py-1 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-gray-700">
-            New Campaign
-          </div>
-        </button>
-      )}
-
       {/* Floating Assistant Button */}
       {!isAssistantOpen && (
         <button

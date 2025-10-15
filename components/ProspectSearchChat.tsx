@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { X } from 'lucide-react';
+import { X, ArrowDown } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -36,13 +36,25 @@ export default function ProspectSearchChat({
   const [isLoading, setIsLoading] = useState(false);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     // Use setTimeout to ensure DOM is updated before scrolling
     setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setShowScrollButton(false);
     }, 0);
+  };
+
+  const handleScroll = () => {
+    if (!messagesContainerRef.current) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+
+    setShowScrollButton(!isAtBottom);
   };
 
   // Auto-scroll when messages change
@@ -295,7 +307,11 @@ export default function ProspectSearchChat({
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div
+            ref={messagesContainerRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto p-4 space-y-4 relative"
+          >
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -339,6 +355,17 @@ export default function ProspectSearchChat({
                   <p className="text-sm text-gray-400">Thinking...</p>
                 </div>
               </div>
+            )}
+
+            {/* Scroll to Bottom Button */}
+            {showScrollButton && (
+              <button
+                onClick={scrollToBottom}
+                className="sticky bottom-4 left-1/2 transform -translate-x-1/2 bg-purple-600 hover:bg-purple-700 text-white rounded-full p-3 shadow-lg transition-all z-10 animate-bounce"
+                title="Scroll to bottom"
+              >
+                <ArrowDown size={20} />
+              </button>
             )}
 
             <div ref={messagesEndRef} />
