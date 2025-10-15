@@ -34,6 +34,7 @@ import {
   Grid3x3,
   AlertTriangle
 } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // Helper function to get human-readable campaign type labels
 function getCampaignTypeLabel(type: string): string {
@@ -55,38 +56,18 @@ function getCampaignTypeLabel(type: string): string {
 }
 
 function CampaignList() {
-  const [campaigns, setCampaigns] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  // Load campaigns from backend
-  useEffect(() => {
-    loadCampaigns();
-    
-    // Listen for refresh events
-    const handleRefresh = () => loadCampaigns();
-    window.addEventListener('refreshCampaigns', handleRefresh);
-    
-    return () => window.removeEventListener('refreshCampaigns', handleRefresh);
-  }, []);
-
-  const loadCampaigns = async () => {
-    try {
+  // REACT QUERY: Fetch and cache campaigns
+  const { data: campaigns = [], isLoading: loading, refetch } = useQuery({
+    queryKey: ['campaigns'],
+    queryFn: async () => {
       const response = await fetch('/api/campaigns');
 
       if (!response.ok) {
         console.error('Failed to load campaigns:', response.statusText);
-        setCampaigns([]);
-        setLoading(false);
-        return;
-      }
-
-      const data = await response.json();
-      setCampaigns(data.campaigns || []);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error loading campaigns:', error);
-      // Fallback to mock data if API fails
-      const mockCampaigns = [
+        // Return mock data as fallback
+        return [
           {
             id: '1',
             name: 'Q4 SaaS Outreach',
@@ -328,13 +309,26 @@ function CampaignList() {
             created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
           }
         ];
-        setCampaigns(mockCampaigns);
-        setLoading(false);
-    }
-  };
+      }
 
-  const toggleCampaignStatus = async (campaignId: string, currentStatus: string) => {
-    try {
+      const data = await response.json();
+      return data.campaigns || [];
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Listen for refresh events
+  useEffect(() => {
+    const handleRefresh = () => refetch();
+    window.addEventListener('refreshCampaigns', handleRefresh);
+
+    return () => window.removeEventListener('refreshCampaigns', handleRefresh);
+  }, [refetch]);
+
+  // REACT QUERY: Mutation for toggling campaign status
+  const toggleStatusMutation = useMutation({
+    mutationFn: async ({ campaignId, currentStatus }: { campaignId: string; currentStatus: string }) => {
       const newStatus = currentStatus === 'active' ? 'paused' : 'active';
       const response = await fetch(`/api/campaigns/${campaignId}`, {
         method: 'PUT',
@@ -342,18 +336,25 @@ function CampaignList() {
         body: JSON.stringify({ status: newStatus })
       });
 
-      if (response.ok) {
-        // Update local state
-        setCampaigns(campaigns.map(c => 
-          c.id === campaignId ? { ...c, status: newStatus } : c
-        ));
-      } else {
-        toastError('Failed to update campaign status');
+      if (!response.ok) {
+        throw new Error('Failed to update campaign status');
       }
-    } catch (error) {
+
+      return { campaignId, newStatus };
+    },
+    onSuccess: () => {
+      // Invalidate and refetch campaigns
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      toastSuccess('Campaign status updated');
+    },
+    onError: (error) => {
       console.error('Error toggling campaign status:', error);
       toastError('Failed to update campaign status');
     }
+  });
+
+  const toggleCampaignStatus = (campaignId: string, currentStatus: string) => {
+    toggleStatusMutation.mutate({ campaignId, currentStatus });
   };
 
   const showCampaignAnalytics = (campaignId: string) => {
