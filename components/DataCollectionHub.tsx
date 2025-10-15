@@ -999,7 +999,7 @@ export default function DataCollectionHub({
       dismissed.find(d => d.id === p.id) ? { ...p, approvalStatus: 'rejected' as const } : p
     ))
 
-    toastSuccess(`Approved ${nonDismissed.length} prospects, rejected ${dismissed.length}`)
+    toastSuccess(`Approved ${nonDismissed.length} prospects, dismissed ${dismissed.length}`)
     setDismissedProspectIds(new Set())
 
     // Save all decisions to database
@@ -1407,7 +1407,7 @@ export default function DataCollectionHub({
             <option value="all">All Status ({visibleCount} visible)</option>
             <option value="pending">Pending ({pendingCount})</option>
             <option value="approved">Approved ({approvedCount})</option>
-            <option value="rejected">Rejected ({rejectedCount})</option>
+            <option value="rejected">Dismissed ({rejectedCount})</option>
           </select>
         </div>
       </div>
@@ -1489,7 +1489,7 @@ export default function DataCollectionHub({
                         </span>
                       ) : prospect.approvalStatus === 'rejected' ? (
                         <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-600 text-red-100">
-                          rejected
+                          dismissed
                         </span>
                       ) : dismissedProspectIds.has(prospect.id) ? (
                         <button
