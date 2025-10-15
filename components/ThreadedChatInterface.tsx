@@ -376,7 +376,7 @@ export default function ThreadedChatInterface() {
       }
       
       const result = await response.json()
-      
+
       if (result.success && result.session) {
         // Transform CSV data to ProspectData format
         const transformedProspects: ProspectData[] = result.session.processed_data.map((prospect: any, index: number) => ({
@@ -393,19 +393,43 @@ export default function ThreadedChatInterface() {
           location: prospect.location || prospect.city,
           industry: prospect.industry
         }))
-        
+
         setPendingProspectData(transformedProspects)
-        
-        // Set approval session
+
+        // Create campaign with pending_approval status
+        const campaignName = result.session.dataset_name || file.name.replace('.csv', '')
+        const campaignResponse = await fetch('/api/campaigns', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            workspace_id: currentThread.workspace_id || 'default',
+            name: campaignName,
+            description: `CSV Upload: ${file.name}`,
+            campaign_type: 'linkedin_only',
+            status: 'pending_approval'
+          })
+        })
+
+        let campaign_id = null
+        if (campaignResponse.ok) {
+          const campaignResult = await campaignResponse.json()
+          campaign_id = campaignResult.campaign?.id
+        }
+
+        // Set approval session with campaign data
         setApprovalSession({
           session_id: result.session_id,
-          dataset_name: result.session.dataset_name || file.name,
+          dataset_name: campaignName,
           dataset_source: 'csv_upload',
           total_count: result.session.total_count,
           data_quality_score: result.session.data_quality_score || 0.75,
           completeness_score: result.session.completeness_score || 0.8,
-          duplicate_count: result.session.duplicate_count
-        })
+          duplicate_count: result.session.duplicate_count,
+          campaign_id: campaign_id,
+          campaign_status: 'pending_approval'
+        } as any)
         
         // Show success message with validation results
         const successMessage = {
@@ -1024,8 +1048,18 @@ export default function ThreadedChatInterface() {
 
     setIsSending(true)
     try {
+      // Extract campaign name from input
+      const campaignData = parseCampaignData(input)
+      let campaignName = campaignData.campaign_data?.name
+
+      // If no campaign name found, generate one from search criteria
+      if (!campaignName) {
+        const searchCriteria = parseSearchCriteria(input)
+        campaignName = `${searchCriteria.jobTitle || 'Prospects'} Search ${new Date().toLocaleDateString()}`
+      }
+
       const searchCriteria = parseSearchCriteria(input)
-      
+
       const response = await fetch('/api/sam/prospect-intelligence', {
         method: 'POST',
         headers: {
@@ -1045,8 +1079,31 @@ export default function ThreadedChatInterface() {
       })
 
       const result = await response.json()
-      
+
       if (result.success && result.data.prospects) {
+        // Create campaign with pending_approval status
+        const campaignResponse = await fetch('/api/campaigns', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            workspace_id: currentThread.workspace_id || 'default',
+            name: campaignName,
+            description: `Search: ${input}`,
+            campaign_type: 'linkedin_only',
+            status: 'pending_approval'
+          })
+        })
+
+        let campaign_id = null
+        let createdCampaign = null
+        if (campaignResponse.ok) {
+          const campaignResult = await campaignResponse.json()
+          createdCampaign = campaignResult.campaign
+          campaign_id = createdCampaign?.id
+        }
+
         // Store prospect data for approval
         const transformedProspects = result.data.prospects.map((prospect: any, index: number) => ({
           id: `prospect-${Date.now()}-${index}`,
@@ -1066,16 +1123,18 @@ export default function ThreadedChatInterface() {
         }))
 
         setPendingProspectData(transformedProspects)
-        
-        // Set approval session info
+
+        // Set approval session info with campaign data
         setApprovalSession({
-          session_id: `linkedin_${Date.now()}`,
-          dataset_name: 'LinkedIn Search Results',
+          session_id: campaign_id || `linkedin_${Date.now()}`,
+          dataset_name: campaignName,
           dataset_source: 'linkedin',
           total_count: transformedProspects.length,
           data_quality_score: result.metadata?.quality_score || 0.85,
-          completeness_score: result.metadata?.completeness_score || 0.9
-        })
+          completeness_score: result.metadata?.completeness_score || 0.9,
+          campaign_id: campaign_id,
+          campaign_status: 'pending_approval'
+        } as any)
         
         const userMessage = {
           id: `temp-${Date.now()}-user`,
@@ -1338,58 +1397,131 @@ export default function ThreadedChatInterface() {
     if (!currentThread) return
 
     try {
-      // Store approved data in database
-      const response = await fetch('/api/sam/approved-prospects', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          threadId: currentThread.id,
-          prospects: approvedData
-        })
-      })
+      const campaignId = (approvalSession as any)?.campaign_id
+      const campaignName = approvalSession?.dataset_name || 'New Campaign'
 
-      if (response.ok) {
-        // Create success message
+      // If we have a campaign_id, link prospects to campaign
+      if (campaignId) {
+        // Add prospects to campaign_prospects table
+        const campaignProspects = approvedData.map(prospect => ({
+          campaign_id: campaignId,
+          first_name: prospect.name?.split(' ')[0] || 'Unknown',
+          last_name: prospect.name?.split(' ').slice(1).join(' ') || '',
+          email: prospect.email,
+          company_name: prospect.company,
+          linkedin_url: prospect.linkedinUrl,
+          title: prospect.title,
+          phone: prospect.phone,
+          location: prospect.location,
+          industry: prospect.industry,
+          status: 'approved',
+          personalization_data: {
+            confidence: prospect.confidence,
+            connectionDegree: prospect.connectionDegree,
+            mutualConnections: prospect.mutualConnections,
+            source: prospect.source
+          }
+        }))
+
+        // Save prospects to campaign
+        const prospectsResponse = await fetch(`/api/campaigns/${campaignId}/prospects`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prospects: campaignProspects
+          })
+        })
+
+        // Update campaign status to 'ready'
+        if (prospectsResponse.ok) {
+          await fetch(`/api/campaigns/${campaignId}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              status: 'ready',
+              updated_at: new Date().toISOString()
+            })
+          })
+        }
+
+        // Success message with campaign context
         const successMessage = {
           id: `temp-${Date.now()}-approval`,
           role: 'assistant' as const,
-          content: `✅ Successfully approved ${approvedData.length} prospects. The data has been saved to your prospect database and is ready for outreach campaigns.
+          content: `✅ Successfully approved ${approvedData.length} prospects for **${campaignName}**!
+
+The campaign is now in your Campaign Hub with status "Ready" and the prospects have been assigned.
 
 **Next Steps:**
-• Create personalized outreach sequences
-• Set up LinkedIn automation workflows  
-• Schedule follow-up activities
-• Track engagement metrics
+• Go to Campaign Hub to review the campaign
+• Set up message templates for outreach
+• Configure LinkedIn automation settings
+• Launch the campaign when ready
 
-Would you like me to help you create an outreach strategy for these prospects?`,
+Would you like me to help you set up the outreach strategy?`,
           created_at: new Date().toISOString(),
           has_prospect_intelligence: true,
         }
 
         setMessages(prev => [...prev, successMessage])
-        
-        // Update thread with approved prospect count
-        await updateThreadContext({
-          tags: [...(currentThread.tags || []), 'approved-prospects'],
+      } else {
+        // Fallback: Store approved data without campaign linkage
+        const response = await fetch('/api/sam/approved-prospects', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            threadId: currentThread.id,
+            prospects: approvedData
+          })
         })
+
+        if (response.ok) {
+          const successMessage = {
+            id: `temp-${Date.now()}-approval`,
+            role: 'assistant' as const,
+            content: `✅ Successfully approved ${approvedData.length} prospects. The data has been saved to your prospect database and is ready for outreach campaigns.
+
+**Next Steps:**
+• Create personalized outreach sequences
+• Set up LinkedIn automation workflows
+• Schedule follow-up activities
+• Track engagement metrics
+
+Would you like me to help you create an outreach strategy for these prospects?`,
+            created_at: new Date().toISOString(),
+            has_prospect_intelligence: true,
+          }
+
+          setMessages(prev => [...prev, successMessage])
+        }
       }
+
+      // Update thread with approved prospect count
+      await updateThreadContext({
+        tags: [...(currentThread.tags || []), 'approved-prospects'],
+      })
     } catch (error) {
       console.error('Failed to save approved data:', error)
-      
+
       const errorMessage = {
         id: `temp-${Date.now()}-error`,
         role: 'assistant' as const,
         content: 'Sorry, there was an issue saving the approved prospect data. Please try again.',
         created_at: new Date().toISOString(),
       }
-      
+
       setMessages(prev => [...prev, errorMessage])
     }
 
     setShowDataApproval(false)
     setPendingProspectData([])
+    setApprovalSession(undefined)
   }
 
   const handleDataRejection = (rejectedData: any[]) => {

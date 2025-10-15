@@ -64,7 +64,7 @@ export async function PUT(
 ) {
   try {
     const supabase = createClient();
-    
+
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -90,15 +90,15 @@ export async function PUT(
 
     if (error) {
       console.error('Failed to update campaign:', error);
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Failed to update campaign',
-        details: error.message 
+        details: error.message
       }, { status: 500 });
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Campaign updated successfully',
-      campaign 
+      campaign
     });
 
   } catch (error: any) {
@@ -108,6 +108,14 @@ export async function PUT(
       { status: 500 }
     );
   }
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  // PATCH is the same as PUT for this endpoint
+  return PUT(req, { params });
 }
 
 export async function DELETE(

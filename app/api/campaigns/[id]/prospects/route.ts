@@ -96,7 +96,7 @@ export async function POST(
 ) {
   try {
     const supabase = createClient();
-    
+
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -104,13 +104,7 @@ export async function POST(
     }
 
     const campaignId = params.id;
-    const { prospect_ids } = await req.json();
-
-    if (!prospect_ids || !Array.isArray(prospect_ids)) {
-      return NextResponse.json({ 
-        error: 'prospect_ids array is required' 
-      }, { status: 400 });
-    }
+    const body = await req.json();
 
     // Verify campaign exists and user has access
     const { data: campaign, error: campaignError } = await supabase
@@ -123,59 +117,116 @@ export async function POST(
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
     }
 
-    // Verify all prospects exist in the workspace
-    const { data: existingProspects, error: prospectsError } = await supabase
-      .from('workspace_prospects')
-      .select('id')
-      .eq('workspace_id', campaign.workspace_id)
-      .in('id', prospect_ids);
+    // Handle two modes: prospect_ids (existing prospects) or prospects (new prospect data)
+    if (body.prospect_ids && Array.isArray(body.prospect_ids)) {
+      // Mode 1: Add existing workspace prospects to campaign
+      const { prospect_ids } = body;
 
-    if (prospectsError) {
-      console.error('Failed to verify prospects:', prospectsError);
-      return NextResponse.json({ 
-        error: 'Failed to verify prospects' 
-      }, { status: 500 });
-    }
+      // Verify all prospects exist in the workspace
+      const { data: existingProspects, error: prospectsError } = await supabase
+        .from('workspace_prospects')
+        .select('id')
+        .eq('workspace_id', campaign.workspace_id)
+        .in('id', prospect_ids);
 
-    const validProspectIds = existingProspects?.map(p => p.id) || [];
-    const invalidIds = prospect_ids.filter(id => !validProspectIds.includes(id));
+      if (prospectsError) {
+        console.error('Failed to verify prospects:', prospectsError);
+        return NextResponse.json({
+          error: 'Failed to verify prospects'
+        }, { status: 500 });
+      }
 
-    if (invalidIds.length > 0) {
-      return NextResponse.json({ 
-        error: 'Some prospect IDs are invalid',
-        invalid_ids: invalidIds 
+      const validProspectIds = existingProspects?.map(p => p.id) || [];
+      const invalidIds = prospect_ids.filter(id => !validProspectIds.includes(id));
+
+      if (invalidIds.length > 0) {
+        return NextResponse.json({
+          error: 'Some prospect IDs are invalid',
+          invalid_ids: invalidIds
+        }, { status: 400 });
+      }
+
+      // Add prospects to campaign (with conflict handling)
+      const campaignProspects = prospect_ids.map(prospectId => ({
+        campaign_id: campaignId,
+        prospect_id: prospectId,
+        status: 'pending',
+        created_at: new Date().toISOString()
+      }));
+
+      const { data: addedProspects, error: insertError } = await supabase
+        .from('campaign_prospects')
+        .upsert(campaignProspects, {
+          onConflict: 'campaign_id,prospect_id',
+          ignoreDuplicates: true
+        })
+        .select();
+
+      if (insertError) {
+        console.error('Failed to add prospects to campaign:', insertError);
+        return NextResponse.json({
+          error: 'Failed to add prospects to campaign',
+          details: insertError.message
+        }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        message: 'Prospects added to campaign successfully',
+        added_prospects: addedProspects?.length || 0,
+        total_requested: prospect_ids.length
+      }, { status: 201 });
+
+    } else if (body.prospects && Array.isArray(body.prospects)) {
+      // Mode 2: Create new prospects directly in campaign_prospects table
+      const { prospects } = body;
+
+      if (prospects.length === 0) {
+        return NextResponse.json({
+          error: 'prospects array cannot be empty'
+        }, { status: 400 });
+      }
+
+      // Insert prospects directly into campaign_prospects
+      const campaignProspects = prospects.map(prospect => ({
+        campaign_id: campaignId,
+        first_name: prospect.first_name || '',
+        last_name: prospect.last_name || '',
+        email: prospect.email || null,
+        company_name: prospect.company_name || null,
+        linkedin_url: prospect.linkedin_url || null,
+        title: prospect.title || null,
+        phone: prospect.phone || null,
+        location: prospect.location || null,
+        industry: prospect.industry || null,
+        status: prospect.status || 'approved',
+        personalization_data: prospect.personalization_data || {},
+        created_at: new Date().toISOString()
+      }));
+
+      const { data: addedProspects, error: insertError } = await supabase
+        .from('campaign_prospects')
+        .insert(campaignProspects)
+        .select();
+
+      if (insertError) {
+        console.error('Failed to add prospects to campaign:', insertError);
+        return NextResponse.json({
+          error: 'Failed to add prospects to campaign',
+          details: insertError.message
+        }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        message: 'Prospects created and added to campaign successfully',
+        added_prospects: addedProspects?.length || 0,
+        total_requested: prospects.length
+      }, { status: 201 });
+
+    } else {
+      return NextResponse.json({
+        error: 'Either prospect_ids or prospects array is required'
       }, { status: 400 });
     }
-
-    // Add prospects to campaign (with conflict handling)
-    const campaignProspects = prospect_ids.map(prospectId => ({
-      campaign_id: campaignId,
-      prospect_id: prospectId,
-      status: 'pending',
-      created_at: new Date().toISOString()
-    }));
-
-    const { data: addedProspects, error: insertError } = await supabase
-      .from('campaign_prospects')
-      .upsert(campaignProspects, { 
-        onConflict: 'campaign_id,prospect_id',
-        ignoreDuplicates: true 
-      })
-      .select();
-
-    if (insertError) {
-      console.error('Failed to add prospects to campaign:', insertError);
-      return NextResponse.json({ 
-        error: 'Failed to add prospects to campaign',
-        details: insertError.message 
-      }, { status: 500 });
-    }
-
-    return NextResponse.json({ 
-      message: 'Prospects added to campaign successfully',
-      added_prospects: addedProspects?.length || 0,
-      total_requested: prospect_ids.length
-    }, { status: 201 });
 
   } catch (error: any) {
     console.error('Add prospects to campaign error:', error);
