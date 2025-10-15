@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { BarChart, TrendingUp, TrendingDown, AlertCircle, Clock, FileText, Activity, Download } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 
 type DocumentAnalytics = {
   document_id: string;
@@ -44,50 +45,40 @@ type AnalyticsData = {
 export default function KnowledgeBaseAnalytics() {
   const [days, setDays] = useState(30);
   const [view, setView] = useState<'documents' | 'sections'>('documents');
-  const [loading, setLoading] = useState(false);
-  const [documentData, setDocumentData] = useState<AnalyticsData | null>(null);
-  const [sectionData, setSectionData] = useState<SectionAnalytics[]>([]);
-  const [error, setError] = useState<string>('');
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, [days, view]);
-
-  const fetchAnalytics = async () => {
-    setLoading(true);
-    setError('');
-
-    try {
+  // REACT QUERY: Fetch analytics data with automatic refetching when days or view changes
+  const { data: analyticsData, isLoading: loading, error: fetchError } = useQuery({
+    queryKey: ['knowledge-base-analytics', days, view],
+    queryFn: async () => {
       const response = await fetch(`/api/knowledge-base/analytics?days=${days}&type=${view}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch analytics');
       }
 
-      const data = await response.json();
+      return response.json();
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes (analytics can be slightly stale)
+    refetchOnWindowFocus: true,
+  });
 
-      if (view === 'documents') {
-        setDocumentData(data);
-      } else {
-        setSectionData(data.data || []);
-      }
-    } catch (err) {
-      console.error('Analytics fetch error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load analytics');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Derive documentData and sectionData from the query result
+  const documentData: AnalyticsData | null = view === 'documents' ? (analyticsData || null) : null;
+  const sectionData: SectionAnalytics[] = view === 'sections' ? (analyticsData?.data || []) : [];
+  const error = fetchError ? (fetchError instanceof Error ? fetchError.message : 'Failed to load analytics') : '';
 
-  const exportData = async (format: 'json' | 'csv' | 'markdown') => {
-    try {
+  // REACT QUERY: Mutation for exporting data
+  const exportMutation = useMutation({
+    mutationFn: async (format: 'json' | 'csv' | 'markdown') => {
       const response = await fetch(`/api/knowledge-base/export?format=${format}`);
 
       if (!response.ok) {
         throw new Error('Export failed');
       }
 
-      const blob = await response.blob();
+      return { blob: await response.blob(), format };
+    },
+    onSuccess: ({ blob, format }) => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -96,10 +87,15 @@ export default function KnowledgeBaseAnalytics() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-    } catch (err) {
+    },
+    onError: (err) => {
       console.error('Export error:', err);
       alert('Export failed. Please try again.');
     }
+  });
+
+  const exportData = (format: 'json' | 'csv' | 'markdown') => {
+    exportMutation.mutate(format);
   };
 
   if (loading) {
