@@ -2860,7 +2860,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
         </div>
       )}
 
-      <div className="max-w-6xl space-y-8">
+      <div className="w-full space-y-8">
         {/* Pending Approval Section - Shows campaigns from Data Approval */}
         {initialProspects && initialProspects.length > 0 && !showBuilder && (
           <div className="bg-gray-800 rounded-lg border border-gray-700">
