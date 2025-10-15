@@ -50,6 +50,9 @@ export default function ThreadedChatInterface() {
   const [showDataApproval, setShowDataApproval] = useState(false)
   const [pendingProspectData, setPendingProspectData] = useState<ProspectData[]>([])
   const [approvalSession, setApprovalSession] = useState<ApprovalSession | undefined>(undefined)
+  const [lastSearchResults, setLastSearchResults] = useState<{prospects: ProspectData[], session: ApprovalSession} | null>(null)
+  const [availableCampaigns, setAvailableCampaigns] = useState<any[]>([])
+  const [showCampaignSelector, setShowCampaignSelector] = useState(false)
   const [showMemorySnapshots, setShowMemorySnapshots] = useState(false)
   const [memorySnapshots, setMemorySnapshots] = useState<any[]>([])
   const [isLoadingMemory, setIsLoadingMemory] = useState(false)
@@ -67,7 +70,21 @@ export default function ThreadedChatInterface() {
   // Load threads on mount
   useEffect(() => {
     loadThreads()
+    loadAvailableCampaigns()
   }, [loadThreads])
+
+  // Load available campaigns for adding prospects
+  const loadAvailableCampaigns = async () => {
+    try {
+      const response = await fetch('/api/campaigns?status=pending_approval,ready,draft')
+      if (response.ok) {
+        const data = await response.json()
+        setAvailableCampaigns(data.campaigns || [])
+      }
+    } catch (error) {
+      console.error('Failed to load campaigns:', error)
+    }
+  }
 
   // Auto-resume most recent conversation after threads load
   useEffect(() => {
@@ -394,8 +411,6 @@ export default function ThreadedChatInterface() {
           industry: prospect.industry
         }))
 
-        setPendingProspectData(transformedProspects)
-
         // Create campaign with pending_approval status
         const campaignName = result.session.dataset_name || file.name.replace('.csv', '')
         const campaignResponse = await fetch('/api/campaigns', {
@@ -418,8 +433,8 @@ export default function ThreadedChatInterface() {
           campaign_id = campaignResult.campaign?.id
         }
 
-        // Set approval session with campaign data
-        setApprovalSession({
+        // Store as last search results
+        const newSession = {
           session_id: result.session_id,
           dataset_name: campaignName,
           dataset_source: 'csv_upload',
@@ -429,13 +444,27 @@ export default function ThreadedChatInterface() {
           duplicate_count: result.session.duplicate_count,
           campaign_id: campaign_id,
           campaign_status: 'pending_approval'
-        } as any)
-        
+        } as any
+
+        setLastSearchResults({
+          prospects: transformedProspects,
+          session: newSession
+        })
+
+        // Add to pending prospects (accumulate if there are existing ones)
+        setPendingProspectData(prev => [...prev, ...transformedProspects])
+
+        // Update approval session
+        setApprovalSession(newSession)
+
         // Show success message with validation results
+        const totalProspects = pendingProspectData.length + transformedProspects.length
         const successMessage = {
           id: `temp-${Date.now()}-success`,
           role: 'assistant' as const,
-          content: `✅ **CSV Upload Complete!**\n\n📊 **Validation Results:**\n• Total Records: ${result.validation_results.total_records}\n• Valid Records: ${result.validation_results.valid_records}\n• Invalid Records: ${result.validation_results.invalid_records}\n• Duplicates: ${result.validation_results.duplicates}\n• Quality Score: ${(result.validation_results.quality_score * 100).toFixed(0)}%\n\nClick "Review & Approve Data" below to examine the prospects and select which ones to add to your campaign.`,
+          content: pendingProspectData.length > 0
+            ? `✅ **CSV Upload Complete!**\n\n📊 **Validation Results:**\n• Total Records: ${result.validation_results.total_records}\n• Valid Records: ${result.validation_results.valid_records}\n• Invalid Records: ${result.validation_results.invalid_records}\n• Duplicates: ${result.validation_results.duplicates}\n• Quality Score: ${(result.validation_results.quality_score * 100).toFixed(0)}%\n\nYou now have **${totalProspects} prospects** in total. You can upload more CSV files or do LinkedIn searches to add more, or click "Review & Approve Data" to review all prospects.`
+            : `✅ **CSV Upload Complete!**\n\n📊 **Validation Results:**\n• Total Records: ${result.validation_results.total_records}\n• Valid Records: ${result.validation_results.valid_records}\n• Invalid Records: ${result.validation_results.invalid_records}\n• Duplicates: ${result.validation_results.duplicates}\n• Quality Score: ${(result.validation_results.quality_score * 100).toFixed(0)}%\n\nClick "Review & Approve Data" below to examine the prospects and select which ones to add to your campaign. You can also upload more CSV files or do LinkedIn searches to add more prospects before approving.`,
           created_at: new Date().toISOString(),
           has_prospect_intelligence: true,
           prospect_intelligence_data: {
@@ -1122,10 +1151,8 @@ export default function ThreadedChatInterface() {
           industry: prospect.industry
         }))
 
-        setPendingProspectData(transformedProspects)
-
-        // Set approval session info with campaign data
-        setApprovalSession({
+        // Store as last search results
+        const newSession = {
           session_id: campaign_id || `linkedin_${Date.now()}`,
           dataset_name: campaignName,
           dataset_source: 'linkedin',
@@ -1134,7 +1161,18 @@ export default function ThreadedChatInterface() {
           completeness_score: result.metadata?.completeness_score || 0.9,
           campaign_id: campaign_id,
           campaign_status: 'pending_approval'
-        } as any)
+        } as any
+
+        setLastSearchResults({
+          prospects: transformedProspects,
+          session: newSession
+        })
+
+        // Add to pending prospects (accumulate if there are existing ones)
+        setPendingProspectData(prev => [...prev, ...transformedProspects])
+
+        // Update approval session
+        setApprovalSession(newSession)
         
         const userMessage = {
           id: `temp-${Date.now()}-user`,
@@ -1143,10 +1181,13 @@ export default function ThreadedChatInterface() {
           created_at: new Date().toISOString(),
         }
 
+        const totalProspects = pendingProspectData.length + transformedProspects.length
         const assistantMessage = {
           id: `temp-${Date.now()}-assistant`,
           role: 'assistant' as const,
-          content: `Found ${transformedProspects.length} prospects matching your search criteria. Click "Review & Approve Data" below to examine the results and approve the data you want to use.`,
+          content: pendingProspectData.length > 0
+            ? `Found ${transformedProspects.length} prospects matching your search criteria. You now have **${totalProspects} prospects** in total. You can do another search to add more, or click "Review & Approve Data" below to review all prospects.`
+            : `Found ${transformedProspects.length} prospects matching your search criteria. Click "Review & Approve Data" below to examine the results and approve the data you want to use. You can also do another search to add more prospects before approving.`,
           created_at: new Date().toISOString(),
           has_prospect_intelligence: true,
           prospect_intelligence_data: result
@@ -1160,6 +1201,36 @@ export default function ThreadedChatInterface() {
     } finally {
       setIsSending(false)
     }
+  }
+
+  // View last search results
+  const viewLastSearch = () => {
+    if (lastSearchResults) {
+      const message = {
+        id: `temp-${Date.now()}-last-search`,
+        role: 'assistant' as const,
+        content: `**Last Search:** ${lastSearchResults.session.dataset_name}\n\nFound ${lastSearchResults.prospects.length} prospects in your last search. Current pending batch has ${pendingProspectData.length} prospects total.`,
+        created_at: new Date().toISOString(),
+      }
+      setMessages(prev => [...prev, message])
+      setShowDataApproval(true)
+    }
+  }
+
+  // Clear current batch and start fresh
+  const clearCurrentBatch = () => {
+    setPendingProspectData([])
+    setApprovalSession(undefined)
+    setLastSearchResults(null)
+    setShowDataApproval(false)
+
+    const message = {
+      id: `temp-${Date.now()}-cleared`,
+      role: 'assistant' as const,
+      content: `✅ Cleared current prospect batch. You can start a new search.`,
+      created_at: new Date().toISOString(),
+    }
+    setMessages(prev => [...prev, message])
   }
 
   const executeTemplateCreation = async (input: string) => {
@@ -1885,13 +1956,37 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
             {/* Chat Input */}
             <div className="flex-shrink-0 p-6 bg-gray-900 border-t border-gray-700">
               {pendingProspectData.length > 0 && (
-                <div className="mb-4 px-4">
+                <div className="mb-4 px-4 space-y-2">
+                  {/* Main approve button */}
                   <button
                     onClick={() => setShowDataApproval(true)}
                     className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                   >
                     <span>📊 Review & Approve Data ({pendingProspectData.length} prospects)</span>
                   </button>
+
+                  {/* Secondary actions */}
+                  <div className="flex gap-2">
+                    {lastSearchResults && (
+                      <button
+                        onClick={viewLastSearch}
+                        className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        👁️ Last Search ({lastSearchResults.prospects.length})
+                      </button>
+                    )}
+                    <button
+                      onClick={clearCurrentBatch}
+                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      🗑️ Clear Batch
+                    </button>
+                  </div>
+
+                  {/* Info message */}
+                  <div className="text-xs text-gray-400 text-center">
+                    💡 You can do more searches to add prospects before approving
+                  </div>
                 </div>
               )}
               
