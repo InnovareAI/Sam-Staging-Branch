@@ -1915,10 +1915,11 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
             </div>
 
             {/* Messages Area - Fixed Layout */}
-            <div 
-              ref={messagesContainerRef}
-              className="flex-1 min-h-0 overflow-y-auto p-6 flex flex-col"
-            >
+            <div className="flex-1 min-h-0 relative">
+              <div
+                ref={messagesContainerRef}
+                className="absolute inset-0 overflow-y-auto p-6 flex flex-col"
+              >
               {isLoadingMessages ? (
                 <div className="flex justify-center py-8">
                   <div className="text-gray-400">Loading messages...</div>
@@ -1972,18 +1973,19 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                   <div ref={messagesEndRef} />
                 </div>
               )}
-            </div>
+              </div>
 
-            {/* Scroll to Bottom Button */}
-            {showScrollButton && (
-              <button
-                onClick={scrollToBottom}
-                className="fixed bottom-24 right-8 bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 z-50"
-                title="Scroll to bottom"
-              >
-                <ArrowUpFromLine size={20} className="rotate-180" />
-              </button>
-            )}
+              {/* Scroll to Bottom Button */}
+              {showScrollButton && (
+                <button
+                  onClick={scrollToBottom}
+                  className="absolute bottom-4 right-4 bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 z-50"
+                  title="Scroll to bottom"
+                >
+                  <ArrowUpFromLine size={20} className="rotate-180" />
+                </button>
+              )}
+            </div>
 
             {/* Chat Input */}
             <div className="flex-shrink-0 p-6 bg-gray-900 border-t border-gray-700">
