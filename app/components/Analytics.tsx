@@ -7,50 +7,50 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
-// Dashboard-01 Style KPI Cards
-function KPIGrid({ analyticsData }: { analyticsData: any }) {
-  // Calculate aggregated metrics from analytics data
-  const totalMessages = analyticsData?.reduce((sum: number, item: any) => sum + (item.total_messages_sent || 0), 0) || 0;
-  const totalReplies = analyticsData?.reduce((sum: number, item: any) => sum + (item.messages_with_replies || 0), 0) || 0;
-  const avgResponseRate = analyticsData?.length > 0
-    ? (analyticsData.reduce((sum: number, item: any) => sum + (parseFloat(item.overall_response_rate_percent) || 0), 0) / analyticsData.length).toFixed(1)
-    : '0.0';
-  const recentMessages = analyticsData?.reduce((sum: number, item: any) => sum + (item.messages_last_30_days || 0), 0) || 0;
-  const activeCampaigns = 5; // TODO: Get from real data
+// Campaign Analytics KPI Cards
+function KPIGrid({ analyticsData, timeRange }: { analyticsData: any, timeRange: '1d' | '3d' | '7d' }) {
+  // Calculate metrics based on time range
+  const totalProspects = 847; // TODO: Get from real data filtered by timeRange
+  const totalMessages = 892; // TODO: Get from real data filtered by timeRange
+  const totalReplies = 426; // TODO: Get from real data filtered by timeRange
+  const totalInfoRequests = 196; // TODO: Get from real data filtered by timeRange
+  const totalMeetings = 71; // TODO: Get from real data filtered by timeRange
 
   const cards = [
     {
+      label: 'Total Prospects',
+      value: totalProspects.toLocaleString(),
+      sublabel: 'contacted this period',
+      icon: Users
+    },
+    {
       label: 'Total Messages Sent',
       value: totalMessages.toLocaleString(),
-      change: '+20.1% from last month',
-      changeType: 'positive' as const,
+      sublabel: 'across all campaigns',
       icon: MessageSquare
     },
     {
-      label: 'Response Rate',
-      value: `${avgResponseRate}%`,
-      change: '+4.3% from last month',
-      changeType: 'positive' as const,
-      icon: TrendingUp
+      label: 'Total Replies',
+      value: totalReplies.toLocaleString(),
+      sublabel: `${((totalReplies / totalMessages) * 100).toFixed(1)}% response rate`,
+      icon: Mail
     },
     {
-      label: 'Meetings Booked',
-      value: '23',
-      change: '+12 from last month',
-      changeType: 'positive' as const,
+      label: 'Total Info Requests',
+      value: totalInfoRequests.toLocaleString(),
+      sublabel: `${((totalInfoRequests / totalMessages) * 100).toFixed(1)}% of messages`,
+      icon: Database
+    },
+    {
+      label: 'Total Meetings Booked',
+      value: totalMeetings.toLocaleString(),
+      sublabel: `${((totalMeetings / totalMessages) * 100).toFixed(1)}% conversion`,
       icon: Calendar
-    },
-    {
-      label: 'Active Campaigns',
-      value: activeCampaigns.toString(),
-      change: '+2 since yesterday',
-      changeType: 'positive' as const,
-      icon: Activity
     },
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
       {cards.map(c => {
         const IconComponent = c.icon;
         return (
@@ -63,10 +63,8 @@ function KPIGrid({ analyticsData }: { analyticsData: any }) {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{c.value}</div>
-              <p className="text-xs text-muted-foreground">
-                <span className={c.changeType === 'positive' ? 'text-green-600' : 'text-red-600'}>
-                  {c.change}
-                </span>
+              <p className="text-xs text-muted-foreground mt-1">
+                {c.sublabel}
               </p>
             </CardContent>
           </Card>
@@ -86,7 +84,7 @@ const Analytics: React.FC = () => {
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'overall' | 'campaign' | 'time'>('overall');
   const [selectedCampaign, setSelectedCampaign] = useState<string>('all');
-  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
+  const [timeRange, setTimeRange] = useState<'1d' | '3d' | '7d'>('7d');
   const [userViewMode, setUserViewMode] = useState<'consolidated' | 'by-user'>('consolidated');
   const [selectedUser, setSelectedUser] = useState<string>('all');
 
@@ -359,229 +357,44 @@ const Analytics: React.FC = () => {
         </div>
       </div>
 
-      {/* View Mode Filters */}
+      {/* Time Period Selector */}
       <Card className="mb-6">
         <CardContent className="pt-6">
-        <div className="flex items-center gap-4 flex-wrap">
-          {/* View Mode Selector */}
-          <div className="flex items-center gap-2">
-            <Filter className="text-gray-400" size={18} />
-            <span className="text-gray-400 text-sm font-medium">View:</span>
+          <div className="flex items-center gap-4">
+            <span className="text-gray-400 text-sm font-medium">Time Period:</span>
             <div className="flex gap-2">
               <button
-                onClick={() => setViewMode('overall')}
+                onClick={() => setTimeRange('1d')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  viewMode === 'overall' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  timeRange === '1d' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                Overall
+                1 Day
               </button>
               <button
-                onClick={() => setViewMode('campaign')}
+                onClick={() => setTimeRange('3d')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  viewMode === 'campaign' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  timeRange === '3d' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                By Campaign
+                3 Days
               </button>
               <button
-                onClick={() => setViewMode('time')}
+                onClick={() => setTimeRange('7d')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  viewMode === 'time' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  timeRange === '7d' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                Time Period
+                7 Days
               </button>
             </div>
           </div>
-
-          {/* Campaign Selector (shown when viewMode is 'campaign') */}
-          {viewMode === 'campaign' && (
-            <div className="flex items-center gap-2">
-              <span className="text-gray-400 text-sm">Campaign:</span>
-              <select
-                value={selectedCampaign}
-                onChange={(e) => setSelectedCampaign(e.target.value)}
-                className="bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="all">All Campaigns</option>
-                <option value="q4-enterprise">Q4 Enterprise Outreach</option>
-                <option value="saas-founders">SaaS Founders Series</option>
-                <option value="vp-sales">VP of Sales Target List</option>
-                <option value="tech-startup">Tech Startup Warmup</option>
-              </select>
-            </div>
-          )}
-
-          {/* Time Range Selector (shown when viewMode is 'time') */}
-          {viewMode === 'time' && (
-            <div className="flex items-center gap-2">
-              <span className="text-gray-400 text-sm">Range:</span>
-              <div className="flex gap-1 bg-gray-700 rounded-lg p-1">
-                <button
-                  onClick={() => setTimeRange('7d')}
-                  className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                    timeRange === '7d' ? 'bg-purple-600 text-white' : 'text-gray-300 hover:text-white'
-                  }`}
-                >
-                  7 Days
-                </button>
-                <button
-                  onClick={() => setTimeRange('30d')}
-                  className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                    timeRange === '30d' ? 'bg-purple-600 text-white' : 'text-gray-300 hover:text-white'
-                  }`}
-                >
-                  30 Days
-                </button>
-                <button
-                  onClick={() => setTimeRange('90d')}
-                  className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                    timeRange === '90d' ? 'bg-purple-600 text-white' : 'text-gray-300 hover:text-white'
-                  }`}
-                >
-                  90 Days
-                </button>
-                <button
-                  onClick={() => setTimeRange('all')}
-                  className={`px-3 py-1.5 rounded text-sm transition-colors ${
-                    timeRange === 'all' ? 'bg-purple-600 text-white' : 'text-gray-300 hover:text-white'
-                  }`}
-                >
-                  All Time
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
         </CardContent>
       </Card>
 
       {/* KPI Grid */}
       <div className="mb-8">
-        <KPIGrid analyticsData={analyticsData} />
-      </div>
-
-      {/* Overview Area Chart - Dashboard-01 Style */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 mb-8">
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle>Overview</CardTitle>
-          </CardHeader>
-          <CardContent className="pl-2">
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={[
-                    { month: "Jan", messages: 186, replies: 32 },
-                    { month: "Feb", messages: 305, replies: 51 },
-                    { month: "Mar", messages: 237, replies: 42 },
-                    { month: "Apr", messages: 273, replies: 48 },
-                    { month: "May", messages: 309, replies: 55 },
-                    { month: "Jun", messages: 414, replies: 72 },
-                  ]}
-                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis
-                    dataKey="month"
-                    stroke="#888888"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    stroke="#888888"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `${value}`}
-                  />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="rounded-lg border bg-background p-2 shadow-sm">
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="flex flex-col">
-                                <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                  Messages
-                                </span>
-                                <span className="font-bold text-muted-foreground">
-                                  {payload[0].value}
-                                </span>
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                  Replies
-                                </span>
-                                <span className="font-bold text-muted-foreground">
-                                  {payload[1].value}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="messages"
-                    stackId="1"
-                    stroke="#8884d8"
-                    fill="#8884d8"
-                    fillOpacity={0.6}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="replies"
-                    stackId="1"
-                    stroke="#82ca9d"
-                    fill="#82ca9d"
-                    fillOpacity={0.6}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle>Top Performing Campaigns</CardTitle>
-            <CardDescription>
-              Your campaigns with the best engagement this month
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-8">
-              {[
-                { name: "Q4 Enterprise Outreach", email: "enterprise@campaign.com", amount: "47.8%" },
-                { name: "SaaS Founders Series", email: "saas@campaign.com", amount: "42.1%" },
-                { name: "VP of Sales Target", email: "vpsales@campaign.com", amount: "38.4%" },
-                { name: "Tech Startup Warmup", email: "techstartup@campaign.com", amount: "35.2%" },
-                { name: "FinTech Decision Makers", email: "fintech@campaign.com", amount: "32.9%" },
-              ].map((campaign, index) => (
-                <div key={index} className="flex items-center">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="ml-4 space-y-1">
-                    <p className="text-sm font-medium leading-none">{campaign.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {campaign.email}
-                    </p>
-                  </div>
-                  <div className="ml-auto font-medium text-green-600">
-                    +{campaign.amount}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <KPIGrid analyticsData={analyticsData} timeRange={timeRange} />
       </div>
 
       {/* Conversion Funnel Section */}
