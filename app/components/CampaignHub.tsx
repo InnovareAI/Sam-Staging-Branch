@@ -35,6 +35,8 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 // Helper function to get human-readable campaign type labels
 function getCampaignTypeLabel(type: string): string {
@@ -388,15 +390,17 @@ function CampaignList() {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {[1, 2, 3].map(i => (
-          <div key={i} className="bg-gray-800 border border-gray-700 rounded-lg p-6 animate-pulse">
-            <div className="h-6 bg-gray-600 rounded mb-4"></div>
-            <div className="h-4 bg-gray-600 rounded w-1/3 mb-4"></div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="h-8 bg-gray-600 rounded"></div>
-              <div className="h-8 bg-gray-600 rounded"></div>
-              <div className="h-8 bg-gray-600 rounded"></div>
-            </div>
-          </div>
+          <Card key={i} className="animate-pulse">
+            <CardContent className="pt-6">
+              <div className="h-6 bg-gray-600 rounded mb-4"></div>
+              <div className="h-4 bg-gray-600 rounded w-1/3 mb-4"></div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="h-8 bg-gray-600 rounded"></div>
+                <div className="h-8 bg-gray-600 rounded"></div>
+                <div className="h-8 bg-gray-600 rounded"></div>
+              </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
     );
@@ -405,75 +409,84 @@ function CampaignList() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {campaigns.map(c => (
-        <div key={c.id} className="bg-gray-800 border border-gray-700 rounded-lg p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex-1">
-              <h3 className="text-white font-semibold text-lg group-hover:text-white mb-2">{c.name}</h3>
-              <div className={`inline-flex items-center gap-2 text-xs uppercase px-3 py-1 rounded-full border ${getStatusColor(c.status)}`}>
-                {getStatusIcon(c.status)}
-                {c.status}
+        <Card
+          key={c.id}
+          className="transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+        >
+          <CardHeader>
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <CardTitle className="text-white font-semibold text-lg group-hover:text-white mb-2">
+                  {c.name}
+                </CardTitle>
+                <Badge className={`${getStatusColor(c.status)}`}>
+                  {getStatusIcon(c.status)}
+                  {c.status}
+                </Badge>
               </div>
-            </div>
-            <div className="flex gap-2 ml-4">
-              {c.status === 'active' ? (
-                <button 
-                  onClick={() => toggleCampaignStatus(c.id, c.status)}
-                  className="p-2 text-yellow-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white rounded-lg transition-colors"
-                  title="Pause campaign"
+              <div className="flex gap-2 ml-4">
+                {c.status === 'active' ? (
+                  <button
+                    onClick={() => toggleCampaignStatus(c.id, c.status)}
+                    className="p-2 text-yellow-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white rounded-lg transition-colors"
+                    title="Pause campaign"
+                  >
+                    <Pause size={16} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => toggleCampaignStatus(c.id, c.status)}
+                    className="p-2 text-green-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white rounded-lg transition-colors"
+                    title="Resume campaign"
+                  >
+                    <Play size={16} />
+                  </button>
+                )}
+                <button
+                  onClick={() => showCampaignAnalytics(c.id)}
+                  className="p-2 text-blue-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white rounded-lg transition-colors"
+                  title="View analytics"
                 >
-                  <Pause size={16} />
+                  <BarChart3 size={16} />
                 </button>
-              ) : (
-                <button 
-                  onClick={() => toggleCampaignStatus(c.id, c.status)}
-                  className="p-2 text-green-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white rounded-lg transition-colors"
-                  title="Resume campaign"
+                <button
+                  onClick={() => editCampaign(c.id)}
+                  className="p-2 text-purple-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white rounded-lg transition-colors"
+                  title="Edit campaign"
                 >
-                  <Play size={16} />
+                  <Edit size={16} />
                 </button>
-              )}
-              <button 
-                onClick={() => showCampaignAnalytics(c.id)}
-                className="p-2 text-blue-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white rounded-lg transition-colors"
-                title="View analytics"
-              >
-                <BarChart3 size={16} />
-              </button>
-              <button 
-                onClick={() => editCampaign(c.id)}
-                className="p-2 text-purple-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white rounded-lg transition-colors"
-                title="Edit campaign"
-              >
-                <Edit size={16} />
-              </button>
-            </div>
-          </div>
-          
-          {c.status !== 'draft' && (
-            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-700 group-hover:border-purple-400">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-white group-hover:text-white mb-1">{c.sent}</div>
-                <div className="text-gray-400 group-hover:text-purple-100 text-xs">Sent</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-white group-hover:text-white mb-1">{c.opened}</div>
-                <div className="text-gray-400 group-hover:text-purple-100 text-xs">Opened</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-white group-hover:text-white mb-1">{c.replied}</div>
-                <div className="text-gray-400 group-hover:text-purple-100 text-xs">Replied</div>
               </div>
             </div>
-          )}
-          
-          {c.status === 'draft' && (
-            <div className="pt-4 border-t border-gray-700 group-hover:border-purple-400">
-              <div className="text-center text-gray-400 group-hover:text-purple-100 text-sm">
-                Ready to configure and launch
+          </CardHeader>
+
+          <CardContent>
+            {c.status !== 'draft' && (
+              <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-700 group-hover:border-purple-400">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-white group-hover:text-white mb-1">{c.sent}</div>
+                  <div className="text-gray-400 group-hover:text-purple-100 text-xs">Sent</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-white group-hover:text-white mb-1">{c.opened}</div>
+                  <div className="text-gray-400 group-hover:text-purple-100 text-xs">Opened</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-white group-hover:text-white mb-1">{c.replied}</div>
+                  <div className="text-gray-400 group-hover:text-purple-100 text-xs">Replied</div>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+
+            {c.status === 'draft' && (
+              <div className="pt-4 border-t border-gray-700 group-hover:border-purple-400">
+                <div className="text-center text-gray-400 group-hover:text-purple-100 text-sm">
+                  Ready to configure and launch
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       ))}
     </div>
   );
