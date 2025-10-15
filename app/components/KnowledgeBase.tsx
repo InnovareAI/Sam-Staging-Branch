@@ -2190,79 +2190,12 @@ const KnowledgeBase: React.FC = () => {
     <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-              <Brain className="mr-3" size={32} />
-              Knowledgebase
-            </h1>
-            <p className="text-gray-400">Centralized intelligence hub for SAM's conversational AI</p>
-          </div>
-          
-          {/* Knowledgebase Completion Meter */}
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 min-w-[300px]">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white text-sm font-medium">Knowledgebase Completeness</span>
-              <span className="text-white text-lg font-bold">{completionDisplay}</span>
-            </div>
-            
-            {/* Temperature-style completion bar */}
-            <div className="relative">
-              <div className="w-full bg-gray-600 rounded-full h-4 overflow-hidden">
-                <div
-                  className="h-4 rounded-full transition-all duration-1000 ease-out"
-                  style={{
-                    width: completionWidth,
-                    background: 'linear-gradient(90deg, #3B82F6 0%, #10B981 50%, #F59E0B 75%, #EF4444 100%)'
-                  }}
-                ></div>
-              </div>
-              
-              {/* Temperature markers */}
-              <div className="absolute -bottom-5 w-full flex justify-between text-xs text-gray-400">
-                <span>0%</span>
-                <span>25%</span>
-                <span>50%</span>
-                <span>75%</span>
-                <span>100%</span>
-              </div>
-            </div>
-            
-            <div className="mt-6 flex items-center justify-between text-xs">
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-1"></div>
-                  <span className="text-gray-300">Basic</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
-                  <span className="text-gray-300">Good</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full mr-1"></div>
-                  <span className="text-gray-300">Excellent</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-2 h-2 bg-red-500 rounded-full mr-1"></div>
-                  <span className="text-gray-300">Expert</span>
-                </div>
-              </div>
-            </div>
-            
-            {!isKnowledgeLoading && (
-              <div className="text-xs text-gray-400 mt-3 space-y-1">
-                <p className="font-medium text-gray-300">Score Breakdown:</p>
-                <p>• Critical Sections: {Math.round(criticalScore)}/60% (Products, ICP, Messaging, Pricing)</p>
-                <p>• Important Sections: {Math.round(importantScore)}/30% (Objections, Success Stories, Competition)</p>
-                <p>• Supporting Sections: {Math.round(supportingScore)}/10% (Company, Personas, Compliance, etc.)</p>
-              </div>
-            )}
-            {isKnowledgeLoading && (
-              <p className="text-xs text-gray-400 mt-2">
-                Calculating coverage based on critical sales enablement content...
-              </p>
-            )}
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
+            <Brain className="mr-3" size={32} />
+            Knowledgebase
+          </h1>
+          <p className="text-gray-400">Centralized intelligence hub for SAM's conversational AI</p>
         </div>
       </div>
 
@@ -2271,67 +2204,7 @@ const KnowledgeBase: React.FC = () => {
       <div className="max-w-7xl">
         {activeSection === 'overview' && (
           <div className="space-y-6">
-            {/* Row 1: KB Completeness and KB Health */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* KB Completeness */}
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white text-sm font-medium">KB Completeness</span>
-                  <span className="text-white text-lg font-bold">{completionDisplay}</span>
-                </div>
-                <div className="relative">
-                  <div className="w-full bg-gray-600 rounded-full h-4 overflow-hidden">
-                    <div
-                      className="h-4 rounded-full transition-all duration-1000 ease-out"
-                      style={{
-                        width: completionWidth,
-                        background: 'linear-gradient(90deg, #3B82F6 0%, #10B981 50%, #F59E0B 75%, #EF4444 100%)'
-                      }}
-                    ></div>
-                  </div>
-                </div>
-                {!isKnowledgeLoading && (
-                  <div className="text-xs text-gray-400 mt-3">
-                    <p>Critical: {Math.round(criticalScore)}% • Important: {Math.round(importantScore)}% • Supporting: {Math.round(supportingScore)}%</p>
-                  </div>
-                )}
-              </div>
-
-              {/* KB Health */}
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white text-sm font-medium">KB Health</span>
-                  <Activity className="text-green-400" size={24} />
-                </div>
-                <p className="text-white text-2xl font-bold">Excellent</p>
-                <p className="text-green-400 text-xs mt-2">{documents.length} docs across {[...new Set(documents.map(d => d.section))].length} sections</p>
-              </div>
-            </div>
-
-            {/* Row 2: Quick Actions */}
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-              <h3 className="text-white text-lg font-semibold mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                {sections.slice(1, 17).map((section) => {
-                  const IconComponent = section.icon;
-                  return (
-                    <button
-                      key={section.id}
-                      onClick={() => setActiveSection(section.id)}
-                      className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-left transition-all hover:bg-purple-600 hover:border-purple-500 group cursor-pointer"
-                    >
-                      <div className="flex items-center mb-2">
-                        <IconComponent className="text-blue-400 mr-2 group-hover:scale-110 transition-transform" size={18} />
-                        <span className="text-white text-sm font-medium">{section.label}</span>
-                      </div>
-                      <p className="text-gray-400 text-xs">{section.description}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Row 3: Total Documents, ICP Profiles, KB Completion, SAM Insights */}
+            {/* Knowledgebase Status Dashboard */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Total Documents */}
               <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
@@ -2365,25 +2238,69 @@ const KnowledgeBase: React.FC = () => {
                 </p>
               </div>
 
-              {/* Knowledgebase Completion */}
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-400 text-sm">KB Completion</p>
-                    <p className="text-white text-2xl font-bold">{completionDisplay}</p>
+              {/* Knowledgebase Completeness Meter */}
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 col-span-2">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white text-sm font-medium">Knowledgebase Completeness</span>
+                  <span className="text-white text-lg font-bold">{completionDisplay}</span>
+                </div>
+
+                {/* Temperature-style completion bar */}
+                <div className="relative mb-6">
+                  <div className="w-full bg-gray-600 rounded-full h-4 overflow-hidden">
+                    <div
+                      className="h-4 rounded-full transition-all duration-1000 ease-out"
+                      style={{
+                        width: completionWidth,
+                        background: 'linear-gradient(90deg, #3B82F6 0%, #10B981 50%, #F59E0B 75%, #EF4444 100%)'
+                      }}
+                    ></div>
                   </div>
-                  <BarChart className="text-green-400" size={24} />
+
+                  {/* Temperature markers */}
+                  <div className="absolute -bottom-5 w-full flex justify-between text-xs text-gray-400">
+                    <span>0%</span>
+                    <span>25%</span>
+                    <span>50%</span>
+                    <span>75%</span>
+                    <span>100%</span>
+                  </div>
                 </div>
-                <div className="text-xs mt-2 space-y-1">
-                  {isKnowledgeLoading ? (
-                    <p className="text-yellow-400">Calculating coverage…</p>
-                  ) : (
-                    <>
-                      <p className="text-green-400">Critical: {Math.round(criticalScore)}% • Important: {Math.round(importantScore)}%</p>
-                      <p className="text-gray-400">{documents.length} docs across {[...new Set(documents.map(d => d.section))].length} sections</p>
-                    </>
-                  )}
+
+                <div className="mt-6 flex items-center justify-between text-xs">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mr-1"></div>
+                      <span className="text-gray-300">Basic</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
+                      <span className="text-gray-300">Good</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full mr-1"></div>
+                      <span className="text-gray-300">Excellent</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-red-500 rounded-full mr-1"></div>
+                      <span className="text-gray-300">Expert</span>
+                    </div>
+                  </div>
                 </div>
+
+                {!isKnowledgeLoading && (
+                  <div className="text-xs text-gray-400 mt-3 space-y-1">
+                    <p className="font-medium text-gray-300">Score Breakdown:</p>
+                    <p>• Critical Sections: {Math.round(criticalScore)}/60% (Products, ICP, Messaging, Pricing)</p>
+                    <p>• Important Sections: {Math.round(importantScore)}/30% (Objections, Success Stories, Competition)</p>
+                    <p>• Supporting Sections: {Math.round(supportingScore)}/10% (Company, Personas, Compliance, etc.)</p>
+                  </div>
+                )}
+                {isKnowledgeLoading && (
+                  <p className="text-xs text-gray-400 mt-2">
+                    Calculating coverage based on critical sales enablement content...
+                  </p>
+                )}
               </div>
 
               {/* SAM Conversations */}
