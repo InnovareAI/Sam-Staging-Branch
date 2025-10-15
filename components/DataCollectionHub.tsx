@@ -226,6 +226,9 @@ export default function DataCollectionHub({
   const [selectedProspectIds, setSelectedProspectIds] = useState<Set<string>>(new Set())
   const [quickFilter, setQuickFilter] = useState<string>('all') // 'all', 'high-quality', 'has-email', '1st-degree', etc.
 
+  // Dismiss-based approval state
+  const [dismissedProspectIds, setDismissedProspectIds] = useState<Set<string>>(new Set())
+
   // ProspectSearchChat integration
   const [searchJobId, setSearchJobId] = useState<string | null>(null)
   const [searchProspects, setSearchProspects] = useState<any[]>([])
@@ -960,6 +963,83 @@ export default function DataCollectionHub({
     }
   }
 
+  // Dismiss-based approval handlers
+  const dismissProspect = (prospectId: string) => {
+    setDismissedProspectIds(prev => {
+      const newSet = new Set(prev)
+      newSet.add(prospectId)
+      return newSet
+    })
+  }
+
+  const undoDismiss = (prospectId: string) => {
+    setDismissedProspectIds(prev => {
+      const newSet = new Set(prev)
+      newSet.delete(prospectId)
+      return newSet
+    })
+  }
+
+  const clearAllDismissals = () => {
+    setDismissedProspectIds(new Set())
+    toastSuccess('All dismissals cleared')
+  }
+
+  const handleApproveAllNonDismissed = async () => {
+    const nonDismissed = filteredProspects.filter(p => !dismissedProspectIds.has(p.id))
+    const dismissed = filteredProspects.filter(p => dismissedProspectIds.has(p.id))
+
+    // Approve non-dismissed
+    setProspectData(prev => prev.map(p =>
+      nonDismissed.find(nd => nd.id === p.id) ? { ...p, approvalStatus: 'approved' as const } : p
+    ))
+
+    // Reject dismissed
+    setProspectData(prev => prev.map(p =>
+      dismissed.find(d => d.id === p.id) ? { ...p, approvalStatus: 'rejected' as const } : p
+    ))
+
+    toastSuccess(`Approved ${nonDismissed.length} prospects, rejected ${dismissed.length}`)
+    setDismissedProspectIds(new Set())
+
+    // Save all decisions to database
+    for (const prospect of nonDismissed) {
+      if (prospect.sessionId) {
+        try {
+          await fetch('/api/prospect-approval/decisions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              session_id: prospect.sessionId,
+              prospect_id: prospect.id,
+              decision: 'approved'
+            })
+          })
+        } catch (error) {
+          console.error('Error approving prospect:', prospect.id, error)
+        }
+      }
+    }
+
+    for (const prospect of dismissed) {
+      if (prospect.sessionId) {
+        try {
+          await fetch('/api/prospect-approval/decisions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              session_id: prospect.sessionId,
+              prospect_id: prospect.id,
+              decision: 'rejected'
+            })
+          })
+        } catch (error) {
+          console.error('Error rejecting prospect:', prospect.id, error)
+        }
+      }
+    }
+  }
+
   // Proceed to Campaign Hub with approved prospects
   const handleProceedToCampaignHub = () => {
     const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved')
@@ -1070,11 +1150,28 @@ export default function DataCollectionHub({
             <h2 className="text-xl font-semibold text-white">Prospect Approval Dashboard</h2>
           </div>
           <div className="flex items-center space-x-4">
-            <div className="text-sm text-gray-400">
-              <span className="text-green-400 font-semibold">{approvedCount}</span> approved • 
-              <span className="text-red-400 font-semibold">{rejectedCount}</span> rejected • 
-              <span className="text-yellow-400 font-semibold">{pendingCount}</span> pending
+            {/* Badge Counters */}
+            <div className="flex items-center space-x-2">
+              <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm font-medium border border-green-500/40">
+                {filteredProspects.filter(p => !dismissedProspectIds.has(p.id) && p.approvalStatus === 'pending').length} to approve
+              </span>
+              {dismissedProspectIds.size > 0 && (
+                <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-sm font-medium border border-red-500/40">
+                  {dismissedProspectIds.size} dismissed
+                </span>
+              )}
             </div>
+
+            {/* Undo All Dismissals Button */}
+            {dismissedProspectIds.size > 0 && (
+              <button
+                onClick={clearAllDismissals}
+                className="px-3 py-1.5 bg-surface-highlight hover:bg-surface border border-border/60 text-gray-300 rounded-lg transition-colors text-sm font-medium"
+              >
+                Undo All Dismissals
+              </button>
+            )}
+
             <button
               onClick={downloadApprovedCSV}
               disabled={approvedCount === 0}
@@ -1084,6 +1181,17 @@ export default function DataCollectionHub({
               <Download className="w-4 h-4" />
               <span>Download Approved</span>
             </button>
+
+            {/* Approve All Button */}
+            <button
+              onClick={handleApproveAllNonDismissed}
+              disabled={filteredProspects.filter(p => !dismissedProspectIds.has(p.id) && p.approvalStatus === 'pending').length === 0}
+              className="flex items-center space-x-2 bg-green-500/20 hover:bg-green-500/30 disabled:bg-surface-highlight disabled:cursor-not-allowed text-green-400 disabled:text-muted-foreground px-6 py-2 rounded-lg transition-colors font-semibold border border-green-500/40 disabled:border-border/60"
+            >
+              <Check className="w-4 h-4" />
+              <span>Approve All ({filteredProspects.filter(p => !dismissedProspectIds.has(p.id) && p.approvalStatus === 'pending').length})</span>
+            </button>
+
             <button
               onClick={handleProceedToCampaignHub}
               disabled={approvedCount === 0}
@@ -1332,7 +1440,13 @@ export default function DataCollectionHub({
               const qualityBadge = getQualityBadge(prospect.qualityScore ?? 0)
               return (
               <React.Fragment key={prospect.id}>
-                <tr className={`hover:bg-gray-750 transition-colors ${selectedProspectIds.has(prospect.id) ? 'bg-purple-600/10' : ''}`}>
+                <tr className={`hover:bg-gray-750 transition-colors ${
+                  dismissedProspectIds.has(prospect.id)
+                    ? 'bg-red-500/5 opacity-50'
+                    : selectedProspectIds.has(prospect.id)
+                    ? 'bg-purple-600/10'
+                    : ''
+                }`}>
                   <td className="px-4 py-3 text-center">
                     <Checkbox
                       checked={selectedProspectIds.has(prospect.id)}
@@ -1369,17 +1483,31 @@ export default function DataCollectionHub({
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center space-x-2">
-                      {prospect.approvalStatus === 'rejected' ? (
+                      {prospect.approvalStatus === 'approved' ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-600 text-green-100">
+                          approved
+                        </span>
+                      ) : prospect.approvalStatus === 'rejected' ? (
                         <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-600 text-red-100">
                           rejected
                         </span>
+                      ) : dismissedProspectIds.has(prospect.id) ? (
+                        <button
+                          onClick={() => undoDismiss(prospect.id)}
+                          className="px-3 py-1.5 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-colors font-medium border border-green-500/40 text-sm"
+                          title="Undo dismissal"
+                        >
+                          <Check className="w-3 h-3 inline mr-1" />
+                          Undo
+                        </button>
                       ) : (
                         <button
-                          onClick={() => handleReject(prospect.id)}
-                          className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
-                          title="Reject (all prospects approved by default)"
+                          onClick={() => dismissProspect(prospect.id)}
+                          className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors font-medium border border-red-500/40 text-sm"
+                          title="Dismiss this prospect"
                         >
-                          <X className="w-4 h-4" />
+                          <X className="w-3 h-3 inline mr-1" />
+                          Dismiss
                         </button>
                       )}
                     </div>
