@@ -16,7 +16,6 @@ import LLMConfigModal from '@/components/LLMConfigModal';
 import { ChannelSelectionModal } from '@/components/campaign/ChannelSelectionModal';
 import EmailProvidersModal from '@/app/components/EmailProvidersModal';
 import KnowledgeBase from '@/app/components/KnowledgeBase';
-import LeadPipeline from '@/app/components/LeadPipeline';
 import Analytics from '@/app/components/Analytics';
 import AuditTrail from '@/app/components/AuditTrail';
 import DataCollectionHub from '@/components/DataCollectionHub';
@@ -1224,12 +1223,6 @@ export default function Page() {
       label: 'Campaign Hub',
       description: 'Plan multi-channel outreach with Sam',
       icon: Megaphone,
-    },
-    {
-      id: 'pipeline',
-      label: 'Lead Pipeline',
-      description: 'Track momentum across stages and owners',
-      icon: TrendingUp,
     },
     {
       id: 'analytics',
@@ -2778,8 +2771,6 @@ export default function Page() {
               )}
             </div>
           </div>
-        ) : activeMenuItem === 'pipeline' ? (
-          <LeadPipeline />
         ) : activeMenuItem === 'analytics' ? (
           <Analytics />
         ) : activeMenuItem === 'audit' ? (
