@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, Mail, Linkedin, MessageSquare, Users, Calendar, Target, Eye, Database, Filter, Clock } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 // Enhanced KPI Grid Component with real-time data
 function KPIGrid({ analyticsData }: { analyticsData: any }) {
@@ -47,13 +49,15 @@ function KPIGrid({ analyticsData }: { analyticsData: any }) {
       {cards.map(c => {
         const IconComponent = c.icon;
         return (
-          <div key={c.label} className="p-6 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-750 transition-colors">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-xs uppercase text-gray-400">{c.label}</div>
+          <Card key={c.label} className="hover:bg-accent/50 transition-colors">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs uppercase text-muted-foreground font-medium">{c.label}</CardTitle>
               <IconComponent className={`w-4 h-4 ${c.color}`} />
-            </div>
-            <div className="text-3xl font-semibold text-white">{c.value}</div>
-          </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{c.value}</div>
+            </CardContent>
+          </Card>
         );
       })}
     </div>
@@ -68,7 +72,10 @@ const Analytics: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [demoMode, setDemoMode] = useState(true);
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
-  
+  const [viewMode, setViewMode] = useState<'overall' | 'campaign' | 'time'>('overall');
+  const [selectedCampaign, setSelectedCampaign] = useState<string>('all');
+  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
+
   const supabase = createClientComponentClient();
 
   // Get current workspace on component mount
@@ -279,10 +286,6 @@ const Analytics: React.FC = () => {
     );
   }
 
-  const [viewMode, setViewMode] = useState<'overall' | 'campaign' | 'time'>('overall');
-  const [selectedCampaign, setSelectedCampaign] = useState<string>('all');
-  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
-
   return (
     <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
       {/* Header with Mode Toggle */}
@@ -299,7 +302,8 @@ const Analytics: React.FC = () => {
       </div>
 
       {/* View Mode Filters */}
-      <div className="mb-6 bg-gray-800 border border-gray-700 rounded-lg p-4">
+      <Card className="mb-6">
+        <CardContent className="pt-6">
         <div className="flex items-center gap-4 flex-wrap">
           {/* View Mode Selector */}
           <div className="flex items-center gap-2">
@@ -392,7 +396,8 @@ const Analytics: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* KPI Grid */}
       <div className="mb-8">
@@ -400,11 +405,14 @@ const Analytics: React.FC = () => {
       </div>
 
       {/* Conversion Funnel Section */}
-      <div className="mb-8 bg-gray-800 border border-gray-700 rounded-lg p-6">
-        <h2 className="text-xl font-semibold text-white mb-4 flex items-center">
-          <Target className="mr-2" size={20} />
-          Conversion Funnel
-        </h2>
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center text-xl">
+            <Target className="mr-2" size={20} />
+            Conversion Funnel
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
         <div className="flex items-center gap-2 mb-6">
           {/* Sent */}
           <div className="flex-1">
@@ -468,35 +476,42 @@ const Analytics: React.FC = () => {
         </div>
 
         {/* Reply Quality & Time Metrics */}
-        <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-700">
-          <div className="bg-gray-750 border border-gray-600 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-400 text-sm">Avg Reply Time</span>
-              <Clock className="text-blue-400" size={18} />
-            </div>
-            <div className="text-2xl font-bold text-white">4.2h</div>
-            <div className="text-xs text-green-400 mt-1">↓ 15% vs last month</div>
-          </div>
+        <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t">
+          <Card className="bg-accent/30">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-muted-foreground text-sm">Avg Reply Time</span>
+                <Clock className="text-blue-400" size={18} />
+              </div>
+              <div className="text-2xl font-bold">4.2h</div>
+              <div className="text-xs text-green-400 mt-1">↓ 15% vs last month</div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-gray-750 border border-gray-600 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-400 text-sm">Reply Quality</span>
-              <TrendingUp className="text-purple-400" size={18} />
-            </div>
-            <div className="text-2xl font-bold text-white">8.4/10</div>
-            <div className="text-xs text-green-400 mt-1">↑ 0.3 vs last month</div>
-          </div>
+          <Card className="bg-accent/30">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-muted-foreground text-sm">Reply Quality</span>
+                <TrendingUp className="text-purple-400" size={18} />
+              </div>
+              <div className="text-2xl font-bold">8.4/10</div>
+              <div className="text-xs text-green-400 mt-1">↑ 0.3 vs last month</div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-gray-750 border border-gray-600 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-400 text-sm">Meeting-to-Close Rate</span>
-              <Target className="text-green-400" size={18} />
-            </div>
-            <div className="text-2xl font-bold text-white">21.7%</div>
-            <div className="text-xs text-gray-400 mt-1">5 of 23 meetings</div>
-          </div>
+          <Card className="bg-accent/30">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-muted-foreground text-sm">Meeting-to-Close Rate</span>
+                <Target className="text-green-400" size={18} />
+              </div>
+              <div className="text-2xl font-bold">21.7%</div>
+              <div className="text-xs text-muted-foreground mt-1">5 of 23 meetings</div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Chart Views Section */}
       <div className="mb-8">
