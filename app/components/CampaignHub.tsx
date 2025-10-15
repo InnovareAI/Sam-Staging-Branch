@@ -1823,7 +1823,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
   const [showFullFeatures, setShowFullFeatures] = useState(false);
   const [showApprovalScreen, setShowApprovalScreen] = useState(false);
   const [campaignDataForApproval, setCampaignDataForApproval] = useState<any>(null);
-  const [isChatMinimized, setIsChatMinimized] = useState(false);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
   // Auto-open pending approvals toggle (stored in localStorage)
   const [autoOpenApprovals, setAutoOpenApprovals] = useState(() => {
@@ -2761,29 +2761,37 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
   const campaignName = initialProspects?.[0]?.campaignTag || 'New Campaign';
 
   return (
-    <div className="grid grid-cols-12 gap-4 h-full bg-gray-900 p-6">
-      {/* Left: Campaign Assistant (4 columns - 33%, hidden when minimized) */}
-      {!isChatMinimized && (
-        <div className="col-span-4 h-full">
-          <CampaignAssistantChat
-            isMinimized={isChatMinimized}
-            onMinimizeChange={setIsChatMinimized}
-            onCampaignCreated={onCampaignCreated}
+    <div className="h-full bg-gray-900 p-6">
+      {/* Campaign Assistant Modal */}
+      <CampaignAssistantChat
+        isOpen={isAssistantOpen}
+        onClose={() => setIsAssistantOpen(false)}
+        onCampaignCreated={onCampaignCreated}
+      />
+
+      {/* Floating Assistant Button */}
+      {!isAssistantOpen && (
+        <button
+          onClick={() => setIsAssistantOpen(true)}
+          className="fixed bottom-6 right-6 z-40 group relative w-16 h-16 rounded-full transition-transform hover:scale-110 active:scale-95 shadow-2xl"
+          title="Campaign Assistant"
+        >
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 animate-pulse" />
+          <div className="absolute inset-[2px] rounded-full bg-gray-900" />
+          <img
+            src="/SAM.jpg"
+            alt="SAM AI"
+            className="relative w-14 h-14 rounded-full object-cover z-10"
+            style={{ objectPosition: 'center 30%' }}
           />
-        </div>
+          <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 px-3 py-1 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-gray-700">
+            Campaign Assistant
+          </div>
+        </button>
       )}
 
-      {/* Campaign Assistant minimized bubble (shown when minimized) */}
-      {isChatMinimized && (
-        <CampaignAssistantChat
-          isMinimized={isChatMinimized}
-          onMinimizeChange={setIsChatMinimized}
-          onCampaignCreated={onCampaignCreated}
-        />
-      )}
-
-      {/* Right: Main Campaign Hub Content (8 columns normally, 12 when chat minimized) */}
-      <div className={`${isChatMinimized ? 'col-span-12' : 'col-span-8'} h-full overflow-y-auto`}>
+      {/* Main Campaign Hub Content - Full Width */}
+      <div className="h-full overflow-y-auto">
       {/* Header - Different for auto-create mode */}
       {isAutoCreateMode ? (
         <div className="mb-8">

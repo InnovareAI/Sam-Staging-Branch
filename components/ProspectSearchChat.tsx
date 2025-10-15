@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Minimize2, MessageCircle } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -14,21 +14,21 @@ interface Message {
 interface ProspectSearchChatProps {
   onSearchTriggered?: (jobId: string, criteria: any) => void;
   onProspectsReceived?: (prospects: any[]) => void;
-  isMinimized?: boolean;
-  onMinimizeChange?: (minimized: boolean) => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 export default function ProspectSearchChat({
   onSearchTriggered,
   onProspectsReceived,
-  isMinimized: externalIsMinimized,
-  onMinimizeChange
+  isOpen,
+  onClose
 }: ProspectSearchChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'assistant',
-      content: "You don't need to jump back to the main window. Just chat with me here about your current search, updates, or new searches. You can minimize me for a distraction free experience.",
+      content: "You don't need to jump back to the main window. Just chat with me here about your current search, updates, or new searches. You can close me for a distraction free experience.",
       timestamp: new Date()
     }
   ]);
@@ -36,30 +36,7 @@ export default function ProspectSearchChat({
   const [isLoading, setIsLoading] = useState(false);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
-  const [internalIsMinimized, setInternalIsMinimized] = useState(() => {
-    // Load minimized state from localStorage (sticky across reloads)
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('prospecting_assistant_minimized')
-      return saved === 'true'
-    }
-    return false
-  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Use external state if provided, otherwise use internal state
-  const isMinimized = externalIsMinimized !== undefined ? externalIsMinimized : internalIsMinimized;
-  const setIsMinimized = (value: boolean) => {
-    // Save to localStorage (sticky across reloads)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('prospecting_assistant_minimized', value.toString())
-    }
-
-    if (onMinimizeChange) {
-      onMinimizeChange(value);
-    } else {
-      setInternalIsMinimized(value);
-    }
-  };
 
   const scrollToBottom = () => {
     // Use setTimeout to ensure DOM is updated before scrolling
@@ -80,10 +57,12 @@ export default function ProspectSearchChat({
     }
   }, [progress]);
 
-  // Auto-scroll on initial mount (when chat opens)
+  // Auto-scroll when modal opens
   useEffect(() => {
-    scrollToBottom();
-  }, []);
+    if (isOpen) {
+      scrollToBottom();
+    }
+  }, [isOpen]);
 
   // Subscribe to job progress
   useEffect(() => {
@@ -183,7 +162,7 @@ export default function ProspectSearchChat({
 
     // Extract connection degree - REQUIRED, must clarify if not specified
     let connectionDegree: string | null = null;
-    if (lowerInput.includes('1st degree') || lowerInput.includes('first degree') || 
+    if (lowerInput.includes('1st degree') || lowerInput.includes('first degree') ||
         lowerInput.includes('1st connection') || lowerInput.includes('first connection') ||
         lowerInput.includes('my connections') || lowerInput.includes('direct connection')) {
       connectionDegree = '1st';
@@ -258,7 +237,7 @@ export default function ProspectSearchChat({
       if (data.success && data.prospects) {
         // Simple endpoint returns results immediately
         onProspectsReceived?.(data.prospects);
-        
+
         addMessage({
           role: 'assistant',
           content: `✅ Found ${data.count} prospects! They've been added to the approval table. The campaign "${data.session_id ? data.session_id.substring(0, 8) : 'New Search'}" is ready for review in the Data Approval tab.\n\nWant to search for more prospects?`
@@ -287,133 +266,110 @@ export default function ProspectSearchChat({
     }
   };
 
-  // Minimized bubble view
-  if (isMinimized) {
-    return (
-      <div className="fixed bottom-6 left-6 z-50">
-        <button
-          onClick={() => setIsMinimized(false)}
-          className="group relative flex items-center justify-center w-16 h-16 rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all duration-300 hover:scale-110"
-          title="Expand Prospect Search Chat"
-        >
-          {/* Pulsating border ring */}
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 animate-pulse" />
-          <div className="absolute inset-[2px] rounded-full bg-gray-900" />
-
-          {/* SAM image */}
-          <img
-            src="/SAM.jpg"
-            alt="SAM AI"
-            className="relative w-14 h-14 rounded-full object-cover z-10"
-            style={{ objectPosition: 'center 30%' }}
-          />
-
-          {/* Notification badge if there are new messages or progress */}
-          {(progress || isLoading) && (
-            <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center z-20">
-              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-            </div>
-          )}
-          {/* Tooltip */}
-          <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 px-3 py-1 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-            Click to open chat
-          </div>
-        </button>
-      </div>
-    );
-  }
+  if (!isOpen) return null;
 
   return (
-    <div className="flex flex-col h-full bg-gray-900 border border-gray-700 rounded-lg">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-white">Prospecting Assistant</h3>
-          <p className="text-sm text-gray-400">Ask me to find or refine prospects - I'll handle the rest</p>
-        </div>
-        <button
-          onClick={() => setIsMinimized(true)}
-          className="p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
-          title="Minimize chat"
-        >
-          <Minimize2 size={18} />
-        </button>
-      </div>
+    <>
+      {/* Modal Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/50 z-50"
+        onClick={onClose}
+      />
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div
-              className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                message.role === 'user'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-800 text-gray-100 border border-gray-700'
-              }`}
+      {/* Modal Content */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-4">
+        <div className="w-full max-w-2xl max-h-[85vh] flex flex-col bg-gray-900 border border-gray-700 rounded-lg shadow-2xl pointer-events-auto">
+          {/* Header */}
+          <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-white">Prospecting Assistant</h3>
+              <p className="text-sm text-gray-400">Ask me to find or refine prospects - I'll handle the rest</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+              title="Close"
             >
-              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-              <p className="text-xs opacity-60 mt-1">
-                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            </div>
+              <X size={18} />
+            </button>
           </div>
-        ))}
 
-        {/* Progress indicator */}
-        {progress && (
-          <div className="flex justify-start">
-            <div className="max-w-[80%] rounded-lg px-4 py-2 bg-gray-800 border border-purple-500">
-              <p className="text-sm text-gray-100 mb-2">
-                ⏳ Searching... {progress.current}/{progress.total} ({Math.round((progress.current / progress.total) * 100)}%)
-              </p>
-              <div className="w-full bg-gray-700 rounded-full h-2">
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
                 <div
-                  className="bg-purple-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${(progress.current / progress.total) * 100}%` }}
-                />
+                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                    message.role === 'user'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-800 text-gray-100 border border-gray-700'
+                  }`}
+                >
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <p className="text-xs opacity-60 mt-1">
+                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
               </div>
-            </div>
+            ))}
+
+            {/* Progress indicator */}
+            {progress && (
+              <div className="flex justify-start">
+                <div className="max-w-[80%] rounded-lg px-4 py-2 bg-gray-800 border border-purple-500">
+                  <p className="text-sm text-gray-100 mb-2">
+                    ⏳ Searching... {progress.current}/{progress.total} ({Math.round((progress.current / progress.total) * 100)}%)
+                  </p>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-purple-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {isLoading && !progress && (
+              <div className="flex justify-start">
+                <div className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+                  <p className="text-sm text-gray-400">Thinking...</p>
+                </div>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
           </div>
-        )}
 
-        {isLoading && !progress && (
-          <div className="flex justify-start">
-            <div className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
-              <p className="text-sm text-gray-400">Thinking...</p>
+          {/* Input */}
+          <div className="p-4 border-t border-gray-700">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="e.g., 'Find 500 CEOs at tech startups in California'"
+                className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                disabled={isLoading}
+              />
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() || isLoading}
+                className="px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+              >
+                {isLoading ? 'Sending...' : 'Send'}
+              </button>
             </div>
+            <p className="text-xs text-gray-500 mt-2">
+              💡 Try: "Find 100 VPs in SaaS" or "500 CEOs at California tech startups"
+            </p>
           </div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input */}
-      <div className="p-4 border-t border-gray-700">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="e.g., 'Find 500 CEOs at tech startups in California'"
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
-            disabled={isLoading}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-            className="px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-          >
-            {isLoading ? 'Sending...' : 'Send'}
-          </button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
-          💡 Try: "Find 100 VPs in SaaS" or "500 CEOs at California tech startups"
-        </p>
       </div>
-    </div>
+    </>
   );
 }

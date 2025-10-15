@@ -219,7 +219,7 @@ export default function DataCollectionHub({
   const [activeTab, setActiveTab] = useState('approve')
   const [linkedinQuery, setLinkedinQuery] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [isChatMinimized, setIsChatMinimized] = useState(false)
+  const [isProspectSearchOpen, setIsProspectSearchOpen] = useState(false)
   const [connectionDegree] = useState<'1st' | '2nd' | '3rd'>('1st') // Not used - search returns all degrees
 
   // Bulk selection state
@@ -1116,31 +1116,38 @@ export default function DataCollectionHub({
   }
 
   return (
-    <div className={`grid grid-cols-12 gap-4 h-full ${className}`}>
-      {/* Left: ProspectSearchChat (4 columns - 33%, hidden when minimized) */}
-      {!isChatMinimized && (
-        <div className="col-span-4 h-full">
-          <ProspectSearchChat
-            onSearchTriggered={handleSearchTriggered}
-            onProspectsReceived={handleProspectsReceived}
-            isMinimized={isChatMinimized}
-            onMinimizeChange={setIsChatMinimized}
+    <div className={`h-full ${className}`}>
+      {/* Prospect Search Assistant Modal */}
+      <ProspectSearchChat
+        onSearchTriggered={handleSearchTriggered}
+        onProspectsReceived={handleProspectsReceived}
+        isOpen={isProspectSearchOpen}
+        onClose={() => setIsProspectSearchOpen(false)}
+      />
+
+      {/* Floating Prospect Search Button */}
+      {!isProspectSearchOpen && (
+        <button
+          onClick={() => setIsProspectSearchOpen(true)}
+          className="fixed bottom-6 right-6 z-40 group relative w-16 h-16 rounded-full transition-transform hover:scale-110 active:scale-95 shadow-2xl"
+          title="Prospecting Assistant"
+        >
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 animate-pulse" />
+          <div className="absolute inset-[2px] rounded-full bg-gray-900" />
+          <img
+            src="/SAM.jpg"
+            alt="SAM AI"
+            className="relative w-14 h-14 rounded-full object-cover z-10"
+            style={{ objectPosition: 'center 30%' }}
           />
-        </div>
+          <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 px-3 py-1 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-gray-700">
+            Prospecting Assistant
+          </div>
+        </button>
       )}
 
-      {/* ProspectSearchChat minimized bubble (shown when minimized) */}
-      {isChatMinimized && (
-        <ProspectSearchChat
-          onSearchTriggered={handleSearchTriggered}
-          onProspectsReceived={handleProspectsReceived}
-          isMinimized={isChatMinimized}
-          onMinimizeChange={setIsChatMinimized}
-        />
-      )}
-
-      {/* Right: Prospect Approval Dashboard (8 columns normally, 12 when chat minimized) */}
-      <div className={`${isChatMinimized ? 'col-span-12' : 'col-span-8'} h-full overflow-y-auto`}>
+      {/* Prospect Approval Dashboard - Full Width */}
+      <div className="h-full overflow-y-auto">
         <div className="bg-gray-800 rounded-lg h-full">
           {/* Header */}
           <div className="border-b border-gray-700 px-6 py-4">
@@ -1172,34 +1179,39 @@ export default function DataCollectionHub({
               </button>
             )}
 
-            <button
+            <Button
               onClick={downloadApprovedCSV}
               disabled={approvedCount === 0}
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              size="sm"
+              variant="default"
+              className="flex items-center gap-2"
               title="Download approved prospects only"
             >
-              <Download className="w-4 h-4" />
+              <Download className="w-3.5 h-3.5" />
               <span>Download Approved</span>
-            </button>
+            </Button>
 
             {/* Approve All Button */}
-            <button
+            <Button
               onClick={handleApproveAllNonDismissed}
               disabled={filteredProspects.filter(p => !dismissedProspectIds.has(p.id) && p.approvalStatus === 'pending').length === 0}
-              className="flex items-center space-x-2 bg-green-500/20 hover:bg-green-500/30 disabled:bg-surface-highlight disabled:cursor-not-allowed text-green-400 disabled:text-muted-foreground px-6 py-2 rounded-lg transition-colors font-semibold border border-green-500/40 disabled:border-border/60"
+              size="sm"
+              variant="outline"
+              className="flex items-center gap-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 border-green-500/40"
             >
-              <Check className="w-4 h-4" />
+              <Check className="w-3.5 h-3.5" />
               <span>Approve All ({filteredProspects.filter(p => !dismissedProspectIds.has(p.id) && p.approvalStatus === 'pending').length})</span>
-            </button>
+            </Button>
 
-            <button
+            <Button
               onClick={handleProceedToCampaignHub}
               disabled={approvedCount === 0}
-              className="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-2 rounded-lg transition-all font-semibold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              size="sm"
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
             >
-              <Check className="w-4 h-4" />
+              <Check className="w-3.5 h-3.5" />
               <span>Proceed to Campaign Hub</span>
-            </button>
+            </Button>
           </div>
         </div>
       </div>
