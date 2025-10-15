@@ -159,43 +159,57 @@ function DocumentUpload({ section, onComplete }: { section: string; onComplete?:
   const [error, setError] = useState<string>('');
   
   const handleFileUpload = async () => {
-    if (!file && !url) return;
-    
+    if (!file && !url) {
+      setError('Please select a file or enter a URL');
+      setStatus('error');
+      return;
+    }
+
+    console.log('[KB Upload] Starting upload...', { section, uploadMode, file: file?.name, url });
+
     setStatus('uploading');
     setProgress(10);
     setError('');
-    
+
     try {
       const formData = new FormData();
       if (file) {
         formData.append('file', file);
+        console.log('[KB Upload] File attached:', file.name, file.size, 'bytes');
       }
       formData.append('section', section);
       formData.append('uploadMode', uploadMode);
       if (url) {
         formData.append('url', url);
       }
-      
+
       // Step 1: Upload and extract content
       setStatus('extracting');
       setProgress(30);
-      
+
+      console.log('[KB Upload] Calling upload API...');
       const uploadResponse = await fetch('/api/knowledge-base/upload-document', {
         method: 'POST',
         body: formData
       });
-      
+
+      console.log('[KB Upload] Upload response status:', uploadResponse.status);
+
       if (!uploadResponse.ok) {
-        throw new Error('Upload failed');
+        const errorData = await uploadResponse.json().catch(() => ({ error: 'Upload failed' }));
+        console.error('[KB Upload] Upload failed:', errorData);
+        throw new Error(errorData.error || `Upload failed with status ${uploadResponse.status}`);
       }
-      
+
       const uploadResult = await uploadResponse.json();
+      console.log('[KB Upload] Upload successful:', uploadResult.documentId);
       setProgress(50);
       
       // Step 2: AI Processing and Tagging
       setStatus('tagging');
       setProgress(70);
-      
+
+      console.log('[KB Upload] Starting AI processing...');
       const processingResponse = await fetch('/api/knowledge-base/process-document', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -206,19 +220,25 @@ function DocumentUpload({ section, onComplete }: { section: string; onComplete?:
           filename: file?.name || url
         })
       });
-      
+
+      console.log('[KB Upload] Processing response status:', processingResponse.status);
+
       if (!processingResponse.ok) {
-        throw new Error('AI processing failed');
+        const errorData = await processingResponse.json().catch(() => ({ error: 'AI processing failed' }));
+        console.error('[KB Upload] Processing failed:', errorData);
+        throw new Error(errorData.error || 'AI processing failed');
       }
-      
+
       const processingResult = await processingResponse.json();
+      console.log('[KB Upload] Processing successful, tags:', processingResult.tags);
       setAiTags(processingResult.tags);
       setProgress(85);
-      
+
       // Step 3: Vectorization and RAG Integration
       setStatus('vectorizing');
       setProgress(95);
-      
+
+      console.log('[KB Upload] Starting vectorization...');
       const vectorResponse = await fetch('/api/knowledge-base/vectorize-content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -230,18 +250,19 @@ function DocumentUpload({ section, onComplete }: { section: string; onComplete?:
           metadata: processingResult.metadata
         })
       });
-      
+
+      console.log('[KB Upload] Vectorization response status:', vectorResponse.status);
+
       if (!vectorResponse.ok) {
-        throw new Error('Vectorization failed');
+        const errorData = await vectorResponse.json().catch(() => ({ error: 'Vectorization failed' }));
+        console.error('[KB Upload] Vectorization failed:', errorData);
+        throw new Error(errorData.error || 'Vectorization failed');
       }
-      
+
+      console.log('[KB Upload] All steps completed successfully!');
       setProgress(100);
       setStatus('done');
 
-      if (typeof onComplete === 'function') {
-        onComplete();
-      }
-      
       // Reset form after success
       setTimeout(() => {
         setFile(null);
@@ -250,11 +271,20 @@ function DocumentUpload({ section, onComplete }: { section: string; onComplete?:
         setProgress(0);
         setAiTags([]);
       }, 3000);
-      
+
     } catch (error) {
-      console.error('Document processing error:', error);
-      setError(error instanceof Error ? error.message : 'Processing failed');
+      console.error('[KB Upload] ERROR:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Processing failed';
+      console.error('[KB Upload] Error message:', errorMessage);
+      setError(errorMessage);
       setStatus('error');
+    } finally {
+      console.log('[KB Upload] Refreshing document list...');
+      // ALWAYS refresh the document list, even if there was an error
+      // This ensures documents that were uploaded (step 1) show up even if processing failed
+      if (typeof onComplete === 'function') {
+        onComplete();
+      }
     }
   };
   
@@ -290,12 +320,12 @@ function DocumentUpload({ section, onComplete }: { section: string; onComplete?:
           <Upload className="mx-auto mb-2 text-gray-400" size={24} />
           <input 
             type="file" 
-            accept=".pdf,.txt,.md"
+            accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.gif,.webp"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)} 
             className="text-gray-300 text-sm w-full"
           />
           <p className="text-xs text-gray-400 mt-2">
-            Supported: PDF, TXT, MD files (max 10MB)
+            Supported: PDF, TXT, MD, PNG, JPG, GIF, WEBP (max 25MB)
           </p>
         </div>
       )}
@@ -1524,7 +1554,7 @@ function DocumentsTable() {
           <FileText size={48} className="mx-auto text-gray-500 mb-4" />
           <h3 className="text-lg font-medium text-gray-300 mb-2">No Documents Uploaded</h3>
           <p className="text-gray-400 text-sm max-w-md mx-auto">
-            Upload your first document to start building your knowledge base. Supported formats: PDF, TXT, MD (max 10MB)
+            Upload your first document to start building your knowledge base. Supported formats: PDF, TXT, MD, PNG, JPG, GIF, WEBP (max 25MB)
           </p>
         </div>
       )}
@@ -1610,25 +1640,41 @@ const KnowledgeBase: React.FC = () => {
   }, []);
 
   const loadDocuments = useCallback(async () => {
+    console.log('[KB] Loading documents...');
     setDocumentsLoading(true);
     setDocumentsError(null);
     try {
       const response = await fetch('/api/knowledge-base/documents');
+      console.log('[KB] Documents API response status:', response.status);
+
       if (!response.ok) {
-        // Silently fail - API endpoint may not be available
-        setDocuments([]);
+        const errorText = await response.text();
+        console.error('[KB] Documents API error:', response.status, errorText);
+        setDocumentsError(`Failed to load documents (${response.status})`);
+        // Don't clear documents on error - keep showing what we have
         setDocumentsLoading(false);
         return;
       }
+
       const data = await response.json();
-      setDocuments((data.documents || []) as KnowledgeDocument[]);
-      // Load feedback after documents load
-      loadKBFeedback();
+      console.log('[KB] Documents loaded:', data.documents?.length || 0, 'documents');
+
+      if (data.documents && Array.isArray(data.documents)) {
+        setDocuments(data.documents as KnowledgeDocument[]);
+        console.log('[KB] Documents state updated');
+        // Load feedback after documents load
+        loadKBFeedback();
+      } else {
+        console.error('[KB] Invalid documents data structure:', data);
+        setDocumentsError('Invalid response format');
+      }
     } catch (error) {
-      // Silently handle error - this is not critical functionality
-      setDocuments([]);
+      console.error('[KB] Documents fetch error:', error);
+      setDocumentsError(error instanceof Error ? error.message : 'Failed to fetch documents');
+      // Don't clear documents on error - keep showing what we have
     } finally {
       setDocumentsLoading(false);
+      console.log('[KB] Documents loading complete');
     }
   }, [loadKBFeedback]);
 
@@ -2204,45 +2250,13 @@ const KnowledgeBase: React.FC = () => {
       <div className="max-w-7xl">
         {activeSection === 'overview' && (
           <div className="space-y-6">
-            {/* Knowledgebase Status Dashboard */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Total Documents */}
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-400 text-sm">Total Documents</p>
-                    <p className="text-white text-2xl font-bold">
-                      {documentsLoading ? '—' : documents.length}
-                    </p>
-                  </div>
-                  <FileText className="text-blue-400" size={24} />
-                </div>
-                <p className="text-green-400 text-xs mt-2">
-                  {documentsLoading ? 'Loading documents…' : documentsError ? documentsError : `${documents.length} assets ready for RAG`}
-                </p>
-              </div>
-
-              {/* ICP Profiles */}
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-400 text-sm">ICP Profiles</p>
-                    <p className="text-white text-2xl font-bold">
-                      {icpCount === null ? '—' : icpCount}
-                    </p>
-                  </div>
-                  <Target className="text-purple-400" size={24} />
-                </div>
-                <p className="text-blue-400 text-xs mt-2">
-                  {icpCount === null ? 'Loading ICPs…' : icpCount > 0 ? 'Primary profile seeded for demo' : 'Add an ICP to unlock tailored outreach'}
-                </p>
-              </div>
-
-              {/* Knowledgebase Completeness Meter */}
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 col-span-2">
+            {/* KB Completeness and Health - First Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* KB Completeness Meter */}
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-white text-sm font-medium">Knowledgebase Completeness</span>
-                  <span className="text-white text-lg font-bold">{completionDisplay}</span>
+                  <span className="text-white text-lg font-semibold">Knowledgebase Completeness</span>
+                  <span className="text-white text-2xl font-bold">{completionDisplay}</span>
                 </div>
 
                 {/* Temperature-style completion bar */}
@@ -2303,7 +2317,109 @@ const KnowledgeBase: React.FC = () => {
                 )}
               </div>
 
-              {/* SAM Conversations */}
+              {/* KB Health */}
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                <h3 className="text-white text-lg font-semibold mb-4">Knowledgebase Health</h3>
+                <div className="space-y-4">
+                  {healthMetrics.map((metric) => (
+                    <div key={metric.label}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-300 text-sm font-medium">{metric.label}</p>
+                          <p className="text-gray-500 text-xs">{metric.description}</p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-24 bg-gray-700 rounded-full h-2 overflow-hidden">
+                            <div
+                              className={`${getHealthColor(metric.value)} h-2 rounded-full transition-all duration-500`}
+                              style={{ width: metric.value === null ? '0%' : `${metric.value}%` }}
+                            ></div>
+                          </div>
+                          <span className={`text-xs ${getHealthTextColor(metric.value)}`}>
+                            {metric.value === null ? '—' : `${metric.value}%`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions & Navigation */}
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+              <h3 className="text-white text-lg font-semibold mb-4">Quick Actions</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                {sections.slice(1, 17).map((section) => {
+                  const IconComponent = section.icon;
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => setActiveSection(section.id)}
+                      className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-left transition-all hover:bg-purple-600 hover:border-purple-500 group cursor-pointer"
+                    >
+                      <div className="flex items-center mb-2">
+                        <IconComponent className="text-blue-400 mr-2 group-hover:scale-110 transition-transform" size={18} />
+                        <span className="text-white text-sm font-medium">{section.label}</span>
+                      </div>
+                      <p className="text-gray-300 text-xs">
+                        {getQuickActionDescription(section.id)}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Stats Row - Total Documents, ICP Profiles, KB Completion, SAM Insights */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Total Documents */}
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">Total Documents</p>
+                    <p className="text-white text-2xl font-bold">
+                      {documentsLoading ? '—' : documents.length}
+                    </p>
+                  </div>
+                  <FileText className="text-blue-400" size={24} />
+                </div>
+                <p className="text-green-400 text-xs mt-2">
+                  {documentsLoading ? 'Loading documents…' : documentsError ? documentsError : `${documents.length} assets ready for RAG`}
+                </p>
+              </div>
+
+              {/* ICP Profiles */}
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">ICP Profiles</p>
+                    <p className="text-white text-2xl font-bold">
+                      {icpCount === null ? '—' : icpCount}
+                    </p>
+                  </div>
+                  <Target className="text-purple-400" size={24} />
+                </div>
+                <p className="text-blue-400 text-xs mt-2">
+                  {icpCount === null ? 'Loading ICPs…' : icpCount > 0 ? 'Primary profile seeded for demo' : 'Add an ICP to unlock tailored outreach'}
+                </p>
+              </div>
+
+              {/* KB Completion Summary */}
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">KB Completion</p>
+                    <p className="text-white text-2xl font-bold">{completionDisplay}</p>
+                  </div>
+                  <Activity className="text-green-400" size={24} />
+                </div>
+                <p className="text-green-400 text-xs mt-2">
+                  {!isKnowledgeLoading ? `${Math.round(criticalScore)}% Critical coverage` : 'Calculating...'}
+                </p>
+              </div>
+
+              {/* SAM Insights */}
               <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -2358,61 +2474,6 @@ const KnowledgeBase: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Actions & Navigation */}
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-              <h3 className="text-white text-lg font-semibold mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                {sections.slice(1, 17).map((section) => {
-                  const IconComponent = section.icon;
-                  return (
-                    <button
-                      key={section.id}
-                      onClick={() => setActiveSection(section.id)}
-                      className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-left transition-all hover:bg-purple-600 hover:border-purple-500 group cursor-pointer"
-                    >
-                      <div className="flex items-center mb-2">
-                        <IconComponent className="text-blue-400 mr-2 group-hover:scale-110 transition-transform" size={18} />
-                        <span className="text-white text-sm font-medium">{section.label}</span>
-                      </div>
-                      <p className="text-gray-300 text-xs">
-                        {getQuickActionDescription(section.id)}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Knowledgebase Health */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-                <h3 className="text-white text-lg font-semibold mb-4">Knowledgebase Health</h3>
-                <div className="space-y-4">
-                  {healthMetrics.map((metric) => (
-                    <div key={metric.label}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-300 text-sm font-medium">{metric.label}</p>
-                          <p className="text-gray-500 text-xs">{metric.description}</p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-24 bg-gray-700 rounded-full h-2 overflow-hidden">
-                            <div
-                              className={`${getHealthColor(metric.value)} h-2 rounded-full transition-all duration-500`}
-                              style={{ width: metric.value === null ? '0%' : `${metric.value}%` }}
-                            ></div>
-                          </div>
-                          <span className={`text-xs ${getHealthTextColor(metric.value)}`}>
-                            {metric.value === null ? '—' : `${metric.value}%`}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
             {/* Latest Knowledge Assets */}
             <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
               <div className="flex items-center justify-between mb-4">
@@ -2439,7 +2500,15 @@ const KnowledgeBase: React.FC = () => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {latestDocuments.map((doc) => (
-                    <div key={doc.id} className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                    <div
+                      key={doc.id}
+                      className="bg-gray-700 border border-gray-600 rounded-lg p-4 hover:bg-gray-650 hover:border-purple-500 transition-all cursor-pointer"
+                      onClick={() => {
+                        console.log('[KB] Document clicked:', doc);
+                        // TODO: Implement document detail view or actions
+                        alert(`Document: ${doc.title}\n\nSection: ${doc.section}\n\nSummary: ${doc.summary || 'No summary'}\n\nTags: ${doc.tags?.join(', ') || 'None'}`);
+                      }}
+                    >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
                           <p className="text-white text-sm font-semibold">{doc.title}</p>
@@ -2450,7 +2519,10 @@ const KnowledgeBase: React.FC = () => {
                             {doc.updatedAt ? new Date(doc.updatedAt).toLocaleDateString() : ''}
                           </span>
                           <button
-                            onClick={() => deleteDocument(doc.id)}
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent card click when deleting
+                              deleteDocument(doc.id);
+                            }}
                             className="text-gray-400 hover:text-red-400 transition-colors p-1"
                             title="Delete document"
                           >

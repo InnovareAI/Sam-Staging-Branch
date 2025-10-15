@@ -2,27 +2,127 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { v4 as uuidv4 } from 'uuid';
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
 
 // Document content extraction functions
 async function extractContentFromFile(buffer: Buffer, mimeType: string): Promise<string> {
   try {
+    console.log('[Upload] Extracting content from file, mimeType:', mimeType, 'buffer size:', buffer.length);
+
     if (mimeType.includes('text/')) {
       return new TextDecoder().decode(buffer);
+    } else if (mimeType.includes('image/')) {
+      // Handle image files (PNG, JPG, GIF, WEBP, etc.)
+      console.log('[Upload] Processing image file with Google Cloud Vision API...');
+
+      try {
+        // Import Google Cloud Vision client
+        const vision = await import('@google-cloud/vision');
+        const client = new vision.ImageAnnotatorClient({
+          credentials: process.env.GOOGLE_CLOUD_CREDENTIALS
+            ? JSON.parse(process.env.GOOGLE_CLOUD_CREDENTIALS)
+            : undefined
+        });
+
+        console.log('[Upload] Vision API client initialized for image');
+
+        // Convert buffer to base64 for Vision API
+        const base64Image = buffer.toString('base64');
+
+        // Perform text detection and label detection on the image
+        const [textResult] = await client.textDetection({
+          image: { content: base64Image },
+        });
+
+        const [labelResult] = await client.labelDetection({
+          image: { content: base64Image },
+        });
+
+        // Extract text from image
+        const extractedText = textResult.textAnnotations?.[0]?.description || '';
+        
+        // Extract labels/tags from image
+        const labels = labelResult.labelAnnotations?.map(label => label.description).slice(0, 10) || [];
+
+        console.log('[Upload] Image processed - Text length:', extractedText.length, 'Labels:', labels.length);
+
+        // Combine text and labels into structured content
+        let content = '[Visual Content]\n\n';
+        
+        if (labels.length > 0) {
+          content += `Visual Elements: ${labels.join(', ')}\n\n`;
+        }
+        
+        if (extractedText.trim()) {
+          content += `Text Content:\n${extractedText}`;
+        } else {
+          content += 'This image contains visual information but no readable text.';
+        }
+
+        return content;
+
+      } catch (error) {
+        console.error('[Upload] Google Cloud Vision API error for image:', error);
+
+        // Fallback: Store image with placeholder if Vision API fails
+        return `[Image Uploaded]\n\nNote: Image analysis encountered an issue (${error instanceof Error ? error.message : 'Unknown error'}). The image has been stored and can be manually processed later. To enable automatic image analysis, configure Google Cloud Vision API credentials.`;
+      }
     } else if (mimeType.includes('application/pdf')) {
-      const pdfParse = (await import('pdf-parse')).default;
-      const pdfData = await pdfParse(buffer);
-      return pdfData.text;
+      console.log('[Upload] Attempting PDF extraction with Google Cloud Vision API...');
+
+      try {
+        // Import Google Cloud Vision client
+        const vision = await import('@google-cloud/vision');
+        const client = new vision.ImageAnnotatorClient({
+          // Use service account key from environment variable
+          credentials: process.env.GOOGLE_CLOUD_CREDENTIALS
+            ? JSON.parse(process.env.GOOGLE_CLOUD_CREDENTIALS)
+            : undefined
+        });
+
+        console.log('[Upload] Vision API client initialized');
+
+        // Convert buffer to base64 for Vision API
+        const base64Image = buffer.toString('base64');
+
+        // Perform text detection on the PDF
+        const [result] = await client.documentTextDetection({
+          image: {
+            content: base64Image,
+          },
+        });
+
+        const fullTextAnnotation = result.fullTextAnnotation;
+        const extractedText = fullTextAnnotation?.text || '';
+
+        console.log('[Upload] PDF text extracted successfully, length:', extractedText.length);
+
+        if (!extractedText || extractedText.trim().length === 0) {
+          console.warn('[Upload] PDF appears to be empty or contains only images');
+          return '[PDF Uploaded - No text content detected]\n\nThis PDF was processed but no extractable text was found. It may contain only images or be a scanned document without OCR.';
+        }
+
+        return extractedText;
+
+      } catch (error) {
+        console.error('[Upload] Google Cloud Vision API error:', error);
+
+        // Fallback: Store PDF with placeholder if Vision API fails
+        return `[PDF Document Uploaded]\n\nNote: Text extraction encountered an issue (${error instanceof Error ? error.message : 'Unknown error'}). The PDF has been stored and can be manually processed later.`;
+      }
     } else if (mimeType.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document')) {
       return `[DOCX Content Extraction] - Implement docx library for Word document processing`;
     } else if (mimeType.includes('application/vnd.openxmlformats-officedocument.presentationml.presentation')) {
       return `[PPTX Content Extraction] - Implement pptx library for PowerPoint processing`;
     } else {
+      console.log('[Upload] Unknown mime type, treating as text');
       return new TextDecoder().decode(buffer);
     }
   } catch (error) {
-    console.error('Content extraction error:', error);
-    throw new Error('Failed to extract content from file');
+    console.error('[Upload] Content extraction error:', error);
+    console.error('[Upload] Error details:', error instanceof Error ? error.message : String(error));
+    console.error('[Upload] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    throw new Error(`Failed to extract content from file: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 

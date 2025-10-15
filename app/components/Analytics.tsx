@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Badge } from '@/components/ui/badge';
 
 // Campaign Analytics KPI Cards
-function KPIGrid({ analyticsData, timeRange }: { analyticsData: any, timeRange: '1d' | '3d' | '7d' }) {
+function KPIGrid({ analyticsData, timeRange }: { analyticsData: any, timeRange: '1d' | '7d' | '1m' | '3m' | 'custom' }) {
   // Calculate metrics based on time range
   const totalProspects = 847; // TODO: Get from real data filtered by timeRange
   const totalMessages = 892; // TODO: Get from real data filtered by timeRange
@@ -84,7 +84,7 @@ const Analytics: React.FC = () => {
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'overall' | 'campaign' | 'time'>('overall');
   const [selectedCampaign, setSelectedCampaign] = useState<string>('all');
-  const [timeRange, setTimeRange] = useState<'1d' | '3d' | '7d'>('7d');
+  const [timeRange, setTimeRange] = useState<'1d' | '7d' | '1m' | '3m' | 'custom'>('7d');
   const [userViewMode, setUserViewMode] = useState<'consolidated' | 'by-user'>('consolidated');
   const [selectedUser, setSelectedUser] = useState<string>('all');
 
@@ -369,15 +369,7 @@ const Analytics: React.FC = () => {
                   timeRange === '1d' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                1 Day
-              </button>
-              <button
-                onClick={() => setTimeRange('3d')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  timeRange === '3d' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
-              >
-                3 Days
+                1 day
               </button>
               <button
                 onClick={() => setTimeRange('7d')}
@@ -385,7 +377,31 @@ const Analytics: React.FC = () => {
                   timeRange === '7d' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                7 Days
+                7 days
+              </button>
+              <button
+                onClick={() => setTimeRange('1m')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  timeRange === '1m' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                1 month
+              </button>
+              <button
+                onClick={() => setTimeRange('3m')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  timeRange === '3m' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                3 months
+              </button>
+              <button
+                onClick={() => setTimeRange('custom')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  timeRange === 'custom' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                Custom
               </button>
             </div>
           </div>
