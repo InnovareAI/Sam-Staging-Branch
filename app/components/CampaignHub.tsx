@@ -2773,7 +2773,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
       {!isAssistantOpen && (
         <button
           onClick={() => setIsAssistantOpen(true)}
-          className="fixed bottom-6 right-6 z-40 group relative w-16 h-16 rounded-full transition-transform hover:scale-110 active:scale-95 shadow-2xl"
+          className="fixed bottom-6 right-6 z-[9999] group relative w-16 h-16 rounded-full transition-transform hover:scale-110 active:scale-95 shadow-2xl"
+          style={{ position: 'fixed', bottom: '24px', right: '24px' }}
           title="Campaign Assistant"
         >
           <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 animate-pulse" />
