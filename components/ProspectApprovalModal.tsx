@@ -54,7 +54,7 @@ export default function ProspectApprovalModal({
   subtitle = 'Review and approve prospects for your campaign',
   showEnrichment = false
 }: ProspectApprovalModalProps) {
-  const [selectedProspects, setSelectedProspects] = useState<Set<string>>(new Set())
+  const [dismissedProspects, setDismissedProspects] = useState<Set<string>>(new Set())
   const [searchTerm, setSearchTerm] = useState('')
   const [filterSource, setFilterSource] = useState<string>('all')
 
@@ -86,38 +86,45 @@ export default function ProspectApprovalModal({
     return Array.from(uniqueSources)
   }, [prospects])
 
-  const toggleProspectSelection = (prospectId: string) => {
-    const newSelected = new Set(selectedProspects)
-    if (newSelected.has(prospectId)) {
-      newSelected.delete(prospectId)
-    } else {
-      newSelected.add(prospectId)
+  const dismissProspect = (prospectId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    const newDismissed = new Set(dismissedProspects)
+    newDismissed.add(prospectId)
+    setDismissedProspects(newDismissed)
+  }
+
+  const undoDismiss = (prospectId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    const newDismissed = new Set(dismissedProspects)
+    newDismissed.delete(prospectId)
+    setDismissedProspects(newDismissed)
+  }
+
+  const dismissAll = () => {
+    setDismissedProspects(new Set(filteredProspects.map(p => p.id)))
+  }
+
+  const clearDismissed = () => {
+    setDismissedProspects(new Set())
+  }
+
+  const handleApproveAll = () => {
+    // Approve all prospects that haven't been dismissed
+    const approved = prospects.filter(p => !dismissedProspects.has(p.id))
+    const rejected = prospects.filter(p => dismissedProspects.has(p.id))
+
+    if (approved.length > 0) {
+      onApprove(approved)
     }
-    setSelectedProspects(newSelected)
-  }
+    if (rejected.length > 0) {
+      onReject(rejected)
+    }
 
-  const selectAll = () => {
-    setSelectedProspects(new Set(filteredProspects.map(p => p.id)))
-  }
-
-  const selectNone = () => {
-    setSelectedProspects(new Set())
-  }
-
-  const handleApprove = () => {
-    const approved = prospects.filter(p => selectedProspects.has(p.id))
-    onApprove(approved)
-    setSelectedProspects(new Set())
-  }
-
-  const handleReject = () => {
-    const rejected = prospects.filter(p => selectedProspects.has(p.id))
-    onReject(rejected)
-    setSelectedProspects(new Set())
+    setDismissedProspects(new Set())
   }
 
   const exportData = () => {
-    const dataToExport = prospects.filter(p => selectedProspects.has(p.id))
+    const dataToExport = prospects.filter(p => !dismissedProspects.has(p.id))
     const csvContent = [
       ['Name', 'Title', 'Company', 'Email', 'Phone', 'LinkedIn', 'Source', 'Confidence', 'Location'],
       ...dataToExport.map(p => [
@@ -239,30 +246,29 @@ export default function ProspectApprovalModal({
               <span className="text-sm text-muted-foreground">
                 {filteredProspects.length} of {prospects.length} prospects shown
               </span>
-              <span className="text-xs px-2 py-1 bg-primary/20 text-primary rounded-lg font-medium">
-                {selectedProspects.size} selected
+              <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-lg font-medium">
+                {prospects.length - dismissedProspects.size} to approve
               </span>
+              {dismissedProspects.size > 0 && (
+                <span className="text-xs px-2 py-1 bg-red-500/20 text-red-400 rounded-lg font-medium">
+                  {dismissedProspects.size} dismissed
+                </span>
+              )}
             </div>
-            
-            <div className="flex space-x-2">
+
+            {dismissedProspects.size > 0 && (
               <button
-                onClick={selectAll}
+                onClick={clearDismissed}
                 className="text-xs px-3 py-1.5 bg-surface-highlight hover:bg-surface border border-border/60 text-foreground rounded-lg transition-colors font-medium"
               >
-                Select All
+                Undo All Dismissals
               </button>
-              <button
-                onClick={selectNone}
-                className="text-xs px-3 py-1.5 bg-surface-highlight hover:bg-surface border border-border/60 text-foreground rounded-lg transition-colors font-medium"
-              >
-                Clear
-              </button>
-            </div>
+            )}
           </div>
-          
+
           <button
             onClick={exportData}
-            disabled={selectedProspects.size === 0}
+            disabled={prospects.length - dismissedProspects.size === 0}
             className="flex items-center space-x-2 px-4 py-2 bg-primary/20 hover:bg-primary/30 disabled:bg-surface-highlight disabled:cursor-not-allowed text-primary disabled:text-muted-foreground rounded-lg transition-colors text-sm font-medium border border-primary/40 disabled:border-border/60"
           >
             <Download size={16} />
@@ -279,32 +285,21 @@ export default function ProspectApprovalModal({
             <p className="text-muted-foreground text-sm">Try adjusting your search or filter criteria</p>
           </div>
         ) : (
-          filteredProspects.map((prospect) => (
-            <div
-              key={prospect.id}
-              className={`group p-5 rounded-xl border transition-all duration-200 cursor-pointer ${
-                selectedProspects.has(prospect.id)
-                  ? 'border-primary/60 bg-primary/10 shadow-glow ring-1 ring-primary/30'
-                  : 'border-border/60 bg-surface-highlight/50 hover:border-border hover:bg-surface-highlight'
-              }`}
-              onClick={() => toggleProspectSelection(prospect.id)}
-            >
-              <div className="flex items-start gap-4">
-                {/* Checkbox */}
-                <div className="flex items-center justify-center w-6 h-6 mt-0.5">
-                  <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors ${
-                    selectedProspects.has(prospect.id)
-                      ? 'border-primary bg-primary'
-                      : 'border-border/60 group-hover:border-primary/60'
-                  }`}>
-                    {selectedProspects.has(prospect.id) && (
-                      <Check size={12} className="text-white" />
-                    )}
-                  </div>
-                </div>
-                
-                {/* Prospect Details */}
-                <div className="flex-1">
+          filteredProspects.map((prospect) => {
+            const isDismissed = dismissedProspects.has(prospect.id)
+
+            return (
+              <div
+                key={prospect.id}
+                className={`group p-5 rounded-xl border transition-all duration-200 ${
+                  isDismissed
+                    ? 'border-red-500/40 bg-red-500/5 opacity-50'
+                    : 'border-border/60 bg-surface-highlight/50 hover:border-border hover:bg-surface-highlight'
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  {/* Prospect Details */}
+                  <div className="flex-1">
                   {/* Header with name and badges */}
                   <div className="flex items-center space-x-3 mb-3 flex-wrap gap-2">
                     <h3 className="text-lg font-semibold text-foreground">
@@ -392,36 +387,71 @@ export default function ProspectApprovalModal({
                     </div>
                   )}
                 </div>
+
+                {/* Dismiss/Undo Button */}
+                <div className="flex flex-col gap-2">
+                  {isDismissed ? (
+                    <button
+                      onClick={(e) => undoDismiss(prospect.id, e)}
+                      className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-colors font-medium border border-green-500/40 text-sm"
+                      title="Undo dismissal"
+                    >
+                      <Check size={16} className="inline mr-1" />
+                      Undo
+                    </button>
+                  ) : (
+                    <button
+                      onClick={(e) => dismissProspect(prospect.id, e)}
+                      className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors font-medium border border-red-500/40 text-sm"
+                      title="Dismiss this prospect"
+                    >
+                      <X size={16} className="inline mr-1" />
+                      Dismiss
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          ))
+            )
+          })
         )}
       </div>
 
       {/* Footer Actions */}
       <div className="bg-surface-highlight/30 px-6 py-4 border-t border-border/60">
         <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            {selectedProspects.size} prospects selected for action
+          <div className="text-sm">
+            {dismissedProspects.size > 0 ? (
+              <>
+                <span className="text-green-400 font-semibold">{prospects.length - dismissedProspects.size}</span>
+                <span className="text-muted-foreground"> prospects will be approved</span>
+                <span className="text-muted-foreground ml-2">•</span>
+                <span className="text-red-400 font-semibold ml-2">{dismissedProspects.size}</span>
+                <span className="text-muted-foreground"> dismissed</span>
+              </>
+            ) : (
+              <>
+                <span className="text-green-400 font-semibold">{prospects.length}</span>
+                <span className="text-muted-foreground"> prospects ready to approve</span>
+              </>
+            )}
           </div>
-          
+
           <div className="flex space-x-3">
             <button
-              onClick={handleReject}
-              disabled={selectedProspects.size === 0}
-              className="flex items-center space-x-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 disabled:bg-surface-highlight disabled:cursor-not-allowed text-red-400 disabled:text-muted-foreground rounded-lg transition-colors font-medium border border-red-500/40 disabled:border-border/60"
+              onClick={onClose}
+              className="px-6 py-2 bg-surface-highlight hover:bg-surface text-muted-foreground hover:text-foreground rounded-lg transition-colors font-medium border border-border/60"
             >
-              <X size={16} />
-              <span>Reject Selected</span>
+              Cancel
             </button>
-            
+
             <button
-              onClick={handleApprove}
-              disabled={selectedProspects.size === 0}
-              className="flex items-center space-x-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 disabled:bg-surface-highlight disabled:cursor-not-allowed text-green-400 disabled:text-muted-foreground rounded-lg transition-colors font-medium border border-green-500/40 disabled:border-border/60"
+              onClick={handleApproveAll}
+              disabled={prospects.length - dismissedProspects.size === 0}
+              className="flex items-center space-x-2 px-6 py-2 bg-green-500/20 hover:bg-green-500/30 disabled:bg-surface-highlight disabled:cursor-not-allowed text-green-400 disabled:text-muted-foreground rounded-lg transition-colors font-medium border border-green-500/40 disabled:border-border/60"
             >
               <CheckSquare size={16} />
-              <span>Approve Selected</span>
+              <span>Approve All ({prospects.length - dismissedProspects.size})</span>
             </button>
           </div>
         </div>
