@@ -29,6 +29,7 @@ import {
 } from '@/lib/supabase-knowledge'
 import { INDUSTRY_BLUEPRINTS } from '@/lib/templates/industry-blueprints'
 import { llmRouter } from '@/lib/llm/llm-router'
+import { trackDocumentUsageServer } from '@/lib/knowledge-usage-tracker'
 
 // Helper function to call LLM via router (respects customer preferences)
 async function callLLMRouter(userId: string, messages: any[], systemPrompt: string) {
@@ -1027,6 +1028,25 @@ export async function POST(
         section: null,
         limit: 5
       });
+
+      // Track document usage analytics (fire and forget)
+      if (knowledgeSnippets.length > 0) {
+        const documentIds = knowledgeSnippets
+          .map((snippet: any) => snippet.document_id)
+          .filter((id: string) => id);
+
+        if (documentIds.length > 0) {
+          trackDocumentUsageServer(supabaseAdmin, {
+            workspaceId,
+            documentIds,
+            threadId: thread?.id,
+            chunksUsed: knowledgeSnippets.length,
+            queryContext: content.substring(0, 500)
+          }).catch((err) => {
+            console.warn('Usage tracking failed (non-blocking):', err);
+          });
+        }
+      }
     }
 
     const structuredTopics = detectStructuredTopics(content)

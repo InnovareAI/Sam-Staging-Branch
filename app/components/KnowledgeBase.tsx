@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Brain, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, FileText, Package, MessageSquare, Cpu, Clock, AlertCircle, Mic, Briefcase, Trophy, GitBranch, Mail, Shield, UserCheck, MessageCircle, DollarSign, Zap, BarChart, Bot, HelpCircle, Globe, ArrowLeft, Trash2 } from 'lucide-react';
+import { Brain, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, FileText, Package, MessageSquare, Cpu, Clock, AlertCircle, Mic, Briefcase, Trophy, GitBranch, Mail, Shield, UserCheck, MessageCircle, DollarSign, Zap, BarChart, Bot, HelpCircle, Globe, ArrowLeft, Trash2, Activity } from 'lucide-react';
 import SAMOnboarding from './SAMOnboarding';
+import KnowledgeBaseAnalytics from './KnowledgeBaseAnalytics';
 
 type KnowledgeDocument = {
   id: string;
@@ -2151,6 +2152,7 @@ const KnowledgeBase: React.FC = () => {
 
   const sections = [
     { id: 'overview', label: 'Overview', icon: Brain },
+    { id: 'analytics', label: 'Usage Analytics', icon: Activity },
     { id: 'buying', label: 'Buying Process', icon: GitBranch },
     { id: 'company', label: 'Company Info', icon: Briefcase },
     { id: 'competition', label: 'Competition', icon: TrendingUp },
@@ -2502,7 +2504,20 @@ const KnowledgeBase: React.FC = () => {
             </div>
           </div>
         )}
-        
+
+        {activeSection === 'analytics' && (
+          <div>
+            <button
+              onClick={() => setActiveSection('overview')}
+              className="mb-6 text-blue-400 hover:text-blue-300 flex items-center text-sm"
+            >
+              <ArrowLeft className="mr-2" size={16} />
+              Back to Overview
+            </button>
+            <KnowledgeBaseAnalytics />
+          </div>
+        )}
+
         {activeSection === 'icp' && (
           <ICPConfiguration
             onBack={() => setActiveSection('overview')}
