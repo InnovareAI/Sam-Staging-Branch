@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, Mail, Linkedin, MessageSquare, Users, Calendar, Target, Eye, Database } from 'lucide-react';
+import { BarChart3, TrendingUp, Mail, Linkedin, MessageSquare, Users, Calendar, Target, Eye, Database, Filter, Clock } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
@@ -279,10 +279,14 @@ const Analytics: React.FC = () => {
     );
   }
 
+  const [viewMode, setViewMode] = useState<'overall' | 'campaign' | 'time'>('overall');
+  const [selectedCampaign, setSelectedCampaign] = useState<string>('all');
+  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
+
   return (
     <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
       {/* Header with Mode Toggle */}
-      <div className="mb-8">
+      <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
@@ -294,9 +298,204 @@ const Analytics: React.FC = () => {
         </div>
       </div>
 
+      {/* View Mode Filters */}
+      <div className="mb-6 bg-gray-800 border border-gray-700 rounded-lg p-4">
+        <div className="flex items-center gap-4 flex-wrap">
+          {/* View Mode Selector */}
+          <div className="flex items-center gap-2">
+            <Filter className="text-gray-400" size={18} />
+            <span className="text-gray-400 text-sm font-medium">View:</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewMode('overall')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  viewMode === 'overall' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                Overall
+              </button>
+              <button
+                onClick={() => setViewMode('campaign')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  viewMode === 'campaign' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                By Campaign
+              </button>
+              <button
+                onClick={() => setViewMode('time')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  viewMode === 'time' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                Time Period
+              </button>
+            </div>
+          </div>
+
+          {/* Campaign Selector (shown when viewMode is 'campaign') */}
+          {viewMode === 'campaign' && (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400 text-sm">Campaign:</span>
+              <select
+                value={selectedCampaign}
+                onChange={(e) => setSelectedCampaign(e.target.value)}
+                className="bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="all">All Campaigns</option>
+                <option value="q4-enterprise">Q4 Enterprise Outreach</option>
+                <option value="saas-founders">SaaS Founders Series</option>
+                <option value="vp-sales">VP of Sales Target List</option>
+                <option value="tech-startup">Tech Startup Warmup</option>
+              </select>
+            </div>
+          )}
+
+          {/* Time Range Selector (shown when viewMode is 'time') */}
+          {viewMode === 'time' && (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400 text-sm">Range:</span>
+              <div className="flex gap-1 bg-gray-700 rounded-lg p-1">
+                <button
+                  onClick={() => setTimeRange('7d')}
+                  className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                    timeRange === '7d' ? 'bg-purple-600 text-white' : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  7 Days
+                </button>
+                <button
+                  onClick={() => setTimeRange('30d')}
+                  className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                    timeRange === '30d' ? 'bg-purple-600 text-white' : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  30 Days
+                </button>
+                <button
+                  onClick={() => setTimeRange('90d')}
+                  className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                    timeRange === '90d' ? 'bg-purple-600 text-white' : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  90 Days
+                </button>
+                <button
+                  onClick={() => setTimeRange('all')}
+                  className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                    timeRange === 'all' ? 'bg-purple-600 text-white' : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  All Time
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* KPI Grid */}
       <div className="mb-8">
         <KPIGrid analyticsData={analyticsData} />
+      </div>
+
+      {/* Conversion Funnel Section */}
+      <div className="mb-8 bg-gray-800 border border-gray-700 rounded-lg p-6">
+        <h2 className="text-xl font-semibold text-white mb-4 flex items-center">
+          <Target className="mr-2" size={20} />
+          Conversion Funnel
+        </h2>
+        <div className="flex items-center gap-2 mb-6">
+          {/* Sent */}
+          <div className="flex-1">
+            <div className="bg-blue-600 h-16 rounded-lg flex items-center justify-center relative">
+              <div className="text-white font-semibold">892 Sent</div>
+            </div>
+            <div className="text-center text-sm text-gray-400 mt-2">100%</div>
+          </div>
+
+          <div className="text-gray-600">→</div>
+
+          {/* Replied */}
+          <div className="flex-1" style={{ width: '48%' }}>
+            <div
+              className="bg-purple-600 h-16 rounded-lg flex items-center justify-center relative"
+              style={{ minWidth: '100px' }}
+            >
+              <div className="text-white font-semibold text-sm">426 Replied</div>
+            </div>
+            <div className="text-center text-sm text-gray-400 mt-2">47.8%</div>
+          </div>
+
+          <div className="text-gray-600">→</div>
+
+          {/* Interested */}
+          <div className="flex-1" style={{ width: '28%' }}>
+            <div
+              className="bg-orange-600 h-16 rounded-lg flex items-center justify-center relative"
+              style={{ minWidth: '90px' }}
+            >
+              <div className="text-white font-semibold text-sm">127 Interested</div>
+            </div>
+            <div className="text-center text-sm text-gray-400 mt-2">14.2%</div>
+          </div>
+
+          <div className="text-gray-600">→</div>
+
+          {/* Meeting Booked */}
+          <div className="flex-1" style={{ width: '14%' }}>
+            <div
+              className="bg-green-600 h-16 rounded-lg flex items-center justify-center relative"
+              style={{ minWidth: '80px' }}
+            >
+              <div className="text-white font-semibold text-sm">23 Meetings</div>
+            </div>
+            <div className="text-center text-sm text-gray-400 mt-2">2.6%</div>
+          </div>
+
+          <div className="text-gray-600">→</div>
+
+          {/* Closed */}
+          <div className="flex-1" style={{ width: '5.6%' }}>
+            <div
+              className="bg-green-700 h-16 rounded-lg flex items-center justify-center relative"
+              style={{ minWidth: '70px' }}
+            >
+              <div className="text-white font-semibold text-sm">5 Closed</div>
+            </div>
+            <div className="text-center text-sm text-gray-400 mt-2">0.56%</div>
+          </div>
+        </div>
+
+        {/* Reply Quality & Time Metrics */}
+        <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-700">
+          <div className="bg-gray-750 border border-gray-600 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-400 text-sm">Avg Reply Time</span>
+              <Clock className="text-blue-400" size={18} />
+            </div>
+            <div className="text-2xl font-bold text-white">4.2h</div>
+            <div className="text-xs text-green-400 mt-1">↓ 15% vs last month</div>
+          </div>
+
+          <div className="bg-gray-750 border border-gray-600 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-400 text-sm">Reply Quality</span>
+              <TrendingUp className="text-purple-400" size={18} />
+            </div>
+            <div className="text-2xl font-bold text-white">8.4/10</div>
+            <div className="text-xs text-green-400 mt-1">↑ 0.3 vs last month</div>
+          </div>
+
+          <div className="bg-gray-750 border border-gray-600 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-400 text-sm">Meeting-to-Close Rate</span>
+              <Target className="text-green-400" size={18} />
+            </div>
+            <div className="text-2xl font-bold text-white">21.7%</div>
+            <div className="text-xs text-gray-400 mt-1">5 of 23 meetings</div>
+          </div>
+        </div>
       </div>
 
       {/* Chart Views Section */}
