@@ -66,6 +66,7 @@ export default function ThreadedChatInterface() {
   // Chat input UX (Brand Assistant style)
   const inputTextAreaRef = useRef<HTMLTextAreaElement>(null)
   const [inputFocused, setInputFocused] = useState(false)
+  const [showScrollButton, setShowScrollButton] = useState(false)
 
   // Load threads on mount
   useEffect(() => {
@@ -84,6 +85,26 @@ export default function ThreadedChatInterface() {
     } catch (error) {
       console.error('Failed to load campaigns:', error)
     }
+  }
+
+  // Detect scroll position
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100
+      setShowScrollButton(!isNearBottom)
+    }
+
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Scroll to bottom
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
   // Auto-resume most recent conversation after threads load
@@ -1952,6 +1973,17 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                 </div>
               )}
             </div>
+
+            {/* Scroll to Bottom Button */}
+            {showScrollButton && (
+              <button
+                onClick={scrollToBottom}
+                className="fixed bottom-24 right-8 bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 z-50"
+                title="Scroll to bottom"
+              >
+                <ArrowUpFromLine size={20} className="rotate-180" />
+              </button>
+            )}
 
             {/* Chat Input */}
             <div className="flex-shrink-0 p-6 bg-gray-900 border-t border-gray-700">
