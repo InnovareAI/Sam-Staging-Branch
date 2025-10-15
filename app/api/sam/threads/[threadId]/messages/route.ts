@@ -1406,7 +1406,7 @@ Your natural response about starting the search
 
 #trigger-search:{"title":"JOB_TITLE","keywords":"KEYWORDS","location":"CITY/STATE/COUNTRY","company":"COMPANY_NAME","industry":"INDUSTRY","connectionDegree":"1st/2nd/3rd","targetCount":NUMBER,"campaignName":"CAMPAIGN_NAME"}
 
-The search is running! Head to the **Data Approval** tab to watch prospects populate in real-time.
+The search is running! Head to the **Data Approval** tab to review prospects once the search completes.
 
 **Search Parameter Guidelines:**
 - title: Job title (e.g., "CEO", "VP Sales", "CTO")
@@ -1556,7 +1556,7 @@ You: "Perfect! Starting the search for CR CEOS SF campaign.
 
 Campaign will be saved as: 20251011-IAI-CR CEOS SF
 
-Head to the **Data Approval** tab (left sidebar) to watch the 20 prospects populate in real-time - should take about 10-15 seconds."
+Head to the **Data Approval** tab (left sidebar) to review the prospects - should take about 10-15 seconds to complete the search."
 
 User: "can you find me 30 VPs of Sales in New York, 1st degree connections"
 You: "Absolutely! Before I start, under what name would you like to save this search? (Just the description - date and company code are added automatically)"
@@ -1568,7 +1568,7 @@ You: "Got it! Searching for 30 VP Sales in New York from your 1st degree network
 
 Campaign will be: 20251011-IAI-Winter 2025 NYC
 
-Go to **Data Approval** to watch the progress bar. This usually takes about 15-20 seconds."
+Go to **Data Approval** to review the prospects once the search completes. This usually takes about 15-20 seconds."
 
 User: "Find CTOs at Microsoft"
 You: "Great! Two quick things:
