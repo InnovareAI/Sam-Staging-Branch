@@ -5,6 +5,8 @@ import { Brain, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, Fi
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import SAMOnboarding from './SAMOnboarding';
 import KnowledgeBaseAnalytics from './KnowledgeBaseAnalytics';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 type KnowledgeDocument = {
   id: string;
@@ -1389,24 +1391,27 @@ function VectorTest() {
   };
 
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-      <h3 className="font-semibold mb-2 text-white">Test Knowledgebase Retrieval</h3>
-      <div className="flex gap-2">
-        <input 
-          className="bg-gray-700 border border-gray-600 px-3 py-2 rounded text-white placeholder-gray-400 w-full focus:border-purple-500 focus:outline-none" 
-          placeholder="Ask a question…" 
-          value={q} 
-          onChange={e => setQ(e.target.value)}
-          onKeyPress={e => e.key === 'Enter' && run()}
-        />
-        <button 
-          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded transition-colors disabled:opacity-50" 
-          onClick={run}
-          disabled={isLoading || !q.trim()}
-        >
-          {isLoading ? 'Searching...' : 'Search'}
-        </button>
-      </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-white">Test Knowledgebase Retrieval</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-2">
+          <input
+            className="bg-gray-700 border border-gray-600 px-3 py-2 rounded text-white placeholder-gray-400 w-full focus:border-purple-500 focus:outline-none"
+            placeholder="Ask a question…"
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            onKeyPress={e => e.key === 'Enter' && run()}
+          />
+          <button
+            className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded transition-colors disabled:opacity-50"
+            onClick={run}
+            disabled={isLoading || !q.trim()}
+          >
+            {isLoading ? 'Searching...' : 'Search'}
+          </button>
+        </div>
       <div className="space-y-2 mt-3 max-h-72 overflow-auto">
         {isLoading ? (
           <div className="text-center py-8">
@@ -1442,7 +1447,8 @@ function VectorTest() {
           </div>
         )}
       </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1453,9 +1459,12 @@ function DocumentsTable() {
   const [documents] = useState<Doc[]>([]);
 
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg">
-      <div className="px-4 py-3 border-b border-gray-700 font-semibold text-white">Documents</div>
-      {documents.length > 0 ? (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-white">Documents</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {documents.length > 0 ? (
         <table className="w-full text-sm">
           <thead className="bg-gray-750 text-gray-400">
             <tr>
@@ -1519,7 +1528,8 @@ function DocumentsTable() {
           </p>
         </div>
       )}
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1529,19 +1539,20 @@ type Chunk = { text: string; labels: string[]; confidence: number };
 function ChunkDrawer() {
   const [open, setOpen] = useState(false);
   const [chunks] = useState<Chunk[]>([]);
-  
+
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg">
-      <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
-        <div className="font-semibold text-white">Document Chunks</div>
-        <button 
-          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors" 
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-white">Document Chunks</CardTitle>
+        <button
+          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
           onClick={() => setOpen(!open)}
         >
           {open ? 'Close' : 'Open'}
         </button>
-      </div>
+      </CardHeader>
       {open && (
+        <CardContent>
         <div className="p-4 space-y-3 max-h-72 overflow-auto">
           {chunks.length > 0 ? (
             chunks.map((c, i) => (
@@ -1564,8 +1575,9 @@ function ChunkDrawer() {
             </div>
           )}
         </div>
+        </CardContent>
       )}
-    </div>
+    </Card>
   );
 }
 
