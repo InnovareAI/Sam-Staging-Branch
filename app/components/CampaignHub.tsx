@@ -2856,8 +2856,17 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
                     <p className="text-sm text-gray-400">Campaigns ready for message creation</p>
                   </div>
                 </div>
-                <div className="text-sm text-gray-400">
-                  {initialProspects.length} prospects approved
+                <div className="flex items-center gap-4">
+                  <div className="text-sm text-gray-400">
+                    {initialProspects.length} prospects approved
+                  </div>
+                  <button
+                    onClick={() => setShowBuilder(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium"
+                  >
+                    <Plus size={16} />
+                    New Campaign
+                  </button>
                 </div>
               </div>
             </div>
