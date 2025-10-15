@@ -397,6 +397,98 @@ const Analytics: React.FC = () => {
         <KPIGrid analyticsData={analyticsData} timeRange={timeRange} />
       </div>
 
+      {/* Campaign Performance Table */}
+      <Card className="mb-8">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center text-xl">
+              <BarChart3 className="mr-2" size={20} />
+              Campaign Performance
+            </CardTitle>
+
+            {/* Table View Filters */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 text-sm">View By:</span>
+                <select
+                  value={viewMode}
+                  onChange={(e) => setViewMode(e.target.value as any)}
+                  className="bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="overall">All Campaigns (Monthly)</option>
+                  <option value="campaign">By Campaign</option>
+                  <option value="time">By Time Period</option>
+                </select>
+              </div>
+
+              {viewMode === 'campaign' && (
+                <select
+                  value={selectedCampaign}
+                  onChange={(e) => setSelectedCampaign(e.target.value)}
+                  className="bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="all">All Campaigns</option>
+                  <option value="q4-enterprise">Q4 Enterprise Outreach</option>
+                  <option value="saas-founders">SaaS Founders Series</option>
+                  <option value="vp-sales">VP of Sales Target</option>
+                  <option value="tech-startup">Tech Startup Warmup</option>
+                </select>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* Campaign Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-700">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Campaign Name</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Owner</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-gray-400">Prospects</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-gray-400">Messages</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-gray-400">Replies</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-gray-400">Info Requests</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-gray-400">Meetings</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-gray-400">Response Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { name: "Q4 Enterprise Outreach", owner: "Sarah Powell", prospects: 247, messages: 324, replies: 156, infoRequests: 67, meetings: 23, responseRate: "48.1%" },
+                  { name: "SaaS Founders Series", owner: "John Smith", prospects: 189, messages: 203, replies: 89, infoRequests: 42, meetings: 18, responseRate: "43.8%" },
+                  { name: "VP of Sales Target", owner: "Emily Chen", prospects: 156, messages: 178, replies: 71, infoRequests: 38, meetings: 15, responseRate: "39.9%" },
+                  { name: "Tech Startup Warmup", owner: "Michael Brown", prospects: 134, messages: 121, replies: 62, infoRequests: 29, meetings: 9, responseRate: "51.2%" },
+                  { name: "FinTech Decision Makers", owner: "Sarah Powell", prospects: 121, messages: 66, replies: 48, infoRequests: 20, meetings: 6, responseRate: "72.7%" },
+                ].map((campaign, index) => (
+                  <tr
+                    key={index}
+                    className="border-b border-gray-700/50 hover:bg-gray-800/50 cursor-pointer transition-colors"
+                    onClick={() => {
+                      setViewMode('campaign');
+                      setSelectedCampaign(campaign.name.toLowerCase().replace(/\s+/g, '-'));
+                    }}
+                  >
+                    <td className="py-3 px-4 text-white font-medium">{campaign.name}</td>
+                    <td className="py-3 px-4 text-gray-400">{campaign.owner}</td>
+                    <td className="py-3 px-4 text-right text-white">{campaign.prospects.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right text-white">{campaign.messages.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right text-blue-400">{campaign.replies.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right text-orange-400">{campaign.infoRequests.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right text-green-400">{campaign.meetings.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right">
+                      <Badge className="bg-purple-600/20 text-purple-400 border-purple-600">
+                        {campaign.responseRate}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Conversion Funnel Section */}
       <Card className="mb-8">
         <CardHeader>
