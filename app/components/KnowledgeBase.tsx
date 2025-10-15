@@ -685,24 +685,6 @@ function ICPConfiguration({
                 </div>
               </div>
 
-              {/* Quick Actions Card */}
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-3 flex items-center">
-                  <Zap className="mr-2" size={16} />
-                  Quick Actions
-                </h3>
-                <div className="space-y-2">
-                  <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded text-sm transition-colors">
-                    Create Campaign
-                  </button>
-                  <button className="w-full bg-gray-600 hover:bg-gray-500 text-white py-2 px-3 rounded text-sm transition-colors">
-                    Validate Prospects
-                  </button>
-                  <button className="w-full bg-gray-600 hover:bg-gray-500 text-white py-2 px-3 rounded text-sm transition-colors">
-                    Export Data
-                  </button>
-                </div>
-              </div>
             </div>
           )}
 
