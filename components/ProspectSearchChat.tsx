@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { X, ArrowDown } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface Message {
   id: string;
@@ -39,6 +40,7 @@ export default function ProspectSearchChat({
   const [showScrollButton, setShowScrollButton] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
 
   const scrollToBottom = () => {
     // Use setTimeout to ensure DOM is updated before scrolling
@@ -116,11 +118,14 @@ export default function ProspectSearchChat({
     };
   }, [currentJobId]);
 
-  const fetchResults = async (jobId: string) => {
-    try {
+  // REACT QUERY: Mutation for fetching prospect search results
+  const fetchResultsMutation = useMutation({
+    mutationFn: async (jobId: string) => {
       const response = await fetch(`/api/linkedin/search/results?job_id=${jobId}&page=1&per_page=100`);
-      const data = await response.json();
-
+      if (!response.ok) throw new Error('Failed to fetch results');
+      return response.json();
+    },
+    onSuccess: (data) => {
       if (data.success && data.prospects) {
         onProspectsReceived?.(data.prospects);
 
@@ -132,13 +137,18 @@ export default function ProspectSearchChat({
         setProgress(null);
         setCurrentJobId(null);
       }
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Failed to fetch results:', error);
       addMessage({
         role: 'assistant',
         content: `❌ Sorry, I had trouble fetching the results. Please try again.`
       });
     }
+  });
+
+  const fetchResults = (jobId: string) => {
+    fetchResultsMutation.mutate(jobId);
   };
 
   const addMessage = (message: Omit<Message, 'id' | 'timestamp'>) => {
@@ -199,53 +209,26 @@ export default function ProspectSearchChat({
     };
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
-
-    const userMessage = input.trim();
-    setInput('');
-    setIsLoading(true);
-
-    // Add user message
-    addMessage({ role: 'user', content: userMessage });
-
-    try {
-      // Parse search intent
-      const criteria = parseSearchIntent(userMessage);
-
-      // CRITICAL: Always require connection degree clarification
-      if (!criteria.connectionDegree) {
-        addMessage({
-          role: 'assistant',
-          content: `Before I search, I need to know: Which connection degree do you want to target?\n\n**1st degree** - Your direct connections\n**2nd degree** - Friends of friends (most common)\n**3rd degree** - Extended network\n\nPlease specify "1st", "2nd", or "3rd" degree connections.`
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Add thinking message
-      addMessage({
-        role: 'assistant',
-        content: `Got it! Searching for ${criteria.targetCount} ${criteria.title || 'prospects'}${criteria.keywords ? ` in ${criteria.keywords}` : ''} (${criteria.connectionDegree} degree connections)...`
-      });
-
-      // Use simple search endpoint (working with authentication)
+  // REACT QUERY: Mutation for performing prospect search
+  const searchProspectsMutation = useMutation({
+    mutationFn: async (searchParams: {
+      search_criteria: {
+        title: string;
+        keywords: string;
+        location?: string;
+        connectionDegree: string;
+      };
+      target_count: number;
+    }) => {
       const response = await fetch('/api/linkedin/search/simple', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          search_criteria: {
-            title: criteria.title,
-            keywords: criteria.keywords,
-            location: criteria.location?.[0], // Simple endpoint takes single location
-            connectionDegree: criteria.connectionDegree // Use parsed connection degree from user input
-          },
-          target_count: Math.min(criteria.targetCount, 50) // Simple endpoint limited to 50
-        })
+        body: JSON.stringify(searchParams)
       });
-
-      const data = await response.json();
-
+      if (!response.ok) throw new Error('Search failed');
+      return response.json();
+    },
+    onSuccess: (data) => {
       if (data.success && data.prospects) {
         // Simple endpoint returns results immediately
         onProspectsReceived?.(data.prospects);
@@ -260,15 +243,58 @@ export default function ProspectSearchChat({
           content: `❌ ${data.error || 'Search failed'}. ${data.error?.includes('Authentication') || data.error?.includes('LinkedIn not connected') ? 'Please make sure you\'re logged in and LinkedIn is connected in Settings.' : 'Please try again.'}`
         });
       }
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Search error:', error);
       addMessage({
         role: 'assistant',
         content: `❌ Sorry, something went wrong. Please try again.`
       });
-    } finally {
+    },
+    onSettled: () => {
       setIsLoading(false);
     }
+  });
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userMessage = input.trim();
+    setInput('');
+    setIsLoading(true);
+
+    // Add user message
+    addMessage({ role: 'user', content: userMessage });
+
+    // Parse search intent
+    const criteria = parseSearchIntent(userMessage);
+
+    // CRITICAL: Always require connection degree clarification
+    if (!criteria.connectionDegree) {
+      addMessage({
+        role: 'assistant',
+        content: `Before I search, I need to know: Which connection degree do you want to target?\n\n**1st degree** - Your direct connections\n**2nd degree** - Friends of friends (most common)\n**3rd degree** - Extended network\n\nPlease specify "1st", "2nd", or "3rd" degree connections.`
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    // Add thinking message
+    addMessage({
+      role: 'assistant',
+      content: `Got it! Searching for ${criteria.targetCount} ${criteria.title || 'prospects'}${criteria.keywords ? ` in ${criteria.keywords}` : ''} (${criteria.connectionDegree} degree connections)...`
+    });
+
+    // Use React Query mutation to perform search
+    searchProspectsMutation.mutate({
+      search_criteria: {
+        title: criteria.title,
+        keywords: criteria.keywords,
+        location: criteria.location?.[0], // Simple endpoint takes single location
+        connectionDegree: criteria.connectionDegree // Use parsed connection degree from user input
+      },
+      target_count: Math.min(criteria.targetCount, 50) // Simple endpoint limited to 50
+    });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
