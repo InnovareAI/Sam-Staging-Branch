@@ -166,37 +166,45 @@ export async function POST(request: NextRequest) {
     const allLinkedInAccounts = allAccounts.filter((account: any) => account.type === 'LINKEDIN');
     console.log(`📊 Total LinkedIn accounts in Unipile: ${allLinkedInAccounts.length}`);
 
-    // Step 3: Get the authenticated user's LinkedIn accounts from database
-    // The workspace_accounts table has user_id showing which user owns each account
-    console.log(`🔍 Finding LinkedIn accounts for authenticated user: ${user.email} (${user.id})`);
+    // Step 3: Get ALL connected LinkedIn accounts from the workspace
+    // Any workspace member can use any connected account in their workspace
+    console.log(`🔍 Finding LinkedIn accounts for workspace ${workspaceId} (user: ${user.email})`);
 
     const { data: userLinkedInAccounts, error: userAccountsError } = await supabase
       .from('workspace_accounts')
-      .select('unipile_account_id, account_name')
+      .select('unipile_account_id, account_name, user_id')
       .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
       .eq('account_type', 'linkedin')
       .eq('connection_status', 'connected');
 
     if (userAccountsError || !userLinkedInAccounts || userLinkedInAccounts.length === 0) {
-      console.error('❌ No LinkedIn accounts found for this user');
+      console.error('❌ No LinkedIn accounts found for this workspace');
       return NextResponse.json({
         success: false,
         error: 'No LinkedIn account connected',
-        details: 'You must connect your LinkedIn account to use this feature'
+        details: 'No LinkedIn accounts are connected in this workspace. Please connect a LinkedIn account in Settings > Integrations.'
       }, { status: 400 });
     }
 
-    console.log(`📊 Found ${userLinkedInAccounts.length} LinkedIn account(s) for user in database`);
+    // Step 4: Filter to ONLY user's OWN accounts (NEVER use shared accounts)
+    const ownAccounts = userLinkedInAccounts.filter(acc => acc.user_id === user.id);
+    console.log(`📊 User ${user.email} has ${ownAccounts.length} own LinkedIn account(s)`);
 
-    // Step 4: Match database accounts to Unipile accounts - use first available
-    // We trust Unipile to handle feature detection on their end
+    if (ownAccounts.length === 0) {
+      console.error(`❌ User has no own LinkedIn accounts (${userLinkedInAccounts.length} total in workspace)`);
+      return NextResponse.json({
+        success: false,
+        error: 'No LinkedIn account connected',
+        details: 'You must connect your own LinkedIn account to use this feature. Please go to Settings > Integrations.'
+      }, { status: 400 });
+    }
+
+    // Step 5: Match user's accounts to Unipile accounts - use first available
     let selectedAccount = null;
 
-    for (const dbAccount of userLinkedInAccounts) {
-      console.log(`\n  🔍 Checking database account: ${dbAccount.account_name} (${dbAccount.unipile_account_id})`);
+    for (const dbAccount of ownAccounts) {
+      console.log(`\n  🔍 Checking user's account: ${dbAccount.account_name} (${dbAccount.unipile_account_id})`);
 
-      // Find this account in the Unipile accounts list
       const unipileAccount = allLinkedInAccounts.find(a => a.id === dbAccount.unipile_account_id);
 
       if (!unipileAccount) {
@@ -207,7 +215,6 @@ export async function POST(request: NextRequest) {
       const premiumFeatures = unipileAccount.connection_params?.im?.premiumFeatures || [];
       console.log(`     Features detected: ${premiumFeatures.join(', ') || 'none (Unipile will auto-detect)'}`);
 
-      // Use first available account - let Unipile handle feature detection
       selectedAccount = unipileAccount;
       console.log(`     ✅ SELECTED - Using this account for search`);
       break;

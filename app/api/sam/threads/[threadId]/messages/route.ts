@@ -1895,20 +1895,24 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         } else {
           // Replace trigger with error message including details
           let errorMsg = `\n\n❌ **Search Failed:** ${searchData.error || 'Unable to complete the search.'}`
-          
+
           // Add detailed error information if available
           if (searchData.details && Array.isArray(searchData.details)) {
             errorMsg += `\n\n**Error Details:**\n${searchData.details.map((d: string) => `• ${d}`).join('\n')}`
           }
-          
+
           if (searchData.action === 'connect_linkedin') {
             errorMsg += `\n\n**Action needed:** Please connect your LinkedIn account in Settings > Integrations first.`
           }
-          
+
           // Log full error for debugging
           console.error('❌ Search failed:', JSON.stringify(searchData, null, 2))
-          
+
           aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i, errorMsg).trim()
+
+          // Remove contradictory "Head to Data Approval" text when search fails
+          aiResponse = aiResponse.replace(/Head to.*Data Approval.*to (watch|see).*(\.|!)/gi, '').trim()
+          aiResponse = aiResponse.replace(/Campaign:\s*\d+-[A-Z]+-[^\n]+\n*/gi, '').trim()
         }
 
           console.log('✅ Search trigger executed, response updated')
