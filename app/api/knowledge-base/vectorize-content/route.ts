@@ -7,39 +7,68 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Create embeddings using OpenAI text-embedding-3-large via OpenRouter
-// Upgraded from text-embedding-3-small to text-embedding-3-large @ 1536 dimensions
-// (3072 dimensions not supported due to pgvector 2000-dim hard limit)
-// text-embedding-3-large @ 1536-dim still provides better quality than text-embedding-3-small
+// Create embeddings using Google Gemini REST API
+// Generates 768-dimensional embeddings for text chunks
 async function createEmbeddings(text: string): Promise<number[]> {
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
-        'X-Title': 'SAM AI Knowledge Base'
-      },
-      body: JSON.stringify({
-        model: 'text-embedding-3-large',
-        input: text.substring(0, 8000), // Limit input length
-        encoding_format: 'float',
-        dimensions: 1536 // Reduced from 3072 due to pgvector 2000-dim limit
-      })
-    });
+    console.log('[Vectorize] Creating embedding for text length:', text.length);
+    
+    // Limit text length for embedding (Gemini has token limits)
+    const truncatedText = text.substring(0, 10000);
+    
+    // Use Gemini REST API directly
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: {
+            parts: [{
+              text: truncatedText
+            }]
+          }
+        })
+      }
+    );
 
     if (!response.ok) {
-      throw new Error(`Embedding API error: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('[Vectorize] Gemini API error:', response.status, errorText);
+      throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
-    return data.data[0]?.embedding || [];
+    const embedding = data.embedding?.values || [];
+    
+    console.log('[Vectorize] Generated embedding with', embedding.length, 'dimensions');
+    
+    if (embedding.length === 0) {
+      throw new Error('Gemini returned empty embedding');
+    }
+    
+    // Pad or truncate to 1536 dimensions to match our vector column size
+    if (embedding.length < 1536) {
+      // Pad with zeros if needed
+      console.log('[Vectorize] Padding embedding from', embedding.length, 'to 1536 dimensions');
+      return [...embedding, ...Array(1536 - embedding.length).fill(0)];
+    } else if (embedding.length > 1536) {
+      // Truncate if needed
+      console.log('[Vectorize] Truncating embedding from', embedding.length, 'to 1536 dimensions');
+      return embedding.slice(0, 1536);
+    }
+    
+    return embedding;
 
   } catch (error) {
-    console.error('Embedding creation error:', error);
+    console.error('Gemini embedding creation error:', error);
+    console.error('Error details:', error instanceof Error ? error.message : String(error));
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
 
     // Fallback: Create a simple hash-based vector for development
+    console.warn('[Vectorize] Using fallback hash-based embedding');
     const fallbackVector = Array.from({ length: 1536 }, (_, i) => {
       const hash = Array.from(text).reduce((acc, char, index) => {
         return acc + char.charCodeAt(0) * (index + 1);
@@ -112,12 +141,12 @@ async function createSAMKnowledgeEntries(
     };
 
     knowledgeEntries.push({
-      id: `${documentId}_chunk_${i}`,
       document_id: documentId,
       workspace_id: workspaceId,
       section_id: section,
+      chunk_index: i,
       content: chunk,
-      embedding: embedding, // Store in standard embedding column (text-embedding-3-large @ 1536-dim)
+      embedding: `[${embedding.join(',')}]`, // Format as PostgreSQL array string for pgvector
       metadata: enhancedMetadata,
       tags: tags,
       created_at: new Date().toISOString()
@@ -220,7 +249,13 @@ export async function POST(request: NextRequest) {
 
     if (vectorError) {
       console.error('Vector storage error:', vectorError);
-      return NextResponse.json({ error: 'Failed to store vectors' }, { status: 500 });
+      console.error('Vector error details:', JSON.stringify(vectorError, null, 2));
+      console.error('Sample entry:', JSON.stringify(knowledgeEntries[0], null, 2));
+      return NextResponse.json({ 
+        error: 'Failed to store vectors', 
+        details: vectorError.message || vectorError.toString(),
+        code: vectorError.code 
+      }, { status: 500 });
     }
 
     // Update document status to completed

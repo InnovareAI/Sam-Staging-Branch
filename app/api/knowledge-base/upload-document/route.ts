@@ -13,101 +13,82 @@ async function extractContentFromFile(buffer: Buffer, mimeType: string): Promise
       return new TextDecoder().decode(buffer);
     } else if (mimeType.includes('image/')) {
       // Handle image files (PNG, JPG, GIF, WEBP, etc.)
-      console.log('[Upload] Processing image file with Google Cloud Vision API...');
+      console.log('[Upload] Processing image file with Gemini Vision...');
 
       try {
-        // Import Google Cloud Vision client
-        const vision = await import('@google-cloud/vision');
-        const client = new vision.ImageAnnotatorClient({
-          credentials: process.env.GOOGLE_CLOUD_CREDENTIALS
-            ? JSON.parse(process.env.GOOGLE_CLOUD_CREDENTIALS)
-            : undefined
-        });
+        const { GoogleGenerativeAI } = await import('@google/generative-ai');
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-        console.log('[Upload] Vision API client initialized for image');
+        console.log('[Upload] Gemini client initialized for image');
 
-        // Convert buffer to base64 for Vision API
+        // Convert buffer to base64 for Gemini
         const base64Image = buffer.toString('base64');
 
-        // Perform text detection and label detection on the image
-        const [textResult] = await client.textDetection({
-          image: { content: base64Image },
-        });
+        // Use Gemini to extract text and analyze the image
+        const result = await model.generateContent([
+          {
+            inlineData: {
+              mimeType,
+              data: base64Image
+            }
+          },
+          'Extract all text from this image and describe its visual elements. Format your response as:\n\nText Content:\n[extracted text]\n\nVisual Elements:\n[describe key visual elements, diagrams, charts, etc.]'
+        ]);
 
-        const [labelResult] = await client.labelDetection({
-          image: { content: base64Image },
-        });
+        const response = await result.response;
+        const content = response.text();
 
-        // Extract text from image
-        const extractedText = textResult.textAnnotations?.[0]?.description || '';
-        
-        // Extract labels/tags from image
-        const labels = labelResult.labelAnnotations?.map(label => label.description).slice(0, 10) || [];
+        console.log('[Upload] Image processed with Gemini - Content length:', content.length);
 
-        console.log('[Upload] Image processed - Text length:', extractedText.length, 'Labels:', labels.length);
-
-        // Combine text and labels into structured content
-        let content = '[Visual Content]\n\n';
-        
-        if (labels.length > 0) {
-          content += `Visual Elements: ${labels.join(', ')}\n\n`;
-        }
-        
-        if (extractedText.trim()) {
-          content += `Text Content:\n${extractedText}`;
-        } else {
-          content += 'This image contains visual information but no readable text.';
-        }
-
-        return content;
+        return `[Visual Content]\n\n${content}`;
 
       } catch (error) {
-        console.error('[Upload] Google Cloud Vision API error for image:', error);
+        console.error('[Upload] Gemini Vision API error for image:', error);
 
-        // Fallback: Store image with placeholder if Vision API fails
-        return `[Image Uploaded]\n\nNote: Image analysis encountered an issue (${error instanceof Error ? error.message : 'Unknown error'}). The image has been stored and can be manually processed later. To enable automatic image analysis, configure Google Cloud Vision API credentials.`;
+        // Fallback: Store image with placeholder if Gemini fails
+        return `[Image Uploaded]\n\nNote: Image analysis encountered an issue (${error instanceof Error ? error.message : 'Unknown error'}). The image has been stored and can be manually processed later. To enable automatic image analysis, configure GEMINI_API_KEY.`;
       }
     } else if (mimeType.includes('application/pdf')) {
-      console.log('[Upload] Attempting PDF extraction with Google Cloud Vision API...');
+      console.log('[Upload] Attempting PDF extraction with Gemini...');
 
       try {
-        // Import Google Cloud Vision client
-        const vision = await import('@google-cloud/vision');
-        const client = new vision.ImageAnnotatorClient({
-          // Use service account key from environment variable
-          credentials: process.env.GOOGLE_CLOUD_CREDENTIALS
-            ? JSON.parse(process.env.GOOGLE_CLOUD_CREDENTIALS)
-            : undefined
-        });
+        const { GoogleGenerativeAI } = await import('@google/generative-ai');
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-        console.log('[Upload] Vision API client initialized');
+        console.log('[Upload] Gemini client initialized for PDF');
 
-        // Convert buffer to base64 for Vision API
-        const base64Image = buffer.toString('base64');
+        // Convert buffer to base64 for Gemini
+        const base64Pdf = buffer.toString('base64');
 
-        // Perform text detection on the PDF
-        const [result] = await client.documentTextDetection({
-          image: {
-            content: base64Image,
+        // Use Gemini to extract text from PDF
+        const result = await model.generateContent([
+          {
+            inlineData: {
+              mimeType: 'application/pdf',
+              data: base64Pdf
+            }
           },
-        });
+          'Extract all text content from this PDF document. Return only the text, preserving the original structure and formatting as much as possible.'
+        ]);
 
-        const fullTextAnnotation = result.fullTextAnnotation;
-        const extractedText = fullTextAnnotation?.text || '';
+        const response = await result.response;
+        const extractedText = response.text();
 
-        console.log('[Upload] PDF text extracted successfully, length:', extractedText.length);
+        console.log('[Upload] PDF text extracted successfully with Gemini, length:', extractedText.length);
 
         if (!extractedText || extractedText.trim().length === 0) {
           console.warn('[Upload] PDF appears to be empty or contains only images');
-          return '[PDF Uploaded - No text content detected]\n\nThis PDF was processed but no extractable text was found. It may contain only images or be a scanned document without OCR.';
+          return '[PDF Uploaded - No text content detected]\n\nThis PDF was processed but no extractable text was found. It may contain only images or be a scanned document.';
         }
 
         return extractedText;
 
       } catch (error) {
-        console.error('[Upload] Google Cloud Vision API error:', error);
+        console.error('[Upload] Gemini PDF extraction error:', error);
 
-        // Fallback: Store PDF with placeholder if Vision API fails
+        // Fallback: Store PDF with placeholder if Gemini fails
         return `[PDF Document Uploaded]\n\nNote: Text extraction encountered an issue (${error instanceof Error ? error.message : 'Unknown error'}). The PDF has been stored and can be manually processed later.`;
       }
     } else if (mimeType.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document')) {

@@ -307,13 +307,13 @@ export default function Page() {
     }
   }, [isAuthLoading, user, session, showAuthModal]);
 
-  // Smart default view for Campaign Hub - show approval screen if prospects are pending
+  // Smart default for Campaign Hub: always show Campaign Hub view by default
+  // Do not auto-open the Prospect Approval panel here; users can use the Data Approval tab
   useEffect(() => {
     if (activeMenuItem === 'campaign') {
-      // Default to approval view if prospects are pending, otherwise show campaign hub
-      setShowCampaignApprovalView(!!pendingCampaignProspects && pendingCampaignProspects.length > 0);
+      setShowCampaignApprovalView(false);
     }
-  }, [activeMenuItem, pendingCampaignProspects]);
+  }, [activeMenuItem]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {

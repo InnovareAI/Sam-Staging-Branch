@@ -1209,9 +1209,10 @@ export default function DataCollectionHub({
               disabled={approvedCount === 0}
               size="sm"
               className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              title="Approve selected prospects and continue"
             >
               <Check className="w-3.5 h-3.5" />
-              <span>Proceed to Campaign Hub</span>
+              <span>Approve Data</span>
             </Button>
           </div>
         </div>

@@ -35,7 +35,8 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies })
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
