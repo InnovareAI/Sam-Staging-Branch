@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "verify:tenant-isolation": "node scripts/js/verify-tenant-isolation.mjs",
+    "build": "npm run verify:tenant-isolation && next build",
     "build:staging": "cp .env.staging .env.local.bak && mv .env.local .env.local.prod && mv .env.staging .env.local && next build && mv .env.local .env.staging && mv .env.local.prod .env.local",
     "start": "next start",
     "lint": "next lint",
