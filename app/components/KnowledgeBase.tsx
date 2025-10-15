@@ -2271,7 +2271,67 @@ const KnowledgeBase: React.FC = () => {
       <div className="max-w-7xl">
         {activeSection === 'overview' && (
           <div className="space-y-6">
-            {/* Knowledgebase Status Dashboard */}
+            {/* Row 1: KB Completeness and KB Health */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* KB Completeness */}
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white text-sm font-medium">KB Completeness</span>
+                  <span className="text-white text-lg font-bold">{completionDisplay}</span>
+                </div>
+                <div className="relative">
+                  <div className="w-full bg-gray-600 rounded-full h-4 overflow-hidden">
+                    <div
+                      className="h-4 rounded-full transition-all duration-1000 ease-out"
+                      style={{
+                        width: completionWidth,
+                        background: 'linear-gradient(90deg, #3B82F6 0%, #10B981 50%, #F59E0B 75%, #EF4444 100%)'
+                      }}
+                    ></div>
+                  </div>
+                </div>
+                {!isKnowledgeLoading && (
+                  <div className="text-xs text-gray-400 mt-3">
+                    <p>Critical: {Math.round(criticalScore)}% • Important: {Math.round(importantScore)}% • Supporting: {Math.round(supportingScore)}%</p>
+                  </div>
+                )}
+              </div>
+
+              {/* KB Health */}
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white text-sm font-medium">KB Health</span>
+                  <Activity className="text-green-400" size={24} />
+                </div>
+                <p className="text-white text-2xl font-bold">Excellent</p>
+                <p className="text-green-400 text-xs mt-2">{documents.length} docs across {[...new Set(documents.map(d => d.section))].length} sections</p>
+              </div>
+            </div>
+
+            {/* Row 2: Quick Actions */}
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+              <h3 className="text-white text-lg font-semibold mb-4">Quick Actions</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                {sections.slice(1, 17).map((section) => {
+                  const IconComponent = section.icon;
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => setActiveSection(section.id)}
+                      className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-left transition-all hover:bg-purple-600 hover:border-purple-500 group cursor-pointer"
+                    >
+                      <div className="flex items-center mb-2">
+                        <IconComponent className="text-blue-400 mr-2 group-hover:scale-110 transition-transform" size={18} />
+                        <span className="text-white text-sm font-medium">{section.label}</span>
+                      </div>
+                      <p className="text-gray-400 text-xs">{section.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Row 3: Total Documents, ICP Profiles, KB Completion, SAM Insights */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Total Documents */}
               <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
