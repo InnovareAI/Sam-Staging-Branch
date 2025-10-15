@@ -87,6 +87,8 @@ const Analytics: React.FC = () => {
   const [viewMode, setViewMode] = useState<'overall' | 'campaign' | 'time'>('overall');
   const [selectedCampaign, setSelectedCampaign] = useState<string>('all');
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
+  const [userViewMode, setUserViewMode] = useState<'consolidated' | 'by-user'>('consolidated');
+  const [selectedUser, setSelectedUser] = useState<string>('all');
 
   const supabase = createClientComponentClient();
 
@@ -306,9 +308,53 @@ const Analytics: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
               <BarChart3 className="mr-3" size={32} />
-              Analytics
+              Analytics Dashboard
             </h1>
             <p className="text-gray-400">Performance metrics, insights, and optimization recommendations</p>
+          </div>
+
+          {/* User View Selector */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Users className="text-gray-400" size={18} />
+              <span className="text-gray-400 text-sm font-medium">View:</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setUserViewMode('consolidated')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    userViewMode === 'consolidated' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  Consolidated
+                </button>
+                <button
+                  onClick={() => setUserViewMode('by-user')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    userViewMode === 'by-user' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  By User
+                </button>
+              </div>
+            </div>
+
+            {/* User Selector (shown when userViewMode is 'by-user') */}
+            {userViewMode === 'by-user' && (
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 text-sm">Team Member:</span>
+                <select
+                  value={selectedUser}
+                  onChange={(e) => setSelectedUser(e.target.value)}
+                  className="bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="all">All Users</option>
+                  <option value="user1">Sarah Powell (you)</option>
+                  <option value="user2">John Smith</option>
+                  <option value="user3">Emily Chen</option>
+                  <option value="user4">Michael Brown</option>
+                </select>
+              </div>
+            )}
           </div>
         </div>
       </div>
