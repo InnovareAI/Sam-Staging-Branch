@@ -70,12 +70,23 @@ function CampaignList() {
   }, []);
 
   const loadCampaigns = async () => {
-    // Note: campaigns API removed to fix Next.js 15 compatibility issues
-    // Using mock data for development/demo
-    console.log('Loading campaigns - using mock data for development');
-    
-    // Use mock data (for demo purposes when DB is not set up)
-    const mockCampaigns = [
+    try {
+      const response = await fetch('/api/campaigns');
+
+      if (!response.ok) {
+        console.error('Failed to load campaigns:', response.statusText);
+        setCampaigns([]);
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      setCampaigns(data.campaigns || []);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading campaigns:', error);
+      // Fallback to mock data if API fails
+      const mockCampaigns = [
           {
             id: '1',
             name: 'Q4 SaaS Outreach',
@@ -319,6 +330,7 @@ function CampaignList() {
         ];
         setCampaigns(mockCampaigns);
         setLoading(false);
+    }
   };
 
   const toggleCampaignStatus = async (campaignId: string, currentStatus: string) => {
