@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Settings, Building2, Brain, Mail, Save, Loader2 } from 'lucide-react';
+import { X, Settings, Building2, Brain, Mail, Save, Loader2, MessageCircle } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import LLMConfigModal from '@/components/LLMConfigModal';
 import EmailProvidersModal from '@/app/components/EmailProvidersModal';
+import ReplyAgentModal from '@/app/components/ReplyAgentModal';
 
 interface WorkspaceSettingsModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
   const [saveMessage, setSaveMessage] = useState('');
   const [isLLMModalOpen, setIsLLMModalOpen] = useState(false);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [isReplyAgentModalOpen, setIsReplyAgentModalOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -198,6 +200,23 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
                     <path d="m9 18 6-6-6-6"/>
                   </svg>
                 </button>
+
+                {/* Reply Agent */}
+                <button
+                  onClick={() => setIsReplyAgentModalOpen(true)}
+                  className="w-full flex items-center justify-between p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors group"
+                >
+                  <div className="flex items-center space-x-3">
+                    <MessageCircle className="text-blue-400" size={20} />
+                    <div className="text-left">
+                      <div className="text-white font-medium">Reply Agent</div>
+                      <div className="text-gray-400 text-sm">Auto-respond to prospect replies with AI</div>
+                    </div>
+                  </div>
+                  <svg className="text-gray-400 group-hover:translate-x-1 transition-transform" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="m9 18 6-6-6-6"/>
+                  </svg>
+                </button>
               </div>
             )}
           </div>
@@ -228,6 +247,13 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
       <EmailProvidersModal
         isOpen={isEmailModalOpen}
         onClose={() => setIsEmailModalOpen(false)}
+        workspaceId={workspaceId}
+      />
+
+      {/* Reply Agent Modal */}
+      <ReplyAgentModal
+        isOpen={isReplyAgentModalOpen}
+        onClose={() => setIsReplyAgentModalOpen(false)}
         workspaceId={workspaceId}
       />
     </>
