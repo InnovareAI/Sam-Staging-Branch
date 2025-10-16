@@ -1708,9 +1708,14 @@ Would you like me to adjust these or create more variations?`
                     if (allSelected) {
                       setSelectedSessions([]);
                       setSelectedProspects([]);
+                      setName(generateDefaultCampaignName());
                     } else {
                       setSelectedSessions(approvalSessions.map(s => s.id));
                       setSelectedProspects([...approvedProspects]);
+                      // Use first session's name when selecting all
+                      if (approvalSessions.length > 0 && approvalSessions[0].name) {
+                        setName(approvalSessions[0].name);
+                      }
                     }
                   }}
                   variant="link"
@@ -1734,12 +1739,30 @@ Would you like me to adjust these or create more variations?`
                             onClick={() => {
                               if (isSelected) {
                                 // Deselect session and remove its prospects
-                                setSelectedSessions(selectedSessions.filter(id => id !== session.id));
+                                const newSelectedSessions = selectedSessions.filter(id => id !== session.id);
+                                setSelectedSessions(newSelectedSessions);
                                 setSelectedProspects(selectedProspects.filter(p => p.sessionId !== session.id));
+
+                                // Update campaign name to first remaining selected session's name
+                                if (newSelectedSessions.length > 0) {
+                                  const firstSession = approvalSessions.find(s => s.id === newSelectedSessions[0]);
+                                  if (firstSession?.name) {
+                                    setName(firstSession.name);
+                                  }
+                                } else {
+                                  // No sessions selected, reset to default
+                                  setName(generateDefaultCampaignName());
+                                }
                               } else {
                                 // Select session and add its prospects
-                                setSelectedSessions([...selectedSessions, session.id]);
+                                const newSelectedSessions = [...selectedSessions, session.id];
+                                setSelectedSessions(newSelectedSessions);
                                 setSelectedProspects([...selectedProspects, ...session.prospects]);
+
+                                // If this is the first session selected, use its name for the campaign
+                                if (selectedSessions.length === 0 && session.name) {
+                                  setName(session.name);
+                                }
                               }
                             }}
                           >
