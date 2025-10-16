@@ -22,6 +22,7 @@ import Analytics from '@/app/components/Analytics';
 import AuditTrail from '@/app/components/AuditTrail';
 import DataCollectionHub from '@/components/DataCollectionHub';
 import CampaignHub from '@/app/components/CampaignHub';
+import AIConfiguration from '@/app/components/AIConfiguration';
 import { ManageSubscriptionModal } from '@/app/components/ManageSubscriptionModal';
 import {
   Activity,
@@ -1255,6 +1256,12 @@ export default function Page() {
       label: 'Workspace',
       description: 'Organize teams, tenants, and invitations',
       icon: Building2,
+    },
+    {
+      id: 'ai-config',
+      label: 'AI Configuration',
+      description: 'Configure AI agents, models, and automation settings',
+      icon: Brain,
     },
     ...(isSuperAdmin
       ? [
@@ -2738,7 +2745,9 @@ export default function Page() {
         <ConnectionStatusBar />
 
         <div className="flex-1 overflow-y-auto px-6 py-6" style={{ paddingBottom: activeMenuItem === 'chat' ? '240px' : '24px' }}>
-        {activeMenuItem === 'knowledge' ? (
+        {activeMenuItem === 'ai-config' ? (
+          <AIConfiguration workspaceId={selectedWorkspaceId} workspaceName={currentWorkspace?.name} />
+        ) : activeMenuItem === 'knowledge' ? (
           <KnowledgeBase />
         ) : activeMenuItem === 'data-approval' ? (
           /* Data Approval - Unified via DataCollectionHub */

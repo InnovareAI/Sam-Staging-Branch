@@ -1,0 +1,224 @@
+'use client';
+
+import React, { useState } from 'react';
+import { Brain, MessageCircle, Send, TrendingUp, Search, MessageSquare, FileText, Settings } from 'lucide-react';
+import LLMConfigModal from '@/components/LLMConfigModal';
+import ReplyAgentModal from '@/app/components/ReplyAgentModal';
+
+interface AIConfigurationProps {
+  workspaceId: string | null;
+  workspaceName?: string;
+}
+
+export default function AIConfiguration({ workspaceId, workspaceName }: AIConfigurationProps) {
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [showLLMModal, setShowLLMModal] = useState(false);
+  const [showReplyAgentModal, setShowReplyAgentModal] = useState(false);
+
+  const agents = [
+    {
+      id: 'llm-config',
+      name: 'AI Model Configuration',
+      description: 'Configure AI models, providers, and API keys for all agents',
+      icon: Brain,
+      status: 'active',
+      color: 'purple',
+      onClick: () => setShowLLMModal(true),
+    },
+    {
+      id: 'orchestration-agent',
+      name: 'Orchestration Agent',
+      description: 'Coordinate and manage multiple AI agents working together on complex tasks',
+      icon: Settings,
+      status: 'coming-soon',
+      color: 'cyan',
+      onClick: () => {},
+    },
+    {
+      id: 'reply-agent',
+      name: 'Reply Agent',
+      description: 'Automatically respond to prospect replies with personalized messages',
+      icon: MessageCircle,
+      status: 'active',
+      color: 'blue',
+      onClick: () => setShowReplyAgentModal(true),
+    },
+    {
+      id: 'follow-up-agent',
+      name: 'Follow-Up Agent',
+      description: 'Automatically send follow-up messages based on prospect behavior',
+      icon: Send,
+      status: 'coming-soon',
+      color: 'green',
+      onClick: () => {},
+    },
+    {
+      id: 'inbox-agent',
+      name: 'Inbox Agent',
+      description: 'Monitor and categorize incoming messages from prospects',
+      icon: Search,
+      status: 'coming-soon',
+      color: 'yellow',
+      onClick: () => {},
+    },
+    {
+      id: 'seo-agent',
+      name: 'SEO Agent',
+      description: 'Optimize content for search engines and generate SEO-friendly copy',
+      icon: TrendingUp,
+      status: 'coming-soon',
+      color: 'orange',
+      onClick: () => {},
+    },
+    {
+      id: 'commenting-agent',
+      name: 'Commenting Agent',
+      description: 'Engage with LinkedIn posts and comments to build relationships',
+      icon: MessageSquare,
+      status: 'coming-soon',
+      color: 'pink',
+      onClick: () => {},
+    },
+    {
+      id: 'content-agent',
+      name: 'LinkedIn Content Agent',
+      description: 'Generate and schedule LinkedIn posts to grow your presence',
+      icon: FileText,
+      status: 'coming-soon',
+      color: 'indigo',
+      onClick: () => {},
+    },
+  ];
+
+  const getStatusBadge = (status: string) => {
+    if (status === 'active') {
+      return (
+        <span className="px-2 py-1 bg-green-600/20 text-green-400 text-xs rounded-full border border-green-500/30">
+          Active
+        </span>
+      );
+    }
+    return (
+      <span className="px-2 py-1 bg-gray-600/20 text-gray-400 text-xs rounded-full border border-gray-500/30">
+        Coming Soon
+        </span>
+    );
+  };
+
+  return (
+    <>
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
+              <Brain size={24} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-white">AI Configuration</h1>
+              <p className="text-gray-400 text-sm mt-1">
+                Configure and manage all AI agents for {workspaceName || 'your workspace'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Agent Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {agents.map((agent) => {
+            const Icon = agent.icon;
+            const isActive = agent.status === 'active';
+            const colorClasses = {
+              purple: 'from-purple-600/20 to-purple-900/20 border-purple-500/30 hover:border-purple-400/50',
+              cyan: 'from-cyan-600/20 to-cyan-900/20 border-cyan-500/30 hover:border-cyan-400/50',
+              blue: 'from-blue-600/20 to-blue-900/20 border-blue-500/30 hover:border-blue-400/50',
+              green: 'from-green-600/20 to-green-900/20 border-green-500/30 hover:border-green-400/50',
+              yellow: 'from-yellow-600/20 to-yellow-900/20 border-yellow-500/30 hover:border-yellow-400/50',
+              orange: 'from-orange-600/20 to-orange-900/20 border-orange-500/30 hover:border-orange-400/50',
+              pink: 'from-pink-600/20 to-pink-900/20 border-pink-500/30 hover:border-pink-400/50',
+              indigo: 'from-indigo-600/20 to-indigo-900/20 border-indigo-500/30 hover:border-indigo-400/50',
+            };
+
+            return (
+              <div
+                key={agent.id}
+                onClick={isActive ? agent.onClick : undefined}
+                className={`
+                  relative bg-gradient-to-br ${colorClasses[agent.color as keyof typeof colorClasses]}
+                  rounded-xl p-6 border transition-all duration-200
+                  ${isActive ? 'cursor-pointer hover:scale-105 hover:shadow-xl' : 'cursor-not-allowed opacity-60'}
+                `}
+              >
+                {/* Icon */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className={`
+                    w-12 h-12 rounded-lg flex items-center justify-center
+                    ${isActive ? 'bg-white/10' : 'bg-gray-700/50'}
+                  `}>
+                    <Icon size={24} className={isActive ? 'text-white' : 'text-gray-500'} />
+                  </div>
+                  {getStatusBadge(agent.status)}
+                </div>
+
+                {/* Content */}
+                <h3 className="text-lg font-semibold text-white mb-2">
+                  {agent.name}
+                </h3>
+                <p className="text-gray-400 text-sm leading-relaxed">
+                  {agent.description}
+                </p>
+
+                {/* Configure Button for Active Agents */}
+                {isActive && (
+                  <div className="mt-4 pt-4 border-t border-white/10">
+                    <button
+                      onClick={agent.onClick}
+                      className="w-full py-2 px-4 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Settings size={16} />
+                      Configure
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Info Box */}
+        <div className="mt-8 bg-blue-900/20 border border-blue-500/30 rounded-xl p-6">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Brain size={20} className="text-blue-400" />
+            </div>
+            <div>
+              <h3 className="text-white font-semibold mb-2">About AI Agents</h3>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                AI agents automate repetitive tasks and enhance your outreach campaigns. Configure each agent's
+                behavior, tone, and automation rules to match your workflow. Active agents are ready to use,
+                while "Coming Soon" features are currently in development.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modals */}
+      {showLLMModal && workspaceId && (
+        <LLMConfigModal
+          isOpen={showLLMModal}
+          onClose={() => setShowLLMModal(false)}
+          workspaceId={workspaceId}
+        />
+      )}
+
+      {showReplyAgentModal && workspaceId && (
+        <ReplyAgentModal
+          isOpen={showReplyAgentModal}
+          onClose={() => setShowReplyAgentModal(false)}
+          workspaceId={workspaceId}
+        />
+      )}
+    </>
+  );
+}
