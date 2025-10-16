@@ -771,15 +771,51 @@ function CampaignBuilder({
   const loadApprovedProspects = async () => {
     setLoadingApprovedProspects(true);
     try {
-      const response = await fetch('/api/sam/approved-prospects');
-      const result = await response.json();
-      
-      if (result.success) {
-        setApprovedProspects(result.data.prospects);
-      } else {
-        console.error('Failed to load approved prospects:', result.error);
+      // Load from prospect approval system (Data Approval flow)
+      const sessionsResponse = await fetch('/api/prospect-approval/sessions/list');
+      if (!sessionsResponse.ok) {
         setApprovedProspects([]);
+        return;
       }
+
+      const sessionsData = await sessionsResponse.json();
+      if (!sessionsData.success || !sessionsData.sessions) {
+        setApprovedProspects([]);
+        return;
+      }
+
+      // Collect all approved prospects from all sessions
+      const allApprovedProspects: any[] = [];
+
+      for (const session of sessionsData.sessions) {
+        const prospectsResponse = await fetch(`/api/prospect-approval/prospects?session_id=${session.id}`);
+        if (prospectsResponse.ok) {
+          const prospectsData = await prospectsResponse.json();
+          if (prospectsData.success && prospectsData.prospects) {
+            // Filter only approved prospects
+            const approved = prospectsData.prospects
+              .filter((p: any) => p.approval_status === 'approved')
+              .map((p: any) => ({
+                id: p.prospect_id,
+                name: p.name,
+                title: p.title || '',
+                company: p.company?.name || p.company || '',
+                email: p.contact?.email || '',
+                linkedin_url: p.contact?.linkedin_url || '',
+                phone: p.contact?.phone || '',
+                industry: p.company?.industry || '',
+                location: p.location || '',
+                sessionId: session.id,
+                campaignName: session.campaign_name || 'Untitled',
+                source: p.source || 'prospect_approval'
+              }));
+            allApprovedProspects.push(...approved);
+          }
+        }
+      }
+
+      setApprovedProspects(allApprovedProspects);
+      console.log(`✅ Loaded ${allApprovedProspects.length} approved prospects from Data Approval`);
     } catch (error) {
       console.error('Error loading approved prospects:', error);
       setApprovedProspects([]);
