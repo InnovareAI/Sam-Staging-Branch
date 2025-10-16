@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle, ChevronDown, ChevronUp, MessageSquare, Save, Upload, XCircle } from 'lucide-react';
+import { CheckCircle, ChevronDown, ChevronUp, Save, Upload, XCircle } from 'lucide-react';
 import { toastError } from '@/lib/toast';
 
 
@@ -55,11 +55,6 @@ export default function CampaignApprovalScreen({
     };
     setSavedTemplates(prev => [...prev, template]);
     toastError('Template saved successfully!');
-  };
-
-  const handleAskSAM = (messageType: string) => {
-    const context = `Help me write a ${messageType} for my ${campaignData.type} campaign "${campaignData.name}". Target audience: ${campaignData.prospects.length} prospects in ${campaignData.prospects[0]?.industry || 'various industries'}.`;
-    onRequestSAMHelp(context);
   };
 
   const handleApprove = () => {

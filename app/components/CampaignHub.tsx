@@ -1294,7 +1294,7 @@ Would you like me to adjust these or create more variations?`
     // Fallback: if no approval callback, proceed with old flow
     try {
       // Step 1: Create campaign
-      const campaignResponse = await fetch('/api/campaigns/create', {
+      const campaignResponse = await fetch('/api/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2551,7 +2551,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       const { _executionData } = finalCampaignData;
 
       // Step 1: Create campaign
-      const campaignResponse = await fetch('/api/campaigns/create', {
+      const campaignResponse = await fetch('/api/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2642,7 +2642,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const { data: campaignsForCloning = [], refetch: refetchCampaignsForCloning } = useQuery({
     queryKey: ['campaignsForCloning'],
     queryFn: async () => {
-      const response = await fetch('/api/campaigns/create');
+      const response = await fetch('/api/campaigns');
       if (!response.ok) return [];
       const result = await response.json();
       return result.campaigns || [];
