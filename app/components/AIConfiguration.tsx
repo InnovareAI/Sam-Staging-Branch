@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Brain, MessageCircle, Send, TrendingUp, Search, MessageSquare, FileText, Settings } from 'lucide-react';
+import { Brain, MessageCircle, Send, TrendingUp, Search, MessageSquare, FileText, Settings, Edit } from 'lucide-react';
 import LLMConfigModal from '@/components/LLMConfigModal';
 import ReplyAgentModal from '@/app/components/ReplyAgentModal';
 
@@ -10,12 +10,23 @@ interface AIConfigurationProps {
   workspaceName?: string;
 }
 
+interface Agent {
+  id: string;
+  name: string;
+  description: string;
+  icon: any;
+  status: 'active' | 'coming-soon';
+  badge?: 'upgrade';
+  color: string;
+  onClick: () => void;
+}
+
 export default function AIConfiguration({ workspaceId, workspaceName }: AIConfigurationProps) {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [showLLMModal, setShowLLMModal] = useState(false);
   const [showReplyAgentModal, setShowReplyAgentModal] = useState(false);
 
-  const agents = [
+  const agents: Agent[] = [
     {
       id: 'llm-config',
       name: 'AI Model Configuration',
@@ -27,12 +38,12 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
     },
     {
       id: 'orchestration-agent',
-      name: 'Orchestration Agent',
-      description: 'Coordinate and manage multiple AI agents working together on complex tasks',
+      name: 'SAM - Orchestration Agent',
+      description: 'Your AI sales assistant coordinating all agents and managing conversations',
       icon: Settings,
-      status: 'coming-soon',
+      status: 'active',
       color: 'cyan',
-      onClick: () => {},
+      onClick: () => {}, // TODO: Link to SAM chat
     },
     {
       id: 'reply-agent',
@@ -48,49 +59,66 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
       name: 'Follow-Up Agent',
       description: 'Automatically send follow-up messages based on prospect behavior',
       icon: Send,
-      status: 'coming-soon',
+      status: 'active',
       color: 'green',
-      onClick: () => {},
+      onClick: () => {}, // TODO: Link to follow-up config
     },
     {
       id: 'inbox-agent',
       name: 'Inbox Agent',
       description: 'Monitor and categorize incoming messages from prospects',
       icon: Search,
-      status: 'coming-soon',
+      status: 'active',
+      badge: 'upgrade',
       color: 'yellow',
-      onClick: () => {},
+      onClick: () => {}, // TODO: Link to inbox agent config
     },
     {
-      id: 'seo-agent',
-      name: 'SEO Agent',
-      description: 'Optimize content for search engines and generate SEO-friendly copy',
+      id: 'ai-search-agent',
+      name: 'AI Search Agent',
+      description: 'Optimize content for AI search engines and generate search-friendly copy',
       icon: TrendingUp,
-      status: 'coming-soon',
+      status: 'active',
       color: 'orange',
-      onClick: () => {},
+      onClick: () => {}, // TODO: Link to AI search config
     },
     {
       id: 'commenting-agent',
       name: 'Commenting Agent',
       description: 'Engage with LinkedIn posts and comments to build relationships',
       icon: MessageSquare,
-      status: 'coming-soon',
+      status: 'active',
       color: 'pink',
-      onClick: () => {},
+      onClick: () => {}, // TODO: Link to commenting agent config
     },
     {
       id: 'content-agent',
       name: 'LinkedIn Content Agent',
       description: 'Generate and schedule LinkedIn posts to grow your presence',
       icon: FileText,
-      status: 'coming-soon',
+      status: 'active',
       color: 'indigo',
+      onClick: () => {}, // TODO: Link to content agent config
+    },
+    {
+      id: 'blog-writer-agent',
+      name: 'Blog Writer Agent',
+      description: 'Generate high-quality blog posts and articles optimized for engagement',
+      icon: Edit,
+      status: 'coming-soon',
+      color: 'teal',
       onClick: () => {},
     },
   ];
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, badge?: string) => {
+    if (badge === 'upgrade') {
+      return (
+        <span className="px-2 py-1 bg-purple-600/20 text-purple-400 text-xs rounded-full border border-purple-500/30">
+          Upgrade
+        </span>
+      );
+    }
     if (status === 'active') {
       return (
         <span className="px-2 py-1 bg-green-600/20 text-green-400 text-xs rounded-full border border-green-500/30">
@@ -137,6 +165,7 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
               orange: 'from-orange-600/20 to-orange-900/20 border-orange-500/30 hover:border-orange-400/50',
               pink: 'from-pink-600/20 to-pink-900/20 border-pink-500/30 hover:border-pink-400/50',
               indigo: 'from-indigo-600/20 to-indigo-900/20 border-indigo-500/30 hover:border-indigo-400/50',
+              teal: 'from-teal-600/20 to-teal-900/20 border-teal-500/30 hover:border-teal-400/50',
             };
 
             return (
@@ -157,7 +186,7 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
                   `}>
                     <Icon size={24} className={isActive ? 'text-white' : 'text-gray-500'} />
                   </div>
-                  {getStatusBadge(agent.status)}
+                  {getStatusBadge(agent.status, agent.badge)}
                 </div>
 
                 {/* Content */}

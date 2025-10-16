@@ -517,12 +517,34 @@ function CampaignBuilder({
   onPrepareForApproval?: (campaignData: any) => void;
   workspaceId?: string | null;
 }) {
+  // Helper function to get user initials from email
+  const getUserInitials = (email: string): string => {
+    if (!email) return 'XX';
+    if (email.includes('@')) {
+      const emailPart = email.split('@')[0];
+      const parts = emailPart.split(/[._-]/);
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return emailPart.substring(0, 2).toUpperCase();
+    }
+    return email.substring(0, 2).toUpperCase();
+  };
+
+  // Generate default campaign name following search naming convention: YYYYMMDD-Initials-Description
+  const generateDefaultCampaignName = () => {
+    const today = new Date();
+    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+    const initials = workspaceId ? getUserInitials(workspaceId) : 'XX';
+    return `${dateStr}-${initials}-Outreach Campaign`;
+  };
+
   // Derive campaign name from initialProspects if available
   const getInitialCampaignName = () => {
-    if (initialProspects && initialProspects.length > 0 && initialProspects[0].campaignTag) {
-      return initialProspects[0].campaignTag;
+    if (initialProspects && initialProspects.length > 0 && initialProspects[0].campaignName) {
+      return initialProspects[0].campaignName;
     }
-    return 'Outbound – VP Sales (SaaS, NA)';
+    return generateDefaultCampaignName();
   };
 
   const [name, setName] = useState(getInitialCampaignName());
@@ -564,6 +586,8 @@ function CampaignBuilder({
   // Approved prospects state
   const [dataSource, setDataSource] = useState<'approved' | 'upload'>('upload');
   const [approvedProspects, setApprovedProspects] = useState<any[]>([]);
+  const [approvalSessions, setApprovalSessions] = useState<any[]>([]); // Sessions with grouped prospects
+  const [selectedSessions, setSelectedSessions] = useState<string[]>([]); // Selected session IDs
   const [selectedProspects, setSelectedProspects] = useState<any[]>([]);
   const [loadingApprovedProspects, setLoadingApprovedProspects] = useState(false);
   
@@ -634,7 +658,7 @@ function CampaignBuilder({
     {
       value: 'email',
       label: 'Email',
-      description: 'Email-only outreach campaigns',
+      description: 'Email outreach campaigns',
       icon: Mail
     }
   ];
@@ -776,16 +800,19 @@ function CampaignBuilder({
       const sessionsResponse = await fetch('/api/prospect-approval/sessions/list');
       if (!sessionsResponse.ok) {
         setApprovedProspects([]);
+        setApprovalSessions([]);
         return;
       }
 
       const sessionsData = await sessionsResponse.json();
       if (!sessionsData.success || !sessionsData.sessions) {
         setApprovedProspects([]);
+        setApprovalSessions([]);
         return;
       }
 
-      // Collect all approved prospects from all sessions
+      // Collect sessions with their approved prospects
+      const sessionsWithProspects: any[] = [];
       const allApprovedProspects: any[] = [];
 
       for (const session of sessionsData.sessions) {
@@ -810,16 +837,28 @@ function CampaignBuilder({
                 campaignName: session.campaign_name || 'Untitled',
                 source: p.source || 'prospect_approval'
               }));
-            allApprovedProspects.push(...approved);
+
+            if (approved.length > 0) {
+              sessionsWithProspects.push({
+                id: session.id,
+                name: session.campaign_name || 'Untitled Session',
+                createdAt: session.created_at,
+                prospectsCount: approved.length,
+                prospects: approved
+              });
+              allApprovedProspects.push(...approved);
+            }
           }
         }
       }
 
+      setApprovalSessions(sessionsWithProspects);
       setApprovedProspects(allApprovedProspects);
-      console.log(`✅ Loaded ${allApprovedProspects.length} approved prospects from Data Approval`);
+      console.log(`✅ Loaded ${sessionsWithProspects.length} approval sessions with ${allApprovedProspects.length} approved prospects`);
     } catch (error) {
       console.error('Error loading approved prospects:', error);
       setApprovedProspects([]);
+      setApprovalSessions([]);
     } finally {
       setLoadingApprovedProspects(false);
     }
@@ -1086,13 +1125,22 @@ Would you like me to adjust these or create more variations?`
       // Get sections first to find messaging section ID
       const sectionsResponse = await fetch(`/api/knowledge-base/sections?workspace_id=${workspaceId}`);
       if (!sectionsResponse.ok) {
-        throw new Error('Failed to load KB sections');
+        const errorData = await sectionsResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to load KB sections');
       }
+
       const sectionsData = await sectionsResponse.json();
-      const messagingSection = sectionsData.sections?.find((s: any) => s.section_id === 'messaging');
+
+      if (!sectionsData.sections || sectionsData.sections.length === 0) {
+        toastInfo('Knowledge Base is empty. Add content to the Messaging section first.');
+        setKbTemplates([]);
+        return;
+      }
+
+      const messagingSection = sectionsData.sections.find((s: any) => s.section_id === 'messaging');
 
       if (!messagingSection) {
-        toastInfo('No messaging templates found in Knowledge Base. Add some in the Knowledge Base section!');
+        toastInfo('No "Messaging" section found in Knowledge Base. Create one to store campaign templates.');
         setKbTemplates([]);
         return;
       }
@@ -1103,18 +1151,23 @@ Would you like me to adjust these or create more variations?`
       );
 
       if (!templatesResponse.ok) {
-        throw new Error('Failed to load templates');
+        const errorData = await templatesResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to load templates');
       }
 
       const templatesData = await templatesResponse.json();
-      setKbTemplates(templatesData.content || []);
+      const templates = templatesData.content || [];
+      setKbTemplates(templates);
 
-      if (!templatesData.content || templatesData.content.length === 0) {
-        toastInfo('No templates found in Knowledge Base messaging section');
+      if (templates.length === 0) {
+        toastInfo('No templates found in Knowledge Base messaging section. Add templates to use them in campaigns.');
+      } else {
+        toastSuccess(`Loaded ${templates.length} template(s) from Knowledge Base`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load KB templates:', error);
-      toastError('Failed to load templates from Knowledge Base');
+      toastError(error.message || 'Failed to load templates from Knowledge Base');
+      setKbTemplates([]);
     } finally {
       setLoadingKBTemplates(false);
     }
@@ -1511,76 +1564,100 @@ Would you like me to adjust these or create more variations?`
           {/* Approved Prospects Selection */}
           {dataSource === 'approved' && (
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">
-                Select Approved Prospects
-              </label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium text-gray-400">
+                  Select Approval Lists
+                </label>
+                <Button
+                  onClick={() => setDataSource('upload')}
+                  variant="outline"
+                  size="sm"
+                  className="text-purple-400 border-purple-500 hover:bg-purple-600/20"
+                >
+                  <Upload size={16} className="mr-2" />
+                  Upload New CSV
+                </Button>
+              </div>
               <div className="bg-gray-700 rounded-lg p-4">
                 {loadingApprovedProspects ? (
-                  <div className="text-center py-8 text-gray-400">Loading approved prospects...</div>
-                ) : approvedProspects.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">Loading approval sessions...</div>
+                ) : approvalSessions.length === 0 ? (
                   <div className="text-center py-8 text-gray-400">
-                    No approved prospects found. Use the Data Approval section to approve some prospects first.
+                    No approval sessions found. Use the Data Approval section to approve some prospects first.
                   </div>
                 ) : (
                   <div>
                     <div className="flex justify-between items-center mb-4">
-                      <span className="text-white font-medium">{approvedProspects.length} Approved Prospects Available</span>
+                      <span className="text-white font-medium">{approvalSessions.length} Approval List{approvalSessions.length !== 1 ? 's' : ''} Available</span>
                 <Button
                   onClick={() => {
-                    const allSelected = selectedProspects.length === approvedProspects.length;
-                    setSelectedProspects(allSelected ? [] : [...approvedProspects]);
+                    const allSelected = selectedSessions.length === approvalSessions.length;
+                    if (allSelected) {
+                      setSelectedSessions([]);
+                      setSelectedProspects([]);
+                    } else {
+                      setSelectedSessions(approvalSessions.map(s => s.id));
+                      setSelectedProspects([...approvedProspects]);
+                    }
                   }}
                   variant="link"
                   size="sm"
                   className="text-purple-400 hover:text-purple-300"
                 >
-                  {selectedProspects.length === approvedProspects.length ? 'Deselect All' : 'Select All'}
+                  {selectedSessions.length === approvalSessions.length ? 'Deselect All' : 'Select All'}
                 </Button>
                     </div>
                     <div className="max-h-64 overflow-y-auto space-y-2">
-                      {approvedProspects.map((prospect) => (
-                        <div
-                          key={prospect.id}
-                          className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                            selectedProspects.find(p => p.id === prospect.id)
-                              ? 'border-purple-500 bg-purple-600/20'
-                              : 'border-gray-600 bg-gray-800 hover:border-gray-500'
-                          }`}
-                          onClick={() => {
-                            const isSelected = selectedProspects.find(p => p.id === prospect.id);
-                            if (isSelected) {
-                              setSelectedProspects(selectedProspects.filter(p => p.id !== prospect.id));
-                            } else {
-                              setSelectedProspects([...selectedProspects, prospect]);
-                            }
-                          }}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <div className="text-white font-medium">{prospect.name}</div>
-                              <div className="text-gray-300 text-sm">{prospect.title} at {prospect.company}</div>
-                              <div className="text-gray-400 text-xs mt-1">
-                                Confidence: {Math.round(prospect.confidence_score * 100)}% • 
-                                Source: {prospect.source_platform}
+                      {approvalSessions.map((session) => {
+                        const isSelected = selectedSessions.includes(session.id);
+                        return (
+                          <div
+                            key={session.id}
+                            className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                              isSelected
+                                ? 'border-purple-500 bg-purple-600/20'
+                                : 'border-gray-600 bg-gray-800 hover:border-gray-500'
+                            }`}
+                            onClick={() => {
+                              if (isSelected) {
+                                // Deselect session and remove its prospects
+                                setSelectedSessions(selectedSessions.filter(id => id !== session.id));
+                                setSelectedProspects(selectedProspects.filter(p => p.sessionId !== session.id));
+                              } else {
+                                // Select session and add its prospects
+                                setSelectedSessions([...selectedSessions, session.id]);
+                                setSelectedProspects([...selectedProspects, ...session.prospects]);
+                              }
+                            }}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="text-white font-medium">{session.name}</div>
+                                <div className="text-gray-300 text-sm mt-1">
+                                  {session.prospectsCount} approved prospect{session.prospectsCount !== 1 ? 's' : ''}
+                                </div>
+                                <div className="text-gray-400 text-xs mt-1">
+                                  Created: {new Date(session.createdAt).toLocaleDateString()}
+                                </div>
+                              </div>
+                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                                isSelected
+                                  ? 'border-purple-500 bg-purple-500'
+                                  : 'border-gray-500'
+                              }`}>
+                                {isSelected && (
+                                  <div className="w-2 h-2 bg-white rounded-full"></div>
+                                )}
                               </div>
                             </div>
-                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                              selectedProspects.find(p => p.id === prospect.id)
-                                ? 'border-purple-500 bg-purple-500'
-                                : 'border-gray-500'
-                            }`}>
-                              {selectedProspects.find(p => p.id === prospect.id) && (
-                                <div className="w-2 h-2 bg-white rounded-full"></div>
-                              )}
-                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     {selectedProspects.length > 0 && (
                       <div className="mt-4 p-3 bg-purple-600/20 rounded-lg">
                         <span className="text-purple-300">
-                          {selectedProspects.length} prospect{selectedProspects.length !== 1 ? 's' : ''} selected for campaign
+                          {selectedSessions.length} list{selectedSessions.length !== 1 ? 's' : ''} selected • {selectedProspects.length} prospect{selectedProspects.length !== 1 ? 's' : ''} for campaign
                         </span>
                       </div>
                     )}
@@ -1713,6 +1790,13 @@ Would you like me to adjust these or create more variations?`
                 variant="secondary"
                 size="sm"
                 className="bg-gray-700 hover:bg-gray-600 text-gray-300"
+                onClick={() => {
+                  // Clear all message templates
+                  setConnectionMessage('');
+                  setAlternativeMessage('');
+                  setFollowUpMessages(['']);
+                  toastInfo('Templates cleared. You can now create messages manually.');
+                }}
               >
                 <Edit size={16} className="mr-1" />
                 Create Manually
