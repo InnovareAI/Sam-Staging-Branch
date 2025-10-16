@@ -134,18 +134,9 @@ export default function CampaignApprovalScreen({
             <div className="space-y-4">
               {/* Connection Request / Initial Email */}
               <div className="bg-gray-700 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-white">
-                    {campaignData.type === 'Email' ? 'Initial Email' : 'Connection Request'}
-                  </h3>
-                  <button
-                    onClick={() => handleAskSAM('connection request')}
-                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg flex items-center gap-2"
-                  >
-                    <MessageSquare size={16} />
-                    Ask SAM to Draft
-                  </button>
-                </div>
+                <h3 className="font-semibold text-white mb-3">
+                  {campaignData.type === 'Email' ? 'Initial Email' : 'Connection Request'}
+                </h3>
                 <textarea
                   value={messages.connection_request || ''}
                   onChange={(e) => setMessages({ ...messages, connection_request: e.target.value })}
@@ -156,16 +147,7 @@ export default function CampaignApprovalScreen({
 
               {/* Follow-up 1 */}
               <div className="bg-gray-700 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-white">Follow-up Message 1</h3>
-                  <button
-                    onClick={() => handleAskSAM('follow-up message 1')}
-                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg flex items-center gap-2"
-                  >
-                    <MessageSquare size={16} />
-                    Ask SAM to Draft
-                  </button>
-                </div>
+                <h3 className="font-semibold text-white mb-3">Follow-up Message 1</h3>
                 <textarea
                   value={messages.follow_up_1 || ''}
                   onChange={(e) => setMessages({ ...messages, follow_up_1: e.target.value })}
@@ -176,16 +158,7 @@ export default function CampaignApprovalScreen({
 
               {/* Follow-up 2 */}
               <div className="bg-gray-700 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-white">Follow-up Message 2</h3>
-                  <button
-                    onClick={() => handleAskSAM('follow-up message 2')}
-                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg flex items-center gap-2"
-                  >
-                    <MessageSquare size={16} />
-                    Ask SAM to Draft
-                  </button>
-                </div>
+                <h3 className="font-semibold text-white mb-3">Follow-up Message 2</h3>
                 <textarea
                   value={messages.follow_up_2 || ''}
                   onChange={(e) => setMessages({ ...messages, follow_up_2: e.target.value })}
@@ -196,16 +169,7 @@ export default function CampaignApprovalScreen({
 
               {/* Follow-up 3 */}
               <div className="bg-gray-700 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-white">Follow-up Message 3</h3>
-                  <button
-                    onClick={() => handleAskSAM('follow-up message 3')}
-                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg flex items-center gap-2"
-                  >
-                    <MessageSquare size={16} />
-                    Ask SAM to Draft
-                  </button>
-                </div>
+                <h3 className="font-semibold text-white mb-3">Follow-up Message 3</h3>
                 <textarea
                   value={messages.follow_up_3 || ''}
                   onChange={(e) => setMessages({ ...messages, follow_up_3: e.target.value })}
