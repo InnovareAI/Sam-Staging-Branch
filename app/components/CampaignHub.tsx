@@ -46,6 +46,7 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import CampaignApprovalScreen from '@/app/components/CampaignApprovalScreen';
 
 // Helper function to get human-readable campaign type labels
 function getCampaignTypeLabel(type: string): string {
