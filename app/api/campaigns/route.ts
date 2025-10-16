@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/app/lib/supabase/server';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createSupabaseRouteClient();
     
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createSupabaseRouteClient();
     
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
