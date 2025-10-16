@@ -32,7 +32,8 @@ import {
   Zap,
   Eye,
   Grid3x3,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -607,6 +608,7 @@ function CampaignBuilder({
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [pastedText, setPastedText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
+  const [isImprovingCopy, setIsImprovingCopy] = useState(false);
   const [parsedPreview, setParsedPreview] = useState<{
     connectionMessage: string;
     alternativeMessage: string;
@@ -618,6 +620,12 @@ function CampaignBuilder({
   const [kbTemplates, setKbTemplates] = useState<any[]>([]);
   const [loadingKBTemplates, setLoadingKBTemplates] = useState(false);
   const [selectedKBTemplate, setSelectedKBTemplate] = useState<any>(null);
+
+  // Previous Messages state
+  const [showPreviousMessagesModal, setShowPreviousMessagesModal] = useState(false);
+  const [previousCampaigns, setPreviousCampaigns] = useState<any[]>([]);
+  const [loadingPreviousCampaigns, setLoadingPreviousCampaigns] = useState(false);
+  const [selectedPreviousCampaign, setSelectedPreviousCampaign] = useState<any>(null);
 
   // SAM Chat scroll management
   const samChatRef = useState<HTMLDivElement | null>(null)[0];
@@ -1113,6 +1121,50 @@ Would you like me to adjust these or create more variations?`
     toastSuccess('Templates applied to campaign!');
   };
 
+  const improveParsedCopy = async () => {
+    if (!parsedPreview || !workspaceId) return;
+
+    setIsImprovingCopy(true);
+    try {
+      const response = await fetch('/api/campaigns/parse-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rawText: `CONNECTION MESSAGE:\n${parsedPreview.connectionMessage}\n\n${
+            parsedPreview.alternativeMessage ? `ALTERNATIVE MESSAGE:\n${parsedPreview.alternativeMessage}\n\n` : ''
+          }${
+            parsedPreview.followUpMessages && parsedPreview.followUpMessages.length > 0
+              ? parsedPreview.followUpMessages.map((msg, idx) => `FOLLOW-UP ${idx + 1}:\n${msg}`).join('\n\n')
+              : ''
+          }`,
+          workspaceId,
+          enhancePrompt: 'Improve this messaging to be more engaging, persuasive, and professional while maintaining the tone and structure. Keep all placeholders intact.'
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        toastError(result.error || 'Failed to improve copy');
+        return;
+      }
+
+      // Update preview with improved copy
+      setParsedPreview({
+        connectionMessage: result.connectionMessage || parsedPreview.connectionMessage,
+        alternativeMessage: result.alternativeMessage || parsedPreview.alternativeMessage,
+        followUpMessages: result.followUpMessages || parsedPreview.followUpMessages
+      });
+
+      toastSuccess('Copy improved by SAM AI!');
+    } catch (error) {
+      console.error('Improve copy error:', error);
+      toastError('Failed to improve copy');
+    } finally {
+      setIsImprovingCopy(false);
+    }
+  };
+
   // KB Template functions
   const loadKBTemplates = async () => {
     if (!workspaceId) {
@@ -1227,6 +1279,67 @@ Would you like me to adjust these or create more variations?`
     } finally {
       setIsParsing(false);
     }
+  };
+
+  // Previous Messages functions
+  const loadPreviousCampaigns = async () => {
+    if (!workspaceId) {
+      toastError('Workspace ID not found');
+      return;
+    }
+
+    setLoadingPreviousCampaigns(true);
+    try {
+      const response = await fetch(`/api/campaigns?workspace_id=${workspaceId}`);
+      if (!response.ok) {
+        throw new Error('Failed to load previous campaigns');
+      }
+
+      const data = await response.json();
+      const campaigns = data.campaigns || [];
+
+      // Filter campaigns that have messages
+      const campaignsWithMessages = campaigns.filter((c: any) =>
+        c.connection_message || c.alternative_message || (c.follow_up_messages && c.follow_up_messages.length > 0)
+      );
+
+      setPreviousCampaigns(campaignsWithMessages);
+
+      if (campaignsWithMessages.length === 0) {
+        toastInfo('No previous campaigns with messages found');
+      } else {
+        toastSuccess(`Loaded ${campaignsWithMessages.length} previous campaign(s)`);
+      }
+    } catch (error: any) {
+      console.error('Failed to load previous campaigns:', error);
+      toastError(error.message || 'Failed to load previous campaigns');
+      setPreviousCampaigns([]);
+    } finally {
+      setLoadingPreviousCampaigns(false);
+    }
+  };
+
+  const openPreviousMessagesModal = () => {
+    setShowPreviousMessagesModal(true);
+    loadPreviousCampaigns();
+  };
+
+  const applyPreviousCampaignMessages = (campaign: any) => {
+    if (!campaign) return;
+
+    if (campaign.connection_message) {
+      setConnectionMessage(campaign.connection_message);
+    }
+    if (campaign.alternative_message) {
+      setAlternativeMessage(campaign.alternative_message);
+    }
+    if (campaign.follow_up_messages && campaign.follow_up_messages.length > 0) {
+      setFollowUpMessages(campaign.follow_up_messages);
+    }
+
+    setShowPreviousMessagesModal(false);
+    setSelectedPreviousCampaign(null);
+    toastSuccess(`Messages from "${campaign.name || 'Untitled'}" applied to campaign!`);
   };
 
   const processFile = (file: File) => {
@@ -1819,6 +1932,15 @@ Would you like me to adjust these or create more variations?`
                 <Upload size={16} className="mr-1" />
                 Paste Template
               </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500/30"
+                onClick={openPreviousMessagesModal}
+              >
+                <Clock size={16} className="mr-1" />
+                Load Previous Messages
+              </Button>
             </div>
           </div>
 
@@ -2253,16 +2375,37 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
               </Button>
               <div className="flex gap-2">
                 {parsedPreview && (
-                  <Button
-                    variant="secondary"
-                    onClick={() => setParsedPreview(null)}
-                  >
-                    Back to Edit
-                  </Button>
+                  <>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setParsedPreview(null)}
+                      disabled={isImprovingCopy}
+                    >
+                      Back to Edit
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={improveParsedCopy}
+                      disabled={isImprovingCopy}
+                      className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30"
+                    >
+                      {isImprovingCopy ? (
+                        <>
+                          <Loader2 size={16} className="mr-1 animate-spin" />
+                          Improving...
+                        </>
+                      ) : (
+                        <>
+                          <Brain size={16} className="mr-1" />
+                          Improve Copy
+                        </>
+                      )}
+                    </Button>
+                  </>
                 )}
                 <Button
                   onClick={parsedPreview ? applyParsedTemplate : parsePastedTemplate}
-                  disabled={isParsing || (!pastedText.trim() && !parsedPreview)}
+                  disabled={isParsing || isImprovingCopy || (!pastedText.trim() && !parsedPreview)}
                   className="bg-green-600 hover:bg-green-700"
                 >
                   {isParsing ? (
@@ -2404,6 +2547,125 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
                     Apply Template
                   </>
                 )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Previous Messages Modal */}
+      {showPreviousMessagesModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                    <Clock size={24} className="text-orange-400" />
+                    Load Previous Messages
+                  </h3>
+                  <p className="text-gray-400 text-sm mt-1">
+                    Choose from your previously created campaigns
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowPreviousMessagesModal(false);
+                    setSelectedPreviousCampaign(null);
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 flex-1 overflow-y-auto">
+              {loadingPreviousCampaigns ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 size={32} className="text-orange-400 animate-spin mb-3" />
+                  <p className="text-gray-400">Loading previous campaigns...</p>
+                </div>
+              ) : previousCampaigns.length === 0 ? (
+                <div className="text-center py-12">
+                  <Clock size={48} className="text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-400 mb-2">No previous campaigns found</p>
+                  <p className="text-gray-500 text-sm">Create some campaigns first to load their messages</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {previousCampaigns.map((campaign) => (
+                    <div
+                      key={campaign.id}
+                      className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                        selectedPreviousCampaign?.id === campaign.id
+                          ? 'border-orange-500 bg-orange-500/10'
+                          : 'border-gray-600 hover:border-gray-500 bg-gray-700/50'
+                      }`}
+                      onClick={() => setSelectedPreviousCampaign(campaign)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="text-white font-medium mb-1">{campaign.name || 'Untitled Campaign'}</h4>
+                          <p className="text-gray-400 text-sm mb-2">
+                            Type: {getCampaignTypeLabel(campaign.type || 'connector')}
+                          </p>
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            {campaign.connection_message && (
+                              <span className="flex items-center gap-1">
+                                <MessageCircle size={12} />
+                                Connection msg
+                              </span>
+                            )}
+                            {campaign.alternative_message && (
+                              <span className="flex items-center gap-1">
+                                <MessageSquare size={12} />
+                                Alternative msg
+                              </span>
+                            )}
+                            {campaign.follow_up_messages && campaign.follow_up_messages.length > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Send size={12} />
+                                {campaign.follow_up_messages.length} follow-up{campaign.follow_up_messages.length !== 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {selectedPreviousCampaign?.id === campaign.id && (
+                          <div className="ml-3 text-orange-400">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                              <circle cx="12" cy="12" r="10" />
+                              <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2" fill="none" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-gray-700 flex justify-between">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowPreviousMessagesModal(false);
+                  setSelectedPreviousCampaign(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => selectedPreviousCampaign && applyPreviousCampaignMessages(selectedPreviousCampaign)}
+                disabled={!selectedPreviousCampaign}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                <CheckCircle size={16} className="mr-2" />
+                Apply Messages
               </Button>
             </div>
           </div>
