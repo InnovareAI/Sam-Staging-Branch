@@ -3,7 +3,7 @@
 // FORCE REBUILD - Oct 8 2025 12:47 PM - Netlify cache issue workaround
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSamThreadedChat } from '@/lib/hooks/useSamThreadedChat';
 import { DemoModeToggle } from '@/components/DemoModeToggle';
@@ -15,6 +15,8 @@ import AuthModal from '@/components/AuthModal';
 import LLMConfigModal from '@/components/LLMConfigModal';
 import { ChannelSelectionModal } from '@/components/campaign/ChannelSelectionModal';
 import EmailProvidersModal from '@/app/components/EmailProvidersModal';
+import { WorkspaceSettingsModal } from '@/app/components/WorkspaceSettingsModal';
+import { CRMIntegrationModal } from '@/app/components/CRMIntegrationModal';
 import KnowledgeBase from '@/app/components/KnowledgeBase';
 import Analytics from '@/app/components/Analytics';
 import AuditTrail from '@/app/components/AuditTrail';
@@ -177,6 +179,12 @@ export default function Page() {
   const [viewMode, setViewMode] = useState<'list' | 'card' | 'info'>('info');
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<'all' | 'innovareai' | '3cubed'>('all');
+
+  // Derive current workspace from selected ID
+  const currentWorkspace = useMemo(() => {
+    if (!selectedWorkspaceId) return null;
+    return workspaces.find(ws => ws.id === selectedWorkspaceId) || null;
+  }, [selectedWorkspaceId, workspaces]);
 
   // LinkedIn connection state
   const [hasLinkedInConnection, setHasLinkedInConnection] = useState(false);
@@ -1192,12 +1200,18 @@ export default function Page() {
     fetchProfileCountry();
   }, [activeMenuItem, showUserProfileModal, showProxyCountryModal, user, supabase]);
 
-  // Keep newest messages visible by anchoring scroll to the top
+  // Scroll to bottom when switching to chat tab
   useEffect(() => {
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = 0;
+    if (activeMenuItem === 'chat' && messagesContainerRef.current) {
+      const container = messagesContainerRef.current.parentElement;
+      if (container) {
+        // Use setTimeout to ensure DOM has updated after tab switch
+        setTimeout(() => {
+          container.scrollTop = container.scrollHeight;
+        }, 100);
+      }
     }
-  }, [messages]);
+  }, [activeMenuItem]);
 
   const menuItems = [
     {
@@ -2765,6 +2779,7 @@ export default function Page() {
                 />
               ) : (
                 <CampaignHub
+                  workspaceId={currentWorkspace?.id || null}
                   initialProspects={pendingCampaignProspects}
                   onCampaignCreated={() => setPendingCampaignProspects(null)}
                 />
@@ -5442,7 +5457,7 @@ export default function Page() {
           const isDirectBilling = targetWorkspace?.organization_id && targetWorkspace?.slug?.includes('3cubed');
 
           return (
-            <InviteUserModal
+            <InviteUserPopup
               isOpen={showTeamManagementModal}
               onClose={() => setShowTeamManagementModal(false)}
               workspaceId={targetWorkspace?.id}

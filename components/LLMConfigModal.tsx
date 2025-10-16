@@ -28,8 +28,10 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
   const [error, setError] = useState<string | null>(null);
   
   // Simple configuration state
-  const [selectedModel, setSelectedModel] = useState('anthropic/claude-sonnet-4.5');
-  
+  const [selectedModel, setSelectedModel] = useState('anthropic/claude-haiku-4.5');
+  const [customApiKey, setCustomApiKey] = useState('');
+  const [customEndpoint, setCustomEndpoint] = useState('');
+
   // Available models from API
   const [models, setModels] = useState<ApprovedModel[]>([]);
   const [modelsByProvider, setModelsByProvider] = useState<Record<string, ApprovedModel[]>>({});
@@ -49,7 +51,13 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.preferences) {
-          setSelectedModel(data.preferences.selected_model || 'anthropic/claude-sonnet-4.5');
+          setSelectedModel(data.preferences.selected_model || 'anthropic/claude-haiku-4.5');
+
+          // Load custom endpoint config if present
+          if (data.preferences.custom_endpoint_config) {
+            setCustomEndpoint(data.preferences.custom_endpoint_config.endpoint || '');
+            setCustomApiKey(data.preferences.custom_endpoint_config.api_key || '');
+          }
         }
       }
     } catch (error) {
@@ -80,19 +88,43 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
   const handleSave = async () => {
     setSaving(true);
     setError(null);
-    
+
+    // Validate custom endpoint config if custom model selected
+    if (selectedModel === 'custom/enterprise-llm') {
+      if (!customEndpoint || !customApiKey) {
+        setError('Please provide both endpoint URL and API key for custom LLM');
+        setSaving(false);
+        return;
+      }
+    }
+
     try {
+      const payload: any = {
+        selected_model: selectedModel,
+        enabled: true
+      };
+
+      // Include custom endpoint config if custom model is selected
+      if (selectedModel === 'custom/enterprise-llm') {
+        payload.use_custom_endpoint = true;
+        payload.custom_endpoint_config = {
+          endpoint: customEndpoint,
+          api_key: customApiKey,
+          provider: 'custom'
+        };
+      } else {
+        payload.use_custom_endpoint = false;
+        payload.custom_endpoint_config = null;
+      }
+
       const response = await fetch('/api/llm/preferences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          selected_model: selectedModel,
-          enabled: true
-        })
+        body: JSON.stringify(payload)
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         onSave?.();
         onClose();
@@ -143,16 +175,59 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
           {/* Model Info */}
           {selectedModelInfo && (
             <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <div className="font-medium mb-2">{selectedModelInfo.name}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              <div className="font-medium text-gray-900 dark:text-gray-100 mb-2">{selectedModelInfo.name}</div>
+              <div className="text-sm text-gray-700 dark:text-gray-300 mb-3">
                 {selectedModelInfo.description}
               </div>
               <div className="flex gap-2 flex-wrap">
                 {selectedModelInfo.capabilities.slice(0, 4).map(cap => (
-                  <span key={cap} className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-xs rounded">
+                  <span key={cap} className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded">
                     {cap}
                   </span>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Custom LLM Configuration */}
+          {selectedModel === 'custom/enterprise-llm' && (
+            <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="text-sm text-blue-900 dark:text-blue-100 font-medium mb-3">
+                Configure Your Custom LLM Endpoint
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2 block">
+                  API Endpoint URL
+                </label>
+                <input
+                  type="url"
+                  value={customEndpoint}
+                  onChange={(e) => setCustomEndpoint(e.target.value)}
+                  placeholder="https://your-api.example.com/v1/chat/completions"
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                  disabled={loading || saving}
+                />
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  OpenAI-compatible endpoint (Azure OpenAI, AWS Bedrock, self-hosted)
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2 block">
+                  API Key
+                </label>
+                <input
+                  type="password"
+                  value={customApiKey}
+                  onChange={(e) => setCustomApiKey(e.target.value)}
+                  placeholder="sk-..."
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm font-mono"
+                  disabled={loading || saving}
+                />
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  Your API key is encrypted and never shared
+                </p>
               </div>
             </div>
           )}

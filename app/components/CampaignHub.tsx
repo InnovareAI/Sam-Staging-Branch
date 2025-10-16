@@ -1,8 +1,8 @@
 'use client';
 
+import React from 'react';
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { useState, useEffect } from 'react';
-import CampaignAssistantChat from '@/components/CampaignAssistantChat';
 import {
   Users,
   Mail,
@@ -37,19 +37,23 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 // Helper function to get human-readable campaign type labels
 function getCampaignTypeLabel(type: string): string {
   const typeLabels: Record<string, string> = {
     'connector': 'Connector',
     'messenger': 'Messenger',
-    'open_inmail': 'Open InMail',
     'builder': 'Builder',
-    'group': 'Group',
-    'event_invite': 'Event Invite',
     'inbound': 'Inbound',
-    'event_participants': 'Event Participants',
-    'recovery': 'Recovery',
     'company_follow': 'Company Follow',
     'email': 'Email',
     'multi_channel': 'Multi-Channel'
@@ -426,36 +430,44 @@ function CampaignList() {
               </div>
               <div className="flex gap-2 ml-4">
                 {c.status === 'active' ? (
-                  <button
+                  <Button
                     onClick={() => toggleCampaignStatus(c.id, c.status)}
-                    className="p-2 text-yellow-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white rounded-lg transition-colors"
+                    variant="ghost"
+                    size="icon"
+                    className="text-yellow-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
                     title="Pause campaign"
                   >
                     <Pause size={16} />
-                  </button>
+                  </Button>
                 ) : (
-                  <button
+                  <Button
                     onClick={() => toggleCampaignStatus(c.id, c.status)}
-                    className="p-2 text-green-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white rounded-lg transition-colors"
+                    variant="ghost"
+                    size="icon"
+                    className="text-green-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
                     title="Resume campaign"
                   >
                     <Play size={16} />
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button
                   onClick={() => showCampaignAnalytics(c.id)}
-                  className="p-2 text-blue-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white rounded-lg transition-colors"
+                  variant="ghost"
+                  size="icon"
+                  className="text-blue-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
                   title="View analytics"
                 >
                   <BarChart3 size={16} />
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => editCampaign(c.id)}
-                  className="p-2 text-purple-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white rounded-lg transition-colors"
+                  variant="ghost"
+                  size="icon"
+                  className="text-purple-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
                   title="Edit campaign"
                 >
                   <Edit size={16} />
-                </button>
+                </Button>
               </div>
             </div>
           </CardHeader>
@@ -496,11 +508,13 @@ function CampaignList() {
 function CampaignBuilder({
   onClose,
   initialProspects,
-  onPrepareForApproval
+  onPrepareForApproval,
+  workspaceId
 }: {
   onClose?: () => void;
   initialProspects?: any[] | null;
   onPrepareForApproval?: (campaignData: any) => void;
+  workspaceId?: string | null;
 }) {
   // Derive campaign name from initialProspects if available
   const getInitialCampaignName = () => {
@@ -512,7 +526,6 @@ function CampaignBuilder({
 
   const [name, setName] = useState(getInitialCampaignName());
   const [campaignType, setCampaignType] = useState('connector');
-  const [executionType, setExecutionType] = useState('direct_linkedin');
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvData, setCsvData] = useState<any[]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
@@ -522,13 +535,23 @@ function CampaignBuilder({
 
   // Auto-populate CSV data when initialProspects are provided
   useEffect(() => {
+    console.log('🔍 CampaignBuilder initialProspects check:', {
+      hasProspects: !!initialProspects,
+      length: initialProspects?.length,
+      sample: initialProspects?.[0]
+    });
+
     if (initialProspects && initialProspects.length > 0) {
+      console.log('✅ Loading initialProspects into csvData:', initialProspects);
       const headers = ['name', 'title', 'company', 'email', 'linkedin_url'];
       setCsvHeaders(headers);
       setCsvData(initialProspects);
       setDataSource('upload'); // Set to upload mode for validation
       setShowPreview(true);
       setCurrentStep(2); // Move to step 2 (preview) since data is already loaded
+      toastSuccess(`Loaded ${initialProspects.length} approved prospects`);
+    } else {
+      console.log('⚠️ No initialProspects provided to CampaignBuilder');
     }
   }, [initialProspects]);
   const [showSamChat, setShowSamChat] = useState(false);
@@ -549,7 +572,33 @@ function CampaignBuilder({
   const [followUpMessages, setFollowUpMessages] = useState<string[]>(['']);
   const [activeField, setActiveField] = useState<{type: 'connection' | 'alternative' | 'followup', index?: number}>({type: 'connection'});
   const [activeTextarea, setActiveTextarea] = useState<HTMLTextAreaElement | null>(null);
-  
+
+  // Draft/Auto-save state
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+
+  // Paste Template state
+  const [showPasteModal, setShowPasteModal] = useState(false);
+  const [pastedText, setPastedText] = useState('');
+  const [isParsing, setIsParsing] = useState(false);
+  const [parsedPreview, setParsedPreview] = useState<{
+    connectionMessage: string;
+    alternativeMessage: string;
+    followUpMessages: string[];
+  } | null>(null);
+
+  // KB Template state
+  const [showKBModal, setShowKBModal] = useState(false);
+  const [kbTemplates, setKbTemplates] = useState<any[]>([]);
+  const [loadingKBTemplates, setLoadingKBTemplates] = useState(false);
+  const [selectedKBTemplate, setSelectedKBTemplate] = useState<any>(null);
+
+  // SAM Chat scroll management
+  const samChatRef = useState<HTMLDivElement | null>(null)[0];
+  const chatContainerRef = React.useRef<HTMLDivElement>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+
   const campaignTypes = [
     {
       value: 'connector',
@@ -564,46 +613,16 @@ function CampaignBuilder({
       icon: MessageSquare
     },
     {
-      value: 'open_inmail',
-      label: 'Open InMail',
-      description: 'Send InMail messages without connection request (Premium required)',
-      icon: Mail
-    },
-    {
       value: 'builder',
       label: 'Builder',
       description: 'Custom campaign builder with advanced targeting',
       icon: Settings
     },
     {
-      value: 'group',
-      label: 'Group',
-      description: 'Engage with LinkedIn group members',
-      icon: Users
-    },
-    {
-      value: 'event_invite',
-      label: 'Event Invite',
-      description: 'Invite connections to your LinkedIn events',
-      icon: Calendar
-    },
-    {
       value: 'inbound',
       label: 'Inbound',
       description: 'Automated responses to inbound inquiries',
       icon: TrendingUp
-    },
-    {
-      value: 'event_participants',
-      label: 'Event Participants',
-      description: 'Target attendees of specific LinkedIn events',
-      icon: Users
-    },
-    {
-      value: 'recovery',
-      label: 'Recovery',
-      description: 'Re-engage dormant connections and prospects',
-      icon: Send
     },
     {
       value: 'company_follow',
@@ -619,73 +638,6 @@ function CampaignBuilder({
     }
   ];
 
-  // V1 Campaign Orchestration - Sophisticated Execution Types
-  const [workspaceTier, setWorkspaceTier] = useState('startup'); // Default to startup
-  const [workspaceFeatures, setWorkspaceFeatures] = useState({
-    unipile_only: true,
-    reachinbox_enabled: false,
-    advanced_hitl: false,
-    custom_workflows: false,
-    advanced_analytics: false
-  });
-
-  const executionTypes = [
-    { 
-      value: 'intelligence', 
-      label: 'SAM Intelligence Campaign', 
-      description: 'Complete intelligence pipeline with data discovery, enrichment, and personalized outreach',
-      icon: Brain,
-      duration: workspaceTier === 'enterprise' ? '2 min per prospect' : '3 min per prospect',
-      features: ['AI-powered prospect discovery', 'Advanced data enrichment', 'Personalized messaging', 'Cross-channel coordination'],
-      tierRequirements: {
-        startup: 'LinkedIn + Email via Unipile',
-        sme: 'LinkedIn (Unipile) + Email (ReachInbox)',
-        enterprise: 'Full multi-channel with advanced analytics'
-      },
-      channels: {
-        startup: ['LinkedIn', 'Basic Email'],
-        sme: ['LinkedIn', 'Professional Email', 'Reply Monitoring'],
-        enterprise: ['LinkedIn', 'Enterprise Email', 'Advanced Analytics', 'Custom Workflows']
-      }
-    },
-    { 
-      value: 'event_invitation', 
-      label: 'Event Invitation Campaign', 
-      description: 'Event-focused prospect discovery and invitation orchestration with targeted messaging',
-      icon: Calendar,
-      duration: workspaceTier === 'enterprise' ? '1.5 min per prospect' : '2 min per prospect',
-      features: ['Event-specific targeting', 'Registration tracking', 'Follow-up sequences', 'RSVP management'],
-      tierRequirements: {
-        startup: 'Event invites via LinkedIn',
-        sme: 'Multi-channel event promotion',
-        enterprise: 'Advanced event analytics & tracking'
-      },
-      channels: {
-        startup: ['LinkedIn Events', 'Basic Invitations'],
-        sme: ['LinkedIn Events', 'Email Campaigns', 'Calendar Integration'],
-        enterprise: ['Full Event Platform', 'Advanced Tracking', 'Custom Landing Pages']
-      }
-    },
-    { 
-      value: 'direct_linkedin', 
-      label: 'Direct LinkedIn Campaign', 
-      description: 'Fast direct LinkedIn messaging to existing prospects (classic mode)',
-      icon: MessageSquare,
-      duration: workspaceTier === 'enterprise' ? '0.5 min per prospect' : '1 min per prospect',
-      features: ['Direct LinkedIn messaging', 'Connection requests', 'Follow-up sequences', 'Response tracking'],
-      tierRequirements: {
-        startup: 'Basic LinkedIn messaging (50/day)',
-        sme: 'Professional LinkedIn messaging (100/day)',
-        enterprise: 'Enterprise LinkedIn messaging (200/day)'
-      },
-      channels: {
-        startup: ['LinkedIn Basic'],
-        sme: ['LinkedIn Professional', 'Enhanced Targeting'],
-        enterprise: ['LinkedIn Enterprise', 'Advanced Analytics', 'Custom Sequences']
-      }
-    }
-  ];
-
   const placeholders = [
     { key: '{first_name}', description: 'Contact\'s first name' },
     { key: '{last_name}', description: 'Contact\'s last name' },
@@ -695,51 +647,126 @@ function CampaignBuilder({
     { key: '{location}', description: 'Geographic location' }
   ];
 
-  // Load workspace tier and approved prospects
+  // Auto-save draft with debounce
+  const saveDraft = async (force = false) => {
+    if (!name.trim() || !workspaceId) return;
+
+    setIsSavingDraft(true);
+    try {
+      const response = await fetch('/api/campaigns/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          draftId: currentDraftId,
+          workspaceId,
+          name,
+          campaignType,
+          currentStep,
+          connectionMessage,
+          alternativeMessage,
+          followUpMessages,
+          csvData,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        if (!currentDraftId) {
+          setCurrentDraftId(result.draftId);
+        }
+        setLastSavedAt(new Date());
+        if (force) {
+          toastSuccess('Draft saved');
+        }
+      }
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      if (force) {
+        toastError('Failed to save draft');
+      }
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
+  // Load existing draft on mount
   useEffect(() => {
-    loadWorkspaceTier();
+    const loadDraft = async () => {
+      if (!workspaceId || initialProspects?.length) return; // Skip if prospects provided
+
+      try {
+        const response = await fetch(`/api/campaigns/draft?workspaceId=${workspaceId}`);
+        const result = await response.json();
+
+        if (result.drafts && result.drafts.length > 0) {
+          // Load most recent draft
+          const draft = result.drafts[0];
+          setCurrentDraftId(draft.id);
+          setName(draft.name);
+          setCampaignType(draft.type);
+          setCurrentStep(draft.current_step || 1);
+          setConnectionMessage(draft.connection_message || '');
+          setAlternativeMessage(draft.alternative_message || '');
+          setFollowUpMessages(draft.follow_up_messages || ['']);
+
+          if (draft.draft_data?.csvData) {
+            setCsvData(draft.draft_data.csvData);
+            setShowPreview(true);
+          }
+
+          toastInfo('Draft campaign loaded');
+        }
+      } catch (error) {
+        console.error('Error loading draft:', error);
+      }
+    };
+
+    loadDraft();
+  }, [workspaceId]); // Only run on mount
+
+  // Auto-save on changes (debounced)
+  useEffect(() => {
+    if (!name.trim()) return;
+
+    const timeoutId = setTimeout(() => {
+      saveDraft();
+    }, 2000); // Save 2 seconds after last change
+
+    return () => clearTimeout(timeoutId);
+  }, [name, campaignType, currentStep, connectionMessage, alternativeMessage, followUpMessages, csvData]);
+
+  // Auto-scroll SAM chat to bottom when messages change
+  useEffect(() => {
+    if (chatContainerRef.current && samMessages.length > 0) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [samMessages, isGeneratingTemplates]);
+
+  // Show scroll button when not at bottom
+  const handleChatScroll = () => {
+    if (chatContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+      setShowScrollButton(!isAtBottom && scrollHeight > clientHeight);
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  // Load approved prospects when data source changes
+  useEffect(() => {
     if (dataSource === 'approved') {
       loadApprovedProspects();
     }
   }, [dataSource]);
-
-  const loadWorkspaceTier = async () => {
-    try {
-      // In production, this would fetch from /api/workspace/tier
-      // For now, simulate different tiers for demo
-      const simulatedTier = 'startup'; // Can be 'startup', 'sme', 'enterprise'
-      setWorkspaceTier(simulatedTier);
-      
-      // Set features based on tier
-      const tierFeatures = {
-        startup: {
-          unipile_only: true,
-          reachinbox_enabled: false,
-          advanced_hitl: false,
-          custom_workflows: false,
-          advanced_analytics: false
-        },
-        sme: {
-          unipile_only: false,
-          reachinbox_enabled: true,
-          advanced_hitl: false,
-          custom_workflows: false,
-          advanced_analytics: false
-        },
-        enterprise: {
-          unipile_only: false,
-          reachinbox_enabled: true,
-          advanced_hitl: true,
-          custom_workflows: true,
-          advanced_analytics: true
-        }
-      };
-      
-      setWorkspaceFeatures(tierFeatures[simulatedTier] || tierFeatures.startup);
-    } catch (error) {
-      console.error('Error loading workspace tier:', error);
-    }
-  };
 
   const loadApprovedProspects = async () => {
     setLoadingApprovedProspects(true);
@@ -947,6 +974,171 @@ Would you like me to adjust these or create more variations?`
     setShowSamChat(false);
   };
 
+  // Paste Template functions
+  const parsePastedTemplate = async () => {
+    if (!pastedText.trim()) {
+      toastWarning('Please paste some template text first');
+      return;
+    }
+
+    setIsParsing(true);
+    try {
+      const response = await fetch('/api/campaigns/parse-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pastedText,
+          campaignType
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error('Parse template API error:', result);
+        const errorMessage = result.error || 'Failed to parse template';
+        toastError(`Error: ${errorMessage}`);
+        return;
+      }
+
+      if (result.success) {
+        setParsedPreview(result.parsed);
+        toastSuccess('Template parsed successfully!');
+      } else {
+        const errorMessage = result.error || 'Failed to parse template';
+        console.error('Parse template failed:', result);
+        toastError(`Error: ${errorMessage}`);
+      }
+    } catch (error) {
+      console.error('Parse error:', error);
+      toastError('Failed to parse template. Please check console for details.');
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  const applyParsedTemplate = () => {
+    if (!parsedPreview) return;
+
+    if (parsedPreview.connectionMessage) {
+      setConnectionMessage(parsedPreview.connectionMessage);
+    }
+    if (parsedPreview.alternativeMessage) {
+      setAlternativeMessage(parsedPreview.alternativeMessage);
+    }
+    if (parsedPreview.followUpMessages && parsedPreview.followUpMessages.length > 0) {
+      setFollowUpMessages(parsedPreview.followUpMessages);
+    }
+
+    // Close modal and reset
+    setShowPasteModal(false);
+    setPastedText('');
+    setParsedPreview(null);
+    toastSuccess('Templates applied to campaign!');
+  };
+
+  // KB Template functions
+  const loadKBTemplates = async () => {
+    if (!workspaceId) {
+      toastError('Workspace ID not found');
+      return;
+    }
+
+    setLoadingKBTemplates(true);
+    try {
+      // Get sections first to find messaging section ID
+      const sectionsResponse = await fetch(`/api/knowledge-base/sections?workspace_id=${workspaceId}`);
+      if (!sectionsResponse.ok) {
+        throw new Error('Failed to load KB sections');
+      }
+      const sectionsData = await sectionsResponse.json();
+      const messagingSection = sectionsData.sections?.find((s: any) => s.section_id === 'messaging');
+
+      if (!messagingSection) {
+        toastInfo('No messaging templates found in Knowledge Base. Add some in the Knowledge Base section!');
+        setKbTemplates([]);
+        return;
+      }
+
+      // Load templates from messaging section
+      const templatesResponse = await fetch(
+        `/api/knowledge-base/content?workspace_id=${workspaceId}&section_id=${messagingSection.id}`
+      );
+
+      if (!templatesResponse.ok) {
+        throw new Error('Failed to load templates');
+      }
+
+      const templatesData = await templatesResponse.json();
+      setKbTemplates(templatesData.content || []);
+
+      if (!templatesData.content || templatesData.content.length === 0) {
+        toastInfo('No templates found in Knowledge Base messaging section');
+      }
+    } catch (error) {
+      console.error('Failed to load KB templates:', error);
+      toastError('Failed to load templates from Knowledge Base');
+    } finally {
+      setLoadingKBTemplates(false);
+    }
+  };
+
+  const openKBModal = () => {
+    setShowKBModal(true);
+    loadKBTemplates();
+  };
+
+  const applyKBTemplate = async (template: any) => {
+    if (!template || !template.content) return;
+
+    // Parse the KB template content using the same AI parser
+    setIsParsing(true);
+    try {
+      const response = await fetch('/api/campaigns/parse-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pastedText: template.content,
+          campaignType
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error('Parse KB template error:', result);
+        const errorMessage = result.error || 'Failed to parse template';
+        toastError(`Error: ${errorMessage}`);
+        return;
+      }
+
+      if (result.success && result.parsed) {
+        // Apply parsed template
+        if (result.parsed.connectionMessage) {
+          setConnectionMessage(result.parsed.connectionMessage);
+        }
+        if (result.parsed.alternativeMessage) {
+          setAlternativeMessage(result.parsed.alternativeMessage);
+        }
+        if (result.parsed.followUpMessages && result.parsed.followUpMessages.length > 0) {
+          setFollowUpMessages(result.parsed.followUpMessages);
+        }
+
+        // Close modal and reset
+        setShowKBModal(false);
+        setSelectedKBTemplate(null);
+        toastSuccess(`Template "${template.title || 'Untitled'}" applied to campaign!`);
+      } else {
+        toastError('Failed to parse KB template');
+      }
+    } catch (error) {
+      console.error('Apply KB template error:', error);
+      toastError('Failed to apply template from Knowledge Base');
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
   const processFile = (file: File) => {
     if (file && file.type === 'text/csv') {
       setCsvFile(file);
@@ -1051,11 +1243,8 @@ Would you like me to adjust these or create more variations?`
       // Store additional data needed for execution
       _executionData: {
         campaignType,
-        executionType,
         alternativeMessage,
-        followUpMessages,
-        workspaceTier,
-        workspaceFeatures
+        followUpMessages
       }
     };
 
@@ -1117,20 +1306,12 @@ Would you like me to adjust these or create more variations?`
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            campaignId: campaign.id,
-            executionType: executionType
+            campaignId: campaign.id
           })
         });
 
         if (executeResponse.ok) {
-          const executionResult = await executeResponse.json();
-          const selectedExecType = executionTypes.find(t => t.value === executionType);
-          // V1 Sophisticated Success Message
-          const tierInfo = workspaceTier.toUpperCase();
-          const channels = selectedExecType?.channels[workspaceTier]?.join(', ') || 'LinkedIn';
-          const hitlMethod = workspaceFeatures.advanced_hitl ? 'UI-based' : 'Email-based';
-          
-          toastError(`🎉 V1 Campaign Orchestration Launched!\n\n📊 CAMPAIGN DETAILS:\n• Campaign: "${name}"\n• Execution Mode: ${selectedExecType?.label}\n• Workspace Tier: ${tierInfo}\n• Prospects Uploaded: ${csvData.length}\n• Ready for Messaging: ${uploadResult.prospects_with_linkedin_ids}\n\n🔄 EXECUTION CONFIGURATION:\n• Channels: ${channels}\n• HITL Approval: ${hitlMethod} (Required)\n• Rate Limits: ${selectedExecType?.tierRequirements[workspaceTier]}\n• Estimated Processing: ${selectedExecType?.duration}\n\n⏰ TIMING:\n• HITL Approval: ${executionResult.estimated_times?.hitl_approval_time ? new Date(executionResult.estimated_times.hitl_approval_time).toLocaleString() : '~15-30 minutes'}\n• Campaign Completion: ${executionResult.estimated_times?.approval_to_completion ? new Date(executionResult.estimated_times.approval_to_completion).toLocaleString() : 'calculating...'}\n\n📬 NEXT STEPS:\n• Approval email sent to ${executionResult.hitl_approval?.approver_email || 'workspace admin'}\n• Campaign will start after message approval\n• Real-time status updates via N8N Master Funnel\n• Monitor progress in campaign dashboard\n\n🚀 SAM AI V1 Campaign Orchestration is now active!`);
+          toastError(`✅ Campaign "${name}" created and launched!\n\n📊 ${csvData.length} prospects uploaded\n🚀 ${uploadResult.prospects_with_linkedin_ids} ready for messaging\n📬 Campaign sent to execution queue`);
         } else {
           toastError(`✅ Campaign "${name}" created!\n\n📊 Upload Results:\n• ${csvData.length} prospects uploaded\n• ${uploadResult.prospects_with_linkedin_ids} with LinkedIn IDs\n• Ready for manual launch`);
         }
@@ -1162,6 +1343,7 @@ Would you like me to adjust these or create more variations?`
   };
   
   return (
+    <>
     <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-4xl">
       <div className="flex items-center mb-6">
         <Plus className="text-blue-400 mr-3" size={24} />
@@ -1196,12 +1378,13 @@ Would you like me to adjust these or create more variations?`
       {/* Step 1: Campaign Setup */}
       {currentStep === 1 && (
         <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">
+          <div className="space-y-2">
+            <Label htmlFor="campaign-name" className="text-gray-400">
               Campaign Name
-            </label>
-            <input 
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none transition-colors" 
+            </Label>
+            <Input 
+              id="campaign-name"
+              className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500" 
               value={name} 
               onChange={e => setName(e.target.value)} 
               placeholder="Enter campaign name..."
@@ -1236,130 +1419,6 @@ Would you like me to adjust these or create more variations?`
             </div>
           </div>
 
-          {/* Execution Type Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-3">
-              Execution Mode
-            </label>
-            {/* Workspace Tier Badge */}
-            <div className="mb-6 p-4 bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-white font-medium capitalize">
-                    {workspaceTier} Tier Workspace
-                  </h4>
-                  <p className="text-gray-300 text-sm">
-                    {workspaceTier === 'startup' && 'Unipile integration for LinkedIn + basic email'}
-                    {workspaceTier === 'sme' && 'Unipile + ReachInbox for professional campaigns'}
-                    {workspaceTier === 'enterprise' && 'Full multi-channel with advanced HITL approval'}
-                  </p>
-                </div>
-                <div className="text-xs text-purple-300 bg-purple-500/20 px-3 py-1 rounded-full uppercase">
-                  {workspaceTier}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {executionTypes.map((type) => {
-                const IconComponent = type.icon;
-                const tierChannels = type.channels[workspaceTier] || type.channels.startup;
-                const tierRequirement = type.tierRequirements[workspaceTier] || type.tierRequirements.startup;
-                
-                return (
-                  <div
-                    key={type.value}
-                    onClick={() => setExecutionType(type.value)}
-                    className={`p-5 border rounded-lg cursor-pointer transition-all ${
-                      executionType === type.value
-                        ? 'border-purple-500 bg-purple-600/20 ring-2 ring-purple-500/30'
-                        : 'border-gray-600 bg-gray-700 hover:border-gray-500 hover:bg-gray-600/50'
-                    }`}
-                  >
-                    <div className="flex items-start">
-                      <IconComponent className="text-purple-400 mr-4 mt-1 flex-shrink-0" size={24} />
-                      <div className="flex-1">
-                        {/* Header */}
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-white font-medium">{type.label}</h4>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-purple-400 bg-purple-500/20 px-2 py-1 rounded">
-                              {type.duration}
-                            </span>
-                            {workspaceFeatures.advanced_hitl && (
-                              <span className="text-xs text-green-400 bg-green-500/20 px-2 py-1 rounded">
-                                HITL
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Description */}
-                        <p className="text-gray-400 text-sm mb-3">{type.description}</p>
-
-                        {/* Tier-specific requirements */}
-                        <div className="mb-3 p-3 bg-gray-800/50 rounded-lg">
-                          <div className="text-xs text-gray-300 font-medium mb-1">
-                            {workspaceTier.toUpperCase()} TIER CONFIGURATION:
-                          </div>
-                          <div className="text-xs text-purple-300">
-                            {tierRequirement}
-                          </div>
-                        </div>
-
-                        {/* Available channels for this tier */}
-                        <div className="mb-3">
-                          <div className="text-xs text-gray-400 font-medium mb-2">Available Channels:</div>
-                          <div className="flex flex-wrap gap-1">
-                            {tierChannels.map((channel, index) => (
-                              <span 
-                                key={index}
-                                className="text-xs text-blue-300 bg-blue-500/20 px-2 py-1 rounded"
-                              >
-                                {channel}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Features */}
-                        <div className="grid grid-cols-2 gap-2">
-                          {type.features.map((feature, index) => (
-                            <div key={index} className="flex items-center text-xs text-gray-300">
-                              <CheckCircle size={12} className="text-green-400 mr-1 flex-shrink-0" />
-                              {feature}
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* HITL Approval Info */}
-                        {executionType === type.value && (
-                          <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                            <div className="flex items-start">
-                              <Clock size={16} className="text-yellow-400 mr-2 mt-0.5 flex-shrink-0" />
-                              <div>
-                                <div className="text-sm text-yellow-300 font-medium">HITL Approval Required</div>
-                                <div className="text-xs text-yellow-200 mt-1">
-                                  Campaign messages will be sent for approval before execution.
-                                  {workspaceFeatures.advanced_hitl 
-                                    ? ' Advanced UI-based approval available.'
-                                    : ' Email-based approval process.'
-                                  }
-                                </div>
-                                <div className="text-xs text-yellow-200 mt-1">
-                                  Estimated approval time: {type.value === 'intelligence' ? '30' : type.value === 'event_invitation' ? '20' : '15'} minutes
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
       )}
 
@@ -1382,9 +1441,10 @@ Would you like me to adjust these or create more variations?`
           <div className="bg-gray-700 rounded-lg p-4 mb-6">
             <h4 className="text-white font-medium mb-3">Choose Prospect Data Source</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button
+              <Button
                 onClick={() => setDataSource('approved')}
-                className={`p-4 rounded-lg border-2 transition-colors ${
+                variant="outline"
+                className={`h-auto p-4 flex flex-col items-start ${
                   dataSource === 'approved' 
                     ? 'border-purple-500 bg-purple-600/20 text-purple-300' 
                     : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500'
@@ -1393,10 +1453,11 @@ Would you like me to adjust these or create more variations?`
                 <Users className="mb-2" size={24} />
                 <div className="font-medium">Use Approved Prospects</div>
                 <div className="text-xs text-gray-400 mt-1">Select from previously approved prospect data</div>
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => setDataSource('upload')}
-                className={`p-4 rounded-lg border-2 transition-colors ${
+                variant="outline"
+                className={`h-auto p-4 flex flex-col items-start ${
                   dataSource === 'upload' 
                     ? 'border-purple-500 bg-purple-600/20 text-purple-300' 
                     : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500'
@@ -1405,7 +1466,7 @@ Would you like me to adjust these or create more variations?`
                 <Upload className="mb-2" size={24} />
                 <div className="font-medium">Upload New CSV</div>
                 <div className="text-xs text-gray-400 mt-1">Upload fresh prospect data from CSV file</div>
-              </button>
+              </Button>
             </div>
           </div>
           )}
@@ -1427,15 +1488,17 @@ Would you like me to adjust these or create more variations?`
                   <div>
                     <div className="flex justify-between items-center mb-4">
                       <span className="text-white font-medium">{approvedProspects.length} Approved Prospects Available</span>
-                      <button
-                        onClick={() => {
-                          const allSelected = selectedProspects.length === approvedProspects.length;
-                          setSelectedProspects(allSelected ? [] : [...approvedProspects]);
-                        }}
-                        className="text-purple-400 hover:text-purple-300 text-sm"
-                      >
-                        {selectedProspects.length === approvedProspects.length ? 'Deselect All' : 'Select All'}
-                      </button>
+                <Button
+                  onClick={() => {
+                    const allSelected = selectedProspects.length === approvedProspects.length;
+                    setSelectedProspects(allSelected ? [] : [...approvedProspects]);
+                  }}
+                  variant="link"
+                  size="sm"
+                  className="text-purple-400 hover:text-purple-300"
+                >
+                  {selectedProspects.length === approvedProspects.length ? 'Deselect All' : 'Select All'}
+                </Button>
                     </div>
                     <div className="max-h-64 overflow-y-auto space-y-2">
                       {approvedProspects.map((prospect) => (
@@ -1588,26 +1651,53 @@ Would you like me to adjust these or create more variations?`
                 <Zap className="text-purple-400 mr-2" size={20} />
                 <h4 className="text-white font-medium">SAM AI Template Generator</h4>
               </div>
-              <button 
+              <Button 
                 onClick={() => setShowSamChat(!showSamChat)}
-                className="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1"
+                variant="link"
+                size="sm"
+                className="text-purple-400 hover:text-purple-300 h-auto p-0"
               >
-                <MessageSquare size={16} /> {showSamChat ? 'Close Chat' : 'Chat with SAM'}
-              </button>
+                <MessageSquare size={16} className="mr-1" /> {showSamChat ? 'Close Chat' : 'Chat with SAM'}
+              </Button>
             </div>
             <p className="text-gray-300 text-sm mb-3">
               Let SAM create personalized messaging templates based on your campaign goals and target audience.
             </p>
-            <div className="flex gap-2">
-              <button 
+            <div className="flex gap-2 flex-wrap">
+              <Button
                 onClick={startSamTemplateGeneration}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-colors"
+                className="bg-purple-600 hover:bg-purple-700"
+                size="sm"
               >
+                <Zap size={16} className="mr-1" />
                 Generate Templates with SAM
-              </button>
-              <button className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm rounded-lg transition-colors">
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-gray-700 hover:bg-gray-600 text-gray-300"
+              >
+                <Edit size={16} className="mr-1" />
                 Create Manually
-              </button>
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30"
+                onClick={openKBModal}
+              >
+                <Brain size={16} className="mr-1" />
+                Load from Knowledgebase
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30"
+                onClick={() => setShowPasteModal(true)}
+              >
+                <Upload size={16} className="mr-1" />
+                Paste Template
+              </Button>
             </div>
           </div>
 
@@ -1618,9 +1708,14 @@ Would you like me to adjust these or create more variations?`
                 <MessageSquare className="text-purple-400 mr-2" size={16} />
                 <h4 className="text-white font-medium">Chat with SAM</h4>
               </div>
-              
-              <div className="h-64 overflow-y-auto mb-4 space-y-3">
-                {samMessages.map((message, index) => (
+
+              <div className="relative">
+                <div
+                  ref={chatContainerRef}
+                  onScroll={handleChatScroll}
+                  className="h-64 overflow-y-auto mb-4 space-y-3 scroll-smooth"
+                >
+                  {samMessages.map((message, index) => (
                   <div
                     key={index}
                     className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -1643,54 +1738,83 @@ Would you like me to adjust these or create more variations?`
                     </div>
                   </div>
                 )}
+                </div>
+
+                {/* Scroll to bottom button */}
+                {showScrollButton && (
+                  <button
+                    onClick={scrollToBottom}
+                    className="absolute bottom-6 right-4 bg-purple-600 hover:bg-purple-700 text-white rounded-full p-2 shadow-lg transition-all"
+                    title="Scroll to bottom"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+                )}
               </div>
-              
+
               <div className="flex gap-2">
-                <input
+                <Input
                   type="text"
                   value={samInput}
                   onChange={e => setSamInput(e.target.value)}
                   onKeyPress={e => e.key === 'Enter' && sendSamMessage()}
                   placeholder="Tell SAM about your campaign goals..."
-                  className="flex-1 px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none text-sm"
+                  className="flex-1 bg-gray-600 border-gray-500 text-white placeholder-gray-400 focus:border-purple-500"
                 />
-                <button
+                <Button
                   onClick={sendSamMessage}
                   disabled={isGeneratingTemplates || !samInput.trim()}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white rounded-lg transition-colors text-sm"
+                  className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600"
+                  size="sm"
                 >
                   Send
-                </button>
+                </Button>
               </div>
               
               {samMessages.length > 2 && (
                 <div className="mt-3 flex gap-2">
-                  <button
+                  <Button
                     onClick={applySamTemplates}
-                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs"
+                    className="bg-green-600 hover:bg-green-700"
+                    size="sm"
                   >
                     Apply Templates
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => setSamMessages([])}
-                    className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white rounded text-xs"
+                    variant="secondary"
+                    className="bg-gray-600 hover:bg-gray-500"
+                    size="sm"
                   >
                     Clear Chat
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">
+          <div className="space-y-2">
+            <Label htmlFor="connection-message" className="text-gray-400">
               Connection Request Message
-            </label>
-            <p className="text-xs text-gray-500 mb-3">
+            </Label>
+            <p className="text-xs text-gray-500">
               This message will be sent with your connection request
             </p>
-            <textarea
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none transition-colors resize-none"
+            <Textarea
+              id="connection-message"
+              className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
               rows={4}
               value={connectionMessage}
               onChange={e => setConnectionMessage(e.target.value)}
@@ -1701,22 +1825,30 @@ Would you like me to adjust these or create more variations?`
               placeholder="Hi {first_name}, I saw your profile and would love to connect..."
               maxLength={275}
             />
-            <div className="flex justify-between items-center mt-2">
-              <span className="text-xs text-gray-500">
-                Characters remaining: {275 - connectionMessage.length}/275
+            <div className="flex justify-between items-center">
+              <span className={`text-xs font-medium ${
+                connectionMessage.length > 250 ? 'text-orange-400' :
+                connectionMessage.length > 270 ? 'text-red-400' :
+                'text-gray-400'
+              }`}>
+                {connectionMessage.length}/275 characters
+                {connectionMessage.length > 250 && connectionMessage.length <= 275 && (
+                  <span className="ml-2 text-xs">({275 - connectionMessage.length} remaining)</span>
+                )}
               </span>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">
+          <div className="space-y-2">
+            <Label htmlFor="alternative-message" className="text-gray-400">
               Alternative Message (Optional)
-            </label>
-            <p className="text-xs text-gray-500 mb-3">
+            </Label>
+            <p className="text-xs text-gray-500">
               Shorter alternative message for connection requests
             </p>
-            <textarea
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none transition-colors resize-none"
+            <Textarea
+              id="alternative-message"
+              className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
               rows={2}
               value={alternativeMessage}
               onChange={e => setAlternativeMessage(e.target.value)}
@@ -1727,7 +1859,7 @@ Would you like me to adjust these or create more variations?`
               placeholder="Would love to connect with you on LinkedIn!"
               maxLength={115}
             />
-            <div className="flex justify-between items-center mt-2">
+            <div className="flex justify-between items-center">
               <span className="text-xs text-gray-500">
                 Characters remaining: {115 - alternativeMessage.length}/115
               </span>
@@ -1736,15 +1868,17 @@ Would you like me to adjust these or create more variations?`
 
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-medium text-gray-400">
+              <Label className="text-gray-400">
                 Follow-up Messages
-              </label>
-              <button
+              </Label>
+              <Button
                 onClick={addFollowUpMessage}
-                className="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1"
+                variant="link"
+                size="sm"
+                className="text-purple-400 hover:text-purple-300 h-auto p-0"
               >
-                <Plus size={16} /> Add Follow-up
-              </button>
+                <Plus size={16} className="mr-1" /> Add Follow-up
+              </Button>
             </div>
             <p className="text-xs text-gray-500 mb-3">
               Messages sent after connection is accepted
@@ -1753,18 +1887,20 @@ Would you like me to adjust these or create more variations?`
             {followUpMessages.map((message, index) => (
               <div key={index} className="mb-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-400">Follow-up {index + 1}</span>
+                  <Label className="text-gray-400">Follow-up {index + 1}</Label>
                   {followUpMessages.length > 1 && (
-                    <button
+                    <Button
                       onClick={() => removeFollowUpMessage(index)}
-                      className="text-red-400 hover:text-red-300"
+                      variant="ghost"
+                      size="icon"
+                      className="text-red-400 hover:text-red-300 h-6 w-6"
                     >
                       <XCircle size={16} />
-                    </button>
+                    </Button>
                   )}
                 </div>
-                <textarea
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none transition-colors resize-none"
+                <Textarea
+                  className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
                   rows={3}
                   value={message}
                   onChange={e => updateFollowUpMessage(index, e.target.value)}
@@ -1783,14 +1919,16 @@ Would you like me to adjust these or create more variations?`
             <h4 className="text-white font-medium mb-3">Personalization Placeholders</h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {placeholders.map((placeholder) => (
-                <button
+                <Button
                   key={placeholder.key}
                   onClick={() => insertPlaceholder(placeholder.key)}
-                  className="text-xs px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                  variant="secondary"
+                  size="sm"
+                  className="text-xs bg-purple-600 hover:bg-purple-700 text-white"
                   title={placeholder.description}
                 >
                   {placeholder.key}
-                </button>
+                </Button>
               ))}
             </div>
             <p className="text-xs text-gray-500 mt-2">
@@ -1802,55 +1940,373 @@ Would you like me to adjust these or create more variations?`
       
       {/* Navigation Buttons */}
       <div className="flex justify-between mt-8">
-        <button 
+        <Button
           onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
           disabled={currentStep === 1}
-          className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 text-gray-300 rounded-lg transition-colors"
+          variant="secondary"
+          className="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 text-gray-300"
         >
           Previous
-        </button>
-        
+        </Button>
+
         <div className="flex gap-3">
           {currentStep < 3 ? (
-            <button 
-              onClick={() => setCurrentStep(currentStep + 1)}
-              disabled={currentStep === 2 && (dataSource === 'upload' ? !csvData.length : !selectedProspects.length)}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:text-gray-400 text-white rounded-lg transition-colors"
-            >
-              Next Step
-            </button>
+            <>
+              <Button
+                onClick={() => setCurrentStep(currentStep + 1)}
+                disabled={currentStep === 2 && (dataSource === 'upload' ? !csvData.length : !selectedProspects.length)}
+                className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:text-gray-400"
+              >
+                Next Step
+              </Button>
+              {currentStep === 2 && (
+                <Button
+                  onClick={() => setCurrentStep(3)}
+                  variant="secondary"
+                  className="bg-gray-700 hover:bg-gray-600 text-gray-300"
+                  title="Skip prospect data - you can add prospects later"
+                >
+                  Skip for Now
+                </Button>
+              )}
+            </>
           ) : (
-            <button 
-              onClick={submit} 
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium"
-            >
-              Create Campaign
-            </button>
+            <>
+              <Button
+                onClick={submit}
+                className="bg-green-600 hover:bg-green-700 font-medium"
+              >
+                Create Campaign
+              </Button>
+              <Button
+                onClick={async () => {
+                  await saveDraft(true);
+                  toastSuccess('Campaign draft saved successfully');
+                }}
+                variant="secondary"
+                disabled={isSavingDraft || !name.trim()}
+                className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 disabled:opacity-50"
+              >
+                {isSavingDraft ? 'Saving...' : 'Save Draft'}
+              </Button>
+            </>
           )}
-          <button 
+          <Button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+            variant="secondary"
+            className="bg-gray-700 hover:bg-gray-600 text-gray-300"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
     </div>
+
+      {/* Paste Template Modal */}
+      {showPasteModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                    <Upload size={24} className="text-green-400" />
+                    Paste Message Template
+                  </h3>
+                  <p className="text-gray-400 text-sm mt-1">
+                    Paste your existing message sequence and SAM AI will intelligently parse and add placeholders
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowPasteModal(false);
+                    setPastedText('');
+                    setParsedPreview(null);
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 flex-1 overflow-y-auto">
+              {!parsedPreview ? (
+                /* Input Step */
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="paste-text" className="text-gray-300 mb-2 block">
+                      Paste your message template(s)
+                    </Label>
+                    <Textarea
+                      id="paste-text"
+                      value={pastedText}
+                      onChange={(e) => setPastedText(e.target.value)}
+                      placeholder="Example:
+
+Hi Sarah, I noticed you're the VP of Sales at Acme Corp. I'd love to connect and share some insights on outbound automation.
+
+Follow-up: Hey Sarah, wanted to circle back on connecting.
+
+Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
+                      className="min-h-[300px] bg-gray-900 border-gray-600 text-white"
+                    />
+                  </div>
+                  <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Brain className="text-blue-400 mt-0.5" size={20} />
+                      <div className="text-sm text-gray-300">
+                        <strong className="text-white">SAM AI will automatically:</strong>
+                        <ul className="list-disc list-inside mt-2 space-y-1">
+                          <li>Identify connection messages vs follow-ups</li>
+                          <li>Replace names with <code className="text-purple-400">{'{first_name}'}</code></li>
+                          <li>Replace companies with <code className="text-purple-400">{'{company_name}'}</code></li>
+                          <li>Replace job titles with <code className="text-purple-400">{'{job_title}'}</code></li>
+                          <li>Preserve your message tone and structure</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Preview Step */
+                <div className="space-y-4">
+                  <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-green-400 mb-2">
+                      <CheckCircle size={20} />
+                      <strong>Template parsed successfully!</strong>
+                    </div>
+                    <p className="text-gray-300 text-sm">
+                      Review the parsed messages below. Placeholders have been automatically added.
+                    </p>
+                  </div>
+
+                  {parsedPreview.connectionMessage && (
+                    <div>
+                      <Label className="text-gray-300 mb-2 block">Connection Message</Label>
+                      <div className="bg-gray-900 border border-gray-600 rounded-lg p-4">
+                        <p className="text-white whitespace-pre-wrap">{parsedPreview.connectionMessage}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {parsedPreview.alternativeMessage && (
+                    <div>
+                      <Label className="text-gray-300 mb-2 block">Alternative Message</Label>
+                      <div className="bg-gray-900 border border-gray-600 rounded-lg p-4">
+                        <p className="text-white whitespace-pre-wrap">{parsedPreview.alternativeMessage}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {parsedPreview.followUpMessages && parsedPreview.followUpMessages.length > 0 && (
+                    <div>
+                      <Label className="text-gray-300 mb-2 block">Follow-up Messages</Label>
+                      <div className="space-y-3">
+                        {parsedPreview.followUpMessages.map((msg, idx) => (
+                          <div key={idx} className="bg-gray-900 border border-gray-600 rounded-lg p-4">
+                            <div className="text-gray-400 text-xs mb-2">Follow-up {idx + 1}</div>
+                            <p className="text-white whitespace-pre-wrap">{msg}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-gray-700 flex justify-between">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowPasteModal(false);
+                  setPastedText('');
+                  setParsedPreview(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <div className="flex gap-2">
+                {parsedPreview && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setParsedPreview(null)}
+                  >
+                    Back to Edit
+                  </Button>
+                )}
+                <Button
+                  onClick={parsedPreview ? applyParsedTemplate : parsePastedTemplate}
+                  disabled={isParsing || (!pastedText.trim() && !parsedPreview)}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {isParsing ? (
+                    <>Processing...</>
+                  ) : parsedPreview ? (
+                    <>
+                      <CheckCircle size={16} className="mr-1" />
+                      Apply to Campaign
+                    </>
+                  ) : (
+                    <>
+                      <Brain size={16} className="mr-1" />
+                      Process with SAM AI
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* KB Template Selection Modal */}
+      {showKBModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                    <Brain size={24} className="text-blue-400" />
+                    Load Template from Knowledge Base
+                  </h3>
+                  <p className="text-gray-400 text-sm mt-1">
+                    Select a template from your Messaging & Voice section
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowKBModal(false);
+                    setSelectedKBTemplate(null);
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 flex-1 overflow-y-auto">
+              {loadingKBTemplates ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 size={32} className="text-blue-400 animate-spin mb-3" />
+                  <p className="text-gray-400">Loading templates...</p>
+                </div>
+              ) : kbTemplates.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Brain size={48} className="text-gray-500 mb-4" />
+                  <p className="text-gray-300 text-lg mb-2">No templates found</p>
+                  <p className="text-gray-400 text-sm max-w-md">
+                    Add message templates to your Knowledge Base (Messaging & Voice section) to load them here
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {kbTemplates.map((template) => (
+                    <div
+                      key={template.id}
+                      className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                        selectedKBTemplate?.id === template.id
+                          ? 'border-blue-500 bg-blue-500/10'
+                          : 'border-gray-600 hover:border-gray-500 bg-gray-700/50'
+                      }`}
+                      onClick={() => setSelectedKBTemplate(template)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="text-white font-medium mb-1">
+                            {template.title || 'Untitled Template'}
+                          </h4>
+                          {template.metadata?.description && (
+                            <p className="text-gray-400 text-sm mb-2">{template.metadata.description}</p>
+                          )}
+                          <div className="text-gray-500 text-xs">
+                            {template.tags && template.tags.length > 0 && (
+                              <div className="flex gap-2 mt-2">
+                                {template.tags.map((tag: string, idx: number) => (
+                                  <span key={idx} className="px-2 py-1 bg-gray-600 rounded text-gray-300">
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {selectedKBTemplate?.id === template.id && (
+                          <div className="ml-3 text-blue-400">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                              <circle cx="12" cy="12" r="10" />
+                              <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2" fill="none" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-gray-700 flex justify-end gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowKBModal(false);
+                  setSelectedKBTemplate(null);
+                }}
+                className="bg-gray-700 hover:bg-gray-600"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => selectedKBTemplate && applyKBTemplate(selectedKBTemplate)}
+                disabled={!selectedKBTemplate || isParsing}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isParsing ? (
+                  <>
+                    <Loader2 size={16} className="mr-2 animate-spin" />
+                    Applying...
+                  </>
+                ) : (
+                  <>
+                    <Upload size={16} className="mr-2" />
+                    Apply Template
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
 interface CampaignHubProps {
+  workspaceId?: string | null;
   initialProspects?: any[] | null;
   onCampaignCreated?: () => void;
 }
 
-const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignCreated }) => {
+const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects, onCampaignCreated }) => {
   const [showBuilder, setShowBuilder] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showFullFeatures, setShowFullFeatures] = useState(false);
   const [showApprovalScreen, setShowApprovalScreen] = useState(false);
   const [campaignDataForApproval, setCampaignDataForApproval] = useState<any>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  
+  const queryClient = useQueryClient();
 
   // Auto-open pending approvals toggle (stored in localStorage)
   const [autoOpenApprovals, setAutoOpenApprovals] = useState(() => {
@@ -1901,7 +2357,93 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
   }, [autoOpenApprovals]);
 
   // Campaign filter state
-  const [campaignFilter, setCampaignFilter] = useState<'active' | 'inactive' | 'archived' | 'approval'>('active');
+  const [campaignFilter, setCampaignFilter] = useState<'active' | 'inactive' | 'archived' | 'pending' | 'draft'>('active');
+
+  // REACT QUERY: Fetch pending campaigns with caching - LAZY LOAD when tab is active
+  const { data: pendingCampaignsFromDB = [], isLoading: loadingPendingFromDB } = useQuery({
+    queryKey: ['pendingCampaigns'],
+    queryFn: async () => {
+      // Fetch all approval sessions
+      const sessionsResponse = await fetch('/api/prospect-approval/sessions/list');
+      if (!sessionsResponse.ok) return [];
+
+      const sessionsData = await sessionsResponse.json();
+      if (!sessionsData.success || !sessionsData.sessions) return [];
+
+      // Group approved prospects by campaign
+      const campaignGroups: Record<string, any> = {};
+
+      for (const session of sessionsData.sessions) {
+        if (session.status === 'active' || session.status === 'completed') {
+          const prospectsResponse = await fetch(`/api/prospect-approval/prospects?session_id=${session.id}`);
+          if (prospectsResponse.ok) {
+            const prospectsData = await prospectsResponse.json();
+            if (prospectsData.success && prospectsData.prospects) {
+              // Filter only approved prospects
+              const approvedProspects = prospectsData.prospects.filter(
+                (p: any) => p.approval_status === 'approved'
+              );
+
+              if (approvedProspects.length > 0) {
+                const campaignName = session.campaign_name || `Session-${session.id.slice(0, 8)}`;
+
+                if (!campaignGroups[campaignName]) {
+                  campaignGroups[campaignName] = {
+                    campaignName,
+                    campaignTag: session.campaign_tag || session.prospect_source || 'linkedin',
+                    sessionId: session.id,
+                    prospects: [],
+                    createdAt: session.created_at
+                  };
+                }
+
+                // Map to expected format
+                campaignGroups[campaignName].prospects.push(...approvedProspects.map((p: any) => ({
+                  id: p.prospect_id,
+                  name: p.name,
+                  title: p.title || '',
+                  company: p.company?.name || '',
+                  email: p.contact?.email || '',
+                  linkedin_url: p.contact?.linkedin_url || '',
+                  phone: p.contact?.phone || '',
+                  industry: p.company?.industry || '',
+                  location: p.location || '',
+                  campaignTag: session.campaign_tag || session.campaign_name || 'linkedin'
+                })));
+              }
+            }
+          }
+        }
+      }
+
+      // Convert to array sorted by creation date
+      const campaigns = Object.values(campaignGroups).sort((a: any, b: any) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
+      return campaigns;
+    },
+    enabled: campaignFilter === 'pending', // Only fetch when Pending tab is active
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // REACT QUERY: Fetch draft campaigns with caching - LAZY LOAD when tab is active
+  const { data: draftCampaigns = [], isLoading: loadingDrafts } = useQuery({
+    queryKey: ['draftCampaigns', workspaceId],
+    queryFn: async () => {
+      if (!workspaceId) return [];
+
+      const response = await fetch(`/api/campaigns/draft?workspaceId=${workspaceId}`);
+      if (!response.ok) return [];
+
+      const result = await response.json();
+      return result.drafts || [];
+    },
+    enabled: campaignFilter === 'draft', // Only fetch when Draft tab is active
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchOnWindowFocus: true,
+  });
 
   // Load approval messages when approval tab is selected
   useEffect(() => {
@@ -1921,11 +2463,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
   const [showStepsEditor, setShowStepsEditor] = useState(false);
   const [selectedMessageForReview, setSelectedMessageForReview] = useState<any>(null);
   const [showCampaignProspects, setShowCampaignProspects] = useState(false);
-  const [campaignProspects, setCampaignProspects] = useState<any[]>([]);
-  const [loadingProspects, setLoadingProspects] = useState(false);
+  const [selectedCampaignForProspects, setSelectedCampaignForProspects] = useState<string | null>(null);
 
   // Campaign cloning state
-  const [campaigns, setCampaigns] = useState<any[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
   const [newCampaignName, setNewCampaignName] = useState('');
   const [newCampaignDescription, setNewCampaignDescription] = useState('');
@@ -1934,55 +2474,13 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
   const [cloneSettings, setCloneSettings] = useState(true);
   const [isCloning, setIsCloning] = useState(false);
 
-  // Message approval state
-  const [approvalMessages, setApprovalMessages] = useState<any>({
-    pending: [],
-    approved: [],
-    rejected: []
-  });
-  const [loadingApproval, setLoadingApproval] = useState(false);
-  const [approvalCounts, setApprovalCounts] = useState({
-    pending: 0,
-    approved: 0,
-    rejected: 0,
-    total: 0
-  });
-
   // Scheduled campaigns state
-  const [scheduledCampaigns, setScheduledCampaigns] = useState<any>({
-    upcoming: [],
-    active: [],
-    completed: [],
-    cancelled: []
-  });
-  const [loadingSchedules, setLoadingSchedules] = useState(false);
-  const [scheduleCounts, setScheduleCounts] = useState({
-    upcoming: 0,
-    active: 0,
-    completed: 0,
-    cancelled: 0,
-    total: 0
-  });
   const [selectedScheduleCampaign, setSelectedScheduleCampaign] = useState('');
   const [scheduleStartTime, setScheduleStartTime] = useState('');
   const [scheduleEndTime, setScheduleEndTime] = useState('');
   const [scheduleNotes, setScheduleNotes] = useState('');
 
   // A/B Testing state
-  const [abTests, setAbTests] = useState<any>({
-    active: [],
-    completed: [],
-    paused: [],
-    stopped: []
-  });
-  const [loadingABTests, setLoadingABTests] = useState(false);
-  const [abTestCounts, setAbTestCounts] = useState({
-    active: 0,
-    completed: 0,
-    paused: 0,
-    stopped: 0,
-    total: 0
-  });
   const [testName, setTestName] = useState('');
   const [testType, setTestType] = useState('connection_message');
   const [variantA, setVariantA] = useState('');
@@ -2008,12 +2506,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
     auto_pause_high_rejection: true,
     require_message_approval: false
   });
-  const [loadingSettings, setLoadingSettings] = useState(false);
   const [settingsChanged, setSettingsChanged] = useState(false);
-
-  // Template library state
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   // Handle campaign approval and execution
   const handleApproveCampaign = async (finalCampaignData: any) => {
@@ -2065,8 +2558,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            campaignId: campaign.id,
-            executionType: _executionData.executionType
+            campaignId: campaign.id
           })
         });
 
@@ -2092,41 +2584,38 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
   };
 
   // Load templates when modal opens
-  const loadTemplates = async () => {
-    setLoadingTemplates(true);
-    try {
+  // REACT QUERY: Load templates
+  const { data: templates = [], isLoading: loadingTemplates, refetch: refetchTemplates } = useQuery({
+    queryKey: ['campaignTemplates'],
+    queryFn: async () => {
       const response = await fetch('/api/campaigns/templates');
-      if (response.ok) {
-        const result = await response.json();
-        setTemplates(result.templates || []);
-      }
-    } catch (error) {
-      console.error('Failed to load templates:', error);
-    } finally {
-      setLoadingTemplates(false);
-    }
-  };
+      if (!response.ok) return [];
+      const result = await response.json();
+      return result.templates || [];
+    },
+    enabled: showTemplateLibrary,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
 
   const openTemplateLibrary = () => {
     setShowTemplateLibrary(true);
-    loadTemplates();
   };
 
-  const loadCampaignsForCloning = async () => {
-    try {
+  // REACT QUERY: Load campaigns for cloning
+  const { data: campaignsForCloning = [], refetch: refetchCampaignsForCloning } = useQuery({
+    queryKey: ['campaignsForCloning'],
+    queryFn: async () => {
       const response = await fetch('/api/campaigns/create');
-      if (response.ok) {
-        const result = await response.json();
-        setCampaigns(result.campaigns || []);
-      }
-    } catch (error) {
-      console.error('Failed to load campaigns:', error);
-    }
-  };
+      if (!response.ok) return [];
+      const result = await response.json();
+      return result.campaigns || [];
+    },
+    enabled: showCampaignCloning || showScheduledCampaigns || showABTesting,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const openCampaignCloning = () => {
     setShowCampaignCloning(true);
-    loadCampaignsForCloning();
     // Reset form
     setSelectedCampaignId('');
     setNewCampaignName('');
@@ -2161,10 +2650,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
 
       if (response.ok) {
         const result = await response.json();
-        toastError(`Campaign "${result.cloned_campaign.name}" cloned successfully!`);
+        toastSuccess(`Campaign "${result.cloned_campaign.name}" cloned successfully!`);
         setShowCampaignCloning(false);
-        // Refresh campaigns list
-        window.dispatchEvent(new Event('refreshCampaigns'));
+        // Invalidate and refetch
+        queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+        queryClient.invalidateQueries({ queryKey: ['campaignsForCloning'] });
       } else {
         const error = await response.json();
         toastError(`Failed to clone campaign: ${error.error}`);
@@ -2177,40 +2667,43 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
     }
   };
 
-  const loadApprovalMessages = async () => {
-    setLoadingApproval(true);
-    try {
+  // REACT QUERY: Load approval messages
+  const { data: approvalData, isLoading: loadingApproval, refetch: refetchApprovalMessages } = useQuery({
+    queryKey: ['approvalMessages'],
+    queryFn: async () => {
       const response = await fetch('/api/campaigns/messages/approval');
-      if (response.ok) {
-        const result = await response.json();
+      if (!response.ok) throw new Error('Failed to load approval messages');
+      const result = await response.json();
 
-        // Transform the data to include campaign_name from joined campaigns table
-        const transformMessages = (messages: any[]) => messages.map(msg => ({
-          ...msg,
-          campaign_name: msg.campaigns?.name || msg.campaign_name || 'Unknown Campaign',
-          message_content: msg.message_text || msg.message_content || '',
-          step_number: msg.sequence_step || msg.step_number || 1
-        }));
+      // Transform the data to include campaign_name from joined campaigns table
+      const transformMessages = (messages: any[]) => messages.map(msg => ({
+        ...msg,
+        campaign_name: msg.campaigns?.name || msg.campaign_name || 'Unknown Campaign',
+        message_content: msg.message_text || msg.message_content || '',
+        step_number: msg.sequence_step || msg.step_number || 1
+      }));
 
-        const transformed = {
-          pending: transformMessages(result.grouped?.pending || []),
-          approved: transformMessages(result.grouped?.approved || []),
-          rejected: transformMessages(result.grouped?.rejected || [])
-        };
+      const transformed = {
+        pending: transformMessages(result.grouped?.pending || []),
+        approved: transformMessages(result.grouped?.approved || []),
+        rejected: transformMessages(result.grouped?.rejected || [])
+      };
 
-        setApprovalMessages(transformed);
-        setApprovalCounts(result.counts || { pending: 0, approved: 0, rejected: 0, total: 0 });
-      }
-    } catch (error) {
-      console.error('Failed to load approval messages:', error);
-    } finally {
-      setLoadingApproval(false);
-    }
-  };
+      return {
+        messages: transformed,
+        counts: result.counts || { pending: 0, approved: 0, rejected: 0, total: 0 }
+      };
+    },
+    enabled: showMessageApproval,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  const approvalMessages = approvalData?.messages || { pending: [], approved: [], rejected: [] };
+  const approvalCounts = approvalData?.counts || { pending: 0, approved: 0, rejected: 0, total: 0 };
 
   const openMessageApproval = () => {
     setShowMessageApproval(true);
-    loadApprovalMessages();
   };
 
   const handleApproveMessage = async (messageId: string) => {
@@ -2227,8 +2720,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
       });
 
       if (response.ok) {
-        // Refresh the approval messages
-        loadApprovalMessages();
+        // Invalidate and refetch approval messages
+        queryClient.invalidateQueries({ queryKey: ['approvalMessages'] });
       } else {
         const error = await response.json();
         toastError(`Failed to approve message: ${error.error}`);
@@ -2254,8 +2747,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
       });
 
       if (response.ok) {
-        // Refresh the approval messages
-        loadApprovalMessages();
+        // Invalidate and refetch approval messages
+        queryClient.invalidateQueries({ queryKey: ['approvalMessages'] });
       } else {
         const error = await response.json();
         toastError(`Failed to reject message: ${error.error}`);
@@ -2266,24 +2759,23 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
     }
   };
 
-  const loadCampaignProspects = async (campaignId: string) => {
-    setLoadingProspects(true);
-    try {
-      const response = await fetch(`/api/campaigns/${campaignId}/prospects`);
-      if (response.ok) {
-        const result = await response.json();
-        setCampaignProspects(result.prospects || []);
-        setShowCampaignProspects(true);
-      } else {
-        console.error('Failed to load campaign prospects');
-        toastError('Failed to load prospects for this campaign');
-      }
-    } catch (error) {
-      console.error('Failed to load campaign prospects:', error);
-      toastError('Failed to load prospects. Please try again.');
-    } finally {
-      setLoadingProspects(false);
-    }
+  // REACT QUERY: Load campaign prospects
+  const { data: campaignProspects = [], isLoading: loadingProspects } = useQuery({
+    queryKey: ['campaignProspects', selectedCampaignForProspects],
+    queryFn: async () => {
+      if (!selectedCampaignForProspects) return [];
+      const response = await fetch(`/api/campaigns/${selectedCampaignForProspects}/prospects`);
+      if (!response.ok) throw new Error('Failed to load campaign prospects');
+      const result = await response.json();
+      return result.prospects || [];
+    },
+    enabled: !!selectedCampaignForProspects && showCampaignProspects,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const loadCampaignProspects = (campaignId: string) => {
+    setSelectedCampaignForProspects(campaignId);
+    setShowCampaignProspects(true);
   };
 
   const handleBulkApproval = async (action: 'approve' | 'reject') => {
@@ -2308,9 +2800,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
 
       if (response.ok) {
         const result = await response.json();
-        alert(result.message);
-        // Refresh the approval messages
-        loadApprovalMessages();
+        toastSuccess(result.message);
+        // Invalidate and refetch approval messages
+        queryClient.invalidateQueries({ queryKey: ['approvalMessages'] });
       } else {
         const error = await response.json();
         toastError(`Failed to ${action} messages: ${error.error}`);
@@ -2321,65 +2813,65 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
     }
   };
 
-  const loadScheduledCampaigns = async () => {
-    setLoadingSchedules(true);
-    try {
+  // REACT QUERY: Load scheduled campaigns
+  const { data: scheduledData, isLoading: loadingSchedules } = useQuery({
+    queryKey: ['scheduledCampaigns'],
+    queryFn: async () => {
       const response = await fetch('/api/campaigns/schedule');
       if (response.ok) {
         const result = await response.json();
-        setScheduledCampaigns(result.grouped || { upcoming: [], active: [], completed: [], cancelled: [] });
-        setScheduleCounts(result.counts || { upcoming: 0, active: 0, completed: 0, cancelled: 0, total: 0 });
-      } else {
-        // Use mock data if API fails (for demo purposes when DB is not set up)
-        const mockSchedules = {
-          upcoming: [
-            {
-              id: '1',
-              campaigns: { name: 'Holiday Networking Campaign' },
-              scheduled_start_time: '2024-12-15T09:00:00Z',
-              notes: 'Expected Duration: 2 weeks'
-            },
-            {
-              id: '2', 
-              campaigns: { name: 'Q1 2025 Prospecting Blitz' },
-              scheduled_start_time: '2025-01-02T08:00:00Z',
-              notes: 'Expected Duration: 1 month'
-            }
-          ],
-          active: [
-            {
-              id: '3',
-              campaigns: { name: 'November B2B Outreach' },
-              scheduled_start_time: '2024-11-01T09:00:00Z',
-              notes: 'Progress: 65% • Messages sent: 156/240'
-            }
-          ],
-          completed: [],
-          cancelled: []
+        return {
+          campaigns: result.grouped || { upcoming: [], active: [], completed: [], cancelled: [] },
+          counts: result.counts || { upcoming: 0, active: 0, completed: 0, cancelled: 0, total: 0 }
         };
-        setScheduledCampaigns(mockSchedules);
-        setScheduleCounts({
+      }
+      // Use mock data if API fails
+      const mockSchedules = {
+        upcoming: [
+          {
+            id: '1',
+            campaigns: { name: 'Holiday Networking Campaign' },
+            scheduled_start_time: '2024-12-15T09:00:00Z',
+            notes: 'Expected Duration: 2 weeks'
+          },
+          {
+            id: '2', 
+            campaigns: { name: 'Q1 2025 Prospecting Blitz' },
+            scheduled_start_time: '2025-01-02T08:00:00Z',
+            notes: 'Expected Duration: 1 month'
+          }
+        ],
+        active: [
+          {
+            id: '3',
+            campaigns: { name: 'November B2B Outreach' },
+            scheduled_start_time: '2024-11-01T09:00:00Z',
+            notes: 'Progress: 65% • Messages sent: 156/240'
+          }
+        ],
+        completed: [],
+        cancelled: []
+      };
+      return {
+        campaigns: mockSchedules,
+        counts: {
           upcoming: mockSchedules.upcoming.length,
           active: mockSchedules.active.length,
           completed: 0,
           cancelled: 0,
           total: mockSchedules.upcoming.length + mockSchedules.active.length
-        });
-      }
-    } catch (error) {
-      console.error('Failed to load scheduled campaigns:', error);
-      // Fallback to empty state
-      setScheduledCampaigns({ upcoming: [], active: [], completed: [], cancelled: [] });
-      setScheduleCounts({ upcoming: 0, active: 0, completed: 0, cancelled: 0, total: 0 });
-    } finally {
-      setLoadingSchedules(false);
-    }
-  };
+        }
+      };
+    },
+    enabled: showScheduledCampaigns,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const scheduledCampaigns = scheduledData?.campaigns || { upcoming: [], active: [], completed: [], cancelled: [] };
+  const scheduleCounts = scheduledData?.counts || { upcoming: 0, active: 0, completed: 0, cancelled: 0, total: 0 };
 
   const openScheduledCampaigns = () => {
     setShowScheduledCampaigns(true);
-    loadScheduledCampaigns();
-    loadCampaignsForCloning(); // Reuse campaign loading for dropdown
     // Reset form
     setSelectedScheduleCampaign('');
     setScheduleStartTime('');
@@ -2409,9 +2901,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
 
       if (response.ok) {
         const result = await response.json();
-        toastError(`Campaign "${result.campaign.name}" scheduled successfully!`);
-        // Refresh schedules
-        loadScheduledCampaigns();
+        toastSuccess(`Campaign "${result.campaign.name}" scheduled successfully!`);
+        // Invalidate and refetch
+        queryClient.invalidateQueries({ queryKey: ['scheduledCampaigns'] });
         // Reset form
         setSelectedScheduleCampaign('');
         setScheduleStartTime('');
@@ -2442,9 +2934,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
 
       if (response.ok) {
         const result = await response.json();
-        alert(result.message);
-        // Refresh schedules
-        loadScheduledCampaigns();
+        toastSuccess(result.message);
+        // Invalidate and refetch
+        queryClient.invalidateQueries({ queryKey: ['scheduledCampaigns'] });
       } else {
         const error = await response.json();
         toastError(`Failed to ${action} schedule: ${error.error}`);
@@ -2455,34 +2947,26 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
     }
   };
 
-  const loadABTests = async () => {
-    setLoadingABTests(true);
-    try {
+  // REACT QUERY: Load A/B tests
+  const { data: abTestData, isLoading: loadingABTests } = useQuery({
+    queryKey: ['abTests'],
+    queryFn: async () => {
       const response = await fetch('/api/campaigns/ab-testing');
-      if (response.ok) {
-        const result = await response.json();
-        setAbTests(result.grouped || { active: [], completed: [], paused: [], stopped: [] });
-        setAbTestCounts(result.counts || { active: 0, completed: 0, paused: 0, stopped: 0, total: 0 });
-      } else {
-        // Mock data will be provided by the API when database doesn't exist
-        const result = await response.json();
-        setAbTests(result.grouped || { active: [], completed: [], paused: [], stopped: [] });
-        setAbTestCounts(result.counts || { active: 0, completed: 0, paused: 0, stopped: 0, total: 0 });
-      }
-    } catch (error) {
-      console.error('Failed to load A/B tests:', error);
-      // Fallback to empty state
-      setAbTests({ active: [], completed: [], paused: [], stopped: [] });
-      setAbTestCounts({ active: 0, completed: 0, paused: 0, stopped: 0, total: 0 });
-    } finally {
-      setLoadingABTests(false);
-    }
-  };
+      const result = await response.json();
+      return {
+        tests: result.grouped || { active: [], completed: [], paused: [], stopped: [] },
+        counts: result.counts || { active: 0, completed: 0, paused: 0, stopped: 0, total: 0 }
+      };
+    },
+    enabled: showABTesting,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const abTests = abTestData?.tests || { active: [], completed: [], paused: [], stopped: [] };
+  const abTestCounts = abTestData?.counts || { active: 0, completed: 0, paused: 0, stopped: 0, total: 0 };
 
   const openABTesting = () => {
     setShowABTesting(true);
-    loadABTests();
-    loadCampaignsForCloning(); // Reuse campaign loading for dropdown
     // Reset form
     setTestName('');
     setTestType('connection_message');
@@ -2521,9 +3005,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
 
       if (response.ok) {
         const result = await response.json();
-        toastError(`A/B test "${result.test.test_name}" created successfully!`);
-        // Refresh tests
-        loadABTests();
+        toastSuccess(`A/B test "${result.test.test_name}" created successfully!`);
+        // Invalidate and refetch
+        queryClient.invalidateQueries({ queryKey: ['abTests'] });
         // Reset form
         setTestName('');
         setVariantA('');
@@ -2554,9 +3038,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
 
       if (response.ok) {
         const result = await response.json();
-        alert(result.message);
-        // Refresh tests
-        loadABTests();
+        toastSuccess(result.message);
+        // Invalidate and refetch
+        queryClient.invalidateQueries({ queryKey: ['abTests'] });
       } else {
         const error = await response.json();
         toastError(`Failed to ${action} test: ${error.error}`);
@@ -2567,31 +3051,26 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
     }
   };
 
-  const loadCampaignSettings = async () => {
-    setLoadingSettings(true);
-    try {
+  // REACT QUERY: Load campaign settings
+  const { data: settingsData, isLoading: loadingSettings } = useQuery({
+    queryKey: ['campaignSettings'],
+    queryFn: async () => {
       const response = await fetch('/api/campaigns/settings?scope=workspace');
-      if (response.ok) {
-        const result = await response.json();
-        setCampaignSettings(result.settings);
-        setSettingsChanged(false);
-      } else {
-        // Use default settings if API fails
-        const result = await response.json();
-        setCampaignSettings(result.settings);
+      const result = await response.json();
+      return result.settings;
+    },
+    enabled: showCampaignSettings,
+    staleTime: 10 * 60 * 1000,
+    onSuccess: (data) => {
+      if (data) {
+        setCampaignSettings(data);
         setSettingsChanged(false);
       }
-    } catch (error) {
-      console.error('Failed to load campaign settings:', error);
-      // Keep current default settings
-    } finally {
-      setLoadingSettings(false);
-    }
-  };
+    },
+  });
 
   const openCampaignSettings = () => {
     setShowCampaignSettings(true);
-    loadCampaignSettings();
   };
 
   const handleSaveSettings = async () => {
@@ -2609,9 +3088,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
 
       if (response.ok) {
         const result = await response.json();
-        toastError('Campaign settings saved successfully!');
+        toastSuccess('Campaign settings saved successfully!');
         setCampaignSettings(result.settings);
         setSettingsChanged(false);
+        // Invalidate and refetch
+        queryClient.invalidateQueries({ queryKey: ['campaignSettings'] });
       } else {
         const error = await response.json();
         toastError(`Failed to save settings: ${error.error}`);
@@ -2674,30 +3155,6 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
     },
     {
       id: '3',
-      name: 'FinTech Decision Makers',
-      status: 'paused',
-      type: 'open_inmail',
-      prospects: 178,
-      sent: 134,
-      replies: 19,
-      connections: 0,
-      response_rate: 14.2,
-      created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: '4',
-      name: 'Tech Summit 2025 Invitations',
-      status: 'active',
-      type: 'event_invite',
-      prospects: 298,
-      sent: 267,
-      replies: 58,
-      connections: 0,
-      response_rate: 21.7,
-      created_at: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: '5',
       name: 'Company Page Growth',
       status: 'active',
       type: 'company_follow',
@@ -2709,19 +3166,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
       created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
     },
     {
-      id: '6',
-      name: 'Product Launch Group Campaign',
-      status: 'active',
-      type: 'group',
-      prospects: 89,
-      sent: 72,
-      replies: 31,
-      connections: 0,
-      response_rate: 43.1,
-      created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: '7',
+      id: '4',
       name: 'Inbound Lead Follow-up',
       status: 'active',
       type: 'inbound',
@@ -2733,31 +3178,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
       created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
     },
     {
-      id: '8',
-      name: 'Webinar Attendee Follow-up',
-      status: 'active',
-      type: 'event_participants',
-      prospects: 234,
-      sent: 198,
-      replies: 67,
-      connections: 0,
-      response_rate: 33.8,
-      created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: '9',
-      name: 'Re-engagement Campaign',
-      status: 'active',
-      type: 'recovery',
-      prospects: 512,
-      sent: 445,
-      replies: 89,
-      connections: 23,
-      response_rate: 20.0,
-      created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: '10',
+      id: '5',
       name: 'Email Newsletter Campaign',
       status: 'completed',
       type: 'email',
@@ -2785,39 +3206,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
     setSelectedCampaign(campaign || null);
     setShowCampaignSettings(true);
   };
-  const campaignName = initialProspects?.[0]?.campaignTag || 'New Campaign';
+  const campaignName = initialProspects?.[0]?.campaignName || initialProspects?.[0]?.campaignTag || 'New Campaign';
 
   return (
     <div className="h-full bg-gray-900 p-6">
-      {/* Campaign Assistant Modal */}
-      <CampaignAssistantChat
-        isOpen={isAssistantOpen}
-        onClose={() => setIsAssistantOpen(false)}
-        onCampaignCreated={onCampaignCreated}
-      />
-
-      {/* Floating Assistant Button */}
-      {!isAssistantOpen && (
-        <button
-          onClick={() => setIsAssistantOpen(true)}
-          className="fixed bottom-6 right-6 z-[9999] group relative w-16 h-16 rounded-full transition-transform hover:scale-110 active:scale-95 shadow-2xl"
-          style={{ position: 'fixed', bottom: '24px', right: '24px' }}
-          title="Campaign Assistant"
-        >
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 animate-pulse" />
-          <div className="absolute inset-[2px] rounded-full bg-gray-900" />
-          <img
-            src="/SAM.jpg"
-            alt="SAM AI"
-            className="relative w-14 h-14 rounded-full object-cover z-10"
-            style={{ objectPosition: 'center 30%' }}
-          />
-          <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 px-3 py-1 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-gray-700">
-            Campaign Assistant
-          </div>
-        </button>
-      )}
-
       {/* Main Campaign Hub Content - Full Width */}
       <div className="h-full overflow-y-auto">
       {/* Header - Different for auto-create mode */}
@@ -2865,97 +3257,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
               <Megaphone className="mr-3" size={32} />
               Campaign Hub
             </h1>
-            <p className="text-gray-400">Design, approve, and launch marketing campaigns</p>
+            <p className="text-gray-400">Design, approve, and launch outreach campaigns</p>
           </div>
         </div>
       )}
 
       <div className="w-full space-y-8">
-        {/* Pending Approval Section - Shows campaigns from Data Approval */}
-        {initialProspects && initialProspects.length > 0 && !showBuilder && (
-          <div className="bg-gray-800 rounded-lg border border-gray-700">
-            <div className="px-6 py-4 border-b border-gray-700">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <CheckCircle className="text-green-400" size={24} />
-                  <div>
-                    <h2 className="text-lg font-bold text-white">Pending Approval</h2>
-                    <p className="text-sm text-gray-400">Campaigns ready for message creation</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-sm text-gray-400">
-                    {initialProspects.length} prospects approved
-                  </div>
-                  <button
-                    onClick={() => setShowBuilder(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium"
-                  >
-                    <Plus size={16} />
-                    New Campaign
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6">
-              {(() => {
-                // Group prospects by campaign name
-                const campaignGroups = initialProspects.reduce((acc: any, prospect: any) => {
-                  const campaignName = prospect.campaignName || prospect.campaignTag || 'Unnamed Campaign';
-                  if (!acc[campaignName]) {
-                    acc[campaignName] = [];
-                  }
-                  acc[campaignName].push(prospect);
-                  return acc;
-                }, {});
-
-                return (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {Object.entries(campaignGroups).map(([campaignName, prospects]: [string, any]) => (
-                      <div key={campaignName} className="bg-gray-750 rounded-lg border border-gray-700 p-5 hover:border-purple-500/50 transition-all">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1">
-                            <h3 className="text-white font-semibold mb-1">{campaignName}</h3>
-                            <div className="flex items-center space-x-2 text-sm text-gray-400">
-                              <Users size={14} />
-                              <span>{prospects.length} prospects</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <button
-                            onClick={() => {
-                              // Open campaign builder with these prospects
-                              setShowBuilder(true);
-                            }}
-                            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium"
-                          >
-                            <MessageSquare size={14} />
-                            <span>Draft Messages</span>
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              // Show prospect details
-                              console.log('Show prospects:', prospects);
-                              toastInfo(`${prospects.length} prospects in ${campaignName}`);
-                            }}
-                            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
-                          >
-                            <Eye size={14} />
-                            <span>View Prospects</span>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        )}
 
         {/* Campaign Approval Screen */}
         {showApprovalScreen && campaignDataForApproval && (
@@ -2992,6 +3299,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
                 setCampaignDataForApproval(campaignData);
                 setShowApprovalScreen(true);
               }}
+              workspaceId={workspaceId}
             />
           </div>
         )}
@@ -3031,92 +3339,139 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
               >
                 Archived
               </button>
-              {/* Pending Approval Tab - Always visible */}
+              {/* Pending Approval Tab - Shows campaigns with approved prospects */}
               <button
-                onClick={() => setCampaignFilter('approval')}
+                onClick={() => setCampaignFilter('pending')}
                 className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
-                  campaignFilter === 'approval'
+                  campaignFilter === 'pending'
                     ? 'text-white border-b-2 border-yellow-500'
                     : 'text-gray-400 hover:text-white'
                 }`}
               >
                 Pending Approval
-                {approvalCounts.pending > 0 && (
+                {((initialProspects?.length || 0) + pendingCampaignsFromDB.length) > 0 && (
                   <span className="px-2 py-0.5 bg-yellow-600 text-white text-xs rounded-full">
-                    {approvalCounts.pending}
+                    {(initialProspects?.length || 0) + pendingCampaignsFromDB.length}
+                  </span>
+                )}
+              </button>
+              {/* Draft Tab - Shows saved draft campaigns */}
+              <button
+                onClick={() => setCampaignFilter('draft')}
+                className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
+                  campaignFilter === 'draft'
+                    ? 'text-white border-b-2 border-blue-500'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <FileText size={16} />
+                Drafts
+                {draftCampaigns.length > 0 && (
+                  <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+                    {draftCampaigns.length}
                   </span>
                 )}
               </button>
             </div>
 
-            {/* Conditional Content: Campaign Table OR Approval Table */}
-            {campaignFilter === 'approval' ? (
-              /* Message Approval Table */
+            {/* Conditional Content: Campaign Table OR Pending Campaigns Table OR Draft Campaigns Table */}
+            {campaignFilter === 'draft' ? (
+              /* Draft Campaigns Table - Saved incomplete campaigns */
               <div className="overflow-x-auto">
-                {loadingApproval ? (
+                {loadingDrafts ? (
                   <div className="text-center py-12">
-                    <div className="text-gray-400">Loading pending approvals...</div>
+                    <div className="text-gray-400">Loading drafts...</div>
                   </div>
-                ) : approvalMessages.pending.length === 0 ? (
+                ) : draftCampaigns.length === 0 ? (
                   <div className="text-center py-12">
-                    <CheckCircle className="mx-auto text-green-400 mb-4" size={48} />
-                    <div className="text-white font-medium mb-2">All messages approved!</div>
-                    <div className="text-gray-400">No pending message approvals at this time.</div>
+                    <FileText className="mx-auto text-gray-400 mb-4" size={48} />
+                    <div className="text-white font-medium mb-2">No draft campaigns</div>
+                    <div className="text-gray-400">Start creating a campaign and it will auto-save as a draft.</div>
                   </div>
                 ) : (
                   <table className="w-full">
                     <thead className="bg-gray-750">
                       <tr className="text-left text-gray-400 text-xs uppercase">
                         <th className="px-6 py-3 font-medium">Campaign</th>
-                        <th className="px-6 py-3 font-medium">Step</th>
-                        <th className="px-6 py-3 font-medium">Message Preview</th>
-                        <th className="px-6 py-3 font-medium">Created</th>
-                        <th className="px-6 py-3 font-medium">Characters</th>
+                        <th className="px-6 py-3 font-medium">Type</th>
+                        <th className="px-6 py-3 font-medium">Progress</th>
+                        <th className="px-6 py-3 font-medium">Last Saved</th>
                         <th className="px-6 py-3 font-medium"></th>
                       </tr>
                     </thead>
                     <tbody>
-                      {approvalMessages.pending.map((msg: any) => (
+                      {draftCampaigns.map((draft: any) => (
                         <tr
-                          key={msg.id}
-                          onClick={() => setSelectedMessageForReview(msg)}
+                          key={draft.id}
+                          onClick={() => {
+                            // Load draft into builder
+                            setCurrentDraftId(draft.id);
+                            setName(draft.name);
+                            setCampaignType(draft.type);
+                            setCurrentStep(draft.current_step || 1);
+                            setConnectionMessage(draft.connection_message || '');
+                            setAlternativeMessage(draft.alternative_message || '');
+                            setFollowUpMessages(draft.follow_up_messages || ['']);
+                            if (draft.draft_data?.csvData) {
+                              setCsvData(draft.draft_data.csvData);
+                              setShowPreview(true);
+                            }
+                            setShowBuilder(true);
+                            toastInfo(`Loaded draft: ${draft.name}`);
+                          }}
                           className="border-b border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer"
                         >
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                               <div>
-                                <div className="text-white font-medium">{msg.campaign_name}</div>
+                                <div className="text-white font-medium">{draft.name}</div>
+                                <div className="text-gray-400 text-sm">Draft campaign</div>
                               </div>
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <span className="text-gray-300">Step {msg.step_number}</span>
+                            <span className="text-gray-300">{getCampaignTypeLabel(draft.type)}</span>
                           </td>
                           <td className="px-6 py-4">
-                            <div className="text-gray-300 text-sm max-w-md truncate">
-                              {msg.message_content}
+                            <div className="flex items-center gap-2">
+                              <div className="text-white">Step {draft.current_step || 1} of 3</div>
+                              <div className="w-20 bg-gray-700 rounded-full h-2">
+                                <div
+                                  className="bg-blue-500 h-2 rounded-full transition-all"
+                                  style={{ width: `${((draft.current_step || 1) / 3) * 100}%` }}
+                                ></div>
+                              </div>
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <span className="text-gray-400 text-sm">
-                              {new Date(msg.created_at).toLocaleDateString()}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`text-sm ${msg.message_content?.length > 275 && msg.step_number === 1 ? 'text-yellow-400' : 'text-gray-400'}`}>
-                              {msg.message_content?.length || 0}
-                            </span>
+                            <div className="text-gray-400 text-sm">
+                              {new Date(draft.updated_at).toLocaleDateString()} {new Date(draft.updated_at).toLocaleTimeString()}
+                            </div>
                           </td>
                           <td className="px-6 py-4">
                             <button
-                              onClick={(e) => {
+                              onClick={async (e) => {
                                 e.stopPropagation();
-                                setSelectedMessageForReview(msg);
+                                if (confirm(`Delete draft "${draft.name}"?`)) {
+                                  try {
+                                    const response = await fetch(
+                                      `/api/campaigns/draft?draftId=${draft.id}&workspaceId=${workspaceId}`,
+                                      { method: 'DELETE' }
+                                    );
+                                    if (response.ok) {
+                                      queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
+                                      toastSuccess('Draft deleted');
+                                    }
+                                  } catch (error) {
+                                    toastError('Failed to delete draft');
+                                  }
+                                }
                               }}
-                              className="text-purple-400 hover:text-purple-300 transition-colors"
+                              className="text-red-400 hover:text-red-300 transition-colors"
+                              title="Delete draft"
                             >
-                              <Eye size={18} />
+                              <X size={16} />
                             </button>
                           </td>
                         </tr>
@@ -3124,6 +3479,129 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
                     </tbody>
                   </table>
                 )}
+              </div>
+            ) : campaignFilter === 'pending' ? (
+              /* Pending Campaigns Table - Campaigns with approved prospects waiting for messages */
+              <div className="overflow-x-auto">
+                {(() => {
+                  // Merge temp initialProspects and persistent DB campaigns
+                  const allCampaigns: any[] = [];
+
+                  // Add temp campaigns from initialProspects
+                  if (initialProspects && initialProspects.length > 0) {
+                    const campaignGroups = initialProspects.reduce((acc: any, prospect: any) => {
+                      const campaignName = prospect.campaignName || prospect.campaignTag || 'Unnamed Campaign';
+                      if (!acc[campaignName]) {
+                        acc[campaignName] = { campaignName, prospects: [], source: 'temp', createdAt: new Date() };
+                      }
+                      acc[campaignName].prospects.push(prospect);
+                      return acc;
+                    }, {});
+                    allCampaigns.push(...Object.values(campaignGroups));
+                  }
+
+                  // Add persistent campaigns from DB (avoid duplicates)
+                  pendingCampaignsFromDB.forEach(dbCampaign => {
+                    if (!allCampaigns.find(c => c.campaignName === dbCampaign.campaignName)) {
+                      allCampaigns.push({ ...dbCampaign, source: 'database' });
+                    }
+                  });
+
+                  if (loadingPendingFromDB && allCampaigns.length === 0) {
+                    return (
+                      <div className="text-center py-12">
+                        <div className="text-gray-400">Loading pending campaigns...</div>
+                      </div>
+                    );
+                  }
+
+                  if (allCampaigns.length === 0) {
+                    return (
+                      <div className="text-center py-12">
+                        <CheckCircle className="mx-auto text-green-400 mb-4" size={48} />
+                        <div className="text-white font-medium mb-2">No pending campaigns</div>
+                        <div className="text-gray-400">Approve prospects in Data Approval to create campaigns.</div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <table className="w-full">
+                      <thead className="bg-gray-750">
+                        <tr className="text-left text-gray-400 text-xs uppercase">
+                          <th className="px-6 py-3 font-medium">Campaign</th>
+                          <th className="px-6 py-3 font-medium">Source</th>
+                          <th className="px-6 py-3 font-medium">Prospects</th>
+                          <th className="px-6 py-3 font-medium">Created</th>
+                          <th className="px-6 py-3 font-medium"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allCampaigns.map(({ campaignName, prospects, source, createdAt }) => (
+                          <tr
+                            key={campaignName}
+                            className="border-b border-gray-700 hover:bg-gray-750 transition-colors"
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-white font-medium">{campaignName}</span>
+                                    {source === 'database' && (
+                                      <span className="px-2 py-0.5 bg-blue-600/20 text-blue-400 text-xs rounded-full border border-blue-500/40">
+                                        Saved
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-gray-400 text-sm">Ready for message creation</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-gray-300 text-sm">
+                                {source === 'database' ? 'Data Approval' : 'Recent'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-white">{prospects.length}</div>
+                              <div className="text-gray-400 text-sm">approved</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-gray-400 text-sm">
+                                {createdAt ? new Date(createdAt).toLocaleDateString() : 'Today'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowBuilder(true);
+                                  }}
+                                  className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition-colors"
+                                >
+                                  <MessageSquare size={14} />
+                                  Draft Messages
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    loadCampaignProspects(campaignName);
+                                  }}
+                                  className="text-gray-400 hover:text-white transition-colors"
+                                  title="View Prospects"
+                                >
+                                  <Eye size={18} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                })()}
               </div>
             ) : (
               /* Campaign Table */
@@ -4306,6 +4784,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ initialProspects, onCampaignC
           </div>
         </div>
       )}
+
       </div>
     </div>
     </div>

@@ -4,8 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import {
   APPROVED_MODELS,
   getEUModels,
@@ -18,7 +17,7 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies });
+    const supabase = await createSupabaseRouteClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
