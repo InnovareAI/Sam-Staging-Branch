@@ -575,8 +575,8 @@ function CampaignBuilder({
       setCsvData(initialProspects);
       setDataSource('approved'); // Set to approved mode for validation
       setShowPreview(true);
-      setCurrentStep(2); // Move to step 2 (preview) since data is already loaded
-      toastSuccess(`Loaded ${initialProspects.length} approved prospects`);
+      // Stay on step 1 to let user select campaign type
+      toastSuccess(`Loaded ${initialProspects.length} approved prospects - select campaign type`);
     } else {
       console.log('⚠️ No initialProspects provided to CampaignBuilder');
     }
