@@ -1689,7 +1689,8 @@ Would you like me to adjust these or create more variations?`
       });
 
       if (!uploadResponse.ok) {
-        throw new Error('Failed to upload prospects');
+        const errorData = await uploadResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to upload prospects: ${uploadResponse.status}`);
       }
 
       const uploadResult = await uploadResponse.json();
@@ -3266,7 +3267,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       });
 
       if (!uploadResponse.ok) {
-        throw new Error('Failed to upload prospects');
+        const errorData = await uploadResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to upload prospects: ${uploadResponse.status}`);
       }
 
       const uploadResult = await uploadResponse.json();
