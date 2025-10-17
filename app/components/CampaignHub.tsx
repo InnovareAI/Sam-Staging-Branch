@@ -2343,7 +2343,7 @@ Would you like me to adjust these or create more variations?`
             <>
               <Button
                 onClick={() => setCurrentStep(currentStep + 1)}
-                disabled={currentStep === 2 && (dataSource === 'upload' ? !csvData.length : !selectedProspects.length)}
+                disabled={currentStep === 2 && !csvData.length && !selectedProspects.length && !initialProspects?.length}
                 className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:text-gray-400"
               >
                 Next Step
