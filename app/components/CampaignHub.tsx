@@ -1666,7 +1666,8 @@ Would you like me to adjust these or create more variations?`
         throw new Error('Failed to create campaign');
       }
 
-      const campaign = await campaignResponse.json();
+      const campaignData = await campaignResponse.json();
+      const campaign = campaignData.campaign; // Extract nested campaign object
 
       // Step 2: Upload prospects with LinkedIn ID resolution
       const prospects = dataSource === 'upload' ? csvData : selectedProspects.map(prospect => ({
@@ -3311,7 +3312,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         throw new Error(errorData.error || 'Failed to create campaign');
       }
 
-      const campaign = await campaignResponse.json();
+      const campaignData = await campaignResponse.json();
+      const campaign = campaignData.campaign; // Extract nested campaign object
 
       // Step 2: Upload prospects
       const uploadResponse = await fetch('/api/campaigns/upload-prospects', {
