@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircle, ChevronDown, ChevronUp, Save, Upload, XCircle } from 'lucide-react';
-import { toastError } from '@/lib/toast';
+import { toastError, toastSuccess, toastInfo } from '@/lib/toast';
 
 
 interface CampaignApprovalScreenProps {
@@ -17,6 +17,7 @@ interface CampaignApprovalScreenProps {
       follow_up_3?: string;
     };
   };
+  workspaceId: string;
   onApprove: (finalCampaignData: any) => void;
   onReject: () => void;
   onRequestSAMHelp: (context: string) => void;
@@ -24,6 +25,7 @@ interface CampaignApprovalScreenProps {
 
 export default function CampaignApprovalScreen({
   campaignData,
+  workspaceId,
   onApprove,
   onReject,
   onRequestSAMHelp
@@ -31,6 +33,7 @@ export default function CampaignApprovalScreen({
   const [messages, setMessages] = useState(campaignData.messages || {});
   const [savedTemplates, setSavedTemplates] = useState<any[]>([]);
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     messages: true,
     templates: false
@@ -40,21 +43,70 @@ export default function CampaignApprovalScreen({
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
+  // Load saved templates on mount
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        const response = await fetch(`/api/messaging-templates/list?workspace_id=${workspaceId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setSavedTemplates(data.templates || []);
+        }
+      } catch (error) {
+        console.error('Failed to load templates:', error);
+      }
+    };
+    loadTemplates();
+  }, [workspaceId]);
+
+  // Autosave on message changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      handleSaveTemplate(true); // silent autosave
+    }, 3000);
+
+    return () => clearTimeout(timeoutId);
+  }, [messages]);
+
   const handleUploadTemplate = () => {
-    // TODO: Implement template upload
-    console.log('Upload template');
+    setShowTemplateLibrary(!showTemplateLibrary);
   };
 
-  const handleSaveTemplate = () => {
-    // TODO: Save current messages as template
-    const template = {
-      name: `${campaignData.name} Template`,
-      type: campaignData.type,
-      messages: messages,
-      created: new Date().toISOString()
-    };
-    setSavedTemplates(prev => [...prev, template]);
-    toastError('Template saved successfully!');
+  const handleSaveTemplate = async (silent = false) => {
+    if (!messages.connection_request?.trim() && !messages.follow_up_1?.trim()) {
+      if (!silent) toastError('Add at least one message to save');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/messaging-templates/autosave', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: workspaceId,
+          campaign_name: campaignData.name,
+          campaign_type: campaignData.type.toLowerCase(),
+          connection_message: messages.connection_request || '',
+          alternative_message: messages.follow_up_1 || '',
+          follow_up_messages: [
+            messages.follow_up_2 || '',
+            messages.follow_up_3 || ''
+          ].filter(m => m.trim())
+        })
+      });
+
+      if (response.ok) {
+        if (!silent) toastSuccess('Template saved!');
+      } else {
+        throw new Error('Failed to save');
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      if (!silent) toastError('Failed to save template');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleApprove = () => {
@@ -109,17 +161,18 @@ export default function CampaignApprovalScreen({
                 className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg flex items-center gap-2"
               >
                 <Upload size={16} />
-                Upload Template
+                {showTemplateLibrary ? 'Hide Templates' : 'Load Template'}
               </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleSaveTemplate();
+                  handleSaveTemplate(false);
                 }}
-                className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg flex items-center gap-2"
+                disabled={isSaving}
+                className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white text-sm rounded-lg flex items-center gap-2"
               >
                 <Save size={16} />
-                Save Template
+                {isSaving ? 'Saving...' : 'Save Template'}
               </button>
               {expandedSections.messages ? <ChevronUp className="text-gray-400" /> : <ChevronDown className="text-gray-400" />}
             </div>
@@ -174,10 +227,51 @@ export default function CampaignApprovalScreen({
               </div>
             </div>
           )}
+
+          {/* Template Library (shown when Upload clicked) */}
+          {showTemplateLibrary && savedTemplates.length > 0 && (
+            <div className="mt-4 p-4 bg-gray-700 rounded-lg border border-gray-600">
+              <h3 className="font-semibold text-white mb-3">Saved Templates ({savedTemplates.length})</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto">
+                {savedTemplates.map((template) => (
+                  <div
+                    key={template.id}
+                    className="bg-gray-600 rounded-lg p-3 hover:bg-gray-500 cursor-pointer transition-colors"
+                    onClick={() => {
+                      setMessages({
+                        connection_request: template.connection_message || '',
+                        follow_up_1: template.alternative_message || '',
+                        follow_up_2: template.follow_up_messages?.[0] || '',
+                        follow_up_3: template.follow_up_messages?.[1] || ''
+                      });
+                      setShowTemplateLibrary(false);
+                      toastSuccess('Template loaded!');
+                    }}
+                  >
+                    <div className="font-semibold text-white mb-1">{template.template_name?.replace('autosave_', '')}</div>
+                    <div className="text-xs text-gray-400">
+                      Updated: {new Date(template.updated_at).toLocaleDateString()}
+                    </div>
+                    {template.connection_message && (
+                      <div className="text-xs text-gray-300 mt-2 truncate">
+                        {template.connection_message.substring(0, 100)}...
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {showTemplateLibrary && savedTemplates.length === 0 && (
+            <div className="mt-4 p-4 bg-gray-700 rounded-lg border border-gray-600 text-center text-gray-400">
+              No saved templates yet. Save your first template using the "Save Template" button.
+            </div>
+          )}
         </div>
 
-        {/* Template Library */}
-        {savedTemplates.length > 0 && (
+        {/* Template Library (OLD - kept for reference) */}
+        {false && savedTemplates.length > 0 && (
           <div className="bg-gray-800 rounded-lg p-6 mb-6 border border-gray-700">
             <div
               className="flex items-center justify-between cursor-pointer mb-4"
@@ -218,7 +312,6 @@ export default function CampaignApprovalScreen({
 
           <div className="text-center">
             <div className="text-sm text-gray-400 mb-1">Ready to launch?</div>
-            <div className="text-xs text-gray-500">Campaign will be sent to N8N for execution</div>
           </div>
 
           <button

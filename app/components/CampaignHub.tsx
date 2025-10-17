@@ -3300,20 +3300,24 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          workspace_id: workspaceId,
           name: finalCampaignData.name,
-          type: _executionData.campaignType,
-          connection_message: finalCampaignData.messages.connection_request,
-          alternative_message: _executionData.alternativeMessage,
-          follow_up_messages: [
-            finalCampaignData.messages.follow_up_1,
-            finalCampaignData.messages.follow_up_2,
-            finalCampaignData.messages.follow_up_3
-          ].filter(msg => msg.trim())
+          campaign_type: _executionData?.campaignType || finalCampaignData.type || 'connector',
+          message_templates: {
+            connection_request: finalCampaignData.messages.connection_request,
+            alternative_message: _executionData?.alternativeMessage || finalCampaignData.messages.follow_up_1,
+            follow_up_messages: [
+              finalCampaignData.messages.follow_up_1,
+              finalCampaignData.messages.follow_up_2,
+              finalCampaignData.messages.follow_up_3
+            ].filter(msg => msg?.trim())
+          }
         })
       });
 
       if (!campaignResponse.ok) {
-        throw new Error('Failed to create campaign');
+        const errorData = await campaignResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to create campaign');
       }
 
       const campaign = await campaignResponse.json();
@@ -4050,6 +4054,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         {showApprovalScreen && campaignDataForApproval && (
           <CampaignApprovalScreen
             campaignData={campaignDataForApproval}
+            workspaceId={workspaceId}
             onApprove={async (finalCampaignData) => {
               // Execute campaign creation and N8N trigger
               await handleApproveCampaign(finalCampaignData);
