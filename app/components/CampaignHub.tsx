@@ -2517,10 +2517,53 @@ Would you like me to adjust these or create more variations?`
             </div>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="messenger-initial-message" className="text-gray-400">
+              Initial Message
+            </Label>
+            <p className="text-xs text-gray-500">
+              First message sent to your 1st degree connections (no connection request needed)
+            </p>
+            <Textarea
+              id="messenger-initial-message"
+              className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+              rows={4}
+              value={alternativeMessage}
+              onChange={e => setAlternativeMessage(e.target.value)}
+              onFocus={(e) => {
+                setActiveField({type: 'alternative'});
+                setActiveTextarea(e.target as HTMLTextAreaElement);
+              }}
+              placeholder="Hi {{first_name}}, I wanted to reach out about..."
+            />
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-400">
+                Characters: {alternativeMessage.length}
+              </span>
+              {alternativeMessage.length > 0 && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
+                  onClick={() => {
+                    setSamMessages([{
+                      role: 'assistant',
+                      content: `Hi! I'll help you improve your initial message.\n\n**Current Message:**\n"${alternativeMessage}"\n\nWhat would you like me to improve? I can help with:\n- Making it more engaging\n- Adding personalization\n- Improving tone\n- Strengthening the call-to-action\n\nTell me what you'd like to change!`
+                    }]);
+                    setShowSamGenerationModal(true);
+                  }}
+                >
+                  <Zap size={12} className="mr-1" />
+                  Improve with SAM
+                </Button>
+              )}
+            </div>
+          </div>
+
           <div>
             <div className="flex items-center justify-between mb-3">
               <Label className="text-gray-400">
-                Message Sequence
+                Follow-up Messages (Optional)
               </Label>
               <Button
                 onClick={addFollowUpMessage}
@@ -2528,17 +2571,17 @@ Would you like me to adjust these or create more variations?`
                 size="sm"
                 className="text-purple-400 hover:text-purple-300 h-auto p-0"
               >
-                <Plus size={16} className="mr-1" /> Add Message
+                <Plus size={16} className="mr-1" /> Add Follow-up
               </Button>
             </div>
             <p className="text-xs text-gray-500 mb-3">
-              Messages sent directly to your 1st degree connections (no connection request needed)
+              Additional messages sent after the initial message
             </p>
 
             {followUpMessages.map((message, index) => (
               <div key={index} className="mb-4">
                 <div className="flex items-center justify-between mb-2">
-                  <Label className="text-gray-400">Message {index + 1}</Label>
+                  <Label className="text-gray-400">Follow-up {index + 1}</Label>
                   {followUpMessages.length > 1 && (
                     <Button
                       onClick={() => removeFollowUpMessage(index)}
@@ -2559,7 +2602,7 @@ Would you like me to adjust these or create more variations?`
                     setActiveField({type: 'followup', index});
                     setActiveTextarea(e.target as HTMLTextAreaElement);
                   }}
-                  placeholder={`Message ${index + 1}...`}
+                  placeholder={`Follow-up message ${index + 1}...`}
                   data-followup-index={index}
                 />
                 {message.length > 0 && (
@@ -2571,7 +2614,7 @@ Would you like me to adjust these or create more variations?`
                       onClick={() => {
                         setSamMessages([{
                           role: 'assistant',
-                          content: `Hi! I'll help you improve message #${index + 1}.\n\n**Current Message:**\n"${message}"\n\nWhat would you like me to improve? I can help with:\n- Making it more engaging\n- Adding personalization\n- Improving the call-to-action\n- Adjusting the tone\n\nTell me what you'd like to change!`
+                          content: `Hi! I'll help you improve follow-up #${index + 1}.\n\n**Current Message:**\n"${message}"\n\nWhat would you like me to improve? I can help with:\n- Making it more engaging\n- Adding personalization\n- Improving the call-to-action\n- Adjusting the tone\n\nTell me what you'd like to change!`
                         }]);
                         setShowSamGenerationModal(true);
                       }}
@@ -2623,11 +2666,20 @@ Would you like me to adjust these or create more variations?`
           {currentStep < 3 ? (
             <>
               <Button
-                onClick={() => setCurrentStep(currentStep + 1)}
+                onClick={() => {
+                  // Skip Step 2 if prospects are already loaded from Data Approval
+                  if (currentStep === 1 && initialProspects && initialProspects.length > 0) {
+                    setCurrentStep(3); // Jump directly to messages
+                  } else {
+                    setCurrentStep(currentStep + 1);
+                  }
+                }}
                 disabled={currentStep === 2 && !csvData.length && !selectedProspects.length && !initialProspects?.length}
                 className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:text-gray-400"
               >
-                Next Step
+                {currentStep === 1 && initialProspects && initialProspects.length > 0
+                  ? 'Continue to Messages'
+                  : 'Next Step'}
               </Button>
               {currentStep === 2 && (
                 <Button
