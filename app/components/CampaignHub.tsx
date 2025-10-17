@@ -3773,7 +3773,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               >
                 Archived
               </button>
-              {/* New Campaign Tab - Shows campaigns with approved prospects */}
+              {/* New Campaigns Tab - Shows campaigns with approved prospects */}
               <button
                 onClick={() => setCampaignFilter('pending')}
                 className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
@@ -3782,7 +3782,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                     : 'text-gray-400 hover:text-white'
                 }`}
               >
-                New Campaign
+                New Campaigns
                 {((initialProspects?.length || 0) + pendingCampaignsFromDB.length) > 0 && (
                   <span className="px-2 py-0.5 bg-yellow-600 text-white text-xs rounded-full">
                     {(initialProspects?.length || 0) + pendingCampaignsFromDB.length}
