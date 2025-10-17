@@ -1328,6 +1328,7 @@ Let's create messages that get responses! 🎯`
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          workspace_id: workspaceId,
           campaign_name: name,
           campaign_type: campaignType,
           prospect_count: csvData.length,
@@ -1503,7 +1504,10 @@ Would you like me to adjust these or create more variations?`
   };
 
   const applyKBTemplate = async (template: any) => {
-    if (!template || !template.content) return;
+    if (!template || !template.content || !template.content.trim()) {
+      toastError('Template has no content');
+      return;
+    }
 
     // Parse the KB template content using the same AI parser
     setIsParsing(true);

@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
     }
 
     const {
+      workspace_id,
       campaign_name,
       campaign_type,
       prospect_count,
@@ -20,6 +21,20 @@ export async function POST(req: NextRequest) {
       conversation_history,
       prospect_sample
     } = await req.json();
+
+    // Fetch relevant KB insights
+    let kbInsights: any[] = [];
+    if (workspace_id) {
+      const { data: kbContent } = await supabase
+        .from('knowledge_base')
+        .select('title, content')
+        .eq('workspace_id', workspace_id)
+        .eq('is_active', true)
+        .or('section_id.eq.messaging,section_id.eq.value_proposition,section_id.eq.company_info')
+        .limit(5);
+
+      kbInsights = kbContent || [];
+    }
 
     // Build context for SAM AI
     const context = {
@@ -30,7 +45,8 @@ export async function POST(req: NextRequest) {
       },
       prospects: prospect_sample || [],
       conversation: conversation_history || [],
-      user_request: user_input
+      user_request: user_input,
+      knowledge_base: kbInsights
     };
 
     // Generate intelligent templates based on context
@@ -61,6 +77,12 @@ export async function POST(req: NextRequest) {
 }
 
 async function generateLinkedInTemplates(context: any) {
+  // Extract KB insights
+  const kbContext = context.knowledge_base || [];
+  const valueProps = kbContext.filter((kb: any) => kb.title?.toLowerCase().includes('value') || kb.title?.toLowerCase().includes('pitch'));
+  const messagingGuidelines = kbContext.filter((kb: any) => kb.title?.toLowerCase().includes('messaging') || kb.title?.toLowerCase().includes('template'));
+  const companyInfo = kbContext.filter((kb: any) => kb.title?.toLowerCase().includes('company') || kb.title?.toLowerCase().includes('about'));
+
   // Extract prospect insights
   const prospects = context.prospects || [];
   const industries = [...new Set(prospects.map((p: any) => p.industry || p.company).filter(Boolean))];
@@ -84,9 +106,12 @@ async function generateLinkedInTemplates(context: any) {
   let alternativeMessage = '';
   let followUpMessages = [''];
 
+  // Extract value prop from KB if available
+  let valueProp = valueProps.length > 0 ? valueProps[0].content.substring(0, 150) : `help ${jobTitles.length > 0 ? jobTitles[0].toLowerCase() : 'professionals'} like yourself streamline operations and drive growth`;
+
   if (context.campaign.type === 'connector') {
     if (isLeadGen) {
-      connectionMessage = `Hi {first_name}, I noticed your work in ${industries.length > 0 ? industries[0] : '{industry}'} at {company_name}. I help ${jobTitles.length > 0 ? jobTitles[0].toLowerCase() : 'professionals'} like yourself streamline operations and drive growth. Would love to connect and share some insights that might be valuable for your revenue goals.`;
+      connectionMessage = `Hi {first_name}, I noticed your work in ${industries.length > 0 ? industries[0] : '{industry}'} at {company_name}. I ${valueProp}. Would love to connect and share some insights that might be valuable for your revenue goals.`;
       
       followUpMessages = [
         `Thanks for connecting, {first_name}! I'm curious - what's the biggest challenge you're facing at {company_name} when it comes to ${isLeadGen ? 'revenue growth' : 'operations'}?`,
@@ -125,7 +150,7 @@ async function generateLinkedInTemplates(context: any) {
     connectionMessage = connectionMessage.replace("I'd love", 'I would appreciate the opportunity');
   }
 
-  const response = `Perfect! I've created personalized LinkedIn templates for your "${context.campaign.name}" campaign.
+  const response = `Perfect! I've created personalized LinkedIn templates for your "${context.campaign.name}" campaign${kbContext.length > 0 ? ' using insights from your Knowledge Base' : ''}.
 
 **✨ Generated Templates:**
 
@@ -139,7 +164,7 @@ async function generateLinkedInTemplates(context: any) {
 ${followUpMessages.map((msg, i) => `${i + 1}. "${msg}"`).join('\n')}
 
 **🎯 Template Strategy:**
-• ${isLeadGen ? 'Lead generation focus with value proposition' : ''}
+${kbContext.length > 0 ? `• Enhanced with ${kbContext.length} Knowledge Base insight(s)\n` : ''}• ${isLeadGen ? 'Lead generation focus with value proposition' : ''}
 • ${isNetworking ? 'Networking approach building professional relationships' : ''}
 • ${isPartnership ? 'Partnership-oriented messaging for collaboration' : ''}
 • ${tone.charAt(0).toUpperCase() + tone.slice(1)} tone as requested
