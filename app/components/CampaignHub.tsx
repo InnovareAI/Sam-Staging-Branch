@@ -4009,16 +4009,6 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                   <MessageSquare size={14} />
                                   Create Campaign
                                 </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    loadCampaignProspects(campaignName);
-                                  }}
-                                  className="text-gray-400 hover:text-white transition-colors"
-                                  title="View Prospects"
-                                >
-                                  <Eye size={18} />
-                                </button>
                               </div>
                             </td>
                           </tr>
