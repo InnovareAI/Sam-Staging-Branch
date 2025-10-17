@@ -36,6 +36,7 @@ type ProspectData = BaseProspectData & {
   createdAt?: Date                 // Timestamp for sorting (newest first)
   researchedBy?: string            // User who researched/created this prospect
   researchedByInitials?: string    // User initials (e.g., "CL" for Charissa L.)
+  linkedinUserId?: string          // LinkedIn Internal ID for messaging (ACoAAA...)
 }
 
 // Quality Score Calculation (0-100)
@@ -164,7 +165,8 @@ async function fetchApprovalSessions(): Promise<ProspectData[]> {
               qualityScore: 0,
               createdAt: p.created_at ? new Date(p.created_at) : session.created_at ? new Date(session.created_at) : new Date(),
               researchedBy: session.user_email || session.user_name || 'Unknown',
-              researchedByInitials: session.user_initials || getInitials(session.user_email || session.user_name || 'U')
+              researchedByInitials: session.user_initials || getInitials(session.user_email || session.user_name || 'U'),
+              linkedinUserId: p.linkedin_user_id || p.contact?.linkedin_user_id || undefined
             }))
             // Calculate quality scores
             mappedProspects.forEach(p => {
@@ -1596,6 +1598,23 @@ export default function DataCollectionHub({
                             >
                               {prospect.linkedinUrl}
                             </a>
+                          </div>
+                        )}
+                        {prospect.linkedinUserId && (
+                          <div className="col-span-2">
+                            <span className="text-gray-400">LinkedIn ID:</span>
+                            <span className="text-green-400 ml-2 font-mono text-xs">
+                              {prospect.linkedinUserId.substring(0, 20)}... ✅
+                            </span>
+                            <span className="text-gray-500 text-xs ml-2">(Ready for messaging)</span>
+                          </div>
+                        )}
+                        {!prospect.linkedinUserId && prospect.connectionDegree === '1st' && (
+                          <div className="col-span-2">
+                            <span className="text-gray-400">LinkedIn ID:</span>
+                            <span className="text-yellow-400 ml-2 text-xs">
+                              ⚠️ Not found - will auto-sync on campaign creation
+                            </span>
                           </div>
                         )}
                         {prospect.complianceFlags && prospect.complianceFlags.length > 0 && (
