@@ -1624,16 +1624,36 @@ Would you like me to adjust these or create more variations?`
     }
 
     // Prepare campaign data for approval screen
-    const prospects = dataSource === 'upload' ? csvData : selectedProspects.map(prospect => ({
-      firstName: prospect.name?.split(' ')[0] || '',
-      lastName: prospect.name?.split(' ').slice(1).join(' ') || '',
-      email: prospect.email,
-      company: prospect.company,
-      title: prospect.title,
-      industry: prospect.industry || 'Not specified',
-      linkedin_url: prospect.linkedin_url,
-      linkedin_user_id: prospect.linkedin_user_id
-    }));
+    // Priority: initialProspects (from Data Approval) > csvData (upload) > selectedProspects
+    let prospects;
+    if (initialProspects && initialProspects.length > 0) {
+      // Use initialProspects from Data Approval
+      prospects = initialProspects.map(prospect => ({
+        firstName: prospect.name?.split(' ')[0] || '',
+        lastName: prospect.name?.split(' ').slice(1).join(' ') || '',
+        email: prospect.email,
+        company: prospect.company,
+        title: prospect.title,
+        industry: prospect.industry || 'Not specified',
+        linkedin_url: prospect.linkedin_url,
+        linkedin_user_id: prospect.linkedin_user_id
+      }));
+    } else if (dataSource === 'upload' && csvData.length > 0) {
+      // Use uploaded CSV data
+      prospects = csvData;
+    } else {
+      // Use manually selected prospects
+      prospects = selectedProspects.map(prospect => ({
+        firstName: prospect.name?.split(' ')[0] || '',
+        lastName: prospect.name?.split(' ').slice(1).join(' ') || '',
+        email: prospect.email,
+        company: prospect.company,
+        title: prospect.title,
+        industry: prospect.industry || 'Not specified',
+        linkedin_url: prospect.linkedin_url,
+        linkedin_user_id: prospect.linkedin_user_id
+      }));
+    }
 
     const campaignData = {
       name: name,
@@ -1683,14 +1703,29 @@ Would you like me to adjust these or create more variations?`
       const campaign = campaignData.campaign; // Extract nested campaign object
 
       // Step 2: Upload prospects with LinkedIn ID resolution
-      const prospects = dataSource === 'upload' ? csvData : selectedProspects.map(prospect => ({
-        name: prospect.name,
-        email: prospect.email,
-        company: prospect.company,
-        title: prospect.title,
-        linkedin_url: prospect.linkedin_url,
-        linkedin_user_id: prospect.linkedin_user_id // Include existing LinkedIn ID if available
-      }));
+      // Priority: initialProspects (from Data Approval) > csvData (upload) > selectedProspects
+      let prospects;
+      if (initialProspects && initialProspects.length > 0) {
+        prospects = initialProspects.map(prospect => ({
+          name: prospect.name,
+          email: prospect.email,
+          company: prospect.company,
+          title: prospect.title,
+          linkedin_url: prospect.linkedin_url,
+          linkedin_user_id: prospect.linkedin_user_id
+        }));
+      } else if (dataSource === 'upload' && csvData.length > 0) {
+        prospects = csvData;
+      } else {
+        prospects = selectedProspects.map(prospect => ({
+          name: prospect.name,
+          email: prospect.email,
+          company: prospect.company,
+          title: prospect.title,
+          linkedin_url: prospect.linkedin_url,
+          linkedin_user_id: prospect.linkedin_user_id
+        }));
+      }
 
       const uploadResponse = await fetch('/api/campaigns/upload-prospects', {
         method: 'POST',
