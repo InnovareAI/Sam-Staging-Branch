@@ -968,22 +968,8 @@ function CampaignBuilder({
   const has1stDegree = connectionDegrees.firstDegree > 0;
   const hasOnly1stDegree = connectionDegrees.firstDegree > 0 && connectionDegrees.secondThird === 0;
 
-  // Auto-switch campaign type based on connection degrees
-  React.useEffect(() => {
-    const hasOnly2nd3rdDegree = connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0;
-
-    // Switch from Connector to Messenger if all are 1st degree (already connected)
-    if (hasOnly1stDegree && campaignType === 'connector') {
-      setCampaignType('messenger');
-      toastInfo('Switched to Messenger campaign - all prospects are 1st degree connections');
-    }
-
-    // Switch from Messenger to Connector if all are 2nd/3rd degree (not connected)
-    if (hasOnly2nd3rdDegree && campaignType === 'messenger') {
-      setCampaignType('connector');
-      toastInfo('Switched to Connector campaign - prospects need connection requests first');
-    }
-  }, [connectionDegrees, campaignType, hasOnly1stDegree]);
+  // Campaign types are greyed out based on connection degrees, but user maintains control
+  // No auto-switching - let user choose (they may want to run re-engagement campaigns)
 
   const campaignTypes = [
     {
