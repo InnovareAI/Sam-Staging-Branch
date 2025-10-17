@@ -1372,10 +1372,54 @@ Would you like me to adjust these or create more variations?`
   };
 
   const applySamTemplates = () => {
-    // Extract templates from SAM's last message and apply them
-    setConnectionMessage("Hi {first_name}, I noticed your work at {company_name}. I'd love to connect and share some insights that might be valuable for your work.");
-    setFollowUpMessages(["Thanks for connecting, {first_name}! I'm curious about the biggest challenges you're facing at {company_name} right now."]);
-    setShowSamChat(false);
+    // Extract templates from SAM's messages and apply them
+    // Look through all assistant messages for template content
+    const assistantMessages = samMessages.filter(m => m.role === 'assistant');
+
+    if (assistantMessages.length === 0) {
+      toastWarning('No templates generated yet. Chat with SAM first!');
+      return;
+    }
+
+    // Try to extract templates from the last assistant message
+    const lastMessage = assistantMessages[assistantMessages.length - 1].content;
+
+    // Extract connection request (look for patterns like "**Connection Request:**" or "Connection Message:")
+    const connectionMatch = lastMessage.match(/\*\*Connection Request:\*\*\s*\n?"([^"]+)"|Connection Request:\s*\n?"([^"]+)"|Connection Message:\s*\n?"([^"]+)"/i);
+    if (connectionMatch) {
+      const extracted = connectionMatch[1] || connectionMatch[2] || connectionMatch[3];
+      setConnectionMessage(extracted.trim());
+    }
+
+    // Extract alternative message
+    const altMatch = lastMessage.match(/\*\*Alternative Message:\*\*\s*\n?"([^"]+)"|Alternative Message:\s*\n?"([^"]+)"/i);
+    if (altMatch) {
+      const extracted = altMatch[1] || altMatch[2];
+      setAlternativeMessage(extracted.trim());
+    }
+
+    // Extract follow-ups (look for "**Follow-up:**" or "Follow-up Message")
+    const followUpMatches = [...lastMessage.matchAll(/\*\*Follow-up(?:\s+\d+)?:\*\*\s*\n?"([^"]+)"|Follow-up(?:\s+Message)?(?:\s+\d+)?:\s*\n?"([^"]+)"/gi)];
+    if (followUpMatches.length > 0) {
+      const followUps = followUpMatches.map(match => (match[1] || match[2]).trim());
+      setFollowUpMessages(followUps);
+    }
+
+    // If no structured templates found, try to extract any quoted text
+    if (!connectionMatch && !altMatch && followUpMatches.length === 0) {
+      const quotes = [...lastMessage.matchAll(/"([^"]{20,})"/g)];
+      if (quotes.length > 0) {
+        setConnectionMessage(quotes[0][1].trim());
+        if (quotes.length > 1) {
+          setFollowUpMessages(quotes.slice(1).map(q => q[1].trim()));
+        }
+      } else {
+        toastWarning('Could not find templates in SAM\'s response. Try asking SAM to generate specific messages.');
+        return;
+      }
+    }
+
+    toastSuccess('Templates extracted and applied!');
   };
 
   // Paste Template functions
