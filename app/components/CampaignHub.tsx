@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Activity,
   CheckCircle,
+  Circle,
   XCircle,
   X,
   Clock,
@@ -1851,50 +1852,105 @@ Would you like me to adjust these or create more variations?`
         </div>
       )}
 
-      {/* Step 2: Campaign Summary */}
+      {/* Step 2: Campaign Summary - LIST BASED VIEW */}
       {currentStep === 2 && (
         <div className="space-y-6">
-          {/* Banner when prospects are from approval */}
-          {initialProspects && initialProspects.length > 0 && (
-            <>
-              <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4 flex items-center gap-3 mb-4">
-                <CheckCircle className="text-green-400" size={24} />
-                <div className="flex-1">
-                  <p className="text-white font-medium">✓ {initialProspects.length} Prospects Loaded</p>
-                  <p className="text-gray-400 text-sm">Imported from Data Approval • Review below and proceed to messages</p>
+          {/* Show list-based selection */}
+          <div>
+            <h4 className="text-white font-medium mb-4">Select Prospect Lists</h4>
+
+            {/* Auto-selected list from Data Approval */}
+            {initialProspects && initialProspects.length > 0 && initialProspects[0].sessionId && (
+              <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="text-green-400" size={20} />
+                    <div>
+                      <p className="text-white font-medium">{name}</p>
+                      <p className="text-gray-400 text-sm">{initialProspects.length} prospects • Auto-selected from Data Approval</p>
+                    </div>
+                  </div>
+                  <span className="text-green-400 text-sm">✓ Assigned</span>
                 </div>
               </div>
-              <div className="bg-gray-700 rounded-lg p-6">
-                <h4 className="text-white font-medium mb-4">Campaign Summary</h4>
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <div className="text-gray-400 text-sm mb-1">List Name</div>
-                    <div className="text-white font-medium">{name}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-400 text-sm mb-1">List Date</div>
-                    <div className="text-white font-medium">{new Date().toLocaleDateString()}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-400 text-sm mb-1">Number of Prospects</div>
-                    <div className="text-white font-medium">{initialProspects.length}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-400 text-sm mb-1">Campaign Type</div>
-                    <div className="text-white font-medium">{campaignType === 'linkedin' ? 'LinkedIn' : campaignType === 'email' ? 'Email' : 'Combined'}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-400 text-sm mb-1">Industry</div>
-                    <div className="text-white font-medium">-</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-400 text-sm mb-1">Connection Grade</div>
-                    <div className="text-white font-medium">-</div>
-                  </div>
-                </div>
+            )}
+
+            {/* Show other available lists */}
+            <div className="bg-gray-700 rounded-lg p-4">
+              <div className="flex justify-between items-center mb-3">
+                <label className="text-sm font-medium text-gray-400">
+                  Additional Lists (Optional)
+                </label>
+                <span className="text-xs text-gray-500">
+                  {approvalSessions.filter(s => !selectedSessions.includes(s.id)).length} available
+                </span>
               </div>
-            </>
-          )}
+
+              {loadingApprovedProspects ? (
+                <div className="text-center py-8 text-gray-400">Loading lists...</div>
+              ) : approvalSessions.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  No additional lists available
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {approvalSessions
+                    .filter(session => !initialProspects || session.id !== initialProspects[0]?.sessionId)
+                    .map(session => {
+                      const sessionProspects = approvedProspects.filter(p => p.sessionId === session.id);
+                      const isSelected = selectedSessions.includes(session.id);
+                      const hasActiveSession = session.campaign_id && session.campaign_id !== name;
+
+                      return (
+                        <div
+                          key={session.id}
+                          className={`p-3 rounded border ${
+                            hasActiveSession ? 'border-gray-600 bg-gray-800/50 opacity-50' :
+                            isSelected ? 'border-purple-500/50 bg-purple-900/20' : 'border-gray-600 hover:border-gray-500'
+                          } cursor-pointer transition-colors`}
+                          onClick={() => {
+                            if (hasActiveSession) return;
+                            if (isSelected) {
+                              setSelectedSessions(selectedSessions.filter(id => id !== session.id));
+                              setSelectedProspects(selectedProspects.filter(p => p.sessionId !== session.id));
+                            } else {
+                              setSelectedSessions([...selectedSessions, session.id]);
+                              setSelectedProspects([...selectedProspects, ...sessionProspects]);
+                            }
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              {isSelected ? (
+                                <CheckCircle className="text-purple-400" size={18} />
+                              ) : (
+                                <Circle className="text-gray-500" size={18} />
+                              )}
+                              <div>
+                                <p className="text-white text-sm font-medium">{session.name || 'Unnamed List'}</p>
+                                <p className="text-gray-400 text-xs">{sessionProspects.length} prospects</p>
+                              </div>
+                            </div>
+                            {hasActiveSession && (
+                              <span className="text-xs text-gray-500">In use by another campaign</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+
+            {/* Summary */}
+            <div className="mt-4 bg-gray-800 rounded-lg p-4">
+              <div className="text-sm text-gray-400">
+                <span className="text-white font-medium">
+                  {(initialProspects?.length || 0) + selectedProspects.length}
+                </span> total prospects selected
+              </div>
+            </div>
+          </div>
 
           {/* Data Source Selection - Hide when prospects are from approval */}
           {!(initialProspects && initialProspects.length > 0) && (
