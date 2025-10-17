@@ -2244,9 +2244,11 @@ Would you like me to adjust these or create more variations?`
                   size="sm"
                   className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
                   onClick={() => {
-                    setSamInput(`Improve this connection message:\n\n${connectionMessage}`);
-                    setShowSamChat(true);
-                    startSamTemplateGeneration();
+                    setSamMessages([{
+                      role: 'assistant',
+                      content: `Hi! I'll help you improve your connection message.\n\n**Current Message:**\n"${connectionMessage}"\n\nWhat would you like me to improve? I can help with:\n- Making it more engaging\n- Adding personalization\n- Improving tone\n- Shortening or expanding it\n\nTell me what you'd like to change!`
+                    }]);
+                    setShowSamGenerationModal(true);
                   }}
                 >
                   <Zap size={12} className="mr-1" />
@@ -2286,9 +2288,11 @@ Would you like me to adjust these or create more variations?`
                   size="sm"
                   className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
                   onClick={() => {
-                    setSamInput(`Improve this alternative message:\n\n${alternativeMessage}`);
-                    setShowSamChat(true);
-                    startSamTemplateGeneration();
+                    setSamMessages([{
+                      role: 'assistant',
+                      content: `Hi! I'll help you improve your alternative message.\n\n**Current Message:**\n"${alternativeMessage}"\n\nWhat would you like me to improve? I can help with:\n- Making it more engaging\n- Adding personalization\n- Improving tone\n- Keeping it concise\n\nTell me what you'd like to change!`
+                    }]);
+                    setShowSamGenerationModal(true);
                   }}
                 >
                   <Zap size={12} className="mr-1" />
@@ -2350,9 +2354,11 @@ Would you like me to adjust these or create more variations?`
                       size="sm"
                       className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
                       onClick={() => {
-                        setSamInput(`Improve this follow-up message #${index + 1}:\n\n${message}`);
-                        setShowSamChat(true);
-                        startSamTemplateGeneration();
+                        setSamMessages([{
+                          role: 'assistant',
+                          content: `Hi! I'll help you improve follow-up message #${index + 1}.\n\n**Current Message:**\n"${message}"\n\nWhat would you like me to improve? I can help with:\n- Making it more engaging\n- Adding value\n- Improving the call-to-action\n- Adjusting the tone\n\nTell me what you'd like to change!`
+                        }]);
+                        setShowSamGenerationModal(true);
                       }}
                     >
                       <Zap size={12} className="mr-1" />
