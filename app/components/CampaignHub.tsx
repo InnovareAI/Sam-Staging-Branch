@@ -572,7 +572,7 @@ function CampaignBuilder({
       const headers = ['name', 'title', 'company', 'email', 'linkedin_url'];
       setCsvHeaders(headers);
       setCsvData(initialProspects);
-      setDataSource('upload'); // Set to upload mode for validation
+      setDataSource('approved'); // Set to approved mode for validation
       setShowPreview(true);
       setCurrentStep(2); // Move to step 2 (preview) since data is already loaded
       toastSuccess(`Loaded ${initialProspects.length} approved prospects`);
@@ -586,7 +586,7 @@ function CampaignBuilder({
   const [isDragOver, setIsDragOver] = useState(false);
   
   // Approved prospects state
-  const [dataSource, setDataSource] = useState<'approved' | 'upload'>('upload');
+  const [dataSource, setDataSource] = useState<'approved' | 'upload'>('approved');
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]); // Selected session IDs
   const [selectedProspects, setSelectedProspects] = useState<any[]>([]);
 
@@ -1968,54 +1968,28 @@ Would you like me to adjust these or create more variations?`
           {!(initialProspects && initialProspects.length > 0) && (
           <div className="bg-gray-700 rounded-lg p-4 mb-6">
             <h4 className="text-white font-medium mb-3">Choose Prospect Data Source</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Button
-                onClick={() => setDataSource('approved')}
-                variant="outline"
-                className={`h-auto p-4 flex flex-col items-start ${
-                  dataSource === 'approved' 
-                    ? 'border-purple-500 bg-purple-600/20 text-purple-300' 
-                    : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500'
-                }`}
-              >
-                <Users className="mb-2" size={24} />
-                <div className="font-medium">Use Approved Prospects</div>
-                <div className="text-xs text-gray-400 mt-1">Select from previously approved prospect data</div>
-              </Button>
-              <Button
-                onClick={() => setDataSource('upload')}
-                variant="outline"
-                className={`h-auto p-4 flex flex-col items-start ${
-                  dataSource === 'upload' 
-                    ? 'border-purple-500 bg-purple-600/20 text-purple-300' 
-                    : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500'
-                }`}
-              >
-                <Upload className="mb-2" size={24} />
-                <div className="font-medium">Upload New CSV</div>
-                <div className="text-xs text-gray-400 mt-1">Upload fresh prospect data from CSV file</div>
-              </Button>
-            </div>
+            <Button
+              onClick={() => setDataSource('approved')}
+              variant="outline"
+              className={`h-auto p-4 flex flex-col items-start ${
+                dataSource === 'approved'
+                  ? 'border-purple-500 bg-purple-600/20 text-purple-300'
+                  : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500'
+              }`}
+            >
+              <Users className="mb-2" size={24} />
+              <div className="font-medium">Use Approved Prospects</div>
+              <div className="text-xs text-gray-400 mt-1">Select from previously approved prospect data</div>
+            </Button>
           </div>
           )}
 
           {/* Approved Prospects Selection */}
           {dataSource === 'approved' && (
             <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium text-gray-400">
-                  Select Approval Lists
-                </label>
-                <Button
-                  onClick={() => setDataSource('upload')}
-                  variant="outline"
-                  size="sm"
-                  className="text-purple-400 border-purple-500 hover:bg-purple-600/20"
-                >
-                  <Upload size={16} className="mr-2" />
-                  Upload New CSV
-                </Button>
-              </div>
+              <label className="block text-sm font-medium text-gray-400 mb-2">
+                Select Approval Lists
+              </label>
               <div className="bg-gray-700 rounded-lg p-4">
                 {loadingApprovedProspects ? (
                   <div className="text-center py-8 text-gray-400">Loading approval sessions...</div>
@@ -2159,87 +2133,6 @@ Would you like me to adjust these or create more variations?`
             </div>
           )}
 
-          {/* CSV Upload (existing code) */}
-          {dataSource === 'upload' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">
-                Prospect Data (CSV Upload)
-              </label>
-            <div 
-              className={`border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 ${
-                isDragOver 
-                  ? 'border-purple-500 bg-purple-600/20 scale-105' 
-                  : 'border-gray-600 hover:border-gray-500'
-              }`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleFileUpload}
-                className="hidden"
-                id="csv-upload"
-              />
-              <label 
-                htmlFor="csv-upload" 
-                className="cursor-pointer flex flex-col items-center space-y-3"
-              >
-                <Upload className={`transition-colors duration-200 ${
-                  isDragOver ? 'text-purple-400' : 'text-gray-400'
-                }`} size={32} />
-                <div>
-                  <span className={`text-lg transition-colors duration-200 ${
-                    isDragOver ? 'text-purple-300' : 'text-gray-300'
-                  }`}>
-                    {csvFile ? csvFile.name : isDragOver ? 'Drop CSV file here' : 'Drag & drop CSV file or click to upload'}
-                  </span>
-                  <p className={`text-sm mt-1 transition-colors duration-200 ${
-                    isDragOver ? 'text-purple-400' : 'text-gray-500'
-                  }`}>
-                    Expected columns: Name, Email, Company, Title, LinkedIn URL
-                  </p>
-                </div>
-              </label>
-            </div>
-            {isUploading && (
-              <div className="mt-3 text-center text-purple-400">Processing CSV...</div>
-            )}
-
-            {showPreview && csvData.length > 0 && (
-            <div className="bg-gray-700 rounded-lg p-6">
-              <h4 className="text-white font-medium mb-4">Campaign Summary</h4>
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <div className="text-gray-400 text-sm mb-1">List Name</div>
-                  <div className="text-white font-medium">{name}</div>
-                </div>
-                <div>
-                  <div className="text-gray-400 text-sm mb-1">List Date</div>
-                  <div className="text-white font-medium">{new Date().toLocaleDateString()}</div>
-                </div>
-                <div>
-                  <div className="text-gray-400 text-sm mb-1">Number of Prospects</div>
-                  <div className="text-white font-medium">{csvData.length}</div>
-                </div>
-                <div>
-                  <div className="text-gray-400 text-sm mb-1">Campaign Type</div>
-                  <div className="text-white font-medium">{campaignType === 'linkedin' ? 'LinkedIn' : campaignType === 'email' ? 'Email' : 'Combined'}</div>
-                </div>
-                <div>
-                  <div className="text-gray-400 text-sm mb-1">Industry</div>
-                  <div className="text-white font-medium">-</div>
-                </div>
-                <div>
-                  <div className="text-gray-400 text-sm mb-1">Connection Grade</div>
-                  <div className="text-white font-medium">-</div>
-                </div>
-              </div>
-            </div>
-          )}
-          </div>
-          )}
         </div>
       )}
 
