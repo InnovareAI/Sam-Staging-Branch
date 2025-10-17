@@ -588,11 +588,113 @@ function CampaignBuilder({
   
   // Approved prospects state
   const [dataSource, setDataSource] = useState<'approved' | 'upload'>('upload');
-  const [approvedProspects, setApprovedProspects] = useState<any[]>([]);
-  const [approvalSessions, setApprovalSessions] = useState<any[]>([]); // Sessions with grouped prospects
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]); // Selected session IDs
   const [selectedProspects, setSelectedProspects] = useState<any[]>([]);
-  const [loadingApprovedProspects, setLoadingApprovedProspects] = useState(false);
+
+  // React Query + localStorage for approved prospects (persistent across sessions)
+  const {
+    data: approvalSessionsData = { sessions: [], prospects: [] },
+    isLoading: loadingApprovedProspects,
+    refetch: refetchApprovedProspects
+  } = useQuery({
+    queryKey: ['approved-prospects', workspaceId],
+    queryFn: async () => {
+      if (!workspaceId) return { sessions: [], prospects: [] };
+
+      // Load from prospect approval system (Data Approval flow)
+      const sessionsResponse = await fetch('/api/prospect-approval/sessions/list');
+      if (!sessionsResponse.ok) {
+        return { sessions: [], prospects: [] };
+      }
+
+      const sessionsData = await sessionsResponse.json();
+      if (!sessionsData.success || !sessionsData.sessions) {
+        return { sessions: [], prospects: [] };
+      }
+
+      // Collect sessions with their approved prospects
+      const sessionsWithProspects: any[] = [];
+      const allApprovedProspects: any[] = [];
+
+      for (const session of sessionsData.sessions) {
+        const prospectsResponse = await fetch(`/api/prospect-approval/prospects?session_id=${session.id}`);
+        if (prospectsResponse.ok) {
+          const prospectsData = await prospectsResponse.json();
+          if (prospectsData.success && prospectsData.prospects) {
+            // Filter only approved prospects
+            const approved = prospectsData.prospects
+              .filter((p: any) => p.approval_status === 'approved')
+              .map((p: any) => ({
+                id: p.prospect_id,
+                name: p.name,
+                title: p.title || '',
+                company: p.company?.name || p.company || '',
+                email: p.contact?.email || '',
+                linkedin_url: p.contact?.linkedin_url || '',
+                phone: p.contact?.phone || '',
+                industry: p.company?.industry || '',
+                location: p.location || '',
+                sessionId: session.id,
+                campaignName: session.campaign_name || 'Untitled',
+                source: p.source || 'prospect_approval'
+              }));
+
+            if (approved.length > 0) {
+              sessionsWithProspects.push({
+                id: session.id,
+                name: session.campaign_name || 'Untitled Session',
+                createdAt: session.created_at,
+                prospectsCount: approved.length,
+                prospects: approved
+              });
+              allApprovedProspects.push(...approved);
+            }
+          }
+        }
+      }
+
+      const result = {
+        sessions: sessionsWithProspects,
+        prospects: allApprovedProspects
+      };
+
+      // Save to localStorage for next session
+      try {
+        localStorage.setItem(`approved-prospects-${workspaceId}`, JSON.stringify({
+          data: result,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        console.warn('Failed to cache approved prospects:', e);
+      }
+
+      console.log(`✅ Loaded ${sessionsWithProspects.length} approval sessions with ${allApprovedProspects.length} approved prospects`);
+      return result;
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes (prospects change more frequently)
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    enabled: !!workspaceId && dataSource === 'approved', // Only fetch when needed
+    initialData: () => {
+      // Try to load from localStorage on mount
+      try {
+        const cached = localStorage.getItem(`approved-prospects-${workspaceId}`);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          // Use cached data if less than 1 hour old
+          if (Date.now() - timestamp < 60 * 60 * 1000) {
+            return data;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load cached prospects:', e);
+      }
+      return undefined;
+    }
+  });
+
+  // Extract for backwards compatibility
+  const approvalSessions = approvalSessionsData.sessions;
+  const approvedProspects = approvalSessionsData.prospects;
   
   // Message templates
   const [connectionMessage, setConnectionMessage] = useState('');
@@ -619,15 +721,221 @@ function CampaignBuilder({
 
   // KB Template state
   const [showKBModal, setShowKBModal] = useState(false);
-  const [kbTemplates, setKbTemplates] = useState<any[]>([]);
-  const [loadingKBTemplates, setLoadingKBTemplates] = useState(false);
   const [selectedKBTemplate, setSelectedKBTemplate] = useState<any>(null);
+
+  // React Query + localStorage for KB templates (persistent across sessions)
+  const {
+    data: kbTemplates = [],
+    isLoading: loadingKBTemplates,
+    refetch: refetchKBTemplates
+  } = useQuery({
+    queryKey: ['kb-templates', workspaceId],
+    queryFn: async () => {
+      if (!workspaceId) throw new Error('Workspace ID required');
+
+      // Get sections first to find messaging section ID
+      const sectionsResponse = await fetch(`/api/knowledge-base/sections?workspace_id=${workspaceId}`);
+      if (!sectionsResponse.ok) {
+        const errorData = await sectionsResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to load KB sections');
+      }
+
+      const sectionsData = await sectionsResponse.json();
+
+      if (!sectionsData.sections || sectionsData.sections.length === 0) {
+        return [];
+      }
+
+      const messagingSection = sectionsData.sections.find((s: any) => s.section_id === 'messaging');
+      if (!messagingSection) {
+        return [];
+      }
+
+      // Load templates from messaging section
+      const templatesResponse = await fetch(
+        `/api/knowledge-base/content?workspace_id=${workspaceId}&section_id=${messagingSection.id}`
+      );
+
+      if (!templatesResponse.ok) {
+        const errorData = await templatesResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to load templates');
+      }
+
+      const templatesData = await templatesResponse.json();
+      const templates = templatesData.content || [];
+
+      // Save to localStorage for next session
+      try {
+        localStorage.setItem(`kb-templates-${workspaceId}`, JSON.stringify({
+          data: templates,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        console.warn('Failed to cache templates to localStorage:', e);
+      }
+
+      return templates;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 30 * 60 * 1000, // 30 minutes
+    enabled: !!workspaceId && showKBModal, // Only fetch when modal opens
+    initialData: () => {
+      // Try to load from localStorage on mount
+      try {
+        const cached = localStorage.getItem(`kb-templates-${workspaceId}`);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          // Use cached data if less than 24 hours old
+          if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+            return data;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load cached templates:', e);
+      }
+      return undefined;
+    },
+    onError: (error: any) => {
+      console.error('Failed to load KB templates:', error);
+      toastError(error.message || 'Failed to load templates from Knowledge Base');
+    }
+  });
+
+  // Show feedback when KB templates load
+  useEffect(() => {
+    if (!showKBModal || loadingKBTemplates) return;
+
+    if (kbTemplates.length === 0) {
+      toastInfo('No templates found in Knowledge Base messaging section. Add templates to use them in campaigns.');
+    } else {
+      toastSuccess(`Loaded ${kbTemplates.length} template(s) from Knowledge Base`);
+    }
+  }, [kbTemplates.length, loadingKBTemplates, showKBModal]);
 
   // Previous Messages state
   const [showPreviousMessagesModal, setShowPreviousMessagesModal] = useState(false);
-  const [previousCampaigns, setPreviousCampaigns] = useState<any[]>([]);
-  const [loadingPreviousCampaigns, setLoadingPreviousCampaigns] = useState(false);
   const [selectedPreviousCampaign, setSelectedPreviousCampaign] = useState<any>(null);
+
+  // React Query + localStorage for previous campaigns (persistent across sessions)
+  const {
+    data: previousCampaigns = [],
+    isLoading: loadingPreviousCampaigns,
+    refetch: refetchPreviousCampaigns
+  } = useQuery({
+    queryKey: ['previous-campaigns', workspaceId],
+    queryFn: async () => {
+      if (!workspaceId) throw new Error('Workspace ID required');
+
+      const response = await fetch(`/api/campaigns?workspace_id=${workspaceId}`);
+      if (!response.ok) {
+        throw new Error('Failed to load previous campaigns');
+      }
+
+      const data = await response.json();
+      const campaigns = data.campaigns || [];
+
+      // Filter campaigns that have messages
+      const campaignsWithMessages = campaigns.filter((c: any) =>
+        c.connection_message || c.alternative_message || (c.follow_up_messages && c.follow_up_messages.length > 0)
+      );
+
+      // Save to localStorage for next session
+      try {
+        localStorage.setItem(`previous-campaigns-${workspaceId}`, JSON.stringify({
+          data: campaignsWithMessages,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        console.warn('Failed to cache previous campaigns:', e);
+      }
+
+      return campaignsWithMessages;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 30 * 60 * 1000, // 30 minutes
+    enabled: !!workspaceId && showPreviousMessagesModal,
+    initialData: () => {
+      try {
+        const cached = localStorage.getItem(`previous-campaigns-${workspaceId}`);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          // Cache valid for 24 hours
+          if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+            return data;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load cached previous campaigns:', e);
+      }
+      return undefined;
+    },
+    onSuccess: (data) => {
+      if (data.length === 0) {
+        toastInfo('No previous campaigns with messages found');
+      } else {
+        toastSuccess(`Loaded ${data.length} previous campaign(s)`);
+      }
+    },
+    onError: (error: any) => {
+      console.error('Failed to load previous campaigns:', error);
+      toastError(error.message || 'Failed to load previous campaigns');
+    }
+  });
+
+  // Auto-save draft to localStorage (persistent across sessions)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!workspaceId || !name.trim()) return;
+
+      const draft = {
+        name,
+        campaignType,
+        connectionMessage,
+        alternativeMessage,
+        followUpMessages,
+        savedAt: new Date().toISOString()
+      };
+
+      try {
+        localStorage.setItem(`campaign-draft-${workspaceId}`, JSON.stringify(draft));
+        console.log('Draft auto-saved to localStorage');
+      } catch (e) {
+        console.warn('Failed to save draft:', e);
+      }
+    }, 2000); // Debounce 2 seconds
+
+    return () => clearTimeout(timer);
+  }, [name, campaignType, connectionMessage, alternativeMessage, followUpMessages, workspaceId]);
+
+  // Load draft from localStorage on mount
+  useEffect(() => {
+    if (!workspaceId) return;
+
+    try {
+      const saved = localStorage.getItem(`campaign-draft-${workspaceId}`);
+      if (saved) {
+        const draft = JSON.parse(saved);
+        const savedDate = new Date(draft.savedAt);
+        const daysSaved = (Date.now() - savedDate.getTime()) / (1000 * 60 * 60 * 24);
+
+        // Only restore if less than 7 days old
+        if (daysSaved < 7) {
+          setName(draft.name || getInitialCampaignName());
+          setCampaignType(draft.campaignType || 'connector');
+          setConnectionMessage(draft.connectionMessage || '');
+          setAlternativeMessage(draft.alternativeMessage || '');
+          setFollowUpMessages(draft.followUpMessages || ['']);
+
+          toastInfo(`Restored draft from ${savedDate.toLocaleDateString()}`);
+        } else {
+          // Clean up old draft
+          localStorage.removeItem(`campaign-draft-${workspaceId}`);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load draft:', e);
+    }
+  }, [workspaceId]); // Only run once on mount
 
   // SAM Chat scroll management
   const samChatRef = useState<HTMLDivElement | null>(null)[0];
@@ -1189,68 +1497,9 @@ Would you like me to adjust these or create more variations?`
   };
 
   // KB Template functions
-  const loadKBTemplates = async () => {
-    if (!workspaceId) {
-      toastError('Workspace ID not found');
-      return;
-    }
-
-    setLoadingKBTemplates(true);
-    try {
-      // Get sections first to find messaging section ID
-      const sectionsResponse = await fetch(`/api/knowledge-base/sections?workspace_id=${workspaceId}`);
-      if (!sectionsResponse.ok) {
-        const errorData = await sectionsResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to load KB sections');
-      }
-
-      const sectionsData = await sectionsResponse.json();
-
-      if (!sectionsData.sections || sectionsData.sections.length === 0) {
-        toastInfo('Knowledge Base is empty. Add content to the Messaging section first.');
-        setKbTemplates([]);
-        return;
-      }
-
-      const messagingSection = sectionsData.sections.find((s: any) => s.section_id === 'messaging');
-
-      if (!messagingSection) {
-        toastInfo('No "Messaging" section found in Knowledge Base. Create one to store campaign templates.');
-        setKbTemplates([]);
-        return;
-      }
-
-      // Load templates from messaging section
-      const templatesResponse = await fetch(
-        `/api/knowledge-base/content?workspace_id=${workspaceId}&section_id=${messagingSection.id}`
-      );
-
-      if (!templatesResponse.ok) {
-        const errorData = await templatesResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to load templates');
-      }
-
-      const templatesData = await templatesResponse.json();
-      const templates = templatesData.content || [];
-      setKbTemplates(templates);
-
-      if (templates.length === 0) {
-        toastInfo('No templates found in Knowledge Base messaging section. Add templates to use them in campaigns.');
-      } else {
-        toastSuccess(`Loaded ${templates.length} template(s) from Knowledge Base`);
-      }
-    } catch (error: any) {
-      console.error('Failed to load KB templates:', error);
-      toastError(error.message || 'Failed to load templates from Knowledge Base');
-      setKbTemplates([]);
-    } finally {
-      setLoadingKBTemplates(false);
-    }
-  };
-
   const openKBModal = () => {
     setShowKBModal(true);
-    loadKBTemplates();
+    // React Query will auto-fetch when modal opens (enabled: showKBModal)
   };
 
   const applyKBTemplate = async (template: any) => {
@@ -1305,46 +1554,9 @@ Would you like me to adjust these or create more variations?`
   };
 
   // Previous Messages functions
-  const loadPreviousCampaigns = async () => {
-    if (!workspaceId) {
-      toastError('Workspace ID not found');
-      return;
-    }
-
-    setLoadingPreviousCampaigns(true);
-    try {
-      const response = await fetch(`/api/campaigns?workspace_id=${workspaceId}`);
-      if (!response.ok) {
-        throw new Error('Failed to load previous campaigns');
-      }
-
-      const data = await response.json();
-      const campaigns = data.campaigns || [];
-
-      // Filter campaigns that have messages
-      const campaignsWithMessages = campaigns.filter((c: any) =>
-        c.connection_message || c.alternative_message || (c.follow_up_messages && c.follow_up_messages.length > 0)
-      );
-
-      setPreviousCampaigns(campaignsWithMessages);
-
-      if (campaignsWithMessages.length === 0) {
-        toastInfo('No previous campaigns with messages found');
-      } else {
-        toastSuccess(`Loaded ${campaignsWithMessages.length} previous campaign(s)`);
-      }
-    } catch (error: any) {
-      console.error('Failed to load previous campaigns:', error);
-      toastError(error.message || 'Failed to load previous campaigns');
-      setPreviousCampaigns([]);
-    } finally {
-      setLoadingPreviousCampaigns(false);
-    }
-  };
-
   const openPreviousMessagesModal = () => {
     setShowPreviousMessagesModal(true);
-    loadPreviousCampaigns();
+    // React Query will automatically fetch when modal opens (enabled: showPreviousMessagesModal)
   };
 
   const applyPreviousCampaignMessages = (campaign: any) => {
