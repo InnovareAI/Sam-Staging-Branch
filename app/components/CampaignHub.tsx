@@ -968,13 +968,22 @@ function CampaignBuilder({
   const has1stDegree = connectionDegrees.firstDegree > 0;
   const hasOnly1stDegree = connectionDegrees.firstDegree > 0 && connectionDegrees.secondThird === 0;
 
-  // Auto-switch from connector to messenger if all 1st degree
+  // Auto-switch campaign type based on connection degrees
   React.useEffect(() => {
+    const hasOnly2nd3rdDegree = connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0;
+
+    // Switch from Connector to Messenger if all are 1st degree (already connected)
     if (hasOnly1stDegree && campaignType === 'connector') {
       setCampaignType('messenger');
       toastInfo('Switched to Messenger campaign - all prospects are 1st degree connections');
     }
-  }, [hasOnly1stDegree, campaignType]);
+
+    // Switch from Messenger to Connector if all are 2nd/3rd degree (not connected)
+    if (hasOnly2nd3rdDegree && campaignType === 'messenger') {
+      setCampaignType('connector');
+      toastInfo('Switched to Connector campaign - prospects need connection requests first');
+    }
+  }, [connectionDegrees, campaignType, hasOnly1stDegree]);
 
   const campaignTypes = [
     {
@@ -1806,7 +1815,20 @@ Would you like me to adjust these or create more variations?`
               {campaignTypes.map((type) => {
                 const IconComponent = type.icon;
                 const isConnector = type.value === 'connector';
-                const isDisabled = isConnector && hasOnly1stDegree;
+                const isMessenger = type.value === 'messenger';
+
+                // Disable Connector if all prospects are 1st degree (already connected)
+                // Disable Messenger if all prospects are 2nd/3rd degree (not connected)
+                const hasOnly2nd3rdDegree = connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0;
+                const isDisabled = (isConnector && hasOnly1stDegree) || (isMessenger && hasOnly2nd3rdDegree);
+
+                // Determine which warning to show
+                let disabledReason = '';
+                if (isConnector && hasOnly1stDegree) {
+                  disabledReason = 'Your prospects are already 1st degree connections';
+                } else if (isMessenger && hasOnly2nd3rdDegree) {
+                  disabledReason = 'Your prospects are 2nd/3rd degree - send connection requests first';
+                }
 
                 return (
                   <div
@@ -1819,6 +1841,7 @@ Would you like me to adjust these or create more variations?`
                         ? 'border-purple-500 bg-purple-600/20 cursor-pointer'
                         : 'border-gray-600 bg-gray-700 hover:border-gray-500 cursor-pointer'
                     }`}
+                    title={isDisabled ? `Not available: ${disabledReason}` : ''}
                   >
                     <div className="flex items-center mb-2">
                       <IconComponent className="text-purple-400 mr-2" size={20} />
@@ -1827,7 +1850,7 @@ Would you like me to adjust these or create more variations?`
                     <p className="text-gray-400 text-sm">{type.description}</p>
                     {isDisabled && (
                       <p className="text-red-400 text-xs mt-2">
-                        ⚠️ Not available: Your prospects are 1st degree connections
+                        ⚠️ Not available: {disabledReason}
                       </p>
                     )}
                   </div>
@@ -1838,6 +1861,13 @@ Would you like me to adjust these or create more variations?`
               <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mt-3">
                 <p className="text-blue-300 text-sm">
                   💡 <strong>Tip:</strong> All {connectionDegrees.firstDegree} prospects are 1st degree connections. Use <strong>Messenger</strong> or <strong>Builder</strong> campaigns.
+                </p>
+              </div>
+            )}
+            {connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0 && (
+              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mt-3">
+                <p className="text-blue-300 text-sm">
+                  💡 <strong>Tip:</strong> All {connectionDegrees.secondThird} prospects are 2nd/3rd degree connections. Use <strong>Connector</strong> to send connection requests first, then follow up with messages.
                 </p>
               </div>
             )}
