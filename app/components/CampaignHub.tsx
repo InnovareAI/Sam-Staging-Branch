@@ -1857,8 +1857,8 @@ Would you like me to adjust these or create more variations?`
       // Trigger refresh of campaign list
       window.dispatchEvent(new CustomEvent('refreshCampaigns'));
 
-      // Switch to New Campaigns tab
-      setCampaignFilter('pending');
+      // Switch to Inactive tab to show the approved campaign
+      setCampaignFilter('inactive');
 
     } catch (error: any) {
       console.error('Campaign creation error:', error);
@@ -3690,7 +3690,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       // Determine campaign type (needed for LinkedIn ID sync logic)
       const approvedCampaignType = _executionData?.campaignType || finalCampaignData.type || 'connector';
 
-      // Step 1: Create campaign
+      // Step 1: Create campaign with 'inactive' status (ready to activate)
       const campaignResponse = await fetch('/api/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3698,6 +3698,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           workspace_id: workspaceId,
           name: finalCampaignData.name,
           campaign_type: approvedCampaignType,
+          status: 'inactive', // Approved campaigns go to Inactive tab, user activates to send
           message_templates: {
             connection_request: finalCampaignData.messages.connection_request,
             alternative_message: _executionData?.alternativeMessage || finalCampaignData.messages.follow_up_1,
@@ -3859,37 +3860,21 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           // No sync needed - either IDs already resolved OR it's a Connector campaign
           if (approvedCampaignType === 'connector') {
             // Connector campaigns don't need internal IDs - they extract from profile URLs
-            toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects ready\n🔗 LinkedIn profile URLs detected\n🚀 Campaign ready for launch!`);
+            toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects ready\n🔗 LinkedIn profile URLs detected\n\n💡 Go to Inactive tab to activate and launch`);
           } else {
             // Messenger campaign with IDs already resolved
-            toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects ready\n✅ All LinkedIn IDs already resolved`);
+            toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects ready\n✅ All LinkedIn IDs already resolved\n\n💡 Go to Inactive tab to activate and launch`);
           }
 
-          // Auto-launch since campaign is ready
-          try {
-            const launchResponse = await fetch('/api/campaigns/linkedin/execute-direct', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                campaignId: campaign.id,
-                workspaceId: workspaceId
-              })
-            });
-
-            if (launchResponse.ok) {
-              toastSuccess(`🎉 Campaign launched successfully!`);
-            }
-          } catch (launchError) {
-            console.error('Auto-launch error:', launchError);
-          }
+          // No auto-launch - user must manually activate from Inactive tab
         }
       }
 
-      // Reset and close
+      // Reset and close - switch to Inactive tab to show the new campaign
       setShowApprovalScreen(false);
       setCampaignDataForApproval(null);
       setShowBuilder(false);
-      setCampaignFilter('pending'); // Switch to New Campaigns tab
+      setCampaignFilter('inactive'); // Switch to Inactive tab to show approved campaign
       onCampaignCreated?.();
 
     } catch (error) {
@@ -4509,7 +4494,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   // Filter campaigns based on selected tab
   const filteredCampaigns = mockCampaigns.filter(c => {
     if (campaignFilter === 'active') return c.status === 'active' || c.status === 'paused';
-    if (campaignFilter === 'inactive') return c.status === 'paused';
+    if (campaignFilter === 'inactive') return c.status === 'inactive'; // Show campaigns ready to activate
     if (campaignFilter === 'archived') return c.status === 'completed';
     return true;
   });
@@ -4610,7 +4595,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   setShowBuilder(false);
                   setSelectedCampaignProspects(null); // Clear selected campaign prospects
                   setSelectedDraft(null); // Clear selected draft
-                  setCampaignFilter('pending'); // Switch to New Campaigns tab
+                  setCampaignFilter('inactive'); // Switch to Inactive tab to show approved campaign
                   onCampaignCreated?.();
                 }}
                 initialProspects={selectedCampaignProspects || initialProspects}

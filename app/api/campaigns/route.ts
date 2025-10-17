@@ -68,12 +68,13 @@ export async function POST(req: NextRequest) {
       campaign_type = 'multi_channel',
       target_icp = {},
       ab_test_variant,
-      message_templates = {}
+      message_templates = {},
+      status = 'inactive' // Default to 'inactive' so approved campaigns show in Inactive tab
     } = await req.json();
 
     if (!workspace_id || !name) {
-      return NextResponse.json({ 
-        error: 'Workspace ID and campaign name are required' 
+      return NextResponse.json({
+        error: 'Workspace ID and campaign name are required'
       }, { status: 400 });
     }
 
@@ -91,10 +92,20 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error('Failed to create campaign:', error);
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Failed to create campaign',
-        details: error.message 
+        details: error.message
       }, { status: 500 });
+    }
+
+    // Update status to the requested value (default 'inactive')
+    const { error: statusError } = await supabase
+      .from('campaigns')
+      .update({ status })
+      .eq('id', campaignId);
+
+    if (statusError) {
+      console.error('Failed to update campaign status:', statusError);
     }
 
     // Get the created campaign with details
