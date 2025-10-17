@@ -3693,7 +3693,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       const uploadResult = await uploadResponse.json();
 
       // Calculate connection degrees for these prospects
-      const prospectDegrees = prospects.map((p: any) => {
+      const prospectDegrees = finalCampaignData.prospects.map((p: any) => {
         const degree = p.connection_degree || p.degree || 'unknown';
         return degree.toLowerCase().includes('1st') ? '1st' :
                (degree.toLowerCase().includes('2nd') || degree.toLowerCase().includes('3rd')) ? '2nd/3rd' : 'unknown';
