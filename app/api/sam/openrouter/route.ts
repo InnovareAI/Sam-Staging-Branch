@@ -30,9 +30,9 @@ const COST_OPTIMIZED_MODELS = {
   
   // Premium for complex reasoning (limited usage)
   'sam_reasoning': {
-    model: 'anthropic/claude-3.7-sonnet',
+    model: 'anthropic/claude-haiku-4.5',
     max_tokens: 800,
-    cost_per_1k_tokens: 0.0035,
+    cost_per_1k_tokens: 0.003,  // $1/M input + $5/M output (avg)
     use_case: 'Complex campaign strategy only'
   }
 };

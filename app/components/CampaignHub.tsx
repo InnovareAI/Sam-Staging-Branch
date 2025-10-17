@@ -75,249 +75,8 @@ function CampaignList() {
 
       if (!response.ok) {
         console.error('Failed to load campaigns:', response.statusText);
-        // Return mock data as fallback
-        return [
-          {
-            id: '1',
-            name: 'Q4 SaaS Outreach',
-            status: 'active',
-            type: 'linkedin',
-            prospects: 145,
-            sent: 92,
-            replies: 23,
-            connections: 67,
-            response_rate: 25.0,
-            created_at: new Date().toISOString()
-          },
-          {
-            id: '2', 
-            name: 'Holiday Networking Campaign',
-            status: 'active',
-            type: 'multi_channel',
-            prospects: 234,
-            sent: 189,
-            replies: 41,
-            connections: 78,
-            response_rate: 21.7,
-            created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '3',
-            name: 'FinTech Decision Makers',
-            status: 'paused',
-            type: 'linkedin',
-            prospects: 178,
-            sent: 134,
-            replies: 19,
-            connections: 45,
-            response_rate: 14.2,
-            created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '4',
-            name: 'Healthcare IT Executives',
-            status: 'active',
-            type: 'email',
-            prospects: 298,
-            sent: 267,
-            replies: 58,
-            connections: 0,
-            response_rate: 21.7,
-            created_at: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '5',
-            name: 'E-commerce Growth Series',
-            status: 'completed',
-            type: 'multi_channel',
-            prospects: 456,
-            sent: 456,
-            replies: 89,
-            connections: 134,
-            response_rate: 19.5,
-            created_at: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '6',
-            name: 'Manufacturing Leaders Outreach',
-            status: 'active',
-            type: 'linkedin',
-            prospects: 123,
-            sent: 98,
-            replies: 12,
-            connections: 34,
-            response_rate: 12.2,
-            created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '7',
-            name: 'Real Estate Tech Innovators',
-            status: 'draft',
-            type: 'email',
-            prospects: 89,
-            sent: 0,
-            replies: 0,
-            connections: 0,
-            response_rate: 0,
-            created_at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '8',
-            name: 'HR Directors - Q1 Planning',
-            status: 'active',
-            type: 'multi_channel',
-            prospects: 267,
-            sent: 156,
-            replies: 34,
-            connections: 78,
-            response_rate: 21.8,
-            created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '9',
-            name: 'Legal Tech Transformation',
-            status: 'paused',
-            type: 'linkedin',
-            prospects: 145,
-            sent: 89,
-            replies: 8,
-            connections: 23,
-            response_rate: 9.0,
-            created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '10',
-            name: 'EdTech Innovation Summit',
-            status: 'active',
-            type: 'email',
-            prospects: 389,
-            sent: 312,
-            replies: 67,
-            connections: 0,
-            response_rate: 21.5,
-            created_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '11',
-            name: 'Retail Modernization Initiative',
-            status: 'completed',
-            type: 'multi_channel',
-            prospects: 234,
-            sent: 234,
-            replies: 45,
-            connections: 89,
-            response_rate: 19.2,
-            created_at: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '12',
-            name: 'Energy Sector Digital Transformation',
-            status: 'active',
-            type: 'linkedin',
-            prospects: 178,
-            sent: 123,
-            replies: 21,
-            connections: 56,
-            response_rate: 17.1,
-            created_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '13',
-            name: 'Insurance Innovation Network',
-            status: 'draft',
-            type: 'email',
-            prospects: 156,
-            sent: 0,
-            replies: 0,
-            connections: 0,
-            response_rate: 0,
-            created_at: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '14',
-            name: 'Logistics & Supply Chain Leaders',
-            status: 'active',
-            type: 'multi_channel',
-            prospects: 298,
-            sent: 234,
-            replies: 52,
-            connections: 123,
-            response_rate: 22.2,
-            created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '15',
-            name: 'Biotech Investment Opportunities',
-            status: 'paused',
-            type: 'linkedin',
-            prospects: 89,
-            sent: 67,
-            replies: 5,
-            connections: 12,
-            response_rate: 7.5,
-            created_at: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '16',
-            name: 'Government Modernization Project',
-            status: 'active',
-            type: 'email',
-            prospects: 145,
-            sent: 134,
-            replies: 28,
-            connections: 0,
-            response_rate: 20.9,
-            created_at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '17',
-            name: 'Nonprofit Tech Advancement',
-            status: 'completed',
-            type: 'multi_channel',
-            prospects: 123,
-            sent: 123,
-            replies: 31,
-            connections: 45,
-            response_rate: 25.2,
-            created_at: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '18',
-            name: 'Media & Entertainment Evolution',
-            status: 'active',
-            type: 'linkedin',
-            prospects: 267,
-            sent: 189,
-            replies: 43,
-            connections: 89,
-            response_rate: 22.8,
-            created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '19',
-            name: 'Aerospace Innovation Network',
-            status: 'draft',
-            type: 'email',
-            prospects: 98,
-            sent: 0,
-            replies: 0,
-            connections: 0,
-            response_rate: 0,
-            created_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '20',
-            name: 'Sustainable Tech Leaders Summit',
-            status: 'active',
-            type: 'multi_channel',
-            prospects: 345,
-            sent: 278,
-            replies: 67,
-            connections: 156,
-            response_rate: 24.1,
-            created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
-          }
-        ];
+        // Return empty array on error - no fake data
+        return [];
       }
 
       const data = await response.json();
@@ -3479,7 +3238,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [selectedCampaignProspects, setSelectedCampaignProspects] = useState<any[] | null>(null);
   const [selectedDraft, setSelectedDraft] = useState<any>(null);
-  
+
   const queryClient = useQueryClient();
 
   // Auto-open pending approvals toggle (stored in localStorage)
@@ -3858,23 +3617,23 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           }
         } else {
           // No sync needed - either IDs already resolved OR it's a Connector campaign
-          if (approvedCampaignType === 'connector') {
-            // Connector campaigns don't need internal IDs - they extract from profile URLs
-            toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects ready\n🔗 LinkedIn profile URLs detected\n\n💡 Go to Inactive tab to activate and launch`);
-          } else {
-            // Messenger campaign with IDs already resolved
-            toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects ready\n✅ All LinkedIn IDs already resolved\n\n💡 Go to Inactive tab to activate and launch`);
-          }
+          // Open campaign settings modal to allow user to activate
+          toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects ready\n\n💡 Opening settings to activate...`);
 
-          // No auto-launch - user must manually activate from Inactive tab
+          // Open settings modal for the new campaign
+          setSelectedCampaign(campaign);
+          setShowCampaignSettings(true);
         }
       }
 
-      // Reset and close - switch to Inactive tab to show the new campaign
+      // Reset and close approval screen
       setShowApprovalScreen(false);
       setCampaignDataForApproval(null);
       setShowBuilder(false);
-      setCampaignFilter('inactive'); // Switch to Inactive tab to show approved campaign
+
+      // Invalidate caches to refresh campaign lists and counters
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingCampaigns'] });
       onCampaignCreated?.();
 
     } catch (error) {
@@ -4125,42 +3884,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           counts: result.counts || { upcoming: 0, active: 0, completed: 0, cancelled: 0, total: 0 }
         };
       }
-      // Use mock data if API fails
-      const mockSchedules = {
-        upcoming: [
-          {
-            id: '1',
-            campaigns: { name: 'Holiday Networking Campaign' },
-            scheduled_start_time: '2024-12-15T09:00:00Z',
-            notes: 'Expected Duration: 2 weeks'
-          },
-          {
-            id: '2', 
-            campaigns: { name: 'Q1 2025 Prospecting Blitz' },
-            scheduled_start_time: '2025-01-02T08:00:00Z',
-            notes: 'Expected Duration: 1 month'
-          }
-        ],
-        active: [
-          {
-            id: '3',
-            campaigns: { name: 'November B2B Outreach' },
-            scheduled_start_time: '2024-11-01T09:00:00Z',
-            notes: 'Progress: 65% • Messages sent: 156/240'
-          }
-        ],
-        completed: [],
-        cancelled: []
-      };
+      // Return empty data on error - no fake data
       return {
-        campaigns: mockSchedules,
-        counts: {
-          upcoming: mockSchedules.upcoming.length,
-          active: mockSchedules.active.length,
-          completed: 0,
-          cancelled: 0,
-          total: mockSchedules.upcoming.length + mockSchedules.active.length
-        }
+        campaigns: { upcoming: [], active: [], completed: [], cancelled: [] },
+        counts: { upcoming: 0, active: 0, completed: 0, cancelled: 0, total: 0 }
       };
     },
     enabled: showScheduledCampaigns,
@@ -5343,41 +5070,6 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 )}
               </div>
 
-              {/* Campaign Steps / Message Sequence */}
-              <div className="border-b border-gray-700 pb-6">
-                <h4 className="text-white font-medium mb-2">Campaign steps</h4>
-                <p className="text-gray-400 text-sm mb-4">
-                  Configure your message sequence, timing, and personalization. Each step includes message text, delay days, and personalization tags.
-                </p>
-
-                {/* Quick Summary */}
-                <div className="bg-gray-700 rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-white font-medium mb-1">Current sequence: 3 steps</div>
-                      <div className="text-gray-400 text-sm">Connection request + 2 follow-ups over 10 days</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-green-400 text-sm">✓ Messages configured</div>
-                      <div className="text-gray-400 text-xs">Last edited 2 days ago</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Edit Steps Button */}
-                <button
-                  className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium"
-                  onClick={() => setShowStepsEditor(true)}
-                >
-                  <Edit size={18} />
-                  <span>Edit campaign steps & messages</span>
-                </button>
-
-                <div className="mt-3 text-xs text-gray-400 text-center">
-                  Opens full editor with SAM chat assistant
-                </div>
-              </div>
-
               {/* Campaign Status */}
               <div className="border-b border-gray-700 pb-6">
                 <h4 className="text-white font-medium mb-2">Campaign status</h4>
@@ -5389,19 +5081,68 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                     : 'You can turn this campaign on and off. An active campaign will send messages across all channels according to your settings.'}
                 </p>
                 <div className="space-y-2">
-                  <div className="flex items-center gap-3 p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600">
+                  <div className="flex items-center gap-3 p-2 bg-gray-700 rounded">
                     <div className={`w-3 h-3 rounded-full ${
                       selectedCampaign.status === 'active' ? 'bg-green-500' :
                       selectedCampaign.status === 'paused' ? 'bg-yellow-500' :
                       selectedCampaign.status === 'completed' ? 'bg-blue-500' :
+                      selectedCampaign.status === 'inactive' ? 'bg-gray-400' :
                       'bg-gray-500'
                     }`}></div>
                     <span className="text-white capitalize">{selectedCampaign.status}</span>
                   </div>
-                  <select className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm">
+                  <select
+                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                    value={selectedCampaign.status}
+                    onChange={async (e) => {
+                      const newStatus = e.target.value;
+
+                      try {
+                        const response = await fetch(`/api/campaigns/${selectedCampaign.id}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ status: newStatus })
+                        });
+
+                        if (response.ok) {
+                          // Update local state
+                          setSelectedCampaign({ ...selectedCampaign, status: newStatus });
+
+                          // Refresh campaigns list
+                          queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+                          queryClient.invalidateQueries({ queryKey: ['pendingCampaigns'] });
+
+                          toastSuccess(`Campaign status updated to ${newStatus}`);
+
+                          // If activating, also execute the campaign
+                          if (newStatus === 'active') {
+                            try {
+                              await fetch('/api/campaigns/linkedin/execute-direct', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  campaignId: selectedCampaign.id,
+                                  workspaceId: workspaceId
+                                })
+                              });
+                              toastInfo('Campaign execution initiated');
+                            } catch (execError) {
+                              console.error('Campaign execution error:', execError);
+                            }
+                          }
+                        } else {
+                          const error = await response.json();
+                          toastError(`Failed to update status: ${error.error || 'Unknown error'}`);
+                        }
+                      } catch (error) {
+                        console.error('Status update error:', error);
+                        toastError('Failed to update campaign status');
+                      }
+                    }}
+                  >
                     <option value="active">Active - Campaign is running</option>
                     <option value="paused">Paused - Campaign is temporarily stopped</option>
-                    <option value="inactive">Inactive - Campaign draft</option>
+                    <option value="inactive">Inactive - Campaign ready to activate</option>
                     <option value="completed">Completed - Campaign finished</option>
                     <option value="archived">Archived - Campaign archived</option>
                   </select>

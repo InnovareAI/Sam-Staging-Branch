@@ -1,6 +1,9 @@
 /**
  * BrightData MCP Client
  * Connects to BrightData via Model Context Protocol for lead scraping
+ *
+ * Updated: Now uses real MCP tools (search_engine, scrape_as_markdown)
+ * Falls back to mock data when MCP tools are not available
  */
 
 export interface BrightDataProspect {

@@ -597,7 +597,22 @@ export default function ThreadedChatInterface() {
   }
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || !currentThread || isSending) return
+    // Better error feedback instead of silent failure
+    if (!inputMessage.trim()) {
+      console.log('⚠️  Empty message - ignoring')
+      return
+    }
+
+    if (!currentThread) {
+      alert('⚠️  Please select or create a conversation thread first')
+      console.error('❌ No thread selected')
+      return
+    }
+
+    if (isSending) {
+      console.log('⚠️  Already sending a message - please wait')
+      return
+    }
 
     const trimmedInput = inputMessage.trim()
 
@@ -635,8 +650,11 @@ export default function ThreadedChatInterface() {
 
     setIsSending(true)
     try {
+      console.log('📤 Sending message:', trimmedInput)
       const response = await sendMessage(currentThread.id, trimmedInput)
+
       if (response.success) {
+        console.log('✅ Message sent successfully')
         // Add both user and assistant messages to the local state
         const newMessages = [
           ...messages,
@@ -645,9 +663,13 @@ export default function ThreadedChatInterface() {
         ]
         setMessages(newMessages)
         setInputMessage('')
+      } else {
+        console.error('❌ Send failed:', response.error)
+        alert(`Failed to send message: ${response.error || 'Unknown error'}`)
       }
     } catch (error) {
-      console.error('Failed to send message:', error)
+      console.error('❌ Failed to send message:', error)
+      alert(`Error sending message: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsSending(false)
     }

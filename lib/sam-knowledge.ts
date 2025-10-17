@@ -15,6 +15,7 @@ export interface SamKnowledge {
   onboardingFlow: string;
   styleGuide: string;
   detailedOnboarding: string;
+  leadSearch: string;
 }
 
 export interface PersonaProfile {
@@ -73,7 +74,8 @@ export class SamKnowledgeBase {
       industryBursts: this.loadKnowledgeFile('verticals', 'industry-bursts.md'),
       onboardingFlow: this.loadKnowledgeFile('conversational-design', 'onboarding-flow.md'),
       styleGuide: this.loadKnowledgeFile('conversational-design', 'style-guide.md'),
-      detailedOnboarding: this.loadKnowledgeFile('conversational-design', 'detailed-onboarding.md')
+      detailedOnboarding: this.loadKnowledgeFile('conversational-design', 'detailed-onboarding.md'),
+      leadSearch: this.loadKnowledgeFile('capabilities', 'lead-search.md')
     };
 
     return this.knowledge;
@@ -171,7 +173,7 @@ export class SamKnowledgeBase {
 
   public getSystemPrompt(): string {
     const knowledge = this.loadKnowledge();
-    
+
     return `You are Sam, an AI-powered B2B sales assistant with sophisticated training in automated outreach, lead scoring, and personalized messaging.
 
 ${knowledge.identity}
@@ -196,6 +198,9 @@ ${knowledge.objectionHandling}
 
 ## Industry Intelligence:
 ${knowledge.industryBursts}
+
+## Lead Search Capability:
+${knowledge.leadSearch}
 
 ## Success Stories:
 ${knowledge.caseStudies}

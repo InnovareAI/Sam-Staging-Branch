@@ -34,30 +34,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check workspace tier and quota
+    // Note: Workspace tier quota checking disabled for now
+    // Will be enabled when workspace tier system is implemented
     if (workspace_id) {
-      const { data: tierData, error: tierError } = await supabase
-        .rpc('check_lead_search_quota', { p_workspace_id: workspace_id });
-
-      if (tierError) {
-        console.error('Error checking search quota:', tierError);
-        return NextResponse.json(
-          { success: false, error: 'Error checking search quota' },
-          { status: 500 }
-        );
-      }
-
-      if (!tierData.has_quota) {
-        return NextResponse.json({
-          success: false,
-          error: 'Search quota exceeded',
-          quota_info: tierData,
-          upgrade_required: tierData.search_tier === 'basic'
-        }, { status: 429 });
-      }
-
-      // Allow all tiers to use Google Custom Search
-      console.log(`✅ Workspace tier: ${tierData.search_tier} - using Google Custom Search`);
+      console.log(`✅ Workspace ${workspace_id} - using Google Custom Search`);
     }
 
     // Build search query based on type
@@ -129,13 +109,8 @@ export async function POST(request: NextRequest) {
       formatted_url: item.formattedUrl
     }));
 
-    // Increment workspace search usage
-    if (workspace_id) {
-      await supabase.rpc('increment_lead_search_usage', {
-        p_workspace_id: workspace_id,
-        p_search_count: 1
-      });
-    }
+    // Note: Search usage tracking disabled for now
+    // Will be enabled when workspace tier system is implemented
 
     return NextResponse.json({
       success: true,
