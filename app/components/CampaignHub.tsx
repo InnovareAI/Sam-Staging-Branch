@@ -950,6 +950,36 @@ function CampaignBuilder({
   const chatContainerRef = React.useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
 
+  // Check connection degrees of prospects
+  const getConnectionDegrees = () => {
+    const prospects = csvData.length > 0 ? csvData : (initialProspects || []);
+    const degrees = prospects.map((p: any) => {
+      const degree = p.connection_degree || p.degree || p.connectionDegree;
+      if (degree === 1 || degree === '1' || degree === '1st') return '1st';
+      if (degree === 2 || degree === '2' || degree === '2nd') return '2nd';
+      if (degree === 3 || degree === '3' || degree === '3rd' || degree === '3+') return '3rd';
+      return 'unknown';
+    });
+
+    const firstDegree = degrees.filter(d => d === '1st').length;
+    const secondThird = degrees.filter(d => d === '2nd' || d === '3rd').length;
+    const unknown = degrees.filter(d => d === 'unknown').length;
+
+    return { firstDegree, secondThird, unknown, total: prospects.length };
+  };
+
+  const connectionDegrees = getConnectionDegrees();
+  const has1stDegree = connectionDegrees.firstDegree > 0;
+  const hasOnly1stDegree = connectionDegrees.firstDegree > 0 && connectionDegrees.secondThird === 0;
+
+  // Auto-switch from connector to messenger if all 1st degree
+  React.useEffect(() => {
+    if (hasOnly1stDegree && campaignType === 'connector') {
+      setCampaignType('messenger');
+      toastInfo('Switched to Messenger campaign - all prospects are 1st degree connections');
+    }
+  }, [hasOnly1stDegree, campaignType]);
+
   const campaignTypes = [
     {
       value: 'connector',
@@ -968,24 +998,6 @@ function CampaignBuilder({
       label: 'Builder',
       description: 'Custom campaign builder with advanced targeting',
       icon: Settings
-    },
-    {
-      value: 'inbound',
-      label: 'Inbound',
-      description: 'Automated responses to inbound inquiries',
-      icon: TrendingUp
-    },
-    {
-      value: 'company_follow',
-      label: 'Company Follow',
-      description: 'Invite 1st degree connections to follow your company page',
-      icon: Target
-    },
-    {
-      value: 'email',
-      label: 'Email',
-      description: 'Email outreach campaigns',
-      icon: Mail
     }
   ];
 
@@ -1859,14 +1871,19 @@ Would you like me to adjust these or create more variations?`
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {campaignTypes.map((type) => {
                 const IconComponent = type.icon;
+                const isConnector = type.value === 'connector';
+                const isDisabled = isConnector && hasOnly1stDegree;
+
                 return (
                   <div
                     key={type.value}
-                    onClick={() => setCampaignType(type.value)}
-                    className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                      campaignType === type.value
-                        ? 'border-purple-500 bg-purple-600/20'
-                        : 'border-gray-600 bg-gray-700 hover:border-gray-500'
+                    onClick={() => !isDisabled && setCampaignType(type.value)}
+                    className={`p-4 border rounded-lg transition-all ${
+                      isDisabled
+                        ? 'border-gray-700 bg-gray-800 opacity-50 cursor-not-allowed'
+                        : campaignType === type.value
+                        ? 'border-purple-500 bg-purple-600/20 cursor-pointer'
+                        : 'border-gray-600 bg-gray-700 hover:border-gray-500 cursor-pointer'
                     }`}
                   >
                     <div className="flex items-center mb-2">
@@ -1874,10 +1891,29 @@ Would you like me to adjust these or create more variations?`
                       <h4 className="text-white font-medium">{type.label}</h4>
                     </div>
                     <p className="text-gray-400 text-sm">{type.description}</p>
+                    {isDisabled && (
+                      <p className="text-red-400 text-xs mt-2">
+                        ⚠️ Not available: Your prospects are 1st degree connections
+                      </p>
+                    )}
                   </div>
                 );
               })}
             </div>
+            {hasOnly1stDegree && (
+              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mt-3">
+                <p className="text-blue-300 text-sm">
+                  💡 <strong>Tip:</strong> All {connectionDegrees.firstDegree} prospects are 1st degree connections. Use <strong>Messenger</strong> or <strong>Builder</strong> campaigns.
+                </p>
+              </div>
+            )}
+            {has1stDegree && !hasOnly1stDegree && campaignType === 'connector' && (
+              <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-3 mt-3">
+                <p className="text-yellow-300 text-sm">
+                  ⚠️ <strong>Warning:</strong> {connectionDegrees.firstDegree} of your prospects are 1st degree connections and will be skipped in Connector campaigns. Consider using <strong>Builder</strong> instead.
+                </p>
+              </div>
+            )}
           </div>
 
         </div>
