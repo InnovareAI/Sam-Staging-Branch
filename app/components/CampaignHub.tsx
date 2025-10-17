@@ -950,16 +950,44 @@ function CampaignBuilder({
   const getConnectionDegrees = () => {
     const prospects = csvData.length > 0 ? csvData : (initialProspects || []);
     const degrees = prospects.map((p: any) => {
-      const degree = p.connection_degree || p.degree || p.connectionDegree;
-      if (degree === 1 || degree === '1' || degree === '1st') return '1st';
-      if (degree === 2 || degree === '2' || degree === '2nd') return '2nd';
-      if (degree === 3 || degree === '3' || degree === '3rd' || degree === '3+') return '3rd';
+      // Check multiple possible field names (case-insensitive)
+      const degree = p.connection_degree || p.degree || p.connectionDegree ||
+                     p.Connection || p['Connection Degree'] || p.linkedin_connection_degree;
+
+      // Normalize to string for comparison
+      const degreeStr = String(degree || '').toLowerCase().trim();
+
+      // Check for 1st degree
+      if (degreeStr === '1' || degreeStr === '1st' || degreeStr === 'first' ||
+          degreeStr === '1st degree' || degreeStr.includes('1st')) return '1st';
+
+      // Check for 2nd degree
+      if (degreeStr === '2' || degreeStr === '2nd' || degreeStr === 'second' ||
+          degreeStr === '2nd degree' || degreeStr.includes('2nd')) return '2nd';
+
+      // Check for 3rd degree
+      if (degreeStr === '3' || degreeStr === '3rd' || degreeStr === 'third' ||
+          degreeStr === '3rd degree' || degreeStr === '3+' || degreeStr.includes('3rd') ||
+          degreeStr.includes('3+')) return '3rd';
+
       return 'unknown';
     });
 
     const firstDegree = degrees.filter(d => d === '1st').length;
     const secondThird = degrees.filter(d => d === '2nd' || d === '3rd').length;
     const unknown = degrees.filter(d => d === 'unknown').length;
+
+    // Debug logging
+    if (prospects.length > 0) {
+      console.log('🔍 Connection Degrees Analysis:', {
+        total: prospects.length,
+        firstDegree,
+        secondThird,
+        unknown,
+        sampleProspect: prospects[0],
+        sampleDegrees: degrees.slice(0, 3)
+      });
+    }
 
     return { firstDegree, secondThird, unknown, total: prospects.length };
   };
@@ -1758,10 +1786,10 @@ Would you like me to adjust these or create more variations?`
       const secondThirdCount = prospectDegrees.filter((d: string) => d === '2nd/3rd').length;
       const hasOnly1stDegreeLocal = firstDegreeCount > 0 && secondThirdCount === 0;
 
-      // Step 2.5: Auto-sync LinkedIn IDs for 1st degree connections
+      // Step 2.5: Auto-sync LinkedIn IDs for MESSENGER campaigns (1st degree connections only)
       let syncedCount = 0;
-      if (uploadResult.prospects_with_linkedin_ids === 0 && hasOnly1stDegreeLocal) {
-        console.log('🔄 Auto-syncing LinkedIn IDs for 1st degree connections...');
+      if (uploadResult.prospects_with_linkedin_ids === 0 && hasOnly1stDegreeLocal && campaignType === 'messenger') {
+        console.log('🔄 Auto-syncing LinkedIn IDs for 1st degree connections (Messenger campaign)...');
 
         try {
           const syncResponse = await fetch('/api/campaigns/sync-linkedin-ids', {
@@ -3714,10 +3742,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       const secondThirdCount = prospectDegrees.filter((d: string) => d === '2nd/3rd').length;
       const hasOnly1stDegreeLocal = firstDegreeCount > 0 && secondThirdCount === 0;
 
-      // Step 2.5: Auto-sync LinkedIn IDs for 1st degree connections
+      // Step 2.5: Auto-sync LinkedIn IDs for MESSENGER campaigns (1st degree connections only)
       let syncedCount = 0;
-      if (uploadResult.prospects_with_linkedin_ids === 0 && hasOnly1stDegreeLocal) {
-        console.log('🔄 Auto-syncing LinkedIn IDs for 1st degree connections...');
+      if (uploadResult.prospects_with_linkedin_ids === 0 && hasOnly1stDegreeLocal && campaignType === 'messenger') {
+        console.log('🔄 Auto-syncing LinkedIn IDs for 1st degree connections (Messenger campaign)...');
 
         try {
           const syncResponse = await fetch('/api/campaigns/sync-linkedin-ids', {
