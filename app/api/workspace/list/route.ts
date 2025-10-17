@@ -18,10 +18,13 @@ export async function GET() {
     // Fetch accessible workspaces
     const { data: memberships } = await supabase
       .from('workspace_members')
-      .select('workspace_id, workspaces(name)')
+      .select('workspace_id, workspaces!inner(id, name)')
       .eq('user_id', session.user.id)
 
-    const workspaces = (memberships || []).map(m => ({ id: m.workspace_id, name: (m as any).workspaces?.name }))
+    const workspaces = (memberships || []).map(m => ({ 
+      id: m.workspace_id, 
+      name: (m as any).workspaces?.name || 'Unknown' 
+    }))
     const current = workspaces.find(w => w.id === user?.current_workspace_id) || null
 
     return NextResponse.json({ workspaces, current })
