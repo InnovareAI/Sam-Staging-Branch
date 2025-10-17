@@ -9,6 +9,7 @@ interface CampaignApprovalScreenProps {
   campaignData: {
     name: string;
     type: 'LinkedIn' | 'Email' | 'Multi-channel';
+    campaignType?: 'connector' | 'messenger' | 'builder'; // Add specific campaign type
     prospects: any[];
     messages?: {
       connection_request?: string;
@@ -180,27 +181,31 @@ export default function CampaignApprovalScreen({
 
           {expandedSections.messages && (
             <div className="space-y-4">
-              {/* Connection Request / Initial Email */}
+              {/* Connection Request / Initial Email (only for Connector campaigns and Email) */}
+              {(campaignData.campaignType === 'connector' || campaignData.type === 'Email') && (
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <h3 className="font-semibold text-white mb-3">
+                    {campaignData.type === 'Email' ? 'Initial Email' : 'Connection Request'}
+                  </h3>
+                  <textarea
+                    value={messages.connection_request || ''}
+                    onChange={(e) => setMessages({ ...messages, connection_request: e.target.value })}
+                    className="w-full bg-gray-600 border border-gray-500 rounded-lg p-3 text-white text-sm min-h-[100px]"
+                    placeholder={campaignData.type === 'Email' ? "Enter your initial email..." : "Enter your connection request message..."}
+                  />
+                </div>
+              )}
+
+              {/* Follow-up 1 / Initial Message */}
               <div className="bg-gray-700 rounded-lg p-4">
                 <h3 className="font-semibold text-white mb-3">
-                  {campaignData.type === 'Email' ? 'Initial Email' : 'Connection Request'}
+                  {campaignData.campaignType === 'messenger' ? 'Initial Message' : 'Follow-up Message 1'}
                 </h3>
-                <textarea
-                  value={messages.connection_request || ''}
-                  onChange={(e) => setMessages({ ...messages, connection_request: e.target.value })}
-                  className="w-full bg-gray-600 border border-gray-500 rounded-lg p-3 text-white text-sm min-h-[100px]"
-                  placeholder="Enter your initial message..."
-                />
-              </div>
-
-              {/* Follow-up 1 */}
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h3 className="font-semibold text-white mb-3">Follow-up Message 1</h3>
                 <textarea
                   value={messages.follow_up_1 || ''}
                   onChange={(e) => setMessages({ ...messages, follow_up_1: e.target.value })}
                   className="w-full bg-gray-600 border border-gray-500 rounded-lg p-3 text-white text-sm min-h-[100px]"
-                  placeholder="Enter your first follow-up message..."
+                  placeholder={campaignData.campaignType === 'messenger' ? "Enter your initial message..." : "Enter your first follow-up message..."}
                 />
               </div>
 

@@ -1255,7 +1255,8 @@ Let's create messages that get responses! 🎯`
 
       // Auto-apply templates if SAM provides them
       if (result.templates) {
-        if (result.templates.connection_message) {
+        // Only set connection message for Connector campaigns
+        if (result.templates.connection_message && campaignType === 'connector') {
           setConnectionMessage(result.templates.connection_message);
         }
         if (result.templates.alternative_message) {
@@ -1300,9 +1301,9 @@ Would you like me to adjust these or create more variations?`
     // Try to extract templates from the last assistant message
     const lastMessage = assistantMessages[assistantMessages.length - 1].content;
 
-    // Extract connection request (look for patterns like "**Connection Request:**" or "Connection Message:")
+    // Extract connection request (only for Connector campaigns)
     const connectionMatch = lastMessage.match(/\*\*Connection Request:\*\*\s*\n?"([^"]+)"|Connection Request:\s*\n?"([^"]+)"|Connection Message:\s*\n?"([^"]+)"/i);
-    if (connectionMatch) {
+    if (connectionMatch && campaignType === 'connector') {
       const extracted = connectionMatch[1] || connectionMatch[2] || connectionMatch[3];
       setConnectionMessage(extracted.trim());
     }
@@ -1325,9 +1326,18 @@ Would you like me to adjust these or create more variations?`
     if (!connectionMatch && !altMatch && followUpMatches.length === 0) {
       const quotes = [...lastMessage.matchAll(/"([^"]{20,})"/g)];
       if (quotes.length > 0) {
-        setConnectionMessage(quotes[0][1].trim());
-        if (quotes.length > 1) {
-          setFollowUpMessages(quotes.slice(1).map(q => q[1].trim()));
+        // First quote is connection message (Connector) or initial message (Messenger)
+        if (campaignType === 'connector') {
+          setConnectionMessage(quotes[0][1].trim());
+          if (quotes.length > 1) {
+            setFollowUpMessages(quotes.slice(1).map(q => q[1].trim()));
+          }
+        } else {
+          // For Messenger campaigns, first quote is the initial message (alternativeMessage)
+          setAlternativeMessage(quotes[0][1].trim());
+          if (quotes.length > 1) {
+            setFollowUpMessages(quotes.slice(1).map(q => q[1].trim()));
+          }
         }
       } else {
         toastWarning('Could not find templates in SAM\'s response. Try asking SAM to generate specific messages.');
@@ -1384,7 +1394,8 @@ Would you like me to adjust these or create more variations?`
   const applyParsedTemplate = () => {
     if (!parsedPreview) return;
 
-    if (parsedPreview.connectionMessage) {
+    // Only set connection message for Connector campaigns
+    if (parsedPreview.connectionMessage && campaignType === 'connector') {
       setConnectionMessage(parsedPreview.connectionMessage);
     }
     if (parsedPreview.alternativeMessage) {
@@ -1480,7 +1491,8 @@ Would you like me to adjust these or create more variations?`
 
       if (result.success && result.parsed) {
         // Apply parsed template
-        if (result.parsed.connectionMessage) {
+        // Only set connection message for Connector campaigns
+        if (result.parsed.connectionMessage && campaignType === 'connector') {
           setConnectionMessage(result.parsed.connectionMessage);
         }
         if (result.parsed.alternativeMessage) {
@@ -1514,7 +1526,8 @@ Would you like me to adjust these or create more variations?`
   const applyPreviousCampaignMessages = (campaign: any) => {
     if (!campaign) return;
 
-    if (campaign.connection_message) {
+    // Only set connection message for Connector campaigns
+    if (campaign.connection_message && campaignType === 'connector') {
       setConnectionMessage(campaign.connection_message);
     }
     if (campaign.alternative_message) {
@@ -1625,6 +1638,7 @@ Would you like me to adjust these or create more variations?`
     const campaignData = {
       name: name,
       type: campaignType === 'connector' ? 'LinkedIn' : campaignType,
+      campaignType: campaignType, // Add specific campaign type (connector/messenger/builder)
       prospects: prospects,
       messages: {
         connection_request: connectionMessage,
@@ -2782,7 +2796,11 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
                       <div className="text-sm text-gray-300">
                         <strong className="text-white">SAM AI will automatically:</strong>
                         <ul className="list-disc list-inside mt-2 space-y-1">
-                          <li>Identify connection messages vs follow-ups</li>
+                          {campaignType === 'connector' ? (
+                            <li>Identify connection messages vs follow-ups</li>
+                          ) : (
+                            <li>Identify initial message and follow-ups</li>
+                          )}
                           <li>Replace names with <code className="text-purple-400">{'{first_name}'}</code></li>
                           <li>Replace companies with <code className="text-purple-400">{'{company_name}'}</code></li>
                           <li>Replace job titles with <code className="text-purple-400">{'{job_title}'}</code></li>
@@ -2805,7 +2823,7 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
                     </p>
                   </div>
 
-                  {parsedPreview.connectionMessage && (
+                  {parsedPreview.connectionMessage && campaignType === 'connector' && (
                     <div>
                       <Label className="text-gray-300 mb-2 block">Connection Message</Label>
                       <div className="bg-gray-900 border border-gray-600 rounded-lg p-4">
@@ -2816,7 +2834,9 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
 
                   {parsedPreview.alternativeMessage && (
                     <div>
-                      <Label className="text-gray-300 mb-2 block">Alternative Message</Label>
+                      <Label className="text-gray-300 mb-2 block">
+                        {campaignType === 'messenger' ? 'Initial Message' : 'Alternative Message'}
+                      </Label>
                       <div className="bg-gray-900 border border-gray-600 rounded-lg p-4">
                         <p className="text-white whitespace-pre-wrap">{parsedPreview.alternativeMessage}</p>
                       </div>
