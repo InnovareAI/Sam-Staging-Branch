@@ -589,23 +589,33 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = createClient();
     
-    // Get user and workspace
+    // Get user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get workspace ID from user metadata
-    const workspaceId = user.user_metadata?.workspace_id;
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
-    }
-
     // Get request data
-    const { campaignId, executionType = 'direct_linkedin' } = await req.json();
-    
+    const { campaignId, workspaceId, executionType = 'direct_linkedin' } = await req.json();
+
     if (!campaignId) {
       return NextResponse.json({ error: 'Campaign ID required' }, { status: 400 });
+    }
+
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Workspace ID required' }, { status: 400 });
+    }
+
+    // Verify user has access to this workspace
+    const { data: member } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!member) {
+      return NextResponse.json({ error: 'Access denied to workspace' }, { status: 403 });
     }
 
     console.log(`🚀 V1 Campaign Orchestration: Launching ${executionType} campaign for workspace ${workspaceId}`);

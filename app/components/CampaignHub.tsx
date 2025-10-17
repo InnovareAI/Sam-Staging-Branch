@@ -1700,7 +1700,8 @@ Would you like me to adjust these or create more variations?`
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            campaignId: campaign.id
+            campaignId: campaign.id,
+            workspaceId: workspaceId
           })
         });
 
@@ -3276,7 +3277,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            campaignId: campaign.id
+            campaignId: campaign.id,
+            workspaceId: workspaceId
           })
         });
 
