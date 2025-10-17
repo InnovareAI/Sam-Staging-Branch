@@ -155,6 +155,7 @@ const Analytics: React.FC = () => {
   // Campaign performance analytics
   const [campaignSeries, setCampaignSeries] = useState<{ date: string; prospects: number; messages: number; replies: number; infoRequests: number; meetings: number }[]>([]);
   const [campaignKPIs, setCampaignKPIs] = useState<{ totalProspects: number; totalMessages: number; totalReplies: number; totalInfoRequests: number; totalMeetings: number }>({ totalProspects: 0, totalMessages: 0, totalReplies: 0, totalInfoRequests: 0, totalMeetings: 0 });
+  const [campaignsData, setCampaignsData] = useState<any[]>([]);
 
   const supabase = createClientComponentClient();
 
@@ -357,26 +358,58 @@ const Analytics: React.FC = () => {
   // Fetch live data from database
   const fetchLiveData = async () => {
     if (!currentWorkspaceId) return;
-    
+
     setIsLoading(true);
     setError(null);
 
     try {
-      // TODO: Fetch actual campaign performance data from database
-      // For now, keep empty arrays in live mode until the campaign data is available
-      setCampaignSeries([]);
-      setCampaignKPIs({
-        totalProspects: 0,
-        totalMessages: 0,
-        totalReplies: 0,
-        totalInfoRequests: 0,
-        totalMeetings: 0,
+      // Build query parameters
+      const params = new URLSearchParams({
+        workspace_id: currentWorkspaceId,
+        time_range: timeRange,
+        campaign_type: campaignType,
       });
 
-      // Keep existing demo placeholders empty in live mode for now
-      setAnalyticsData([]);
-      setPlatformData([]);
-      setRecentActivity([]);
+      if (timeRange === 'custom' && customDateRange.start && customDateRange.end) {
+        params.append('start_date', customDateRange.start.toISOString());
+        params.append('end_date', customDateRange.end.toISOString());
+      }
+
+      if (userViewMode === 'by-user' && selectedUser !== 'all') {
+        params.append('user_id', selectedUser);
+      }
+
+      // Fetch campaign analytics
+      const response = await fetch(`/api/analytics/campaigns?${params.toString()}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch analytics');
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update campaign series for chart
+        setCampaignSeries(data.campaignSeries || []);
+
+        // Update KPIs
+        setCampaignKPIs({
+          totalProspects: data.aggregatedMetrics.totalProspects || 0,
+          totalMessages: data.aggregatedMetrics.totalMessages || 0,
+          totalReplies: data.aggregatedMetrics.totalReplies || 0,
+          totalInfoRequests: data.aggregatedMetrics.totalInfoRequests || 0,
+          totalMeetings: data.aggregatedMetrics.totalMeetings || 0,
+        });
+
+        // Update campaigns list for table
+        setCampaignsData(data.campaigns || []);
+
+        // TODO: Fetch platform-specific and activity data
+        setAnalyticsData([]);
+        setPlatformData([]);
+        setRecentActivity([]);
+      }
+
       setIsLoading(false);
 
     } catch (err) {
@@ -418,13 +451,24 @@ const Analytics: React.FC = () => {
     return 7;
   };
 
-  const baseCampaignRows = [
+  // Use real campaign data if available, otherwise show demo data
+  const baseCampaignRows = demoMode ? [
     { name: "Q4 Enterprise Outreach", owner: "Sarah Powell", type: 'connector', prospects: 247, messages: 324, replies: 156, infoRequests: 67, meetings: 23, responseRate: 0.481 },
     { name: "SaaS Founders Series", owner: "John Smith", type: 'messenger', prospects: 189, messages: 203, replies: 89, infoRequests: 42, meetings: 18, responseRate: 0.438 },
     { name: "VP of Sales Target", owner: "Emily Chen", type: 'group', prospects: 156, messages: 178, replies: 71, infoRequests: 38, meetings: 15, responseRate: 0.399 },
     { name: "Tech Startup Warmup", owner: "Michael Brown", type: 'connector', prospects: 134, messages: 121, replies: 62, infoRequests: 29, meetings: 9, responseRate: 0.512 },
     { name: "FinTech Decision Makers", owner: "Sarah Powell", type: 'email', prospects: 121, messages: 66, replies: 48, infoRequests: 20, meetings: 6, responseRate: 0.727 },
-  ];
+  ] : campaignsData.map(c => ({
+    name: c.campaign_name || 'Unnamed Campaign',
+    owner: c.created_by || 'Unknown',
+    type: c.campaign_type || 'multi_channel',
+    prospects: 0, // TODO: Get from campaign_prospects count
+    messages: c.messages_sent || 0,
+    replies: c.replies_received || 0,
+    infoRequests: c.interested_replies || 0,
+    meetings: c.meetings_booked || 0,
+    responseRate: c.messages_sent > 0 ? (c.replies_received / c.messages_sent) : 0,
+  }));
 
   const dayScale = getSelectedPoints() / 7; // scale demo numbers to selected window
   const selectedUserName = workspaceMembers.find((m: any) => m.user_id === selectedUser)?.users?.full_name || workspaceMembers.find((m: any) => m.user_id === selectedUser)?.users?.email;
@@ -434,11 +478,11 @@ const Analytics: React.FC = () => {
     .filter(r => (userViewMode === 'by-user' && selectedUser !== 'all' && selectedUserName) ? r.owner === selectedUserName : true)
     .map(r => ({
       ...r,
-      prospects: Math.max(0, Math.round(r.prospects * dayScale)),
-      messages: Math.max(0, Math.round(r.messages * dayScale)),
-      replies: Math.max(0, Math.round(r.replies * dayScale)),
-      infoRequests: Math.max(0, Math.round(r.infoRequests * dayScale)),
-      meetings: Math.max(0, Math.round(r.meetings * dayScale)),
+      prospects: demoMode ? Math.max(0, Math.round(r.prospects * dayScale)) : r.prospects,
+      messages: demoMode ? Math.max(0, Math.round(r.messages * dayScale)) : r.messages,
+      replies: demoMode ? Math.max(0, Math.round(r.replies * dayScale)) : r.replies,
+      infoRequests: demoMode ? Math.max(0, Math.round(r.infoRequests * dayScale)) : r.infoRequests,
+      meetings: demoMode ? Math.max(0, Math.round(r.meetings * dayScale)) : r.meetings,
       responseRate: r.responseRate,
     }));
 

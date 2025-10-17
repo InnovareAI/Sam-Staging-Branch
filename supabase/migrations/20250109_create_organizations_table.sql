@@ -13,12 +13,26 @@ CREATE TABLE IF NOT EXISTS organizations (
 -- Create index for fast lookups
 CREATE INDEX IF NOT EXISTS idx_organizations_clerk_org_id ON organizations(clerk_org_id);
 CREATE INDEX IF NOT EXISTS idx_organizations_slug ON organizations(slug);
-CREATE INDEX IF NOT EXISTS idx_organizations_created_by ON organizations(created_by);
+
+-- Only create created_by index if the column exists
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'organizations' AND column_name = 'created_by'
+    ) THEN
+        CREATE INDEX IF NOT EXISTS idx_organizations_created_by ON organizations(created_by);
+    END IF;
+END $$;
 
 -- Enable RLS
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 
--- RLS policies for organizations
+-- RLS policies for organizations (drop if exists first for idempotency)
+DROP POLICY IF EXISTS "Users can view organizations they belong to" ON organizations;
+DROP POLICY IF EXISTS "Organization admins can update organizations" ON organizations;
+DROP POLICY IF EXISTS "Service role can manage organizations" ON organizations;
+
 -- Users can see organizations they're members of
 CREATE POLICY "Users can view organizations they belong to" ON organizations
   FOR SELECT USING (
@@ -53,6 +67,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
+DROP TRIGGER IF EXISTS update_organizations_updated_at ON organizations;
 CREATE TRIGGER update_organizations_updated_at
   BEFORE UPDATE ON organizations
   FOR EACH ROW

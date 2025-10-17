@@ -19,12 +19,21 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Workspace ID required' }, { status: 400 });
     }
 
-    // Get campaigns with performance metrics
+    // Get campaigns for this workspace
     const { data: campaigns, error } = await supabase
-      .from('campaign_performance_summary')
-      .select('*')
-      .eq('campaign_id', workspaceId)
-      .order('launched_at', { ascending: false });
+      .from('campaigns')
+      .select(`
+        id,
+        name,
+        description,
+        campaign_type,
+        status,
+        launched_at,
+        created_at,
+        message_templates
+      `)
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Failed to fetch campaigns:', error);

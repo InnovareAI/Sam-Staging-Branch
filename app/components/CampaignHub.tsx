@@ -915,35 +915,30 @@ function CampaignBuilder({
     return () => clearTimeout(timer);
   }, [name, campaignType, connectionMessage, alternativeMessage, followUpMessages, workspaceId]);
 
-  // Load draft from localStorage on mount
+  // DISABLED: Auto-load draft from localStorage on mount
+  // User feedback: Don't auto-restore drafts, only load when explicitly clicked
+  // Drafts are managed through the database drafts list now
   useEffect(() => {
-    if (!workspaceId) return;
+    // Intentionally disabled - drafts are loaded explicitly from the drafts list
+    // Clean up old localStorage drafts if they exist
+    if (workspaceId) {
+      try {
+        const saved = localStorage.getItem(`campaign-draft-${workspaceId}`);
+        if (saved) {
+          const draft = JSON.parse(saved);
+          const savedDate = new Date(draft.savedAt);
+          const daysSaved = (Date.now() - savedDate.getTime()) / (1000 * 60 * 60 * 24);
 
-    try {
-      const saved = localStorage.getItem(`campaign-draft-${workspaceId}`);
-      if (saved) {
-        const draft = JSON.parse(saved);
-        const savedDate = new Date(draft.savedAt);
-        const daysSaved = (Date.now() - savedDate.getTime()) / (1000 * 60 * 60 * 24);
-
-        // Only restore if less than 7 days old
-        if (daysSaved < 7) {
-          setName(draft.name || getInitialCampaignName());
-          setCampaignType(draft.campaignType || 'connector');
-          setConnectionMessage(draft.connectionMessage || '');
-          setAlternativeMessage(draft.alternativeMessage || '');
-          setFollowUpMessages(draft.followUpMessages || ['']);
-
-          toastInfo(`Restored draft from ${savedDate.toLocaleDateString()}`);
-        } else {
-          // Clean up old draft
-          localStorage.removeItem(`campaign-draft-${workspaceId}`);
+          // Clean up drafts older than 7 days (silent, no toast)
+          if (daysSaved >= 7) {
+            localStorage.removeItem(`campaign-draft-${workspaceId}`);
+          }
         }
+      } catch (e) {
+        console.warn('Failed to clean up draft:', e);
       }
-    } catch (e) {
-      console.warn('Failed to load draft:', e);
     }
-  }, [workspaceId]); // Only run once on mount
+  }, [workspaceId]);
 
   // SAM Chat scroll management
   const samChatRef = useState<HTMLDivElement | null>(null)[0];
@@ -1113,83 +1108,8 @@ function CampaignBuilder({
     }
   };
 
-  // Load approved prospects when data source changes
-  useEffect(() => {
-    if (dataSource === 'approved') {
-      loadApprovedProspects();
-    }
-  }, [dataSource]);
-
-  const loadApprovedProspects = async () => {
-    setLoadingApprovedProspects(true);
-    try {
-      // Load from prospect approval system (Data Approval flow)
-      const sessionsResponse = await fetch('/api/prospect-approval/sessions/list');
-      if (!sessionsResponse.ok) {
-        setApprovedProspects([]);
-        setApprovalSessions([]);
-        return;
-      }
-
-      const sessionsData = await sessionsResponse.json();
-      if (!sessionsData.success || !sessionsData.sessions) {
-        setApprovedProspects([]);
-        setApprovalSessions([]);
-        return;
-      }
-
-      // Collect sessions with their approved prospects
-      const sessionsWithProspects: any[] = [];
-      const allApprovedProspects: any[] = [];
-
-      for (const session of sessionsData.sessions) {
-        const prospectsResponse = await fetch(`/api/prospect-approval/prospects?session_id=${session.id}`);
-        if (prospectsResponse.ok) {
-          const prospectsData = await prospectsResponse.json();
-          if (prospectsData.success && prospectsData.prospects) {
-            // Filter only approved prospects
-            const approved = prospectsData.prospects
-              .filter((p: any) => p.approval_status === 'approved')
-              .map((p: any) => ({
-                id: p.prospect_id,
-                name: p.name,
-                title: p.title || '',
-                company: p.company?.name || p.company || '',
-                email: p.contact?.email || '',
-                linkedin_url: p.contact?.linkedin_url || '',
-                phone: p.contact?.phone || '',
-                industry: p.company?.industry || '',
-                location: p.location || '',
-                sessionId: session.id,
-                campaignName: session.campaign_name || 'Untitled',
-                source: p.source || 'prospect_approval'
-              }));
-
-            if (approved.length > 0) {
-              sessionsWithProspects.push({
-                id: session.id,
-                name: session.campaign_name || 'Untitled Session',
-                createdAt: session.created_at,
-                prospectsCount: approved.length,
-                prospects: approved
-              });
-              allApprovedProspects.push(...approved);
-            }
-          }
-        }
-      }
-
-      setApprovalSessions(sessionsWithProspects);
-      setApprovedProspects(allApprovedProspects);
-      console.log(`✅ Loaded ${sessionsWithProspects.length} approval sessions with ${allApprovedProspects.length} approved prospects`);
-    } catch (error) {
-      console.error('Error loading approved prospects:', error);
-      setApprovedProspects([]);
-      setApprovalSessions([]);
-    } finally {
-      setLoadingApprovedProspects(false);
-    }
-  };
+  // Note: Approved prospects loading is now handled by React Query (lines 594-696)
+  // The useQuery hook automatically refetches when dataSource === 'approved'
 
   const addFollowUpMessage = () => {
     setFollowUpMessages([...followUpMessages, '']);
@@ -1287,7 +1207,7 @@ function CampaignBuilder({
   };
 
   const startSamTemplateGeneration = () => {
-    setShowSamChat(true);
+    setShowSamGenerationModal(true);
     setSamMessages([{
       role: 'assistant',
       content: `Hi! I'm SAM, and I'll help you create compelling LinkedIn messaging templates for your ${campaignType} campaign "${name}".
@@ -1759,7 +1679,7 @@ Would you like me to adjust these or create more variations?`
         linkedin_user_id: prospect.linkedin_user_id // Include existing LinkedIn ID if available
       }));
 
-      const uploadResponse = await fetch('/api/campaigns/upload-with-resolution', {
+      const uploadResponse = await fetch('/api/campaigns/upload-prospects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -3335,7 +3255,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       const campaign = await campaignResponse.json();
 
       // Step 2: Upload prospects
-      const uploadResponse = await fetch('/api/campaigns/upload-with-resolution', {
+      const uploadResponse = await fetch('/api/campaigns/upload-prospects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -4256,6 +4176,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                       // Clear currentDraftId if this was the active draft
                                       if (currentDraftId === draft.id) {
                                         setCurrentDraftId(null);
+                                      }
+                                      // Clear localStorage draft to prevent restore message
+                                      try {
+                                        localStorage.removeItem(`campaign-draft-${workspaceId}`);
+                                      } catch (e) {
+                                        console.warn('Failed to clear localStorage draft:', e);
                                       }
                                       queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
                                       toastSuccess('Draft deleted');
