@@ -3171,30 +3171,39 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Connection Message */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Connection Request Message (275 char max)
-                </label>
-                <textarea
-                  value={manualConnection}
-                  onChange={(e) => setManualConnection(e.target.value.slice(0, 275))}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-white min-h-[100px]"
-                  placeholder="Hi {first_name}, I noticed your work at {company_name}..."
-                />
-                <div className="text-right text-sm text-gray-400 mt-1">{manualConnection.length}/275</div>
-              </div>
+              {/* Connection Message (Connector campaigns only) */}
+              {campaignType === 'connector' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Connection Request Message (275 char max)
+                  </label>
+                  <textarea
+                    value={manualConnection}
+                    onChange={(e) => setManualConnection(e.target.value.slice(0, 275))}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-white min-h-[100px]"
+                    placeholder="Hi {first_name}, I noticed your work at {company_name}..."
+                  />
+                  <div className="text-right text-sm text-gray-400 mt-1">{manualConnection.length}/275</div>
+                </div>
+              )}
 
-              {/* Alternative Message */}
+              {/* Initial/Alternative Message */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Alternative Message (for 1st connections)
+                  {campaignType === 'messenger' ? 'Initial Message' : 'Alternative Message (for 1st connections)'}
                 </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  {campaignType === 'messenger'
+                    ? 'First message sent to your 1st degree connections'
+                    : 'Message sent to prospects who are already 1st degree connections'}
+                </p>
                 <textarea
                   value={manualAlternative}
                   onChange={(e) => setManualAlternative(e.target.value)}
                   className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-white min-h-[100px]"
-                  placeholder="Hi {first_name}, thanks for being connected..."
+                  placeholder={campaignType === 'messenger'
+                    ? "Hi {first_name}, I wanted to reach out about..."
+                    : "Hi {first_name}, thanks for being connected..."}
                 />
               </div>
 
@@ -3240,7 +3249,10 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
               <Button variant="secondary" onClick={() => setShowManualTemplateModal(false)}>Cancel</Button>
               <Button
                 onClick={() => {
-                  setConnectionMessage(manualConnection);
+                  // Only set connection message for Connector campaigns
+                  if (campaignType === 'connector') {
+                    setConnectionMessage(manualConnection);
+                  }
                   setAlternativeMessage(manualAlternative);
                   setFollowUpMessages(manualFollowUps.filter(m => m.trim()));
                   setShowManualTemplateModal(false);
