@@ -1760,7 +1760,10 @@ Would you like me to adjust these or create more variations?`
       
       // Trigger refresh of campaign list
       window.dispatchEvent(new CustomEvent('refreshCampaigns'));
-      
+
+      // Switch to New Campaigns tab
+      setCampaignFilter('pending');
+
     } catch (error: any) {
       console.error('Campaign creation error:', error);
       toastError(`❌ Error creating campaign: ${error.message}`);
