@@ -3687,6 +3687,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     try {
       const { _executionData } = finalCampaignData;
 
+      // Determine campaign type (needed for LinkedIn ID sync logic)
+      const approvedCampaignType = _executionData?.campaignType || finalCampaignData.type || 'connector';
+
       // Step 1: Create campaign
       const campaignResponse = await fetch('/api/campaigns', {
         method: 'POST',
@@ -3694,7 +3697,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         body: JSON.stringify({
           workspace_id: workspaceId,
           name: finalCampaignData.name,
-          campaign_type: _executionData?.campaignType || finalCampaignData.type || 'connector',
+          campaign_type: approvedCampaignType,
           message_templates: {
             connection_request: finalCampaignData.messages.connection_request,
             alternative_message: _executionData?.alternativeMessage || finalCampaignData.messages.follow_up_1,
@@ -3803,12 +3806,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         const approvalSecondThird = approvalProspectDegrees.filter((d: string) => d === '2nd/3rd').length;
         const hasOnly1stDegreeApproval = approvalFirstDegree > 0 && approvalSecondThird === 0;
 
-        // AUTOMATION: Always auto-sync LinkedIn IDs for campaigns needing them
-        // For Messenger campaigns (1st degree) or mixed campaigns
-        const needsLinkedInSync = totalProspectsWithIds === 0; // No IDs resolved yet
+        // AUTOMATION: Auto-sync LinkedIn IDs ONLY for Messenger campaigns (1st degree)
+        // Connector campaigns (2nd/3rd degree) don't need internal IDs - they use public profile URLs
+        const needsLinkedInSync = totalProspectsWithIds === 0 && approvedCampaignType === 'messenger';
 
         if (needsLinkedInSync) {
-          toastInfo('🔄 Auto-syncing LinkedIn IDs for 1st degree connections...');
+          toastInfo('🔄 Auto-syncing LinkedIn IDs for 1st degree connections (Messenger campaign)...');
 
           try {
             const syncResponse = await fetch('/api/linkedin/sync-connections', {
@@ -3853,10 +3856,16 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID discovery in progress...`);
           }
         } else {
-          // All prospects already have LinkedIn IDs - ready to launch immediately
-          toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects ready\n✅ All LinkedIn IDs already resolved`);
+          // No sync needed - either IDs already resolved OR it's a Connector campaign
+          if (approvedCampaignType === 'connector') {
+            // Connector campaigns don't need internal IDs - they extract from profile URLs
+            toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects ready\n🔗 LinkedIn profile URLs detected\n🚀 Campaign ready for launch!`);
+          } else {
+            // Messenger campaign with IDs already resolved
+            toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects ready\n✅ All LinkedIn IDs already resolved`);
+          }
 
-          // Auto-launch since IDs are already available
+          // Auto-launch since campaign is ready
           try {
             const launchResponse = await fetch('/api/campaigns/linkedin/execute-direct', {
               method: 'POST',
