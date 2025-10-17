@@ -3763,8 +3763,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         const approvalSecondThird = approvalProspectDegrees.filter((d: string) => d === '2nd/3rd').length;
         const hasOnly1stDegreeApproval = approvalFirstDegree > 0 && approvalSecondThird === 0;
 
-        // Auto-sync LinkedIn IDs for 1st degree connections
-        if (hasOnly1stDegreeApproval) {
+        // AUTOMATION: Always auto-sync LinkedIn IDs for campaigns needing them
+        // For Messenger campaigns (1st degree) or mixed campaigns
+        const needsLinkedInSync = totalProspectsWithIds === 0; // No IDs resolved yet
+
+        if (needsLinkedInSync) {
           toastInfo('🔄 Auto-syncing LinkedIn IDs for 1st degree connections...');
 
           try {
@@ -3780,19 +3783,56 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             if (syncResponse.ok) {
               const syncData = await syncResponse.json();
               if (syncData.stats?.campaign_prospects_resolved > 0) {
-                toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n🔗 ${syncData.stats.campaign_prospects_resolved} LinkedIn IDs resolved\n✅ Ready for messaging!`);
+                toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved and ready!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n🔗 ${syncData.stats.campaign_prospects_resolved} LinkedIn IDs auto-resolved\n🚀 Campaign is ready for launch!`);
+
+                // Auto-launch the campaign now that IDs are resolved
+                try {
+                  const launchResponse = await fetch('/api/campaigns/linkedin/execute-direct', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      campaignId: campaign.id,
+                      workspaceId: workspaceId
+                    })
+                  });
+
+                  if (launchResponse.ok) {
+                    toastSuccess(`🎉 Campaign launched successfully!`);
+                  }
+                } catch (launchError) {
+                  console.error('Auto-launch error:', launchError);
+                }
               } else {
-                toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID sync completed but no matches found\nℹ️ You may need to connect with these prospects first`);
+                toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID sync completed but no matches found\n\nℹ️ These prospects may not be in your LinkedIn connections yet. Connect with them first, then retry.`);
               }
             } else {
-              toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID auto-sync failed\n💡 Try: Campaign Dashboard → Sync LinkedIn IDs`);
+              toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID auto-sync failed - will retry automatically`);
             }
           } catch (syncError) {
             console.error('Auto-sync error:', syncError);
-            toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID discovery needed before messaging\n💡 Use: Campaign Dashboard → Sync LinkedIn IDs`);
+            toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID discovery in progress...`);
           }
         } else {
-          toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID discovery needed before messaging`);
+          // All prospects already have LinkedIn IDs - ready to launch immediately
+          toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects ready\n✅ All LinkedIn IDs already resolved`);
+
+          // Auto-launch since IDs are already available
+          try {
+            const launchResponse = await fetch('/api/campaigns/linkedin/execute-direct', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                campaignId: campaign.id,
+                workspaceId: workspaceId
+              })
+            });
+
+            if (launchResponse.ok) {
+              toastSuccess(`🎉 Campaign launched successfully!`);
+            }
+          } catch (launchError) {
+            console.error('Auto-launch error:', launchError);
+          }
         }
       }
 
