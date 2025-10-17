@@ -1053,40 +1053,8 @@ function CampaignBuilder({
     }
   };
 
-  // Load existing draft on mount
-  useEffect(() => {
-    const loadDraft = async () => {
-      if (!workspaceId || initialProspects?.length) return; // Skip if prospects provided
-
-      try {
-        const response = await fetch(`/api/campaigns/draft?workspaceId=${workspaceId}`);
-        const result = await response.json();
-
-        if (result.drafts && result.drafts.length > 0) {
-          // Load most recent draft
-          const draft = result.drafts[0];
-          setCurrentDraftId(draft.id);
-          setName(draft.name);
-          setCampaignType(draft.type);
-          setCurrentStep(draft.current_step || 1);
-          setConnectionMessage(draft.connection_message || '');
-          setAlternativeMessage(draft.alternative_message || '');
-          setFollowUpMessages(draft.follow_up_messages || ['']);
-
-          if (draft.draft_data?.csvData) {
-            setCsvData(draft.draft_data.csvData);
-            setShowPreview(true);
-          }
-
-          toastInfo('Draft campaign loaded');
-        }
-      } catch (error) {
-        console.error('Error loading draft:', error);
-      }
-    };
-
-    loadDraft();
-  }, [workspaceId]); // Only run on mount
+  // DISABLED: Auto-load draft on mount (removed - was annoying)
+  // Drafts are now only loaded when explicitly selected from the drafts list
 
   // Load draft when draftToLoad prop is provided
   useEffect(() => {
@@ -4241,6 +4209,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                       { method: 'DELETE' }
                                     );
                                     if (response.ok) {
+                                      // Clear currentDraftId if this was the active draft
+                                      if (currentDraftId === draft.id) {
+                                        setCurrentDraftId(null);
+                                      }
                                       queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
                                       toastSuccess('Draft deleted');
                                     }
