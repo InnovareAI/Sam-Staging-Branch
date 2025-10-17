@@ -1918,11 +1918,11 @@ Would you like me to adjust these or create more variations?`
           </div>
           )}
 
-          {/* Approved Prospects Selection */}
-          {dataSource === 'approved' && (
+          {/* Approved Prospects Selection - only show if prospects not already loaded */}
+          {dataSource === 'approved' && !initialProspects?.length && (
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-2">
-                Select Approval Lists
+                Select Approval Lists (Optional - add more)
               </label>
               <div className="bg-gray-700 rounded-lg p-4">
                 {loadingApprovedProspects ? (
