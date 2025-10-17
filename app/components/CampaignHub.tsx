@@ -2327,105 +2327,111 @@ Would you like me to adjust these or create more variations?`
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="connection-message" className="text-gray-400">
-              Connection Request Message
-            </Label>
-            <p className="text-xs text-gray-500">
-              This message will be sent with your connection request
-            </p>
-            <Textarea
-              id="connection-message"
-              className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
-              rows={4}
-              value={connectionMessage}
-              onChange={e => setConnectionMessage(e.target.value)}
-              onFocus={(e) => {
-                setActiveField({type: 'connection'});
-                setActiveTextarea(e.target as HTMLTextAreaElement);
-              }}
-              placeholder="Hi {first_name}, I saw your profile and would love to connect..."
-              maxLength={275}
-            />
-            <div className="flex justify-between items-center">
-              <span className={`text-xs font-medium ${
-                connectionMessage.length > 250 ? 'text-orange-400' :
-                connectionMessage.length > 270 ? 'text-red-400' :
-                'text-gray-400'
-              }`}>
-                {connectionMessage.length}/275 characters
-                {connectionMessage.length > 250 && connectionMessage.length <= 275 && (
-                  <span className="ml-2 text-xs">({275 - connectionMessage.length} remaining)</span>
+          {/* ONLY show Connection Request for Connector campaigns */}
+          {campaignType === 'connector' && (
+            <div className="space-y-2">
+              <Label htmlFor="connection-message" className="text-gray-400">
+                Connection Request Message
+              </Label>
+              <p className="text-xs text-gray-500">
+                This message will be sent with your connection request
+              </p>
+              <Textarea
+                id="connection-message"
+                className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+                rows={4}
+                value={connectionMessage}
+                onChange={e => setConnectionMessage(e.target.value)}
+                onFocus={(e) => {
+                  setActiveField({type: 'connection'});
+                  setActiveTextarea(e.target as HTMLTextAreaElement);
+                }}
+                placeholder="Hi {first_name}, I saw your profile and would love to connect..."
+                maxLength={275}
+              />
+              <div className="flex justify-between items-center">
+                <span className={`text-xs font-medium ${
+                  connectionMessage.length > 250 ? 'text-orange-400' :
+                  connectionMessage.length > 270 ? 'text-red-400' :
+                  'text-gray-400'
+                }`}>
+                  {connectionMessage.length}/275 characters
+                  {connectionMessage.length > 250 && connectionMessage.length <= 275 && (
+                    <span className="ml-2 text-xs">({275 - connectionMessage.length} remaining)</span>
+                  )}
+                </span>
+                {connectionMessage.length > 0 && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
+                    onClick={() => {
+                      setSamMessages([{
+                        role: 'assistant',
+                        content: `Hi! I'll help you improve your connection message.\n\n**Current Message:**\n"${connectionMessage}"\n\nWhat would you like me to improve? I can help with:\n- Making it more engaging\n- Adding personalization\n- Improving tone\n- Shortening or expanding it\n\nTell me what you'd like to change!`
+                      }]);
+                      setShowSamGenerationModal(true);
+                    }}
+                  >
+                    <Zap size={12} className="mr-1" />
+                    Improve with SAM
+                  </Button>
                 )}
-              </span>
-              {connectionMessage.length > 0 && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
-                  onClick={() => {
-                    setSamMessages([{
-                      role: 'assistant',
-                      content: `Hi! I'll help you improve your connection message.\n\n**Current Message:**\n"${connectionMessage}"\n\nWhat would you like me to improve? I can help with:\n- Making it more engaging\n- Adding personalization\n- Improving tone\n- Shortening or expanding it\n\nTell me what you'd like to change!`
-                    }]);
-                    setShowSamGenerationModal(true);
-                  }}
-                >
-                  <Zap size={12} className="mr-1" />
-                  Improve with SAM
-                </Button>
-              )}
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="space-y-2">
-            <Label htmlFor="alternative-message" className="text-gray-400">
-              Alternative Message (Optional)
-            </Label>
-            <p className="text-xs text-gray-500">
-              Shorter alternative message for connection requests
-            </p>
-            <Textarea
-              id="alternative-message"
-              className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
-              rows={2}
-              value={alternativeMessage}
-              onChange={e => setAlternativeMessage(e.target.value)}
-              onFocus={(e) => {
-                setActiveField({type: 'alternative'});
-                setActiveTextarea(e.target as HTMLTextAreaElement);
-              }}
-              placeholder="Would love to connect with you on LinkedIn!"
-              maxLength={115}
-            />
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-500">
-                Characters remaining: {115 - alternativeMessage.length}/115
-              </span>
-              {alternativeMessage.length > 0 && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
-                  onClick={() => {
-                    setSamMessages([{
-                      role: 'assistant',
-                      content: `Hi! I'll help you improve your alternative message.\n\n**Current Message:**\n"${alternativeMessage}"\n\nWhat would you like me to improve? I can help with:\n- Making it more engaging\n- Adding personalization\n- Improving tone\n- Keeping it concise\n\nTell me what you'd like to change!`
-                    }]);
-                    setShowSamGenerationModal(true);
-                  }}
-                >
-                  <Zap size={12} className="mr-1" />
-                  Improve with SAM
-                </Button>
-              )}
+          {/* ONLY show Alternative Message for Connector campaigns */}
+          {campaignType === 'connector' && (
+            <div className="space-y-2">
+              <Label htmlFor="alternative-message" className="text-gray-400">
+                Alternative Message (Optional)
+              </Label>
+              <p className="text-xs text-gray-500">
+                Shorter alternative message for connection requests
+              </p>
+              <Textarea
+                id="alternative-message"
+                className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+                rows={2}
+                value={alternativeMessage}
+                onChange={e => setAlternativeMessage(e.target.value)}
+                onFocus={(e) => {
+                  setActiveField({type: 'alternative'});
+                  setActiveTextarea(e.target as HTMLTextAreaElement);
+                }}
+                placeholder="Would love to connect with you on LinkedIn!"
+                maxLength={115}
+              />
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-500">
+                  Characters remaining: {115 - alternativeMessage.length}/115
+                </span>
+                {alternativeMessage.length > 0 && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
+                    onClick={() => {
+                      setSamMessages([{
+                        role: 'assistant',
+                        content: `Hi! I'll help you improve your alternative message.\n\n**Current Message:**\n"${alternativeMessage}"\n\nWhat would you like me to improve? I can help with:\n- Making it more engaging\n- Adding personalization\n- Improving tone\n- Keeping it concise\n\nTell me what you'd like to change!`
+                      }]);
+                      setShowSamGenerationModal(true);
+                    }}
+                  >
+                    <Zap size={12} className="mr-1" />
+                    Improve with SAM
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <div className="flex items-center justify-between mb-3">
               <Label className="text-gray-400">
-                Follow-up Messages
+                {campaignType === 'messenger' ? 'Messages' : 'Follow-up Messages'}
               </Label>
               <Button
                 onClick={addFollowUpMessage}
@@ -2433,17 +2439,21 @@ Would you like me to adjust these or create more variations?`
                 size="sm"
                 className="text-purple-400 hover:text-purple-300 h-auto p-0"
               >
-                <Plus size={16} className="mr-1" /> Add Follow-up
+                <Plus size={16} className="mr-1" /> {campaignType === 'messenger' ? 'Add Message' : 'Add Follow-up'}
               </Button>
             </div>
             <p className="text-xs text-gray-500 mb-3">
-              Messages sent after connection is accepted
+              {campaignType === 'messenger'
+                ? 'Direct messages sent to your 1st degree connections'
+                : 'Messages sent after connection is accepted'}
             </p>
             
             {followUpMessages.map((message, index) => (
               <div key={index} className="mb-4">
                 <div className="flex items-center justify-between mb-2">
-                  <Label className="text-gray-400">Follow-up {index + 1}</Label>
+                  <Label className="text-gray-400">
+                    {campaignType === 'messenger' ? `Message ${index + 1}` : `Follow-up ${index + 1}`}
+                  </Label>
                   {followUpMessages.length > 1 && (
                     <Button
                       onClick={() => removeFollowUpMessage(index)}
@@ -2648,7 +2658,9 @@ Would you like me to adjust these or create more variations?`
             {followUpMessages.map((message, index) => (
               <div key={index} className="mb-4">
                 <div className="flex items-center justify-between mb-2">
-                  <Label className="text-gray-400">Follow-up {index + 1}</Label>
+                  <Label className="text-gray-400">
+                    {campaignType === 'messenger' ? `Message ${index + 1}` : `Follow-up ${index + 1}`}
+                  </Label>
                   {followUpMessages.length > 1 && (
                     <Button
                       onClick={() => removeFollowUpMessage(index)}
