@@ -40,6 +40,28 @@
 
 ## ✨ Feature Requests
 
+### Light/Day Mode (Future Enhancement)
+
+**Complexity**: Medium-Low (technically simple, time-consuming)
+**Time Estimate**: 10-15 hours total
+
+**What's Involved**:
+1. Theme infrastructure setup (30 min) - next-themes already installed
+2. Add theme toggle button (10 min)
+3. Update all component styles with light mode classes (8-10 hours)
+   - Find/replace dark colors with light alternatives
+   - Example: `bg-gray-900` → `bg-white dark:bg-gray-900`
+   - ~500+ class updates across all components
+4. Testing & refinement (2-3 hours)
+
+**Implementation Strategy**:
+- Option 1: Full sprint (1-2 days focused work)
+- Option 2: Gradual rollout (page-by-page as we update components)
+
+**Priority**: After current critical issues are resolved
+
+---
+
 ### LinkedIn Search - Foundational Filters (High Priority)
 
 **✅ Currently Implemented (7 filters):**
