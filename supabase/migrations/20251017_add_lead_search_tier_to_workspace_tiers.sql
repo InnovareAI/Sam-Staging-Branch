@@ -1,10 +1,14 @@
 -- Add lead search tier capability to workspace_tiers
 -- Migration: 20251017_add_lead_search_tier_to_workspace_tiers.sql
+--
+-- IMPORTANT: Search access is determined by LinkedIn account type, not subscription tier
+-- - Classic/Premium LinkedIn: Limited search → Use BrightData MCP or Google CSE
+-- - Sales Navigator: Full search → Use Unipile LinkedIn Search MCP
 
 -- Add column for lead search capabilities
 ALTER TABLE workspace_tiers
-ADD COLUMN IF NOT EXISTS lead_search_tier TEXT NOT NULL DEFAULT 'basic'
-CHECK (lead_search_tier IN ('basic', 'advanced', 'premium'));
+ADD COLUMN IF NOT EXISTS lead_search_tier TEXT NOT NULL DEFAULT 'external'
+CHECK (lead_search_tier IN ('external', 'sales_navigator'));
 
 -- Add column for monthly lead search quota
 ALTER TABLE workspace_tiers
@@ -18,35 +22,36 @@ ADD COLUMN IF NOT EXISTS monthly_lead_searches_used INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE workspace_tiers
 ADD COLUMN IF NOT EXISTS search_quota_reset_date DATE NOT NULL DEFAULT CURRENT_DATE;
 
--- Update existing tiers with appropriate lead search access
--- TEMPORARY: All tiers get advanced search for testing/rollout
+-- Update existing tiers with default search access
+-- DEFAULT: All users start with 'external' search (BrightData/Google CSE)
+-- Users with Sales Navigator will be updated to 'sales_navigator' when they connect LinkedIn
 
--- Startup tier: Advanced search (BrightData MCP access) - ENABLED FOR ALL
+-- Startup tier: External search (BrightData MCP or Google CSE)
 UPDATE workspace_tiers
 SET
-  lead_search_tier = 'advanced',
+  lead_search_tier = 'external',
   monthly_lead_search_quota = 1000,
   monthly_lead_searches_used = 0
 WHERE tier = 'startup';
 
--- SME tier: Advanced search (BrightData MCP access)
+-- SME tier: External search (BrightData MCP or Google CSE)
 UPDATE workspace_tiers
 SET
-  lead_search_tier = 'advanced',
+  lead_search_tier = 'external',
   monthly_lead_search_quota = 5000,
   monthly_lead_searches_used = 0
 WHERE tier = 'sme';
 
--- Enterprise tier: Premium search (Full BrightData + custom integrations)
+-- Enterprise tier: External search (BrightData MCP or Google CSE)
 UPDATE workspace_tiers
 SET
-  lead_search_tier = 'premium',
+  lead_search_tier = 'external',
   monthly_lead_search_quota = 10000,
   monthly_lead_searches_used = 0
 WHERE tier = 'enterprise';
 
--- NOTE: To revert to tier-based restrictions later, run:
--- UPDATE workspace_tiers SET lead_search_tier = 'basic', monthly_lead_search_quota = 100 WHERE tier = 'startup';
+-- NOTE: When user connects Sales Navigator account, update to:
+-- UPDATE workspace_tiers SET lead_search_tier = 'sales_navigator' WHERE workspace_id = ?;
 
 -- Create index for faster tier lookups
 CREATE INDEX IF NOT EXISTS idx_workspace_tiers_search_tier ON workspace_tiers(lead_search_tier);
@@ -135,7 +140,7 @@ END;
 $$;
 
 -- Comments
-COMMENT ON COLUMN workspace_tiers.lead_search_tier IS 'Lead search capability tier: basic (Google CSE only), advanced (BrightData), premium (BrightData + custom)';
+COMMENT ON COLUMN workspace_tiers.lead_search_tier IS 'Lead search capability: external (BrightData/Google CSE for Classic/Premium LinkedIn), sales_navigator (Unipile LinkedIn Search for Sales Nav users)';
 COMMENT ON COLUMN workspace_tiers.monthly_lead_search_quota IS 'Monthly quota for lead searches based on subscription tier';
 COMMENT ON COLUMN workspace_tiers.monthly_lead_searches_used IS 'Number of lead searches used in current month';
 COMMENT ON FUNCTION check_lead_search_quota IS 'Checks if workspace has remaining lead search quota for the current month';

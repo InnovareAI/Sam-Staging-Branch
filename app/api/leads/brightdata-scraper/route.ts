@@ -69,7 +69,7 @@ interface BrightdataProspect {
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
-    
+
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -80,11 +80,42 @@ export async function POST(req: NextRequest) {
       action,
       search_params,
       campaign_id,
+      workspace_id,
       use_premium_proxies = true,
       geo_location = 'US'
     } = await req.json();
 
     console.log(`Brightdata MCP: ${action} request for user ${user.id}`);
+
+    // Check workspace tier and LinkedIn account type
+    if (workspace_id) {
+      const { data: tierData, error: tierError } = await supabase
+        .rpc('check_lead_search_quota', { p_workspace_id: workspace_id });
+
+      if (tierError) {
+        console.error('Error checking search quota:', tierError);
+      } else {
+        // If user has Sales Navigator, suggest using Unipile instead
+        if (tierData.search_tier === 'sales_navigator') {
+          console.log('⚠️  User has Sales Navigator - suggest using Unipile LinkedIn search');
+          return NextResponse.json({
+            success: false,
+            error: 'Sales Navigator users should use Unipile LinkedIn search',
+            hint: 'Use /api/search/linkedin-unipile for better results with your Sales Navigator account',
+            redirect_to: '/api/search/linkedin-unipile'
+          }, { status: 400 });
+        }
+
+        // Check quota for external search users
+        if (!tierData.has_quota) {
+          return NextResponse.json({
+            success: false,
+            error: 'Search quota exceeded',
+            quota_info: tierData
+          }, { status: 429 });
+        }
+      }
+    }
 
     switch (action) {
       case 'scrape_prospects':
