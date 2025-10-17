@@ -16,10 +16,17 @@ export async function GET() {
       .single()
 
     // Fetch accessible workspaces
-    const { data: memberships } = await supabase
+    const { data: memberships, error: memberError } = await supabase
       .from('workspace_members')
       .select('workspace_id, workspaces!inner(id, name)')
       .eq('user_id', session.user.id)
+
+    if (memberError) {
+      console.error('[workspace/list] Error fetching memberships:', memberError)
+      return NextResponse.json({ workspaces: [], error: memberError.message })
+    }
+
+    console.log('[workspace/list] Raw memberships:', memberships)
 
     const workspaces = (memberships || []).map(m => ({ 
       id: m.workspace_id, 
@@ -27,8 +34,10 @@ export async function GET() {
     }))
     const current = workspaces.find(w => w.id === user?.current_workspace_id) || null
 
+    console.log('[workspace/list] Returning:', { workspaceCount: workspaces.length, current })
     return NextResponse.json({ workspaces, current })
   } catch (e) {
-    return NextResponse.json({ workspaces: [] })
+    console.error('[workspace/list] Exception:', e)
+    return NextResponse.json({ workspaces: [], error: String(e) })
   }
 }
