@@ -31,14 +31,18 @@ export function WorkspaceSelector({ userEmail }: WorkspaceSelectorProps) {
 
   const fetchWorkspaces = async () => {
     try {
+      console.log('[WorkspaceSelector] Fetching workspaces for:', userEmail)
       const res = await fetch('/api/workspace/list')
+      const data = await res.json()
+      console.log('[WorkspaceSelector] API response:', data)
+      
       if (res.ok) {
-        const data = await res.json()
         setWorkspaces(data.workspaces || [])
         setCurrentWorkspace(data.current || null)
+        console.log('[WorkspaceSelector] Set workspaces:', data.workspaces?.length)
       }
     } catch (error) {
-      console.error('Error fetching workspaces:', error)
+      console.error('[WorkspaceSelector] Error fetching workspaces:', error)
     }
   }
 
@@ -69,7 +73,15 @@ export function WorkspaceSelector({ userEmail }: WorkspaceSelectorProps) {
     }
   }
 
+  console.log('[WorkspaceSelector] Render check:', { 
+    isInnovareAI, 
+    userEmail, 
+    workspaceCount: workspaces.length,
+    workspaces 
+  })
+
   if (workspaces.length <= 1) {
+    console.log('[WorkspaceSelector] Hidden - only', workspaces.length, 'workspace(s)')
     return null // Don't show if only one workspace
   }
 
