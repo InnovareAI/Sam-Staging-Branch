@@ -1605,6 +1605,10 @@ Would you like me to adjust these or create more variations?`
       toastError('Please add a connection request message');
       return;
     }
+    if (campaignType === 'messenger' && !followUpMessages.some(msg => msg.trim())) {
+      toastError('Please add at least one message');
+      return;
+    }
 
     // Prepare campaign data for approval screen
     const prospects = dataSource === 'upload' ? csvData : selectedProspects.map(prospect => ({
@@ -1839,11 +1843,13 @@ Would you like me to adjust these or create more variations?`
                 const IconComponent = type.icon;
                 const isConnector = type.value === 'connector';
                 const isMessenger = type.value === 'messenger';
+                const isBuilder = type.value === 'builder';
 
                 // Disable Connector if all prospects are 1st degree (already connected)
                 // Disable Messenger if all prospects are 2nd/3rd degree (not connected)
+                // Disable Builder (coming soon)
                 const hasOnly2nd3rdDegree = connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0;
-                const isDisabled = (isConnector && hasOnly1stDegree) || (isMessenger && hasOnly2nd3rdDegree);
+                const isDisabled = (isConnector && hasOnly1stDegree) || (isMessenger && hasOnly2nd3rdDegree) || isBuilder;
 
                 // Determine which warning to show
                 let disabledReason = '';
@@ -1851,6 +1857,8 @@ Would you like me to adjust these or create more variations?`
                   disabledReason = 'Your prospects are already 1st degree connections';
                 } else if (isMessenger && hasOnly2nd3rdDegree) {
                   disabledReason = 'Your prospects are 2nd/3rd degree - send connection requests first';
+                } else if (isBuilder) {
+                  disabledReason = '🚧 Coming Soon - Advanced features in development';
                 }
 
                 return (
@@ -2437,7 +2445,169 @@ Would you like me to adjust these or create more variations?`
           </div>
         </div>
       )}
-      
+
+      {/* Step 3: Message Templates (Messenger Campaign - 1st degree connections) */}
+      {currentStep === 3 && campaignType === 'messenger' && (
+        <div className="space-y-6">
+          {/* SAM Messaging Generation */}
+          <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
+            <div className="flex items-center mb-3">
+              <Zap className="text-purple-400 mr-2" size={20} />
+              <h4 className="text-white font-medium">SAM AI Messaging Generator</h4>
+            </div>
+            <p className="text-gray-300 text-sm mb-3">
+              Let SAM create personalized messaging sequences for your 1st degree connections.
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-gray-700 hover:bg-gray-600 text-gray-300"
+                onClick={() => {
+                  setManualConnection('');
+                  setManualAlternative('');
+                  setManualFollowUps(['']);
+                  setShowManualTemplateModal(true);
+                }}
+              >
+                <Edit size={16} className="mr-1" />
+                Create Manually
+              </Button>
+              <Button
+                onClick={() => {
+                  setSamMessages([{
+                    role: 'assistant',
+                    content: `Hi! I'm SAM, and I'll help you create compelling LinkedIn messaging sequences for your Messenger campaign "${name}".\n\nI can see you have ${(initialProspects?.length || 0) + csvData.length + selectedProspects.length} prospects who are already 1st degree connections. To create the best messaging, tell me:\n\n1. What's your main goal with this campaign? (nurturing relationships, offering services, partnerships, etc.)\n2. What value can you offer these connections?\n3. Any specific tone you'd like? (professional, friendly, consultative, etc.)\n\nLet's create messages that strengthen your relationships! 🎯`
+                  }]);
+                  setShowSamGenerationModal(true);
+                }}
+                className="bg-purple-600 hover:bg-purple-700"
+                size="sm"
+              >
+                <Zap size={16} className="mr-1" />
+                Generate Messaging with SAM
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30"
+                onClick={openKBModal}
+              >
+                <Brain size={16} className="mr-1" />
+                Load from Knowledgebase
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500/30"
+                onClick={openPreviousMessagesModal}
+              >
+                <Clock size={16} className="mr-1" />
+                Load Previous Messages
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30"
+                onClick={() => setShowPasteModal(true)}
+              >
+                <Upload size={16} className="mr-1" />
+                Paste Template
+              </Button>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <Label className="text-gray-400">
+                Message Sequence
+              </Label>
+              <Button
+                onClick={addFollowUpMessage}
+                variant="link"
+                size="sm"
+                className="text-purple-400 hover:text-purple-300 h-auto p-0"
+              >
+                <Plus size={16} className="mr-1" /> Add Message
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">
+              Messages sent directly to your 1st degree connections (no connection request needed)
+            </p>
+
+            {followUpMessages.map((message, index) => (
+              <div key={index} className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-gray-400">Message {index + 1}</Label>
+                  {followUpMessages.length > 1 && (
+                    <Button
+                      onClick={() => removeFollowUpMessage(index)}
+                      variant="ghost"
+                      size="icon"
+                      className="text-red-400 hover:text-red-300 h-6 w-6"
+                    >
+                      <XCircle size={16} />
+                    </Button>
+                  )}
+                </div>
+                <Textarea
+                  className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+                  rows={4}
+                  value={message}
+                  onChange={e => updateFollowUpMessage(index, e.target.value)}
+                  onFocus={(e) => {
+                    setActiveField({type: 'followup', index});
+                    setActiveTextarea(e.target as HTMLTextAreaElement);
+                  }}
+                  placeholder={`Message ${index + 1}...`}
+                  data-followup-index={index}
+                />
+                {message.length > 0 && (
+                  <div className="flex justify-end mt-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
+                      onClick={() => {
+                        setSamMessages([{
+                          role: 'assistant',
+                          content: `Hi! I'll help you improve message #${index + 1}.\n\n**Current Message:**\n"${message}"\n\nWhat would you like me to improve? I can help with:\n- Making it more engaging\n- Adding personalization\n- Improving the call-to-action\n- Adjusting the tone\n\nTell me what you'd like to change!`
+                        }]);
+                        setShowSamGenerationModal(true);
+                      }}
+                    >
+                      <Zap size={12} className="mr-1" />
+                      Improve with SAM
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-gray-700 rounded-lg p-4">
+            <h4 className="text-white font-medium mb-3">Personalization Placeholders</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {placeholders.map((placeholder) => (
+                <Button
+                  key={placeholder.key}
+                  onClick={() => insertPlaceholder(placeholder.key)}
+                  variant="secondary"
+                  size="sm"
+                  className="text-xs bg-purple-600 hover:bg-purple-700 text-white"
+                  title={placeholder.description}
+                >
+                  {placeholder.key}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Click any placeholder to insert it into your message
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Navigation Buttons */}
       <div className="flex justify-between mt-8">
         <Button
