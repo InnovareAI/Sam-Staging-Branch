@@ -3362,8 +3362,39 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
       const uploadResult = await uploadResponse.json();
 
+      // Step 2.5: Auto-sync LinkedIn IDs for 1st degree connections
+      let syncedCount = 0;
+      if (uploadResult.prospects_with_linkedin_ids === 0 && hasOnly1stDegree) {
+        console.log('🔄 Auto-syncing LinkedIn IDs for 1st degree connections...');
+
+        try {
+          const syncResponse = await fetch('/api/campaigns/sync-linkedin-ids', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              campaignId: campaign.id,
+              workspaceId: workspaceId
+            })
+          });
+
+          if (syncResponse.ok) {
+            const syncResult = await syncResponse.json();
+            syncedCount = syncResult.resolved || 0;
+            console.log(`✅ Synced ${syncedCount} LinkedIn IDs from message history`);
+          } else {
+            console.warn('⚠️ LinkedIn ID sync failed, will need manual resolution');
+          }
+        } catch (error) {
+          console.error('LinkedIn ID sync error:', error);
+          // Continue anyway - user can manually resolve later
+        }
+      }
+
+      // Update prospects count to include synced IDs
+      const totalProspectsWithIds = uploadResult.prospects_with_linkedin_ids + syncedCount;
+
       // Step 3: Execute via N8N
-      if (uploadResult.prospects_with_linkedin_ids > 0) {
+      if (totalProspectsWithIds > 0) {
         const executeResponse = await fetch('/api/campaigns/linkedin/execute-via-n8n', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -3374,7 +3405,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         });
 
         if (executeResponse.ok) {
-          toastError(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n🚀 Campaign sent to N8N for execution`);
+          const syncMessage = syncedCount > 0
+            ? `\n🔗 ${syncedCount} LinkedIn IDs auto-resolved from message history`
+            : '';
+          toastError(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded${syncMessage}\n🚀 Campaign sent to N8N for execution`);
         } else {
           toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Manual launch required from campaign dashboard`);
         }
