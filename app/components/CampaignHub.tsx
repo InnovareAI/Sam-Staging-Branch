@@ -3470,6 +3470,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       setShowApprovalScreen(false);
       setCampaignDataForApproval(null);
       setShowBuilder(false);
+      setCampaignFilter('pending'); // Switch to New Campaigns tab
       onCampaignCreated?.();
 
     } catch (error) {
@@ -4190,6 +4191,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   setShowBuilder(false);
                   setSelectedCampaignProspects(null); // Clear selected campaign prospects
                   setSelectedDraft(null); // Clear selected draft
+                  setCampaignFilter('pending'); // Switch to New Campaigns tab
                   onCampaignCreated?.();
                 }}
                 initialProspects={selectedCampaignProspects || initialProspects}
