@@ -1748,9 +1748,19 @@ Would you like me to adjust these or create more variations?`
 
       const uploadResult = await uploadResponse.json();
 
+      // Calculate connection degrees for these prospects
+      const prospectDegrees = prospects.map((p: any) => {
+        const degree = p.connection_degree || p.degree || 'unknown';
+        return degree.toLowerCase().includes('1st') ? '1st' :
+               (degree.toLowerCase().includes('2nd') || degree.toLowerCase().includes('3rd')) ? '2nd/3rd' : 'unknown';
+      });
+      const firstDegreeCount = prospectDegrees.filter((d: string) => d === '1st').length;
+      const secondThirdCount = prospectDegrees.filter((d: string) => d === '2nd/3rd').length;
+      const hasOnly1stDegreeLocal = firstDegreeCount > 0 && secondThirdCount === 0;
+
       // Step 2.5: Auto-sync LinkedIn IDs for 1st degree connections
       let syncedCount = 0;
-      if (uploadResult.prospects_with_linkedin_ids === 0 && hasOnly1stDegree) {
+      if (uploadResult.prospects_with_linkedin_ids === 0 && hasOnly1stDegreeLocal) {
         console.log('🔄 Auto-syncing LinkedIn IDs for 1st degree connections...');
 
         try {
@@ -3682,9 +3692,19 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
       const uploadResult = await uploadResponse.json();
 
+      // Calculate connection degrees for these prospects
+      const prospectDegrees = prospects.map((p: any) => {
+        const degree = p.connection_degree || p.degree || 'unknown';
+        return degree.toLowerCase().includes('1st') ? '1st' :
+               (degree.toLowerCase().includes('2nd') || degree.toLowerCase().includes('3rd')) ? '2nd/3rd' : 'unknown';
+      });
+      const firstDegreeCount = prospectDegrees.filter((d: string) => d === '1st').length;
+      const secondThirdCount = prospectDegrees.filter((d: string) => d === '2nd/3rd').length;
+      const hasOnly1stDegreeLocal = firstDegreeCount > 0 && secondThirdCount === 0;
+
       // Step 2.5: Auto-sync LinkedIn IDs for 1st degree connections
       let syncedCount = 0;
-      if (uploadResult.prospects_with_linkedin_ids === 0 && hasOnly1stDegree) {
+      if (uploadResult.prospects_with_linkedin_ids === 0 && hasOnly1stDegreeLocal) {
         console.log('🔄 Auto-syncing LinkedIn IDs for 1st degree connections...');
 
         try {
@@ -3733,8 +3753,18 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Manual launch required from campaign dashboard`);
         }
       } else {
+        // Calculate connection degrees for approval prospects
+        const approvalProspectDegrees = finalCampaignData.prospects.map((p: any) => {
+          const degree = p.connection_degree || p.degree || 'unknown';
+          return degree.toLowerCase().includes('1st') ? '1st' :
+                 (degree.toLowerCase().includes('2nd') || degree.toLowerCase().includes('3rd')) ? '2nd/3rd' : 'unknown';
+        });
+        const approvalFirstDegree = approvalProspectDegrees.filter((d: string) => d === '1st').length;
+        const approvalSecondThird = approvalProspectDegrees.filter((d: string) => d === '2nd/3rd').length;
+        const hasOnly1stDegreeApproval = approvalFirstDegree > 0 && approvalSecondThird === 0;
+
         // Auto-sync LinkedIn IDs for 1st degree connections
-        if (hasOnly1stDegree) {
+        if (hasOnly1stDegreeApproval) {
           toastInfo('🔄 Auto-syncing LinkedIn IDs for 1st degree connections...');
 
           try {
