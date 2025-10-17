@@ -510,11 +510,13 @@ function CampaignList() {
 function CampaignBuilder({
   onClose,
   initialProspects,
+  draftToLoad,
   onPrepareForApproval,
   workspaceId
 }: {
   onClose?: () => void;
   initialProspects?: any[] | null;
+  draftToLoad?: any;
   onPrepareForApproval?: (campaignData: any) => void;
   workspaceId?: string | null;
 }) {
@@ -757,6 +759,27 @@ function CampaignBuilder({
 
     loadDraft();
   }, [workspaceId]); // Only run on mount
+
+  // Load draft when draftToLoad prop is provided
+  useEffect(() => {
+    if (!draftToLoad) return;
+
+    console.log('Loading draft from prop:', draftToLoad);
+    setCurrentDraftId(draftToLoad.id);
+    setName(draftToLoad.name);
+    setCampaignType(draftToLoad.type);
+    setCurrentStep(draftToLoad.current_step || 1);
+    setConnectionMessage(draftToLoad.connection_message || '');
+    setAlternativeMessage(draftToLoad.alternative_message || '');
+    setFollowUpMessages(draftToLoad.follow_up_messages || ['']);
+
+    if (draftToLoad.draft_data?.csvData) {
+      setCsvData(draftToLoad.draft_data.csvData);
+      setShowPreview(true);
+    }
+
+    toastInfo(`Loaded draft: ${draftToLoad.name}`);
+  }, [draftToLoad]);
 
   // Auto-save on changes (debounced)
   useEffect(() => {
@@ -2712,6 +2735,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const [campaignDataForApproval, setCampaignDataForApproval] = useState<any>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [selectedCampaignProspects, setSelectedCampaignProspects] = useState<any[] | null>(null);
+  const [selectedDraft, setSelectedDraft] = useState<any>(null);
   
   const queryClient = useQueryClient();
 
@@ -3699,9 +3723,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               onClose={() => {
                 setShowBuilder(false);
                 setSelectedCampaignProspects(null); // Clear selected campaign prospects
+                setSelectedDraft(null); // Clear selected draft
                 onCampaignCreated?.();
               }}
               initialProspects={selectedCampaignProspects || initialProspects}
+              draftToLoad={selectedDraft}
               onPrepareForApproval={(campaignData) => {
                 // Show approval screen
                 setCampaignDataForApproval(campaignData);
@@ -3813,19 +3839,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                           key={draft.id}
                           onClick={() => {
                             // Load draft into builder
-                            setCurrentDraftId(draft.id);
-                            setName(draft.name);
-                            setCampaignType(draft.type);
-                            setCurrentStep(draft.current_step || 1);
-                            setConnectionMessage(draft.connection_message || '');
-                            setAlternativeMessage(draft.alternative_message || '');
-                            setFollowUpMessages(draft.follow_up_messages || ['']);
-                            if (draft.draft_data?.csvData) {
-                              setCsvData(draft.draft_data.csvData);
-                              setShowPreview(true);
-                            }
+                            setSelectedDraft(draft);
                             setShowBuilder(true);
-                            toastInfo(`Loaded draft: ${draft.name}`);
                           }}
                           className="border-b border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer"
                         >
