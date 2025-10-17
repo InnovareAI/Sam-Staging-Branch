@@ -1571,9 +1571,20 @@ Would you like me to adjust these or create more variations?`
   return (
     <>
     <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <div className="flex items-center mb-6">
-        <Plus className="text-blue-400 mr-3" size={24} />
-        <h3 className="text-xl font-semibold text-white">New Campaign</h3>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center">
+          <Plus className="text-blue-400 mr-3" size={24} />
+          <h3 className="text-xl font-semibold text-white">New Campaign</h3>
+        </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+            title="Close"
+          >
+            <X size={24} />
+          </button>
+        )}
       </div>
       
       {/* Step Indicator */}
@@ -3774,25 +3785,27 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           />
         )}
 
-        {/* Campaign Builder */}
+        {/* Campaign Builder Modal */}
         {showBuilder && !showApprovalScreen && (
-          <div className="mb-6">
-            <CampaignBuilder
-              onClose={() => {
-                setShowBuilder(false);
-                setSelectedCampaignProspects(null); // Clear selected campaign prospects
-                setSelectedDraft(null); // Clear selected draft
-                onCampaignCreated?.();
-              }}
-              initialProspects={selectedCampaignProspects || initialProspects}
-              draftToLoad={selectedDraft}
-              onPrepareForApproval={(campaignData) => {
-                // Show approval screen
-                setCampaignDataForApproval(campaignData);
-                setShowApprovalScreen(true);
-              }}
-              workspaceId={workspaceId}
-            />
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-6xl max-h-[95vh] overflow-y-auto">
+              <CampaignBuilder
+                onClose={() => {
+                  setShowBuilder(false);
+                  setSelectedCampaignProspects(null); // Clear selected campaign prospects
+                  setSelectedDraft(null); // Clear selected draft
+                  onCampaignCreated?.();
+                }}
+                initialProspects={selectedCampaignProspects || initialProspects}
+                draftToLoad={selectedDraft}
+                onPrepareForApproval={(campaignData) => {
+                  // Show approval screen
+                  setCampaignDataForApproval(campaignData);
+                  setShowApprovalScreen(true);
+                }}
+                workspaceId={workspaceId}
+              />
+            </div>
           </div>
         )}
 
