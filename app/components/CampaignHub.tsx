@@ -1599,12 +1599,10 @@ Would you like me to adjust these or create more variations?`
   };
   
   const submit = async () => {
-    // Validate prospect data based on source
-    const hasProspectData = dataSource === 'upload' ? csvData.length > 0 : selectedProspects.length > 0;
+    // Validate prospect data based on source - check all possible prospect sources
+    const hasProspectData = csvData.length > 0 || selectedProspects.length > 0 || (initialProspects?.length || 0) > 0;
     if (!hasProspectData) {
-      alert(dataSource === 'upload'
-        ? 'Please upload prospect data before creating campaign'
-        : 'Please select approved prospects before creating campaign');
+      alert('Please add prospects before creating campaign');
       return;
     }
     if (campaignType === 'connector' && !connectionMessage.trim()) {
