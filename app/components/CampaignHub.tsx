@@ -1570,7 +1570,7 @@ Would you like me to adjust these or create more variations?`
   
   return (
     <>
-    <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-4xl">
+    <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
       <div className="flex items-center mb-6">
         <Plus className="text-blue-400 mr-3" size={24} />
         <h3 className="text-xl font-semibold text-white">New Campaign</h3>
@@ -1996,14 +1996,6 @@ Would you like me to adjust these or create more variations?`
             </p>
             <div className="flex gap-2 flex-wrap">
               <Button
-                onClick={startSamTemplateGeneration}
-                className="bg-purple-600 hover:bg-purple-700"
-                size="sm"
-              >
-                <Zap size={16} className="mr-1" />
-                Generate Templates with SAM
-              </Button>
-              <Button
                 variant="secondary"
                 size="sm"
                 className="bg-gray-700 hover:bg-gray-600 text-gray-300"
@@ -2019,6 +2011,14 @@ Would you like me to adjust these or create more variations?`
                 Create Manually
               </Button>
               <Button
+                onClick={startSamTemplateGeneration}
+                className="bg-purple-600 hover:bg-purple-700"
+                size="sm"
+              >
+                <Zap size={16} className="mr-1" />
+                Generate Templates with SAM
+              </Button>
+              <Button
                 variant="secondary"
                 size="sm"
                 className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30"
@@ -2030,20 +2030,20 @@ Would you like me to adjust these or create more variations?`
               <Button
                 variant="secondary"
                 size="sm"
-                className="bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30"
-                onClick={() => setShowPasteModal(true)}
-              >
-                <Upload size={16} className="mr-1" />
-                Paste Template
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
                 className="bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500/30"
                 onClick={openPreviousMessagesModal}
               >
                 <Clock size={16} className="mr-1" />
                 Load Previous Messages
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30"
+                onClick={() => setShowPasteModal(true)}
+              >
+                <Upload size={16} className="mr-1" />
+                Paste Template
               </Button>
             </div>
           </div>
