@@ -3447,7 +3447,37 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Manual launch required from campaign dashboard`);
         }
       } else {
-        toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID discovery needed before messaging`);
+        // Auto-sync LinkedIn IDs for 1st degree connections
+        if (hasOnly1stDegree) {
+          toastInfo('🔄 Auto-syncing LinkedIn IDs for 1st degree connections...');
+
+          try {
+            const syncResponse = await fetch('/api/linkedin/sync-connections', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                workspaceId,
+                campaignId: campaign.id
+              })
+            });
+
+            if (syncResponse.ok) {
+              const syncData = await syncResponse.json();
+              if (syncData.stats?.campaign_prospects_resolved > 0) {
+                toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n🔗 ${syncData.stats.campaign_prospects_resolved} LinkedIn IDs resolved\n✅ Ready for messaging!`);
+              } else {
+                toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID sync completed but no matches found\nℹ️ You may need to connect with these prospects first`);
+              }
+            } else {
+              toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID auto-sync failed\n💡 Try: Campaign Dashboard → Sync LinkedIn IDs`);
+            }
+          } catch (syncError) {
+            console.error('Auto-sync error:', syncError);
+            toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID discovery needed before messaging\n💡 Use: Campaign Dashboard → Sync LinkedIn IDs`);
+          }
+        } else {
+          toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID discovery needed before messaging`);
+        }
       }
 
       // Reset and close
