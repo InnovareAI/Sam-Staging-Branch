@@ -1343,7 +1343,7 @@ Let's create messages that get responses! 🎯`
     setIsGeneratingTemplates(true);
 
     try {
-      // Call the actual SAM API for template generation
+      // Call the actual SAM API for messaging generation
       const response = await fetch('/api/sam/generate-templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1359,7 +1359,7 @@ Let's create messages that get responses! 🎯`
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate templates');
+        throw new Error('Failed to generate messaging');
       }
 
       const result = await response.json();
@@ -1385,7 +1385,7 @@ Let's create messages that get responses! 🎯`
     } catch (error: any) {
       console.error('SAM API error:', error);
       
-      // Fallback to local template generation
+      // Fallback to local messaging generation
       setSamMessages(prev => [...prev, {
         role: 'assistant',
         content: `I'll help you create templates! Based on "${userMessage}", here are some suggestions:
@@ -2246,14 +2246,14 @@ Would you like me to adjust these or create more variations?`
       {/* Step 3: Message Templates (Connector Campaign) */}
       {currentStep === 3 && campaignType === 'connector' && (
         <div className="space-y-6">
-          {/* SAM Template Generation */}
+          {/* SAM Messaging Generation */}
           <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
             <div className="flex items-center mb-3">
               <Zap className="text-purple-400 mr-2" size={20} />
-              <h4 className="text-white font-medium">SAM AI Template Generator</h4>
+              <h4 className="text-white font-medium">SAM AI Messaging Generator</h4>
             </div>
             <p className="text-gray-300 text-sm mb-3">
-              Let SAM create personalized messaging templates based on your campaign goals and target audience.
+              Let SAM create personalized messaging sequences based on your campaign goals and target audience.
             </p>
             <div className="flex gap-2 flex-wrap">
               <Button
@@ -2274,7 +2274,7 @@ Would you like me to adjust these or create more variations?`
                 onClick={() => {
                   setSamMessages([{
                     role: 'assistant',
-                    content: `Hi! I'm SAM, and I'll help you create compelling LinkedIn messaging templates for your ${campaignType} campaign "${name}".\n\nI can see you have ${csvData.length} prospects loaded. To create the best templates, tell me:\n\n1. What's your main goal with this campaign? (networking, lead generation, partnerships, etc.)\n2. What value can you offer these prospects?\n3. Any specific tone you'd like? (professional, casual, friendly, etc.)\n\nLet's create messages that get responses! 🎯`
+                    content: `Hi! I'm SAM, and I'll help you create compelling LinkedIn messaging sequences for your ${campaignType} campaign "${name}".\n\nI can see you have ${csvData.length} prospects loaded. To create the best messaging, tell me:\n\n1. What's your main goal with this campaign? (networking, lead generation, partnerships, etc.)\n2. What value can you offer these prospects?\n3. Any specific tone you'd like? (professional, casual, friendly, etc.)\n\nLet's create messages that get responses! 🎯`
                   }]);
                   setShowSamGenerationModal(true);
                 }}
@@ -2282,7 +2282,7 @@ Would you like me to adjust these or create more variations?`
                 size="sm"
               >
                 <Zap size={16} className="mr-1" />
-                Generate Templates with SAM
+                Generate Messaging with SAM
               </Button>
               <Button
                 variant="secondary"
@@ -3099,9 +3099,9 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
                 <div>
                   <h3 className="text-xl font-semibold text-white flex items-center gap-2">
                     <Zap size={24} className="text-purple-400" />
-                    Generate Templates with SAM
+                    Generate Messaging with SAM
                   </h3>
-                  <p className="text-gray-400 text-sm mt-1">AI-powered template creation for your campaign</p>
+                  <p className="text-gray-400 text-sm mt-1">AI-powered messaging sequence creation for your campaign</p>
                 </div>
                 <button onClick={() => setShowSamGenerationModal(false)} className="text-gray-400 hover:text-white">
                   <X size={24} />
