@@ -1203,12 +1203,17 @@ function CampaignBuilder({
   };
 
   const startSamTemplateGeneration = () => {
+    const campaignTypeLabel = campaignType === 'connector' ? '**connector campaign** (for 2nd/3rd degree LinkedIn connections)' : '**messenger campaign** (for 1st degree connections - already connected)';
+    const messageType = campaignType === 'connector' ? 'connection request + follow-up messages' : 'direct messages (no connection request needed)';
+
     setShowSamGenerationModal(true);
     setSamMessages([{
       role: 'assistant',
-      content: `Hi! I'm SAM, and I'll help you create compelling LinkedIn messaging templates for your ${campaignType} campaign "${name}".
+      content: `Hi! I'm SAM, and I'll help you create compelling LinkedIn messaging templates for your ${campaignTypeLabel} "${name}".
 
-I can see you have ${csvData.length} prospects loaded. To create the best templates, tell me:
+**Campaign Type:** ${campaignType === 'connector' ? 'Connector - I will generate a connection request message and follow-ups' : 'Messenger - I will generate direct messages for your existing connections (no connection request)'}
+
+I can see you have ${csvData.length} prospects loaded. To create the best ${messageType}, tell me:
 
 1. What's your main goal with this campaign? (networking, lead generation, partnerships, etc.)
 2. What value can you offer these prospects?
@@ -2267,9 +2272,12 @@ Would you like me to adjust these or create more variations?`
               </Button>
               <Button
                 onClick={() => {
+                  const campaignTypeLabel = campaignType === 'connector' ? '**connector campaign** (for 2nd/3rd degree LinkedIn connections)' : '**messenger campaign** (for 1st degree connections - already connected)';
+                  const messageType = campaignType === 'connector' ? 'connection request + follow-up messages' : 'direct messages (no connection request needed)';
+
                   setSamMessages([{
                     role: 'assistant',
-                    content: `Hi! I'm SAM, and I'll help you create compelling LinkedIn messaging sequences for your ${campaignType} campaign "${name}".\n\nI can see you have ${csvData.length} prospects loaded. To create the best messaging, tell me:\n\n1. What's your main goal with this campaign? (networking, lead generation, partnerships, etc.)\n2. What value can you offer these prospects?\n3. Any specific tone you'd like? (professional, casual, friendly, etc.)\n\nLet's create messages that get responses! 🎯`
+                    content: `Hi! I'm SAM, and I'll help you create compelling LinkedIn messaging sequences for your ${campaignTypeLabel} "${name}".\n\n**Campaign Type:** ${campaignType === 'connector' ? 'Connector - I will generate a connection request message and follow-ups' : 'Messenger - I will generate direct messages for your existing connections (no connection request)'}\n\nI can see you have ${csvData.length} prospects loaded. To create the best ${messageType}, tell me:\n\n1. What's your main goal with this campaign? (networking, lead generation, partnerships, etc.)\n2. What value can you offer these prospects?\n3. Any specific tone you'd like? (professional, casual, friendly, etc.)\n\nLet's create messages that get responses! 🎯`
                   }]);
                   setShowSamGenerationModal(true);
                 }}
@@ -2526,7 +2534,7 @@ Would you like me to adjust these or create more variations?`
                 onClick={() => {
                   setSamMessages([{
                     role: 'assistant',
-                    content: `Hi! I'm SAM, and I'll help you create compelling LinkedIn messaging sequences for your Messenger campaign "${name}".\n\nI can see you have ${(initialProspects?.length || 0) + csvData.length + selectedProspects.length} prospects who are already 1st degree connections. To create the best messaging, tell me:\n\n1. What's your main goal with this campaign? (nurturing relationships, offering services, partnerships, etc.)\n2. What value can you offer these connections?\n3. Any specific tone you'd like? (professional, friendly, consultative, etc.)\n\nLet's create messages that strengthen your relationships! 🎯`
+                    content: `Hi! I'm SAM, and I'll help you create compelling LinkedIn direct messages for your **messenger campaign** "${name}" (for 1st degree connections - already connected).\n\n**Campaign Type:** Messenger - I will generate direct messages for your existing connections. No connection request needed since you're already connected!\n\nI can see you have ${(initialProspects?.length || 0) + csvData.length + selectedProspects.length} prospects who are already 1st degree connections. To create the best direct messaging, tell me:\n\n1. What's your main goal with this campaign? (nurturing relationships, offering services, partnerships, etc.)\n2. What value can you offer these connections?\n3. Any specific tone you'd like? (professional, friendly, consultative, etc.)\n\nLet's create messages that strengthen your relationships! 🎯`
                   }]);
                   setShowSamGenerationModal(true);
                 }}
