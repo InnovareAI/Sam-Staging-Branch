@@ -73,6 +73,24 @@ export async function POST(req: NextRequest) {
 
     console.log(`📊 Found ${prospects.length} prospects with LinkedIn IDs`);
 
+    // CRITICAL: Get user's OWN LinkedIn accounts only (LinkedIn ToS compliance)
+    const { data: userAccounts, error: accountsError } = await supabase
+      .from('user_unipile_accounts')
+      .select('unipile_account_id, account_name')
+      .eq('user_id', user.id)
+      .eq('platform', 'LINKEDIN')
+      .eq('connection_status', 'active');
+
+    if (accountsError || !userAccounts || userAccounts.length === 0) {
+      return NextResponse.json({
+        error: 'No LinkedIn account connected. Please connect your LinkedIn account in Settings.',
+        hint: 'You can only use your own LinkedIn account to send campaigns.'
+      }, { status: 400 });
+    }
+
+    const userAccountIds = userAccounts.map(a => a.unipile_account_id);
+    console.log(`✅ User has ${userAccountIds.length} LinkedIn account(s)`);
+
     // Get Unipile LinkedIn account
     let linkedinAccountId: string | null = null;
 
@@ -84,17 +102,20 @@ export async function POST(req: NextRequest) {
 
       const accountsData = JSON.parse(accountsResponse.content[0]?.text || '{}');
       const linkedinAccounts = accountsData.accounts?.filter(
-        (acc: any) => acc.provider === 'LINKEDIN'
+        (acc: any) =>
+          acc.provider === 'LINKEDIN' &&
+          userAccountIds.includes(acc.id) // CRITICAL: Only user's own accounts
       ) || [];
 
       if (linkedinAccounts.length === 0) {
         return NextResponse.json({
-          error: 'No LinkedIn account connected'
+          error: 'No LinkedIn account connected or accessible',
+          hint: 'Please connect your own LinkedIn account in Settings.'
         }, { status: 400 });
       }
 
       linkedinAccountId = linkedinAccounts[0].id;
-      console.log('✅ Using LinkedIn account:', linkedinAccountId);
+      console.log('✅ Using user LinkedIn account:', linkedinAccountId);
 
     } catch (error) {
       console.error('Error getting Unipile accounts:', error);

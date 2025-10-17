@@ -114,6 +114,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Campaign is not active' }, { status: 400 });
     }
 
+    // CRITICAL: Get user's OWN LinkedIn accounts only (LinkedIn ToS compliance)
+    // Users can ONLY send from their own accounts - using others' accounts violates LinkedIn ToS
+    const { data: userAccounts, error: accountsError } = await supabase
+      .from('user_unipile_accounts')
+      .select('unipile_account_id, account_name, platform')
+      .eq('user_id', user.id)
+      .eq('platform', 'LINKEDIN')
+      .eq('connection_status', 'active');
+
+    if (accountsError || !userAccounts || userAccounts.length === 0) {
+      return NextResponse.json({
+        error: 'No LinkedIn account connected. Please connect your LinkedIn account in Settings.',
+        hint: 'You can only use your own LinkedIn account to send campaigns.'
+      }, { status: 400 });
+    }
+
+    const userAccountIds = userAccounts.map(a => a.unipile_account_id);
+    console.log(`✅ User has ${userAccountIds.length} LinkedIn account(s):`, userAccounts.map(a => a.account_name));
+
     // Get available LinkedIn accounts via MCP (structured data access)
     let availableAccounts = [];
     try {
@@ -124,11 +143,15 @@ export async function POST(req: NextRequest) {
       console.log('MCP function not available, using fallback');
       availableAccounts = [];
     }
-    
-    const linkedinAccounts = availableAccounts.filter(account => 
-      account.type === 'LINKEDIN' && 
-      account.sources?.[0]?.status === 'OK'
+
+    // FILTER: Only include accounts that belong to this user
+    const linkedinAccounts = availableAccounts.filter(account =>
+      account.type === 'LINKEDIN' &&
+      account.sources?.[0]?.status === 'OK' &&
+      userAccountIds.includes(account.id) // CRITICAL: Only user's own accounts
     );
+
+    console.log(`🔒 Filtered to user's accounts: ${linkedinAccounts.length} available`);
 
     if (linkedinAccounts.length === 0) {
       // ULTRAHARD FIX: Graceful fallback with helpful response
