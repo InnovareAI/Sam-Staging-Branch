@@ -67,14 +67,15 @@ export async function GET(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Get all approval sessions for this workspace with user info
+    // Get ONLY this user's approval sessions (not workspace-wide)
     console.log(`🔍 Fetching sessions for workspace: ${workspaceId}, user: ${user.email}`);
 
-    // Fetch sessions
+    // Fetch sessions - IMPORTANT: Filter by user_id to show only user's own searches
     const { data: sessions, error: sessionsError } = await supabase
       .from('prospect_approval_sessions')
       .select('*')
-      .eq('workspace_id', workspaceId) // CORRECTED: workspace_id not organization_id
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id) // CRITICAL: Only show user's own sessions, not workspace members'
       .order('created_at', { ascending: false });
 
     // Enrich with user info (use admin client to bypass RLS on auth.users)
