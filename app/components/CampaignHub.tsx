@@ -1721,9 +1721,9 @@ Would you like me to adjust these or create more variations?`
       // Update prospects count to include synced IDs
       const totalProspectsWithIds = uploadResult.prospects_with_linkedin_ids + syncedCount;
 
-      // Step 3: Auto-execute if LinkedIn IDs found
+      // Step 3: Auto-execute directly via Unipile (bypassing N8N for testing)
       if (totalProspectsWithIds > 0) {
-        const executeResponse = await fetch('/api/campaigns/linkedin/execute-via-n8n', {
+        const executeResponse = await fetch('/api/campaigns/linkedin/execute-direct', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -3413,9 +3413,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       // Update prospects count to include synced IDs
       const totalProspectsWithIds = uploadResult.prospects_with_linkedin_ids + syncedCount;
 
-      // Step 3: Execute via N8N
+      // Step 3: Execute directly via Unipile (bypassing N8N for testing)
       if (totalProspectsWithIds > 0) {
-        const executeResponse = await fetch('/api/campaigns/linkedin/execute-via-n8n', {
+        const executeResponse = await fetch('/api/campaigns/linkedin/execute-direct', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
