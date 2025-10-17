@@ -580,7 +580,6 @@ function CampaignBuilder({
       console.log('⚠️ No initialProspects provided to CampaignBuilder');
     }
   }, [initialProspects]);
-  const [showSamChat, setShowSamChat] = useState(false);
   const [samMessages, setSamMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
   const [samInput, setSamInput] = useState('');
   const [isGeneratingTemplates, setIsGeneratingTemplates] = useState(false);
@@ -815,6 +814,15 @@ function CampaignBuilder({
   // Previous Messages state
   const [showPreviousMessagesModal, setShowPreviousMessagesModal] = useState(false);
   const [selectedPreviousCampaign, setSelectedPreviousCampaign] = useState<any>(null);
+
+  // Manual Template Creation Modal
+  const [showManualTemplateModal, setShowManualTemplateModal] = useState(false);
+  const [manualConnection, setManualConnection] = useState('');
+  const [manualAlternative, setManualAlternative] = useState('');
+  const [manualFollowUps, setManualFollowUps] = useState(['']);
+
+  // SAM Generation Modal
+  const [showSamGenerationModal, setShowSamGenerationModal] = useState(false);
 
   // React Query + localStorage for previous campaigns (persistent across sessions)
   const {
@@ -2204,19 +2212,9 @@ Would you like me to adjust these or create more variations?`
         <div className="space-y-6">
           {/* SAM Template Generation */}
           <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center">
-                <Zap className="text-purple-400 mr-2" size={20} />
-                <h4 className="text-white font-medium">SAM AI Template Generator</h4>
-              </div>
-              <Button 
-                onClick={() => setShowSamChat(!showSamChat)}
-                variant="link"
-                size="sm"
-                className="text-purple-400 hover:text-purple-300 h-auto p-0"
-              >
-                <MessageSquare size={16} className="mr-1" /> {showSamChat ? 'Close Chat' : 'Chat with SAM'}
-              </Button>
+            <div className="flex items-center mb-3">
+              <Zap className="text-purple-400 mr-2" size={20} />
+              <h4 className="text-white font-medium">SAM AI Template Generator</h4>
             </div>
             <p className="text-gray-300 text-sm mb-3">
               Let SAM create personalized messaging templates based on your campaign goals and target audience.
@@ -2227,18 +2225,23 @@ Would you like me to adjust these or create more variations?`
                 size="sm"
                 className="bg-gray-700 hover:bg-gray-600 text-gray-300"
                 onClick={() => {
-                  // Clear all message templates
-                  setConnectionMessage('');
-                  setAlternativeMessage('');
-                  setFollowUpMessages(['']);
-                  toastInfo('Templates cleared. You can now create messages manually.');
+                  setManualConnection('');
+                  setManualAlternative('');
+                  setManualFollowUps(['']);
+                  setShowManualTemplateModal(true);
                 }}
               >
                 <Edit size={16} className="mr-1" />
                 Create Manually
               </Button>
               <Button
-                onClick={startSamTemplateGeneration}
+                onClick={() => {
+                  setSamMessages([{
+                    role: 'assistant',
+                    content: `Hi! I'm SAM, and I'll help you create compelling LinkedIn messaging templates for your ${campaignType} campaign "${name}".\n\nI can see you have ${csvData.length} prospects loaded. To create the best templates, tell me:\n\n1. What's your main goal with this campaign? (networking, lead generation, partnerships, etc.)\n2. What value can you offer these prospects?\n3. Any specific tone you'd like? (professional, casual, friendly, etc.)\n\nLet's create messages that get responses! 🎯`
+                  }]);
+                  setShowSamGenerationModal(true);
+                }}
                 className="bg-purple-600 hover:bg-purple-700"
                 size="sm"
               >
@@ -2275,110 +2278,6 @@ Would you like me to adjust these or create more variations?`
             </div>
           </div>
 
-          {/* SAM Chat Interface */}
-          {showSamChat && (
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-              <div className="flex items-center mb-3">
-                <MessageSquare className="text-purple-400 mr-2" size={16} />
-                <h4 className="text-white font-medium">Chat with SAM</h4>
-              </div>
-
-              <div className="relative">
-                <div
-                  ref={chatContainerRef}
-                  onScroll={handleChatScroll}
-                  className="h-64 overflow-y-auto mb-4 space-y-3 scroll-smooth"
-                >
-                  {samMessages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[80%] p-3 rounded-lg ${
-                        message.role === 'user'
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-gray-600 text-gray-100'
-                      }`}
-                    >
-                      <div className="text-sm whitespace-pre-wrap">{message.content}</div>
-                    </div>
-                  </div>
-                ))}
-                {isGeneratingTemplates && (
-                  <div className="flex justify-start">
-                    <div className="bg-gray-600 text-gray-100 p-3 rounded-lg">
-                      <div className="text-sm">SAM is creating your templates...</div>
-                    </div>
-                  </div>
-                )}
-                </div>
-
-                {/* Scroll to bottom button */}
-                {showScrollButton && (
-                  <button
-                    onClick={scrollToBottom}
-                    className="absolute bottom-6 right-4 bg-purple-600 hover:bg-purple-700 text-white rounded-full p-2 shadow-lg transition-all"
-                    title="Scroll to bottom"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
-                  </button>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                <Input
-                  type="text"
-                  value={samInput}
-                  onChange={e => setSamInput(e.target.value)}
-                  onKeyPress={e => e.key === 'Enter' && sendSamMessage()}
-                  placeholder="Tell SAM about your campaign goals..."
-                  className="flex-1 bg-gray-600 border-gray-500 text-white placeholder-gray-400 focus:border-purple-500"
-                />
-                <Button
-                  onClick={sendSamMessage}
-                  disabled={isGeneratingTemplates || !samInput.trim()}
-                  className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600"
-                  size="sm"
-                >
-                  Send
-                </Button>
-              </div>
-              
-              {samMessages.length > 2 && (
-                <div className="mt-3 flex gap-2">
-                  <Button
-                    onClick={applySamTemplates}
-                    className="bg-green-600 hover:bg-green-700"
-                    size="sm"
-                  >
-                    Apply Templates
-                  </Button>
-                  <Button
-                    onClick={() => setSamMessages([])}
-                    variant="secondary"
-                    className="bg-gray-600 hover:bg-gray-500"
-                    size="sm"
-                  >
-                    Clear Chat
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-
           <div className="space-y-2">
             <Label htmlFor="connection-message" className="text-gray-400">
               Connection Request Message
@@ -2410,7 +2309,7 @@ Would you like me to adjust these or create more variations?`
                   <span className="ml-2 text-xs">({275 - connectionMessage.length} remaining)</span>
                 )}
               </span>
-              {connectionMessage.length > 0 && !showSamChat && (
+              {connectionMessage.length > 0 && (
                 <Button
                   variant="secondary"
                   size="sm"
@@ -2452,7 +2351,7 @@ Would you like me to adjust these or create more variations?`
               <span className="text-xs text-gray-500">
                 Characters remaining: {115 - alternativeMessage.length}/115
               </span>
-              {alternativeMessage.length > 0 && !showSamChat && (
+              {alternativeMessage.length > 0 && (
                 <Button
                   variant="secondary"
                   size="sm"
@@ -2515,7 +2414,7 @@ Would you like me to adjust these or create more variations?`
                   placeholder={`Follow-up message ${index + 1}...`}
                   data-followup-index={index}
                 />
-                {message.length > 0 && !showSamChat && (
+                {message.length > 0 && (
                   <div className="flex justify-end mt-2">
                     <Button
                       variant="secondary"
@@ -3044,6 +2943,191 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
               >
                 <CheckCircle size={16} className="mr-2" />
                 Apply Messages
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Template Creation Modal */}
+      {showManualTemplateModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                    <Edit size={24} className="text-gray-400" />
+                    Create Message Templates
+                  </h3>
+                  <p className="text-gray-400 text-sm mt-1">Manually create your campaign messaging sequence</p>
+                </div>
+                <button onClick={() => setShowManualTemplateModal(false)} className="text-gray-400 hover:text-white">
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Connection Message */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Connection Request Message (275 char max)
+                </label>
+                <textarea
+                  value={manualConnection}
+                  onChange={(e) => setManualConnection(e.target.value.slice(0, 275))}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-white min-h-[100px]"
+                  placeholder="Hi {first_name}, I noticed your work at {company_name}..."
+                />
+                <div className="text-right text-sm text-gray-400 mt-1">{manualConnection.length}/275</div>
+              </div>
+
+              {/* Alternative Message */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Alternative Message (for 1st connections)
+                </label>
+                <textarea
+                  value={manualAlternative}
+                  onChange={(e) => setManualAlternative(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-white min-h-[100px]"
+                  placeholder="Hi {first_name}, thanks for being connected..."
+                />
+              </div>
+
+              {/* Follow-up Messages */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Follow-up Messages</label>
+                {manualFollowUps.map((msg, idx) => (
+                  <div key={idx} className="mb-3">
+                    <div className="flex items-start gap-2">
+                      <textarea
+                        value={msg}
+                        onChange={(e) => {
+                          const updated = [...manualFollowUps];
+                          updated[idx] = e.target.value;
+                          setManualFollowUps(updated);
+                        }}
+                        className="flex-1 bg-gray-700 border border-gray-600 rounded-lg p-3 text-white min-h-[80px]"
+                        placeholder={`Follow-up message ${idx + 1}...`}
+                      />
+                      {manualFollowUps.length > 1 && (
+                        <button
+                          onClick={() => setManualFollowUps(manualFollowUps.filter((_, i) => i !== idx))}
+                          className="text-red-400 hover:text-red-300 p-2"
+                        >
+                          <X size={20} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  onClick={() => setManualFollowUps([...manualFollowUps, ''])}
+                  variant="secondary"
+                  size="sm"
+                  className="bg-gray-700 hover:bg-gray-600"
+                >
+                  + Add Follow-up
+                </Button>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-700 flex justify-end gap-3">
+              <Button variant="secondary" onClick={() => setShowManualTemplateModal(false)}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  setConnectionMessage(manualConnection);
+                  setAlternativeMessage(manualAlternative);
+                  setFollowUpMessages(manualFollowUps.filter(m => m.trim()));
+                  setShowManualTemplateModal(false);
+                  toastSuccess('Templates applied to campaign!');
+                }}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <CheckCircle size={16} className="mr-2" />
+                Apply Templates
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SAM Generation Modal */}
+      {showSamGenerationModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                    <Zap size={24} className="text-purple-400" />
+                    Generate Templates with SAM
+                  </h3>
+                  <p className="text-gray-400 text-sm mt-1">AI-powered template creation for your campaign</p>
+                </div>
+                <button onClick={() => setShowSamGenerationModal(false)} className="text-gray-400 hover:text-white">
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 p-6 overflow-y-auto">
+              <div className="relative">
+                <div ref={chatContainerRef} onScroll={handleChatScroll} className="h-96 overflow-y-auto mb-4 space-y-3 scroll-smooth">
+                  {samMessages.map((message, index) => (
+                    <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[80%] p-3 rounded-lg ${message.role === 'user' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-100'}`}>
+                        <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                      </div>
+                    </div>
+                  ))}
+                  {isGeneratingTemplates && (
+                    <div className="flex justify-start">
+                      <div className="bg-gray-600 text-gray-100 p-3 rounded-lg">
+                        <div className="text-sm">SAM is creating your templates...</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {showScrollButton && (
+                  <button onClick={scrollToBottom} className="absolute bottom-6 right-4 bg-purple-600 hover:bg-purple-700 text-white rounded-full p-2 shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  value={samInput}
+                  onChange={e => setSamInput(e.target.value)}
+                  onKeyPress={e => e.key === 'Enter' && sendSamMessage()}
+                  placeholder="Tell SAM about your campaign goals..."
+                  className="flex-1 bg-gray-600 border-gray-500 text-white"
+                />
+                <Button onClick={sendSamMessage} disabled={isGeneratingTemplates || !samInput.trim()} className="bg-purple-600 hover:bg-purple-700">
+                  Send
+                </Button>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-700 flex justify-end gap-3">
+              <Button variant="secondary" onClick={() => setShowSamGenerationModal(false)}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  applySamTemplates();
+                  setShowSamGenerationModal(false);
+                }}
+                className="bg-green-600 hover:bg-green-700"
+                disabled={samMessages.length < 3}
+              >
+                <CheckCircle size={16} className="mr-2" />
+                Apply Templates
               </Button>
             </div>
           </div>
