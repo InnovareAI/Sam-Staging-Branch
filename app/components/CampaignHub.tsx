@@ -1860,20 +1860,23 @@ Would you like me to adjust these or create more variations?`
             <h4 className="text-white font-medium mb-4">Select Prospect Lists</h4>
 
             {/* Auto-selected list from Data Approval */}
-            {initialProspects && initialProspects.length > 0 && initialProspects[0].sessionId && (
-              <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4 mb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="text-green-400" size={20} />
-                    <div>
-                      <p className="text-white font-medium">{name}</p>
-                      <p className="text-gray-400 text-sm">{initialProspects.length} prospects • Auto-selected from Data Approval</p>
+            {initialProspects && initialProspects.length > 0 && initialProspects[0].sessionId && (() => {
+              const autoSelectedSession = approvalSessions.find(s => s.id === initialProspects[0].sessionId);
+              return autoSelectedSession ? (
+                <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="text-green-400" size={20} />
+                      <div>
+                        <p className="text-white font-medium">{autoSelectedSession.campaign_name || autoSelectedSession.name || 'Unnamed List'}</p>
+                        <p className="text-gray-400 text-sm">{initialProspects.length} prospects • Auto-selected from Data Approval</p>
+                      </div>
                     </div>
+                    <span className="text-green-400 text-sm">✓ Assigned</span>
                   </div>
-                  <span className="text-green-400 text-sm">✓ Assigned</span>
                 </div>
-              </div>
-            )}
+              ) : null;
+            })()}
 
             {/* Show other available lists */}
             <div className="bg-gray-700 rounded-lg p-4">
