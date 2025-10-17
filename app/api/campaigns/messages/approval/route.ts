@@ -16,6 +16,23 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') || 'all'; // 'pending', 'approved', 'rejected', 'all'
     const campaignId = searchParams.get('campaign_id');
+    const workspaceId = searchParams.get('workspace_id');
+
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'workspace_id is required' }, { status: 400 });
+    }
+
+    // Verify user has access to this workspace
+    const { data: member } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!member) {
+      return NextResponse.json({ error: 'Access denied to workspace' }, { status: 403 });
+    }
 
     // Base query for messages requiring approval
     let query = supabase
@@ -28,7 +45,7 @@ export async function GET(req: NextRequest) {
         ),
         campaigns!inner(workspace_id)
       `)
-      .eq('campaigns.workspace_id', user.user_metadata.workspace_id);
+      .eq('campaigns.workspace_id', workspaceId);
 
     // Filter by campaign if specified
     if (campaignId) {
@@ -93,8 +110,25 @@ export async function POST(req: NextRequest) {
       message_id,
       message_ids,
       approval_status,
-      rejection_reason
+      rejection_reason,
+      workspace_id
     } = await req.json();
+
+    if (!workspace_id) {
+      return NextResponse.json({ error: 'workspace_id is required' }, { status: 400 });
+    }
+
+    // Verify user has access to this workspace
+    const { data: member } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', workspace_id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!member) {
+      return NextResponse.json({ error: 'Access denied to workspace' }, { status: 403 });
+    }
 
     if (!['approve', 'reject', 'bulk_approve', 'bulk_reject'].includes(action)) {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
@@ -126,7 +160,7 @@ export async function POST(req: NextRequest) {
           ),
           campaigns!inner(workspace_id)
         `)
-        .eq('campaigns.workspace_id', user.user_metadata.workspace_id);
+        .eq('campaigns.workspace_id', workspace_id);
 
       if (error) {
         console.error('Failed to update messages:', error);
@@ -169,7 +203,7 @@ export async function POST(req: NextRequest) {
         ),
         campaigns!inner(workspace_id)
       `)
-      .eq('campaigns.workspace_id', user.user_metadata.workspace_id)
+      .eq('campaigns.workspace_id', workspace_id)
       .single();
 
     if (error) {
