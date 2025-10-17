@@ -2194,6 +2194,21 @@ Would you like me to adjust these or create more variations?`
                   <span className="ml-2 text-xs">({275 - connectionMessage.length} remaining)</span>
                 )}
               </span>
+              {connectionMessage.length > 0 && !showSamChat && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
+                  onClick={() => {
+                    setSamInput(`Improve this connection message:\n\n${connectionMessage}`);
+                    setShowSamChat(true);
+                    startSamTemplateGeneration();
+                  }}
+                >
+                  <Zap size={12} className="mr-1" />
+                  Improve with SAM
+                </Button>
+              )}
             </div>
           </div>
 
@@ -2221,6 +2236,21 @@ Would you like me to adjust these or create more variations?`
               <span className="text-xs text-gray-500">
                 Characters remaining: {115 - alternativeMessage.length}/115
               </span>
+              {alternativeMessage.length > 0 && !showSamChat && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
+                  onClick={() => {
+                    setSamInput(`Improve this alternative message:\n\n${alternativeMessage}`);
+                    setShowSamChat(true);
+                    startSamTemplateGeneration();
+                  }}
+                >
+                  <Zap size={12} className="mr-1" />
+                  Improve with SAM
+                </Button>
+              )}
             </div>
           </div>
 
@@ -2269,6 +2299,23 @@ Would you like me to adjust these or create more variations?`
                   placeholder={`Follow-up message ${index + 1}...`}
                   data-followup-index={index}
                 />
+                {message.length > 0 && !showSamChat && (
+                  <div className="flex justify-end mt-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
+                      onClick={() => {
+                        setSamInput(`Improve this follow-up message #${index + 1}:\n\n${message}`);
+                        setShowSamChat(true);
+                        startSamTemplateGeneration();
+                      }}
+                    >
+                      <Zap size={12} className="mr-1" />
+                      Improve with SAM
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
