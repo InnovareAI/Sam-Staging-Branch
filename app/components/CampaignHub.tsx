@@ -4007,7 +4007,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                   className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition-colors"
                                 >
                                   <MessageSquare size={14} />
-                                  Draft Messages
+                                  Create Campaign
                                 </button>
                                 <button
                                   onClick={(e) => {
