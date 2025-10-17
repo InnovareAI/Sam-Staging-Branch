@@ -188,7 +188,7 @@ async function fetchConnectionsFromUnipileDirect(userId: string) {
   try {
     const UNIPILE_DSN = process.env.UNIPILE_DSN;
     const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
-    const UNIPILE_BASE_URL = `https://${UNIPILE_DSN}.unipile.com:13443`;
+    const UNIPILE_BASE_URL = `https://${UNIPILE_DSN}`; // DSN already includes domain and port
 
     // First, get user's LinkedIn account ID from Unipile
     const accountsResponse = await fetch(`${UNIPILE_BASE_URL}/api/v1/users/${userId}/accounts`, {
