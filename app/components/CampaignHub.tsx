@@ -1594,8 +1594,8 @@ Would you like me to adjust these or create more variations?`
         ))}
         <div className="ml-4 text-sm text-gray-400">
           Step {currentStep} of 3: {
-            currentStep === 1 ? 'Campaign Setup' : 
-            currentStep === 2 ? 'Prospect Data' : 
+            currentStep === 1 ? 'Campaign Setup' :
+            currentStep === 2 ? 'Campaign Summary' :
             'Message Templates'
           }
         </div>
@@ -1648,18 +1648,49 @@ Would you like me to adjust these or create more variations?`
         </div>
       )}
 
-      {/* Step 2: Prospect Data */}
+      {/* Step 2: Campaign Summary */}
       {currentStep === 2 && (
         <div className="space-y-6">
           {/* Banner when prospects are from approval */}
           {initialProspects && initialProspects.length > 0 && (
-            <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4 flex items-center gap-3 mb-4">
-              <CheckCircle className="text-green-400" size={24} />
-              <div className="flex-1">
-                <p className="text-white font-medium">✓ {initialProspects.length} Prospects Loaded</p>
-                <p className="text-gray-400 text-sm">Imported from Data Approval • Review below and proceed to messages</p>
+            <>
+              <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4 flex items-center gap-3 mb-4">
+                <CheckCircle className="text-green-400" size={24} />
+                <div className="flex-1">
+                  <p className="text-white font-medium">✓ {initialProspects.length} Prospects Loaded</p>
+                  <p className="text-gray-400 text-sm">Imported from Data Approval • Review below and proceed to messages</p>
+                </div>
               </div>
-            </div>
+              <div className="bg-gray-700 rounded-lg p-6">
+                <h4 className="text-white font-medium mb-4">Campaign Summary</h4>
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <div className="text-gray-400 text-sm mb-1">List Name</div>
+                    <div className="text-white font-medium">{name}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400 text-sm mb-1">List Date</div>
+                    <div className="text-white font-medium">{new Date().toLocaleDateString()}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400 text-sm mb-1">Number of Prospects</div>
+                    <div className="text-white font-medium">{initialProspects.length}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400 text-sm mb-1">Campaign Type</div>
+                    <div className="text-white font-medium">{campaignType === 'linkedin' ? 'LinkedIn' : campaignType === 'email' ? 'Email' : 'Combined'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400 text-sm mb-1">Industry</div>
+                    <div className="text-white font-medium">-</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400 text-sm mb-1">Connection Grade</div>
+                    <div className="text-white font-medium">-</div>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
 
           {/* Data Source Selection - Hide when prospects are from approval */}
@@ -1814,11 +1845,42 @@ Would you like me to adjust these or create more variations?`
                       })}
                     </div>
                     {selectedProspects.length > 0 && (
-                      <div className="mt-4 p-3 bg-purple-600/20 rounded-lg">
-                        <span className="text-purple-300">
-                          {selectedSessions.length} list{selectedSessions.length !== 1 ? 's' : ''} selected • {selectedProspects.length} prospect{selectedProspects.length !== 1 ? 's' : ''} for campaign
-                        </span>
-                      </div>
+                      <>
+                        <div className="mt-4 p-3 bg-purple-600/20 rounded-lg">
+                          <span className="text-purple-300">
+                            {selectedSessions.length} list{selectedSessions.length !== 1 ? 's' : ''} selected • {selectedProspects.length} prospect{selectedProspects.length !== 1 ? 's' : ''} for campaign
+                          </span>
+                        </div>
+                        <div className="mt-4 bg-gray-800 rounded-lg p-6">
+                          <h4 className="text-white font-medium mb-4">Campaign Summary</h4>
+                          <div className="grid grid-cols-2 gap-6">
+                            <div>
+                              <div className="text-gray-400 text-sm mb-1">List Name</div>
+                              <div className="text-white font-medium">{name}</div>
+                            </div>
+                            <div>
+                              <div className="text-gray-400 text-sm mb-1">List Date</div>
+                              <div className="text-white font-medium">{new Date().toLocaleDateString()}</div>
+                            </div>
+                            <div>
+                              <div className="text-gray-400 text-sm mb-1">Number of Prospects</div>
+                              <div className="text-white font-medium">{selectedProspects.length}</div>
+                            </div>
+                            <div>
+                              <div className="text-gray-400 text-sm mb-1">Campaign Type</div>
+                              <div className="text-white font-medium">{campaignType === 'linkedin' ? 'LinkedIn' : campaignType === 'email' ? 'Email' : 'Combined'}</div>
+                            </div>
+                            <div>
+                              <div className="text-gray-400 text-sm mb-1">Industry</div>
+                              <div className="text-white font-medium">-</div>
+                            </div>
+                            <div>
+                              <div className="text-gray-400 text-sm mb-1">Connection Grade</div>
+                              <div className="text-white font-medium">-</div>
+                            </div>
+                          </div>
+                        </div>
+                      </>
                     )}
                   </div>
                 )}
@@ -1875,37 +1937,33 @@ Would you like me to adjust these or create more variations?`
             )}
 
             {showPreview && csvData.length > 0 && (
-            <div className="bg-gray-700 rounded-lg p-4">
-              <h4 className="text-white font-medium mb-3">Data Preview ({csvData.length} prospects)</h4>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr>
-                      {csvHeaders.slice(0, 5).map(header => (
-                        <th key={header} className="text-left text-gray-300 pb-2 pr-4">
-                          {header}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {csvData.slice(0, 5).map((row, index) => (
-                      <tr key={index}>
-                        {csvHeaders.slice(0, 5).map(header => (
-                          <td key={header} className="text-gray-400 py-1 pr-4">
-                            {String(row[header]).substring(0, 25)}
-                            {String(row[header]).length > 25 ? '...' : ''}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {csvData.length > 5 && (
-                  <div className="text-xs text-gray-500 mt-2">
-                    ... and {csvData.length - 5} more prospects
-                  </div>
-                )}
+            <div className="bg-gray-700 rounded-lg p-6">
+              <h4 className="text-white font-medium mb-4">Campaign Summary</h4>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <div className="text-gray-400 text-sm mb-1">List Name</div>
+                  <div className="text-white font-medium">{name}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm mb-1">List Date</div>
+                  <div className="text-white font-medium">{new Date().toLocaleDateString()}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm mb-1">Number of Prospects</div>
+                  <div className="text-white font-medium">{csvData.length}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm mb-1">Campaign Type</div>
+                  <div className="text-white font-medium">{campaignType === 'linkedin' ? 'LinkedIn' : campaignType === 'email' ? 'Email' : 'Combined'}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm mb-1">Industry</div>
+                  <div className="text-white font-medium">-</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm mb-1">Connection Grade</div>
+                  <div className="text-white font-medium">-</div>
+                </div>
               </div>
             </div>
           )}
