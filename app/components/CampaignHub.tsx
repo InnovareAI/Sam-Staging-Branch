@@ -1704,8 +1704,39 @@ Would you like me to adjust these or create more variations?`
 
       const uploadResult = await uploadResponse.json();
 
+      // Step 2.5: Auto-sync LinkedIn IDs for 1st degree connections
+      let syncedCount = 0;
+      if (uploadResult.prospects_with_linkedin_ids === 0 && hasOnly1stDegree) {
+        console.log('🔄 Auto-syncing LinkedIn IDs for 1st degree connections...');
+
+        try {
+          const syncResponse = await fetch('/api/campaigns/sync-linkedin-ids', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              campaignId: campaign.id,
+              workspaceId: workspaceId
+            })
+          });
+
+          if (syncResponse.ok) {
+            const syncResult = await syncResponse.json();
+            syncedCount = syncResult.resolved || 0;
+            console.log(`✅ Synced ${syncedCount} LinkedIn IDs from message history`);
+          } else {
+            console.warn('⚠️ LinkedIn ID sync failed, will need manual resolution');
+          }
+        } catch (error) {
+          console.error('LinkedIn ID sync error:', error);
+          // Continue anyway - user can manually resolve later
+        }
+      }
+
+      // Update prospects count to include synced IDs
+      const totalProspectsWithIds = uploadResult.prospects_with_linkedin_ids + syncedCount;
+
       // Step 3: Auto-execute if LinkedIn IDs found
-      if (uploadResult.prospects_with_linkedin_ids > 0) {
+      if (totalProspectsWithIds > 0) {
         const executeResponse = await fetch('/api/campaigns/linkedin/execute-via-n8n', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1716,9 +1747,12 @@ Would you like me to adjust these or create more variations?`
         });
 
         if (executeResponse.ok) {
-          toastError(`✅ Campaign "${name}" created and launched!\n\n📊 ${csvData.length} prospects uploaded\n🚀 ${uploadResult.prospects_with_linkedin_ids} ready for messaging\n📬 Campaign sent to execution queue`);
+          const syncMessage = syncedCount > 0
+            ? `\n🔗 ${syncedCount} LinkedIn IDs auto-resolved from message history`
+            : '';
+          toastError(`✅ Campaign "${name}" created and launched!\n\n📊 ${csvData.length} prospects uploaded${syncMessage}\n🚀 ${totalProspectsWithIds} ready for messaging\n📬 Campaign sent to execution queue`);
         } else {
-          toastError(`✅ Campaign "${name}" created!\n\n📊 Upload Results:\n• ${csvData.length} prospects uploaded\n• ${uploadResult.prospects_with_linkedin_ids} with LinkedIn IDs\n• Ready for manual launch`);
+          toastError(`✅ Campaign "${name}" created!\n\n📊 Upload Results:\n• ${csvData.length} prospects uploaded\n• ${totalProspectsWithIds} with LinkedIn IDs\n• Ready for manual launch`);
         }
       } else {
         toastError(`✅ Campaign "${name}" created!\n\n📊 Upload Results:\n• ${csvData.length} prospects uploaded\n• LinkedIn ID discovery needed for messaging\n• Run connection campaign first to capture IDs`);
