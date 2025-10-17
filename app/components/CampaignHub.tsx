@@ -2711,6 +2711,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const [showApprovalScreen, setShowApprovalScreen] = useState(false);
   const [campaignDataForApproval, setCampaignDataForApproval] = useState<any>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [selectedCampaignProspects, setSelectedCampaignProspects] = useState<any[] | null>(null);
   
   const queryClient = useQueryClient();
 
@@ -3697,9 +3698,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             <CampaignBuilder
               onClose={() => {
                 setShowBuilder(false);
+                setSelectedCampaignProspects(null); // Clear selected campaign prospects
                 onCampaignCreated?.();
               }}
-              initialProspects={initialProspects}
+              initialProspects={selectedCampaignProspects || initialProspects}
               onPrepareForApproval={(campaignData) => {
                 // Show approval screen
                 setCampaignDataForApproval(campaignData);
@@ -3983,6 +3985,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    // Set the campaign-specific prospects before opening builder
+                                    setSelectedCampaignProspects(prospects);
                                     setShowBuilder(true);
                                   }}
                                   className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition-colors"
