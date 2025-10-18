@@ -137,7 +137,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { provider = 'LINKEDIN', redirect_url } = body
+    const { provider = 'LINKEDIN', type = 'API', redirect_url } = body
+    
+    console.log('📋 Request body:', { provider, type, redirect_url })
     
     // Get user's profile country for proxy assignment
     let userCountry: string | null = null
@@ -166,8 +168,12 @@ export async function POST(request: NextRequest) {
       // If user has existing accounts, use reconnect flow instead of create
       authType = existingAccounts.length > 0 ? 'reconnect' : 'create'
       reconnectAccountId = existingAccounts.length > 0 ? existingAccounts[0].unipile_account_id : null
+    } else if (provider === 'GOOGLE' || provider === 'OUTLOOK') {
+      console.log(`📧 Email provider (${provider}) - using create flow for messaging`)
+      authType = 'create'
     } else {
-      console.log(`📧 Email provider (${provider}) - using create flow`)
+      console.log(`⚠️ Unknown provider (${provider}) - using create flow`)
+      authType = 'create'
     }
     
     // Get the current domain for callback URL
