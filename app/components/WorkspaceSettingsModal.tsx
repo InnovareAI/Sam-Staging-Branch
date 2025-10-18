@@ -66,24 +66,24 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
   return (
     <>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <Card className="max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <Card className="max-w-md w-full max-h-[70vh] overflow-hidden flex flex-col">
           {/* Header */}
-          <CardHeader className="border-b border-border">
+          <CardHeader className="border-b border-border pb-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center">
-                  <Settings className="h-6 w-6 text-primary" />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
+                  <Settings className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold">Workspace Settings</h2>
-                  <p className="text-sm text-muted-foreground">{workspaceName}</p>
+                  <h2 className="text-xl font-bold">Workspace Settings</h2>
+                  <p className="text-xs text-muted-foreground">{workspaceName}</p>
                 </div>
               </div>
               <button
                 onClick={onClose}
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
-                <X className="h-6 w-6" />
+                <X className="h-5 w-5" />
               </button>
             </div>
           </CardHeader>
@@ -92,7 +92,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
           <div className="flex border-b border-border bg-card">
             <button
               onClick={() => setActiveTab('general')}
-              className={`flex items-center gap-2 px-6 py-4 border-b-2 transition-colors font-medium ${
+              className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors font-medium text-sm ${
                 activeTab === 'general'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -103,7 +103,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
             </button>
             <button
               onClick={() => setActiveTab('integrations')}
-              className={`flex items-center gap-2 px-6 py-4 border-b-2 transition-colors font-medium ${
+              className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors font-medium text-sm ${
                 activeTab === 'integrations'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -115,7 +115,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
           </div>
 
           {/* Body */}
-          <CardContent className="p-6 overflow-y-auto flex-1">
+          <CardContent className="p-4 overflow-y-auto flex-1">
             {/* General Tab */}
             {activeTab === 'general' && (
               <div className="space-y-6">
@@ -224,10 +224,10 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
           </CardContent>
 
           {/* Footer */}
-          <div className="p-6 border-t border-border">
+          <div className="p-4 border-t border-border">
             <button
               onClick={onClose}
-              className="w-full bg-secondary hover:bg-secondary/80 font-medium py-3 px-4 rounded-lg transition-colors"
+              className="w-full bg-secondary hover:bg-secondary/80 font-medium py-2 px-4 rounded-lg transition-colors text-sm"
             >
               Close
             </button>
