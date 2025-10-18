@@ -1252,6 +1252,13 @@ export default function Page() {
     fetchProfileCountry();
   }, [activeMenuItem, showUserProfileModal, showProxyCountryModal, user, supabase]);
 
+  // Redirect superadmin to new dashboard
+  useEffect(() => {
+    if (activeMenuItem === 'superadmin') {
+      router.push('/admin/superadmin');
+    }
+  }, [activeMenuItem, router]);
+
   // Scroll to bottom when switching to chat tab
   useEffect(() => {
     if (activeMenuItem === 'chat' && messagesContainerRef.current) {
