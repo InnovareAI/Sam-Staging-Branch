@@ -2873,7 +2873,7 @@ export default function Page() {
                 {/* LinkedIn Integration */}
                 <div 
                   onClick={() => setShowLinkedInSettingsModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
@@ -2899,7 +2899,7 @@ export default function Page() {
                 {/* Email Integration */}
                 <div 
                   onClick={() => setShowEmailIntegrationModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
@@ -2928,7 +2928,7 @@ export default function Page() {
                 {/* User Profile & Country */}
                 <div 
                   onClick={() => setShowUserProfileModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
@@ -2954,7 +2954,7 @@ export default function Page() {
                 {/* BrightData Proxy Country (Advanced) */}
                 <div 
                   onClick={() => setShowProxyCountryModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center">
@@ -3001,7 +3001,7 @@ export default function Page() {
                     console.log('Setting showTeamManagementModal to true');
                     setShowTeamManagementModal(true);
                   }}
-                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
@@ -3045,7 +3045,7 @@ export default function Page() {
                   return (
                     <div
                       onClick={() => setShowManageSubscriptionModal(true)}
-                      className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                      className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
@@ -3073,7 +3073,7 @@ export default function Page() {
                 {/* Workspace Settings */}
                 <div
                   onClick={() => setShowWorkspaceSettingsModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
@@ -3099,7 +3099,7 @@ export default function Page() {
                 {/* CRM Integration */}
                 <div 
                   onClick={() => setShowCrmIntegrationModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-10 h-10 bg-cyan-600/20 rounded-lg flex items-center justify-center">
@@ -3125,7 +3125,7 @@ export default function Page() {
                 {/* Integrations & Tools */}
                 <div 
                   onClick={() => setShowIntegrationsToolsModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-10 h-10 bg-yellow-600/20 rounded-lg flex items-center justify-center">
@@ -3151,7 +3151,7 @@ export default function Page() {
                 {/* Security & Compliance */}
                 <div 
                   onClick={() => setShowSecurityComplianceModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-10 h-10 bg-red-600/20 rounded-lg flex items-center justify-center">
@@ -3177,7 +3177,7 @@ export default function Page() {
                 {/* Analytics & Reporting */}
                 <div 
                   onClick={() => setShowAnalyticsReportingModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-10 h-10 bg-indigo-600/20 rounded-lg flex items-center justify-center">
@@ -3201,7 +3201,7 @@ export default function Page() {
 </div>
 
                 {/* Profile Management */}
-                <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                <div className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
                       <User className="text-blue-400 h-5 w-5" />
@@ -3226,7 +3226,7 @@ export default function Page() {
                 {/* AI Model Configuration Tile */}
                 <div 
                   onClick={() => setShowLLMConfigModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center">
