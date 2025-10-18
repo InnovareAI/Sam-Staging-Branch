@@ -157,13 +157,13 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              className="w-full p-3 border rounded-lg text-base text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800"
+              className="w-full p-3 border rounded-lg text-base text-gray-900 bg-white"
               disabled={loading}
             >
               {Object.entries(modelsByProvider).map(([provider, providerModels]) => (
-                <optgroup key={provider} label={providers.find(p => p.id === provider)?.name || provider}>
+                <optgroup key={provider} label={providers.find(p => p.id === provider)?.name || provider} className="text-gray-900 font-semibold">
                   {providerModels.map(model => (
-                    <option key={model.id} value={model.id}>
+                    <option key={model.id} value={model.id} className="text-gray-900 bg-white">
                       {model.name}{model.euHosted ? ' 🇪🇺' : ''}
                     </option>
                   ))}
