@@ -1,13 +1,13 @@
 /**
  * Cost-Controlled LLM Infrastructure for SAM AI Message Personalization
- * Prioritizes budget control using Claude Haiku 4.5 for all flows while
- * keeping Llama as an offline batch option.
+ * Prioritizes budget control using Claude Haiku 4.5 for primary flows with
+ * Sonnet 4.5 as internal quality fallback (not user-selectable).
  * 
  * Key Features:
  * - 60-70% cost reduction through template-first approach
  * - Real-time budget monitoring and enforcement
  * - Quality gates with automatic fallbacks
- * - Single model (Haiku 4.5) for consistency and cost efficiency
+ * - Multi-tier model orchestration (Haiku → Sonnet → Llama)
  */
 
 import { OpenRouter } from './openrouter-client';
@@ -33,13 +33,13 @@ const MODEL_CONFIGS = {
     useCase: "batch_processing"
   },
   fallback: {
-    model: "anthropic/claude-haiku-4.5",
-    displayName: "Claude Haiku 4.5",
-    costPer1M: 1.00,
-    qualityScore: 92,
+    model: "anthropic/claude-sonnet-4.5",
+    displayName: "Claude Sonnet 4.5",
+    costPer1M: 3.00,
+    qualityScore: 95,
     maxTokens: 150,
     temperature: 0.3,
-    useCase: "quality_fallback"
+    useCase: "quality_fallback_internal_only"
   }
 } as const;
 
@@ -199,7 +199,7 @@ class CostControlledPersonalization {
       results.push(...batchResults);
     }
     
-    // Process standard requests with Claude Haiku 4.5
+    // Process standard requests with Claude Haiku 4.5 (Sonnet for quality fallbacks)
     for (const request of batches.standard) {
       const result = await this.personalizeMessage(request);
       results.push(result);
@@ -248,7 +248,7 @@ class CostControlledPersonalization {
       case 'standard':
         return MODEL_CONFIGS.primary; // Claude Haiku 4.5
       case 'premium':
-        return MODEL_CONFIGS.primary; // Claude Haiku 4.5 for all tiers
+        return MODEL_CONFIGS.fallback; // Claude Sonnet 4.5 for premium quality (internal only)
       default:
         return MODEL_CONFIGS.primary;
     }
@@ -358,7 +358,7 @@ Enhanced message:`;
     request: PersonalizationRequest
   ): Promise<PersonalizationResult> {
     
-    console.log('Attempting quality fallback with Claude Haiku 4.5');
+    console.log('Attempting quality fallback to Claude Sonnet 4.5 (internal)');
     
     try {
       return await this.enhanceWithAI(templateMessage, request, MODEL_CONFIGS.fallback);
@@ -412,9 +412,9 @@ Enhanced message:`;
    */
   private estimatePersonalizationCost(level: 'minimal' | 'standard' | 'premium'): number {
     switch (level) {
-      case 'minimal': return 0.001;   // ~100 tokens * $1/1M
-      case 'standard': return 0.0015;  // ~150 tokens * $1/1M
-      case 'premium': return 0.002;   // ~200 tokens * $1/1M (Haiku)
+      case 'minimal': return 0.001;   // ~100 tokens * $1/1M (Haiku)
+      case 'standard': return 0.0015;  // ~150 tokens * $1/1M (Haiku)
+      case 'premium': return 0.0045;   // ~150 tokens * $3/1M (Sonnet for quality)
       default: return 0.0015;
     }
   }
