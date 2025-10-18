@@ -78,27 +78,27 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
       name: 'AI Search Agent',
       description: 'Optimize content for AI search engines and generate search-friendly copy',
       icon: TrendingUp,
-      status: 'active',
+      status: 'coming-soon',
       color: 'orange',
-      onClick: () => {}, // TODO: Link to AI search config
+      onClick: () => {},
     },
     {
       id: 'commenting-agent',
       name: 'Commenting Agent',
       description: 'Engage with LinkedIn posts and comments to build relationships',
       icon: MessageSquare,
-      status: 'active',
+      status: 'coming-soon',
       color: 'pink',
-      onClick: () => {}, // TODO: Link to commenting agent config
+      onClick: () => {},
     },
     {
       id: 'content-agent',
       name: 'LinkedIn Content Agent',
       description: 'Generate and schedule LinkedIn posts to grow your presence',
       icon: FileText,
-      status: 'active',
+      status: 'coming-soon',
       color: 'indigo',
-      onClick: () => {}, // TODO: Link to content agent config
+      onClick: () => {},
     },
     {
       id: 'blog-writer-agent',
