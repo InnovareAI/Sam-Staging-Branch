@@ -346,11 +346,9 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
               <p className="text-gray-400">Loading email accounts...</p>
             </div>
           ) : providers.length === 0 ? (
-            <div className="bg-gray-700 rounded-lg p-8 text-center">
-              <Mail className="mx-auto mb-3 text-gray-400" size={48} />
-              <p className="text-gray-300 mb-2">No email accounts connected</p>
+            <div className="bg-gray-700 rounded-lg p-6 text-center">
               <p className="text-gray-400 text-sm">
-                Add an email account to enable email features in campaigns
+                Email accounts will appear here once connected
               </p>
             </div>
           ) : (
