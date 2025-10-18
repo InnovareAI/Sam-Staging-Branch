@@ -142,28 +142,28 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Choose AI Model</DialogTitle>
+          <DialogTitle>AI Model Configuration</DialogTitle>
           <DialogDescription>
             Select which AI model powers SAM. All models are included at no extra cost.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-6 py-4">
           {/* Model Selection */}
           <div>
-            <label className="text-sm font-medium mb-2 block text-gray-900 dark:text-gray-100">AI Model</label>
+            <label className="text-sm font-medium mb-2 block">AI Model</label>
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              className="w-full p-3 border rounded-lg text-base text-gray-900 bg-white"
+              className="w-full p-3 border border-input rounded-lg bg-background text-foreground"
               disabled={loading}
             >
               {Object.entries(modelsByProvider).map(([provider, providerModels]) => (
-                <optgroup key={provider} label={providers.find(p => p.id === provider)?.name || provider} className="text-gray-900 font-semibold">
+                <optgroup key={provider} label={providers.find(p => p.id === provider)?.name || provider}>
                   {providerModels.map(model => (
-                    <option key={model.id} value={model.id} className="text-gray-900 bg-white">
+                    <option key={model.id} value={model.id}>
                       {model.name}{model.euHosted ? ' 🇪🇺' : ''}
                     </option>
                   ))}
@@ -174,14 +174,14 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
           
           {/* Model Info */}
           {selectedModelInfo && (
-            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <div className="font-medium text-gray-900 dark:text-gray-100 mb-2">{selectedModelInfo.name}</div>
-              <div className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+            <div className="p-4 bg-muted rounded-lg border">
+              <div className="font-medium mb-2">{selectedModelInfo.name}</div>
+              <div className="text-sm text-muted-foreground mb-3">
                 {selectedModelInfo.description}
               </div>
               <div className="flex gap-2 flex-wrap">
                 {selectedModelInfo.capabilities.slice(0, 4).map(cap => (
-                  <span key={cap} className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded">
+                  <span key={cap} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded border border-primary/20">
                     {cap}
                   </span>
                 ))}
