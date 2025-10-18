@@ -66,15 +66,31 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
         headers: { 'Content-Type': 'application/json' },
       });
 
-      if (!response.ok) throw new Error('Failed to fetch email providers');
+      // Handle 401 auth errors gracefully
+      if (response.status === 401) {
+        console.log('⚠️  Email providers: Authentication issue, showing empty state');
+        setProviders([]);
+        setLoading(false);
+        return;
+      }
+
+      if (!response.ok) {
+        console.error('Email providers API error:', response.status);
+        setProviders([]);
+        setLoading(false);
+        return;
+      }
 
       const data = await response.json();
       if (data.success) {
         setProviders(data.providers || []);
+      } else {
+        setProviders([]);
       }
     } catch (error) {
       console.error('Error fetching email providers:', error);
-      showNotification('error', 'Failed to load email providers');
+      // Don't show error notification, just show empty state
+      setProviders([]);
     } finally {
       setLoading(false);
     }
