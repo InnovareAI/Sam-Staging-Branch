@@ -188,37 +188,37 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
                 onClick={isActive ? agent.onClick : undefined}
                 className={`
                   relative bg-gradient-to-br ${colorClasses[agent.color as keyof typeof colorClasses]}
-                  rounded-xl p-6 border transition-all duration-200
+                  rounded-xl p-4 border transition-all duration-200
                   ${isActive ? 'cursor-pointer hover:scale-105 hover:shadow-xl' : 'cursor-not-allowed opacity-60'}
                 `}
               >
                 {/* Icon */}
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between mb-3">
                   <div className={`
-                    w-12 h-12 rounded-lg flex items-center justify-center
+                    w-10 h-10 rounded-lg flex items-center justify-center
                     ${isActive ? 'bg-white/10' : 'bg-gray-700/50'}
                   `}>
-                    <Icon className={`h-6 w-6 ${isActive ? 'text-white' : 'text-gray-500'}`} />
+                    <Icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-gray-500'}`} />
                   </div>
                   {getStatusBadge(agent.status, agent.badge)}
                 </div>
 
                 {/* Content */}
-                <h3 className="text-lg font-semibold text-white mb-2">
+                <h3 className="text-base font-semibold text-white mb-1.5">
                   {agent.name}
                 </h3>
-                <p className="text-gray-400 text-sm leading-relaxed">
+                <p className="text-gray-400 text-xs leading-relaxed">
                   {agent.description}
                 </p>
 
                 {/* Configure Button for Active Agents */}
                 {isActive && (
-                  <div className="mt-4 pt-4 border-t border-white/10">
+                  <div className="mt-3 pt-3 border-t border-white/10">
                     <button
                       onClick={agent.onClick}
-                      className="w-full py-2 px-4 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                      className="w-full py-1.5 px-3 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2"
                     >
-                      <Settings className="h-4 w-4" />
+                      <Settings className="h-3.5 w-3.5" />
                       Configure
                     </button>
                   </div>
