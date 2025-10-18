@@ -165,23 +165,18 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
 
             {/* Integrations Tab */}
             {activeTab === 'integrations' && (
-              <div className="space-y-4">
-                <p className="text-muted-foreground text-sm mb-6">
-                  Configure AI models and email providers for your workspace
-                </p>
-
+              <div className="space-y-3">
                 {/* AI Model Configuration */}
                 <button
                   onClick={() => setIsLLMModalOpen(true)}
-                  className="w-full flex items-center justify-between p-4 bg-card hover:bg-accent border border-border rounded-xl transition-all hover:border-primary/50 group"
+                  className="w-full flex items-center justify-between p-3 bg-card hover:bg-accent border border-border rounded-xl transition-all hover:border-primary/50 group"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center">
                       <Brain className="text-purple-400 h-5 w-5" />
                     </div>
                     <div className="text-left">
-                      <div className="font-semibold">AI Model Configuration</div>
-                      <div className="text-muted-foreground text-sm">Choose which AI model powers SAM</div>
+                      <div className="font-semibold text-sm">AI Model Configuration</div>
                     </div>
                   </div>
                   <svg className="text-muted-foreground group-hover:translate-x-1 transition-transform" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -192,15 +187,14 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
                 {/* Email Providers */}
                 <button
                   onClick={() => setIsEmailModalOpen(true)}
-                  className="w-full flex items-center justify-between p-4 bg-card hover:bg-accent border border-border rounded-xl transition-all hover:border-primary/50 group"
+                  className="w-full flex items-center justify-between p-3 bg-card hover:bg-accent border border-border rounded-xl transition-all hover:border-primary/50 group"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
                       <Mail className="text-green-400 h-5 w-5" />
                     </div>
                     <div className="text-left">
-                      <div className="font-semibold">Email Providers</div>
-                      <div className="text-muted-foreground text-sm">Connect Gmail or Outlook for email campaigns</div>
+                      <div className="font-semibold text-sm">Email Providers</div>
                     </div>
                   </div>
                   <svg className="text-muted-foreground group-hover:translate-x-1 transition-transform" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -211,15 +205,14 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
                 {/* Reply Agent */}
                 <button
                   onClick={() => setIsReplyAgentModalOpen(true)}
-                  className="w-full flex items-center justify-between p-4 bg-card hover:bg-accent border border-border rounded-xl transition-all hover:border-primary/50 group"
+                  className="w-full flex items-center justify-between p-3 bg-card hover:bg-accent border border-border rounded-xl transition-all hover:border-primary/50 group"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
                       <MessageCircle className="text-blue-400 h-5 w-5" />
                     </div>
                     <div className="text-left">
-                      <div className="font-semibold">Reply Agent</div>
-                      <div className="text-muted-foreground text-sm">Auto-respond to prospect replies with AI</div>
+                      <div className="font-semibold text-sm">Reply Agent</div>
                     </div>
                   </div>
                   <svg className="text-muted-foreground group-hover:translate-x-1 transition-transform" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
