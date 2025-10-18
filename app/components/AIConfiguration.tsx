@@ -135,21 +135,25 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
 
   return (
     <>
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
-              <Brain size={24} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-white">AI Configuration</h1>
-              <p className="text-gray-400 text-sm mt-1">
-                Configure and manage all AI agents for {workspaceName || 'your workspace'}
-              </p>
+      <div className="min-h-screen p-8">
+        <div className="max-w-[1400px] mx-auto">
+          {/* Header Section */}
+          <div className="mb-8">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <Brain className="h-8 w-8 text-primary" />
+                  <h1 className="text-4xl font-bold">AI Configuration</h1>
+                </div>
+                <p className="text-xl text-muted-foreground mb-4">
+                  Agent Management & Automation
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Configure and manage all AI agents for {workspaceName || 'your workspace'}.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
         {/* Agent Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -184,7 +188,7 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
                     w-12 h-12 rounded-lg flex items-center justify-center
                     ${isActive ? 'bg-white/10' : 'bg-gray-700/50'}
                   `}>
-                    <Icon size={24} className={isActive ? 'text-white' : 'text-gray-500'} />
+                    <Icon className={`h-6 w-6 ${isActive ? 'text-white' : 'text-gray-500'}`} />
                   </div>
                   {getStatusBadge(agent.status, agent.badge)}
                 </div>
@@ -204,7 +208,7 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
                       onClick={agent.onClick}
                       className="w-full py-2 px-4 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
                     >
-                      <Settings size={16} />
+                      <Settings className="h-4 w-4" />
                       Configure
                     </button>
                   </div>
@@ -214,19 +218,20 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
           })}
         </div>
 
-        {/* Info Box */}
-        <div className="mt-8 bg-blue-900/20 border border-blue-500/30 rounded-xl p-6">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Brain size={20} className="text-blue-400" />
-            </div>
-            <div>
-              <h3 className="text-white font-semibold mb-2">About AI Agents</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                AI agents automate repetitive tasks and enhance your outreach campaigns. Configure each agent's
-                behavior, tone, and automation rules to match your workflow. Active agents are ready to use,
-                while "Coming Soon" features are currently in development.
-              </p>
+          {/* Info Box */}
+          <div className="mt-8 p-4 bg-primary/10 border border-primary/20 rounded-lg">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Brain className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">About AI Agents</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  AI agents automate repetitive tasks and enhance your outreach campaigns. Configure each agent's
+                  behavior, tone, and automation rules to match your workflow. Active agents are ready to use,
+                  while "Coming Soon" features are currently in development.
+                </p>
+              </div>
             </div>
           </div>
         </div>
