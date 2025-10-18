@@ -15,10 +15,10 @@ import { OpenRouter } from './openrouter-client';
 // Model configurations optimized for cost-quality balance
 const MODEL_CONFIGS = {
   primary: {
-    model: "anthropic/claude-4.5-sonnet",
-    displayName: "Claude 4.5 Sonnet",
-    costPer1M: 3.00,
-    qualityScore: 95,
+    model: "anthropic/claude-haiku-4.5",
+    displayName: "Claude Haiku 4.5",
+    costPer1M: 1.00,
+    qualityScore: 92,
     maxTokens: 150,
     temperature: 0.3,
     useCase: "primary_personalization"
@@ -33,8 +33,8 @@ const MODEL_CONFIGS = {
     useCase: "batch_processing"
   },
   fallback: {
-    model: "anthropic/claude-4.5-sonnet",
-    displayName: "Claude 4.5 Sonnet",
+    model: "anthropic/claude-sonnet-4.5",
+    displayName: "Claude Sonnet 4.5",
     costPer1M: 3.00,
     qualityScore: 95,
     maxTokens: 150,
@@ -126,7 +126,7 @@ class CostControlledPersonalization {
   constructor() {
     this.openRouter = new OpenRouter({
       apiKey: process.env.OPENROUTER_API_KEY!,
-      defaultModel: MODEL_CONFIGS.primary.model
+      defaultModel: MODEL_CONFIGS.primary.model // Claude Haiku 4.5
     });
     this.loadDailySpend();
   }
@@ -246,9 +246,9 @@ class CostControlledPersonalization {
     switch (level) {
       case 'minimal':
       case 'standard':
-        return MODEL_CONFIGS.primary; // Claude 4.5 Sonnet
+        return MODEL_CONFIGS.primary; // Claude Haiku 4.5
       case 'premium':
-        return MODEL_CONFIGS.fallback; // Claude 4.5 Sonnet for highest quality
+        return MODEL_CONFIGS.fallback; // Claude Sonnet 4.5 for highest quality
       default:
         return MODEL_CONFIGS.primary;
     }
@@ -358,7 +358,7 @@ Enhanced message:`;
     request: PersonalizationRequest
   ): Promise<PersonalizationResult> {
     
-    console.log('Attempting quality fallback to Claude 4.5 Sonnet');
+    console.log('Attempting quality fallback to Claude Sonnet 4.5');
     
     try {
       return await this.enhanceWithAI(templateMessage, request, MODEL_CONFIGS.fallback);

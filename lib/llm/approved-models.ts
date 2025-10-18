@@ -32,6 +32,28 @@ export const APPROVED_MODELS: ApprovedModel[] = [
   // ANTHROPIC (Claude) - Your Current Default
   // ============================================
   {
+    id: 'anthropic/claude-haiku-4.5',
+    name: 'Claude Haiku 4.5',
+    provider: 'anthropic',
+    tier: 'flagship',
+    description: 'Anthropic\'s fastest and most efficient model with near-frontier intelligence at a fraction of the cost and latency.',
+    contextLength: 200000,
+    maxOutputTokens: 8192,
+    pricing: {
+      input: 1,
+      output: 5
+    },
+    capabilities: ['Extended thinking', 'Coding excellence', 'Sub-agent workflows', 'Real-time applications'],
+    euHosted: false,
+    recommended: true, // Current default
+    features: {
+      reasoning: true,
+      vision: true,
+      toolUse: true,
+      coding: true
+    }
+  },
+  {
     id: 'anthropic/claude-sonnet-4.5',
     name: 'Claude Sonnet 4.5',
     provider: 'anthropic',
@@ -45,7 +67,7 @@ export const APPROVED_MODELS: ApprovedModel[] = [
     },
     capabilities: ['Agentic workflows', 'Coding excellence', 'Extended context', 'Tool orchestration'],
     euHosted: false,
-    recommended: true, // Current default
+    recommended: false,
     features: {
       reasoning: true,
       vision: true,
@@ -476,7 +498,7 @@ export function getModelById(id: string): ApprovedModel | undefined {
  * Get default model (current platform default)
  */
 export function getDefaultModel(): ApprovedModel {
-  return APPROVED_MODELS[0]; // Claude Sonnet 4.5
+  return APPROVED_MODELS[0]; // Claude Haiku 4.5
 }
 
 /**
