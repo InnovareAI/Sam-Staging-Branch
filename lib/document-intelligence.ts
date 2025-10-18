@@ -123,7 +123,7 @@ IMPORTANT:
 - Confidence should reflect how certain you are about the classification
 - Extract all relevant structured data based on document type`;
 
-    // Call LLM for analysis
+    // Call LLM for analysis (using Gemini 2.5 Flash for cost efficiency and long context)
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -133,7 +133,7 @@ IMPORTANT:
         'X-Title': 'SAM Document Intelligence'
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-haiku-4.5',
+        model: 'google/gemini-2.5-flash-preview-09-2025',
         messages: [
           {
             role: 'user',
