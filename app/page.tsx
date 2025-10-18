@@ -25,6 +25,7 @@ import DataCollectionHub from '@/components/DataCollectionHub';
 import CampaignHub from '@/app/components/CampaignHub';
 import AIConfiguration from '@/app/components/AIConfiguration';
 import { ManageSubscriptionModal } from '@/app/components/ManageSubscriptionModal';
+import SuperAdminPage from '@/app/admin/superadmin/page';
 import {
   Activity,
   Archive,
@@ -3623,7 +3624,7 @@ export default function Page() {
           </div>
                 ) : activeMenuItem === 'superadmin' ? (
           /* SUPER ADMIN PAGE */
-          <div className="flex-1 overflow-y-auto">
+          <SuperAdminPage />
             <div className="mx-auto max-w-7xl px-6 py-8 space-y-8">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-3">
