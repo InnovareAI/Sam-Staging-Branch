@@ -2931,15 +2931,9 @@ export default function Page() {
                     <User className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">User Profile</h2>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                  <p className="text-gray-300 text-sm leading-relaxed">
                     Manage your account details, profile country for proxy assignment, and personal preferences.
                   </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Profile • Country • Preferences</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
                 </div>
                 
                 {/* BrightData Proxy Country (Advanced) */}
@@ -2951,15 +2945,9 @@ export default function Page() {
                     <Globe className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">LinkedIn Proxy Management</h2>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                  <p className="text-gray-300 text-sm leading-relaxed">
                     Advanced proxy configuration for LinkedIn accounts. Manually override automatic proxy assignment per account.
                   </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Select • Configure • Test</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
                 </div>
 
               </div>
@@ -2992,15 +2980,9 @@ export default function Page() {
                     <Users className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">Team Management</h2>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                  <p className="text-gray-300 text-sm leading-relaxed">
                     Invite team members, manage roles and permissions, and configure workspace access for your organization.
                   </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Invite • Manage • Configure</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
                 </div>
 
                 {/* Manage Subscription - Only for credit card customers */}
@@ -3030,15 +3012,9 @@ export default function Page() {
                         <CreditCard className="text-green-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                         <h2 className="text-xl font-semibold text-white">Manage Subscription</h2>
                       </div>
-                      <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                      <p className="text-gray-300 text-sm leading-relaxed">
                         View your subscription details, update payment methods, and access billing history. Manage your plan and invoices.
                       </p>
-                      <div className="mt-4 flex items-center text-gray-400 text-xs">
-                        <span>Subscription • Billing • Invoices</span>
-                        <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="m9 18 6-6-6-6"/>
-                        </svg>
-                      </div>
                     </div>
                   );
                 })()}
@@ -3052,15 +3028,9 @@ export default function Page() {
                     <Settings className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">Workspace Settings</h2>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                  <p className="text-gray-300 text-sm leading-relaxed">
                     Configure workspace name, branding, and general settings. Customize your workspace preferences and appearance.
                   </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Configure • Customize • Preferences</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
                 </div>
 
                 {/* CRM Integration */}
@@ -3072,15 +3042,9 @@ export default function Page() {
                     <Database className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">CRM Integration</h2>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                  <p className="text-gray-300 text-sm leading-relaxed">
                     Connect Salesforce, HubSpot, Pipedrive, and other CRMs. Configure field mapping and sync settings for seamless data flow.
                   </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Connect • Map • Sync</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
                 </div>
 
                 {/* Integrations & Tools */}
@@ -3092,15 +3056,9 @@ export default function Page() {
                     <Zap className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">Integrations & Tools</h2>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                  <p className="text-gray-300 text-sm leading-relaxed">
                     Manage LinkedIn Premium connections, email providers, and third-party tool integrations for your outreach stack.
                   </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Connect • Configure • Monitor</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
                 </div>
 
                 {/* Security & Compliance */}
@@ -3112,15 +3070,9 @@ export default function Page() {
                     <Shield className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">Security & Compliance</h2>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                  <p className="text-gray-300 text-sm leading-relaxed">
                     Configure security settings, compliance requirements, audit logs, and data protection policies for your workspace.
                   </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Secure • Comply • Audit</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
                 </div>
 
                 {/* Analytics & Reporting */}
@@ -3132,15 +3084,9 @@ export default function Page() {
                     <BarChart3 className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">Analytics & Reporting</h2>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                  <p className="text-gray-300 text-sm leading-relaxed">
                     Access workspace-level analytics, performance metrics, and custom reporting features for team productivity insights.
                   </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Analyze • Report • Optimize</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
                 </div>
 
                 {/* Profile Management */}
@@ -3149,15 +3095,9 @@ export default function Page() {
                     <User className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">Profile Management</h2>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                  <p className="text-gray-300 text-sm leading-relaxed">
                     Manage your account information, update profile details, change password, and configure personal preferences.
                   </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Edit • Update • Configure</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
                 </div>
 
                 {/* AI Model Configuration Tile */}
@@ -3169,15 +3109,9 @@ export default function Page() {
                     <Brain className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
                     <h2 className="text-xl font-semibold text-white">AI Model Configuration</h2>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                  <p className="text-gray-300 text-sm leading-relaxed">
                     Configure your preferred AI model for SAM. Currently using Claude Sonnet 4.5 by Anthropic.
                   </p>
-                  <div className="mt-4 flex items-center text-gray-400 text-xs">
-                    <span>Claude Sonnet 4.5 • Anthropic</span>
-                    <svg className="ml-2 group-hover:translate-x-1 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                  </div>
                 </div>
 
               </div>

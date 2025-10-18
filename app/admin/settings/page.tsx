@@ -208,18 +208,18 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen p-8">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-3xl font-bold mb-2">
             Settings & Profile
           </h1>
-          <p className="text-slate-600">Manage your account settings and preferences</p>
+          <p className="text-muted-foreground">Manage your account settings and preferences</p>
         </motion.div>
 
         {/* Alert Messages */}
@@ -229,9 +229,9 @@ export default function AdminSettingsPage() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-6"
           >
-            <Alert className={message.type === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}>
-              {message.type === 'success' ? <CheckCircle className="h-4 w-4 text-green-600" /> : <AlertCircle className="h-4 w-4 text-red-600" />}
-              <AlertDescription className={message.type === 'success' ? 'text-green-800' : 'text-red-800'}>
+            <Alert className={message.type === 'success' ? 'bg-green-500/10 border-green-500/20' : 'bg-destructive/10 border-destructive/20'}>
+              {message.type === 'success' ? <CheckCircle className="h-4 w-4 text-green-500" /> : <AlertCircle className="h-4 w-4 text-destructive" />}
+              <AlertDescription className={message.type === 'success' ? 'text-green-500' : 'text-destructive'}>
                 {message.text}
               </AlertDescription>
             </Alert>
@@ -240,7 +240,7 @@ export default function AdminSettingsPage() {
 
         {/* Main Content */}
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="bg-white shadow-sm">
+          <TabsList>
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Profile
@@ -265,10 +265,10 @@ export default function AdminSettingsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <Card className="shadow-lg border-0">
+              <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5 text-blue-600" />
+                    <User className="h-5 w-5 text-primary" />
                     Profile Information
                   </CardTitle>
                   <CardDescription>Update your personal information</CardDescription>
@@ -293,9 +293,9 @@ export default function AdminSettingsPage() {
                           type="email"
                           value={profileForm.email}
                           disabled
-                          className="bg-slate-50"
+                          className="bg-muted"
                         />
-                        <p className="text-xs text-slate-500">Email cannot be changed</p>
+                        <p className="text-xs text-muted-foreground">Email cannot be changed</p>
                       </div>
                       
                       <div className="space-y-2">
@@ -321,7 +321,7 @@ export default function AdminSettingsPage() {
                     
                     <Separator />
                     
-                    <Button type="submit" disabled={loading} className="bg-gradient-to-r from-blue-600 to-indigo-600">
+                    <Button type="submit" disabled={loading}>
                       {loading ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -346,10 +346,10 @@ export default function AdminSettingsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <Card className="shadow-lg border-0">
+              <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-blue-600" />
+                    <Shield className="h-5 w-5 text-primary" />
                     Change Password
                   </CardTitle>
                   <CardDescription>Update your password to keep your account secure</CardDescription>
@@ -370,7 +370,7 @@ export default function AdminSettingsPage() {
                           <button
                             type="button"
                             onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                           >
                             {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </button>
@@ -390,12 +390,12 @@ export default function AdminSettingsPage() {
                           <button
                             type="button"
                             onClick={() => setShowNewPassword(!showNewPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                           >
                             {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </button>
                         </div>
-                        <p className="text-xs text-slate-500">Must be at least 8 characters</p>
+                        <p className="text-xs text-muted-foreground">Must be at least 8 characters</p>
                       </div>
                       
                       <div className="space-y-2">
@@ -412,7 +412,7 @@ export default function AdminSettingsPage() {
                     
                     <Separator />
                     
-                    <Button type="submit" disabled={loading} className="bg-gradient-to-r from-blue-600 to-indigo-600">
+                    <Button type="submit" disabled={loading}>
                       {loading ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -437,10 +437,10 @@ export default function AdminSettingsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <Card className="shadow-lg border-0">
+              <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Bell className="h-5 w-5 text-blue-600" />
+                    <Bell className="h-5 w-5 text-primary" />
                     Notification Preferences
                   </CardTitle>
                   <CardDescription>Manage how you receive notifications</CardDescription>
@@ -448,12 +448,12 @@ export default function AdminSettingsPage() {
                 <CardContent className="space-y-6">
                   <div className="space-y-4">
                     {Object.entries(notifications).map(([key, value]) => (
-                      <div key={key} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                      <div key={key} className="flex items-center justify-between p-4 bg-muted rounded-lg">
                         <div>
                           <p className="font-medium capitalize">
                             {key.replace(/([A-Z])/g, ' $1').trim()}
                           </p>
-                          <p className="text-sm text-slate-500">
+                          <p className="text-sm text-muted-foreground">
                             {key === 'emailNotifications' && 'Receive email notifications for important updates'}
                             {key === 'systemAlerts' && 'Get notified about system status changes'}
                             {key === 'weeklyReports' && 'Receive weekly performance reports'}
@@ -471,7 +471,7 @@ export default function AdminSettingsPage() {
                   
                   <Separator />
                   
-                  <Button onClick={handleNotificationUpdate} disabled={loading} className="bg-gradient-to-r from-blue-600 to-indigo-600">
+                  <Button onClick={handleNotificationUpdate} disabled={loading}>
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -495,10 +495,10 @@ export default function AdminSettingsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <Card className="shadow-lg border-0">
+              <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Key className="h-5 w-5 text-blue-600" />
+                    <Key className="h-5 w-5 text-primary" />
                     API Keys
                   </CardTitle>
                   <CardDescription>Manage your API keys for integrations</CardDescription>
@@ -506,11 +506,11 @@ export default function AdminSettingsPage() {
                 <CardContent className="space-y-6">
                   <div className="space-y-4">
                     {apiKeys.map((apiKey) => (
-                      <div key={apiKey.id} className="p-4 bg-slate-50 rounded-lg space-y-3">
+                      <div key={apiKey.id} className="p-4 bg-muted rounded-lg space-y-3">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-medium">{apiKey.name}</p>
-                            <p className="text-sm text-slate-500">
+                            <p className="text-sm text-muted-foreground">
                               Created: {apiKey.created} • Last used: {apiKey.lastUsed}
                             </p>
                           </div>
@@ -523,7 +523,7 @@ export default function AdminSettingsPage() {
                           </Button>
                         </div>
                         <div className="flex items-center gap-2">
-                          <code className="flex-1 px-3 py-2 bg-white rounded border text-sm font-mono">
+                          <code className="flex-1 px-3 py-2 bg-background rounded border text-sm font-mono">
                             {showApiKey === apiKey.id ? apiKey.key : apiKey.key}
                           </code>
                         </div>
