@@ -2912,13 +2912,17 @@ export default function Page() {
                 {/* User Profile & Country */}
                 <div 
                   onClick={() => setShowUserProfileModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
-                  <div className="flex items-center mb-4">
-                    <User className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">User Profile</h2>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
+                      <User className="text-blue-400 h-5 w-5" />
+                    </div>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed">
+                  <h3 className="text-base font-semibold text-white mb-1.5">
+                    User Profile
+                  </h3>
+                  <p className="text-gray-400 text-xs leading-relaxed">
                     Manage your account details, profile country for proxy assignment, and personal preferences.
                   </p>
                 </div>
@@ -2926,13 +2930,17 @@ export default function Page() {
                 {/* BrightData Proxy Country (Advanced) */}
                 <div 
                   onClick={() => setShowProxyCountryModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
-                  <div className="flex items-center mb-4">
-                    <Globe className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">LinkedIn Proxy Management</h2>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center">
+                      <Globe className="text-purple-400 h-5 w-5" />
+                    </div>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed">
+                  <h3 className="text-base font-semibold text-white mb-1.5">
+                    LinkedIn Proxy Management
+                  </h3>
+                  <p className="text-gray-400 text-xs leading-relaxed">
                     Advanced proxy configuration for LinkedIn accounts. Manually override automatic proxy assignment per account.
                   </p>
                 </div>
@@ -2961,13 +2969,17 @@ export default function Page() {
                     console.log('Setting showTeamManagementModal to true');
                     setShowTeamManagementModal(true);
                   }}
-                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
-                  <div className="flex items-center mb-4">
-                    <Users className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">Team Management</h2>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
+                      <Users className="text-blue-400 h-5 w-5" />
+                    </div>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed">
+                  <h3 className="text-base font-semibold text-white mb-1.5">
+                    Team Management
+                  </h3>
+                  <p className="text-gray-400 text-xs leading-relaxed">
                     Invite team members, manage roles and permissions, and configure workspace access for your organization.
                   </p>
                 </div>
@@ -2993,13 +3005,17 @@ export default function Page() {
                   return (
                     <div
                       onClick={() => setShowManageSubscriptionModal(true)}
-                      className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                      className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                     >
-                      <div className="flex items-center mb-4">
-                        <CreditCard className="text-green-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                        <h2 className="text-xl font-semibold text-white">Manage Subscription</h2>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
+                          <CreditCard className="text-green-400 h-5 w-5" />
+                        </div>
                       </div>
-                      <p className="text-gray-300 text-sm leading-relaxed">
+                      <h3 className="text-base font-semibold text-white mb-1.5">
+                        Manage Subscription
+                      </h3>
+                      <p className="text-gray-400 text-xs leading-relaxed">
                         View your subscription details, update payment methods, and access billing history. Manage your plan and invoices.
                       </p>
                     </div>
@@ -3009,13 +3025,17 @@ export default function Page() {
                 {/* Workspace Settings */}
                 <div
                   onClick={() => setShowWorkspaceSettingsModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
-                  <div className="flex items-center mb-4">
-                    <Settings className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">Workspace Settings</h2>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
+                      <Settings className="text-blue-400 h-5 w-5" />
+                    </div>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed">
+                  <h3 className="text-base font-semibold text-white mb-1.5">
+                    Workspace Settings
+                  </h3>
+                  <p className="text-gray-400 text-xs leading-relaxed">
                     Configure workspace name, branding, and general settings. Customize your workspace preferences and appearance.
                   </p>
                 </div>
@@ -3023,13 +3043,17 @@ export default function Page() {
                 {/* CRM Integration */}
                 <div 
                   onClick={() => setShowCrmIntegrationModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
-                  <div className="flex items-center mb-4">
-                    <Database className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">CRM Integration</h2>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 bg-cyan-600/20 rounded-lg flex items-center justify-center">
+                      <Database className="text-cyan-400 h-5 w-5" />
+                    </div>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed">
+                  <h3 className="text-base font-semibold text-white mb-1.5">
+                    CRM Integration
+                  </h3>
+                  <p className="text-gray-400 text-xs leading-relaxed">
                     Connect Salesforce, HubSpot, Pipedrive, and other CRMs. Configure field mapping and sync settings for seamless data flow.
                   </p>
                 </div>
@@ -3037,13 +3061,17 @@ export default function Page() {
                 {/* Integrations & Tools */}
                 <div 
                   onClick={() => setShowIntegrationsToolsModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
-                  <div className="flex items-center mb-4">
-                    <Zap className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">Integrations & Tools</h2>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 bg-yellow-600/20 rounded-lg flex items-center justify-center">
+                      <Zap className="text-yellow-400 h-5 w-5" />
+                    </div>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed">
+                  <h3 className="text-base font-semibold text-white mb-1.5">
+                    Integrations & Tools
+                  </h3>
+                  <p className="text-gray-400 text-xs leading-relaxed">
                     Manage LinkedIn Premium connections, email providers, and third-party tool integrations for your outreach stack.
                   </p>
                 </div>
@@ -3051,13 +3079,17 @@ export default function Page() {
                 {/* Security & Compliance */}
                 <div 
                   onClick={() => setShowSecurityComplianceModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
-                  <div className="flex items-center mb-4">
-                    <Shield className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">Security & Compliance</h2>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 bg-red-600/20 rounded-lg flex items-center justify-center">
+                      <Shield className="text-red-400 h-5 w-5" />
+                    </div>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed">
+                  <h3 className="text-base font-semibold text-white mb-1.5">
+                    Security & Compliance
+                  </h3>
+                  <p className="text-gray-400 text-xs leading-relaxed">
                     Configure security settings, compliance requirements, audit logs, and data protection policies for your workspace.
                   </p>
                 </div>
@@ -3065,24 +3097,32 @@ export default function Page() {
                 {/* Analytics & Reporting */}
                 <div 
                   onClick={() => setShowAnalyticsReportingModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
-                  <div className="flex items-center mb-4">
-                    <BarChart3 className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">Analytics & Reporting</h2>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 bg-indigo-600/20 rounded-lg flex items-center justify-center">
+                      <BarChart3 className="text-indigo-400 h-5 w-5" />
+                    </div>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed">
+                  <h3 className="text-base font-semibold text-white mb-1.5">
+                    Analytics & Reporting
+                  </h3>
+                  <p className="text-gray-400 text-xs leading-relaxed">
                     Access workspace-level analytics, performance metrics, and custom reporting features for team productivity insights.
                   </p>
                 </div>
 
                 {/* Profile Management */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-                  <div className="flex items-center mb-4">
-                    <User className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">Profile Management</h2>
+                <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
+                      <User className="text-blue-400 h-5 w-5" />
+                    </div>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed">
+                  <h3 className="text-base font-semibold text-white mb-1.5">
+                    Profile Management
+                  </h3>
+                  <p className="text-gray-400 text-xs leading-relaxed">
                     Manage your account information, update profile details, change password, and configure personal preferences.
                   </p>
                 </div>
@@ -3090,13 +3130,17 @@ export default function Page() {
                 {/* AI Model Configuration Tile */}
                 <div 
                   onClick={() => setShowLLMConfigModal(true)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+                  className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
                 >
-                  <div className="flex items-center mb-4">
-                    <Brain className="text-blue-400 mr-3 group-hover:scale-110 transition-transform" size={24} />
-                    <h2 className="text-xl font-semibold text-white">AI Model Configuration</h2>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center">
+                      <Brain className="text-purple-400 h-5 w-5" />
+                    </div>
                   </div>
-                  <p className="text-gray-300 text-sm leading-relaxed">
+                  <h3 className="text-base font-semibold text-white mb-1.5">
+                    AI Model Configuration
+                  </h3>
+                  <p className="text-gray-400 text-xs leading-relaxed">
                     Configure your preferred AI model for SAM. Currently using Claude Sonnet 4.5 by Anthropic.
                   </p>
                 </div>
