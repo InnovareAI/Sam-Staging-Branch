@@ -3625,6 +3625,772 @@ export default function Page() {
                 ) : activeMenuItem === 'superadmin' ? (
           /* SUPER ADMIN PAGE */
           <SuperAdminPage />
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/20 text-purple-300">
+                    <Settings className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-semibold leading-tight text-white tracking-tight">Super Admin Control</h1>
+                    <p className="text-sm text-gray-400">
+                      Curated to mirror the Knowledge Base experience with streamlined tenant oversight.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={() => setActiveMenuItem('chat')}
+                    className="inline-flex items-center gap-2 rounded-full border border-gray-700/70 px-4 py-2 text-sm text-gray-300 transition hover:border-purple-500 hover:text-white"
+                  >
+                    ← Back to Chat
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid gap-6 lg:grid-cols-[320px,minmax(0,1fr)] xl:grid-cols-[360px,minmax(0,1fr)]">
+                <div className="space-y-6">
+                  {isSuperAdmin ? (
+                    <div className="rounded-2xl border border-gray-700/80 bg-gray-900/70 p-6 shadow-lg shadow-black/20">
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-purple-300/80">Super Admin</p>
+                          <h2 className="text-xl font-semibold text-white">Workspace Orchestration</h2>
+                          <p className="text-sm text-gray-300">
+                            Manage tenants, create dedicated workspaces, and invite teams in seconds.
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                            Operating Company
+                          </label>
+                          <select
+                            value={selectedCompany}
+                            onChange={(e) => setSelectedCompany(e.target.value as 'All' | 'InnovareAI' | '3cubedai')}
+                            className="h-11 w-full rounded-lg border border-gray-700 bg-gray-900/60 px-3 text-sm text-white transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                          >
+                            <option value="All">All Companies</option>
+                            <option value="InnovareAI">InnovareAI</option>
+                            <option value="3cubedai">3CubedAI</option>
+                          </select>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                          <button
+                            onClick={() => setShowCreateWorkspace(true)}
+                            className="flex h-12 items-center justify-center gap-2 rounded-lg border border-purple-500/40 bg-purple-500/15 text-sm font-medium text-purple-100 transition hover:border-purple-400 hover:bg-purple-500/25"
+                          >
+                            <Building2 size={16} />
+                            <span>Create Workspace</span>
+                          </button>
+                          <button
+                            onClick={async () => {
+                              console.log('🔄 Refreshing workspaces before opening invite popup...');
+                              if (user) {
+                                await loadWorkspaces(user.id, isSuperAdmin);
+                              }
+                              setShowInviteUser(true);
+                            }}
+                            className="flex h-12 items-center justify-center gap-2 rounded-lg border border-green-500/40 bg-green-500/15 text-sm font-medium text-green-100 transition hover:border-green-400 hover:bg-green-500/25"
+                          >
+                            <Mail size={16} />
+                            <span>Invite User</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowManageUsers(true);
+                              loadUsers();
+                            }}
+                            className="flex h-12 items-center justify-center gap-2 rounded-lg border border-blue-500/40 bg-blue-500/15 text-sm font-medium text-blue-100 transition hover:border-blue-400 hover:bg-blue-500/25"
+                          >
+                            <Users size={16} />
+                            <span>Manage Users</span>
+                          </button>
+                        </div>
+
+                        <div className="rounded-xl border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-sm text-purple-100">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-purple-200">Email Routing</p>
+                          <p className="mt-1 leading-relaxed">
+                            Company emails will be sent from: {companyEmailMessage}
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                          <div className="rounded-xl border border-gray-700/80 bg-gray-900/60 px-4 py-3">
+                            <p className="text-xs uppercase tracking-wide text-gray-400">Showing</p>
+                            <p className="mt-1 text-2xl font-semibold text-white">
+                              {filteredWorkspaceCount}
+                            </p>
+                            <p className="text-xs text-gray-500">of {totalWorkspaceCount} workspaces</p>
+                          </div>
+                          <div className="rounded-xl border border-gray-700/80 bg-gray-900/60 px-4 py-3">
+                            <p className="text-xs uppercase tracking-wide text-gray-400">Active Members</p>
+                            <p className="mt-1 text-2xl font-semibold text-white">
+                              {filteredWorkspaceMembers}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {overallWorkspaceMembers} across all tenants
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-gray-700/80 bg-gray-900/60 px-4 py-3">
+                            <p className="text-xs uppercase tracking-wide text-gray-400">Pending Invites</p>
+                            <p className="mt-1 text-2xl font-semibold text-white">
+                              {filteredPendingInvites}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {overallPendingInvites} total
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-gray-700/80 bg-gray-900/60 p-6 text-sm text-gray-300">
+                      <h2 className="text-lg font-semibold text-white">Limited Access</h2>
+                      <p className="mt-2 leading-relaxed">
+                        Super admin privileges are required to access tenant-wide controls. Please contact your InnovareAI administrator if you believe this is in error.
+                      </p>
+                      <button
+                        onClick={() => setActiveMenuItem('knowledge')}
+                        className="mt-4 inline-flex items-center gap-2 rounded-lg border border-gray-700/70 px-3 py-2 text-xs uppercase tracking-wide text-gray-400 transition hover:border-purple-500 hover:text-white"
+                      >
+                        Explore Knowledge Base
+                      </button>
+                    </div>
+                  )}
+
+                  {/* MCP Tool Status - Live Data */}
+                  {isSuperAdmin && (
+                    <div className="rounded-2xl border border-gray-700/80 bg-gray-900/70 p-6 shadow-lg shadow-black/20">
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-blue-300/80">System Status</p>
+                          <h2 className="text-xl font-semibold text-white">MCP Tool Status</h2>
+                          <p className="text-sm text-gray-300">
+                            Monitor the availability and health of all Model Context Protocol (MCP) integrations.
+                          </p>
+                        </div>
+
+                        {mcpStatusLoading ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                          </div>
+                        ) : mcpStatus ? (
+                          <>
+                            <div className="space-y-3">
+                              {/* Google CSE */}
+                              {mcpStatus.googleCSE && (
+                                <div className={`flex items-center justify-between p-3 rounded-lg ${
+                                  mcpStatus.googleCSE.status === 'online' 
+                                    ? 'bg-green-900/20 border border-green-500/30' 
+                                    : 'bg-red-900/20 border border-red-500/30'
+                                }`}>
+                                  <div className="flex items-center space-x-3">
+                                    <div className={`w-3 h-3 rounded-full ${
+                                      mcpStatus.googleCSE.status === 'online' ? 'bg-green-400' : 'bg-red-400'
+                                    }`}></div>
+                                    <div>
+                                      <h4 className="text-white font-medium">Google Custom Search</h4>
+                                      <p className="text-xs text-gray-400">{mcpStatus.googleCSE.description}</p>
+                                      {mcpStatus.googleCSE.error && (
+                                        <p className="text-xs text-red-400 mt-1">{mcpStatus.googleCSE.error}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className={`text-sm font-medium ${
+                                    mcpStatus.googleCSE.status === 'online' ? 'text-green-400' : 'text-red-400'
+                                  }`}>
+                                    {mcpStatus.googleCSE.status === 'online' ? 'Online' : 'Offline'}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Bright Data */}
+                              {mcpStatus.brightData && (
+                                <div className={`flex items-center justify-between p-3 rounded-lg ${
+                                  mcpStatus.brightData.status === 'online' 
+                                    ? 'bg-green-900/20 border border-green-500/30' 
+                                    : 'bg-red-900/20 border border-red-500/30'
+                                }`}>
+                                  <div className="flex items-center space-x-3">
+                                    <div className={`w-3 h-3 rounded-full ${
+                                      mcpStatus.brightData.status === 'online' ? 'bg-green-400' : 'bg-red-400'
+                                    }`}></div>
+                                    <div>
+                                      <h4 className="text-white font-medium">Bright Data</h4>
+                                      <p className="text-xs text-gray-400">{mcpStatus.brightData.description}</p>
+                                      {mcpStatus.brightData.error && (
+                                        <p className="text-xs text-red-400 mt-1">{mcpStatus.brightData.error}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className={`text-sm font-medium ${
+                                    mcpStatus.brightData.status === 'online' ? 'text-green-400' : 'text-red-400'
+                                  }`}>
+                                    {mcpStatus.brightData.status === 'online' ? 'Online' : 'Offline'}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Apify */}
+                              {mcpStatus.apify && (
+                                <div className={`flex items-center justify-between p-3 rounded-lg ${
+                                  mcpStatus.apify.status === 'online' 
+                                    ? 'bg-green-900/20 border border-green-500/30' 
+                                    : 'bg-red-900/20 border border-red-500/30'
+                                }`}>
+                                  <div className="flex items-center space-x-3">
+                                    <div className={`w-3 h-3 rounded-full ${
+                                      mcpStatus.apify.status === 'online' ? 'bg-green-400' : 'bg-red-400'
+                                    }`}></div>
+                                    <div>
+                                      <h4 className="text-white font-medium">Apify</h4>
+                                      <p className="text-xs text-gray-400">{mcpStatus.apify.description}</p>
+                                      {mcpStatus.apify.error && (
+                                        <p className="text-xs text-red-400 mt-1">{mcpStatus.apify.error}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className={`text-sm font-medium ${
+                                    mcpStatus.apify.status === 'online' ? 'text-green-400' : 'text-red-400'
+                                  }`}>
+                                    {mcpStatus.apify.status === 'online' ? 'Online' : 'Offline'}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Unipile */}
+                              {mcpStatus.unipile && (
+                                <div className={`flex items-center justify-between p-3 rounded-lg ${
+                                  mcpStatus.unipile.status === 'online' 
+                                    ? 'bg-green-900/20 border border-green-500/30' 
+                                    : 'bg-red-900/20 border border-red-500/30'
+                                }`}>
+                                  <div className="flex items-center space-x-3">
+                                    <div className={`w-3 h-3 rounded-full ${
+                                      mcpStatus.unipile.status === 'online' ? 'bg-green-400' : 'bg-red-400'
+                                    }`}></div>
+                                    <div>
+                                      <h4 className="text-white font-medium">Unipile</h4>
+                                      <p className="text-xs text-gray-400">{mcpStatus.unipile.description}</p>
+                                      {mcpStatus.unipile.error && (
+                                        <p className="text-xs text-red-400 mt-1">{mcpStatus.unipile.error}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className={`text-sm font-medium ${
+                                    mcpStatus.unipile.status === 'online' ? 'text-green-400' : 'text-red-400'
+                                  }`}>
+                                    {mcpStatus.unipile.status === 'online' ? 'Online' : 'Offline'}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* N8N */}
+                              {mcpStatus.n8n && (
+                                <div className={`flex items-center justify-between p-3 rounded-lg ${
+                                  mcpStatus.n8n.status === 'online' 
+                                    ? 'bg-green-900/20 border border-green-500/30' 
+                                    : 'bg-red-900/20 border border-red-500/30'
+                                }`}>
+                                  <div className="flex items-center space-x-3">
+                                    <div className={`w-3 h-3 rounded-full ${
+                                      mcpStatus.n8n.status === 'online' ? 'bg-green-400' : 'bg-red-400'
+                                    }`}></div>
+                                    <div>
+                                      <h4 className="text-white font-medium">N8N Self-Hosted</h4>
+                                      <p className="text-xs text-gray-400">{mcpStatus.n8n.description}</p>
+                                      {mcpStatus.n8n.error && (
+                                        <p className="text-xs text-red-400 mt-1">{mcpStatus.n8n.error}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className={`text-sm font-medium ${
+                                    mcpStatus.n8n.status === 'online' ? 'text-green-400' : 'text-red-400'
+                                  }`}>
+                                    {mcpStatus.n8n.status === 'online' ? 'Online' : 'Offline'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="pt-3 border-t border-gray-600">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-400">Last updated:</span>
+                                <span className="text-white">{mcpStatus.lastUpdated ? new Date(mcpStatus.lastUpdated).toLocaleString() : 'Never'}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-sm mt-1">
+                                <span className="text-gray-400">System status:</span>
+                                <span className={`font-medium ${
+                                  mcpStatus.onlineCount === mcpStatus.totalCount ? 'text-green-400' : 'text-yellow-400'
+                                }`}>
+                                  {mcpStatus.onlineCount}/{mcpStatus.totalCount} tools online
+                                </span>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-center py-8 text-gray-400">
+                            <p>Unable to load MCP status</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-2xl border border-gray-700/80 bg-gray-900/60 p-6 space-y-5">
+                    <div className="space-y-1">
+                      <h3 className="flex items-center gap-2 text-lg font-semibold text-white">
+                        <Search size={16} className="text-purple-300" />
+                        Workspace Focus
+                      </h3>
+                      <p className="text-sm text-gray-400">
+                        Filter by operating company and adjust the layout to match your workflow.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {companyFilterButtons.map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => setSelectedCompanyFilter(option.value)}
+                          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${
+                            selectedCompanyFilter === option.value
+                              ? 'border-purple-500 bg-purple-500/20 text-purple-100'
+                              : 'border-gray-700/80 bg-gray-800/60 text-gray-300 hover:border-purple-500/60 hover:text-white'
+                          }`}
+                        >
+                          <span>{option.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="space-y-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        View Mode
+                      </span>
+                      <div className="inline-flex items-center gap-1 rounded-full border border-gray-700/80 bg-gray-800/80 p-1">
+                        {viewModes.map(({ value, label, icon: Icon }) => (
+                          <button
+                            key={value}
+                            onClick={() => setViewMode(value)}
+                            className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                              viewMode === value
+                                ? 'bg-purple-600 text-white shadow-[0_0_30px_rgba(147,51,234,0.35)]'
+                                : 'text-gray-400 hover:text-white'
+                            }`}
+                          >
+                            <Icon size={14} />
+                            <span>{label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>Showing {filteredWorkspaceCount} of {totalWorkspaceCount} workspace{totalWorkspaceCount !== 1 ? 's' : ''}</span>
+                      {selectedWorkspaces.size > 0 && (
+                        <span>{selectedWorkspaces.size} selected</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="rounded-2xl border border-gray-700/80 bg-gray-900/50 p-6 shadow-inner shadow-black/10">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <h2 className="text-2xl font-semibold text-white">
+                          {isSuperAdmin ? 'Workspace Directory' : 'My Workspace'}
+                        </h2>
+                        <p className="text-sm text-gray-400">
+                          {filteredWorkspaceCount > 0
+                            ? 'Select a workspace to review membership and activity.'
+                            : 'Adjust the filters to resurface workspaces.'}
+                        </p>
+                      </div>
+                      {isSuperAdmin && workspaces.length > 0 && (
+                        <label className="inline-flex items-center gap-2 rounded-full border border-gray-700/70 bg-gray-800/60 px-3 py-2 text-xs uppercase tracking-wide text-gray-300">
+                          <input
+                            type="checkbox"
+                            onChange={(e) => handleSelectAllWorkspaces(e.target.checked)}
+                            checked={selectedWorkspaces.size > 0 && selectedWorkspaces.size === workspaces.length}
+                            className="rounded border-gray-600 bg-gray-900 text-purple-500 focus:ring-purple-500"
+                          />
+                          <span>Select All</span>
+                        </label>
+                      )}
+                    </div>
+
+                    <div className="mt-6">
+                      {workspacesLoading ? (
+                        <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-gray-700/70 text-gray-400">
+                          Loading workspace information...
+                        </div>
+                      ) : workspaces.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-700/70 bg-gray-900/40 py-12 text-center">
+                          <Building2 className="h-12 w-12 text-gray-600" />
+                          <div>
+                            <p className="text-base font-medium text-gray-300">No workspaces created yet</p>
+                            <p className="text-sm text-gray-500">Use "Create Workspace" to get started.</p>
+                          </div>
+                        </div>
+                      ) : filteredWorkspaces.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-700/70 bg-gray-900/40 py-12 text-center">
+                          <Search className="h-10 w-10 text-gray-600" />
+                          <div>
+                            <p className="text-base font-medium text-gray-300">No workspaces match the current filter</p>
+                            <p className="text-sm text-gray-500">Try switching to "All" or another company.</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {viewMode === 'list' && (
+                            <div className="overflow-hidden rounded-2xl border border-gray-800/80 bg-gray-900/40">
+                              <div className="divide-y divide-gray-800/80">
+                                {filteredWorkspaces.map((workspace) => (
+                                  <div
+                                    key={workspace.id}
+                                    className="group flex flex-col gap-3 px-4 py-4 transition hover:bg-gray-900/70 sm:flex-row sm:items-center sm:justify-between"
+                                    onClick={() => setSelectedWorkspaceId(workspace.id)}
+                                  >
+                                    <div className="flex items-start gap-3">
+                                      {isSuperAdmin && (
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedWorkspaces.has(workspace.id)}
+                                          onChange={(e) => handleWorkspaceSelect(workspace.id, e.target.checked)}
+                                          disabled={workspace.slug === 'innovareai'}
+                                          className="mt-1 rounded border-gray-600 bg-gray-900 text-purple-500 focus:ring-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                          onClick={(e) => e.stopPropagation()}
+                                        />
+                                      )}
+                                      <div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <span className="text-sm font-semibold text-white">{workspace.name}</span>
+                                          {workspace.slug && (
+                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${getWorkspaceCompanyColor(workspace.slug)}`}>
+                                              {getWorkspaceCompanyName(workspace.slug)}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="mt-1 text-xs text-gray-500">
+                                          Created {new Date(workspace.created_at).toLocaleDateString()}
+                                        </div>
+                                        {isSuperAdmin && workspace.owner && (
+                                          <div className="mt-1 text-xs text-gray-500">
+                                            Owner: {workspace.owner.email || 'Unknown'}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-3">
+                                      <div className="flex items-center gap-1 text-sm text-gray-300">
+                                        <Users size={14} />
+                                        <span>{workspace.member_count || workspace.workspace_members?.length || 0}</span>
+                                      </div>
+                                      {workspace.pendingInvitations > 0 && (
+                                        <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2 py-1 text-xs font-medium text-amber-200">
+                                          {workspace.pendingInvitations} pending
+                                        </span>
+                                      )}
+                                      <button
+                                        className="inline-flex items-center gap-1 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-100 transition hover:border-green-400 hover:bg-green-500/20"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setInviteWorkspaceId(workspace.id);
+                                          setShowInviteUser(true);
+                                        }}
+                                      >
+                                        <Mail size={12} />
+                                        <span>Invite</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {viewMode === 'card' && (
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                              {filteredWorkspaces.map((workspace) => (
+                                <div
+                                  key={workspace.id}
+                                  className="flex h-full flex-col justify-between rounded-2xl border border-gray-800/80 bg-gray-900/40 p-5 transition hover:border-purple-500/40 hover:bg-gray-900/60"
+                                  onClick={() => setSelectedWorkspaceId(workspace.id)}
+                                >
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                      {isSuperAdmin && (
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedWorkspaces.has(workspace.id)}
+                                          onChange={(e) => handleWorkspaceSelect(workspace.id, e.target.checked)}
+                                          disabled={workspace.slug === 'innovareai'}
+                                          className="rounded border-gray-600 bg-gray-900 text-purple-500 focus:ring-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                          onClick={(e) => e.stopPropagation()}
+                                        />
+                                      )}
+                                      <Building2 size={20} className="text-purple-300" />
+                                    </div>
+                                    <button
+                                      className="inline-flex items-center gap-1 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-100 transition hover:border-green-400 hover:bg-green-500/20"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setInviteWorkspaceId(workspace.id);
+                                        setShowInviteUser(true);
+                                      }}
+                                      title="Invite User"
+                                    >
+                                      <Mail size={12} />
+                                      <span>Invite</span>
+                                    </button>
+                                  </div>
+                                  <div className="mt-4 space-y-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <h3 className="text-lg font-semibold text-white">{workspace.name}</h3>
+                                      {workspace.slug && (
+                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${getWorkspaceCompanyColor(workspace.slug)}`}>
+                                          {getWorkspaceCompanyName(workspace.slug)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                                      <span>Created {new Date(workspace.created_at).toLocaleDateString()}</span>
+                                      <span className="flex items-center gap-1 text-gray-300">
+                                        <Users size={12} />
+                                        {workspace.member_count || workspace.workspace_members?.length || 0} members
+                                      </span>
+                                    </div>
+                                    {workspace.pendingInvitations > 0 && (
+                                      <span className="inline-flex items-center rounded-full bg-amber-500/20 px-2 py-1 text-xs font-medium text-amber-200">
+                                        {workspace.pendingInvitations} pending invitation(s)
+                                      </span>
+                                    )}
+                                    {isSuperAdmin && workspace.owner && (
+                                      <p className="text-xs text-gray-500">
+                                        Owner: {workspace.owner.email || 'Unknown'}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {viewMode === 'info' && (
+                            <div className="space-y-4">
+                              {filteredWorkspaces.map((workspace) => (
+                                <div
+                                  key={workspace.id}
+                                  className="rounded-2xl border border-gray-800/80 bg-gray-900/45 p-5 transition hover:border-purple-500/40 hover:bg-gray-900/60"
+                                  onClick={() => setSelectedWorkspaceId(workspace.id)}
+                                >
+                                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                                    <div className="flex flex-col gap-2">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        {isSuperAdmin && (
+                                          <input
+                                            type="checkbox"
+                                            checked={selectedWorkspaces.has(workspace.id)}
+                                            onChange={(e) => handleWorkspaceSelect(workspace.id, e.target.checked)}
+                                            disabled={workspace.slug === 'innovareai'}
+                                            className="rounded border-gray-600 bg-gray-900 text-purple-500 focus:ring-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                            onClick={(e) => e.stopPropagation()}
+                                          />
+                                        )}
+                                        <h3 className="text-lg font-semibold text-white">{workspace.name}</h3>
+                                        {workspace.slug && (
+                                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${getWorkspaceCompanyColor(workspace.slug)}`}>
+                                            {getWorkspaceCompanyName(workspace.slug)}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex flex-wrap gap-4 text-sm text-gray-300">
+                                        <span className="flex items-center gap-1">
+                                          <Users size={14} />
+                                          {workspace.member_count || workspace.workspace_members?.length || 0} members
+                                        </span>
+                                        <span>Created {new Date(workspace.created_at).toLocaleDateString()}</span>
+                                        {isSuperAdmin && workspace.owner && (
+                                          <span>Owner: {workspace.owner.email || 'Unknown'}</span>
+                                        )}
+                                      </div>
+                                      {workspace.pendingInvitations > 0 && (
+                                        <span className="inline-flex w-fit items-center rounded-full bg-amber-500/20 px-2 py-1 text-xs font-medium text-amber-200">
+                                          {workspace.pendingInvitations} pending invitation(s)
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 self-start">
+                                      <button
+                                        className="inline-flex items-center gap-1 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-100 transition hover:border-green-400 hover:bg-green-500/20"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setInviteWorkspaceId(workspace.id);
+                                          setShowInviteUser(true);
+                                        }}
+                                      >
+                                        <Mail size={12} />
+                                        Invite
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {selectedWorkspaceId && (() => {
+                    const selectedWorkspace = workspaces.find(ws => ws.id === selectedWorkspaceId);
+                    if (!selectedWorkspace) return null;
+
+                    return (
+                      <div className="rounded-2xl border border-gray-700/80 bg-gray-900/50 p-6 shadow-lg shadow-black/20">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <h2 className="text-2xl font-semibold text-white">Workspace Details</h2>
+                            {selectedWorkspace.slug && (
+                              <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${getWorkspaceCompanyColor(selectedWorkspace.slug)}`}>
+                                {getWorkspaceCompanyName(selectedWorkspace.slug)}
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => setSelectedWorkspaceId(null)}
+                            className="rounded-full border border-gray-700/70 px-2 py-1 text-sm text-gray-400 transition hover:border-purple-500 hover:text-white"
+                            title="Close details"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+
+                        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+                          <div className="space-y-4">
+                            <div className="rounded-xl border border-gray-800/80 bg-gray-900/60 p-5">
+                              <h3 className="text-lg font-semibold text-white">{selectedWorkspace.name}</h3>
+                              <dl className="mt-4 space-y-3 text-sm">
+                                <div className="flex justify-between">
+                                  <dt className="text-gray-400">Created</dt>
+                                  <dd className="text-white">{new Date(selectedWorkspace.created_at).toLocaleDateString()}</dd>
+                                </div>
+                                <div className="flex justify-between">
+                                  <dt className="text-gray-400">Workspace ID</dt>
+                                  <dd className="font-mono text-xs text-gray-200">{selectedWorkspace.id}</dd>
+                                </div>
+                                <div className="flex justify-between">
+                                  <dt className="text-gray-400">Slug</dt>
+                                  <dd className="text-white">{selectedWorkspace.slug || 'N/A'}</dd>
+                                </div>
+                                {isSuperAdmin && selectedWorkspace.owner && (
+                                  <div className="flex justify-between">
+                                    <dt className="text-gray-400">Owner</dt>
+                                    <dd className="text-white">{selectedWorkspace.owner.email || 'Unknown'}</dd>
+                                  </div>
+                                )}
+                                <div className="flex justify-between">
+                                  <dt className="text-gray-400">Total Members</dt>
+                                  <dd className="text-white">{selectedWorkspace.member_count || selectedWorkspace.workspace_members?.length || 0}</dd>
+                                </div>
+                                {selectedWorkspace.pendingInvitations > 0 && (
+                                  <div className="flex items-center justify-between">
+                                    <dt className="text-gray-400">Pending Invitations</dt>
+                                    <dd className="inline-flex items-center rounded-full bg-amber-500/20 px-2 py-1 text-xs font-medium text-amber-200">
+                                      {selectedWorkspace.pendingInvitations}
+                                    </dd>
+                                  </div>
+                                )}
+                              </dl>
+                            </div>
+
+                            <button
+                              className="inline-flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2 text-sm font-medium text-green-100 transition hover:border-green-400 hover:bg-green-500/20"
+                              onClick={() => {
+                                setInviteWorkspaceId(selectedWorkspace.id);
+                                setShowInviteUser(true);
+                              }}
+                            >
+                              <Mail size={16} />
+                              Invite to this workspace
+                            </button>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div className="rounded-xl border border-gray-800/80 bg-gray-900/60 p-5">
+                              <h3 className="text-lg font-semibold text-white">Members</h3>
+                              {selectedWorkspace.workspace_members && selectedWorkspace.workspace_members.length > 0 ? (
+                                <div className="mt-4 space-y-3">
+                                  {selectedWorkspace.workspace_members.map((member: any, idx: number) => (
+                                    <div key={idx} className="flex items-center justify-between rounded-lg border border-gray-800/60 bg-gray-900/50 px-3 py-2">
+                                      <div>
+                                        <p className="text-sm font-medium text-white">{member.users?.email || `User ${member.user_id.slice(0, 8)}`}</p>
+                                        <p className="text-xs text-gray-400">
+                                          Joined {new Date(member.joined_at).toLocaleDateString()}
+                                        </p>
+                                      </div>
+                                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                                        member.role === 'owner'
+                                          ? 'bg-purple-500/30 text-purple-100'
+                                          : member.role === 'admin'
+                                            ? 'bg-blue-500/30 text-blue-100'
+                                            : 'bg-gray-700 text-gray-200'
+                                      }`}>
+                                        {member.role}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="mt-4 rounded-lg border border-dashed border-gray-700/70 bg-gray-900/40 px-3 py-6 text-center text-sm text-gray-500">
+                                  No members yet - invite your first teammate.
+                                </div>
+                              )}
+                            </div>
+
+                            {selectedWorkspace.pendingList && selectedWorkspace.pendingList.length > 0 && (
+                              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
+                                <h4 className="text-base font-semibold text-amber-100">Pending Invitations</h4>
+                                <div className="mt-3 space-y-2">
+                                  {selectedWorkspace.pendingList.map((invitation: string, idx: number) => (
+                                    <div key={idx} className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-50">
+                                      {invitation}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {isSuperAdmin && selectedWorkspaces.size > 0 && (
+                    <div className="flex flex-col gap-4 rounded-2xl border border-red-500/40 bg-red-950/40 p-5 text-sm text-red-100 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-base font-semibold">
+                          Delete {selectedWorkspaces.size} workspace{selectedWorkspaces.size > 1 ? 's' : ''}
+                        </p>
+                        <p className="text-xs text-red-200/80">
+                          InnovareAI workspace is protected and cannot be deleted.
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleBulkDeleteWorkspaces}
+                        disabled={isDeletingWorkspaces}
+                        className="inline-flex items-center justify-center rounded-lg border border-red-500/60 bg-red-500/20 px-4 py-2 text-sm font-semibold text-red-100 transition hover:border-red-400 hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isDeletingWorkspaces ? 'Deleting...' : 'Confirm Delete'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : showStarterScreen ? (
           /* STARTER SCREEN */
           <div className="flex-1 flex flex-col items-center justify-end pb-32 p-6">
             <div className="mb-12">
