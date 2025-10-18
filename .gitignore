@@ -56,3 +56,4 @@ next-env.d.ts
 # Project-specific
 UI_BACKUP_COMPLETE.tsx
 .restore-points/
+# Force rebuild Sat Oct 18 23:50:31 PST 2025
