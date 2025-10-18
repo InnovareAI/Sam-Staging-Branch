@@ -207,52 +207,55 @@ export default function SuperAdminPage() {
         }))
       }
       
-      // Fetch users
-      const { data: usersData } = await supabase
-        .from('users')
+      // Fetch workspace members (actual users in the system)
+      const { data: membersData } = await supabase
+        .from('workspace_members')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(100)
       
-      if (usersData) {
-        setUsers(usersData)
+      if (membersData) {
+        // Get unique user count
+        const uniqueUserIds = new Set(membersData.map(m => m.user_id))
+        const totalUsers = uniqueUserIds.size
         
-        // Calculate user lifecycle metrics
+        // Calculate metrics based on workspace members
         const now = new Date()
         const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
         
-        const recentSignupUsers = usersData.filter((u: any) => 
-          new Date(u.created_at) > sevenDaysAgo
+        const recentSignupUsers = membersData.filter((m: any) => 
+          new Date(m.created_at) > sevenDaysAgo
         )
         
-        const trialUsers = usersData.filter((u: any) => 
-          u.subscription_status === 'trial' || 
-          (!u.subscription_status && new Date(u.created_at) > thirtyDaysAgo)
+        const activeMembers = membersData.filter((m: any) => 
+          m.status === 'active'
         )
         
-        const activeUsers = usersData.filter((u: any) => 
-          u.last_sign_in_at && 
-          new Date(u.last_sign_in_at) > thirtyDaysAgo &&
-          u.subscription_status !== 'cancelled'
-        )
+        // For display purposes, create user objects from members
+        const usersList = Array.from(uniqueUserIds).map((userId, idx) => {
+          const memberRecord = membersData.find(m => m.user_id === userId)
+          return {
+            id: userId,
+            email: `user-${idx + 1}@workspace`,
+            created_at: memberRecord?.created_at,
+            status: memberRecord?.status,
+            role: memberRecord?.role
+          }
+        })
         
-        const cancelledUsers = usersData.filter((u: any) => 
-          u.subscription_status === 'cancelled'
-        )
-        
+        setUsers(usersList)
         setSignups(recentSignupUsers)
-        setTrialUsers(trialUsers)
-        setActiveUsers(activeUsers)
-        setCancelledUsers(cancelledUsers)
+        setActiveUsers(activeMembers)
+        setTrialUsers([])
+        setCancelledUsers([])
         
         setSystemStats(prev => ({
           ...prev,
-          totalUsers: usersData.length,
+          totalUsers: totalUsers,
           recentSignups: recentSignupUsers.length,
-          trialUsers: trialUsers.length,
-          activeUsers: activeUsers.length,
-          cancelledUsers: cancelledUsers.length
+          trialUsers: 0,
+          activeUsers: activeMembers.length,
+          cancelledUsers: 0
         }))
       }
       
