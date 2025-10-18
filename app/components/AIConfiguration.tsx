@@ -187,7 +187,7 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
                 key={agent.id}
                 onClick={isActive ? agent.onClick : undefined}
                 className={`
-                  relative bg-gradient-to-br ${colorClasses[agent.color as keyof typeof colorClasses]}
+                  group relative bg-gradient-to-br ${colorClasses[agent.color as keyof typeof colorClasses]}
                   rounded-xl p-4 border transition-all duration-200
                   ${isActive ? 'cursor-pointer hover:scale-105 hover:shadow-xl' : 'cursor-not-allowed opacity-60'}
                 `}
@@ -211,14 +211,14 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
                   {agent.description}
                 </p>
 
-                {/* Configure Button for Active Agents */}
+                {/* Hover Overlay for Active Agents */}
                 {isActive && (
-                  <div className="mt-3 pt-3 border-t border-white/10">
+                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <button
                       onClick={agent.onClick}
-                      className="w-full py-1.5 px-3 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2"
+                      className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                     >
-                      <Settings className="h-3.5 w-3.5" />
+                      <Settings className="h-4 w-4" />
                       Configure
                     </button>
                   </div>
