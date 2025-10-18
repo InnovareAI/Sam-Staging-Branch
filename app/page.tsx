@@ -5370,7 +5370,7 @@ export default function Page() {
                     <div className="text-gray-400 text-sm">
                       <p className="mb-2">Account: <span className="text-white">{proxyInfo.account_email || proxyInfo.account_name || user?.email}</span></p>
                       <p className="mb-2">Name: <span className="text-white">{proxyInfo.account_name || 'N/A'}</span></p>
-                      <p className="mb-2">Status: <span className="text-green-400">Connected via InnovareAI</span></p>
+                      <p className="mb-2">Status: <span className="text-green-400">Connected via Unipile</span></p>
                       {proxyInfo.detected_location && (
                         <p className="mb-2">Location: <span className="text-white">{proxyInfo.detected_location}</span></p>
                       )}
