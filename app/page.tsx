@@ -244,6 +244,10 @@ export default function Page() {
   const [mcpStatus, setMcpStatus] = useState<any>(null);
   const [mcpStatusLoading, setMcpStatusLoading] = useState(false);
   
+  // Proxy info from Unipile
+  const [proxyInfo, setProxyInfo] = useState<any>(null);
+  const [proxyInfoLoading, setProxyInfoLoading] = useState(false);
+  
   // Load profile country when user is authenticated
   useEffect(() => {
     const loadProfileCountry = async () => {
@@ -292,6 +296,33 @@ export default function Page() {
       return () => clearInterval(interval);
     }
   }, [isSuperAdmin]);
+  
+  // Load proxy info when proxy modal opens
+  useEffect(() => {
+    const loadProxyInfo = async () => {
+      if (!showProxyCountryModal || !user?.id) return;
+      
+      setProxyInfoLoading(true);
+      try {
+        const response = await fetch('/api/linkedin/proxy-info');
+        const data = await response.json();
+        
+        if (data.success && data.accounts && data.accounts.length > 0) {
+          setProxyInfo(data.accounts[0]); // Use first account
+          console.log('✅ Loaded proxy info:', data.accounts[0]);
+        } else {
+          setProxyInfo(null);
+        }
+      } catch (error) {
+        console.error('Failed to load proxy info:', error);
+        setProxyInfo(null);
+      } finally {
+        setProxyInfoLoading(false);
+      }
+    };
+    
+    loadProxyInfo();
+  }, [showProxyCountryModal, user?.id]);
 
   // Auto-open sign-in modal for unauthenticated users
   useEffect(() => {
@@ -5287,85 +5318,19 @@ export default function Page() {
             </div>
             
             <div className="space-y-6">
-              {/* Profile Country Selector - Always visible at top */}
-              <div className="bg-gray-700 rounded-lg p-5 border border-gray-600">
-                <h3 className="text-lg font-semibold text-white mb-2 flex items-center">
-                  <User className="mr-2 text-blue-400" size={20} />
-                  Your Profile Country
+              {/* Info banner about proxy assignment */}
+              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                <h3 className="text-blue-400 font-semibold text-sm mb-2 flex items-center">
+                  <svg className="mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                  </svg>
+                  How Proxy Assignment Works
                 </h3>
-                <p className="text-gray-400 text-sm mb-4">
-                  This country preference is used for automatic proxy assignment when connecting LinkedIn accounts.
+                <p className="text-gray-300 text-xs leading-relaxed">
+                  Unipile automatically detects your location from your LinkedIn profile and assigns a residential proxy from that country. This ensures your LinkedIn activity appears authentic and prevents automation detection.
                 </p>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Select your country</label>
-                  <select
-                    value={profileCountry}
-                    onChange={async (e) => {
-                      const newCountry = e.target.value;
-                      setProfileCountry(newCountry);
-                      setProfileCountryLoading(true);
-                      
-                      try {
-                        const response = await fetch('/api/profile/update-country', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ country: newCountry })
-                        });
-                        
-                        if (response.ok) {
-                          showNotification('success', 'Profile country updated! This will be used for future LinkedIn proxy assignments.');
-                        } else {
-                          const data = await response.json();
-                          showNotification('error', data.error || 'Failed to update country');
-                        }
-                      } catch (error) {
-                        showNotification('error', 'Network error updating country');
-                      } finally {
-                        setProfileCountryLoading(false);
-                      }
-                    }}
-                    disabled={profileCountryLoading}
-                    className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50"
-                  >
-                    <option value="">Select your country...</option>
-                    <option value="us">🇺🇸 United States</option>
-                    <option value="gb">🇬🇧 United Kingdom</option>
-                    <option value="ca">🇨🇦 Canada</option>
-                    <option value="de">🇩🇪 Germany</option>
-                    <option value="fr">🇫🇷 France</option>
-                    <option value="au">🇦🇺 Australia</option>
-                    <option value="nl">🇳🇱 Netherlands</option>
-                    <option value="br">🇧🇷 Brazil</option>
-                    <option value="es">🇪🇸 Spain</option>
-                    <option value="it">🇮🇹 Italy</option>
-                    <option value="jp">🇯🇵 Japan</option>
-                    <option value="sg">🇸🇬 Singapore</option>
-                    <option value="in">🇮🇳 India</option>
-                    <option value="at">🇦🇹 Austria</option>
-                    <option value="ch">🇨🇭 Switzerland</option>
-                    <option value="ar">🇦🇷 Argentina</option>
-                    <option value="be">🇧🇪 Belgium</option>
-                    <option value="bg">🇧🇬 Bulgaria</option>
-                    <option value="hr">🇭🇷 Croatia</option>
-                    <option value="cy">🇨🇾 Cyprus</option>
-                    <option value="cz">🇨🇿 Czech Republic</option>
-                    <option value="dk">🇩🇰 Denmark</option>
-                    <option value="hk">🇭🇰 Hong Kong</option>
-                    <option value="mx">🇲🇽 Mexico</option>
-                    <option value="no">🇳🇴 Norway</option>
-                    <option value="pl">🇵🇱 Poland</option>
-                    <option value="pt">🇵🇹 Portugal</option>
-                    <option value="ro">🇷🇴 Romania</option>
-                    <option value="za">🇿🇦 South Africa</option>
-                    <option value="se">🇸🇪 Sweden</option>
-                    <option value="tr">🇹🇷 Turkey</option>
-                    <option value="ua">🇺🇦 Ukraine</option>
-                    <option value="ae">🇦🇪 UAE</option>
-                  </select>
-                  <p className="text-gray-400 text-xs mt-2">
-                    {profileCountryLoading ? '⏳ Updating...' : '📍 Used for automatic proxy assignment via InnovareAI'}
-                  </p>
-                </div>
               </div>
 
               {/* My LinkedIn Account & Proxy Info */}
@@ -5376,26 +5341,38 @@ export default function Page() {
                   </svg>
                   My LinkedIn Account
                 </h3>
-                {loadingProxyAssignments ? (
+                {proxyInfoLoading ? (
                   <div className="text-center py-4">
                     <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
                     <p className="text-gray-400 text-sm mt-2">Loading...</p>
                   </div>
-                ) : (
+                ) : proxyInfo ? (
                   <div className="space-y-3">
                     <div className="text-gray-400 text-sm">
-                      {user?.email ? (
-                        <>
-                          <p className="mb-2">Account: <span className="text-white">{user.email}</span></p>
-                          <p className="mb-2">Status: <span className="text-green-400">Connected via InnovareAI</span></p>
-                          <p className="text-xs text-gray-500 mt-3">
-                            Proxy details are managed automatically by InnovareAI based on your profile country above.
-                          </p>
-                        </>
-                      ) : (
-                        <p className="text-center py-2">No LinkedIn account connected</p>
+                      <p className="mb-2">Account: <span className="text-white">{proxyInfo.account_email || proxyInfo.account_name || user?.email}</span></p>
+                      <p className="mb-2">Name: <span className="text-white">{proxyInfo.account_name || 'N/A'}</span></p>
+                      <p className="mb-2">Status: <span className="text-green-400">Connected via InnovareAI</span></p>
+                      {proxyInfo.detected_location && (
+                        <p className="mb-2">Location: <span className="text-white">{proxyInfo.detected_location}</span></p>
                       )}
+                      <p className="text-xs text-gray-500 mt-3">
+                        Proxy details are managed automatically by InnovareAI based on your profile country above.
+                      </p>
                     </div>
+                  </div>
+                ) : user?.email ? (
+                  <div className="space-y-3">
+                    <div className="text-gray-400 text-sm">
+                      <p className="mb-2">Account: <span className="text-white">{user.email}</span></p>
+                      <p className="mb-2">Status: <span className="text-yellow-400">Checking connection...</span></p>
+                      <p className="text-xs text-gray-500 mt-3">
+                        Proxy details are managed automatically by InnovareAI based on your profile country above.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-gray-400">No LinkedIn account connected</p>
                   </div>
                 )}
               </div>
@@ -5421,16 +5398,54 @@ export default function Page() {
                       <p className="text-white">Residential Proxy</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-3">
                     <div>
-                      <p className="text-gray-400 text-xs mb-1">Proxy Location</p>
-                      <p className="text-white">{profileCountry ? profileCountry.toUpperCase() : 'Not set'}</p>
+                      <p className="text-gray-400 text-xs mb-2">Current Proxy Location</p>
+                      {proxyInfoLoading ? (
+                        <p className="text-gray-400 flex items-center">
+                          <span className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-blue-400 mr-2"></span>
+                          Fetching from Unipile...
+                        </p>
+                      ) : proxyInfo?.proxy_country ? (
+                        <div>
+                          <p className="text-white text-lg font-semibold">
+                            {proxyInfo.proxy_country}
+                            {proxyInfo.proxy_city && ` - ${proxyInfo.proxy_city}`}
+                          </p>
+                          {proxyInfo.proxy_country.toLowerCase().includes('france') || proxyInfo.proxy_city?.toLowerCase().includes('paris') ? (
+                            <p className="text-yellow-400 text-xs mt-2 flex items-center">
+                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                              Using Unipile default proxy. Update your LinkedIn location and reconnect to get a country-specific proxy.
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : proxyInfo?.detected_location ? (
+                        <div>
+                          <p className="text-white text-lg">Auto-detected: {proxyInfo.detected_location}</p>
+                          <p className="text-gray-400 text-xs mt-1">Proxy will be assigned from this location</p>
+                        </div>
+                      ) : proxyInfo ? (
+                        <p className="text-yellow-400">Unable to detect proxy location from Unipile</p>
+                      ) : (
+                        <p className="text-gray-400">No LinkedIn account connected</p>
+                      )}
                     </div>
-                    <div>
-                      <p className="text-gray-400 text-xs mb-1">Status</p>
+                    
+                    {proxyInfo?.detected_location && (
+                      <div className="border-t border-gray-600 pt-3">
+                        <p className="text-gray-400 text-xs mb-1">LinkedIn Profile Location</p>
+                        <p className="text-white">{proxyInfo.detected_location}</p>
+                        <p className="text-gray-400 text-xs mt-1">This is what Unipile detected from your LinkedIn profile</p>
+                      </div>
+                    )}
+                    
+                    <div className="border-t border-gray-600 pt-3">
+                      <p className="text-gray-400 text-xs mb-1">Connection Status</p>
                       <p className="text-green-400 flex items-center">
                         <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                        Active
+                        {proxyInfo?.connection_status === 'OK' ? 'Active & Connected' : 'Active'}
                       </p>
                     </div>
                   </div>

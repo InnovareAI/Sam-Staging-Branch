@@ -222,8 +222,19 @@ function LinkedInIntegrationContent() {
               console.log('Session refresh attempted');
             }
             
-            // Wait a moment for session to propagate, then check connection
+            // Wait a moment for session to propagate, then sync and check connection
             setTimeout(async () => {
+              // Sync workspace accounts first
+              try {
+                await fetch('/api/linkedin/sync-workspace-accounts', {
+                  method: 'POST',
+                  credentials: 'include'
+                });
+                console.log('✅ Synced workspace accounts after reconnection');
+              } catch (e) {
+                console.log('⚠️  Sync after reconnection had issues');
+              }
+
               const connected = await checkLinkedInConnection();
               if (connected) {
                 setMessage('LinkedIn account connected successfully!');
@@ -306,8 +317,16 @@ function LinkedInIntegrationContent() {
       setMessage(`Successfully disconnected ${data.disconnected_accounts} LinkedIn account(s)`);
       setConnectionStatus('disconnected');
 
-      // Refresh connection status after a moment
-      setTimeout(() => {
+      // Sync workspace accounts after disconnect
+      setTimeout(async () => {
+        try {
+          await fetch('/api/linkedin/sync-workspace-accounts', {
+            method: 'POST',
+            credentials: 'include'
+          });
+        } catch (e) {
+          console.log('Sync after disconnect completed');
+        }
         checkLinkedInConnection();
       }, 1000);
 
