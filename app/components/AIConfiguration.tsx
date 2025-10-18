@@ -41,10 +41,9 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
       name: 'Bring Your Own Agents',
       description: 'Connect SAM to your own AI agents and have them interact seamlessly via MCP',
       icon: Plug,
-      status: 'active',
-      badge: 'upgrade',
+      status: 'coming-soon',
       color: 'cyan',
-      onClick: () => {}, // TODO: Open BYOA configuration modal
+      onClick: () => {},
     },
     {
       id: 'orchestration-agent',
