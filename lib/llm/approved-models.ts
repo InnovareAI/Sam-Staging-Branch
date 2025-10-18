@@ -53,28 +53,6 @@ export const APPROVED_MODELS: ApprovedModel[] = [
       coding: true
     }
   },
-  {
-    id: 'anthropic/claude-sonnet-4.5',
-    name: 'Claude Sonnet 4.5',
-    provider: 'anthropic',
-    tier: 'flagship',
-    description: 'Anthropic\'s most advanced model, optimized for agentic workflows, coding, and extended reasoning.',
-    contextLength: 1000000,
-    maxOutputTokens: 64000,
-    pricing: {
-      input: 3,
-      output: 15
-    },
-    capabilities: ['Agentic workflows', 'Coding excellence', 'Extended context', 'Tool orchestration'],
-    euHosted: false,
-    recommended: false,
-    features: {
-      reasoning: true,
-      vision: true,
-      toolUse: true,
-      coding: true
-    }
-  },
 
   // ============================================
   // OPENAI (GPT-5)
