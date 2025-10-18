@@ -176,12 +176,24 @@ async function upsertWorkspaceAccount(
     : unipileAccount.sources?.[0]?.status?.toLowerCase() || 'pending'
 
   // Determine account type based on Unipile account type
-  const unipileType = unipileAccount.type?.toLowerCase() || '';
-  const accountType = unipileType === 'linkedin' ? 'linkedin' :
-                      unipileType.includes('google') ? 'email' :
-                      unipileType.includes('outlook') ? 'email' :
-                      unipileType.includes('messaging') ? 'email' :
-                      'linkedin' // fallback
+  const unipileType = unipileAccount.type?.toUpperCase() || '';
+  console.log('🔍 Account type detection:', {
+    raw_type: unipileAccount.type,
+    normalized_type: unipileType,
+    account_id: unipileAccount.id,
+    account_name: unipileAccount.name
+  })
+  
+  const accountType = unipileType === 'LINKEDIN' ? 'linkedin' :
+                      unipileType.includes('GOOGLE') ? 'email' :
+                      unipileType.includes('OUTLOOK') ? 'email' :
+                      unipileType === 'MESSAGING' ? 'email' :
+                      unipileType.includes('MICROSOFT') ? 'email' :
+                      unipileType.includes('OFFICE365') ? 'email' :
+                      unipileType.includes('GMAIL') ? 'email' :
+                      'email' // Default to email for non-LinkedIn accounts
+  
+  console.log(`✅ Mapped Unipile type "${unipileType}" → account_type "${accountType}"`)
 
   // First, check if there's an existing account with different Unipile ID (reconnection case)
   const { data: existingAccounts } = await supabase

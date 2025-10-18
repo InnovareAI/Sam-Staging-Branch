@@ -2,6 +2,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 
+// Utility to clean corrupted cookie values
+function cleanCookieValue(value: string): string {
+  if (!value) return value;
+  
+  // If value starts with "base64-", it's corrupted - remove prefix
+  if (value.startsWith('base64-')) {
+    try {
+      const base64Value = value.substring(7);
+      const decoded = Buffer.from(base64Value, 'base64').toString('utf-8');
+      console.log('🔧 Fixed corrupted server-side cookie (decoded base64)');
+      return decoded;
+    } catch (e) {
+      console.log('🔧 Fixed corrupted server-side cookie (removed prefix)');
+      return value.substring(7);
+    }
+  }
+  
+  return value;
+}
+
 // Helper function to check existing LinkedIn accounts for user
 async function checkExistingLinkedInAccounts(userId: string) {
   try {
@@ -68,9 +88,31 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔑 POST /api/unipile/hosted-auth called')
     
-    // Authenticate user first
+    // Authenticate user first with cleaned cookies
     const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    
+    // Clean corrupted cookies
+    const cleanedCookies = () => {
+      const originalCookies = cookieStore.getAll()
+      return {
+        getAll: () => originalCookies.map(cookie => ({
+          ...cookie,
+          value: cleanCookieValue(cookie.value)
+        })),
+        get: (name: string) => {
+          const cookie = cookieStore.get(name)
+          if (!cookie) return undefined
+          return {
+            ...cookie,
+            value: cleanCookieValue(cookie.value)
+          }
+        },
+        set: cookieStore.set,
+        delete: cookieStore.delete
+      }
+    }
+    
+    const supabase = createRouteHandlerClient({ cookies: cleanedCookies })
     const { data: { session }, error: authError } = await supabase.auth.getSession()
     
     console.log('🔍 Auth check:', { 

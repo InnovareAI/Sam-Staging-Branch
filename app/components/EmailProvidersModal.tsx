@@ -82,9 +82,17 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
       }
 
       const data = await response.json();
+      console.log('📧 Email providers API response:', {
+        success: data.success,
+        providersCount: data.providers?.length || 0,
+        providers: data.providers
+      });
+      
       if (data.success) {
+        console.log('✅ Setting providers:', data.providers);
         setProviders(data.providers || []);
       } else {
+        console.log('❌ API returned success=false');
         setProviders([]);
       }
     } catch (error) {
