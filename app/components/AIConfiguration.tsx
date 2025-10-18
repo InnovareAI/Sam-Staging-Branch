@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Brain, MessageCircle, Send, TrendingUp, Search, MessageSquare, FileText, Settings, Edit } from 'lucide-react';
+import { Brain, MessageCircle, Send, TrendingUp, Search, MessageSquare, FileText, Settings, Edit, Plug } from 'lucide-react';
 import LLMConfigModal from '@/components/LLMConfigModal';
 import ReplyAgentModal from '@/app/components/ReplyAgentModal';
 
@@ -35,6 +35,15 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
       status: 'active',
       color: 'purple',
       onClick: () => setShowLLMModal(true),
+    },
+    {
+      id: 'byoa',
+      name: 'Bring Your Own Agents',
+      description: 'Connect SAM to your own AI agents and have them interact seamlessly via MCP',
+      icon: Plug,
+      status: 'coming-soon',
+      color: 'cyan',
+      onClick: () => {},
     },
     {
       id: 'orchestration-agent',
