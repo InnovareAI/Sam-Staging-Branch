@@ -56,14 +56,14 @@
     --gray-800: 224 45% 20%;
     --gray-900: 227 60% 12%;
     --gray-950: 229 65% 6%;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 225 48% 8%;
+    --sidebar-foreground: 214 32% 92%;
+    --sidebar-primary: 267 83% 65%;
+    --sidebar-primary-foreground: 214 32% 96%;
+    --sidebar-accent: 224 40% 16%;
+    --sidebar-accent-foreground: 214 32% 92%;
+    --sidebar-border: 222 35% 22%;
+    --sidebar-ring: 267 83% 65%;
   }
 
   html {
@@ -92,14 +92,14 @@
     color: hsl(var(--primary-foreground));
   }
   .dark {
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 225 48% 8%;
+    --sidebar-foreground: 214 32% 92%;
+    --sidebar-primary: 267 83% 65%;
+    --sidebar-primary-foreground: 214 32% 96%;
+    --sidebar-accent: 224 40% 16%;
+    --sidebar-accent-foreground: 214 32% 92%;
+    --sidebar-border: 222 35% 22%;
+    --sidebar-ring: 267 83% 65%;
   }
 }
 
