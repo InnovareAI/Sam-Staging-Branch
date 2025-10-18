@@ -150,7 +150,7 @@ Return ONLY valid JSON, no markdown formatting.`
         'X-Title': 'SAM AI - Website Intelligence'
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet',
+        model: 'anthropic/claude-haiku-4.5',
         messages: [
           {
             role: 'user',
