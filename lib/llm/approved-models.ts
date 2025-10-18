@@ -481,9 +481,17 @@ export function getDefaultModel(): ApprovedModel {
 
 /**
  * Get EU default model (for GDPR-compliant regions)
+ * Uses Mistral Medium 3.1 for cost efficiency while maintaining EU compliance
  */
 export function getEUDefaultModel(): ApprovedModel {
-  return APPROVED_MODELS.find(m => m.id === 'mistralai/mistral-large') || APPROVED_MODELS[0];
+  return APPROVED_MODELS.find(m => m.id === 'mistralai/mistral-medium-3.1') || APPROVED_MODELS[0];
+}
+
+/**
+ * Get EU premium model (for quality-critical operations)
+ */
+export function getEUPremiumModel(): ApprovedModel {
+  return APPROVED_MODELS.find(m => m.id === 'mistralai/mistral-large') || getEUDefaultModel();
 }
 
 /**

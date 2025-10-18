@@ -73,11 +73,11 @@ export function getModelForUser(isEU: boolean, selectedModel?: string): string {
  * EU Model Configuration
  */
 export const EU_MODEL_CONFIG = {
-  // Primary EU model for all operations
+  // Primary EU model for all operations (cost-optimized)
   primary: {
-    model: 'mistralai/mistral-large',
-    displayName: 'Mistral Large',
-    costPer1M: 2.00,
+    model: 'mistralai/mistral-medium-3.1',
+    displayName: 'Mistral Medium 3.1',
+    costPer1M: 0.40,
     euHosted: true,
     use_cases: [
       'chatbot',
@@ -88,15 +88,16 @@ export const EU_MODEL_CONFIG = {
     ]
   },
   
-  // Cost-effective EU alternative
-  alternative: {
-    model: 'mistralai/mistral-medium-3.1',
-    displayName: 'Mistral Medium 3.1',
-    costPer1M: 0.40,
+  // Premium EU model for quality-critical operations
+  premium: {
+    model: 'mistralai/mistral-large',
+    displayName: 'Mistral Large',
+    costPer1M: 2.00,
     euHosted: true,
     use_cases: [
-      'batch_processing',
-      'low_priority_tasks'
+      'premium_tier',
+      'c_suite_outreach',
+      'complex_analysis'
     ]
   }
 } as const;
@@ -104,9 +105,13 @@ export const EU_MODEL_CONFIG = {
 /**
  * Get EU model for specific use case
  */
-export function getEUModelForUseCase(useCase: string): string {
-  // Always use Mistral Large for EU compliance
-  // (Can add logic here for cost optimization with Medium for batch jobs)
+export function getEUModelForUseCase(useCase: string, isPremium: boolean = false): string {
+  // Use Mistral Large for premium operations only
+  if (isPremium || useCase === 'premium_tier' || useCase === 'c_suite_outreach') {
+    return EU_MODEL_CONFIG.premium.model;
+  }
+  
+  // Default to cost-efficient Mistral Medium 3.1
   return EU_MODEL_CONFIG.primary.model;
 }
 

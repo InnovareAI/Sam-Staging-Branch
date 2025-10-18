@@ -124,11 +124,11 @@ IMPORTANT:
 - Extract all relevant structured data based on document type`;
 
     // Call LLM for analysis
-    // For EU users: Use Mistral Large (EU-hosted) for GDPR compliance
+    // For EU users: Use Mistral Medium 3.1 (EU-hosted, cost-efficient) for GDPR compliance
     // For global users: Use Gemini 2.5 Flash for cost efficiency
     // Model selection can be passed as parameter (defaults to Gemini)
     const model = (process.env.FORCE_EU_COMPLIANCE === 'true' || extractedText.includes('[EU_USER]')) 
-      ? 'mistralai/mistral-large' 
+      ? 'mistralai/mistral-medium-3.1' 
       : 'google/gemini-2.5-flash-preview-09-2025';
     
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
