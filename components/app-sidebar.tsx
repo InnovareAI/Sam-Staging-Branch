@@ -147,22 +147,8 @@ const data = {
   adminNav: [
     {
       title: "Super Admin",
-      url: "/admin",
+      url: "/admin/superadmin",
       icon: Shield,
-      items: [
-        {
-          title: "User Management",
-          url: "/admin/users",
-        },
-        {
-          title: "Workspaces",
-          url: "/admin/workspaces",
-        },
-        {
-          title: "System Settings",
-          url: "/admin/settings",
-        },
-      ],
     },
   ],
 }
