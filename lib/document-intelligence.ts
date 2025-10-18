@@ -123,7 +123,14 @@ IMPORTANT:
 - Confidence should reflect how certain you are about the classification
 - Extract all relevant structured data based on document type`;
 
-    // Call LLM for analysis (using Gemini 2.5 Flash for cost efficiency and long context)
+    // Call LLM for analysis
+    // For EU users: Use Mistral Large (EU-hosted) for GDPR compliance
+    // For global users: Use Gemini 2.5 Flash for cost efficiency
+    // Model selection can be passed as parameter (defaults to Gemini)
+    const model = (process.env.FORCE_EU_COMPLIANCE === 'true' || extractedText.includes('[EU_USER]')) 
+      ? 'mistralai/mistral-large' 
+      : 'google/gemini-2.5-flash-preview-09-2025';
+    
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -133,7 +140,7 @@ IMPORTANT:
         'X-Title': 'SAM Document Intelligence'
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-preview-09-2025',
+        model,
         messages: [
           {
             role: 'user',

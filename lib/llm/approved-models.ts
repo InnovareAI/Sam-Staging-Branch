@@ -480,6 +480,13 @@ export function getDefaultModel(): ApprovedModel {
 }
 
 /**
+ * Get EU default model (for GDPR-compliant regions)
+ */
+export function getEUDefaultModel(): ApprovedModel {
+  return APPROVED_MODELS.find(m => m.id === 'mistralai/mistral-large') || APPROVED_MODELS[0];
+}
+
+/**
  * Provider display names
  */
 export const PROVIDER_NAMES: Record<string, string> = {

@@ -150,7 +150,9 @@ Return ONLY valid JSON, no markdown formatting.`
         'X-Title': 'SAM AI - Website Intelligence'
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-haiku-4.5',
+        // For EU users: Use Mistral Large (EU-hosted) for GDPR compliance
+        // For global users: Use Haiku for cost efficiency
+        model: process.env.FORCE_EU_COMPLIANCE === 'true' ? 'mistralai/mistral-large' : 'anthropic/claude-haiku-4.5',
         messages: [
           {
             role: 'user',
