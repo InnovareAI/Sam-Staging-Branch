@@ -153,11 +153,11 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
         <div className="space-y-4 py-4">
           {/* Model Selection */}
           <div>
-            <label className="text-sm font-medium mb-2 block">AI Model</label>
+            <label className="text-sm font-medium mb-2 block text-gray-900 dark:text-gray-100">AI Model</label>
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              className="w-full p-3 border rounded-lg text-base"
+              className="w-full p-3 border rounded-lg text-base text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800"
               disabled={loading}
             >
               {Object.entries(modelsByProvider).map(([provider, providerModels]) => (
