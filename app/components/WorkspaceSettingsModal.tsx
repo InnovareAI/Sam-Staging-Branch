@@ -6,6 +6,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import LLMConfigModal from '@/components/LLMConfigModal';
 import EmailProvidersModal from '@/app/components/EmailProvidersModal';
 import ReplyAgentModal from '@/app/components/ReplyAgentModal';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 
 interface WorkspaceSettingsModalProps {
   isOpen: boolean;
@@ -64,70 +65,72 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <Card className="max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-700">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                <Settings size={20} className="text-white" />
+          <CardHeader className="border-b border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center">
+                  <Settings className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">Workspace Settings</h2>
+                  <p className="text-sm text-muted-foreground">{workspaceName}</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-semibold text-white">Workspace Settings</h2>
-                <p className="text-gray-400 text-sm">{workspaceName}</p>
-              </div>
+              <button
+                onClick={onClose}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-300 transition-colors"
-            >
-              <X size={24} />
-            </button>
-          </div>
+          </CardHeader>
 
           {/* Tabs */}
-          <div className="flex border-b border-gray-700">
+          <div className="flex border-b border-border bg-card">
             <button
               onClick={() => setActiveTab('general')}
-              className={`flex items-center space-x-2 px-6 py-3 border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-6 py-4 border-b-2 transition-colors font-medium ${
                 activeTab === 'general'
-                  ? 'border-blue-500 text-blue-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-300'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Building2 size={18} />
-              <span className="font-medium">General</span>
+              <Building2 className="h-4 w-4" />
+              <span>General</span>
             </button>
             <button
               onClick={() => setActiveTab('integrations')}
-              className={`flex items-center space-x-2 px-6 py-3 border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-6 py-4 border-b-2 transition-colors font-medium ${
                 activeTab === 'integrations'
-                  ? 'border-blue-500 text-blue-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-300'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Brain size={18} />
-              <span className="font-medium">Integrations</span>
+              <Brain className="h-4 w-4" />
+              <span>Integrations</span>
             </button>
           </div>
 
           {/* Body */}
-          <div className="p-6 overflow-y-auto flex-1">
+          <CardContent className="p-6 overflow-y-auto flex-1">
             {/* General Tab */}
             {activeTab === 'general' && (
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium mb-2">
                     Workspace Name
                   </label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 bg-background border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-input transition-colors"
                     placeholder="Enter workspace name"
                   />
-                  <p className="mt-1 text-xs text-gray-400">
+                  <p className="mt-2 text-xs text-muted-foreground">
                     This name appears across the platform and in team invitations
                   </p>
                 </div>
@@ -135,16 +138,16 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
                 <button
                   onClick={handleSaveName}
                   disabled={saving || name === workspaceName}
-                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed text-primary-foreground rounded-lg transition-colors font-medium"
                 >
                   {saving ? (
                     <>
-                      <Loader2 size={16} className="animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                       <span>Saving...</span>
                     </>
                   ) : (
                     <>
-                      <Save size={16} />
+                      <Save className="h-4 w-4" />
                       <span>Save Changes</span>
                     </>
                   )}
@@ -152,7 +155,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
 
                 {saveMessage && (
                   <p className={`text-sm ${
-                    saveMessage.startsWith('✓') ? 'text-green-400' : 'text-red-400'
+                    saveMessage.startsWith('✓') ? 'text-green-500' : 'text-destructive'
                   }`}>
                     {saveMessage}
                   </p>
@@ -163,23 +166,25 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
             {/* Integrations Tab */}
             {activeTab === 'integrations' && (
               <div className="space-y-4">
-                <p className="text-gray-300 text-sm mb-4">
+                <p className="text-muted-foreground text-sm mb-6">
                   Configure AI models and email providers for your workspace
                 </p>
 
                 {/* AI Model Configuration */}
                 <button
                   onClick={() => setIsLLMModalOpen(true)}
-                  className="w-full flex items-center justify-between p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors group"
+                  className="w-full flex items-center justify-between p-4 bg-card hover:bg-accent border border-border rounded-xl transition-all hover:border-primary/50 group"
                 >
-                  <div className="flex items-center space-x-3">
-                    <Brain className="text-purple-400" size={20} />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center">
+                      <Brain className="text-purple-400 h-5 w-5" />
+                    </div>
                     <div className="text-left">
-                      <div className="text-white font-medium">AI Model Configuration</div>
-                      <div className="text-gray-400 text-sm">Choose which AI model powers SAM</div>
+                      <div className="font-semibold">AI Model Configuration</div>
+                      <div className="text-muted-foreground text-sm">Choose which AI model powers SAM</div>
                     </div>
                   </div>
-                  <svg className="text-gray-400 group-hover:translate-x-1 transition-transform" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg className="text-muted-foreground group-hover:translate-x-1 transition-transform" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="m9 18 6-6-6-6"/>
                   </svg>
                 </button>
@@ -187,16 +192,18 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
                 {/* Email Providers */}
                 <button
                   onClick={() => setIsEmailModalOpen(true)}
-                  className="w-full flex items-center justify-between p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors group"
+                  className="w-full flex items-center justify-between p-4 bg-card hover:bg-accent border border-border rounded-xl transition-all hover:border-primary/50 group"
                 >
-                  <div className="flex items-center space-x-3">
-                    <Mail className="text-green-400" size={20} />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
+                      <Mail className="text-green-400 h-5 w-5" />
+                    </div>
                     <div className="text-left">
-                      <div className="text-white font-medium">Email Providers</div>
-                      <div className="text-gray-400 text-sm">Connect Gmail or Outlook for email campaigns</div>
+                      <div className="font-semibold">Email Providers</div>
+                      <div className="text-muted-foreground text-sm">Connect Gmail or Outlook for email campaigns</div>
                     </div>
                   </div>
-                  <svg className="text-gray-400 group-hover:translate-x-1 transition-transform" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg className="text-muted-foreground group-hover:translate-x-1 transition-transform" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="m9 18 6-6-6-6"/>
                   </svg>
                 </button>
@@ -204,33 +211,35 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
                 {/* Reply Agent */}
                 <button
                   onClick={() => setIsReplyAgentModalOpen(true)}
-                  className="w-full flex items-center justify-between p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors group"
+                  className="w-full flex items-center justify-between p-4 bg-card hover:bg-accent border border-border rounded-xl transition-all hover:border-primary/50 group"
                 >
-                  <div className="flex items-center space-x-3">
-                    <MessageCircle className="text-blue-400" size={20} />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
+                      <MessageCircle className="text-blue-400 h-5 w-5" />
+                    </div>
                     <div className="text-left">
-                      <div className="text-white font-medium">Reply Agent</div>
-                      <div className="text-gray-400 text-sm">Auto-respond to prospect replies with AI</div>
+                      <div className="font-semibold">Reply Agent</div>
+                      <div className="text-muted-foreground text-sm">Auto-respond to prospect replies with AI</div>
                     </div>
                   </div>
-                  <svg className="text-gray-400 group-hover:translate-x-1 transition-transform" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg className="text-muted-foreground group-hover:translate-x-1 transition-transform" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="m9 18 6-6-6-6"/>
                   </svg>
                 </button>
               </div>
             )}
-          </div>
+          </CardContent>
 
           {/* Footer */}
-          <div className="p-6 border-t border-gray-700">
+          <div className="p-6 border-t border-border">
             <button
               onClick={onClose}
-              className="w-full bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+              className="w-full bg-secondary hover:bg-secondary/80 font-medium py-3 px-4 rounded-lg transition-colors"
             >
               Close
             </button>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* LLM Config Modal */}
