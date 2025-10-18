@@ -179,25 +179,21 @@ export default function SuperAdminPage() {
     if (background) setRefreshing(true)
     
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-      
-      // Fetch workspaces with members
-      const { data: workspacesData } = await supabase
-        .from('workspaces')
-        .select(`
-          *,
-          workspace_members(count),
-          owner:users!owner_id(email)
-        `)
-        .order('created_at', { ascending: false })
+      // Fetch data via server API route that uses service role
+      const response = await fetch('/api/admin/superadmin-data')
+      if (!response.ok) throw new Error('Failed to fetch admin data')
+      const { workspaces: workspacesData, members: membersData } = await response.json()
       
       if (workspacesData) {
-        const enriched = workspacesData.map(w => ({
+        // Add member counts to workspaces
+        const workspaceMap = new Map<string, number>()
+        membersData.forEach((m: any) => {
+          workspaceMap.set(m.workspace_id, (workspaceMap.get(m.workspace_id) || 0) + 1)
+        })
+        
+        const enriched = workspacesData.map((w: any) => ({
           ...w,
-          member_count: w.workspace_members?.[0]?.count || 0,
+          member_count: workspaceMap.get(w.id) || 0,
           pendingInvitations: 0 // TODO: fetch from invitations table
         }))
         setWorkspaces(enriched)
@@ -206,12 +202,6 @@ export default function SuperAdminPage() {
           totalWorkspaces: enriched.length
         }))
       }
-      
-      // Fetch workspace members (actual users in the system)
-      const { data: membersData } = await supabase
-        .from('workspace_members')
-        .select('*')
-        .order('created_at', { ascending: false })
       
       if (membersData) {
         // Get unique user count
