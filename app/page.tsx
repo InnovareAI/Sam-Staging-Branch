@@ -2886,7 +2886,15 @@ export default function Page() {
                   <p className="text-gray-400 text-xs leading-relaxed">
                     Configure LinkedIn account connections, automation settings, and personalization preferences for outreach campaigns.
                   </p>
-                </div>
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      <span>Configure</span>
+                    </div>
+                  </div>
+</div>
 
                 {/* Email Integration */}
                 <div 
@@ -2904,7 +2912,15 @@ export default function Page() {
                   <p className="text-gray-400 text-xs leading-relaxed">
                     Connect Google, Microsoft, or SMTP email accounts for automated campaigns and prospect outreach.
                   </p>
-                </div>
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      <span>Configure</span>
+                    </div>
+                  </div>
+</div>
 
 
 
@@ -2925,7 +2941,15 @@ export default function Page() {
                   <p className="text-gray-400 text-xs leading-relaxed">
                     Manage your account details, profile country for proxy assignment, and personal preferences.
                   </p>
-                </div>
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      <span>Configure</span>
+                    </div>
+                  </div>
+</div>
                 
                 {/* BrightData Proxy Country (Advanced) */}
                 <div 
@@ -2943,7 +2967,15 @@ export default function Page() {
                   <p className="text-gray-400 text-xs leading-relaxed">
                     Advanced proxy configuration for LinkedIn accounts. Manually override automatic proxy assignment per account.
                   </p>
-                </div>
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      <span>Configure</span>
+                    </div>
+                  </div>
+</div>
 
               </div>
             </div>
@@ -2982,7 +3014,15 @@ export default function Page() {
                   <p className="text-gray-400 text-xs leading-relaxed">
                     Invite team members, manage roles and permissions, and configure workspace access for your organization.
                   </p>
-                </div>
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      <span>Configure</span>
+                    </div>
+                  </div>
+</div>
 
                 {/* Manage Subscription - Only for credit card customers */}
                 {(() => {
@@ -3018,7 +3058,15 @@ export default function Page() {
                       <p className="text-gray-400 text-xs leading-relaxed">
                         View your subscription details, update payment methods, and access billing history. Manage your plan and invoices.
                       </p>
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      <span>Configure</span>
                     </div>
+                  </div>
+</div>
                   );
                 })()}
 
@@ -3038,7 +3086,15 @@ export default function Page() {
                   <p className="text-gray-400 text-xs leading-relaxed">
                     Configure workspace name, branding, and general settings. Customize your workspace preferences and appearance.
                   </p>
-                </div>
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      <span>Configure</span>
+                    </div>
+                  </div>
+</div>
 
                 {/* CRM Integration */}
                 <div 
@@ -3056,7 +3112,15 @@ export default function Page() {
                   <p className="text-gray-400 text-xs leading-relaxed">
                     Connect Salesforce, HubSpot, Pipedrive, and other CRMs. Configure field mapping and sync settings for seamless data flow.
                   </p>
-                </div>
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      <span>Configure</span>
+                    </div>
+                  </div>
+</div>
 
                 {/* Integrations & Tools */}
                 <div 
@@ -3074,7 +3138,15 @@ export default function Page() {
                   <p className="text-gray-400 text-xs leading-relaxed">
                     Manage LinkedIn Premium connections, email providers, and third-party tool integrations for your outreach stack.
                   </p>
-                </div>
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      <span>Configure</span>
+                    </div>
+                  </div>
+</div>
 
                 {/* Security & Compliance */}
                 <div 
@@ -3092,7 +3164,15 @@ export default function Page() {
                   <p className="text-gray-400 text-xs leading-relaxed">
                     Configure security settings, compliance requirements, audit logs, and data protection policies for your workspace.
                   </p>
-                </div>
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      <span>Configure</span>
+                    </div>
+                  </div>
+</div>
 
                 {/* Analytics & Reporting */}
                 <div 
@@ -3110,7 +3190,15 @@ export default function Page() {
                   <p className="text-gray-400 text-xs leading-relaxed">
                     Access workspace-level analytics, performance metrics, and custom reporting features for team productivity insights.
                   </p>
-                </div>
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      <span>Configure</span>
+                    </div>
+                  </div>
+</div>
 
                 {/* Profile Management */}
                 <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
@@ -3125,7 +3213,15 @@ export default function Page() {
                   <p className="text-gray-400 text-xs leading-relaxed">
                     Manage your account information, update profile details, change password, and configure personal preferences.
                   </p>
-                </div>
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      <span>Configure</span>
+                    </div>
+                  </div>
+</div>
 
                 {/* AI Model Configuration Tile */}
                 <div 
@@ -3143,7 +3239,15 @@ export default function Page() {
                   <p className="text-gray-400 text-xs leading-relaxed">
                     Configure your preferred AI model for SAM. Currently using Claude Sonnet 4.5 by Anthropic.
                   </p>
-                </div>
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      <span>Configure</span>
+                    </div>
+                  </div>
+</div>
 
               </div>
 
