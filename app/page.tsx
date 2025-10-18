@@ -5375,7 +5375,7 @@ export default function Page() {
                         <p className="mb-2">Location: <span className="text-white">{proxyInfo.detected_location}</span></p>
                       )}
                       <p className="text-xs text-gray-500 mt-3">
-                        Proxy details are managed automatically by InnovareAI based on your profile country above.
+                        Proxy details are managed automatically by Unipile based on your LinkedIn profile location.
                       </p>
                     </div>
                   </div>
@@ -5385,7 +5385,7 @@ export default function Page() {
                       <p className="mb-2">Account: <span className="text-white">{user.email}</span></p>
                       <p className="mb-2">Status: <span className="text-yellow-400">Checking connection...</span></p>
                       <p className="text-xs text-gray-500 mt-3">
-                        Proxy details are managed automatically by InnovareAI based on your profile country above.
+                        Proxy details are managed automatically by Unipile based on your LinkedIn profile location.
                       </p>
                     </div>
                   </div>
@@ -5410,7 +5410,7 @@ export default function Page() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-gray-400 text-xs mb-1">Provider</p>
-                      <p className="text-white">InnovareAI / Unipile</p>
+                      <p className="text-white">Unipile</p>
                     </div>
                     <div>
                       <p className="text-gray-400 text-xs mb-1">Connection Type</p>
@@ -5487,7 +5487,7 @@ export default function Page() {
                   </div>
                   <div className="border-t border-blue-500/20 pt-3">
                     <p className="text-gray-300 text-xs leading-relaxed">
-                      <strong className="text-blue-300">Security:</strong> Your proxy configuration is managed automatically and securely by InnovareAI. IP addresses are rotated intelligently to maintain account health while ensuring consistent geolocation.
+                      <strong className="text-blue-300">Security:</strong> Your proxy configuration is managed automatically and securely by Unipile. IP addresses are rotated intelligently to maintain account health while ensuring consistent geolocation.
                     </p>
                   </div>
                 </div>
