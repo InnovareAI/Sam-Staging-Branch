@@ -3625,6 +3625,7 @@ export default function Page() {
                 ) : activeMenuItem === 'superadmin' ? (
           /* SUPER ADMIN PAGE */
           <SuperAdminPage />
+        ) : showStarterScreen ? (
           /* STARTER SCREEN */
           <div className="flex-1 flex flex-col items-center justify-end pb-32 p-6">
             <div className="mb-12">
