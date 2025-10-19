@@ -65,17 +65,8 @@ interface BrightdataProspect {
   };
 }
 
-// MCP tools declaration for BrightData
-declare global {
-  function mcp__brightdata__search_engine(params: {
-    query: string;
-    max_results?: number;
-  }): Promise<{ results: Array<{ title: string; url: string; snippet: string }> }>;
-
-  function mcp__brightdata__scrape_as_markdown(params: {
-    url: string;
-  }): Promise<{ markdown: string; metadata?: any }>;
-}
+// BrightData MCP tools are called via /api/mcp endpoint (NOT global functions)
+// Available tools: brightdata_search_engine, brightdata_scrape_as_markdown
 
 // MCP Integration: Brightdata Lead Scraping
 export async function POST(req: NextRequest) {
@@ -157,12 +148,29 @@ async function scrapeProspects(
   const brightdataProspects: BrightdataProspect[] = [];
 
   try {
-    // Check if BrightData MCP tools are available
-    if (typeof mcp__brightdata__search_engine !== 'function') {
-      console.error('❌ BrightData MCP tools not available');
+    // Build LinkedIn search query
+    const searchQuery = buildLinkedInSearchQuery(params.search_criteria);
+    console.log('🔍 BrightData search query:', searchQuery);
+
+    // Call BrightData MCP via registry (NOT as global function)
+    const mcpResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/mcp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        toolName: 'brightdata_search_engine',
+        arguments: {
+          query: searchQuery,
+          max_results: params.scraping_options.max_results || 10
+        },
+        server: 'brightdata'
+      })
+    });
+
+    if (!mcpResponse.ok) {
+      console.error('❌ BrightData MCP call failed:', mcpResponse.status);
       return NextResponse.json({
         success: false,
-        error: 'BrightData search service is not available. Please contact support.',
+        error: 'BrightData MCP service unavailable. MCP server may not be running.',
         results: {
           prospects: [],
           total_found: 0,
@@ -172,17 +180,25 @@ async function scrapeProspects(
       }, { status: 503 });
     }
 
-    // Build LinkedIn search query
-    const searchQuery = buildLinkedInSearchQuery(params.search_criteria);
-    console.log('🔍 BrightData search query:', searchQuery);
+    const mcpData = await mcpResponse.json();
 
-    // Use BrightData MCP search_engine tool
-    const searchResults = await mcp__brightdata__search_engine({
-      query: searchQuery,
-      max_results: params.scraping_options.max_results || 10
-    });
+    if (!mcpData.success || mcpData.isError) {
+      console.error('❌ BrightData MCP returned error:', mcpData.error);
+      return NextResponse.json({
+        success: false,
+        error: mcpData.error || 'BrightData search failed',
+        results: {
+          prospects: [],
+          total_found: 0,
+          sources_used: [],
+          mcp_tools_available: true,
+          mcp_error: mcpData.error
+        }
+      }, { status: 503 });
+    }
 
-    console.log(`✅ BrightData found ${searchResults.results.length} results`);
+    const searchResults = mcpData.result || { results: [] };
+    console.log(`✅ BrightData found ${searchResults.results?.length || 0} results`);
 
     // Process search results into prospects
     for (const result of searchResults.results) {
@@ -200,11 +216,23 @@ async function scrapeProspects(
 
       if (params.scraping_options.include_emails || params.scraping_options.include_phone) {
         try {
-          const scraped = await mcp__brightdata__scrape_as_markdown({
-            url: result.url
+          const scrapeResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/mcp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              toolName: 'brightdata_scrape_as_markdown',
+              arguments: { url: result.url },
+              server: 'brightdata'
+            })
           });
-          profileData.markdown = scraped.markdown;
-          profileData.metadata = scraped.metadata;
+
+          if (scrapeResponse.ok) {
+            const scrapeData = await scrapeResponse.json();
+            if (scrapeData.success && !scrapeData.isError) {
+              profileData.markdown = scrapeData.result?.markdown;
+              profileData.metadata = scrapeData.result?.metadata;
+            }
+          }
         } catch (scrapeError) {
           console.error('Profile scraping failed:', result.url, scrapeError);
         }
