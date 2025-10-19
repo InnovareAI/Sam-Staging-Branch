@@ -97,13 +97,14 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get LinkedIn account
+    // Get ONLY the user's own LinkedIn accounts (never use other people's accounts)
     const { data: linkedInAccounts } = await supabaseAdmin
       .from('workspace_accounts')
-      .select('unipile_account_id, account_name')
+      .select('unipile_account_id, account_name, user_id')
       .eq('workspace_id', workspaceId)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected');
+      .eq('connection_status', 'connected')
+      .eq('user_id', user.id);
 
     if (!linkedInAccounts || linkedInAccounts.length === 0) {
       return NextResponse.json({
@@ -112,10 +113,9 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const linkedInAccount = linkedInAccounts[0];
-    console.log(`✅ Using LinkedIn account: ${linkedInAccount.account_name}`);
+    console.log(`📊 Found ${linkedInAccounts.length} LinkedIn account(s) for user ${user.email}`);
 
-    // Call Unipile API to fetch prospects from saved search
+    // Call Unipile API to get account details and find which has Sales Navigator
     const UNIPILE_DSN = process.env.UNIPILE_DSN || 'api6';
     const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
 
@@ -124,6 +124,62 @@ export async function POST(request: NextRequest) {
         success: false,
         error: 'Unipile API not configured'
       }, { status: 500 });
+    }
+
+    // Fetch all Unipile accounts to check their features
+    const unipileAccountsUrl = UNIPILE_DSN.includes('.')
+      ? `https://${UNIPILE_DSN}/api/v1/accounts`
+      : `https://${UNIPILE_DSN}.unipile.com:13443/api/v1/accounts`;
+
+    const unipileResponse = await fetch(unipileAccountsUrl, {
+      headers: {
+        'X-API-KEY': UNIPILE_API_KEY,
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!unipileResponse.ok) {
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to fetch account details from Unipile'
+      }, { status: 500 });
+    }
+
+    const allUnipileAccounts = await unipileResponse.json();
+    const unipileAccounts = Array.isArray(allUnipileAccounts) ? allUnipileAccounts : (allUnipileAccounts.items || []);
+
+    // Find which of the user's accounts has Sales Navigator
+    let salesNavAccount = null;
+
+    for (const dbAccount of linkedInAccounts) {
+      const unipileAccount = unipileAccounts.find(a => a.id === dbAccount.unipile_account_id && a.type === 'LINKEDIN');
+
+      if (!unipileAccount) {
+        console.log(`⚠️ Account ${dbAccount.account_name} not found in Unipile`);
+        continue;
+      }
+
+      const features = unipileAccount.connection_params?.im?.premiumFeatures || [];
+      const hasSalesNav = features.includes('SALES_NAVIGATOR') || features.includes('RECRUITER');
+
+      console.log(`🔍 Account: ${dbAccount.account_name}`);
+      console.log(`   Features: ${features.join(', ') || 'none'}`);
+      console.log(`   Has Sales Nav: ${hasSalesNav}`);
+
+      if (hasSalesNav) {
+        salesNavAccount = dbAccount;
+        console.log(`✅ SELECTED - This account has Sales Navigator`);
+        break;
+      }
+    }
+
+    // If no Sales Nav account found, use the first available account and let Unipile handle it
+    const linkedInAccount = salesNavAccount || linkedInAccounts[0];
+
+    if (!salesNavAccount) {
+      console.log(`⚠️ No Sales Navigator account detected. Using ${linkedInAccount.account_name} - Unipile will attempt the search anyway.`);
+    } else {
+      console.log(`✅ Using Sales Navigator account: ${linkedInAccount.account_name}`);
     }
 
     const searchUrl = UNIPILE_DSN.includes('.')
