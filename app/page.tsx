@@ -2858,17 +2858,17 @@ export default function Page() {
         ) : activeMenuItem === 'audit' ? (
           <AuditTrail />
         ) : activeMenuItem === 'settings' ? (
-          <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-                <Settings className="mr-3" size={32} />
-                Settings & Profile
-              </h1>
-              <p className="text-gray-400">Configure integrations, preferences, account settings, and manage your profile</p>
-            </div>
+          <div className="min-h-screen p-8">
+            <div className="max-w-[1400px] mx-auto">
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
+                  <Settings className="mr-3" size={32} />
+                  Settings & Profile
+                </h1>
+                <p className="text-gray-400">Configure integrations, preferences, account settings, and manage your profile</p>
+              </div>
 
             {/* Main Settings Tiles */}
-            <div className="max-w-6xl">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
                 {/* LinkedIn Integration */}
@@ -2911,17 +2911,17 @@ export default function Page() {
             </div>
           </div>
         ) : activeMenuItem === 'workspace' ? (
-          <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-                <Building2 className="mr-3" size={32} />
-                Workspace Management
-              </h1>
-              <p className="text-gray-400">Manage team members, settings, and integrations for your workspace</p>
-            </div>
+          <div className="min-h-screen p-8">
+            <div className="max-w-[1400px] mx-auto">
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
+                  <Building2 className="mr-3" size={32} />
+                  Workspace Management
+                </h1>
+                <p className="text-gray-400">Manage team members, settings, and integrations for your workspace</p>
+              </div>
 
             {/* Main Workspace Tiles */}
-            <div className="max-w-6xl">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
                 {/* Team Management */}
