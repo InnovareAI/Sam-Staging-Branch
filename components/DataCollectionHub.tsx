@@ -1392,6 +1392,8 @@ https://www.linkedin.com/sales/search/people?savedSearchId=${searchId}`)
                     }
                   } else {
                     const errorData = await response.json().catch(() => ({}))
+                    console.error('LinkedIn search API error:', errorData)
+
                     if (errorData.error && errorData.error.includes('404')) {
                       toastError(`LinkedIn search failed. If you're using a saved search, make sure you copied the FULL URL after it loaded (not just the savedSearchId reference).
 
@@ -1401,7 +1403,10 @@ Steps to get the correct URL:
 3. Copy the complete URL from the address bar
 4. The URL should contain "query=" and "filters=" parameters`)
                     } else {
-                      toastError(errorData.error || 'Failed to search LinkedIn')
+                      // Show the actual error message from the API
+                      const errorMsg = errorData.error || `Failed to search LinkedIn (HTTP ${response.status})`
+                      toastError(errorMsg)
+                      console.error('Full error response:', { status: response.status, statusText: response.statusText, errorData })
                     }
                   }
                 } catch (error) {

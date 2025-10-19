@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       user = cookieUser;
     }
 
-    const { saved_search_url, campaign_name } = await request.json();
+    const { saved_search_url, campaign_name, target_count } = await request.json();
 
     if (!saved_search_url) {
       return NextResponse.json({
@@ -76,6 +76,10 @@ export async function POST(request: NextRequest) {
         error: 'saved_search_url is required'
       }, { status: 400 });
     }
+
+    // Default target: 100 prospects, max 1000 (LinkedIn hard limit is 2500)
+    const targetProspects = Math.min(Math.max(target_count || 100, 25), 1000);
+    console.log(`🎯 Target: ${targetProspects} prospects`);
 
     // Detect if user provided a saved search reference URL (won't work with Unipile)
     const isSavedSearchReference = saved_search_url.match(/savedSearchId=(\d+)(?!.*[?&]query=|.*[?&]filters=)/)
@@ -200,21 +204,25 @@ export async function POST(request: NextRequest) {
       ? `https://${UNIPILE_DSN}/api/v1/linkedin/search`
       : `https://${UNIPILE_DSN}.unipile.com:13443/api/v1/linkedin/search`;
 
-    // Fetch ALL prospects with pagination (max 100 per page for saved searches)
-    let allProspects: any[] = [];
+    // Fetch in batches until target reached (25 per batch, max 10 batches)
+    const batchSize = 25;
+    const maxBatches = Math.ceil(targetProspects / batchSize);
+    let prospects: any[] = [];
     let cursor: string | null = null;
-    let pageNum = 0;
-    const maxPages = 10; // Safety limit to prevent infinite loops (1000 prospects max)
+    let batchCount = 0;
 
-    do {
-      pageNum++;
-      console.log(`🔄 Fetching page ${pageNum}${cursor ? ` (cursor: ${cursor.slice(0, 20)}...)` : ''}`);
+    console.log(`🔄 Starting automatic batch import (target: ${targetProspects}, batch size: ${batchSize})`);
+
+    while (prospects.length < targetProspects && batchCount < maxBatches) {
+      batchCount++;
+      console.log(`📦 Fetching batch ${batchCount}/${maxBatches} (${prospects.length}/${targetProspects} collected)`);
 
       const params = new URLSearchParams({
         account_id: linkedInAccount.unipile_account_id,
-        limit: '100' // Increase to 100 for faster fetching
+        limit: batchSize.toString()
       });
 
+      // Add cursor for pagination if we have one
       if (cursor) {
         params.append('cursor', cursor);
       }
@@ -223,53 +231,91 @@ export async function POST(request: NextRequest) {
         url: saved_search_url
       };
 
-      console.log('🌐 Calling Unipile:', `${searchUrl}?${params}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
 
-      const searchResponse = await fetch(`${searchUrl}?${params}`, {
-        method: 'POST',
-        headers: {
-          'X-API-KEY': UNIPILE_API_KEY,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(searchPayload)
-      });
+      try {
+        const searchResponse = await fetch(`${searchUrl}?${params}`, {
+          method: 'POST',
+          headers: {
+            'X-API-KEY': UNIPILE_API_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(searchPayload),
+          signal: controller.signal
+        });
 
-      if (!searchResponse.ok) {
-        const errorText = await searchResponse.text();
-        console.error('❌ Unipile search failed:', errorText);
+        clearTimeout(timeoutId);
 
-        // If we already have some prospects, return them instead of failing completely
-        if (allProspects.length > 0) {
-          console.log(`⚠️ Page ${pageNum} failed, but we have ${allProspects.length} prospects already. Continuing...`);
+        if (!searchResponse.ok) {
+          const errorText = await searchResponse.text();
+          console.error(`❌ Batch ${batchCount} failed:`, errorText);
+
+          // If we have some prospects already, return partial success
+          if (prospects.length > 0) {
+            console.log(`⚠️ Partial import: ${prospects.length} prospects collected before error`);
+            break;
+          }
+
+          return NextResponse.json({
+            success: false,
+            error: `Unipile API error: ${searchResponse.status} ${searchResponse.statusText}. ${errorText.substring(0, 200)}`
+          }, { status: 500 });
+        }
+
+        const searchData = await searchResponse.json();
+        const batchProspects = searchData.items || [];
+
+        prospects.push(...batchProspects);
+        cursor = searchData.cursor || null;
+
+        console.log(`✅ Batch ${batchCount}: +${batchProspects.length} prospects (total: ${prospects.length})`);
+
+        // Stop if no more results
+        if (!cursor || batchProspects.length === 0) {
+          console.log(`🏁 No more results available (reached end of search)`);
+          break;
+        }
+
+        // Small delay between batches to avoid rate limits
+        if (prospects.length < targetProspects && cursor) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+      } catch (error: any) {
+        clearTimeout(timeoutId);
+
+        if (error.name === 'AbortError') {
+          console.error(`❌ Batch ${batchCount} timed out after 25 seconds`);
+
+          // If we have some prospects, return partial success
+          if (prospects.length > 0) {
+            console.log(`⚠️ Partial import: ${prospects.length} prospects collected before timeout`);
+            break;
+          }
+
+          return NextResponse.json({
+            success: false,
+            error: 'LinkedIn search timed out. Try narrowing your search criteria.'
+          }, { status: 504 });
+        }
+
+        console.error(`❌ Batch ${batchCount} error:`, error);
+
+        // If we have some prospects, continue with what we have
+        if (prospects.length > 0) {
+          console.log(`⚠️ Partial import: ${prospects.length} prospects collected before error`);
           break;
         }
 
         return NextResponse.json({
           success: false,
-          error: `Unipile API error: ${searchResponse.status} ${searchResponse.statusText}`
+          error: `Failed to fetch LinkedIn search: ${error.message}`
         }, { status: 500 });
       }
+    }
 
-      const searchData = await searchResponse.json();
-      const pageProspects = searchData.items || [];
-
-      console.log(`✅ Page ${pageNum}: Retrieved ${pageProspects.length} prospects`);
-
-      allProspects = [...allProspects, ...pageProspects];
-
-      // Check for pagination cursor
-      cursor = searchData.cursor || searchData.next_cursor || null;
-
-      // Stop if no more results or we hit the safety limit
-      if (!cursor || pageProspects.length === 0 || pageNum >= maxPages) {
-        break;
-      }
-
-    } while (cursor);
-
-    const prospects = allProspects;
-
-    console.log(`✅ Retrieved ${prospects.length} prospects from saved search`);
+    console.log(`✅ Import complete: ${prospects.length} prospects (${batchCount} batches)`);
 
     // Extract savedSearchId from URL early for use in messages
     const searchIdMatch = saved_search_url.match(/savedSearchId=(\d+)/);
@@ -324,7 +370,7 @@ export async function POST(request: NextRequest) {
         approved_count: 0,
         rejected_count: 0,
         pending_count: prospects.length,
-        session_status: 'active',
+        status: 'active',
         created_at: new Date().toISOString()
       });
 
@@ -332,29 +378,40 @@ export async function POST(request: NextRequest) {
       console.error('❌ Session creation failed:', sessionError);
       return NextResponse.json({
         success: false,
-        error: 'Failed to create approval session'
+        error: `Failed to create approval session: ${sessionError.message || JSON.stringify(sessionError)}`
       }, { status: 500 });
     }
 
     // Insert prospects into prospect_approval_data
-    const approvalProspects = prospects.map((item: any, index: number) => ({
-      id: uuidv4(),
-      session_id: sessionId,
-      workspace_id: workspaceId,
-      prospect_order: index + 1,
-      full_name: item.name || `${item.first_name || ''} ${item.last_name || ''}`.trim(),
-      first_name: item.first_name,
-      last_name: item.last_name,
-      title: item.headline || item.current_positions?.[0]?.role,
-      company: item.current_positions?.[0]?.company,
-      location: item.location || item.geo_region,
-      linkedin_url: item.profile_url || item.public_profile_url,
-      profile_photo_url: item.profile_picture_url,
-      headline: item.headline,
-      summary: item.summary,
-      raw_data: item,
-      created_at: new Date().toISOString()
-    }));
+    const approvalProspects = prospects.map((item: any, index: number) => {
+      const linkedinUrl = item.profile_url || item.public_profile_url || '';
+      const prospectId = linkedinUrl.split('/').filter(Boolean).pop() || uuidv4();
+
+      return {
+        id: uuidv4(),
+        session_id: sessionId,
+        prospect_id: prospectId,
+        name: item.name || `${item.first_name || ''} ${item.last_name || ''}`.trim() || 'Unknown',
+        title: item.headline || item.current_positions?.[0]?.role || 'Unknown',
+        location: item.location || item.geo_region,
+        profile_image: item.profile_picture_url,
+        recent_activity: item.summary || null,
+        company: {
+          name: item.current_positions?.[0]?.company || 'Unknown',
+          industry: null,
+          size: null
+        },
+        contact: {
+          linkedin_url: linkedinUrl,
+          email: item.email || null,
+          phone: item.phone || null
+        },
+        connection_degree: item.connection_degree || 0,
+        enrichment_score: 0,
+        source: 'unipile_linkedin_search',
+        created_at: new Date().toISOString()
+      };
+    });
 
     const { error: prospectsError } = await supabaseAdmin
       .from('prospect_approval_data')
@@ -364,17 +421,35 @@ export async function POST(request: NextRequest) {
       console.error('❌ Prospects insert failed:', prospectsError);
       return NextResponse.json({
         success: false,
-        error: 'Failed to save prospects'
+        error: `Failed to save prospects: ${prospectsError.message || JSON.stringify(prospectsError)}`
       }, { status: 500 });
     }
 
     console.log(`✅ Imported ${prospects.length} prospects successfully`);
 
+    // Determine if we hit the target or ran out of results
+    const hitTarget = prospects.length >= targetProspects;
+    const hasMore = cursor !== null;
+
+    let message: string;
+    if (prospects.length < targetProspects && !hasMore) {
+      message = `Imported ${prospects.length} prospects (all available results from this search).`;
+    } else if (hitTarget && hasMore) {
+      message = `Imported ${prospects.length} prospects (target reached in ${batchCount} batches). More results available - increase target_count to import more.`;
+    } else if (hitTarget && !hasMore) {
+      message = `Imported ${prospects.length} prospects (target reached, no more results available).`;
+    } else {
+      message = `Imported ${prospects.length} prospects across ${batchCount} batches.`;
+    }
+
     return NextResponse.json({
       success: true,
       count: prospects.length,
       campaign_name: finalCampaignName,
-      session_id: sessionId
+      session_id: sessionId,
+      batches: batchCount,
+      has_more: hasMore,
+      message
     });
 
   } catch (error) {

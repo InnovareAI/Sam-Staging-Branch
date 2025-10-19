@@ -1853,8 +1853,24 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
                        : 'Classic LinkedIn'
       console.log(`🔍 Detected ${searchType} search URL`)
 
+      // Extract prospect count from user message (e.g., "150 startup CEOs", "find 200 prospects")
+      const countMatch = content.match(/\b(\d+)\s*(prospects?|leads?|people|contacts?|CEOs?|founders?|profiles?)\b/i) ||
+                         content.match(/(?:find|get|search for|looking for)\s+(\d+)/i)
+      const targetCount = countMatch ? parseInt(countMatch[1]) : undefined
+      if (targetCount) {
+        console.log(`🎯 User requested ${targetCount} prospects`)
+      }
+
       try {
         // Import prospects from saved search
+        const importPayload: any = {
+          saved_search_url: savedSearchUrl,
+          campaign_name: `LinkedIn Saved Search Import`
+        }
+        if (targetCount) {
+          importPayload.target_count = targetCount
+        }
+
         const importResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/import-saved-search`, {
           method: 'POST',
           headers: {
@@ -1863,10 +1879,7 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
             'X-User-Id': user.id,
             'X-Workspace-Id': thread?.workspace_id || ''
           },
-          body: JSON.stringify({
-            saved_search_url: savedSearchUrl,
-            campaign_name: `LinkedIn Saved Search Import`
-          })
+          body: JSON.stringify(importPayload)
         })
 
         const importData = await importResponse.json()
