@@ -488,7 +488,7 @@ const Analytics: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex-1 bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-white text-lg">Loading analytics...</div>
       </div>
     );
@@ -496,22 +496,23 @@ const Analytics: React.FC = () => {
 
   if (error) {
     return (
-      <div className="flex-1 bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-red-400 text-lg">{error}</div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-          <BarChart3 className="mr-3" size={32} />
-          Analytics Dashboard
-        </h1>
-        <p className="text-gray-400">Performance metrics, insights, and optimization recommendations</p>
-      </div>
+    <div className="min-h-screen p-8">
+      <div className="max-w-[1400px] mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
+            <BarChart3 className="mr-3" size={32} />
+            Analytics Dashboard
+          </h1>
+          <p className="text-gray-400">Performance metrics, insights, and optimization recommendations</p>
+        </div>
 
       {/* KPI Grid */}
       <div className="mb-8">
@@ -890,6 +891,7 @@ const Analytics: React.FC = () => {
         </div>
       )}
 
+      </div>
     </div>
   );
 };
