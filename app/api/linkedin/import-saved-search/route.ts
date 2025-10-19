@@ -77,6 +77,17 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Detect if user provided a saved search reference URL (won't work with Unipile)
+    const isSavedSearchReference = saved_search_url.match(/savedSearchId=(\d+)(?!.*[?&]query=|.*[?&]filters=)/)
+    if (isSavedSearchReference) {
+      const searchId = isSavedSearchReference[1]
+      console.log(`❌ Saved search reference URL detected (ID: ${searchId}) - Unipile requires full parameterized URL`)
+      return NextResponse.json({
+        success: false,
+        error: `This appears to be a saved search reference URL which is not supported. Please:\n\n1. Open saved search ${searchId} in LinkedIn Sales Navigator\n2. Wait for all results to load\n3. Copy the FULL URL from the address bar (should contain "query=" and "filters=" parameters)\n4. Use that complete URL instead`
+      }, { status: 400 });
+    }
+
     console.log(`🔍 Importing from saved search URL: ${saved_search_url}`);
 
     // Get workspace if not already set

@@ -1316,10 +1316,32 @@ export default function DataCollectionHub({
             onClick={async () => {
               const url = prompt('Paste LinkedIn search URL (Sales Nav or Recruiter):')
               if (url && url.trim()) {
+                // Check if user pasted a saved search REFERENCE URL (won't work)
+                const isSavedSearchReference = url.match(/savedSearchId=(\d+)(?!.*[?&]query=|.*[?&]filters=)/)
+
+                if (isSavedSearchReference) {
+                  const searchId = isSavedSearchReference[1]
+                  toastError(`Saved Search Reference URLs are not supported. Please follow these steps:
+
+1. Go to LinkedIn Sales Navigator
+2. Click your saved search "${searchId}"
+3. Wait for all results to load completely
+4. Copy the FULL URL from your browser's address bar
+5. The URL should contain "query=" and "filters=" parameters
+6. Paste that complete URL here
+
+Example: The URL should look like:
+https://www.linkedin.com/sales/search/people?query=(...)&filters=List(...)
+
+NOT just:
+https://www.linkedin.com/sales/search/people?savedSearchId=${searchId}`)
+                  return
+                }
+
                 setIsProcessingUrl(true)
                 try {
-                  // Check if it's a saved search URL
-                  const isSavedSearch = url.includes('savedSearchId=')
+                  // Check if it's a saved search URL with full parameters
+                  const isSavedSearch = url.includes('/sales/search/') || url.includes('/recruiting/search/')
                   const endpoint = isSavedSearch
                     ? '/api/linkedin/import-saved-search'
                     : '/api/linkedin/search/simple'
@@ -1369,7 +1391,18 @@ export default function DataCollectionHub({
                       toastError('No prospects found in LinkedIn URL')
                     }
                   } else {
-                    toastError('Failed to search LinkedIn')
+                    const errorData = await response.json().catch(() => ({}))
+                    if (errorData.error && errorData.error.includes('404')) {
+                      toastError(`LinkedIn search failed. If you're using a saved search, make sure you copied the FULL URL after it loaded (not just the savedSearchId reference).
+
+Steps to get the correct URL:
+1. Open your saved search in LinkedIn
+2. Wait for all results to load
+3. Copy the complete URL from the address bar
+4. The URL should contain "query=" and "filters=" parameters`)
+                    } else {
+                      toastError(errorData.error || 'Failed to search LinkedIn')
+                    }
                   }
                 } catch (error) {
                   console.error('LinkedIn URL processing error:', error)
