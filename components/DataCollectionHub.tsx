@@ -1147,36 +1147,6 @@ export default function DataCollectionHub({
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-[1400px] mx-auto">
-        {/* Prospect Search Assistant Modal */}
-        <ProspectSearchChat
-          onSearchTriggered={handleSearchTriggered}
-          onProspectsReceived={handleProspectsReceived}
-          isOpen={isProspectSearchOpen}
-          onClose={() => setIsProspectSearchOpen(false)}
-        />
-
-        {/* Floating Prospect Search Button */}
-        {!isProspectSearchOpen && (
-          <button
-            onClick={() => setIsProspectSearchOpen(true)}
-            className="fixed bottom-6 right-6 z-[9999] group relative w-16 h-16 rounded-full transition-transform hover:scale-110 active:scale-95 shadow-2xl"
-            style={{ position: 'fixed', bottom: '24px', right: '24px' }}
-            title="Prospecting Assistant"
-          >
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 animate-pulse" />
-            <div className="absolute inset-[2px] rounded-full bg-gray-900" />
-            <img
-              src="/SAM.jpg"
-              alt="SAM AI"
-              className="relative w-14 h-14 rounded-full object-cover z-10"
-              style={{ objectPosition: 'center 30%' }}
-            />
-            <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 px-3 py-1 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-gray-700">
-              Prospecting Assistant
-            </div>
-          </button>
-        )}
-
         {/* Header Section */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
