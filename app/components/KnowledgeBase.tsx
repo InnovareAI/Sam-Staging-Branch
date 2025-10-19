@@ -2214,7 +2214,7 @@ const KnowledgeBase: React.FC = () => {
 
   const sections = [
     { id: 'overview', label: 'Overview', icon: Brain },
-    { id: 'analytics', label: 'Usage Analytics', icon: Activity },
+    { id: 'analytics', label: 'Usage Analytics', icon: Activity }, // Kept in sections array for routing but excluded from quick actions
     { id: 'buying', label: 'Buying Process', icon: GitBranch },
     { id: 'company', label: 'Company Info', icon: Briefcase },
     { id: 'competition', label: 'Competition', icon: TrendingUp },
@@ -2372,7 +2372,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
               <h3 className="text-white text-lg font-semibold mb-4">Quick Actions</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                {sections.slice(1).map((section) => {
+                {sections.slice(1).filter(s => s.id !== 'analytics').map((section) => {
                   const IconComponent = section.icon;
                   return (
                     <button
