@@ -1118,69 +1118,75 @@ export default function DataCollectionHub({
   }
 
   return (
-    <div className={`h-full ${className}`}>
-      {/* Prospect Search Assistant Modal */}
-      <ProspectSearchChat
-        onSearchTriggered={handleSearchTriggered}
-        onProspectsReceived={handleProspectsReceived}
-        isOpen={isProspectSearchOpen}
-        onClose={() => setIsProspectSearchOpen(false)}
-      />
+    <div className="min-h-screen p-8">
+      <div className="max-w-[1400px] mx-auto">
+        {/* Prospect Search Assistant Modal */}
+        <ProspectSearchChat
+          onSearchTriggered={handleSearchTriggered}
+          onProspectsReceived={handleProspectsReceived}
+          isOpen={isProspectSearchOpen}
+          onClose={() => setIsProspectSearchOpen(false)}
+        />
 
-      {/* Floating Prospect Search Button */}
-      {!isProspectSearchOpen && (
-        <button
-          onClick={() => setIsProspectSearchOpen(true)}
-          className="fixed bottom-6 right-6 z-[9999] group relative w-16 h-16 rounded-full transition-transform hover:scale-110 active:scale-95 shadow-2xl"
-          style={{ position: 'fixed', bottom: '24px', right: '24px' }}
-          title="Prospecting Assistant"
-        >
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 animate-pulse" />
-          <div className="absolute inset-[2px] rounded-full bg-gray-900" />
-          <img
-            src="/SAM.jpg"
-            alt="SAM AI"
-            className="relative w-14 h-14 rounded-full object-cover z-10"
-            style={{ objectPosition: 'center 30%' }}
-          />
-          <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 px-3 py-1 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-gray-700">
-            Prospecting Assistant
-          </div>
-        </button>
-      )}
-
-      {/* Prospect Approval Dashboard - Full Width */}
-      <div className="h-full overflow-y-auto">
-        <div className="bg-gray-800 rounded-lg h-full">
-          {/* Header */}
-          <div className="border-b border-gray-700 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Users className="w-5 h-5 text-purple-400" />
-            <h2 className="text-xl font-semibold text-white">Prospect Approval Dashboard</h2>
-          </div>
-          <div className="flex items-center space-x-4">
-            {/* Badge Counters */}
-            <div className="flex items-center space-x-2">
-              <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm font-medium border border-green-500/40">
-                {filteredProspects.filter(p => !dismissedProspectIds.has(p.id) && p.approvalStatus === 'pending').length} to approve
-              </span>
-              {dismissedProspectIds.size > 0 && (
-                <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-sm font-medium border border-red-500/40">
-                  {dismissedProspectIds.size} dismissed
-                </span>
-              )}
+        {/* Floating Prospect Search Button */}
+        {!isProspectSearchOpen && (
+          <button
+            onClick={() => setIsProspectSearchOpen(true)}
+            className="fixed bottom-6 right-6 z-[9999] group relative w-16 h-16 rounded-full transition-transform hover:scale-110 active:scale-95 shadow-2xl"
+            style={{ position: 'fixed', bottom: '24px', right: '24px' }}
+            title="Prospecting Assistant"
+          >
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 animate-pulse" />
+            <div className="absolute inset-[2px] rounded-full bg-gray-900" />
+            <img
+              src="/SAM.jpg"
+              alt="SAM AI"
+              className="relative w-14 h-14 rounded-full object-cover z-10"
+              style={{ objectPosition: 'center 30%' }}
+            />
+            <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 px-3 py-1 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-gray-700">
+              Prospecting Assistant
             </div>
+          </button>
+        )}
 
-            {/* Undo All Dismissals Button */}
-            {dismissedProspectIds.size > 0 && (
-              <button
-                onClick={clearAllDismissals}
-                className="px-3 py-1.5 bg-surface-highlight hover:bg-surface border border-border/60 text-gray-300 rounded-lg transition-colors text-sm font-medium"
-              >
-                Undo All Dismissals
-              </button>
-            )}
+        {/* Header Section */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
+            <Users className="mr-3 text-primary" size={32} />
+            Data Approval
+          </h1>
+          <p className="text-gray-400">Review, approve, and manage prospect data before launching campaigns</p>
+        </div>
+
+        {/* Prospect Approval Dashboard */}
+        <div>
+          {/* Action Bar */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between">
+              {/* Badge Counters */}
+              <div className="flex items-center space-x-2">
+                <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm font-medium border border-green-500/40">
+                  {filteredProspects.filter(p => !dismissedProspectIds.has(p.id) && p.approvalStatus === 'pending').length} to approve
+                </span>
+                {dismissedProspectIds.size > 0 && (
+                  <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-sm font-medium border border-red-500/40">
+                    {dismissedProspectIds.size} dismissed
+                  </span>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center space-x-4">
+                {/* Undo All Dismissals Button */}
+                {dismissedProspectIds.size > 0 && (
+                  <button
+                    onClick={clearAllDismissals}
+                    className="px-3 py-1.5 bg-surface-highlight hover:bg-surface border border-border/60 text-gray-300 rounded-lg transition-colors text-sm font-medium"
+                  >
+                    Undo All Dismissals
+                  </button>
+                )}
 
             <Button
               onClick={downloadApprovedCSV}
@@ -1206,22 +1212,22 @@ export default function DataCollectionHub({
               <span>Approve All ({filteredProspects.filter(p => !dismissedProspectIds.has(p.id) && p.approvalStatus === 'pending').length})</span>
             </Button>
 
-            <Button
-              onClick={handleProceedToCampaignHub}
-              disabled={approvedCount === 0}
-              size="sm"
-              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-              title="Approve selected prospects and continue"
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>Approve Data</span>
-            </Button>
+                <Button
+                  onClick={handleProceedToCampaignHub}
+                  disabled={approvedCount === 0}
+                  size="sm"
+                  className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                  title="Approve selected prospects and continue"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Approve Data</span>
+                </Button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Add Prospects Section - CSV, Copy/Paste, LinkedIn URL */}
-      <div className="border-b border-gray-700 px-6 py-4 bg-gray-900">
+          {/* Add Prospects Section - CSV, Copy/Paste, LinkedIn URL */}
+          <div className="border-b border-gray-700 px-6 py-4 bg-gray-900">
         <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Add Prospects</h3>
         <div className="flex items-center space-x-2">
           {/* CSV Upload */}
