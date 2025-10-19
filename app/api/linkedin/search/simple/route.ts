@@ -814,8 +814,7 @@ export async function POST(request: NextRequest) {
       console.log('🔵 Inserting to database (workspace_prospects, best-effort):', JSON.stringify(toInsert[0]));
       // Use admin client to bypass RLS for workspace_prospects insert; this is best-effort and non-fatal
       try {
-        const admin = supabaseAdmin();
-        const { data: inserted, error: insertError } = await admin
+        const { data: inserted, error: insertError } = await supabaseAdmin
           .from('workspace_prospects')
           .insert(toInsert)
           .select();
