@@ -68,16 +68,16 @@ export async function POST(request: NextRequest) {
       user = cookieUser;
     }
 
-    const { saved_search_id, campaign_name } = await request.json();
+    const { saved_search_url, campaign_name } = await request.json();
 
-    if (!saved_search_id) {
+    if (!saved_search_url) {
       return NextResponse.json({
         success: false,
-        error: 'saved_search_id is required'
+        error: 'saved_search_url is required'
       }, { status: 400 });
     }
 
-    console.log(`🔍 Importing from saved search ${saved_search_id}`);
+    console.log(`🔍 Importing from saved search URL: ${saved_search_url}`);
 
     // Get workspace if not already set
     if (!workspaceId) {
@@ -136,9 +136,7 @@ export async function POST(request: NextRequest) {
     });
 
     const searchPayload = {
-      api: 'sales_navigator',
-      category: 'people',
-      saved_search_id: saved_search_id
+      url: saved_search_url
     };
 
     console.log('🌐 Calling Unipile:', `${searchUrl}?${params}`);
@@ -188,7 +186,12 @@ export async function POST(request: NextRequest) {
       .single();
 
     const companyCode = workspace?.name?.substring(0, 3).toUpperCase() || 'IAI';
-    const finalCampaignName = campaign_name || `${today}-${companyCode}-SavedSearch-${saved_search_id}`;
+
+    // Extract savedSearchId from URL for campaign name
+    const searchIdMatch = saved_search_url.match(/savedSearchId=(\d+)/);
+    const searchIdSuffix = searchIdMatch ? searchIdMatch[1] : Date.now().toString().slice(-6);
+
+    const finalCampaignName = campaign_name || `${today}-${companyCode}-SavedSearch-${searchIdSuffix}`;
 
     // Get next batch number
     const { data: existingSessions } = await supabaseAdmin
@@ -265,8 +268,7 @@ export async function POST(request: NextRequest) {
       success: true,
       count: prospects.length,
       campaign_name: finalCampaignName,
-      session_id: sessionId,
-      saved_search_id: saved_search_id
+      session_id: sessionId
     });
 
   } catch (error) {

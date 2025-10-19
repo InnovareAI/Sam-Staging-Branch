@@ -1843,12 +1843,12 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
     }
 
     // Check for LinkedIn Sales Navigator saved search URL in user message
-    const savedSearchUrlPattern = /https?:\/\/(www\.)?linkedin\.com\/sales\/search\/people\?savedSearchId=(\d+)/i
+    const savedSearchUrlPattern = /https?:\/\/(www\.)?linkedin\.com\/sales\/search\/people\?[^\s]+/i
     const savedSearchMatch = content.match(savedSearchUrlPattern)
 
     if (savedSearchMatch) {
-      const savedSearchId = savedSearchMatch[2]
-      console.log('🔍 Detected Sales Navigator saved search URL, ID:', savedSearchId)
+      const savedSearchUrl = savedSearchMatch[0]
+      console.log('🔍 Detected Sales Navigator saved search URL')
 
       try {
         // Import prospects from saved search
@@ -1861,8 +1861,8 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
             'X-Workspace-Id': thread?.workspace_id || ''
           },
           body: JSON.stringify({
-            saved_search_id: savedSearchId,
-            campaign_name: `Saved Search ${savedSearchId}`
+            saved_search_url: savedSearchUrl,
+            campaign_name: `LinkedIn Saved Search Import`
           })
         })
 
