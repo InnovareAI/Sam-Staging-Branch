@@ -3,16 +3,38 @@ import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request: NextRequest) {
   try {
+    // Get user authentication
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 });
+    }
+
+    // Create user client for authentication
+    const userSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: { headers: { Authorization: authHeader } }
+      }
+    );
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await userSupabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid authentication'
+      }, { status: 401 });
+    }
+
+    // Create service role client for database operations
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
 
     // Get user's current workspace
     const { data: userData } = await supabase

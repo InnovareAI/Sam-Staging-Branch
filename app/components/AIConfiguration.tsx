@@ -123,26 +123,8 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
 
   return (
     <>
-      <div className="min-h-screen p-8">
+      <div className="p-8">
         <div className="max-w-[1400px] mx-auto">
-          {/* Header Section */}
-          <div className="mb-8">
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <Brain className="h-8 w-8 text-primary" />
-                  <h1 className="text-4xl font-bold">AI Configuration</h1>
-                </div>
-                <p className="text-xl text-muted-foreground mb-4">
-                  Agent Management & Automation
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Configure and manage all AI agents for {workspaceName || 'your workspace'}.
-                </p>
-              </div>
-            </div>
-          </div>
-
         {/* Agent Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {agents.map((agent) => (

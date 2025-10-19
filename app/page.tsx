@@ -2836,11 +2836,6 @@ export default function Page() {
           />
         ) : activeMenuItem === 'campaign' ? (
           <div className="flex-1 flex flex-col">
-            {/* Header */}
-            <div className="bg-gray-900 px-6 py-4 border-b border-gray-700">
-              <h2 className="text-xl font-bold text-white">Campaign Hub</h2>
-            </div>
-
             {/* Conditional View */}
             <div className="flex-1 overflow-y-auto">
               {showCampaignApprovalView ? (
@@ -2872,14 +2867,6 @@ export default function Page() {
         ) : activeMenuItem === 'settings' ? (
           <div className="min-h-screen p-8">
             <div className="max-w-[1400px] mx-auto">
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-                  <Settings className="mr-3 text-primary" size={32} />
-                  Settings & Profile
-                </h1>
-                <p className="text-gray-400">Configure integrations, preferences, account settings, and manage your profile</p>
-              </div>
-
             {/* Main Settings Tiles */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
@@ -2925,14 +2912,6 @@ export default function Page() {
         ) : activeMenuItem === 'workspace' ? (
           <div className="min-h-screen p-8">
             <div className="max-w-[1400px] mx-auto">
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-                  <Building2 className="mr-3 text-primary" size={32} />
-                  Workspace Management
-                </h1>
-                <p className="text-gray-400">Manage team members, settings, and integrations for your workspace</p>
-              </div>
-
             {/* Main Workspace Tiles */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 

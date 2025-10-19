@@ -1150,17 +1150,8 @@ export default function DataCollectionHub({
   }
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="p-8">
       <div className="max-w-[1400px] mx-auto">
-        {/* Header Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-            <Users className="mr-3 text-primary" size={32} />
-            Data Approval
-          </h1>
-          <p className="text-gray-400">Review, approve, and manage prospect data before launching campaigns</p>
-        </div>
-
         {/* Prospect Approval Dashboard */}
         <div>
           {/* Action Bar */}

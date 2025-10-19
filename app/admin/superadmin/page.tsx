@@ -374,34 +374,16 @@ export default function SuperAdminPage() {
   }
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="p-8">
       <div className="max-w-[1400px] mx-auto">
-        {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <Shield className="h-8 w-8 text-primary" />
-                <h1 className="text-4xl font-bold">Super Admin</h1>
-              </div>
-              <p className="text-xl text-muted-foreground mb-4">
-                Workspace Orchestration
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Manage tenants, create dedicated workspaces, and invite teams in seconds.
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={() => fetchAllData()}
-                disabled={refreshing}
-                variant="outline"
-              >
-                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-              </Button>
-            </div>
-          </div>
+        <div className="flex items-center gap-3 mb-6">
+          <Button
+            onClick={() => fetchAllData()}
+            disabled={refreshing}
+            variant="outline"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          </Button>
         </div>
         
         {message && (

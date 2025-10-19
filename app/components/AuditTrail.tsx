@@ -6,26 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 const AuditTrail: React.FC = () => {
   return (
-    <div className="min-h-screen p-8">
+    <div className="p-8">
       <div className="max-w-[1400px] mx-auto">
-        {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <Shield className="h-8 w-8 text-primary" />
-                <h1 className="text-4xl font-bold">Audit Trail</h1>
-              </div>
-              <p className="text-xl text-muted-foreground mb-4">
-                Compliance & Activity Monitoring
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Track all user activities, system events, and changes across your workspace.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Coming Soon Content */}
         <div className="flex items-center justify-center min-h-[500px]">
           <Card className="max-w-2xl w-full">
