@@ -130,38 +130,74 @@ export async function POST(request: NextRequest) {
       ? `https://${UNIPILE_DSN}/api/v1/linkedin/search`
       : `https://${UNIPILE_DSN}.unipile.com:13443/api/v1/linkedin/search`;
 
-    const params = new URLSearchParams({
-      account_id: linkedInAccount.unipile_account_id,
-      limit: '50' // Max 50 for saved searches
-    });
+    // Fetch ALL prospects with pagination (max 100 per page for saved searches)
+    let allProspects: any[] = [];
+    let cursor: string | null = null;
+    let pageNum = 0;
+    const maxPages = 10; // Safety limit to prevent infinite loops (1000 prospects max)
 
-    const searchPayload = {
-      url: saved_search_url
-    };
+    do {
+      pageNum++;
+      console.log(`🔄 Fetching page ${pageNum}${cursor ? ` (cursor: ${cursor.slice(0, 20)}...)` : ''}`);
 
-    console.log('🌐 Calling Unipile:', `${searchUrl}?${params}`);
-    console.log('📦 Payload:', JSON.stringify(searchPayload, null, 2));
+      const params = new URLSearchParams({
+        account_id: linkedInAccount.unipile_account_id,
+        limit: '100' // Increase to 100 for faster fetching
+      });
 
-    const searchResponse = await fetch(`${searchUrl}?${params}`, {
-      method: 'POST',
-      headers: {
-        'X-API-KEY': UNIPILE_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(searchPayload)
-    });
+      if (cursor) {
+        params.append('cursor', cursor);
+      }
 
-    if (!searchResponse.ok) {
-      const errorText = await searchResponse.text();
-      console.error('❌ Unipile search failed:', errorText);
-      return NextResponse.json({
-        success: false,
-        error: `Unipile API error: ${searchResponse.status} ${searchResponse.statusText}`
-      }, { status: 500 });
-    }
+      const searchPayload = {
+        url: saved_search_url
+      };
 
-    const searchData = await searchResponse.json();
-    const prospects = searchData.items || [];
+      console.log('🌐 Calling Unipile:', `${searchUrl}?${params}`);
+
+      const searchResponse = await fetch(`${searchUrl}?${params}`, {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': UNIPILE_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(searchPayload)
+      });
+
+      if (!searchResponse.ok) {
+        const errorText = await searchResponse.text();
+        console.error('❌ Unipile search failed:', errorText);
+
+        // If we already have some prospects, return them instead of failing completely
+        if (allProspects.length > 0) {
+          console.log(`⚠️ Page ${pageNum} failed, but we have ${allProspects.length} prospects already. Continuing...`);
+          break;
+        }
+
+        return NextResponse.json({
+          success: false,
+          error: `Unipile API error: ${searchResponse.status} ${searchResponse.statusText}`
+        }, { status: 500 });
+      }
+
+      const searchData = await searchResponse.json();
+      const pageProspects = searchData.items || [];
+
+      console.log(`✅ Page ${pageNum}: Retrieved ${pageProspects.length} prospects`);
+
+      allProspects = [...allProspects, ...pageProspects];
+
+      // Check for pagination cursor
+      cursor = searchData.cursor || searchData.next_cursor || null;
+
+      // Stop if no more results or we hit the safety limit
+      if (!cursor || pageProspects.length === 0 || pageNum >= maxPages) {
+        break;
+      }
+
+    } while (cursor);
+
+    const prospects = allProspects;
 
     console.log(`✅ Retrieved ${prospects.length} prospects from saved search`);
 

@@ -1318,18 +1318,31 @@ export default function DataCollectionHub({
               if (url && url.trim()) {
                 setIsProcessingUrl(true)
                 try {
-                  const response = await fetch('/api/linkedin/search/simple', {
+                  // Check if it's a saved search URL
+                  const isSavedSearch = url.includes('savedSearchId=')
+                  const endpoint = isSavedSearch
+                    ? '/api/linkedin/import-saved-search'
+                    : '/api/linkedin/search/simple'
+
+                  const requestBody = isSavedSearch
+                    ? { saved_search_url: url.trim(), campaign_name: `${today}-${workspaceCode}-SavedSearch` }
+                    : { search_criteria: { url: url.trim() }, target_count: 50 }
+
+                  const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      search_criteria: { url: url.trim() },
-                      target_count: 50
-                    })
+                    body: JSON.stringify(requestBody)
                   })
 
                   if (response.ok) {
                     const data = await response.json()
-                    if (data.success && data.prospects && data.prospects.length > 0) {
+                    if (data.success && data.count !== undefined) {
+                      // Saved search response - just show success, data will load via sessions API
+                      toastSuccess(`Imported ${data.count} prospects from saved search. Refreshing...`)
+                      // Reload the page to fetch the new session
+                      window.location.reload()
+                      return
+                    } else if (data.success && data.prospects && data.prospects.length > 0) {
                       const newProspects: ProspectData[] = data.prospects.map((p: any, index: number) => ({
                         id: `linkedin_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
                         name: p.fullName || p.name || 'Unknown',
