@@ -7,6 +7,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSamThreadedChat } from '@/lib/hooks/useSamThreadedChat';
+import { useConfirm } from '@/hooks/useConfirm';
 import { DemoModeToggle } from '@/components/DemoModeToggle';
 import { WorkspaceSelector } from '@/components/WorkspaceSelector';
 import ConnectionStatusBar from '@/components/ConnectionStatusBar';
@@ -101,7 +102,10 @@ export default function Page() {
   // Initialize Supabase client
   const supabase = createClientComponentClient();
   const router = useRouter();
-  
+
+  // Initialize confirm modal hook
+  const { confirm, ConfirmDialog } = useConfirm();
+
   // Helper function to get auth token (cached from session state)
   const getAuthToken = async () => {
     if (session?.access_token) {
@@ -1821,10 +1825,18 @@ export default function Page() {
 
   // Handle logout
   const handleLogout = async () => {
-    if (confirm('Are you sure you want to sign out?')) {
+    const confirmed = await confirm({
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out?',
+      confirmText: 'Sign Out',
+      cancelText: 'Cancel',
+      type: 'warning'
+    });
+
+    if (confirmed) {
       try {
         console.log('🚪 Signing out user...');
-        
+
         // Sign out from Supabase completely
         await supabase.auth.signOut({ scope: 'global' });
         
@@ -4601,6 +4613,9 @@ export default function Page() {
           </div>
         </div>
       )}
+
+      {/* Confirm Modal */}
+      <ConfirmDialog />
     </div>
   </div>
   );
