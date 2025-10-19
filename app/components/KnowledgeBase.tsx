@@ -2233,21 +2233,22 @@ const KnowledgeBase: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-            <Brain className="mr-3" size={32} />
-            Knowledgebase
-          </h1>
-          <p className="text-gray-400">Centralized intelligence hub for SAM's conversational AI</p>
+    <div className="min-h-screen p-8">
+      <div className="max-w-[1400px] mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
+              <Brain className="mr-3 text-primary" size={32} />
+              Knowledgebase
+            </h1>
+            <p className="text-gray-400">Centralized intelligence hub for SAM's conversational AI</p>
+          </div>
         </div>
-      </div>
 
 
-      {/* Main Content */}
-      <div className="max-w-7xl">
+        {/* Main Content */}
+        <div>
         {activeSection === 'overview' && (
           <div className="space-y-6">
             {/* KB Completeness and Health - First Row */}
@@ -3663,6 +3664,7 @@ const KnowledgeBase: React.FC = () => {
             <ChunkDrawer />
           </div>
         )}
+      </div>
       </div>
     </div>
   );
