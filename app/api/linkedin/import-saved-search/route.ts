@@ -165,11 +165,15 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Retrieved ${prospects.length} prospects from saved search`);
 
+    // Extract savedSearchId from URL early for use in messages
+    const searchIdMatch = saved_search_url.match(/savedSearchId=(\d+)/);
+    const savedSearchId = searchIdMatch ? searchIdMatch[1] : Date.now().toString().slice(-6);
+
     if (prospects.length === 0) {
       return NextResponse.json({
         success: true,
         count: 0,
-        campaign_name: campaign_name || `Saved Search ${saved_search_id}`,
+        campaign_name: campaign_name || `Saved Search ${savedSearchId}`,
         message: 'No prospects found in this saved search'
       });
     }
@@ -187,11 +191,7 @@ export async function POST(request: NextRequest) {
 
     const companyCode = workspace?.name?.substring(0, 3).toUpperCase() || 'IAI';
 
-    // Extract savedSearchId from URL for campaign name
-    const searchIdMatch = saved_search_url.match(/savedSearchId=(\d+)/);
-    const searchIdSuffix = searchIdMatch ? searchIdMatch[1] : Date.now().toString().slice(-6);
-
-    const finalCampaignName = campaign_name || `${today}-${companyCode}-SavedSearch-${searchIdSuffix}`;
+    const finalCampaignName = campaign_name || `${today}-${companyCode}-SavedSearch-${savedSearchId}`;
 
     // Get next batch number
     const { data: existingSessions } = await supabaseAdmin
@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         workspace_id: workspaceId,
         campaign_name: finalCampaignName,
-        campaign_tag: `saved_search_${saved_search_id}`,
+        campaign_tag: `saved_search_${savedSearchId}`,
         total_prospects: prospects.length,
         approved_count: 0,
         rejected_count: 0,
