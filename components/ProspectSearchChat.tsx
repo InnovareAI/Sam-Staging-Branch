@@ -219,8 +219,10 @@ export default function ProspectSearchChat({
         connectionDegree: string;
       };
       target_count: number;
+      needs_emails?: boolean;
     }) => {
-      const response = await fetch('/api/linkedin/search/simple', {
+      // Use cost-optimized search router
+      const response = await fetch('/api/linkedin/search-router', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(searchParams)
@@ -230,12 +232,21 @@ export default function ProspectSearchChat({
     },
     onSuccess: (data) => {
       if (data.success && data.prospects) {
-        // Simple endpoint returns results immediately
+        // Router returns results immediately
         onProspectsReceived?.(data.prospects);
+
+        // Show cost optimization info
+        const costInfo = data.cost_breakdown
+          ? `\n\n💰 Cost: ${Object.values(data.cost_breakdown).join(', ')}`
+          : '';
+
+        const providerInfo = data.routing_info?.search_provider
+          ? `\n🔍 Search provider: ${data.routing_info.search_provider}${data.routing_info.account_type ? ` (${data.routing_info.account_type})` : ''}`
+          : '';
 
         addMessage({
           role: 'assistant',
-          content: `✅ Found ${data.count} prospects! They've been added to the approval table. The campaign "${data.session_id ? data.session_id.substring(0, 8) : 'New Search'}" is ready for review in the Data Approval tab.\n\nWant to search for more prospects?`
+          content: `✅ Found ${data.count || data.prospects.length} prospects! They've been added to the approval table. The campaign "${data.session_id ? data.session_id.substring(0, 8) : 'New Search'}" is ready for review in the Data Approval tab.${costInfo}${providerInfo}\n\nWant to search for more prospects?`
         });
       } else {
         addMessage({

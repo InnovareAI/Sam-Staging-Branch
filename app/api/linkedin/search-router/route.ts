@@ -269,28 +269,104 @@ async function searchViaBrightData(params: {
   search_criteria: any;
   target_count: number;
   include_emails: boolean;
-}) {
+}): Promise<any> {
   console.log('🌐 BrightData search parameters:', params);
 
-  // Build LinkedIn search URL based on connection degree
-  const searchUrl = params.connectionDegree === '1st'
-    ? buildMyNetworkUrl(params.search_criteria)
-    : buildLinkedInSearchUrl(params.connectionDegree, params.search_criteria);
+  try {
+    // Call BrightData scraper API
+    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/leads/brightdata-scraper`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'scrape_prospects',
+        workspace_id: params.workspaceId,
+        search_params: {
+          target_sites: ['linkedin'],
+          search_criteria: {
+            keywords: params.search_criteria.keywords || '',
+            job_titles: params.search_criteria.title ? [params.search_criteria.title] : [],
+            industries: params.search_criteria.industry ? [params.search_criteria.industry] : [],
+            locations: params.search_criteria.location ? [params.search_criteria.location] : [],
+            company_names: params.search_criteria.company ? [params.search_criteria.company] : []
+          },
+          scraping_options: {
+            max_results: params.target_count,
+            include_emails: params.include_emails,
+            include_phone: false,
+            verify_contact_info: params.include_emails,
+            depth: params.include_emails ? 'detailed' : 'basic'
+          }
+        },
+        use_premium_proxies: true,
+        geo_location: 'US'
+      })
+    });
 
-  console.log('🔗 LinkedIn URL:', searchUrl);
+    if (!response.ok) {
+      throw new Error(`BrightData API error: ${response.status}`);
+    }
 
-  // Call BrightData MCP
-  // TODO: Replace with actual MCP call when BrightData MCP is integrated
-  console.log('⚠️ BrightData MCP not yet integrated - returning mock data');
+    const data = await response.json();
 
-  return {
-    success: true,
-    provider: 'brightdata',
-    prospects: [],
-    message: 'BrightData integration pending. This will scrape LinkedIn and enrich with emails.',
-    mock_url: searchUrl,
-    cost_note: 'PAID service - will incur BrightData costs per prospect scraped'
+    if (!data.success) {
+      return {
+        success: false,
+        provider: 'brightdata',
+        error: data.error || 'BrightData search failed',
+        prospects: []
+      };
+    }
+
+    // Transform BrightData prospects to our format
+    const prospects = (data.results?.prospects || []).map((p: any) => ({
+      firstName: p.prospect_data.first_name,
+      lastName: p.prospect_data.last_name,
+      fullName: p.prospect_data.full_name,
+      title: p.prospect_data.title,
+      company: p.prospect_data.company,
+      location: p.prospect_data.location,
+      linkedinUrl: p.prospect_data.linkedin_url,
+      email: p.prospect_data.email || null,
+      phone: p.prospect_data.phone || null,
+      connectionDegree: parseConnectionDegree(params.connectionDegree),
+      source: 'brightdata_mcp',
+      enrichment_score: Math.round((p.confidence_score || 0.8) * 100)
+    }));
+
+    console.log(`✅ BrightData returned ${prospects.length} prospects`);
+
+    return {
+      success: true,
+      provider: 'brightdata',
+      prospects,
+      count: prospects.length,
+      metadata: {
+        scraping_source: data.results?.sources_used || ['linkedin'],
+        cost_estimate: data.metadata?.cost_estimate || `$${(prospects.length * 0.05).toFixed(2)}`,
+        data_quality: 'verified'
+      }
+    };
+
+  } catch (error) {
+    console.error('BrightData search error:', error);
+    return {
+      success: false,
+      provider: 'brightdata',
+      error: error instanceof Error ? error.message : 'BrightData search failed',
+      prospects: []
+    };
+  }
+}
+
+/**
+ * Parse connection degree string to number
+ */
+function parseConnectionDegree(degree: string): number {
+  const degreeMap: Record<string, number> = {
+    '1st': 1, '2nd': 2, '3rd': 3,
+    '1': 1, '2': 2, '3': 3
   };
+  return degreeMap[degree] || 2;
 }
 
 /**
@@ -339,13 +415,80 @@ function buildLinkedInSearchUrl(connectionDegree: string, criteria: any): string
  * Enrich prospects with BrightData for email addresses
  */
 async function enrichWithBrightData(prospects: any[]): Promise<any[]> {
-  console.log('📧 Enriching prospects with emails via BrightData...');
+  console.log(`📧 Enriching ${prospects.length} prospects with emails via BrightData...`);
 
-  // TODO: Implement BrightData email enrichment
-  // For now, return prospects unchanged with note
-  return prospects.map(p => ({
-    ...p,
-    email: null,
-    email_enrichment_status: 'pending_brightdata_integration'
-  }));
+  if (prospects.length === 0) {
+    return prospects;
+  }
+
+  try {
+    // For each prospect, try to find their email using BrightData
+    // This uses the scrape_as_markdown tool to extract email from LinkedIn profiles
+    const enrichedProspects = await Promise.all(
+      prospects.map(async (prospect) => {
+        try {
+          // If prospect already has email, skip enrichment
+          if (prospect.email) {
+            return {
+              ...prospect,
+              email_enrichment_status: 'already_present'
+            };
+          }
+
+          // Call BrightData to scrape email from LinkedIn profile
+          const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/leads/brightdata-scraper`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'verify_contact_info',
+              prospect_name: prospect.fullName,
+              linkedin_url: prospect.linkedinUrl
+            })
+          });
+
+          if (!response.ok) {
+            console.warn(`⚠️ Email enrichment failed for ${prospect.fullName}`);
+            return {
+              ...prospect,
+              email: null,
+              email_enrichment_status: 'enrichment_failed'
+            };
+          }
+
+          const data = await response.json();
+
+          // BrightData may return email in verification response
+          return {
+            ...prospect,
+            email: data.email || null,
+            email_verified: data.email_verification?.valid || false,
+            email_confidence: data.email_verification?.confidence || 0,
+            email_enrichment_status: data.email ? 'enriched' : 'not_found'
+          };
+
+        } catch (error) {
+          console.error(`Error enriching ${prospect.fullName}:`, error);
+          return {
+            ...prospect,
+            email: null,
+            email_enrichment_status: 'error'
+          };
+        }
+      })
+    );
+
+    const enrichedCount = enrichedProspects.filter(p => p.email).length;
+    console.log(`✅ Successfully enriched ${enrichedCount}/${prospects.length} prospects with emails`);
+
+    return enrichedProspects;
+
+  } catch (error) {
+    console.error('BrightData email enrichment error:', error);
+    // Return prospects unchanged if enrichment fails
+    return prospects.map(p => ({
+      ...p,
+      email: null,
+      email_enrichment_status: 'enrichment_service_unavailable'
+    }));
+  }
 }
