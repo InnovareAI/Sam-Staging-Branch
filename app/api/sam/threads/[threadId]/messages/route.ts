@@ -1842,13 +1842,16 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
       }
     }
 
-    // Check for LinkedIn Sales Navigator saved search URL in user message
-    const savedSearchUrlPattern = /https?:\/\/(www\.)?linkedin\.com\/sales\/search\/people\?[^\s]+/i
+    // Check for LinkedIn search URL in user message (Sales Navigator, Classic, or Recruiter)
+    const savedSearchUrlPattern = /https?:\/\/(www\.)?linkedin\.com\/(sales\/search\/people|search\/results\/people\/|talent\/search)\?[^\s]+/i
     const savedSearchMatch = content.match(savedSearchUrlPattern)
 
     if (savedSearchMatch) {
       const savedSearchUrl = savedSearchMatch[0]
-      console.log('🔍 Detected Sales Navigator saved search URL')
+      const searchType = savedSearchUrl.includes('/sales/') ? 'Sales Navigator'
+                       : savedSearchUrl.includes('/talent/') ? 'Recruiter'
+                       : 'Classic LinkedIn'
+      console.log(`🔍 Detected ${searchType} search URL`)
 
       try {
         // Import prospects from saved search
@@ -1869,17 +1872,18 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         const importData = await importResponse.json()
 
         if (importData.success) {
-          aiResponse = `✅ **Imported ${importData.count} prospects** from your Sales Navigator saved search!\n\n` +
+          aiResponse = `✅ **Imported ${importData.count} prospects** from your LinkedIn search!\n\n` +
+            `**Source:** ${searchType}\n` +
             `**Campaign:** ${importData.campaign_name}\n` +
             `**Next Step:** Head to the **Data Approval** tab to review and approve these prospects.\n\n` +
             `📊 **Ready to review:** ${importData.count} prospects waiting for approval`
         } else {
-          aiResponse = `❌ **Import Failed:** ${importData.error || 'Unable to import from saved search'}\n\n` +
+          aiResponse = `❌ **Import Failed:** ${importData.error || 'Unable to import from LinkedIn search'}\n\n` +
             `This could be because:\n` +
             `- Your LinkedIn account isn't connected\n` +
-            `- The saved search ID is invalid\n` +
-            `- You don't have access to this saved search\n\n` +
-            `Try sharing a different saved search URL or create a new search instead!`
+            `- The search URL is invalid or expired\n` +
+            `- You don't have access to this search (subscription required)\n\n` +
+            `Try a different search URL or create a new search instead!`
         }
       } catch (error) {
         console.error('❌ Saved search import failed:', error)
