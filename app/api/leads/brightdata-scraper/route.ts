@@ -260,44 +260,12 @@ async function scrapeProspects(
 // Mock data is now handled by useMockData() helper function at the end of the file
 
 async function scrapeCompanyEmployees(params: any, user: any) {
-  // TODO: Replace with actual company employee scraping
-  
-  const employees = [
-    {
-      name: 'Alex Rivera',
-      title: 'Senior Software Engineer',
-      linkedin_url: 'https://linkedin.com/in/alex-rivera-dev',
-      email: 'alex.rivera@techforward.com',
-      tenure: '2 years 3 months',
-      department: 'Engineering'
-    },
-    {
-      name: 'Jessica Park', 
-      title: 'Product Manager',
-      linkedin_url: 'https://linkedin.com/in/jessica-park-pm',
-      email: 'jessica.park@techforward.com',
-      tenure: '1 year 8 months',
-      department: 'Product'
-    },
-    {
-      name: 'David Chen',
-      title: 'VP Sales',
-      linkedin_url: 'https://linkedin.com/in/david-chen-sales',
-      email: 'david.chen@techforward.com',
-      tenure: '3 years 1 month',
-      department: 'Sales'
-    }
-  ];
-
+  // NO MOCK DATA - Feature not yet implemented
   return NextResponse.json({
-    success: true,
-    action: 'scrape_company_employees',
-    company: params.company_name,
-    employees,
-    total_found: employees.length,
-    departments: ['Engineering', 'Product', 'Sales', 'Marketing'],
-    scraping_source: 'linkedin_company_page'
-  });
+    success: false,
+    error: 'Company employee scraping not yet implemented. Use prospect search instead.',
+    action: 'scrape_company_employees'
+  }, { status: 501 }); // 501 = Not Implemented
 }
 
 async function scrapeAndImport(
@@ -448,41 +416,12 @@ async function scrapeAndImport(
 }
 
 async function verifyContactInfo(params: any, user: any) {
-  // TODO: Replace with actual contact verification
-  
-  const verificationResults = {
-    email_verification: {
-      valid: true,
-      confidence: 0.94,
-      deliverable: true,
-      catch_all: false,
-      disposable: false,
-      role_account: false
-    },
-    phone_verification: {
-      valid: true,
-      confidence: 0.89,
-      line_type: 'mobile',
-      carrier: 'Verizon',
-      location: 'San Francisco, CA'
-    },
-    linkedin_verification: {
-      profile_exists: true,
-      recently_active: true,
-      premium_account: true,
-      connection_degree: 3,
-      mutual_connections: 5
-    }
-  };
-
+  // NO MOCK DATA - Feature not yet implemented
   return NextResponse.json({
-    success: true,
-    action: 'verify_contact_info',
-    prospect: params.prospect_name,
-    verification: verificationResults,
-    overall_score: 0.91,
-    recommendation: 'High confidence - proceed with outreach'
-  });
+    success: false,
+    error: 'Contact verification not yet implemented. BrightData MCP integration required.',
+    action: 'verify_contact_info'
+  }, { status: 501 }); // 501 = Not Implemented
 }
 
 async function getScrapingCapabilities() {
