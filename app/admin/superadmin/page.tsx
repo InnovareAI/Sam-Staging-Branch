@@ -375,7 +375,7 @@ export default function SuperAdminPage() {
 
   return (
     <div className="min-h-screen p-8">
-      <div className="max-w-[1800px] mx-auto">
+      <div className="max-w-[1400px] mx-auto">
         {/* Header Section */}
         <div className="mb-8">
           <div className="flex items-start justify-between mb-6">
