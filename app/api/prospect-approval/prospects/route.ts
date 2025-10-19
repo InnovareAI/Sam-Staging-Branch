@@ -15,6 +15,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const sessionId = searchParams.get('session_id')
 
+    // Pagination parameters
+    const page = Math.max(1, Number(searchParams.get('page')) || 1)
+    const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit')) || 50))
+    const sortBy = searchParams.get('sort_by') || 'enrichment_score'
+    const sortOrder = searchParams.get('sort_order') || 'desc'
+    const status = searchParams.get('status') // 'all' | 'pending' | 'approved' | 'rejected'
+
     if (!sessionId) {
       return NextResponse.json({
         success: false,
@@ -104,12 +111,24 @@ export async function GET(request: NextRequest) {
       }, { status: 403 })
     }
 
-    // Get prospects for this session (now workspace-validated)
-    const { data: prospectsRaw, error } = await supabase
+    // Calculate offset for pagination
+    const offset = (page - 1) * limit
+
+    // Build query with pagination and filters
+    let query = supabase
       .from('prospect_approval_data')
-      .select('*')
+      .select('*', { count: 'exact' })
       .eq('session_id', sessionId)
-      .order('enrichment_score', { ascending: false })
+
+    // Apply status filter if specified
+    if (status && status !== 'all') {
+      query = query.eq('approval_status', status)
+    }
+
+    // Apply sorting and pagination
+    const { data: prospectsRaw, error, count } = await query
+      .order(sortBy, { ascending: sortOrder === 'asc' })
+      .range(offset, offset + limit - 1)
 
     if (error) throw error
 
@@ -136,11 +155,24 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    console.log(`✅ Loaded ${prospects.length} prospects for session ${sessionId} (${decisions?.length || 0} with decisions)`)
+    const totalPages = Math.ceil((count || 0) / limit)
+    const hasNext = page < totalPages
+    const hasPrev = page > 1
+
+    console.log(`✅ Loaded ${prospects.length} prospects (page ${page}/${totalPages}) for session ${sessionId}`)
 
     return NextResponse.json({
       success: true,
-      prospects
+      prospects,
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        totalPages,
+        hasNext,
+        hasPrev,
+        showing: prospects.length
+      }
     })
 
   } catch (error) {

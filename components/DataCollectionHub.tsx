@@ -124,25 +124,43 @@ function getInitials(nameOrEmail: string): string {
   return nameOrEmail.substring(0, 2).toUpperCase()
 }
 
-// React Query function to fetch approval sessions
-async function fetchApprovalSessions(): Promise<ProspectData[]> {
+// React Query function to fetch approval sessions with pagination
+async function fetchApprovalSessions(page: number = 1, limit: number = 50, statusFilter: string = 'all'): Promise<{
+  prospects: ProspectData[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+    hasNext: boolean
+    hasPrev: boolean
+    showing: number
+  }
+}> {
   try {
     const response = await fetch('/api/prospect-approval/sessions/list')
     if (!response.ok) throw new Error('Failed to fetch sessions')
 
     const data = await response.json()
     if (!data.success || !data.sessions || data.sessions.length === 0) {
-      return []
+      return { prospects: [], pagination: { page: 1, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false, showing: 0 } }
     }
 
-    const allProspects: ProspectData[] = []
+    // For now, use first active session
+    // TODO: Support multiple sessions or session selector
+    const activeSession = data.sessions.find((s: any) => s.status === 'active')
+    if (!activeSession) {
+      return { prospects: [], pagination: { page: 1, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false, showing: 0 } }
+    }
 
-    for (const session of data.sessions) {
-      if (session.status === 'active') {
-        const prospectsResponse = await fetch(`/api/prospect-approval/prospects?session_id=${session.id}`)
-        if (prospectsResponse.ok) {
-          const prospectsData = await prospectsResponse.json()
-          if (prospectsData.success && prospectsData.prospects) {
+    // Fetch prospects with pagination
+    const prospectsResponse = await fetch(
+      `/api/prospect-approval/prospects?session_id=${activeSession.id}&page=${page}&limit=${limit}&status=${statusFilter}`
+    )
+
+    if (prospectsResponse.ok) {
+      const prospectsData = await prospectsResponse.json()
+      if (prospectsData.success && prospectsData.prospects) {
             const mappedProspects = prospectsData.prospects.map((p: any) => ({
               id: p.prospect_id,
               name: p.name,
@@ -169,19 +187,21 @@ async function fetchApprovalSessions(): Promise<ProspectData[]> {
               linkedinUserId: p.linkedin_user_id || p.contact?.linkedin_user_id || undefined
             }))
             // Calculate quality scores
-            mappedProspects.forEach(p => {
+            mappedProspects.forEach((p: ProspectData) => {
               p.qualityScore = calculateQualityScore(p)
             })
-            allProspects.push(...mappedProspects)
+
+            return {
+              prospects: mappedProspects,
+              pagination: prospectsData.pagination
+            }
           }
         }
-      }
-    }
 
-    return allProspects
+    return { prospects: [], pagination: { page: 1, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false, showing: 0 } }
   } catch (error) {
     console.error('Failed to fetch approval sessions:', error)
-    return []
+    return { prospects: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0, hasNext: false, hasPrev: false, showing: 0 } }
   }
 }
 
@@ -195,18 +215,26 @@ export default function DataCollectionHub({
   const [loading, setLoading] = useState(false)
   const [workspaceCode, setWorkspaceCode] = useState<string>('CLI')
 
-  // REACT QUERY: Fetch and cache approval sessions
-  const { data: serverProspects = [], isLoading: isLoadingSessions, refetch } = useQuery({
-    queryKey: ['approval-sessions'],
-    queryFn: fetchApprovalSessions,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(50)
+  const [filterStatus, setFilterStatus] = useState<string>('all')
+
+  // REACT QUERY: Fetch and cache approval sessions with pagination
+  const { data, isLoading: isLoadingSessions, refetch } = useQuery({
+    queryKey: ['approval-sessions', currentPage, pageSize, filterStatus],
+    queryFn: () => fetchApprovalSessions(currentPage, pageSize, filterStatus),
+    staleTime: 30 * 1000, // 30 seconds
     refetchOnWindowFocus: true, // Auto-refresh when tab becomes visible
+    keepPreviousData: true, // Smooth page transitions
   })
+
+  const serverProspects = data?.prospects || []
+  const pagination = data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 0, hasNext: false, hasPrev: false, showing: 0 }
 
   const [prospectData, setProspectData] = useState<ProspectData[]>([])
   const [expandedProspect, setExpandedProspect] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
   // Generate default campaign name with systematic naming: YYYYMMDD-ClientID-CampaignName
   const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
   const [defaultCampaignName, setDefaultCampaignName] = useState(`${today}-CLIENT-Demo`)
@@ -790,7 +818,8 @@ export default function DataCollectionHub({
       })[0]?.campaignName
     : null
 
-  // Filter prospects - USER CONTROLS ALL FILTERS INDEPENDENTLY
+  // Filter prospects - SERVER-SIDE: status filter is handled by API
+  // CLIENT-SIDE: only search term filter (applied to current page)
   let filteredProspects = prospectsWithScores.filter(p => {
     // Campaign name filter - user explicitly selects which campaign to view
     if (selectedCampaignName === 'latest' && latestCampaignName && p.campaignName !== latestCampaignName) {
@@ -804,10 +833,8 @@ export default function DataCollectionHub({
       return false
     }
 
-    // Approval status filter - user decides which status to view
-    if (filterStatus !== 'all' && p.approvalStatus !== filterStatus) {
-      return false
-    }
+    // NOTE: Approval status filter now handled server-side via API
+    // The data from server is already filtered by status
 
     // Quick filter
     if (quickFilter === 'high-quality' && (p.qualityScore ?? 0) < 85) return false
@@ -815,7 +842,7 @@ export default function DataCollectionHub({
     if (quickFilter === '1st-degree' && p.connectionDegree !== '1st') return false
     if (quickFilter === 'missing-info' && p.email && p.phone) return false
 
-    // Search term
+    // Search term (client-side on current page)
     if (searchTerm) {
       const search = searchTerm.toLowerCase()
       return (
@@ -1423,7 +1450,10 @@ export default function DataCollectionHub({
           <label className="text-sm font-semibold text-gray-300">Status:</label>
           <select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as any)}
+            onChange={(e) => {
+              setFilterStatus(e.target.value)
+              setCurrentPage(1) // Reset to first page when filter changes
+            }}
             className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
             <option value="all">All Status ({visibleCount} visible)</option>
@@ -1668,6 +1698,73 @@ export default function DataCollectionHub({
             <p className="text-gray-500">
               {searchTerm || filterStatus !== 'all' ? 'Try adjusting your filters' : 'Upload prospects to get started'}
             </p>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {pagination.total > 0 && (
+          <div className="border-t border-gray-700 px-6 py-4 flex items-center justify-between bg-gray-900">
+            {/* Results info */}
+            <div className="text-sm text-gray-400">
+              Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} prospects
+            </div>
+
+            {/* Pagination buttons */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={!pagination.hasPrev || isLoadingSessions}
+                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                First
+              </button>
+
+              <button
+                onClick={() => setCurrentPage(p => p - 1)}
+                disabled={!pagination.hasPrev || isLoadingSessions}
+                className="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                Previous
+              </button>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-400">Page</span>
+                <select
+                  value={pagination.page}
+                  onChange={(e) => setCurrentPage(Number(e.target.value))}
+                  disabled={isLoadingSessions}
+                  className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-gray-300 text-sm disabled:opacity-50"
+                >
+                  {Array.from({ length: pagination.totalPages }, (_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      {i + 1}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-sm text-gray-400">of {pagination.totalPages}</span>
+              </div>
+
+              <button
+                onClick={() => setCurrentPage(p => p + 1)}
+                disabled={!pagination.hasNext || isLoadingSessions}
+                className="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                Next
+              </button>
+
+              <button
+                onClick={() => setCurrentPage(pagination.totalPages)}
+                disabled={!pagination.hasNext || isLoadingSessions}
+                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                Last
+              </button>
+            </div>
+
+            {/* Page size info */}
+            <div className="text-sm text-gray-400">
+              {pagination.limit} per page
+            </div>
           </div>
         )}
       </div>
