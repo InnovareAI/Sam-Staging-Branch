@@ -11,85 +11,113 @@ import { supabaseAdmin } from '@/app/lib/supabase';
 export async function POST(request: NextRequest) {
   console.log('🔵 SIMPLE SEARCH START');
   try {
-    const cookieStore = await cookies();
+    // Check for internal auth headers (when called from SAM)
+    const internalAuth = request.headers.get('X-Internal-Auth');
+    const internalUserId = request.headers.get('X-User-Id');
+    const internalWorkspaceId = request.headers.get('X-Workspace-Id');
 
-    // Use @supabase/ssr createServerClient (matches browser client)
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options)
-            })
-          }
-        }
+    let user: any = null;
+    let workspaceId: string | null = null;
+
+    if (internalAuth === 'true' && internalUserId) {
+      // Internal call from SAM - use service role to verify user exists
+      console.log('🔐 Internal auth detected from SAM');
+      const { data: userData } = await supabaseAdmin
+        .from('users')
+        .select('id, email, current_workspace_id')
+        .eq('id', internalUserId)
+        .single();
+
+      if (userData) {
+        user = userData;
+        workspaceId = internalWorkspaceId || userData.current_workspace_id;
+        console.log(`✅ Internal auth successful: ${user.email}, workspace: ${workspaceId}`);
       }
-    );
-
-    // Auth
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    console.log('🔵 Auth check:', { hasUser: !!user, userId: user?.id, authError: authError?.message });
-
-    if (!user) {
-      console.log('❌ No user - returning 401');
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    console.log(`✅ User authenticated: ${user.email}`);
+    // Fall back to cookie-based auth if internal auth not used
+    if (!user) {
+      const cookieStore = await cookies();
+
+      // Use @supabase/ssr createServerClient (matches browser client)
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() {
+              return cookieStore.getAll()
+            },
+            setAll(cookiesToSet) {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                cookieStore.set(name, value, options)
+              })
+            }
+          }
+        }
+      );
+
+      // Auth
+      const { data: { user: cookieUser }, error: authError } = await supabase.auth.getUser();
+      console.log('🔵 Cookie auth check:', { hasUser: !!cookieUser, userId: cookieUser?.id, authError: authError?.message });
+
+      if (!cookieUser) {
+        console.log('❌ No user - returning 401');
+        return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      }
+
+      user = cookieUser;
+      console.log(`✅ User authenticated: ${user.email}`);
+    }
 
     const { search_criteria, target_count = 50 } = await request.json();
 
     console.log('🔵 Received search_criteria:', JSON.stringify(search_criteria));
 
-    // Get workspace (with fallback)
-    let workspaceId: string | null = null;
+    // Get workspace (with fallback, or use internal auth workspace)
+    if (!workspaceId) {
+      console.log('🔵 Querying users table for workspace...');
+      const { data: userProfile, error: profileError } = await supabaseAdmin
+        .from('users')
+        .select('current_workspace_id')
+        .eq('id', user.id)
+        .single();
 
-    console.log('🔵 Querying users table for workspace...');
-    const { data: userProfile, error: profileError } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single();
-
-    console.log('🔵 Users table result:', {
-      hasProfile: !!userProfile,
-      workspaceId: userProfile?.current_workspace_id,
-      error: profileError?.message
-    });
-
-    if (userProfile?.current_workspace_id) {
-      workspaceId = userProfile.current_workspace_id;
-      console.log('✅ Got workspace from users table:', workspaceId);
-    } else {
-      console.log('⚠️ No workspace in users table, trying fallback...');
-      // Fallback: get first workspace
-      const { data: membership, error: membershipError } = await supabase
-        .from('workspace_members')
-        .select('workspace_id')
-        .eq('user_id', user.id)
-        .limit(1)
-        .maybeSingle();
-
-      console.log('🔵 Workspace_members result:', {
-        hasMembership: !!membership,
-        workspaceId: membership?.workspace_id,
-        error: membershipError?.message
+      console.log('🔵 Users table result:', {
+        hasProfile: !!userProfile,
+        workspaceId: userProfile?.current_workspace_id,
+        error: profileError?.message
       });
 
-      if (membership?.workspace_id) {
-        workspaceId = membership.workspace_id;
-        console.log('✅ Got workspace from memberships:', workspaceId);
-        // Update for next time
-        await supabase
-          .from('users')
-          .update({ current_workspace_id: membership.workspace_id })
-          .eq('id', user.id);
-        console.log('💾 Updated users table');
+      if (userProfile?.current_workspace_id) {
+        workspaceId = userProfile.current_workspace_id;
+        console.log('✅ Got workspace from users table:', workspaceId);
+      } else {
+        console.log('⚠️ No workspace in users table, trying fallback...');
+        // Fallback: get first workspace
+        const { data: membership, error: membershipError } = await supabaseAdmin
+          .from('workspace_members')
+          .select('workspace_id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .maybeSingle();
+
+        console.log('🔵 Workspace_members result:', {
+          hasMembership: !!membership,
+          workspaceId: membership?.workspace_id,
+          error: membershipError?.message
+        });
+
+        if (membership?.workspace_id) {
+          workspaceId = membership.workspace_id;
+          console.log('✅ Got workspace from memberships:', workspaceId);
+          // Update for next time
+          await supabaseAdmin
+            .from('users')
+            .update({ current_workspace_id: membership.workspace_id })
+            .eq('id', user.id);
+          console.log('💾 Updated users table');
+        }
       }
     }
 
@@ -104,7 +132,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Final workspace:', workspaceId);
 
     // SECURITY: Verify workspace isolation - user MUST be a member of this workspace
-    const { data: membershipCheck, error: membershipError } = await supabase
+    const { data: membershipCheck, error: membershipError } = await supabaseAdmin
       .from('workspace_members')
       .select('role, workspace_id')
       .eq('workspace_id', workspaceId)

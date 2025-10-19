@@ -1865,15 +1865,14 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
           // Don't execute the search, let SAM ask for connection degree
         } else {
           // Both required fields present, proceed with search
-          // Get all cookies from the cookie store to forward to direct search endpoint
-          const allCookies = cookieStore.getAll()
-          const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ')
-
+          // Pass user context directly via internal auth header (avoids cookie forwarding issues)
           const searchResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/search/simple`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Cookie': cookieHeader
+            'X-Internal-Auth': 'true',
+            'X-User-Id': user.id,
+            'X-Workspace-Id': thread?.workspace_id || ''
           },
           body: JSON.stringify({
             search_criteria: searchCriteria,

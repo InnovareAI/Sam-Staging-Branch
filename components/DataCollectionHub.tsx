@@ -1391,9 +1391,10 @@ export default function DataCollectionHub({
 
         return (
           <div className="border-b border-gray-700 px-6 py-4 bg-gray-850">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-6">
+              {/* Campaign Filter */}
               <div className="flex items-center space-x-4 flex-1">
-                <label className="text-sm font-semibold text-gray-300">Select Campaign:</label>
+                <label className="text-sm font-semibold text-gray-300 whitespace-nowrap">Select Campaign:</label>
                 <select
                   value={selectedCampaignName}
                   onChange={(e) => setSelectedCampaignName(e.target.value)}
@@ -1408,31 +1409,28 @@ export default function DataCollectionHub({
                   ))}
                 </select>
               </div>
+
+              {/* Status Filter */}
+              <div className="flex items-center space-x-4">
+                <label className="text-sm font-semibold text-gray-300 whitespace-nowrap">Status:</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => {
+                    setFilterStatus(e.target.value)
+                    setCurrentPage(1) // Reset to first page when filter changes
+                  }}
+                  className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="all">All Status ({visibleCount} visible)</option>
+                  <option value="pending">Pending ({pendingCount})</option>
+                  <option value="approved">Approved ({approvedCount})</option>
+                  <option value="rejected">Dismissed ({rejectedCount})</option>
+                </select>
+              </div>
             </div>
           </div>
         )
       })()}
-
-
-      {/* Status Filter Only */}
-      <div className="border-b border-gray-700 px-6 py-3 bg-gray-750">
-        <div className="flex items-center space-x-4">
-          <label className="text-sm font-semibold text-gray-300">Status:</label>
-          <select
-            value={filterStatus}
-            onChange={(e) => {
-              setFilterStatus(e.target.value)
-              setCurrentPage(1) // Reset to first page when filter changes
-            }}
-            className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-          >
-            <option value="all">All Status ({visibleCount} visible)</option>
-            <option value="pending">Pending ({pendingCount})</option>
-            <option value="approved">Approved ({approvedCount})</option>
-            <option value="rejected">Dismissed ({rejectedCount})</option>
-          </select>
-        </div>
-      </div>
 
       {/* Main Content - Table View */}
       <div className="overflow-x-auto">
