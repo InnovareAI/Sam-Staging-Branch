@@ -2862,7 +2862,7 @@ export default function Page() {
             <div className="max-w-[1400px] mx-auto">
               <div className="mb-8">
                 <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-                  <Settings className="mr-3" size={32} />
+                  <Settings className="mr-3 text-primary" size={32} />
                   Settings & Profile
                 </h1>
                 <p className="text-gray-400">Configure integrations, preferences, account settings, and manage your profile</p>
@@ -2915,7 +2915,7 @@ export default function Page() {
             <div className="max-w-[1400px] mx-auto">
               <div className="mb-8">
                 <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-                  <Building2 className="mr-3" size={32} />
+                  <Building2 className="mr-3 text-primary" size={32} />
                   Workspace Management
                 </h1>
                 <p className="text-gray-400">Manage team members, settings, and integrations for your workspace</p>
@@ -3030,7 +3030,7 @@ export default function Page() {
             <div className="max-w-4xl mx-auto">
               <div className="flex items-center justify-between mb-8">
                 <h1 className="text-3xl font-bold text-white flex items-center">
-                  <Shield className="mr-3" size={36} />
+                  <Shield className="mr-3 text-primary" size={36} />
                   Workspace Administration
                 </h1>
                 <button 
