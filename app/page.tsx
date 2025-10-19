@@ -3022,48 +3022,6 @@ export default function Page() {
 
               </div>
 
-                {/* Integration Status */}
-                <div className="mt-12 max-w-4xl">
-                <div className="bg-gray-800 rounded-lg p-6">
-                  <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
-                    <Paperclip className="mr-3" size={20} />
-                    Connected Services
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <h4 className="text-white font-medium">Smart Integration</h4>
-                          <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">Intelligent</span>
-                        </div>
-                        <p className="text-gray-300 text-sm">
-                          SAM will prompt you to connect accounts only when needed for specific tasks
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <button 
-                          onClick={() => setShowUnipileModal(true)}
-                          className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                        >
-                          <Settings size={16} className="text-white" />
-                          <span>Advanced Setup</span>
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {/* Status indicators */}
-                    <div className="bg-gray-700 rounded-lg p-4">
-                      <h5 className="text-white font-medium mb-3">Current Status:</h5>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-300">LinkedIn Data Access</span>
-                          <span className="bg-green-600 text-white px-2 py-1 rounded text-xs">Connected</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         ) : activeMenuItem === 'admin' ? (
@@ -3348,56 +3306,6 @@ export default function Page() {
                     <p className="text-gray-400 text-xs mt-1">
                       {profileCountryLoading ? '⏳ Updating...' : '📍 This country will be used for LinkedIn proxy assignment'}
                     </p>
-                  </div>
-                </div>
-              </div>
-
-
-              {/* Integration Status - Simplified */}
-              <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">🔗 Connected Services</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <h3 className="text-white font-medium">Smart Integration</h3>
-                        <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">Intelligent</span>
-                      </div>
-                      <p className="text-gray-300 text-sm">
-                        SAM will prompt you to connect accounts only when needed for specific tasks
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button 
-                        onClick={() => setShowUnipileModal(true)}
-                        className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                      >
-                        <Settings size={16} className="text-white" />
-                        <span>Advanced Setup</span>
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Status indicators - only show what's actually connected */}
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <h4 className="text-white font-medium mb-3">Current Status:</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-300">LinkedIn Data Access</span>
-                        <span className="text-yellow-400">• Connect when needed</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-300">Email Campaigns</span>
-                        <span className="text-yellow-400">• Connect when needed</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-300">Calendar Integration</span>
-                        <span className="text-yellow-400">• Connect when needed</span>
-                      </div>
-                    </div>
-                    <div className="mt-3 text-xs text-gray-400">
-                      💡 SAM will ask you to connect specific accounts only when required for your workflows
-                    </div>
                   </div>
                 </div>
               </div>
