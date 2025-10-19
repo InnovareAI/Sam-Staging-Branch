@@ -289,126 +289,147 @@ function DocumentUpload({ section, onComplete }: { section: string; onComplete?:
   };
   
   return (
-    <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+    <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700 rounded-xl p-5 backdrop-blur-sm">
       {/* Upload Mode Toggle */}
-      <div className="flex mb-4 space-x-2">
+      <div className="flex mb-4 gap-2 p-1 bg-gray-800/50 rounded-lg">
         <button
           onClick={() => setUploadMode('file')}
-          className={`px-3 py-1 text-xs rounded transition-colors ${
-            uploadMode === 'file' 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+            uploadMode === 'file'
+              ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/20'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
           }`}
         >
-          📄 File Upload
+          <span className="flex items-center justify-center gap-2">
+            <Upload size={16} />
+            File Upload
+          </span>
         </button>
         <button
           onClick={() => setUploadMode('url')}
-          className={`px-3 py-1 text-xs rounded transition-colors ${
-            uploadMode === 'url' 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+            uploadMode === 'url'
+              ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/20'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
           }`}
         >
-          🔗 URL/Link
+          <span className="flex items-center justify-center gap-2">
+            <Globe size={16} />
+            URL/Link
+          </span>
         </button>
       </div>
-      
+
       {/* File Upload Mode */}
       {uploadMode === 'file' && (
-        <div className="border-2 border-dashed border-gray-500 rounded p-4 text-center">
-          <Upload className="mx-auto mb-2 text-gray-400" size={24} />
-          <input 
-            type="file" 
+        <div className="border-2 border-dashed border-purple-500/30 rounded-lg p-6 text-center bg-gradient-to-br from-purple-900/10 to-purple-800/10 hover:border-purple-500/50 transition-colors">
+          <Upload className="mx-auto mb-3 text-purple-400" size={32} />
+          <input
+            type="file"
             accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.gif,.webp"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)} 
-            className="text-gray-300 text-sm w-full"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="text-gray-300 text-sm w-full file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 file:cursor-pointer cursor-pointer"
           />
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="text-xs text-gray-400 mt-3">
             Supported: PDF, TXT, MD, PNG, JPG, GIF, WEBP (max 25MB)
           </p>
         </div>
       )}
-      
+
       {/* URL Upload Mode */}
       {uploadMode === 'url' && (
-        <div className="border-2 border-dashed border-gray-500 rounded p-4">
-          <Globe className="mx-auto mb-2 text-gray-400" size={24} />
-          <input 
-            type="url" 
+        <div className="border-2 border-dashed border-purple-500/30 rounded-lg p-6 bg-gradient-to-br from-purple-900/10 to-purple-800/10 hover:border-purple-500/50 transition-colors">
+          <Globe className="mx-auto mb-3 text-purple-400" size={32} />
+          <input
+            type="url"
             value={url}
-            onChange={(e) => setUrl(e.target.value)} 
+            onChange={(e) => setUrl(e.target.value)}
             placeholder="https://example.com/document-or-page"
-            className="w-full bg-gray-600 text-gray-300 text-sm rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-gray-800/80 text-gray-200 text-sm rounded-lg px-4 py-3 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent placeholder-gray-500"
           />
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="text-xs text-gray-400 mt-3">
             Web pages, Google Docs, presentations, PDFs, articles
           </p>
         </div>
       )}
-      
+
       {/* Upload Status and Actions */}
       {(file || url) && (
-        <div className="mt-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-300">
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
+            <span className="text-sm text-gray-300 truncate mr-3">
               {file ? file.name : url}
             </span>
             <button
               onClick={handleFileUpload}
               disabled={status !== 'idle' && status !== 'error'}
-              className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white text-sm font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 whitespace-nowrap"
             >
-              {status === 'idle' && '🚀 Process with AI'}
-              {status === 'uploading' && '📤 Uploading...'}
-              {status === 'extracting' && '📄 Extracting Content...'}
-              {status === 'processing' && '🤖 AI Processing...'}
-              {status === 'tagging' && '🏷️ AI Tagging...'}
-              {status === 'vectorizing' && '🧠 Adding to Knowledgebase...'}
-              {status === 'done' && '✅ Complete'}
-              {status === 'error' && '🔄 Retry'}
+              {status === 'idle' && 'Process with AI'}
+              {status === 'uploading' && 'Uploading...'}
+              {status === 'extracting' && 'Extracting...'}
+              {status === 'processing' && 'Processing...'}
+              {status === 'tagging' && 'AI Tagging...'}
+              {status === 'vectorizing' && 'Vectorizing...'}
+              {status === 'done' && '✓ Complete'}
+              {status === 'error' && 'Retry'}
             </button>
           </div>
-          
+
           {/* Progress Bar */}
           {(status !== 'idle' && status !== 'error') && (
-            <div className="w-full bg-gray-600 rounded-full h-2">
-              <div 
-                className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+            <div className="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden shadow-inner">
+              <div
+                className="bg-gradient-to-r from-purple-500 to-purple-600 h-2.5 rounded-full transition-all duration-500 shadow-lg"
                 style={{ width: `${progress}%` }}
               ></div>
             </div>
           )}
-          
+
           {/* Status Messages */}
           {status === 'extracting' && (
-            <p className="text-xs text-blue-400">📄 Extracting text content and metadata...</p>
+            <div className="flex items-center gap-2 text-xs text-blue-400 bg-blue-950/30 border border-blue-800/30 rounded-lg p-3">
+              <FileText size={14} />
+              <span>Extracting text content and metadata...</span>
+            </div>
           )}
           {status === 'tagging' && (
-            <p className="text-xs text-purple-400">🤖 AI analyzing content for smart categorization...</p>
+            <div className="flex items-center gap-2 text-xs text-purple-400 bg-purple-950/30 border border-purple-800/30 rounded-lg p-3">
+              <Brain size={14} />
+              <span>AI analyzing content for smart categorization...</span>
+            </div>
           )}
           {status === 'vectorizing' && (
-            <p className="text-xs text-green-400">🧠 Creating embeddings for SAM AI knowledge access...</p>
+            <div className="flex items-center gap-2 text-xs text-green-400 bg-green-950/30 border border-green-800/30 rounded-lg p-3">
+              <Cpu size={14} />
+              <span>Creating embeddings for SAM AI knowledge access...</span>
+            </div>
           )}
           {status === 'done' && (
-            <div className="space-y-1">
-              <p className="text-xs text-green-400">✅ Document processed and integrated into Knowledgebase</p>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs text-green-400 bg-green-950/30 border border-green-800/30 rounded-lg p-3">
+                <Activity size={14} />
+                <span>Document processed and integrated into Knowledgebase</span>
+              </div>
               {aiTags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-1.5">
                   {aiTags.slice(0, 4).map((tag, i) => (
-                    <span key={i} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
+                    <span key={i} className="text-xs bg-gradient-to-r from-purple-600 to-purple-700 text-white px-3 py-1.5 rounded-full font-medium shadow-sm">
                       {tag}
                     </span>
                   ))}
                   {aiTags.length > 4 && (
-                    <span className="text-xs text-gray-400">+{aiTags.length - 4} more</span>
+                    <span className="text-xs text-gray-400 bg-gray-800 px-3 py-1.5 rounded-full">+{aiTags.length - 4} more</span>
                   )}
                 </div>
               )}
             </div>
           )}
           {status === 'error' && error && (
-            <p className="text-xs text-red-400">❌ {error}</p>
+            <div className="flex items-center gap-2 text-xs text-red-400 bg-red-950/30 border border-red-800/30 rounded-lg p-3">
+              <AlertCircle size={14} />
+              <span>{error}</span>
+            </div>
           )}
         </div>
       )}
