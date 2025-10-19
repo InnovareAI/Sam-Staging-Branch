@@ -129,7 +129,7 @@ export function TileCard({
   );
 }
 
-// Simple version for settings pages without gradient backgrounds
+// Simple version for settings pages - now with gradient backgrounds for consistency
 export function SimpleTileCard({
   title,
   description,
@@ -138,25 +138,13 @@ export function SimpleTileCard({
   onClick,
   className = '',
 }: Omit<TileCardProps, 'status'>) {
-  const hoverColorClasses: Record<ColorVariant, string> = {
-    purple: 'hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20',
-    cyan: 'hover:bg-cyan-600 hover:border-cyan-500 hover:shadow-cyan-500/20',
-    blue: 'hover:bg-blue-600 hover:border-blue-500 hover:shadow-blue-500/20',
-    green: 'hover:bg-green-600 hover:border-green-500 hover:shadow-green-500/20',
-    yellow: 'hover:bg-yellow-600 hover:border-yellow-500 hover:shadow-yellow-500/20',
-    orange: 'hover:bg-orange-600 hover:border-orange-500 hover:shadow-orange-500/20',
-    pink: 'hover:bg-pink-600 hover:border-pink-500 hover:shadow-pink-500/20',
-    indigo: 'hover:bg-indigo-600 hover:border-indigo-500 hover:shadow-indigo-500/20',
-    teal: 'hover:bg-teal-600 hover:border-teal-500 hover:shadow-teal-500/20',
-  };
-
   return (
     <div
       onClick={onClick}
       className={`
-        relative bg-gray-800 border border-gray-700 rounded-xl p-4 
-        text-left transition-all duration-300 hover:scale-105 hover:shadow-xl 
-        ${hoverColorClasses[color]} group cursor-pointer
+        group relative bg-gradient-to-br ${colorClasses[color]}
+        rounded-xl p-4 border transition-all duration-200
+        cursor-pointer hover:scale-105 hover:shadow-xl
         ${className}
       `}
       role="button"
@@ -168,11 +156,14 @@ export function SimpleTileCard({
         }
       }}
     >
+      {/* Icon */}
       <div className="flex items-start justify-between mb-3">
         <div className={`w-10 h-10 ${iconColorClasses[color]} rounded-lg flex items-center justify-center`}>
-          <Icon className="h-5 w-5" />
+          <Icon className="h-5 w-5 text-white" />
         </div>
       </div>
+
+      {/* Content */}
       <h3 className="text-base font-semibold text-white mb-1.5">
         {title}
       </h3>
@@ -182,10 +173,14 @@ export function SimpleTileCard({
 
       {/* Hover Overlay */}
       <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-        <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+        <button
+          onClick={onClick}
+          className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+          aria-label={`Configure ${title}`}
+        >
           <Settings className="h-4 w-4" />
-          <span>Configure</span>
-        </div>
+          Configure
+        </button>
       </div>
     </div>
   );
