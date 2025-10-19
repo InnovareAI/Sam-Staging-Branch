@@ -148,9 +148,14 @@ async function fetchApprovalSessions(page: number = 1, limit: number = 50, statu
 
     // For now, use first active session
     // TODO: Support multiple sessions or session selector
-    const activeSession = data.sessions.find((s: any) => s.status === 'active')
+    let activeSession = data.sessions.find((s: any) => s.session_status === 'active')
     if (!activeSession) {
-      return { prospects: [], pagination: { page: 1, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false, showing: 0 } }
+      console.warn('No active session found. Using most recent session instead.')
+      // Fallback to most recent session if no active session found
+      activeSession = data.sessions[0]
+      if (!activeSession) {
+        return { prospects: [], pagination: { page: 1, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false, showing: 0 } }
+      }
     }
 
     // Fetch prospects with pagination
@@ -176,14 +181,14 @@ async function fetchApprovalSessions(page: number = 1, limit: number = 50, statu
               enrichmentScore: p.enrichment_score || 0,
               confidence: (p.enrichment_score || 80) / 100,
               approvalStatus: (p.approval_status || 'pending') as 'pending' | 'approved' | 'rejected',
-              campaignName: session.campaign_name || `Session-${session.id.slice(0, 8)}`,
-              campaignTag: session.campaign_tag || session.campaign_name || session.prospect_source || 'linkedin',
-              sessionId: session.id,
+              campaignName: activeSession.campaign_name || `Session-${activeSession.id.slice(0, 8)}`,
+              campaignTag: activeSession.campaign_tag || activeSession.campaign_name || activeSession.prospect_source || 'linkedin',
+              sessionId: activeSession.id,
               uploaded: false,
               qualityScore: 0,
-              createdAt: p.created_at ? new Date(p.created_at) : session.created_at ? new Date(session.created_at) : new Date(),
-              researchedBy: session.user_email || session.user_name || 'Unknown',
-              researchedByInitials: session.user_initials || getInitials(session.user_email || session.user_name || 'U'),
+              createdAt: p.created_at ? new Date(p.created_at) : activeSession.created_at ? new Date(activeSession.created_at) : new Date(),
+              researchedBy: activeSession.user_email || activeSession.user_name || 'Unknown',
+              researchedByInitials: activeSession.user_initials || getInitials(activeSession.user_email || activeSession.user_name || 'U'),
               linkedinUserId: p.linkedin_user_id || p.contact?.linkedin_user_id || undefined
             }))
             // Calculate quality scores
