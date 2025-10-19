@@ -160,7 +160,10 @@ export async function POST(request: NextRequest) {
       }
 
       const features = unipileAccount.connection_params?.im?.premiumFeatures || [];
-      const hasSalesNav = features.includes('SALES_NAVIGATOR') || features.includes('RECRUITER');
+      // CRITICAL: Features are lowercase in Unipile API ('sales_navigator', not 'SALES_NAVIGATOR')
+      const hasSalesNav = features.some((f: string) =>
+        f.toLowerCase() === 'sales_navigator' || f.toLowerCase() === 'recruiter'
+      );
 
       console.log(`🔍 Account: ${dbAccount.account_name}`);
       console.log(`   Features: ${features.join(', ') || 'none'}`);
