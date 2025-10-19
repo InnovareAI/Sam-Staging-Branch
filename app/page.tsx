@@ -2,6 +2,7 @@
 
 // FORCE REBUILD - Oct 8 2025 12:47 PM - Netlify cache issue workaround
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
+import { SimpleTileCard } from '@/components/TileCard';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -2871,111 +2872,40 @@ export default function Page() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
                 {/* LinkedIn Integration */}
-                <div 
+                <SimpleTileCard
+                  title="LinkedIn Settings"
+                  description="Configure LinkedIn account connections, automation settings, and personalization preferences for outreach campaigns."
+                  icon={LinkedinIcon}
+                  color="blue"
                   onClick={() => setShowLinkedInSettingsModal(true)}
-                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
-                      <LinkedinIcon className="text-blue-400 h-5 w-5" />
-                    </div>
-                  </div>
-                  <h3 className="text-base font-semibold text-white mb-1.5">
-                    LinkedIn Settings
-                  </h3>
-                  <p className="text-gray-400 text-xs leading-relaxed">
-                    Configure LinkedIn account connections, automation settings, and personalization preferences for outreach campaigns.
-                  </p>
-
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      <span>Configure</span>
-                    </div>
-                  </div>
-</div>
+                />
 
                 {/* Email Integration */}
-                <div 
+                <SimpleTileCard
+                  title="Email Integration"
+                  description="Connect Google, Microsoft, or SMTP email accounts for automated campaigns and prospect outreach."
+                  icon={Mail}
+                  color="green"
                   onClick={() => setShowEmailIntegrationModal(true)}
-                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
-                      <Mail className="text-green-400 h-5 w-5" />
-                    </div>
-                  </div>
-                  <h3 className="text-base font-semibold text-white mb-1.5">
-                    Email Integration
-                  </h3>
-                  <p className="text-gray-400 text-xs leading-relaxed">
-                    Connect Google, Microsoft, or SMTP email accounts for automated campaigns and prospect outreach.
-                  </p>
-
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      <span>Configure</span>
-                    </div>
-                  </div>
-</div>
-
-
-
+                />
 
                 {/* User Profile & Country */}
-                <div 
+                <SimpleTileCard
+                  title="User Profile"
+                  description="Manage your account details, profile country for proxy assignment, and personal preferences."
+                  icon={User}
+                  color="blue"
                   onClick={() => setShowUserProfileModal(true)}
-                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
-                      <User className="text-blue-400 h-5 w-5" />
-                    </div>
-                  </div>
-                  <h3 className="text-base font-semibold text-white mb-1.5">
-                    User Profile
-                  </h3>
-                  <p className="text-gray-400 text-xs leading-relaxed">
-                    Manage your account details, profile country for proxy assignment, and personal preferences.
-                  </p>
-
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      <span>Configure</span>
-                    </div>
-                  </div>
-</div>
+                />
                 
                 {/* BrightData Proxy Country (Advanced) */}
-                <div 
+                <SimpleTileCard
+                  title="LinkedIn Proxy Management"
+                  description="Advanced proxy configuration for LinkedIn accounts. Manually override automatic proxy assignment per account."
+                  icon={Globe}
+                  color="purple"
                   onClick={() => setShowProxyCountryModal(true)}
-                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center">
-                      <Globe className="text-purple-400 h-5 w-5" />
-                    </div>
-                  </div>
-                  <h3 className="text-base font-semibold text-white mb-1.5">
-                    LinkedIn Proxy Management
-                  </h3>
-                  <p className="text-gray-400 text-xs leading-relaxed">
-                    Advanced proxy configuration for LinkedIn accounts. Manually override automatic proxy assignment per account.
-                  </p>
-
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      <span>Configure</span>
-                    </div>
-                  </div>
-</div>
+                />
 
               </div>
             </div>
@@ -2995,34 +2925,17 @@ export default function Page() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
                 {/* Team Management */}
-                <div
+                <SimpleTileCard
+                  title="Team Management"
+                  description="Invite team members, manage roles and permissions, and configure workspace access for your organization."
+                  icon={Users}
+                  color="blue"
                   onClick={() => {
                     console.log('Team Management clicked, workspaces:', workspaces.length);
                     console.log('Setting showTeamManagementModal to true');
                     setShowTeamManagementModal(true);
                   }}
-                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
-                      <Users className="text-blue-400 h-5 w-5" />
-                    </div>
-                  </div>
-                  <h3 className="text-base font-semibold text-white mb-1.5">
-                    Team Management
-                  </h3>
-                  <p className="text-gray-400 text-xs leading-relaxed">
-                    Invite team members, manage roles and permissions, and configure workspace access for your organization.
-                  </p>
-
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      <span>Configure</span>
-                    </div>
-                  </div>
-</div>
+                />
 
                 {/* Manage Subscription - Only for credit card customers */}
                 {(() => {
@@ -3043,185 +2956,69 @@ export default function Page() {
                   }
 
                   return (
-                    <div
+                    <SimpleTileCard
+                      title="Manage Subscription"
+                      description="View your subscription details, update payment methods, and access billing history. Manage your plan and invoices."
+                      icon={CreditCard}
+                      color="green"
                       onClick={() => setShowManageSubscriptionModal(true)}
-                      className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
-                          <CreditCard className="text-green-400 h-5 w-5" />
-                        </div>
-                      </div>
-                      <h3 className="text-base font-semibold text-white mb-1.5">
-                        Manage Subscription
-                      </h3>
-                      <p className="text-gray-400 text-xs leading-relaxed">
-                        View your subscription details, update payment methods, and access billing history. Manage your plan and invoices.
-                      </p>
-
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      <span>Configure</span>
-                    </div>
-                  </div>
-</div>
+                    />
                   );
                 })()}
 
                 {/* Workspace Settings */}
-                <div
+                <SimpleTileCard
+                  title="Workspace Settings"
+                  description="Configure workspace name, branding, and general settings. Customize your workspace preferences and appearance."
+                  icon={Settings}
+                  color="blue"
                   onClick={() => setShowWorkspaceSettingsModal(true)}
-                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
-                      <Settings className="text-blue-400 h-5 w-5" />
-                    </div>
-                  </div>
-                  <h3 className="text-base font-semibold text-white mb-1.5">
-                    Workspace Settings
-                  </h3>
-                  <p className="text-gray-400 text-xs leading-relaxed">
-                    Configure workspace name, branding, and general settings. Customize your workspace preferences and appearance.
-                  </p>
-
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      <span>Configure</span>
-                    </div>
-                  </div>
-</div>
+                />
 
                 {/* CRM Integration */}
-                <div 
+                <SimpleTileCard
+                  title="CRM Integration"
+                  description="Connect Salesforce, HubSpot, Pipedrive, and other CRMs. Configure field mapping and sync settings for seamless data flow."
+                  icon={Database}
+                  color="cyan"
                   onClick={() => setShowCrmIntegrationModal(true)}
-                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 bg-cyan-600/20 rounded-lg flex items-center justify-center">
-                      <Database className="text-cyan-400 h-5 w-5" />
-                    </div>
-                  </div>
-                  <h3 className="text-base font-semibold text-white mb-1.5">
-                    CRM Integration
-                  </h3>
-                  <p className="text-gray-400 text-xs leading-relaxed">
-                    Connect Salesforce, HubSpot, Pipedrive, and other CRMs. Configure field mapping and sync settings for seamless data flow.
-                  </p>
-
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      <span>Configure</span>
-                    </div>
-                  </div>
-</div>
+                />
 
                 {/* Integrations & Tools */}
-                <div 
+                <SimpleTileCard
+                  title="Integrations & Tools"
+                  description="Manage LinkedIn Premium connections, email providers, and third-party tool integrations for your outreach stack."
+                  icon={Zap}
+                  color="yellow"
                   onClick={() => setShowIntegrationsToolsModal(true)}
-                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 bg-yellow-600/20 rounded-lg flex items-center justify-center">
-                      <Zap className="text-yellow-400 h-5 w-5" />
-                    </div>
-                  </div>
-                  <h3 className="text-base font-semibold text-white mb-1.5">
-                    Integrations & Tools
-                  </h3>
-                  <p className="text-gray-400 text-xs leading-relaxed">
-                    Manage LinkedIn Premium connections, email providers, and third-party tool integrations for your outreach stack.
-                  </p>
-
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      <span>Configure</span>
-                    </div>
-                  </div>
-</div>
+                />
 
                 {/* Security & Compliance */}
-                <div 
+                <SimpleTileCard
+                  title="Security & Compliance"
+                  description="Configure security settings, compliance requirements, audit logs, and data protection policies for your workspace."
+                  icon={Shield}
+                  color="pink"
                   onClick={() => setShowSecurityComplianceModal(true)}
-                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 bg-red-600/20 rounded-lg flex items-center justify-center">
-                      <Shield className="text-red-400 h-5 w-5" />
-                    </div>
-                  </div>
-                  <h3 className="text-base font-semibold text-white mb-1.5">
-                    Security & Compliance
-                  </h3>
-                  <p className="text-gray-400 text-xs leading-relaxed">
-                    Configure security settings, compliance requirements, audit logs, and data protection policies for your workspace.
-                  </p>
-
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      <span>Configure</span>
-                    </div>
-                  </div>
-</div>
+                />
 
                 {/* Analytics & Reporting */}
-                <div 
+                <SimpleTileCard
+                  title="Analytics & Reporting"
+                  description="Access workspace-level analytics, performance metrics, and custom reporting features for team productivity insights."
+                  icon={BarChart3}
+                  color="indigo"
                   onClick={() => setShowAnalyticsReportingModal(true)}
-                  className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 bg-indigo-600/20 rounded-lg flex items-center justify-center">
-                      <BarChart3 className="text-indigo-400 h-5 w-5" />
-                    </div>
-                  </div>
-                  <h3 className="text-base font-semibold text-white mb-1.5">
-                    Analytics & Reporting
-                  </h3>
-                  <p className="text-gray-400 text-xs leading-relaxed">
-                    Access workspace-level analytics, performance metrics, and custom reporting features for team productivity insights.
-                  </p>
-
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      <span>Configure</span>
-                    </div>
-                  </div>
-</div>
+                />
 
                 {/* Profile Management */}
-                <div className="relative bg-gray-800 border border-gray-700 rounded-xl p-4 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
-                      <User className="text-blue-400 h-5 w-5" />
-                    </div>
-                  </div>
-                  <h3 className="text-base font-semibold text-white mb-1.5">
-                    Profile Management
-                  </h3>
-                  <p className="text-gray-400 text-xs leading-relaxed">
-                    Manage your account information, update profile details, change password, and configure personal preferences.
-                  </p>
-
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      <span>Configure</span>
-                    </div>
-                  </div>
-</div>
+                <SimpleTileCard
+                  title="Profile Management"
+                  description="Manage your account information, update profile details, change password, and configure personal preferences."
+                  icon={User}
+                  color="blue"
+                  onClick={() => {}}
+                />
 
               </div>
 
