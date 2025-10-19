@@ -505,15 +505,6 @@ const Analytics: React.FC = () => {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-[1400px] mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-            <BarChart3 className="mr-3 text-primary" size={32} />
-            Analytics Dashboard
-          </h1>
-          <p className="text-gray-400">Performance metrics, insights, and optimization recommendations</p>
-        </div>
-
       {/* KPI Grid */}
       <div className="mb-8">
         <KPIGrid campaignKPIs={campaignKPIs} timeRange={timeRange} campaignType={campaignType} visibleMetrics={getVisibleMetrics(campaignType)} />

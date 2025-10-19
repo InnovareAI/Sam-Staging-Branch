@@ -2257,17 +2257,6 @@ const KnowledgeBase: React.FC = () => {
     <div className="min-h-screen p-8">
       <div className="max-w-[1400px] mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-              <Brain className="mr-3 text-primary" size={32} />
-              Knowledgebase
-            </h1>
-            <p className="text-gray-400">Centralized intelligence hub for SAM's conversational AI</p>
-          </div>
-        </div>
-
-
         {/* Main Content */}
         <div>
         {activeSection === 'overview' && (

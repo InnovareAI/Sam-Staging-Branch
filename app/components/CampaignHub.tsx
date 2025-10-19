@@ -4277,17 +4277,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             </div>
           </div>
         </div>
-      ) : (
-        <div className="mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-              <Megaphone className="mr-3" size={32} />
-              Campaign Hub
-            </h1>
-            <p className="text-gray-400">Design, approve, and launch outreach campaigns</p>
-          </div>
-        </div>
-      )}
+      ) : null}
 
       <div className="w-full space-y-8">
 
