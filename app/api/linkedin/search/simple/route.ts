@@ -18,11 +18,12 @@ export async function POST(request: NextRequest) {
 
     let user: any = null;
     let workspaceId: string | null = null;
+    let supabase: any = null;  // Declare at function level so it's accessible everywhere
 
     if (internalAuth === 'true' && internalUserId) {
       // Internal call from SAM - use service role to verify user exists
       console.log('🔐 Internal auth detected from SAM');
-      const { data: userData } = await supabaseAdmin
+      const { data: userData } = await supabaseAdmin()
         .from('users')
         .select('id, email, current_workspace_id')
         .eq('id', internalUserId)
@@ -32,6 +33,9 @@ export async function POST(request: NextRequest) {
         user = userData;
         workspaceId = internalWorkspaceId || userData.current_workspace_id;
         console.log(`✅ Internal auth successful: ${user.email}, workspace: ${workspaceId}`);
+
+        // Create supabase client for later use in the function
+        supabase = supabaseAdmin();
       }
     }
 
@@ -40,7 +44,7 @@ export async function POST(request: NextRequest) {
       const cookieStore = await cookies();
 
       // Use @supabase/ssr createServerClient (matches browser client)
-      const supabase = createServerClient(
+      supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
@@ -77,7 +81,7 @@ export async function POST(request: NextRequest) {
     // Get workspace (with fallback, or use internal auth workspace)
     if (!workspaceId) {
       console.log('🔵 Querying users table for workspace...');
-      const { data: userProfile, error: profileError } = await supabaseAdmin
+      const { data: userProfile, error: profileError } = await supabaseAdmin()
         .from('users')
         .select('current_workspace_id')
         .eq('id', user.id)
@@ -95,7 +99,7 @@ export async function POST(request: NextRequest) {
       } else {
         console.log('⚠️ No workspace in users table, trying fallback...');
         // Fallback: get first workspace
-        const { data: membership, error: membershipError } = await supabaseAdmin
+        const { data: membership, error: membershipError } = await supabaseAdmin()
           .from('workspace_members')
           .select('workspace_id')
           .eq('user_id', user.id)
@@ -112,7 +116,7 @@ export async function POST(request: NextRequest) {
           workspaceId = membership.workspace_id;
           console.log('✅ Got workspace from memberships:', workspaceId);
           // Update for next time
-          await supabaseAdmin
+          await supabaseAdmin()
             .from('users')
             .update({ current_workspace_id: membership.workspace_id })
             .eq('id', user.id);
@@ -132,7 +136,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Final workspace:', workspaceId);
 
     // SECURITY: Verify workspace isolation - user MUST be a member of this workspace
-    const { data: membershipCheck, error: membershipError } = await supabaseAdmin
+    const { data: membershipCheck, error: membershipError } = await supabaseAdmin()
       .from('workspace_members')
       .select('role, workspace_id')
       .eq('workspace_id', workspaceId)
@@ -814,7 +818,8 @@ export async function POST(request: NextRequest) {
       console.log('🔵 Inserting to database (workspace_prospects, best-effort):', JSON.stringify(toInsert[0]));
       // Use admin client to bypass RLS for workspace_prospects insert; this is best-effort and non-fatal
       try {
-        const { data: inserted, error: insertError } = await supabaseAdmin
+        const admin = supabaseAdmin();
+        const { data: inserted, error: insertError } = await admin
           .from('workspace_prospects')
           .insert(toInsert)
           .select();
