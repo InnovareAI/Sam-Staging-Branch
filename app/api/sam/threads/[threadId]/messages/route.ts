@@ -1842,9 +1842,56 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
       }
     }
 
+    // Check for LinkedIn Sales Navigator saved search URL in user message
+    const savedSearchUrlPattern = /https?:\/\/(www\.)?linkedin\.com\/sales\/search\/people\?savedSearchId=(\d+)/i
+    const savedSearchMatch = content.match(savedSearchUrlPattern)
+
+    if (savedSearchMatch) {
+      const savedSearchId = savedSearchMatch[2]
+      console.log('🔍 Detected Sales Navigator saved search URL, ID:', savedSearchId)
+
+      try {
+        // Import prospects from saved search
+        const importResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/import-saved-search`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Internal-Auth': 'true',
+            'X-User-Id': user.id,
+            'X-Workspace-Id': thread?.workspace_id || ''
+          },
+          body: JSON.stringify({
+            saved_search_id: savedSearchId,
+            campaign_name: `Saved Search ${savedSearchId}`
+          })
+        })
+
+        const importData = await importResponse.json()
+
+        if (importData.success) {
+          aiResponse = `✅ **Imported ${importData.count} prospects** from your Sales Navigator saved search!\n\n` +
+            `**Campaign:** ${importData.campaign_name}\n` +
+            `**Next Step:** Head to the **Data Approval** tab to review and approve these prospects.\n\n` +
+            `📊 **Ready to review:** ${importData.count} prospects waiting for approval`
+        } else {
+          aiResponse = `❌ **Import Failed:** ${importData.error || 'Unable to import from saved search'}\n\n` +
+            `This could be because:\n` +
+            `- Your LinkedIn account isn't connected\n` +
+            `- The saved search ID is invalid\n` +
+            `- You don't have access to this saved search\n\n` +
+            `Try sharing a different saved search URL or create a new search instead!`
+        }
+      } catch (error) {
+        console.error('❌ Saved search import failed:', error)
+        aiResponse = `❌ **Technical Error:** Couldn't import the saved search.\n\n` +
+          `Error: ${error instanceof Error ? error.message : 'Unknown error'}\n\n` +
+          `Try again or paste search criteria instead!`
+      }
+    }
+
     // Check if SAM's AI response contains a search trigger and execute it
     const triggerSearchMatch = aiResponse.match(/#trigger-search:(\{[^}]+\})/i)
-    if (triggerSearchMatch) {
+    if (triggerSearchMatch && !savedSearchMatch) {
       console.log('🔄 Detected search trigger in SAM response:', triggerSearchMatch[1])
 
       try {
