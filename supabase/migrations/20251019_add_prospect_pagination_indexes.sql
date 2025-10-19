@@ -1,38 +1,35 @@
 -- Migration: Add indexes for efficient prospect pagination
 -- Date: 2025-10-19
 -- Purpose: Optimize Data Approval page queries for 1000+ prospects with server-side pagination
+-- Status: APPLIED to production database
 
--- Index for paginated queries with status filter and enrichment score sorting
--- Covers: session_id, approval_status filter, enrichment_score DESC sort
-CREATE INDEX IF NOT EXISTS idx_prospects_session_status_score
-ON prospect_approval_data(session_id, approval_status, enrichment_score DESC)
-WHERE approval_status IS NOT NULL;
+-- NOTE: Schema uses two tables:
+-- - prospect_approval_data: stores prospect info (name, company, score, etc.)
+-- - prospect_approval_decisions: stores approval status (approved/rejected)
 
--- Index for paginated queries with timestamp sorting (newest first)
--- Covers: session_id, created_at DESC sort
-CREATE INDEX IF NOT EXISTS idx_prospects_session_created
-ON prospect_approval_data(session_id, created_at DESC);
+-- Index for sorting prospects by quality score (most common sort)
+CREATE INDEX IF NOT EXISTS idx_prospects_session_score
+ON prospect_approval_data(session_id, enrichment_score DESC);
 
--- Index for workspace-level queries (admin views, reporting)
--- Covers: workspace_id, created_at DESC
-CREATE INDEX IF NOT EXISTS idx_prospects_workspace_created
-ON prospect_approval_data(workspace_id, created_at DESC);
+-- Index for filtering decisions by status
+CREATE INDEX IF NOT EXISTS idx_decisions_session_decision
+ON prospect_approval_decisions(session_id, decision);
 
--- Partial index for pending prospects only (most common query)
--- Smaller index = faster queries for pending status
-CREATE INDEX IF NOT EXISTS idx_prospects_session_pending
-ON prospect_approval_data(session_id, enrichment_score DESC)
-WHERE approval_status = 'pending';
+-- Composite index for joining prospects with decisions efficiently
+CREATE INDEX IF NOT EXISTS idx_prospects_session_prospect_id
+ON prospect_approval_data(session_id, prospect_id);
 
--- Comment explaining indexes
-COMMENT ON INDEX idx_prospects_session_status_score IS
-'Optimizes paginated queries filtering by status and sorting by quality score';
+-- Comments explaining indexes
+COMMENT ON INDEX idx_prospects_session_score IS
+'Optimizes paginated queries sorting by quality score';
 
-COMMENT ON INDEX idx_prospects_session_created IS
-'Optimizes paginated queries sorting by creation date (newest first)';
+COMMENT ON INDEX idx_decisions_session_decision IS
+'Optimizes filtering prospects by approval status (approved/rejected/pending)';
 
-COMMENT ON INDEX idx_prospects_workspace_created IS
-'Optimizes workspace-level queries and admin reporting';
+COMMENT ON INDEX idx_prospects_session_prospect_id IS
+'Optimizes JOIN between prospect_approval_data and prospect_approval_decisions';
 
-COMMENT ON INDEX idx_prospects_session_pending IS
-'Partial index for common pending-only queries - faster and smaller';
+-- Additional existing indexes (created by earlier migrations):
+-- - idx_prospects_session_created: for sorting by created_at DESC
+-- - idx_prospect_data_session: basic session lookup
+-- - idx_prospect_decisions_session: basic session lookup for decisions
