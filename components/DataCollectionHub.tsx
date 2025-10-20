@@ -1218,17 +1218,6 @@ export default function DataCollectionHub({
                   </button>
                 )}
 
-            <Button
-              onClick={downloadApprovedCSV}
-              disabled={approvedCount === 0}
-              size="sm"
-              variant="default"
-              className="flex items-center gap-2"
-              title="Download approved prospects only"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download Approved</span>
-            </Button>
 
             {/* Approve Selection */}
             <Button
@@ -1243,18 +1232,6 @@ export default function DataCollectionHub({
               <span>Approve Selection ({selectedProspectIds.size})</span>
             </Button>
 
-            {/* Approve All (secondary) */}
-            <Button
-              onClick={handleApproveAllNonDismissed}
-              disabled={filteredProspects.filter(p => !dismissedProspectIds.has(p.id) && p.approvalStatus === 'pending').length === 0}
-              size="sm"
-              variant="outline"
-              className="flex items-center gap-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 border-green-500/40"
-              title="Approve every visible non-dismissed record"
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>Approve All ({filteredProspects.filter(p => !dismissedProspectIds.has(p.id) && p.approvalStatus === 'pending').length})</span>
-            </Button>
 
             {/* Add to Campaign (selected approved only) */}
             <Button
