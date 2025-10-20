@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from 'react';
 import ProspectSearchChat from '@/components/ProspectSearchChat';
 import { ProspectData as BaseProspectData } from '@/components/ProspectApprovalModal';
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
