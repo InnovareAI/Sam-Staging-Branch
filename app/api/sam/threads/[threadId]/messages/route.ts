@@ -2108,6 +2108,20 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
       // Don't fail the main response if knowledge extraction fails
     })
 
+    // Track conversation analytics asynchronously (don't block response)
+    if (workspaceId) {
+      trackConversationAnalytics(
+        resolvedParams.threadId,
+        workspaceId,
+        user.id,
+        thread,
+        nextOrder + 1
+      ).catch(error => {
+        console.error('❌ Conversation analytics tracking failed:', error)
+        // Don't fail the main response if tracking fails
+      })
+    }
+
     return NextResponse.json({
       success: true,
       userMessage,
@@ -2138,6 +2152,50 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
       details: error instanceof Error ? error.message : String(error),
       stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
     }, { status: 500 })
+  }
+}
+
+/**
+ * Track conversation analytics for SAM Learning System
+ */
+async function trackConversationAnalytics(
+  threadId: string,
+  workspaceId: string,
+  userId: string,
+  thread: any,
+  messageCount: number
+) {
+  try {
+    // Determine persona based on thread type
+    let personaUsed = 'general'
+    if (thread.thread_type) {
+      const typeMap: Record<string, string> = {
+        'icp_discovery': 'discovery',
+        'icp_research': 'icp_research',
+        'linkedin_research': 'script_position',
+        'campaign': 'script_position',
+        'messaging_planning': 'discovery'
+      }
+      personaUsed = typeMap[thread.thread_type] || 'general'
+    }
+
+    // Extract industry from thread metadata
+    let industry = null
+    if (thread.prospect_company) {
+      industry = 'unknown' // Could enhance with company->industry lookup
+    }
+
+    // Call the tracking function
+    await supabaseAdmin.rpc('track_conversation_analytics', {
+      p_thread_id: threadId,
+      p_persona_used: personaUsed,
+      p_industry: industry
+    })
+
+    console.log(`✅ Tracked conversation analytics for thread ${threadId}`)
+  } catch (error) {
+    console.error('❌ Failed to track conversation analytics:', error)
+    throw error
   }
 }
 
