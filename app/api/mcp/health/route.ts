@@ -45,6 +45,12 @@ export async function GET(request: NextRequest) {
     const brightDataZone = process.env.BRIGHT_DATA_ZONE;
     const brightDataPassword = process.env.BRIGHT_DATA_PASSWORD;
     
+    console.log('🔍 Bright Data env vars:', {
+      customer: brightDataCustomer ? 'SET' : 'MISSING',
+      zone: brightDataZone ? 'SET' : 'MISSING',
+      password: brightDataPassword ? 'SET' : 'MISSING'
+    });
+    
     if (brightDataCustomer && brightDataZone && brightDataPassword) {
       results.mcps.bright_data = {
         status: 'configured',

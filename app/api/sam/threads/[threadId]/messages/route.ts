@@ -1014,6 +1014,28 @@ export async function POST(
       console.log('Note: Could not load user knowledge context', error)
     }
 
+    // Check KB completeness to avoid redundant onboarding questions
+    let kbCompleteness = null
+    if (workspaceId) {
+      try {
+        const completenessResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/knowledge-base/completeness?workspace_id=${workspaceId}`,
+          {
+            headers: {
+              'Cookie': (await cookies()).toString()
+            }
+          }
+        )
+        if (completenessResponse.ok) {
+          const data = await completenessResponse.json()
+          kbCompleteness = data.completeness
+          console.log('📊 KB Completeness:', kbCompleteness.overall + '%', 'Status:', kbCompleteness.status)
+        }
+      } catch (error) {
+        console.log('Note: Could not check KB completeness', error)
+      }
+    }
+
     let knowledgeSnippets: any[] = []
     if (workspaceId) {
       const recentContext = (conversationHistory || [])
@@ -1094,6 +1116,51 @@ YOUR WORKFLOW (present naturally, not as a checklist)
 3. Validate prospects: Share 5-7 examples with quick "why they fit" explanations. Ask for feedback
 4. Create messaging: Help pick channels (LinkedIn, email, both). Draft copy that sounds like them, remind about approval steps
 5. Execute & follow through: Confirm approvals, outline next actions, stay available for adjustments
+
+KNOWLEDGE BASE AWARENESS
+${kbCompleteness ? `
+🎯 **CURRENT KB STATUS: ${kbCompleteness.overall}% complete (${kbCompleteness.status})**
+
+**Sections Already Filled:**
+${Object.entries(kbCompleteness.sections)
+  .filter(([_, data]: [string, any]) => data.percentage >= 70)
+  .map(([name, data]: [string, any]) => `- ${name}: ${data.percentage}% (${data.entries} entries)`)
+  .join('\n')}
+
+**CRITICAL INSTRUCTIONS:**
+- ✅ DO acknowledge existing knowledge: "I see you've already filled out [section]. Great!"
+- ✅ DO reference uploaded content when relevant to conversation
+- ✅ SKIP onboarding questions for sections >70% complete
+- ✅ ONLY ask targeted questions to fill specific gaps in incomplete sections (<70%)
+- ❌ DON'T ask redundant questions about well-documented areas
+- ❌ DON'T start from scratch with discovery if KB is >70% complete overall
+
+🔍 **VALIDATION PROTOCOL FOR AUTO-EXTRACTED DATA:**
+- Some KB entries were auto-extracted from your website at signup
+- These are marked as UNVALIDATED and need your confirmation
+- When referencing auto-extracted data, ALWAYS validate with user:
+  ✅ "I found this on your website: [data]. Is that accurate?"
+  ✅ "Your site mentions [value prop]. Does that capture it, or should I adjust?"
+  ✅ "I see you target [market]. Is that still current?"
+- If user corrects auto-extracted data, acknowledge and update your understanding
+- Treat validated data (from uploads or confirmed by user) as authoritative
+- Treat unvalidated data as helpful hints that need confirmation
+
+**Missing/Incomplete Sections:**
+${Object.entries(kbCompleteness.sections)
+  .filter(([_, data]: [string, any]) => data.percentage < 70)
+  .map(([name, data]: [string, any]) => `- ${name}: ${data.percentage}% (needs ${Math.max(0, Math.ceil((70 - data.percentage) / 20))} more entries)`)
+  .join('\n') || 'None - KB is comprehensive!'}
+
+${kbCompleteness.missing_critical.length > 0 ? `🚨 **Priority:** Focus on critical sections: ${kbCompleteness.missing_critical.join(', ')}` : ''}
+
+**Conversation Strategy:**
+${kbCompleteness.overall >= 70 
+  ? '- User has extensive KB. Focus on campaign execution, not discovery. Validate they want to generate campaigns immediately.' 
+  : kbCompleteness.overall >= 40
+  ? '- User has partial KB. Fill critical gaps quickly (5-7 targeted questions max), then move to campaign generation.'
+  : '- User has minimal KB. Do guided discovery, but reference any existing knowledge to save time.'}
+` : '- No KB data available. Proceed with normal discovery flow if user seems new.'}
 
 LEAD SEARCH & INTEGRATION
 - **Search Capabilities:** You can search for leads using multiple sources:

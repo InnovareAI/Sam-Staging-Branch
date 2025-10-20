@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 const AuditTrail: React.FC = () => {
   return (
-    <div className="p-8">
+    <div>
       <div className="max-w-[1400px] mx-auto">
         {/* Coming Soon Content */}
         <div className="flex items-center justify-center min-h-[500px]">

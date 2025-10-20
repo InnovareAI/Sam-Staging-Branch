@@ -564,6 +564,116 @@ You are context-aware and adapt your responses based on the user's industry, rol
       return [];
     }
   }
+
+  // Check KB completeness for a workspace
+  async checkKBCompleteness(workspaceId: string): Promise<{
+    overallCompleteness: number;
+    sections: Record<string, { percentage: number; entries: number; depth: number }>;
+    missingCritical: string[];
+  }> {
+    try {
+      // Define KB sections and their importance (critical, important, valuable)
+      const sections = {
+        overview: { category: 'business-model', weight: 3, minEntries: 2 },
+        icp: { category: 'icp-intelligence', weight: 3, minEntries: 3 },
+        products: { category: 'products', weight: 3, minEntries: 2 },
+        messaging: { category: 'messaging', weight: 2, minEntries: 3 },
+        success_stories: { category: 'case-studies', weight: 2, minEntries: 2 },
+        objections: { category: 'objection-handling', weight: 2, minEntries: 3 },
+        competition: { category: 'competitive-intelligence', weight: 2, minEntries: 2 },
+        personas: { category: 'personas', weight: 2, minEntries: 2 },
+        pricing: { category: 'pricing', weight: 1, minEntries: 1 },
+        tone_of_voice: { category: 'tone-of-voice', weight: 1, minEntries: 1 },
+        company_info: { category: 'company-info', weight: 1, minEntries: 1 },
+        buying_process: { category: 'sales-process', weight: 1, minEntries: 1 },
+        compliance: { category: 'compliance', weight: 1, minEntries: 1 },
+        success_metrics: { category: 'success-metrics', weight: 1, minEntries: 1 },
+        documents: { category: 'documents', weight: 1, minEntries: 0 }
+      };
+
+      const sectionResults: Record<string, { percentage: number; entries: number; depth: number }> = {};
+      const missingCritical: string[] = [];
+      let totalWeightedScore = 0;
+      let totalWeight = 0;
+
+      // Query all KB sources
+      const [kbEntries, icpEntries, icps, products, competitors, personas] = await Promise.all([
+        this.getByCategory({ workspaceId, includeGlobal: false }),
+        supabaseAdmin
+          .from('sam_icp_knowledge_entries')
+          .select('category')
+          .eq('workspace_id', workspaceId)
+          .eq('is_active', true),
+        this.getICPs({ workspaceId }),
+        this.getProducts({ workspaceId }),
+        this.getCompetitors({ workspaceId }),
+        this.getPersonas({ workspaceId })
+      ]);
+
+      // Calculate section completeness
+      for (const [sectionName, config] of Object.entries(sections)) {
+        let entries = 0;
+        let totalContentLength = 0;
+
+        // Count entries from knowledge_base
+        const categoryEntries = kbEntries.filter(e => 
+          e.category === config.category || 
+          e.category?.includes(sectionName.replace('_', '-'))
+        );
+        entries += categoryEntries.length;
+        totalContentLength += categoryEntries.reduce((sum, e) => sum + (e.content?.length || 0), 0);
+
+        // Count from ICP knowledge entries
+        if (sectionName === 'icp') {
+          const icpKnowledgeCount = icpEntries.data?.filter((e: any) => 
+            e.category === 'icp' || e.category?.includes('target')
+          ).length || 0;
+          entries += icpKnowledgeCount;
+          entries += icps.length * 2; // Each ICP config counts as 2 entries
+        }
+
+        // Count structured data
+        if (sectionName === 'products') entries += products.length;
+        if (sectionName === 'competition') entries += competitors.length;
+        if (sectionName === 'personas') entries += personas.length;
+
+        // Calculate depth score (0-100 based on content richness)
+        const avgContentLength = entries > 0 ? totalContentLength / entries : 0;
+        const depth = Math.min(100, Math.round((avgContentLength / 500) * 100)); // 500 chars = 100% depth
+
+        // Calculate percentage (based on entries vs. minEntries)
+        const percentage = config.minEntries > 0 
+          ? Math.min(100, Math.round((entries / config.minEntries) * 100))
+          : entries > 0 ? 100 : 0;
+
+        sectionResults[sectionName] = { percentage, entries, depth };
+
+        // Track critical missing sections
+        if (config.weight === 3 && percentage < 70) {
+          missingCritical.push(sectionName);
+        }
+
+        // Calculate weighted score
+        totalWeightedScore += percentage * config.weight;
+        totalWeight += config.weight * 100;
+      }
+
+      const overallCompleteness = Math.round(totalWeightedScore / totalWeight * 100);
+
+      return {
+        overallCompleteness,
+        sections: sectionResults,
+        missingCritical
+      };
+    } catch (error) {
+      console.error('Error checking KB completeness:', error);
+      return {
+        overallCompleteness: 0,
+        sections: {},
+        missingCritical: []
+      };
+    }
+  }
 }
 
 // Export singleton instance
