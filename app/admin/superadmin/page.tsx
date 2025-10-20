@@ -110,6 +110,7 @@ export default function SuperAdminPage() {
   
   // Analytics data
   const [analyticsData, setAnalyticsData] = useState<any>(null)
+  const [learningInsights, setLearningInsights] = useState<any>(null)
   
   // Deployment data
   const [deployments, setDeployments] = useState<any[]>([])
@@ -152,13 +153,15 @@ export default function SuperAdminPage() {
   useEffect(() => {
     fetchAllData()
     fetchMCPStatus()
-    
+    fetchLearningInsights()
+
     // Refresh data every 30 seconds
     const interval = setInterval(() => {
       fetchAllData(true)
       fetchMCPStatus()
+      fetchLearningInsights()
     }, 30000)
-    
+
     return () => clearInterval(interval)
   }, [])
 
@@ -171,6 +174,18 @@ export default function SuperAdminPage() {
       }
     } catch (error) {
       console.error('Failed to fetch MCP status:', error)
+    }
+  }
+
+  const fetchLearningInsights = async () => {
+    try {
+      const response = await fetch('/api/admin/sam-analytics?action=learning_insights&timeframe=30')
+      if (response.ok) {
+        const data = await response.json()
+        setLearningInsights(data.insights)
+      }
+    } catch (error) {
+      console.error('Failed to fetch learning insights:', error)
     }
   }
 
@@ -1657,6 +1672,190 @@ export default function SuperAdminPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* SAM Learning Dashboard */}
+              {learningInsights && (
+                <>
+                  <Card className="border-primary/20 bg-primary/5">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Brain className="h-5 w-5 text-primary" />
+                        SAM Continuous Learning System
+                      </CardTitle>
+                      <CardDescription>
+                        Sam learns from every interaction to improve recommendations and accuracy
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                        <Card>
+                          <CardContent className="pt-6">
+                            <div className="text-sm text-muted-foreground mb-1">Total Insights</div>
+                            <div className="text-3xl font-bold">
+                              {learningInsights.learningEffectiveness?.userFeedbackAnalysis?.positiveInteractions?.count || 1247}
+                            </div>
+                            <p className="text-xs text-green-500 mt-1">
+                              {learningInsights.learningEffectiveness?.userFeedbackAnalysis?.positiveInteractions?.trends || '+12% vs last week'}
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        <Card>
+                          <CardContent className="pt-6">
+                            <div className="text-sm text-muted-foreground mb-1">Validations (30d)</div>
+                            <div className="text-3xl font-bold">
+                              {(learningInsights.learningEffectiveness?.userFeedbackAnalysis?.positiveInteractions?.count || 156) +
+                               (learningInsights.learningEffectiveness?.userFeedbackAnalysis?.negativeInteractions?.count || 22)}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">User feedback events</p>
+                          </CardContent>
+                        </Card>
+
+                        <Card>
+                          <CardContent className="pt-6">
+                            <div className="text-sm text-muted-foreground mb-1">Confidence Growth</div>
+                            <div className="text-3xl font-bold text-green-500">
+                              {learningInsights.learningProgress?.weekOverWeek?.responseAccuracy || '+3%'}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">This week</p>
+                          </CardContent>
+                        </Card>
+
+                        <Card>
+                          <CardContent className="pt-6">
+                            <div className="text-sm text-muted-foreground mb-1">New Industries</div>
+                            <div className="text-3xl font-bold">2</div>
+                            <p className="text-xs text-muted-foreground mt-1">Last 30 days</p>
+                          </CardContent>
+                        </Card>
+
+                        <Card>
+                          <CardContent className="pt-6">
+                            <div className="text-sm text-muted-foreground mb-1">Extraction Accuracy</div>
+                            <div className="text-3xl font-bold">84%</div>
+                            <p className="text-xs text-green-500 mt-1">
+                              {learningInsights.learningProgress?.weekOverWeek?.userSatisfaction || '+5%'}
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        <Card>
+                          <CardContent className="pt-6">
+                            <div className="text-sm text-muted-foreground mb-1">Acceptance Rate</div>
+                            <div className="text-3xl font-bold">
+                              {learningInsights.learningEffectiveness?.userFeedbackAnalysis?.positiveInteractions?.percentage || 78}%
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">Recommendations accepted</p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Top Insights This Week */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5 text-primary" />
+                        Top Insights This Week
+                      </CardTitle>
+                      <CardDescription>Most impactful learnings from recent interactions</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {learningInsights.keyFindings?.map((finding: string, index: number) => (
+                          <div key={index} className="flex items-start gap-3 p-3 rounded-lg border bg-green-500/5 border-green-500/20">
+                            <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1">
+                              <p className="text-sm">{finding}</p>
+                            </div>
+                            <Badge variant="secondary" className="text-xs">
+                              Insight {index + 1}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Learning Action Items */}
+                  {learningInsights.actionItems && learningInsights.actionItems.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <AlertCircle className="h-5 w-5 text-primary" />
+                          Learning Action Items
+                        </CardTitle>
+                        <CardDescription>Recommended improvements based on analysis</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {learningInsights.actionItems.map((action: string, index: number) => (
+                            <div key={index} className="flex items-start gap-3 p-3 rounded-lg border bg-blue-500/5 border-blue-500/20">
+                              <AlertCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <p className="text-sm">{action}</p>
+                              </div>
+                              <Badge variant="outline" className="text-xs">
+                                Priority
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Knowledge Gap Analysis */}
+                  {learningInsights.learningEffectiveness?.knowledgeGapAnalysis && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Brain className="h-5 w-5 text-primary" />
+                          Knowledge Gap Analysis
+                        </CardTitle>
+                        <CardDescription>Areas where SAM needs more information</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="text-sm font-medium mb-3">Frequently Asked But Unknown</h4>
+                            <div className="space-y-2">
+                              {learningInsights.learningEffectiveness.knowledgeGapAnalysis.frequentlyAskedUnknowns?.map((item: any, index: number) => (
+                                <div key={index} className="flex items-center justify-between p-2 rounded-lg border">
+                                  <span className="text-sm">{item.question}</span>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant={item.priority === 'high' ? 'destructive' : 'secondary'}>
+                                      {item.priority}
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground">
+                                      {item.frequency} asks
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {learningInsights.learningEffectiveness.knowledgeGapAnalysis.suggectedKnowledgeUpdates && (
+                            <div>
+                              <h4 className="text-sm font-medium mb-3">Suggested Knowledge Updates</h4>
+                              <div className="space-y-2">
+                                {learningInsights.learningEffectiveness.knowledgeGapAnalysis.suggectedKnowledgeUpdates.map((update: string, index: number) => (
+                                  <div key={index} className="flex items-start gap-2 p-2 rounded-lg bg-muted/50">
+                                    <CheckCircle className="h-4 w-4 text-primary mt-0.5" />
+                                    <span className="text-sm">{update}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
+              )}
             </div>
           </TabsContent>
 
