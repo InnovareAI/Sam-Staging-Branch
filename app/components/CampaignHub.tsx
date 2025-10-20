@@ -3,6 +3,7 @@
 import React from 'react';
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users,
   Mail,
@@ -174,10 +175,20 @@ function CampaignList() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {campaigns.map(c => (
-        <Card
+      {campaigns.map((c, index) => (
+        <motion.div
           key={c.id}
-          className="transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: index * 0.05 }}
+          whileHover={{
+            scale: 1.02,
+            y: -5,
+            boxShadow: "0 25px 50px -12px rgba(168, 85, 247, 0.25)"
+          }}
+        >
+        <Card
+          className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm border-gray-700 hover:border-purple-500/50 hover:bg-gradient-to-br hover:from-purple-600/20 hover:to-purple-900/20 shadow-xl hover:shadow-purple-500/20 group cursor-pointer transition-all duration-300"
         >
           <CardHeader>
             <div className="flex justify-between items-start">
@@ -261,6 +272,7 @@ function CampaignList() {
             )}
           </CardContent>
         </Card>
+        </motion.div>
       ))}
     </div>
   );
@@ -4236,25 +4248,74 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const campaignName = initialProspects?.[0]?.campaignName || initialProspects?.[0]?.campaignTag || 'New Campaign';
 
   return (
-    <div className="h-full bg-gray-900 p-6">
+    <div className="h-full bg-gradient-to-br from-gray-900 via-gray-800 to-purple-900/20 p-6 relative overflow-hidden">
+      {/* Floating background elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          animate={{
+            y: [-10, 10, -10],
+            rotate: [0, 5, 0]
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="absolute -top-20 -left-20 w-96 h-96 bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-full blur-3xl"
+        />
+        <motion.div
+          animate={{
+            y: [10, -10, 10],
+            rotate: [0, -5, 0]
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 2
+          }}
+          className="absolute -bottom-20 -right-20 w-96 h-96 bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-full blur-3xl"
+        />
+      </div>
+
       {/* Main Campaign Hub Content - Full Width */}
-      <div className="h-full overflow-y-auto">
+      <div className="h-full overflow-y-auto relative z-10">
       {/* Header - Different for auto-create mode */}
       {isAutoCreateMode ? (
-        <div className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mb-8"
+        >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
+              <motion.div
+                animate={{
+                  rotate: [0, 360],
+                  scale: [1, 1.1, 1]
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+                className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg shadow-purple-500/50"
+              >
                 <Target className="text-white" size={20} />
-              </div>
+              </motion.div>
               <div>
-                <h1 className="text-2xl font-bold text-white">Creating Campaign: {campaignName}</h1>
-                <p className="text-gray-400 text-sm">{initialProspects.length} approved prospects ready to launch</p>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-600 bg-clip-text text-transparent">
+                  Creating Campaign: {campaignName}
+                </h1>
+                <p className="text-gray-300 text-sm mt-1">{initialProspects.length} approved prospects ready to launch</p>
               </div>
             </div>
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setShowFullFeatures(!showFullFeatures)}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white rounded-lg transition-colors text-sm shadow-lg"
             >
               {showFullFeatures ? (
                 <>
@@ -4267,16 +4328,26 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   Show Full Hub
                 </>
               )}
-            </button>
+            </motion.button>
           </div>
-          <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-4 flex items-center gap-3">
-            <CheckCircle className="text-green-400" size={20} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+            className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 border border-purple-500/40 rounded-xl p-4 flex items-center gap-3 backdrop-blur-sm shadow-lg shadow-purple-500/10"
+          >
+            <motion.div
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <CheckCircle className="text-green-400" size={20} />
+            </motion.div>
             <div className="flex-1">
-              <p className="text-white text-sm font-medium">Prospects Loaded from Data Approval</p>
-              <p className="text-gray-400 text-xs">Add your message templates below to complete the campaign setup</p>
+              <p className="text-white text-sm font-semibold">Prospects Loaded from Data Approval</p>
+              <p className="text-gray-300 text-xs mt-1">Add your message templates below to complete the campaign setup</p>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       ) : null}
 
       <div className="w-full space-y-8">
