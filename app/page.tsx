@@ -2821,7 +2821,9 @@ export default function Page() {
           <KnowledgeBase />
         ) : activeMenuItem === 'data-approval' ? (
           /* Data Approval - Unified via DataCollectionHub */
-          <DataCollectionHub 
+          <DataCollectionHub
+            userSession={session}
+            workspaceId={currentWorkspace?.id || null}
             onDataCollected={(data, source) => {
               // Handle data collected from DataCollectionHub
               console.log('Data collected:', data, 'Source:', source);
@@ -2840,6 +2842,8 @@ export default function Page() {
             <div className="flex-1 overflow-y-auto">
               {showCampaignApprovalView ? (
                 <DataCollectionHub
+                  userSession={session}
+                  workspaceId={currentWorkspace?.id || null}
                   onDataCollected={(data, source) => {
                     console.log('Data collected:', data, 'Source:', source);
                   }}

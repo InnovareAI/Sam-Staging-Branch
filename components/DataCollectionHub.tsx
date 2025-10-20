@@ -7,9 +7,10 @@ import ProspectSearchChat from '@/components/ProspectSearchChat';
 import { ProspectData as BaseProspectData } from '@/components/ProspectApprovalModal';
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import ImportProspectsModal from '@/components/ImportProspectsModal'
 
 
 // LinkedIn Campaign Types
@@ -76,6 +77,8 @@ interface DataCollectionHubProps {
   onApprovalComplete?: (approvedData: ProspectData[]) => void
   className?: string
   initialUploadedData?: ProspectData[]
+  userSession?: any  // Pass session from parent to avoid auth issues
+  workspaceId?: string | null  // Pass workspace ID from parent
 }
 
 // REMOVED: Dummy prospect data generation function
@@ -214,6 +217,8 @@ export default function DataCollectionHub({
   onDataCollected,
   onApprovalComplete,
   className = '',
+  userSession,
+  workspaceId,
   initialUploadedData = []
 }: DataCollectionHubProps) {
   // Initialize with uploaded data from chat only (no dummy data)
@@ -279,6 +284,8 @@ export default function DataCollectionHub({
   const [isUploadingCsv, setIsUploadingCsv] = useState(false)
   const [isProcessingPaste, setIsProcessingPaste] = useState(false)
   const [isProcessingUrl, setIsProcessingUrl] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importInitialTab, setImportInitialTab] = useState<'url' | 'paste'>('url')
   const csvFileInputRef = useRef<HTMLInputElement>(null)
 
   // Update campaign name
@@ -314,14 +321,38 @@ export default function DataCollectionHub({
 
     setIsUploadingCsv(true)
     try {
+      // Use session passed from parent component
+      if (!userSession) {
+        toastError('Please sign in to upload CSV files')
+        return
+      }
+
+      // Check workspace ID is available
+      if (!workspaceId) {
+        toastError('No workspace selected')
+        return
+      }
+
       const formData = new FormData()
       formData.append('file', file)
       formData.append('campaign_name', `${today}-${workspaceCode}-CSV Upload`)
       formData.append('source', 'csv-upload')
+      formData.append('workspace_id', workspaceId)
+
+      console.log('CSV upload request:', {
+        fileName: file.name,
+        fileSize: file.size,
+        campaignName: `${today}-${workspaceCode}-CSV Upload`,
+        workspaceId,
+        hasSession: !!userSession
+      })
 
       // Use the approval session API to save to database
       const response = await fetch('/api/prospect-approval/upload-csv', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${userSession.access_token}`
+        },
         body: formData
       })
 
@@ -333,7 +364,9 @@ export default function DataCollectionHub({
           await refetch()
         }
       } else {
-        toastError('Failed to upload CSV file')
+        const errorData = await response.json()
+        console.error('CSV upload error response:', errorData)
+        toastError(errorData.error || 'Failed to upload CSV file')
       }
     } catch (error) {
       console.error('CSV upload error:', error)
@@ -1075,8 +1108,10 @@ export default function DataCollectionHub({
   }
 
   // Proceed to Campaign Hub with approved prospects
-  const handleProceedToCampaignHub = () => {
-    const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved')
+  const handleProceedToCampaignHub = (prospectsOverride?: ProspectData[]) => {
+    const approvedProspects = prospectsOverride && prospectsOverride.length > 0
+      ? prospectsOverride
+      : prospectData.filter(p => p.approvalStatus === 'approved')
     
     if (approvedProspects.length === 0) {
       toastError('⚠️ No approved prospects found. Please approve at least one prospect before proceeding to Campaign Hub.')
@@ -1150,7 +1185,7 @@ export default function DataCollectionHub({
   }
 
   return (
-    <div className="p-8">
+    <div>
       <div className="max-w-[1400px] mx-auto">
         {/* Prospect Approval Dashboard */}
         <div>
@@ -1193,28 +1228,52 @@ export default function DataCollectionHub({
               <span>Download Approved</span>
             </Button>
 
-            {/* Approve All Button */}
+            {/* Approve Selection */}
+            <Button
+              onClick={bulkApproveSelected}
+              disabled={selectedProspectIds.size === 0}
+              size="sm"
+              variant="outline"
+              className="flex items-center gap-2"
+              title="Approve the selected records only"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>Approve Selection ({selectedProspectIds.size})</span>
+            </Button>
+
+            {/* Approve All (secondary) */}
             <Button
               onClick={handleApproveAllNonDismissed}
               disabled={filteredProspects.filter(p => !dismissedProspectIds.has(p.id) && p.approvalStatus === 'pending').length === 0}
               size="sm"
               variant="outline"
               className="flex items-center gap-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 border-green-500/40"
+              title="Approve every visible non-dismissed record"
             >
               <Check className="w-3.5 h-3.5" />
               <span>Approve All ({filteredProspects.filter(p => !dismissedProspectIds.has(p.id) && p.approvalStatus === 'pending').length})</span>
             </Button>
 
-                <Button
-                  onClick={handleProceedToCampaignHub}
-                  disabled={approvedCount === 0}
-                  size="sm"
-                  className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                  title="Approve selected prospects and continue"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Approve Data</span>
-                </Button>
+            {/* Add to Campaign (selected approved only) */}
+            <Button
+              onClick={() => {
+                const selectedApproved = prospectData.filter(p => selectedProspectIds.has(p.id) && p.approvalStatus === 'approved')
+                if (selectedApproved.length > 0) {
+                  handleProceedToCampaignHub(selectedApproved)
+                }
+              }}
+              disabled={(() => {
+                if (selectedProspectIds.size === 0) return true
+                const selected = prospectData.filter(p => selectedProspectIds.has(p.id))
+                return selected.some(p => p.approvalStatus !== 'approved')
+              })()}
+              size="sm"
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              title="Add approved selection to a campaign"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>Add to Campaign ({Array.from(selectedProspectIds).filter(id => (prospectData.find(p => p.id === id)?.approvalStatus === 'approved')).length})</span>
+            </Button>
               </div>
             </div>
           </div>
@@ -1245,173 +1304,22 @@ export default function DataCollectionHub({
           <Button
             variant="outline"
             size="sm"
-            onClick={async () => {
-              const text = prompt('Paste prospect data (Name, Title, Company, Email, LinkedIn):\nExample: John Doe, CEO, Acme Inc, john@acme.com, linkedin.com/in/johndoe')
-              if (text && text.trim()) {
-                setIsProcessingPaste(true)
-                try {
-                  const lines = text.trim().split('\n')
-                  const newProspects: ProspectData[] = []
-
-                  for (const line of lines) {
-                    if (!line.trim()) continue
-                    const parts = line.includes('\t') ? line.split('\t') : line.split(',')
-                    const cleanParts = parts.map(p => p.trim())
-
-                    if (cleanParts.length >= 2) {
-                      newProspects.push({
-                        id: `paste_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                        name: cleanParts[0] || 'Unknown',
-                        title: cleanParts[1] || '',
-                        company: cleanParts[2] || '',
-                        location: '',
-                        email: cleanParts[3] || '',
-                        linkedinUrl: cleanParts[4] || '',
-                        contact: {
-                          email: cleanParts[3] || '',
-                          linkedin_url: cleanParts[4] || ''
-                        },
-                        source: 'manual' as const,
-                        approvalStatus: 'pending' as const,
-                        campaignName: `${today}-${workspaceCode}-Pasted Data`,
-                        campaignTag: 'paste-import',
-                        uploaded: true
-                      })
-                    }
-                  }
-
-                  if (newProspects.length > 0) {
-                    setProspectData(prev => [...newProspects, ...prev])
-                    toastSuccess(`Added ${newProspects.length} prospects from pasted data`)
-                  } else {
-                    toastError('No valid prospect data found')
-                  }
-                } catch (error) {
-                  console.error('Paste processing error:', error)
-                  toastError('Error processing pasted data')
-                } finally {
-                  setIsProcessingPaste(false)
-                }
-              }
-            }}
+            onClick={() => { setImportInitialTab('paste'); setShowImportModal(true); }}
             disabled={isProcessingPaste}
           >
             <FileText className="w-3 h-3 mr-1" />
-            {isProcessingPaste ? 'Processing...' : 'Copy & Paste'}
+            Copy & Paste
           </Button>
 
           {/* LinkedIn Search URL - Opens modal */}
           <Button
             variant="outline"
             size="sm"
-            onClick={async () => {
-              const url = prompt('Paste LinkedIn search URL (Sales Nav or Recruiter):')
-              if (url && url.trim()) {
-                // Check if user pasted a saved search REFERENCE URL (won't work)
-                const isSavedSearchReference = url.match(/savedSearchId=(\d+)(?!.*[?&]query=|.*[?&]filters=)/)
-
-                if (isSavedSearchReference) {
-                  const searchId = isSavedSearchReference[1]
-                  toastError(`Saved Search Reference URLs are not supported. Please follow these steps:
-
-1. Go to LinkedIn Sales Navigator
-2. Click your saved search "${searchId}"
-3. Wait for all results to load completely
-4. Copy the FULL URL from your browser's address bar
-5. The URL should contain "query=" and "filters=" parameters
-6. Paste that complete URL here
-
-Example: The URL should look like:
-https://www.linkedin.com/sales/search/people?query=(...)&filters=List(...)
-
-NOT just:
-https://www.linkedin.com/sales/search/people?savedSearchId=${searchId}`)
-                  return
-                }
-
-                setIsProcessingUrl(true)
-                try {
-                  // Check if it's a saved search URL with full parameters
-                  const isSavedSearch = url.includes('/sales/search/') || url.includes('/recruiting/search/')
-                  const endpoint = isSavedSearch
-                    ? '/api/linkedin/import-saved-search'
-                    : '/api/linkedin/search/simple'
-
-                  const requestBody = isSavedSearch
-                    ? { saved_search_url: url.trim(), campaign_name: `${today}-${workspaceCode}-SavedSearch` }
-                    : { search_criteria: { url: url.trim() }, target_count: 50 }
-
-                  const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody)
-                  })
-
-                  if (response.ok) {
-                    const data = await response.json()
-                    if (data.success && data.count !== undefined) {
-                      // Saved search response - just show success, data will load via sessions API
-                      toastSuccess(`Imported ${data.count} prospects from saved search. Refreshing...`)
-                      // Reload the page to fetch the new session
-                      window.location.reload()
-                      return
-                    } else if (data.success && data.prospects && data.prospects.length > 0) {
-                      const newProspects: ProspectData[] = data.prospects.map((p: any, index: number) => ({
-                        id: `linkedin_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
-                        name: p.fullName || p.name || 'Unknown',
-                        title: p.title || '',
-                        company: p.company || '',
-                        location: '',
-                        email: p.email || '',
-                        linkedinUrl: p.linkedinUrl || '',
-                        contact: {
-                          email: p.email || '',
-                          linkedin_url: p.linkedinUrl || ''
-                        },
-                        source: 'linkedin' as const,
-                        confidence: p.confidence || 0.7,
-                        approvalStatus: 'pending' as const,
-                        campaignName: `${today}-${workspaceCode}-LinkedIn Search`,
-                        campaignTag: 'linkedin-url',
-                        uploaded: true
-                      }))
-
-                      setProspectData(prev => [...newProspects, ...prev])
-                      toastSuccess(`Found ${newProspects.length} prospects from LinkedIn URL`)
-                    } else {
-                      toastError('No prospects found in LinkedIn URL')
-                    }
-                  } else {
-                    const errorData = await response.json().catch(() => ({}))
-                    console.error('LinkedIn search API error:', errorData)
-
-                    if (errorData.error && errorData.error.includes('404')) {
-                      toastError(`LinkedIn search failed. If you're using a saved search, make sure you copied the FULL URL after it loaded (not just the savedSearchId reference).
-
-Steps to get the correct URL:
-1. Open your saved search in LinkedIn
-2. Wait for all results to load
-3. Copy the complete URL from the address bar
-4. The URL should contain "query=" and "filters=" parameters`)
-                    } else {
-                      // Show the actual error message from the API
-                      const errorMsg = errorData.error || `Failed to search LinkedIn (HTTP ${response.status})`
-                      toastError(errorMsg)
-                      console.error('Full error response:', { status: response.status, statusText: response.statusText, errorData })
-                    }
-                  }
-                } catch (error) {
-                  console.error('LinkedIn URL processing error:', error)
-                  toastError('Error processing LinkedIn URL')
-                } finally {
-                  setIsProcessingUrl(false)
-                }
-              }
-            }}
+            onClick={() => { setImportInitialTab('url'); setShowImportModal(true); }}
             disabled={isProcessingUrl}
           >
             <Link className="w-3 h-3 mr-1" />
-            {isProcessingUrl ? 'Searching...' : 'LinkedIn URL'}
+            LinkedIn URL
           </Button>
         </div>
       </div>
@@ -1785,6 +1693,112 @@ Steps to get the correct URL:
       </div>
         </div>
       </div>
+      {/* Import Prospects Modal */}
+      <ImportProspectsModal
+        open={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        initialTab={importInitialTab}
+        isProcessingPaste={isProcessingPaste}
+        isProcessingUrl={isProcessingUrl}
+        onPaste={async (text: string) => {
+          setIsProcessingPaste(true)
+          try {
+            const lines = text.trim().split('\n')
+            const newProspects: ProspectData[] = []
+            for (const line of lines) {
+              if (!line.trim()) continue
+              const parts = line.includes('\t') ? line.split('\t') : line.split(',')
+              const cleanParts = parts.map(p => p.trim())
+              if (cleanParts.length >= 2) {
+                newProspects.push({
+                  id: `paste_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                  name: cleanParts[0] || 'Unknown',
+                  title: cleanParts[1] || '',
+                  company: cleanParts[2] || '',
+                  location: '',
+                  email: cleanParts[3] || '',
+                  linkedinUrl: cleanParts[4] || '',
+                  contact: { email: cleanParts[3] || '', linkedin_url: cleanParts[4] || '' },
+                  source: 'manual' as const,
+                  approvalStatus: 'pending' as const,
+                  campaignName: `${today}-${workspaceCode}-Pasted Data`,
+                  campaignTag: 'paste-import',
+                  uploaded: true
+                })
+              }
+            }
+            if (newProspects.length > 0) {
+              setProspectData(prev => [...newProspects, ...prev])
+              toastSuccess(`Added ${newProspects.length} prospects from pasted data`)
+            } else {
+              toastError('No valid prospect data found')
+            }
+            setShowImportModal(false)
+          } catch (error) {
+            console.error('Paste processing error:', error)
+            toastError('Error processing pasted data')
+          } finally {
+            setIsProcessingPaste(false)
+          }
+        }}
+        onLinkedInUrl={async (url: string) => {
+          setIsProcessingUrl(true)
+          try {
+            const isSavedSearchReference = url.match(/savedSearchId=(\d+)(?!.*[?&]query=|.*[?&]filters=)/)
+            if (isSavedSearchReference) {
+              const searchId = isSavedSearchReference[1]
+              toastError(`Saved Search Reference URLs are not supported. Please open the saved search, wait for results to load, then copy the full URL.`)
+              return
+            }
+            const isSavedSearch = url.includes('/sales/search/') || url.includes('/recruiting/search/')
+            const endpoint = isSavedSearch ? '/api/linkedin/import-saved-search' : '/api/linkedin/search/simple'
+            const requestBody = isSavedSearch
+              ? { saved_search_url: url.trim(), campaign_name: `${today}-${workspaceCode}-SavedSearch` }
+              : { search_criteria: { url: url.trim() }, target_count: 50 }
+            const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) })
+            if (response.ok) {
+              const data = await response.json()
+              if (data.success && data.count !== undefined) {
+                toastSuccess(`Imported ${data.count} prospects from saved search. Refreshing...`)
+                window.location.reload()
+                return
+              } else if (data.success && data.prospects && data.prospects.length > 0) {
+                const newProspects: ProspectData[] = data.prospects.map((p: any, index: number) => ({
+                  id: `linkedin_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+                  name: p.fullName || p.name || 'Unknown',
+                  title: p.title || '',
+                  company: p.company || '',
+                  location: '',
+                  email: p.email || '',
+                  linkedinUrl: p.linkedinUrl || '',
+                  contact: { email: p.email || '', linkedin_url: p.linkedinUrl || '' },
+                  source: 'linkedin' as const,
+                  confidence: p.confidence || 0.7,
+                  approvalStatus: 'pending' as const,
+                  campaignName: `${today}-${workspaceCode}-LinkedIn Search`,
+                  campaignTag: 'linkedin-url',
+                  uploaded: true
+                }))
+                setProspectData(prev => [...newProspects, ...prev])
+                toastSuccess(`Found ${newProspects.length} prospects from LinkedIn URL`)
+              } else {
+                toastError('No prospects found in LinkedIn URL')
+              }
+              setShowImportModal(false)
+            } else {
+              const errorData = await response.json().catch(() => ({}))
+              const errorMsg = errorData.error || `Failed to search LinkedIn (HTTP ${response.status})`
+              toastError(errorMsg)
+              console.error('LinkedIn search API error:', errorData)
+            }
+          } catch (error) {
+            console.error('LinkedIn URL processing error:', error)
+            toastError('Error processing LinkedIn URL')
+          } finally {
+            setIsProcessingUrl(false)
+          }
+        }}
+      />
     </div>
   )
 }

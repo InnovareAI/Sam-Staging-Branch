@@ -36,21 +36,16 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Get user's current workspace
-    const { data: userData } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single();
-
-    if (!userData?.current_workspace_id) {
-      return NextResponse.json({ success: false, error: 'No workspace found' }, { status: 400 });
-    }
-
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const campaignName = formData.get('campaign_name') as string || 'CSV Upload';
     const source = formData.get('source') as string || 'csv-upload';
+    const workspaceId = formData.get('workspace_id') as string;
+
+    // Validate workspace_id is provided
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'No workspace ID provided' }, { status: 400 });
+    }
 
     if (!file) {
       return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 });
@@ -60,12 +55,21 @@ export async function POST(request: NextRequest) {
     const text = await file.text();
     const lines = text.trim().split('\n');
 
+    console.log('CSV Parsing - File info:', {
+      fileName: file.name,
+      fileSize: file.size,
+      totalLines: lines.length,
+      firstLine: lines[0]?.substring(0, 200),
+      secondLine: lines[1]?.substring(0, 200)
+    });
+
     if (lines.length < 2) {
       return NextResponse.json({ success: false, error: 'CSV file is empty or invalid' }, { status: 400 });
     }
 
     // Parse header
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    console.log('CSV Parsing - Detected headers:', headers);
 
     // Map common header names
     const headerMap: Record<string, string> = {
@@ -95,9 +99,26 @@ export async function POST(request: NextRequest) {
 
     // Parse prospects
     const prospects: any[] = [];
+    const skippedRows: any[] = [];
+
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(',').map(v => v.trim());
-      if (values.length < headers.length) continue; // Skip incomplete rows
+
+      // Log first row details
+      if (i === 1) {
+        console.log('CSV Parsing - First data row:', {
+          rowIndex: i,
+          rawLine: lines[i].substring(0, 200),
+          splitValues: values,
+          valueCount: values.length,
+          headerCount: headers.length
+        });
+      }
+
+      if (values.length < headers.length) {
+        skippedRows.push({ row: i, reason: 'incomplete', valueCount: values.length, expectedCount: headers.length });
+        continue;
+      }
 
       const prospect: any = {};
       headers.forEach((header, index) => {
@@ -105,9 +126,22 @@ export async function POST(request: NextRequest) {
         prospect[mappedKey] = values[index] || '';
       });
 
+      // Log mapped prospect for first row
+      if (i === 1) {
+        console.log('CSV Parsing - Mapped prospect data:', {
+          prospect,
+          hasName: !!prospect.name,
+          hasFirstName: !!prospect.firstName,
+          hasLastName: !!prospect.lastName
+        });
+      }
+
       // Build prospect object
       const fullName = prospect.name || `${prospect.firstName || ''} ${prospect.lastName || ''}`.trim();
-      if (!fullName) continue; // Skip if no name
+      if (!fullName) {
+        skippedRows.push({ row: i, reason: 'no name', prospect });
+        continue;
+      }
 
       prospects.push({
         name: fullName,
@@ -125,15 +159,30 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    console.log('CSV Parsing - Results:', {
+      totalRows: lines.length - 1,
+      prospectsFound: prospects.length,
+      rowsSkipped: skippedRows.length,
+      firstFewSkipped: skippedRows.slice(0, 3)
+    });
+
     if (prospects.length === 0) {
-      return NextResponse.json({ success: false, error: 'No valid prospects found in CSV' }, { status: 400 });
+      return NextResponse.json({
+        success: false,
+        error: 'No valid prospects found in CSV',
+        debug: {
+          headers,
+          totalRows: lines.length - 1,
+          skippedRows: skippedRows.slice(0, 5)
+        }
+      }, { status: 400 });
     }
 
     // Create approval session
     const { data: session, error: sessionError } = await supabase
       .from('prospect_approval_sessions')
       .insert({
-        workspace_id: userData.current_workspace_id,
+        workspace_id: workspaceId,
         user_id: user.id,
         campaign_name: campaignName,
         campaign_tag: 'csv-import',
@@ -154,7 +203,7 @@ export async function POST(request: NextRequest) {
     const approvalData = prospects.map(p => ({
       session_id: session.id,
       prospect_id: `csv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      workspace_id: userData.current_workspace_id,
+      workspace_id: workspaceId,
       name: p.name,
       title: p.title,
       company: p.company,
