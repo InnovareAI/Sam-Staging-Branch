@@ -1,25 +1,33 @@
 # Rolling TODO List - Sam AI Project
 
-**Last Updated**: October 11, 2025
+**Last Updated**: October 20, 2025
 
 ---
 
 ## 🔥 URGENT - Do Today
 
-- [ ] Review ESLint warnings and clean up unused imports
-- [ ] Test all LinkedIn search scenarios in production (1st/2nd/3rd degree, location filters)
+- [ ] **Deploy SuperAdmin Analytics Migration** - Create 6 analytics tables in production database
+  - Tables: conversation_analytics, system_health_logs, system_alerts, qa_autofix_logs, deployment_logs, user_sessions
+  - File: `supabase/migrations/20251018_create_superadmin_analytics.sql`
+  - Run via Supabase dashboard or `supabase db push`
+- [ ] **Deploy SAM Learning Triggers in Production** - Integrate learning system tracking into SAM conversations
+  - Add tracking calls to SAM thread API (`/api/sam/threads/[threadId]/messages/route.ts`)
+  - Track conversation analytics, user feedback, knowledge gaps
+  - Enable continuous learning feedback loop
 
 ---
 
 ## 📋 This Week
 
-- [ ] **SAM UX Improvement**: Update SAM's prompt to suggest filter options for general searches
-  - When user requests broad search (e.g., "Find CEOs"), SAM should ask clarifying questions
-  - Suggest: location, company, industry, connection degree, etc.
-  - Make searches more targeted and reduce irrelevant results
-- [ ] Clean up ESLint warnings (50+ unused imports/variables across codebase)
-- [ ] Fix TypeScript configuration warnings (4 tsconfig composite settings)
-- [ ] Review and consolidate duplicate documentation files (120+ recent docs)
+- [ ] **Integrate SuperAdmin Analytics Tracking** - Add data collection to start populating real data
+  - Track conversations in SAM AI API (call `track_conversation_analytics()`)
+  - Log system health every 5 minutes (call `log_system_health()`)
+  - Create alerts when issues detected (call `create_system_alert()`)
+  - Log deployments in deployment scripts
+- [ ] **Set up cron jobs** for periodic health logging
+- [ ] **Configure deployment hooks** to automatically log all deployments
+- [ ] **Verify SuperAdmin Analytics Tables** - Check all 6 tables exist and RLS policies work
+- [ ] Review ESLint warnings and clean up unused imports (50+ across codebase)
 
 ---
 
@@ -130,7 +138,18 @@
 
 ## ✅ Recently Completed
 
-### Week of Oct 11, 2025 (Today)
+### Week of Oct 20, 2025 (Today)
+- [x] **SAM Learning Dashboard**: Added comprehensive learning analytics to SuperAdmin Analytics tab
+  - 6 metrics cards: Total Insights, Validations, Confidence Growth, New Industries, Extraction Accuracy, Acceptance Rate
+  - Top Insights This Week section with key findings
+  - Learning Action Items with priority recommendations
+  - Knowledge Gap Analysis showing frequently asked unknowns
+  - Auto-refresh every 30 seconds
+  - Connected to `/api/admin/sam-analytics?action=learning_insights`
+- [x] **Deployment**: Deployed SAM Learning Dashboard to production (commit 4e4b51e)
+- [x] **Documentation**: Created SAM_LEARNING_SYSTEM.md, SAM_GPT_TRAINING_KNOWLEDGE.md
+
+### Week of Oct 11, 2025
 - [x] **LinkedIn Search Improvements**: Fixed connection degree filtering (1st/2nd/3rd now works correctly)
 - [x] **Advanced Search Filters**: Added location, company, industry, school parameters
 - [x] **Data Input Reorganization**: Removed CSV from SAM chat, added CSV/Paste/URL to Data Approval
@@ -174,7 +193,7 @@ When a section gets too long (>20 items), move completed items to:
 
 **Site**: https://app.meet-sam.com
 **Status**: ✅ FULLY OPERATIONAL
-**Latest Deploy**: commit 4fececa (Oct 11, 2025 - advanced-search-filters)
+**Latest Deploy**: commit 4e4b51e (Oct 20, 2025 - SAM Learning Dashboard)
 **Build Status**: Passing
 **Critical Features**:
 - ✅ Authentication working
@@ -184,20 +203,18 @@ When a section gets too long (>20 items), move completed items to:
 - ✅ Data Approval with CSV/Paste/URL input methods
 - ✅ Editable campaign names with auto-generation
 - ✅ SAM conversation history functional
+- ✅ SAM Learning Dashboard in SuperAdmin Analytics - **NEW**
 - ✅ All modals and components rendering
 
 **Recent Deployments**:
+- Oct 20: SAM Learning Dashboard (SuperAdmin Analytics tab) - **LIVE**
 - Oct 11: Advanced search filters (location, company, industry) - **LIVE**
 - Oct 11: Connection degree filter fix (F/S/O notation) - **LIVE**
 - Oct 11: Data input reorganization (CSV to Data Approval) - **LIVE**
 - Oct 11: Editable campaign names - **LIVE**
 
 **Recent Issues**:
-- Oct 11: Duplicate prospects from different searches - **RESOLVED**
-- Oct 11: Connection degree filter not working - **RESOLVED**
-- Oct 11: RLS permission errors in Data Approval - **RESOLVED**
-- Oct 8: Toast replacement script broke 21 files - **RESOLVED**
-- Oct 8: CDN caching prevented latest deploy - **RESOLVED**
+- All issues resolved - production stable
 
 ---
 
