@@ -1018,19 +1018,17 @@ export async function POST(
     let kbCompleteness = null
     if (workspaceId) {
       try {
-        const completenessResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/knowledge-base/completeness?workspace_id=${workspaceId}`,
-          {
-            headers: {
-              'Cookie': (await cookies()).toString()
-            }
-          }
-        )
-        if (completenessResponse.ok) {
-          const data = await completenessResponse.json()
-          kbCompleteness = data.completeness
-          console.log('📊 KB Completeness:', kbCompleteness.overall + '%', 'Status:', kbCompleteness.status)
-        }
+        // Direct database query instead of HTTP call to avoid cookie issues in Edge Runtime
+        const { supabaseKnowledge } = await import('@/lib/supabase-knowledge');
+        const completeness = await supabaseKnowledge.checkKBCompleteness(workspaceId);
+        kbCompleteness = {
+          overall: completeness.overallCompleteness,
+          status: completeness.overallCompleteness >= 70 ? 'complete' : 
+                  completeness.overallCompleteness >= 40 ? 'partial' : 'minimal',
+          sections: completeness.sections,
+          missing_critical: completeness.missingCritical
+        };
+        console.log('📊 KB Completeness:', kbCompleteness.overall + '%', 'Status:', kbCompleteness.status)
       } catch (error) {
         console.log('Note: Could not check KB completeness', error)
       }
