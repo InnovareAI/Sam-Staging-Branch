@@ -1270,34 +1270,37 @@ export default function DataCollectionHub({
             className="hidden"
           />
           <Button
-            variant="outline"
-            size="sm"
+            variant="default"
+            size="default"
             onClick={() => csvFileInputRef.current?.click()}
             disabled={isUploadingCsv}
+            className="bg-blue-600 hover:bg-blue-700"
           >
-            <Upload className="w-3 h-3 mr-1" />
+            <Upload className="w-4 h-4 mr-2" />
             {isUploadingCsv ? 'Uploading...' : 'CSV Upload'}
           </Button>
 
           {/* Copy/Paste Text - Opens modal */}
           <Button
-            variant="outline"
-            size="sm"
+            variant="default"
+            size="default"
             onClick={() => { setImportInitialTab('paste'); setShowImportModal(true); }}
             disabled={isProcessingPaste}
+            className="bg-green-600 hover:bg-green-700"
           >
-            <FileText className="w-3 h-3 mr-1" />
+            <FileText className="w-4 h-4 mr-2" />
             Copy & Paste
           </Button>
 
           {/* LinkedIn Search URL - Opens modal */}
           <Button
-            variant="outline"
-            size="sm"
+            variant="default"
+            size="default"
             onClick={() => { setImportInitialTab('url'); setShowImportModal(true); }}
             disabled={isProcessingUrl}
+            className="bg-purple-600 hover:bg-purple-700"
           >
-            <Link className="w-3 h-3 mr-1" />
+            <Link className="w-4 h-4 mr-2" />
             LinkedIn URL
           </Button>
         </div>
