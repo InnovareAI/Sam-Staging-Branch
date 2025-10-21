@@ -74,8 +74,43 @@ export async function PUT(
     const campaignId = params.id;
     const updates = await req.json();
 
+    console.log('Campaign update request:', { campaignId, updates, userId: user.id });
+
+    // First, verify the campaign exists and user has access
+    const { data: existingCampaign, error: fetchError } = await supabase
+      .from('campaigns')
+      .select('id, workspace_id')
+      .eq('id', campaignId)
+      .single();
+
+    if (fetchError || !existingCampaign) {
+      console.error('Campaign not found:', fetchError);
+      return NextResponse.json({
+        error: 'Campaign not found',
+        details: fetchError?.message || 'Campaign does not exist'
+      }, { status: 404 });
+    }
+
+    // Verify user is a member of the campaign's workspace
+    const { data: membership, error: membershipError } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', existingCampaign.workspace_id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (membershipError || !membership) {
+      console.error('Workspace access denied:', membershipError);
+      return NextResponse.json({
+        error: 'Access denied',
+        details: 'You do not have access to this campaign'
+      }, { status: 403 });
+    }
+
     // Remove fields that shouldn't be updated directly
     const { id, created_at, created_by, workspace_id, ...updateData } = updates;
+
+    console.log('Updating campaign with data:', updateData);
 
     // Update campaign
     const { data: campaign, error } = await supabase
@@ -92,9 +127,20 @@ export async function PUT(
       console.error('Failed to update campaign:', error);
       return NextResponse.json({
         error: 'Failed to update campaign',
-        details: error.message
+        details: error.message,
+        hint: error.hint || 'Check database permissions'
       }, { status: 500 });
     }
+
+    if (!campaign) {
+      console.error('Campaign update returned no data');
+      return NextResponse.json({
+        error: 'Campaign update failed',
+        details: 'No data returned after update'
+      }, { status: 500 });
+    }
+
+    console.log('Campaign updated successfully:', campaign.id);
 
     return NextResponse.json({
       message: 'Campaign updated successfully',
