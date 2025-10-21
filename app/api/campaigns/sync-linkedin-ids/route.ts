@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     // Step 1: Get campaign prospects without LinkedIn IDs
     const { data: prospects, error: prospectsError } = await supabase
       .from('campaign_prospects')
-      .select('id, first_name, last_name, linkedin_profile_url, linkedin_user_id')
+      .select('id, first_name, last_name, linkedin_url, linkedin_user_id')
       .eq('campaign_id', campaignId)
       .is('linkedin_user_id', null); // Only get prospects missing LinkedIn IDs
 
@@ -191,8 +191,8 @@ export async function POST(req: NextRequest) {
       let linkedinUserId: string | null = null;
 
       // Try to match by profile URL first (most accurate)
-      if (prospect.linkedin_profile_url) {
-        const normalizedUrl = prospect.linkedin_profile_url
+      if (prospect.linkedin_url) {
+        const normalizedUrl = prospect.linkedin_url
           .replace(/\/$/, '')
           .replace(/\?.*$/, '')
           .toLowerCase();
@@ -257,7 +257,7 @@ export async function POST(req: NextRequest) {
         unresolved_prospects: unresolvedProspects.map(p => ({
           id: p.id,
           name: `${p.first_name} ${p.last_name}`,
-          linkedin_profile_url: p.linkedin_profile_url
+          linkedin_url: p.linkedin_url
         }))
       }
     });
