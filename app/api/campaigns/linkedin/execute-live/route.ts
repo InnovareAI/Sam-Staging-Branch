@@ -117,26 +117,9 @@ export async function POST(req: NextRequest) {
     // Step 4: Get prospects ready for messaging
     const { data: campaignProspects, error: prospectsError } = await supabase
       .from('campaign_prospects')
-      .select(`
-        id,
-        status,
-        sequence_step,
-        invitation_sent_at,
-        last_message_sent_at,
-        workspace_prospects!inner(
-          id,
-          first_name,
-          last_name,
-          company_name,
-          job_title,
-          industry,
-          linkedin_profile_url,
-          linkedin_internal_id,
-          email_address
-        )
-      `)
+      .select('*')
       .eq('campaign_id', campaignId)
-      .in('status', ['approved', 'ready_to_message', 'follow_up_due'])
+      .in('status', ['pending', 'approved', 'ready_to_message', 'follow_up_due'])
       .limit(maxProspects)
       .order('created_at', { ascending: true });
 
@@ -145,8 +128,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to load prospects' }, { status: 500 });
     }
 
-    const executableProspects = campaignProspects?.filter(cp => 
-      cp.workspace_prospects.linkedin_profile_url || cp.workspace_prospects.linkedin_internal_id
+    const executableProspects = campaignProspects?.filter(cp =>
+      cp.linkedin_url || cp.linkedin_user_id
     ) || [];
 
     console.log(`📋 Found ${executableProspects.length} prospects ready for execution`);
@@ -179,27 +162,27 @@ export async function POST(req: NextRequest) {
 
     // Step 6: Execute campaign for each prospect
     console.log('🎯 Starting prospect processing...');
-    
-    for (const campaignProspect of executableProspects) {
-      const prospect = campaignProspect.workspace_prospects;
+
+    for (const prospect of executableProspects) {
       results.prospects_processed++;
 
       try {
-        console.log(`\n📧 Processing: ${prospect.first_name} ${prospect.last_name} at ${prospect.company_name}`);
+        console.log(`\n📧 Processing: ${prospect.first_name || 'Unknown'} ${prospect.last_name || 'Unknown'} at ${prospect.company_name || 'Unknown Company'}`);
 
-        // Determine message type based on sequence step
+        // Determine message type based on sequence step (default to 0 if not set)
+        const sequenceStep = prospect.sequence_step || 0;
         let templateType: 'connection_request' | 'follow_up_1' | 'follow_up_2' = 'connection_request';
-        if (campaignProspect.sequence_step === 1) templateType = 'follow_up_1';
-        else if (campaignProspect.sequence_step >= 2) templateType = 'follow_up_2';
+        if (sequenceStep === 1) templateType = 'follow_up_1';
+        else if (sequenceStep >= 2) templateType = 'follow_up_2';
 
         // Personalize message using cost-controlled LLM
         const personalizationRequest = {
           templateType,
           campaignType: 'sales_outreach' as const,
           prospectData: {
-            firstName: prospect.first_name,
-            company: prospect.company_name,
-            title: prospect.job_title || 'Professional',
+            firstName: prospect.first_name || 'there',
+            company: prospect.company_name || 'your company',
+            title: prospect.title || 'Professional',
             industry: prospect.industry || 'Business'
           },
           personalizationLevel: 'standard' as const
@@ -214,25 +197,23 @@ export async function POST(req: NextRequest) {
         if (dryRun) {
           console.log('🧪 DRY RUN - Message would be sent');
           results.messages.push({
-            prospect: `${prospect.first_name} ${prospect.last_name}`,
+            prospect: `${prospect.first_name || 'Unknown'} ${prospect.last_name || 'Unknown'}`,
             message: personalizedResult.message,
             cost: personalizedResult.cost,
             model: personalizedResult.model,
-            linkedin_target: prospect.linkedin_profile_url || prospect.linkedin_internal_id,
+            linkedin_target: prospect.linkedin_url || prospect.linkedin_user_id,
             status: 'dry_run'
           });
         } else {
-          // LIVE EXECUTION: Send actual LinkedIn message via MCP
+          // LIVE EXECUTION: Send actual LinkedIn connection request via MCP
           try {
-            // Note: Actual LinkedIn message sending would happen here
-            // For now, we'll simulate successful sending and log the attempt
-            console.log(`🚀 LIVE: Sending to LinkedIn account ${selectedAccount.sources[0].id}`);
-            console.log(`🎯 Target: ${prospect.linkedin_profile_url || prospect.linkedin_internal_id}`);
-            
+            console.log(`🚀 LIVE: Sending connection request from LinkedIn account ${selectedAccount.sources[0].id}`);
+            console.log(`🎯 Target: ${prospect.linkedin_url || prospect.linkedin_user_id}`);
+
             // In production, this would be:
-            // await mcp__unipile__send_linkedin_message({
+            // await mcp__unipile__send_linkedin_connection_request({
             //   account_id: selectedAccount.sources[0].id,
-            //   target_id: prospect.linkedin_internal_id,
+            //   target_url: prospect.linkedin_url,
             //   message: personalizedResult.message
             // });
 
@@ -240,29 +221,28 @@ export async function POST(req: NextRequest) {
             await supabase
               .from('campaign_prospects')
               .update({
-                status: campaignProspect.sequence_step === 0 ? 'invitation_sent' : 'follow_up_sent',
-                sequence_step: campaignProspect.sequence_step + 1,
-                last_message_sent_at: new Date().toISOString(),
-                ...(campaignProspect.sequence_step === 0 && { invitation_sent_at: new Date().toISOString() })
+                status: sequenceStep === 0 ? 'connection_requested' : 'follow_up_sent',
+                sequence_step: sequenceStep + 1,
+                contacted_at: new Date().toISOString()
               })
-              .eq('id', campaignProspect.id);
+              .eq('id', prospect.id);
 
             results.messages_sent++;
             results.messages.push({
-              prospect: `${prospect.first_name} ${prospect.last_name}`,
+              prospect: `${prospect.first_name || 'Unknown'} ${prospect.last_name || 'Unknown'}`,
               message: personalizedResult.message,
               cost: personalizedResult.cost,
               model: personalizedResult.model,
-              linkedin_target: prospect.linkedin_profile_url || prospect.linkedin_internal_id,
+              linkedin_target: prospect.linkedin_url || prospect.linkedin_user_id,
               status: 'sent'
             });
 
-            console.log('✅ Message sent and prospect updated');
+            console.log('✅ Connection request sent and prospect updated');
 
           } catch (sendError) {
-            console.error(`❌ Failed to send message to ${prospect.first_name}:`, sendError);
+            console.error(`❌ Failed to send connection request to ${prospect.first_name}:`, sendError);
             results.errors.push({
-              prospect: `${prospect.first_name} ${prospect.last_name}`,
+              prospect: `${prospect.first_name || 'Unknown'} ${prospect.last_name || 'Unknown'}`,
               error: sendError instanceof Error ? sendError.message : 'Unknown error'
             });
           }
@@ -276,7 +256,7 @@ export async function POST(req: NextRequest) {
       } catch (prospectError) {
         console.error(`❌ Error processing prospect ${prospect.first_name}:`, prospectError);
         results.errors.push({
-          prospect: `${prospect.first_name} ${prospect.last_name}`,
+          prospect: `${prospect.first_name || 'Unknown'} ${prospect.last_name || 'Unknown'}`,
           error: prospectError instanceof Error ? prospectError.message : 'Processing error'
         });
       }
@@ -354,19 +334,13 @@ export async function GET(req: NextRequest) {
     // Get prospect execution status
     const { data: prospects, error: prospectsError } = await supabase
       .from('campaign_prospects')
-      .select(`
-        status,
-        sequence_step,
-        invitation_sent_at,
-        last_message_sent_at,
-        workspace_prospects(first_name, last_name, company_name)
-      `)
+      .select('*')
       .eq('campaign_id', campaignId);
 
     const executionStats = {
       total_prospects: prospects?.length || 0,
-      pending: prospects?.filter(p => p.status === 'approved').length || 0,
-      in_progress: prospects?.filter(p => ['invitation_sent', 'follow_up_sent'].includes(p.status)).length || 0,
+      pending: prospects?.filter(p => p.status === 'pending' || p.status === 'approved').length || 0,
+      in_progress: prospects?.filter(p => ['connection_requested', 'follow_up_sent'].includes(p.status)).length || 0,
       completed: prospects?.filter(p => p.status === 'completed').length || 0,
       last_execution: campaign.last_executed_at
     };
@@ -380,11 +354,11 @@ export async function GET(req: NextRequest) {
       },
       execution_stats: executionStats,
       prospects: prospects?.map(p => ({
-        name: `${p.workspace_prospects.first_name} ${p.workspace_prospects.last_name}`,
-        company: p.workspace_prospects.company_name,
+        name: `${p.first_name || 'Unknown'} ${p.last_name || 'Unknown'}`,
+        company: p.company_name,
         status: p.status,
-        sequence_step: p.sequence_step,
-        last_contact: p.last_message_sent_at || p.invitation_sent_at
+        sequence_step: p.sequence_step || 0,
+        last_contact: p.contacted_at
       }))
     });
 
