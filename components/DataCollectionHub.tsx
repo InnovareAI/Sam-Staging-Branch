@@ -3,6 +3,7 @@
 import { Check, ChevronDown, ChevronUp, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star } from 'lucide-react';
 import { toastError, toastSuccess } from '@/lib/toast';
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import ProspectSearchChat from '@/components/ProspectSearchChat';
 import { ProspectData as BaseProspectData } from '@/components/ProspectApprovalModal';
 import React from 'react';
@@ -224,7 +225,9 @@ export default function DataCollectionHub({
   initialUploadedData = []
 }: DataCollectionHubProps) {
   // Initialize with uploaded data from chat only (no dummy data)
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [loadingMessage, setLoadingMessage] = useState<string>('')
   const [workspaceCode, setWorkspaceCode] = useState<string>('CLI')
 
   // Pagination state
@@ -973,6 +976,10 @@ export default function DataCollectionHub({
 
     const selectedProspects = prospectData.filter(p => selectedProspectIds.has(p.id))
 
+    // Show loading state
+    setLoading(true)
+    setLoadingMessage('Saving approved prospects...')
+
     // Optimistic UI update
     setProspectData(prev => prev.map(p =>
       selectedProspectIds.has(p.id) ? { ...p, approvalStatus: 'approved' as const } : p
@@ -998,6 +1005,11 @@ export default function DataCollectionHub({
         }
       }
     }
+
+    // Navigate to Campaign Hub - New Campaigns tab
+    setLoadingMessage('Redirecting to Campaign Hub...')
+    await new Promise(resolve => setTimeout(resolve, 500)) // Brief pause for UX
+    router.push(`/workspace/${workspaceId}/campaign-hub?tab=pending`)
   }
 
   const bulkRejectSelected = async () => {
@@ -1188,6 +1200,24 @@ export default function DataCollectionHub({
 
   return (
     <div>
+      {/* Pulsating Loading Overlay */}
+      {loading && loadingMessage && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-gray-900 border border-purple-500/50 rounded-lg p-8 shadow-2xl">
+            <div className="flex flex-col items-center gap-4">
+              {/* Pulsating purple circle */}
+              <div className="relative">
+                <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full animate-pulse"></div>
+                <div className="absolute inset-0 w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full animate-ping opacity-75"></div>
+              </div>
+              {/* Loading message */}
+              <p className="text-white text-lg font-medium">{loadingMessage}</p>
+              <p className="text-gray-400 text-sm">Please wait...</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-[1400px] mx-auto">
         {/* Prospect Approval Dashboard */}
         <div>
