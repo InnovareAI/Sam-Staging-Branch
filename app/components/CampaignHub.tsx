@@ -2198,6 +2198,13 @@ Would you like me to adjust these or create more variations?`
                       try {
                         toastInfo('SAM is improving your message...');
 
+                        console.log('Improve with SAM - Request:', {
+                          workspaceId,
+                          campaignName: name,
+                          messageLength: connectionMessage.length,
+                          prospectCount: csvData.length
+                        });
+
                         const response = await fetch('/api/sam/generate-templates', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
@@ -2212,26 +2219,33 @@ Would you like me to adjust these or create more variations?`
                           })
                         });
 
+                        console.log('Improve with SAM - Response status:', response.status);
+
                         if (response.ok) {
                           const result = await response.json();
+                          console.log('Improve with SAM - Result:', result);
+
                           if (result.templates?.connection_message) {
                             const improved = result.templates.connection_message;
                             if (improved.length <= 275) {
                               setConnectionMessage(improved);
                               toastSuccess(`Message improved! (${improved.length}/275 characters)`);
                             } else {
-                              toastWarning(`Improved message is ${improved.length} characters. LinkedIn allows max 275. Please shorten it.`);
+                              toastWarning(`Improved message is ${improved.length} characters. Truncating to 275.`);
                               setConnectionMessage(improved.substring(0, 275));
                             }
                           } else {
-                            toastError('Could not extract improved message. Please try again.');
+                            console.error('No connection_message in result:', result);
+                            toastError('Could not extract improved message. Check console for details.');
                           }
                         } else {
-                          toastError('Failed to improve message. Please try again.');
+                          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                          console.error('Improve with SAM - API error:', response.status, errorData);
+                          toastError(`Failed to improve message: ${errorData.error || errorData.details || 'Unknown error'}`);
                         }
                       } catch (error) {
                         console.error('Improve message error:', error);
-                        toastError('Error improving message. Please try again.');
+                        toastError(`Error improving message: ${error instanceof Error ? error.message : 'Unknown error'}`);
                       }
                     }}
                   >
