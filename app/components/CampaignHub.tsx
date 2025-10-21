@@ -3750,6 +3750,22 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         }
       }
 
+      // Mark approval session as completed if prospects came from approval flow
+      const sessionId = finalCampaignData.prospects[0]?.sessionId || initialProspects?.[0]?.sessionId;
+      if (sessionId) {
+        try {
+          await fetch('/api/prospect-approval/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sessionId })
+          });
+          console.log(`✅ Marked approval session ${sessionId} as completed`);
+        } catch (error) {
+          console.error('Failed to complete session:', error);
+          // Don't throw - campaign was created successfully
+        }
+      }
+
       // Reset and close approval screen
       setShowApprovalScreen(false);
       setCampaignDataForApproval(null);

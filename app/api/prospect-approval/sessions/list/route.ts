@@ -71,11 +71,13 @@ export async function GET(request: NextRequest) {
     console.log(`🔍 Fetching sessions for workspace: ${workspaceId}, user: ${user.email}`);
 
     // Fetch sessions - IMPORTANT: Filter by user_id to show only user's own searches
+    // IMPORTANT: Only show 'active' sessions (exclude 'completed' and 'archived')
     const { data: sessions, error: sessionsError } = await supabase
       .from('prospect_approval_sessions')
       .select('*')
       .eq('workspace_id', workspaceId)
       .eq('user_id', user.id) // CRITICAL: Only show user's own sessions, not workspace members'
+      .eq('status', 'active') // Only show active sessions (not completed/archived)
       .order('created_at', { ascending: false });
 
     // Enrich with user info (use admin client to bypass RLS on auth.users)
