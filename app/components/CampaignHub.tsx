@@ -99,6 +99,29 @@ function CampaignList() {
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ campaignId, currentStatus }: { campaignId: string; currentStatus: string }) => {
       const newStatus = currentStatus === 'active' ? 'paused' : 'active';
+
+      // Auto-sync LinkedIn IDs before activating campaign
+      if (newStatus === 'active' && workspaceId) {
+        try {
+          const syncResponse = await fetch('/api/campaigns/sync-linkedin-ids', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              campaignId,
+              workspaceId
+            })
+          });
+
+          if (syncResponse.ok) {
+            const syncResult = await syncResponse.json();
+            console.log(`✅ Auto-synced ${syncResult.resolved || 0} LinkedIn IDs`);
+          }
+        } catch (error) {
+          console.warn('LinkedIn ID sync failed:', error);
+          // Continue with activation anyway
+        }
+      }
+
       const response = await fetch(`/api/campaigns/${campaignId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
