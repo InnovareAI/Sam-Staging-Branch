@@ -3507,6 +3507,21 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const [showCampaignProspects, setShowCampaignProspects] = useState(false);
   const [selectedCampaignForProspects, setSelectedCampaignForProspects] = useState<string | null>(null);
 
+  // Editable campaign settings state
+  const [editedCampaignSettings, setEditedCampaignSettings] = useState<any>({
+    name: '',
+    daily_connection_limit: 15,
+    daily_follow_up_limit: 20,
+    use_priority: true,
+    priority: 'medium',
+    start_immediately: true,
+    scheduled_start: null,
+    allow_same_company: false,
+    allow_duplicate_emails: false,
+    skip_bounced_emails: true
+  });
+  const [campaignSettingsChanged, setCampaignSettingsChanged] = useState(false);
+
   // Campaign cloning state
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
   const [newCampaignName, setNewCampaignName] = useState('');
@@ -4276,7 +4291,92 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     console.log('Opening settings for campaign:', campaignId);
     const campaign = allCampaigns.find((c: any) => c.id === campaignId);
     setSelectedCampaign(campaign || null);
+
+    // Initialize editable settings from campaign data
+    if (campaign) {
+      const execPrefs = campaign.execution_preferences || {};
+      setEditedCampaignSettings({
+        name: campaign.name || '',
+        daily_connection_limit: execPrefs.daily_connection_limit || 15,
+        daily_follow_up_limit: execPrefs.daily_follow_up_limit || 20,
+        use_priority: execPrefs.use_priority !== false,
+        priority: execPrefs.priority || 'medium',
+        start_immediately: execPrefs.start_immediately !== false,
+        scheduled_start: execPrefs.scheduled_start || null,
+        allow_same_company: execPrefs.allow_same_company || false,
+        allow_duplicate_emails: execPrefs.allow_duplicate_emails || false,
+        skip_bounced_emails: execPrefs.skip_bounced_emails !== false
+      });
+      setCampaignSettingsChanged(false);
+    }
+
     setShowCampaignSettings(true);
+  };
+
+  // Handle campaign setting changes
+  const handleCampaignSettingChange = (field: string, value: any) => {
+    setEditedCampaignSettings((prev: any) => ({
+      ...prev,
+      [field]: value
+    }));
+    setCampaignSettingsChanged(true);
+  };
+
+  // Save campaign settings
+  const handleSaveCampaignSettings = async () => {
+    if (!selectedCampaign) return;
+
+    try {
+      const response = await fetch(`/api/campaigns/${selectedCampaign.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editedCampaignSettings.name,
+          execution_preferences: {
+            daily_connection_limit: editedCampaignSettings.daily_connection_limit,
+            daily_follow_up_limit: editedCampaignSettings.daily_follow_up_limit,
+            use_priority: editedCampaignSettings.use_priority,
+            priority: editedCampaignSettings.priority,
+            start_immediately: editedCampaignSettings.start_immediately,
+            scheduled_start: editedCampaignSettings.scheduled_start,
+            allow_same_company: editedCampaignSettings.allow_same_company,
+            allow_duplicate_emails: editedCampaignSettings.allow_duplicate_emails,
+            skip_bounced_emails: editedCampaignSettings.skip_bounced_emails
+          }
+        })
+      });
+
+      if (response.ok) {
+        toastSuccess('Campaign settings saved successfully!');
+        setCampaignSettingsChanged(false);
+
+        // Update local campaign object
+        setSelectedCampaign({
+          ...selectedCampaign,
+          name: editedCampaignSettings.name,
+          execution_preferences: {
+            daily_connection_limit: editedCampaignSettings.daily_connection_limit,
+            daily_follow_up_limit: editedCampaignSettings.daily_follow_up_limit,
+            use_priority: editedCampaignSettings.use_priority,
+            priority: editedCampaignSettings.priority,
+            start_immediately: editedCampaignSettings.start_immediately,
+            scheduled_start: editedCampaignSettings.scheduled_start,
+            allow_same_company: editedCampaignSettings.allow_same_company,
+            allow_duplicate_emails: editedCampaignSettings.allow_duplicate_emails,
+            skip_bounced_emails: editedCampaignSettings.skip_bounced_emails
+          }
+        });
+
+        // Refresh campaigns list
+        queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      } else {
+        const error = await response.json();
+        toastError(`Failed to save settings: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Campaign settings save error:', error);
+      toastError('Failed to save campaign settings');
+    }
   };
   const campaignName = initialProspects?.[0]?.campaignName || initialProspects?.[0]?.campaignTag || 'New Campaign';
 
@@ -5020,11 +5120,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 <p className="text-gray-400 text-sm mb-3">Rename your campaign here for easier campaign management.</p>
                 <input
                   type="text"
-                  defaultValue={selectedCampaign.name}
+                  value={editedCampaignSettings.name}
+                  onChange={(e) => handleCampaignSettingChange('name', e.target.value)}
                   maxLength={100}
                   className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none"
                 />
-                <div className="text-right text-gray-400 text-xs mt-1">Characters: {selectedCampaign.name.length}/100</div>
+                <div className="text-right text-gray-400 text-xs mt-1">Characters: {editedCampaignSettings.name.length}/100</div>
               </div>
 
               {/* Campaign Limits */}
@@ -5043,10 +5144,17 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                         ? 'Set the number of new emails to send daily:'
                         : 'Set the number of new contacts to reach daily:'}
                     </label>
-                    <input type="range" min="0" max="100" defaultValue="15" className="w-full" />
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={editedCampaignSettings.daily_connection_limit}
+                      onChange={(e) => handleCampaignSettingChange('daily_connection_limit', parseInt(e.target.value))}
+                      className="w-full"
+                    />
                     <div className="flex justify-between text-gray-400 text-xs mt-1">
                       <span>0</span>
-                      <span className="text-white font-medium">15</span>
+                      <span className="text-white font-medium">{editedCampaignSettings.daily_connection_limit}</span>
                       <span>100</span>
                     </div>
                   </div>
@@ -5059,10 +5167,17 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                         ? 'Set the number of follow-up emails to send daily:'
                         : 'Set the number of follow-up messages to send daily:'}
                     </label>
-                    <input type="range" min="0" max="100" defaultValue="20" className="w-full" />
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={editedCampaignSettings.daily_follow_up_limit}
+                      onChange={(e) => handleCampaignSettingChange('daily_follow_up_limit', parseInt(e.target.value))}
+                      className="w-full"
+                    />
                     <div className="flex justify-between text-gray-400 text-xs mt-1">
                       <span>0</span>
-                      <span className="text-white font-medium">20</span>
+                      <span className="text-white font-medium">{editedCampaignSettings.daily_follow_up_limit}</span>
                       <span>100</span>
                     </div>
                   </div>
@@ -5075,14 +5190,24 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   <h4 className="text-white font-medium">Campaign Priority</h4>
                   <label className="flex items-center gap-2">
                     <span className="text-gray-300 text-sm">Use priority</span>
-                    <input type="checkbox" defaultChecked className="w-4 h-4 rounded" />
+                    <input
+                      type="checkbox"
+                      checked={editedCampaignSettings.use_priority}
+                      onChange={(e) => handleCampaignSettingChange('use_priority', e.target.checked)}
+                      className="w-4 h-4 rounded"
+                    />
                   </label>
                 </div>
                 <p className="text-gray-400 text-sm mb-3">If enabled, each campaign will have a default priority value "Medium". If a campaign priority is changed to "High" more actions will be scheduled to be sent from it in comparison to campaigns with lower priority.</p>
-                <select className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm">
-                  <option>Medium</option>
-                  <option>High</option>
-                  <option>Low</option>
+                <select
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                  value={editedCampaignSettings.priority}
+                  onChange={(e) => handleCampaignSettingChange('priority', e.target.value)}
+                  disabled={!editedCampaignSettings.use_priority}
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
                 </select>
               </div>
 
@@ -5092,7 +5217,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   <h4 className="text-white font-medium">Schedule campaign</h4>
                   <label className="flex items-center gap-2">
                     <span className="text-gray-300 text-sm">Start immediately</span>
-                    <input type="checkbox" defaultChecked className="w-4 h-4 rounded" />
+                    <input
+                      type="checkbox"
+                      checked={editedCampaignSettings.start_immediately}
+                      onChange={(e) => handleCampaignSettingChange('start_immediately', e.target.checked)}
+                      className="w-4 h-4 rounded"
+                    />
                   </label>
                 </div>
                 <p className="text-gray-400 text-sm mb-3">
@@ -5102,7 +5232,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 </p>
                 <input
                   type="datetime-local"
-                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                  value={editedCampaignSettings.scheduled_start || ''}
+                  onChange={(e) => handleCampaignSettingChange('scheduled_start', e.target.value)}
+                  disabled={editedCampaignSettings.start_immediately}
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <p className="text-gray-400 text-xs mt-2">Times are set according to the time zone US/Mountain (GMT -0600), which can also be set from the <span className="text-purple-400">account settings</span>.</p>
               </div>
@@ -5114,7 +5247,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   <>
                     <p className="text-gray-400 text-sm mb-3">Override and allow outreaching to LinkedIn profiles from the same company</p>
                     <label className="flex items-center gap-3">
-                      <input type="checkbox" className="w-4 h-4 rounded" />
+                      <input
+                        type="checkbox"
+                        checked={editedCampaignSettings.allow_same_company}
+                        onChange={(e) => handleCampaignSettingChange('allow_same_company', e.target.checked)}
+                        className="w-4 h-4 rounded"
+                      />
                       <span className="text-white text-sm">Override LinkedIn profiles</span>
                     </label>
                     <p className="text-gray-400 text-xs mt-2">Enable duplicating leads between company campaigns</p>
@@ -5123,11 +5261,21 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   <>
                     <p className="text-gray-400 text-sm mb-3">Email campaign prospect settings</p>
                     <label className="flex items-center gap-3 mb-2">
-                      <input type="checkbox" className="w-4 h-4 rounded" />
+                      <input
+                        type="checkbox"
+                        checked={editedCampaignSettings.allow_duplicate_emails}
+                        onChange={(e) => handleCampaignSettingChange('allow_duplicate_emails', e.target.checked)}
+                        className="w-4 h-4 rounded"
+                      />
                       <span className="text-white text-sm">Allow duplicate email addresses</span>
                     </label>
                     <label className="flex items-center gap-3">
-                      <input type="checkbox" className="w-4 h-4 rounded" defaultChecked />
+                      <input
+                        type="checkbox"
+                        checked={editedCampaignSettings.skip_bounced_emails}
+                        onChange={(e) => handleCampaignSettingChange('skip_bounced_emails', e.target.checked)}
+                        className="w-4 h-4 rounded"
+                      />
                       <span className="text-white text-sm">Skip bounced emails</span>
                     </label>
                     <p className="text-gray-400 text-xs mt-2">Automatically skip previously bounced email addresses</p>
@@ -5263,9 +5411,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
             <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-700">
               <button
-                onClick={handleSaveSettings}
+                onClick={handleSaveCampaignSettings}
                 className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={!settingsChanged}
+                disabled={!campaignSettingsChanged}
               >
                 Save
               </button>
