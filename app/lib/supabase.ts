@@ -9,25 +9,14 @@ function getSupabaseConfig() {
   return { supabaseUrl, supabaseAnonKey, supabaseServiceKey };
 }
 
-// Utility to clean cookie values - removes base64- prefix and decodes if needed
+// Utility to clean cookie values - ONLY clean if truly corrupted
+// Valid cookies with base64- prefix should be kept as-is
 function cleanCookieValue(value: string): string {
   if (!value) return value;
 
-  // If value starts with "base64-", it's corrupted
-  if (value.startsWith('base64-')) {
-    try {
-      // Remove prefix and try to decode
-      const base64Value = value.substring(7);
-      const decoded = atob(base64Value);
-      console.log('🔧 Fixed corrupted cookie (decoded base64)');
-      return decoded;
-    } catch (e) {
-      // If decode fails, just remove prefix
-      console.log('🔧 Fixed corrupted cookie (removed prefix)');
-      return value.substring(7);
-    }
-  }
-
+  // IMPORTANT: base64- prefix is NOT always corruption
+  // Only "clean" if the value is malformed and can't be used
+  // In most cases, we should return the value as-is
   return value;
 }
 
@@ -52,18 +41,30 @@ export function createClient() {
       });
 
       // 2. Clean corrupted cookies BEFORE Supabase tries to read them
+      // IMPORTANT: Only delete cookies that are ACTUALLY corrupted (malformed, can't be decoded)
+      // DO NOT delete valid session cookies that happen to have base64- prefix
       const allCookies = document.cookie.split(';');
       allCookies.forEach(cookie => {
         const [name, ...valueParts] = cookie.trim().split('=');
         const value = valueParts.join('=');
 
-        // If this is a Supabase cookie with base64- prefix, DELETE it
-        if ((name.includes('supabase') || name.includes('sb-')) && value.startsWith('base64-')) {
-          console.log(`🔧 Deleting corrupted cookie: ${name}`);
-          // Delete by setting expiry to past
-          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
-          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname}`;
+        // Only check Supabase cookies
+        if (name.includes('supabase') || name.includes('sb-')) {
+          // If value starts with "base64-", try to decode it
+          if (value.startsWith('base64-')) {
+            try {
+              const base64Value = value.substring(7);
+              // Try to decode - if this throws, it's truly corrupted
+              atob(base64Value);
+              // If we get here, it decoded successfully - it's a VALID cookie, keep it
+            } catch (e) {
+              // Only delete if we can't decode it - it's truly corrupted
+              console.log(`🔧 Deleting corrupted cookie (failed to decode): ${name}`);
+              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
+              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname}`;
+            }
+          }
         }
       });
     } catch (e) {
@@ -84,12 +85,9 @@ export function createClient() {
           },
           setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) => {
-              // NEVER write base64- prefix - clean before writing
-              const cleanValue = value && value.startsWith('base64-')
-                ? value.substring(7)
-                : value;
-
-              let cookie = `${name}=${cleanValue}`;
+              // Write cookies as-is - don't modify the value
+              // Supabase knows how to handle its own cookie format
+              let cookie = `${name}=${value}`;
               if (options?.path) cookie += `; path=${options.path}`;
               if (options?.maxAge) cookie += `; max-age=${options.maxAge}`;
               if (options?.domain) cookie += `; domain=${options.domain}`;
