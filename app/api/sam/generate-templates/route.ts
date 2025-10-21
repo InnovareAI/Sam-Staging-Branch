@@ -88,12 +88,126 @@ async function generateLinkedInTemplates(context: any) {
   const jobTitles = [...new Set(prospects.map((p: any) => p.job_title || p.title).filter(Boolean))];
   const companies = [...new Set(prospects.map((p: any) => p.company_name || p.company).filter(Boolean))];
 
-  // Analyze user intent
+  // Build context for LLM
+  const kbContextStr = kbContext.length > 0
+    ? `\n\nKnowledge Base Context:\n${kbContext.map((kb: any) => `- ${kb.title}: ${kb.content}`).join('\n')}`
+    : '';
+
+  const prospectContextStr = prospects.length > 0
+    ? `\n\nProspect Sample:\n${prospects.slice(0, 3).map((p: any) => `- ${p.title || p.job_title || 'Unknown'} at ${p.company || p.company_name || 'Unknown Company'}`).join('\n')}`
+    : '';
+
+  const conversationStr = context.conversation && context.conversation.length > 0
+    ? `\n\nPrevious conversation:\n${context.conversation.map((msg: any) => `${msg.role}: ${msg.content}`).join('\n')}`
+    : '';
+
+  // Call OpenRouter AI for intelligent template generation
+  try {
+    const prompt = `You are SAM, an expert LinkedIn messaging strategist. Generate compelling LinkedIn campaign templates based on the following context:
+
+**Campaign Details:**
+- Campaign Name: ${context.campaign.name}
+- Campaign Type: ${context.campaign.type === 'connector' ? 'Connector (2nd/3rd degree connections - needs connection request)' : 'Messenger (1st degree connections - direct messages only)'}
+- Number of Prospects: ${context.campaign.prospect_count}
+
+**Prospect Profile:**${prospectContextStr}
+- Industries: ${industries.join(', ') || 'Not specified'}
+- Job Titles: ${jobTitles.join(', ') || 'Not specified'}${kbContextStr}${conversationStr}
+
+**User Request:** ${context.user_request}
+
+**Instructions:**
+${context.campaign.type === 'connector'
+  ? `1. Generate a CONNECTION REQUEST message (max 275 characters) - this is sent with the connection request
+2. Generate an ALTERNATIVE MESSAGE (max 115 characters) - for prospects already connected
+3. Generate 2-3 FOLLOW-UP messages - sent after connection is accepted`
+  : `1. Generate an INITIAL MESSAGE - direct message for 1st degree connections
+2. Generate 2-3 FOLLOW-UP messages - sent if no response`}
+
+**Template Requirements:**
+- Use personalization variables: {first_name}, {last_name}, {company_name}, {title}, {industry}
+- Be concise, professional, and value-focused
+- Avoid overly salesy language
+- Focus on genuine connection and value exchange
+- Match the tone requested by the user
+
+**Output Format:**
+Provide templates in this EXACT format:
+
+**Connection Request Message:**
+"[Your connection request here]"
+
+**Alternative Message:**
+"[Your alternative message here]"
+
+**Follow-up Message 1:**
+"[Your first follow-up here]"
+
+**Follow-up Message 2:**
+"[Your second follow-up here]"
+
+Then provide a brief explanation of your template strategy.`;
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-3.5-sonnet',
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000
+      })
+    });
+
+    if (!response.ok) {
+      console.error('OpenRouter API error:', await response.text());
+      throw new Error('Failed to generate templates with AI');
+    }
+
+    const aiResult = await response.json();
+    const aiResponse = aiResult.choices[0].message.content;
+
+    // Parse the AI response to extract templates
+    return parseAITemplates(aiResponse, context.campaign.type);
+
+  } catch (error) {
+    console.error('AI generation failed, falling back to rule-based:', error);
+    // Fallback to original rule-based generation
+    return generateFallbackTemplates(context, industries, jobTitles, companies, kbContext);
+  }
+}
+
+function parseAITemplates(aiResponse: string, campaignType: string) {
+  // Extract connection message
+  const connectionMatch = aiResponse.match(/\*\*Connection Request Message:\*\*\s*\n?"([^"]+)"/i);
+  const connectionMessage = connectionMatch ? connectionMatch[1].trim() : '';
+
+  // Extract alternative message
+  const altMatch = aiResponse.match(/\*\*Alternative Message:\*\*\s*\n?"([^"]+)"/i);
+  const alternativeMessage = altMatch ? altMatch[1].trim() : '';
+
+  // Extract follow-up messages
+  const followUpMatches = [...aiResponse.matchAll(/\*\*Follow-up Message \d+:\*\*\s*\n?"([^"]+)"/gi)];
+  const followUpMessages = followUpMatches.map(match => match[1].trim());
+
+  return {
+    response: aiResponse,
+    connection_message: connectionMessage,
+    alternative_message: alternativeMessage,
+    follow_up_messages: followUpMessages
+  };
+}
+
+function generateFallbackTemplates(context: any, industries: string[], jobTitles: string[], companies: string[], kbContext: any[]) {
+  // Original hardcoded logic as fallback
   const userInput = context.user_request.toLowerCase();
   const isLeadGen = userInput.includes('lead') || userInput.includes('sale') || userInput.includes('revenue');
   const isNetworking = userInput.includes('network') || userInput.includes('connect') || userInput.includes('relationship');
-  const isPartnership = userInput.includes('partner') || userInput.includes('collaborat');
-  const isRecruiting = userInput.includes('recruit') || userInput.includes('hire') || userInput.includes('talent');
 
   // Determine tone
   let tone = 'professional';
