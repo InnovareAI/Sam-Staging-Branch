@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Workspace ID required' }, { status: 400 });
     }
 
-    // Get campaigns for this workspace
+    // Get campaigns for this workspace with prospect counts
     const { data: campaigns, error } = await supabase
       .from('campaigns')
       .select(`
@@ -27,10 +27,13 @@ export async function GET(req: NextRequest) {
         name,
         description,
         campaign_type,
+        type,
         status,
         launched_at,
         created_at,
-        message_templates
+        updated_at,
+        message_templates,
+        execution_preferences
       `)
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false });
@@ -40,7 +43,41 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch campaigns' }, { status: 500 });
     }
 
-    return NextResponse.json({ campaigns });
+    // Enrich campaigns with prospect counts and metrics
+    const enrichedCampaigns = await Promise.all(campaigns.map(async (campaign: any) => {
+      // Get prospect count
+      const { count: prospectCount } = await supabase
+        .from('campaign_prospects')
+        .select('*', { count: 'exact', head: true })
+        .eq('campaign_id', campaign.id);
+
+      // Get message stats
+      const { data: messages } = await supabase
+        .from('campaign_messages')
+        .select('id, status')
+        .eq('campaign_id', campaign.id);
+
+      const sent = messages?.length || 0;
+      const connected = messages?.filter((m: any) => m.status === 'accepted' || m.status === 'connected').length || 0;
+
+      // Get reply count
+      const { count: replyCount } = await supabase
+        .from('campaign_replies')
+        .select('*', { count: 'exact', head: true })
+        .eq('campaign_id', campaign.id);
+
+      return {
+        ...campaign,
+        type: campaign.campaign_type || campaign.type, // Use campaign_type as type for consistency
+        prospects: prospectCount || 0,
+        sent: sent,
+        connections: connected,
+        replies: replyCount || 0,
+        response_rate: sent > 0 ? ((replyCount || 0) / sent * 100).toFixed(1) : 0
+      };
+    }));
+
+    return NextResponse.json({ campaigns: enrichedCampaigns });
 
   } catch (error: any) {
     console.error('Campaign fetch error:', error);
