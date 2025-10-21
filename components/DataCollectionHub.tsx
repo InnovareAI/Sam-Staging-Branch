@@ -1006,17 +1006,16 @@ export default function DataCollectionHub({
       }
     }
 
-    // Navigate to Campaign Hub - New Campaigns tab
+    // Navigate to Campaign Hub
     setLoadingMessage('Redirecting to Campaign Hub...')
     await new Promise(resolve => setTimeout(resolve, 500)) // Brief pause for UX
 
-    // Redirect to Campaign Hub with pending tab
-    // Use workspace ID to navigate to correct workspace
+    // Redirect to Campaign Hub - user can click the tab themselves
     if (workspaceId) {
-      router.push(`/workspace/${workspaceId}/campaign-hub?tab=pending`)
+      router.push(`/workspace/${workspaceId}/campaign-hub`)
     } else {
       // Fallback to demo if no workspace ID
-      router.push(`/demo/campaign-hub?tab=pending`)
+      router.push(`/demo/campaign-hub`)
     }
   }
 
