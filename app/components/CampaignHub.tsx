@@ -1668,7 +1668,7 @@ Would you like me to adjust these or create more variations?`
   
   return (
     <>
-    <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+    <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
           <Plus className="text-blue-400 mr-3" size={24} />
