@@ -2193,12 +2193,46 @@ Would you like me to adjust these or create more variations?`
                     variant="secondary"
                     size="sm"
                     className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
-                    onClick={() => {
-                      setSamMessages([{
-                        role: 'assistant',
-                        content: `Hi! I'll help you improve your connection message.\n\n**Current Message:**\n"${connectionMessage}"\n\nWhat would you like me to improve? I can help with:\n- Making it more engaging\n- Adding personalization\n- Improving tone\n- Shortening or expanding it\n\nTell me what you'd like to change!`
-                      }]);
-                      setShowSamGenerationModal(true);
+                    onClick={async () => {
+                      // Call SAM API directly to improve the message
+                      try {
+                        toastInfo('SAM is improving your message...');
+
+                        const response = await fetch('/api/sam/generate-templates', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            workspace_id: workspaceId,
+                            campaign_name: name,
+                            campaign_type: 'connector',
+                            prospect_count: csvData.length,
+                            user_input: `Please improve this connection request message. Keep it under 275 characters and maintain personalization placeholders like {first_name}, {company_name}, etc.\n\nCurrent message (${connectionMessage.length} chars):\n"${connectionMessage}"\n\nMake it more engaging while staying professional and concise.`,
+                            conversation_history: [],
+                            prospect_sample: csvData.slice(0, 3)
+                          })
+                        });
+
+                        if (response.ok) {
+                          const result = await response.json();
+                          if (result.templates?.connection_message) {
+                            const improved = result.templates.connection_message;
+                            if (improved.length <= 275) {
+                              setConnectionMessage(improved);
+                              toastSuccess(`Message improved! (${improved.length}/275 characters)`);
+                            } else {
+                              toastWarning(`Improved message is ${improved.length} characters. LinkedIn allows max 275. Please shorten it.`);
+                              setConnectionMessage(improved.substring(0, 275));
+                            }
+                          } else {
+                            toastError('Could not extract improved message. Please try again.');
+                          }
+                        } else {
+                          toastError('Failed to improve message. Please try again.');
+                        }
+                      } catch (error) {
+                        console.error('Improve message error:', error);
+                        toastError('Error improving message. Please try again.');
+                      }
                     }}
                   >
                     <Zap size={12} className="mr-1" />
