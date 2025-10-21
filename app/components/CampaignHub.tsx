@@ -4250,7 +4250,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   return (
     <div className="h-full bg-gradient-to-br from-gray-900 via-gray-800 to-purple-900/20 p-6 relative overflow-hidden">
       {/* Floating background elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
           animate={{
             y: [-10, 10, -10],
