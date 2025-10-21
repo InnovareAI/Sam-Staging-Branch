@@ -4372,7 +4372,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
         {/* Campaign List with Tabs */}
         {!showBuilder && !showApprovalScreen && (!isAutoCreateMode || showFullFeatures) && (
-          <div className="bg-gray-800 rounded-lg border border-gray-700">
+          <div className="bg-gray-900 rounded-lg border border-gray-700">
             {/* Status Tabs */}
             <div className="flex border-b border-gray-700">
               <button
@@ -5193,7 +5193,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             </div>
 
             <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-700">
-              <button className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium">
+              <button
+                onClick={handleSaveSettings}
+                className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!settingsChanged}
+              >
                 Save
               </button>
             </div>
