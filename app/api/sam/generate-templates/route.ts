@@ -103,6 +103,18 @@ async function generateLinkedInTemplates(context: any) {
 
   // Call OpenRouter AI for intelligent template generation
   try {
+    console.log('🤖 Generating templates with AI for campaign:', context.campaign.name);
+    console.log('📊 Context:', {
+      campaignType: context.campaign.type,
+      prospectCount: context.campaign.prospect_count,
+      hasKB: kbContext.length > 0
+    });
+
+    if (!process.env.OPENROUTER_API_KEY) {
+      console.error('❌ OPENROUTER_API_KEY is not set - falling back to rule-based generation');
+      throw new Error('OpenRouter API key not configured');
+    }
+
     const prompt = `You are SAM, an expert LinkedIn messaging strategist. Generate compelling LinkedIn campaign templates based on the following context:
 
 **Campaign Details:**
@@ -165,18 +177,35 @@ Then provide a brief explanation of your template strategy.`;
     });
 
     if (!response.ok) {
-      console.error('OpenRouter API error:', await response.text());
-      throw new Error('Failed to generate templates with AI');
+      const errorText = await response.text();
+      console.error('❌ OpenRouter API error:', response.status, errorText);
+      throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
     }
 
     const aiResult = await response.json();
+    console.log('✅ OpenRouter API response received');
+
+    if (!aiResult.choices || !aiResult.choices[0] || !aiResult.choices[0].message) {
+      console.error('❌ Invalid AI response structure:', aiResult);
+      throw new Error('Invalid response from OpenRouter API');
+    }
+
     const aiResponse = aiResult.choices[0].message.content;
+    console.log('📝 AI generated response length:', aiResponse.length);
 
     // Parse the AI response to extract templates
-    return parseAITemplates(aiResponse, context.campaign.type);
+    const parsedTemplates = parseAITemplates(aiResponse, context.campaign.type);
+    console.log('✅ Templates parsed successfully:', {
+      hasConnectionMsg: !!parsedTemplates.connection_message,
+      hasAltMsg: !!parsedTemplates.alternative_message,
+      followUpCount: parsedTemplates.follow_up_messages.length
+    });
+
+    return parsedTemplates;
 
   } catch (error) {
-    console.error('AI generation failed, falling back to rule-based:', error);
+    console.error('❌ AI generation failed, falling back to rule-based:', error);
+    console.log('⚠️  Using fallback template generation');
     // Fallback to original rule-based generation
     return generateFallbackTemplates(context, industries, jobTitles, companies, kbContext);
   }
