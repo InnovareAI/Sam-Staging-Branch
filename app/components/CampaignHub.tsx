@@ -5395,7 +5395,18 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                           // If activating, also execute the campaign
                           if (newStatus === 'active') {
                             try {
-                              const execResponse = await fetch('/api/campaigns/linkedin/execute-direct', {
+                              // Determine execution endpoint based on campaign type
+                              let executeEndpoint = '/api/campaigns/linkedin/execute-direct'; // Default for messenger
+
+                              if (selectedCampaign.campaign_type === 'connector') {
+                                executeEndpoint = '/api/campaigns/linkedin/execute-live';
+                              } else if (selectedCampaign.campaign_type === 'email') {
+                                executeEndpoint = '/api/campaigns/email/execute';
+                              }
+
+                              console.log(`Executing ${selectedCampaign.campaign_type || 'messenger'} campaign via ${executeEndpoint}`);
+
+                              const execResponse = await fetch(executeEndpoint, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
