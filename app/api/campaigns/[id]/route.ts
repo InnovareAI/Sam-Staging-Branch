@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/app/lib/supabase/server';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createClient();
+    const supabase = await createSupabaseRouteClient();
     
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -63,7 +63,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createClient();
+    const supabase = await createSupabaseRouteClient();
 
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -169,7 +169,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createClient();
+    const supabase = await createSupabaseRouteClient();
     
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
