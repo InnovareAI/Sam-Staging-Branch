@@ -3467,6 +3467,26 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     refetchOnWindowFocus: true,
   });
 
+  // REACT QUERY: Fetch all campaigns (active, inactive, archived)
+  const { data: allCampaigns = [], isLoading: loadingAllCampaigns } = useQuery({
+    queryKey: ['campaigns', workspaceId],
+    queryFn: async () => {
+      if (!workspaceId) return [];
+
+      const response = await fetch('/api/campaigns');
+      if (!response.ok) {
+        console.error('Failed to load campaigns:', response.statusText);
+        return [];
+      }
+
+      const result = await response.json();
+      return result.campaigns || [];
+    },
+    enabled: campaignFilter === 'active' || campaignFilter === 'inactive' || campaignFilter === 'archived',
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchOnWindowFocus: true,
+  });
+
   // Load approval messages when approval tab is selected
   useEffect(() => {
     if (campaignFilter === 'approval' && approvalMessages.pending.length === 0) {
@@ -4243,82 +4263,18 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   // Check if we're in "auto-create mode" (prospects from approval)
   const isAutoCreateMode = initialProspects && initialProspects.length > 0 && showBuilder;
 
-  // Mock campaigns data (use the same from CampaignList component)
-  const mockCampaigns = [
-    {
-      id: '1',
-      name: 'Q4 SaaS Outreach',
-      status: 'active',
-      type: 'connector',
-      prospects: 145,
-      sent: 92,
-      replies: 23,
-      connections: 67,
-      response_rate: 25.0,
-      created_at: new Date().toISOString()
-    },
-    {
-      id: '2',
-      name: 'Holiday Networking Campaign',
-      status: 'active',
-      type: 'messenger',
-      prospects: 234,
-      sent: 189,
-      replies: 41,
-      connections: 78,
-      response_rate: 21.7,
-      created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: '3',
-      name: 'Company Page Growth',
-      status: 'active',
-      type: 'company_follow',
-      prospects: 456,
-      sent: 423,
-      replies: 89,
-      connections: 356,
-      response_rate: 21.0,
-      created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: '4',
-      name: 'Inbound Lead Follow-up',
-      status: 'active',
-      type: 'inbound',
-      prospects: 67,
-      sent: 67,
-      replies: 28,
-      connections: 0,
-      response_rate: 41.8,
-      created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: '5',
-      name: 'Email Newsletter Campaign',
-      status: 'completed',
-      type: 'email',
-      prospects: 1023,
-      sent: 1023,
-      replies: 156,
-      connections: 0,
-      response_rate: 15.2,
-      created_at: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
-    }
-  ];
-
   // Filter campaigns based on selected tab
-  const filteredCampaigns = mockCampaigns.filter(c => {
+  const filteredCampaigns = allCampaigns.filter((c: any) => {
     if (campaignFilter === 'active') return c.status === 'active' || c.status === 'paused';
     if (campaignFilter === 'inactive') return c.status === 'inactive'; // Show campaigns ready to activate
-    if (campaignFilter === 'archived') return c.status === 'completed';
+    if (campaignFilter === 'archived') return c.status === 'completed' || c.status === 'archived';
     return true;
   });
 
   // Handle campaign action menu (open settings)
   const handleCampaignAction = (campaignId: string) => {
     console.log('Opening settings for campaign:', campaignId);
-    const campaign = mockCampaigns.find(c => c.id === campaignId);
+    const campaign = allCampaigns.find((c: any) => c.id === campaignId);
     setSelectedCampaign(campaign || null);
     setShowCampaignSettings(true);
   };
