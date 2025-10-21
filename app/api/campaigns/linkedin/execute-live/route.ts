@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import CostControlledPersonalization from '@/lib/llm/cost-controlled-personalization';
 
 // MCP tools for LinkedIn execution
@@ -33,7 +33,7 @@ interface LinkedInAccount {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createSupabaseRouteClient();
     
     // Authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -300,7 +300,7 @@ export async function POST(req: NextRequest) {
 // GET endpoint for campaign status and execution history
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createSupabaseRouteClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
