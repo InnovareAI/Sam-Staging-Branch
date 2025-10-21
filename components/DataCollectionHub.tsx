@@ -1009,7 +1009,9 @@ export default function DataCollectionHub({
     // Navigate to Campaign Hub - New Campaigns tab
     setLoadingMessage('Redirecting to Campaign Hub...')
     await new Promise(resolve => setTimeout(resolve, 500)) // Brief pause for UX
-    router.push(`/workspace/${workspaceId}/campaign-hub?tab=pending`)
+
+    // Redirect to Campaign Hub with pending tab
+    router.push(`/demo/campaign-hub?tab=pending`)
   }
 
   const bulkRejectSelected = async () => {
