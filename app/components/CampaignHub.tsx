@@ -4325,7 +4325,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const campaignName = initialProspects?.[0]?.campaignName || initialProspects?.[0]?.campaignTag || 'New Campaign';
 
   return (
-    <div className="h-full bg-gray-900 p-6">
+    <div className="h-full bg-gray-900">
       {/* Main Campaign Hub Content - Full Width */}
       <div className="h-full overflow-y-auto">
       {/* Header - Different for auto-create mode */}
