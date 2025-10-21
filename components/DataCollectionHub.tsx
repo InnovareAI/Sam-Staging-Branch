@@ -1258,7 +1258,7 @@ export default function DataCollectionHub({
           </div>
 
           {/* Add Prospects Section - CSV, Copy/Paste, LinkedIn URL */}
-          <div className="border-b border-gray-700 px-6 py-4 bg-gray-900">
+          <div className="border-b border-gray-700 px-6 py-4">
         <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Add Prospects</h3>
         <div className="flex items-center space-x-2">
           {/* CSV Upload */}
