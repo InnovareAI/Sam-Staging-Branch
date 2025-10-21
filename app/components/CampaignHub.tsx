@@ -5425,7 +5425,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                               }
                             } catch (execError) {
                               console.error('Campaign execution error:', execError);
-                              toastWarning('Campaign activated but execution status unknown');
+                              const errorMessage = execError instanceof Error ? execError.message : String(execError);
+                              toastError(`Campaign activation failed: ${errorMessage}`);
                             }
                           }
                         } else {
