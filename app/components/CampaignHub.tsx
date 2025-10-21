@@ -4248,38 +4248,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const campaignName = initialProspects?.[0]?.campaignName || initialProspects?.[0]?.campaignTag || 'New Campaign';
 
   return (
-    <div className="h-full bg-gradient-to-br from-gray-900 via-gray-800 to-purple-900/20 p-6 relative overflow-hidden">
-      {/* Floating background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          animate={{
-            y: [-10, 10, -10],
-            rotate: [0, 5, 0]
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className="absolute -top-20 -left-20 w-96 h-96 bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-full blur-3xl"
-        />
-        <motion.div
-          animate={{
-            y: [10, -10, 10],
-            rotate: [0, -5, 0]
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 2
-          }}
-          className="absolute -bottom-20 -right-20 w-96 h-96 bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-full blur-3xl"
-        />
-      </div>
-
+    <div className="h-full bg-gray-900 p-6">
       {/* Main Campaign Hub Content - Full Width */}
-      <div className="h-full overflow-y-auto relative z-10">
+      <div className="h-full overflow-y-auto">
       {/* Header - Different for auto-create mode */}
       {isAutoCreateMode ? (
         <motion.div
