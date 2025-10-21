@@ -1011,7 +1011,13 @@ export default function DataCollectionHub({
     await new Promise(resolve => setTimeout(resolve, 500)) // Brief pause for UX
 
     // Redirect to Campaign Hub with pending tab
-    router.push(`/demo/campaign-hub?tab=pending`)
+    // Use workspace ID to navigate to correct workspace
+    if (workspaceId) {
+      router.push(`/workspace/${workspaceId}/campaign-hub?tab=pending`)
+    } else {
+      // Fallback to demo if no workspace ID
+      router.push(`/demo/campaign-hub?tab=pending`)
+    }
   }
 
   const bulkRejectSelected = async () => {
