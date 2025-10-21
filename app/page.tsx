@@ -1153,6 +1153,19 @@ export default function Page() {
     }
   }, []);
 
+  // Check for section URL parameter (e.g., ?section=campaign)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const section = urlParams.get('section');
+      if (section) {
+        setActiveMenuItem(section);
+        // Clean up URL to remove the parameter
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
+
   // Load persisted data on component mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
