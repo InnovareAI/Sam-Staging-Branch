@@ -75,10 +75,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Execute the campaign (send to N8N or execute directly)
+    // Execute the campaign based on campaign type
     try {
+      // Determine execution endpoint based on campaign type
+      let executeEndpoint = '/api/campaigns/linkedin/execute-direct' // Default for messenger campaigns
+
+      if (campaign.campaign_type === 'connector') {
+        // Connector campaigns send connection requests (for 2nd/3rd degree)
+        executeEndpoint = '/api/campaigns/linkedin/execute-live'
+      } else if (campaign.campaign_type === 'email') {
+        executeEndpoint = '/api/campaigns/email/execute'
+      }
+
+      console.log(`Executing ${campaign.campaign_type || 'messenger'} campaign via ${executeEndpoint}`)
+
       const executeResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/campaigns/linkedin/execute-direct`,
+        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}${executeEndpoint}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -90,11 +102,31 @@ export async function POST(request: NextRequest) {
       )
 
       if (!executeResponse.ok) {
-        console.warn('Campaign execution failed, but campaign is still activated')
+        const errorData = await executeResponse.json().catch(() => ({}))
+        console.error('Campaign execution failed:', errorData)
+
+        // Return the execution error to the user
+        return NextResponse.json({
+          success: false,
+          error: `Campaign activated but execution failed: ${errorData.error || 'Unknown error'}`,
+          campaign: {
+            id: campaign.id,
+            name: campaign.name,
+            status: 'active'
+          }
+        }, { status: 200 }) // Still 200 because activation succeeded
       }
     } catch (executeError) {
       console.error('Campaign execution error:', executeError)
-      // Don't fail the activation if execution fails - campaign is still activated
+      return NextResponse.json({
+        success: false,
+        error: `Campaign activated but execution failed: ${executeError instanceof Error ? executeError.message : 'Unknown error'}`,
+        campaign: {
+          id: campaign.id,
+          name: campaign.name,
+          status: 'active'
+        }
+      }, { status: 200 })
     }
 
     return NextResponse.json({
