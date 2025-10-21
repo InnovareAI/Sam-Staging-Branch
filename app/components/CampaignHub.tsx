@@ -1472,8 +1472,8 @@ Would you like me to adjust these or create more variations?`
     if (initialProspects && initialProspects.length > 0) {
       // Use initialProspects from Data Approval
       prospects = initialProspects.map(prospect => ({
-        firstName: prospect.name?.split(' ')[0] || '',
-        lastName: prospect.name?.split(' ').slice(1).join(' ') || '',
+        firstName: prospect.first_name || prospect.name?.split(' ')[0] || '',
+        lastName: prospect.last_name || prospect.name?.split(' ').slice(1).join(' ') || '',
         email: prospect.email,
         company: prospect.company,
         title: prospect.title,
