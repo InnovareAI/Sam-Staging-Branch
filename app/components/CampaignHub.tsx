@@ -3286,7 +3286,7 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
                   className="flex-1 bg-gray-600 border-gray-500 text-white"
                 />
                 <Button onClick={sendSamMessage} disabled={isGeneratingTemplates || !samInput.trim()} className="bg-purple-600 hover:bg-purple-700">
-                  Send
+                  Submit
                 </Button>
               </div>
             </div>
