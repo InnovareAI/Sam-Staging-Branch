@@ -37,8 +37,9 @@ export function createClient() {
 
   // Only use cookie-based auth in browser
   if (typeof window !== 'undefined') {
-    // CRITICAL: Clean corrupted localStorage on initialization
+    // CRITICAL: Clean corrupted localStorage AND cookies on initialization
     try {
+      // 1. Clean localStorage
       const storageKeys = Object.keys(localStorage);
       storageKeys.forEach(key => {
         if (key.includes('supabase') || key.includes('sb-')) {
@@ -49,8 +50,24 @@ export function createClient() {
           }
         }
       });
+
+      // 2. Clean corrupted cookies BEFORE Supabase tries to read them
+      const allCookies = document.cookie.split(';');
+      allCookies.forEach(cookie => {
+        const [name, ...valueParts] = cookie.trim().split('=');
+        const value = valueParts.join('=');
+
+        // If this is a Supabase cookie with base64- prefix, DELETE it
+        if ((name.includes('supabase') || name.includes('sb-')) && value.startsWith('base64-')) {
+          console.log(`🔧 Deleting corrupted cookie: ${name}`);
+          // Delete by setting expiry to past
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname}`;
+        }
+      });
     } catch (e) {
-      console.warn('Could not clean localStorage:', e);
+      console.warn('Could not clean storage/cookies:', e);
     }
 
     return createBrowserSupabaseClient(
