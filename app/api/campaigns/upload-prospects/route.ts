@@ -62,10 +62,10 @@ export async function POST(req: NextRequest) {
         const prospectData = {
           campaign_id: campaign_id,
           workspace_id: campaign.workspace_id,
-          first_name: prospect.first_name || prospect.name?.split(' ')[0] || '',
-          last_name: prospect.last_name || prospect.name?.split(' ').slice(1).join(' ') || '',
+          first_name: prospect.first_name || (prospect.name ? prospect.name.split(' ')[0] : ''),
+          last_name: prospect.last_name || (prospect.name ? prospect.name.split(' ').slice(1).join(' ') : ''),
           email: prospect.email || prospect.email_address,
-          company_name: prospect.company || prospect.company_name,
+          company_name: prospect.company_name || prospect.company,
           title: prospect.title || prospect.job_title,
           linkedin_url: prospect.linkedin_url || prospect.linkedin_profile_url,
           linkedin_user_id: prospect.linkedin_user_id,

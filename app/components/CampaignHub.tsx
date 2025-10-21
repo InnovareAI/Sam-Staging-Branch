@@ -395,20 +395,30 @@ function CampaignBuilder({
             // Filter only approved prospects
             const approved = prospectsData.prospects
               .filter((p: any) => p.approval_status === 'approved')
-              .map((p: any) => ({
-                id: p.prospect_id,
-                name: p.name,
-                title: p.title || '',
-                company: p.company?.name || p.company || '',
-                email: p.contact?.email || '',
-                linkedin_url: p.contact?.linkedin_url || '',
-                phone: p.contact?.phone || '',
-                industry: p.company?.industry || '',
-                location: p.location || '',
-                sessionId: session.id,
-                campaignName: session.campaign_name || 'Untitled',
-                source: p.source || 'prospect_approval'
-              }));
+              .map((p: any) => {
+                // Split name into first and last
+                const nameParts = (p.name || '').trim().split(' ');
+                const firstName = nameParts[0] || '';
+                const lastName = nameParts.slice(1).join(' ') || '';
+
+                return {
+                  id: p.prospect_id,
+                  name: p.name,
+                  first_name: firstName,
+                  last_name: lastName,
+                  title: p.title || '',
+                  company: p.company?.name || p.company || '',
+                  company_name: p.company?.name || p.company || '',
+                  email: p.contact?.email || '',
+                  linkedin_url: p.contact?.linkedin_url || '',
+                  phone: p.contact?.phone || '',
+                  industry: p.company?.industry || '',
+                  location: p.location || '',
+                  sessionId: session.id,
+                  campaignName: session.campaign_name || 'Untitled',
+                  source: p.source || 'prospect_approval'
+                };
+              });
 
             if (approved.length > 0) {
               sessionsWithProspects.push({
@@ -3420,18 +3430,28 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 }
 
                 // Map to expected format
-                campaignGroups[campaignName].prospects.push(...approvedProspects.map((p: any) => ({
-                  id: p.prospect_id,
-                  name: p.name,
-                  title: p.title || '',
-                  company: p.company?.name || '',
-                  email: p.contact?.email || '',
-                  linkedin_url: p.contact?.linkedin_url || '',
-                  phone: p.contact?.phone || '',
-                  industry: p.company?.industry || '',
-                  location: p.location || '',
-                  campaignTag: session.campaign_tag || session.campaign_name || 'linkedin'
-                })));
+                campaignGroups[campaignName].prospects.push(...approvedProspects.map((p: any) => {
+                  // Split name into first and last
+                  const nameParts = (p.name || '').trim().split(' ');
+                  const firstName = nameParts[0] || '';
+                  const lastName = nameParts.slice(1).join(' ') || '';
+
+                  return {
+                    id: p.prospect_id,
+                    name: p.name,
+                    first_name: firstName,
+                    last_name: lastName,
+                    title: p.title || '',
+                    company: p.company?.name || '',
+                    company_name: p.company?.name || '',
+                    email: p.contact?.email || '',
+                    linkedin_url: p.contact?.linkedin_url || '',
+                    phone: p.contact?.phone || '',
+                    industry: p.company?.industry || '',
+                    location: p.location || '',
+                    campaignTag: session.campaign_tag || session.campaign_name || 'linkedin'
+                  };
+                }));
               }
             }
           }
@@ -5352,7 +5372,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                           // If activating, also execute the campaign
                           if (newStatus === 'active') {
                             try {
-                              await fetch('/api/campaigns/linkedin/execute-direct', {
+                              const execResponse = await fetch('/api/campaigns/linkedin/execute-direct', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
@@ -5360,9 +5380,18 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                   workspaceId: workspaceId
                                 })
                               });
-                              toastInfo('Campaign execution initiated');
+
+                              if (execResponse.ok) {
+                                const execData = await execResponse.json();
+                                toastSuccess(`Campaign execution started: ${execData.message || 'Messages being sent'}`);
+                              } else {
+                                const execError = await execResponse.json();
+                                console.error('Campaign execution failed:', execError);
+                                toastError(`Campaign activated but execution failed: ${execError.details?.message || execError.error || 'Unknown error'}`);
+                              }
                             } catch (execError) {
                               console.error('Campaign execution error:', execError);
+                              toastWarning('Campaign activated but execution status unknown');
                             }
                           }
                         } else {

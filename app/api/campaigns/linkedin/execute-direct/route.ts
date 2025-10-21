@@ -66,8 +66,21 @@ export async function POST(req: NextRequest) {
     }
 
     if (!prospects || prospects.length === 0) {
+      // Check if there are ANY prospects at all
+      const { count: totalProspects } = await supabase
+        .from('campaign_prospects')
+        .select('*', { count: 'exact', head: true })
+        .eq('campaign_id', campaignId);
+
       return NextResponse.json({
-        error: 'No prospects with LinkedIn IDs found'
+        error: 'No prospects with LinkedIn IDs found',
+        details: {
+          totalProspects: totalProspects || 0,
+          prospectsWithLinkedInIds: 0,
+          message: totalProspects === 0
+            ? 'No prospects found in campaign. Please add prospects first.'
+            : 'Prospects exist but no LinkedIn IDs found. LinkedIn IDs must be resolved before sending messages.'
+        }
       }, { status: 400 });
     }
 
