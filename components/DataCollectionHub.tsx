@@ -1270,11 +1270,11 @@ export default function DataCollectionHub({
             className="hidden"
           />
           <Button
-            variant="default"
+            variant="outline"
             size="default"
             onClick={() => csvFileInputRef.current?.click()}
             disabled={isUploadingCsv}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="border-gray-600 hover:bg-gray-700/50 hover:border-purple-500/50"
           >
             <Upload className="w-4 h-4 mr-2" />
             {isUploadingCsv ? 'Uploading...' : 'CSV Upload'}
@@ -1282,11 +1282,11 @@ export default function DataCollectionHub({
 
           {/* Copy/Paste Text - Opens modal */}
           <Button
-            variant="default"
+            variant="outline"
             size="default"
             onClick={() => { setImportInitialTab('paste'); setShowImportModal(true); }}
             disabled={isProcessingPaste}
-            className="bg-green-600 hover:bg-green-700"
+            className="border-gray-600 hover:bg-gray-700/50 hover:border-purple-500/50"
           >
             <FileText className="w-4 h-4 mr-2" />
             Copy & Paste
