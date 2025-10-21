@@ -5248,7 +5248,43 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               <div>
                 <h4 className="text-white font-medium mb-2">Delete campaign</h4>
                 <p className="text-gray-400 text-sm mb-3">Deleting a campaign will stop all the campaign's activity. Contacts from the campaign will remain in 'My Network' and in your 'Inbox', however, they will no longer receive messages from the deleted campaign. You will be able to continue manual communication with these contacts.</p>
-                <button className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
+                <button
+                  onClick={async () => {
+                    if (!selectedCampaign) return;
+
+                    const confirmed = confirm(
+                      `Are you sure you want to delete "${selectedCampaign.name}"?\n\nThis action cannot be undone. The campaign will be archived if it has sent messages, or permanently deleted if it hasn't.`
+                    );
+
+                    if (!confirmed) return;
+
+                    try {
+                      const response = await fetch(`/api/campaigns/${selectedCampaign.id}`, {
+                        method: 'DELETE'
+                      });
+
+                      if (response.ok) {
+                        const result = await response.json();
+                        toastSuccess(result.message || 'Campaign deleted successfully');
+
+                        // Close settings modal
+                        setShowCampaignSettings(false);
+                        setSelectedCampaign(null);
+
+                        // Refresh campaigns list
+                        queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+                        queryClient.invalidateQueries({ queryKey: ['pendingCampaigns'] });
+                      } else {
+                        const error = await response.json();
+                        toastError(error.error || 'Failed to delete campaign');
+                      }
+                    } catch (error) {
+                      console.error('Delete campaign error:', error);
+                      toastError('Failed to delete campaign. Please try again.');
+                    }
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                >
                   <X size={16} />
                   Delete campaign
                 </button>
