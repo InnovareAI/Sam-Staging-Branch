@@ -4369,6 +4369,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
         // Refresh campaigns list
         queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+
+        // Close modal after successful save
+        setTimeout(() => {
+          setShowCampaignSettings(false);
+          setSelectedCampaign(null);
+        }, 500); // Small delay to let user see success toast
       } else {
         const error = await response.json();
         toastError(`Failed to save settings: ${error.error || 'Unknown error'}`);
