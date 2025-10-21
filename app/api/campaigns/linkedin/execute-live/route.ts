@@ -80,39 +80,26 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Campaign: ${campaign.name} in workspace: ${campaign.workspaces.name}`);
 
-    // Step 2: Get available LinkedIn accounts for this workspace
+    // Step 2: Get workspace LinkedIn accounts from database
     console.log('🔍 Getting workspace LinkedIn accounts...');
-    let availableLinkedInAccounts: LinkedInAccount[] = [];
-    
-    try {
-      const allAccounts = await mcp__unipile__unipile_get_accounts();
-      availableLinkedInAccounts = allAccounts.filter(account => 
-        account.type === 'LINKEDIN' && 
-        account.sources?.[0]?.status === 'OK'
-      );
-      console.log(`✅ Found ${availableLinkedInAccounts.length} active LinkedIn accounts`);
-    } catch (mcpError) {
-      console.error('❌ Failed to get LinkedIn accounts via MCP:', mcpError);
-      return NextResponse.json({ 
-        error: 'LinkedIn accounts not accessible',
-        details: 'MCP integration error'
-      }, { status: 500 });
-    }
+    const { data: linkedinAccounts, error: accountsError } = await supabase
+      .from('workspace_accounts')
+      .select('*')
+      .eq('workspace_id', campaign.workspace_id)
+      .eq('account_type', 'linkedin')
+      .eq('connection_status', 'connected');
 
-    if (availableLinkedInAccounts.length === 0) {
-      return NextResponse.json({ 
-        error: 'No active LinkedIn accounts found',
-        suggestion: 'Please connect LinkedIn accounts via hosted auth first'
+    if (accountsError || !linkedinAccounts || linkedinAccounts.length === 0) {
+      console.error('❌ No LinkedIn accounts found:', accountsError);
+      return NextResponse.json({
+        error: 'No LinkedIn accounts connected',
+        details: 'Please connect a LinkedIn account in workspace settings first'
       }, { status: 400 });
     }
 
-    // Step 3: Select LinkedIn account (prioritize Sales Navigator accounts)
-    const selectedAccount = availableLinkedInAccounts.find(acc => 
-      acc.name?.toLowerCase().includes('thorsten') || // Primary account
-      acc.name?.toLowerCase().includes('charissa')    // Backup account
-    ) || availableLinkedInAccounts[0];
-
-    console.log(`🎯 Using LinkedIn account: ${selectedAccount.name} (${selectedAccount.sources[0].id})`);
+    // Step 3: Select primary LinkedIn account
+    const selectedAccount = linkedinAccounts[0];
+    console.log(`🎯 Using LinkedIn account: ${selectedAccount.account_name || 'Primary Account'}`);
 
     // Step 4: Get prospects ready for messaging
     const { data: campaignProspects, error: prospectsError } = await supabase
@@ -205,25 +192,48 @@ export async function POST(req: NextRequest) {
             status: 'dry_run'
           });
         } else {
-          // LIVE EXECUTION: Send actual LinkedIn connection request via MCP
+          // LIVE EXECUTION: Send via Unipile API
           try {
-            console.log(`🚀 LIVE: Sending connection request from LinkedIn account ${selectedAccount.sources[0].id}`);
+            console.log(`🚀 LIVE: Sending connection request from account ${selectedAccount.account_name}`);
             console.log(`🎯 Target: ${prospect.linkedin_url || prospect.linkedin_user_id}`);
+            console.log(`💬 Message: ${personalizedResult.message.substring(0, 100)}...`);
 
-            // In production, this would be:
-            // await mcp__unipile__send_linkedin_connection_request({
-            //   account_id: selectedAccount.sources[0].id,
-            //   target_url: prospect.linkedin_url,
-            //   message: personalizedResult.message
-            // });
+            // Send LinkedIn connection request via Unipile API
+            const unipileResponse = await fetch(`${process.env.UNIPILE_DSN}/api/v1/users/${selectedAccount.unipile_account_id}/messages`, {
+              method: 'POST',
+              headers: {
+                'X-API-KEY': process.env.UNIPILE_API_KEY || '',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                attendees: [{ identifier: prospect.linkedin_url }],
+                provider_id: 'LINKEDIN',
+                text: personalizedResult.message,
+                type: 'INVITATION'
+              })
+            });
+
+            if (!unipileResponse.ok) {
+              const errorData = await unipileResponse.json().catch(() => ({}));
+              throw new Error(`Unipile API error: ${errorData.message || unipileResponse.statusText}`);
+            }
+
+            const unipileData = await unipileResponse.json();
+            console.log('✅ Unipile response:', unipileData);
 
             // Update prospect status
             await supabase
               .from('campaign_prospects')
               .update({
-                status: sequenceStep === 0 ? 'connection_requested' : 'follow_up_sent',
+                status: 'connection_requested',
                 sequence_step: sequenceStep + 1,
-                contacted_at: new Date().toISOString()
+                contacted_at: new Date().toISOString(),
+                personalization_data: {
+                  message: personalizedResult.message,
+                  cost: personalizedResult.cost,
+                  model: personalizedResult.model,
+                  unipile_message_id: unipileData.object?.id
+                }
               })
               .eq('id', prospect.id);
 
@@ -237,7 +247,7 @@ export async function POST(req: NextRequest) {
               status: 'sent'
             });
 
-            console.log('✅ Connection request sent and prospect updated');
+            console.log('✅ Connection request sent successfully');
 
           } catch (sendError) {
             console.error(`❌ Failed to send connection request to ${prospect.first_name}:`, sendError);
