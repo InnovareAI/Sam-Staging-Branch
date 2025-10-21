@@ -276,9 +276,9 @@ export async function POST(req: NextRequest) {
     const executionStatus = results.messages_sent > 0 ? 'active' : campaign.status;
     await supabase
       .from('campaigns')
-      .update({ 
+      .update({
         status: executionStatus,
-        last_executed_at: new Date().toISOString()
+        launched_at: new Date().toISOString()
       })
       .eq('id', campaignId);
 
@@ -288,9 +288,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      message: `Campaign executed: ${results.messages_sent} connection requests sent`,
       execution_mode: dryRun ? 'dry_run' : 'live',
       campaign_name: campaign.name,
-      linkedin_account: selectedAccount.name,
+      linkedin_account: selectedAccount.account_name || 'Primary Account',
       results,
       cost_summary: personalizer.getCostStats(),
       timestamp: new Date().toISOString()
@@ -352,7 +353,7 @@ export async function GET(req: NextRequest) {
       pending: prospects?.filter(p => p.status === 'pending' || p.status === 'approved').length || 0,
       in_progress: prospects?.filter(p => ['connection_requested', 'follow_up_sent'].includes(p.status)).length || 0,
       completed: prospects?.filter(p => p.status === 'completed').length || 0,
-      last_execution: campaign.last_executed_at
+      last_execution: campaign.launched_at
     };
 
     return NextResponse.json({
