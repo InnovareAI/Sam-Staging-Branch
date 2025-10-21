@@ -767,8 +767,37 @@ function CampaignBuilder({
   const has1stDegree = connectionDegrees.firstDegree > 0;
   const hasOnly1stDegree = connectionDegrees.firstDegree > 0 && connectionDegrees.secondThird === 0;
 
+  // Auto-select campaign type based on prospect connection degrees
+  useEffect(() => {
+    if (connectionDegrees.total === 0) return; // No prospects loaded yet
+
+    // Calculate percentages
+    const firstDegreePercent = (connectionDegrees.firstDegree / connectionDegrees.total) * 100;
+    const secondThirdPercent = (connectionDegrees.secondThird / connectionDegrees.total) * 100;
+
+    // Auto-select campaign type based on majority
+    if (hasOnly1stDegree) {
+      // All prospects are 1st degree → Messenger
+      setCampaignType('messenger');
+      console.log('🎯 Auto-selected MESSENGER (all 1st degree connections)');
+    } else if (connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0) {
+      // All prospects are 2nd/3rd degree → Connector
+      setCampaignType('connector');
+      console.log('🎯 Auto-selected CONNECTOR (all 2nd/3rd degree connections)');
+    } else if (firstDegreePercent >= 70) {
+      // Mostly 1st degree (70%+) → Messenger
+      setCampaignType('messenger');
+      console.log(`🎯 Auto-selected MESSENGER (${firstDegreePercent.toFixed(0)}% are 1st degree)`);
+    } else if (secondThirdPercent >= 70) {
+      // Mostly 2nd/3rd degree (70%+) → Connector
+      setCampaignType('connector');
+      console.log(`🎯 Auto-selected CONNECTOR (${secondThirdPercent.toFixed(0)}% are 2nd/3rd degree)`);
+    }
+    // If mixed (no clear majority), keep current selection (default: connector)
+  }, [connectionDegrees.total, connectionDegrees.firstDegree, connectionDegrees.secondThird, hasOnly1stDegree]);
+
   // Campaign types are greyed out based on connection degrees, but user maintains control
-  // No auto-switching - let user choose (they may want to run re-engagement campaigns)
+  // Auto-selection happens when prospects are loaded, but user can override manually
 
   const campaignTypes = [
     {
