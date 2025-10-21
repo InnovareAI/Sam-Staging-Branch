@@ -4449,7 +4449,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
         {/* Campaign List with Tabs */}
         {!showBuilder && !showApprovalScreen && (!isAutoCreateMode || showFullFeatures) && (
-          <div className="bg-gray-900 rounded-lg border border-gray-700">
+          <div>
             {/* Status Tabs */}
             <div className="flex border-b border-gray-700">
               <button
