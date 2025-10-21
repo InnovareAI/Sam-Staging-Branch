@@ -1219,40 +1219,25 @@ export default function DataCollectionHub({
                 )}
 
 
-            {/* Approve Selection */}
+            {/* Approve Selection - Saves prospects for later campaign creation */}
             <Button
               onClick={bulkApproveSelected}
               disabled={selectedProspectIds.size === 0}
               size="sm"
-              variant="outline"
-              className="flex items-center gap-2"
-              title="Approve the selected records only"
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              title="Approve selected prospects and save them. Go to Campaign Hub → New Campaigns to create campaigns from approved prospects."
             >
               <Check className="w-3.5 h-3.5" />
               <span>Approve Selection ({selectedProspectIds.size})</span>
             </Button>
 
-
-            {/* Add to Campaign (selected approved only) */}
-            <Button
-              onClick={() => {
-                const selectedApproved = prospectData.filter(p => selectedProspectIds.has(p.id) && p.approvalStatus === 'approved')
-                if (selectedApproved.length > 0) {
-                  handleProceedToCampaignHub(selectedApproved)
-                }
-              }}
-              disabled={(() => {
-                if (selectedProspectIds.size === 0) return true
-                const selected = prospectData.filter(p => selectedProspectIds.has(p.id))
-                return selected.some(p => p.approvalStatus !== 'approved')
-              })()}
-              size="sm"
-              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-              title="Add approved selection to a campaign"
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>Add to Campaign ({Array.from(selectedProspectIds).filter(id => (prospectData.find(p => p.id === id)?.approvalStatus === 'approved')).length})</span>
-            </Button>
+            {/* Info message about next steps */}
+            {prospectData.filter(p => p.approvalStatus === 'approved').length > 0 && (
+              <div className="text-sm text-gray-400 flex items-center gap-2">
+                <span>✓ {prospectData.filter(p => p.approvalStatus === 'approved').length} approved</span>
+                <span className="text-purple-400">→ Go to Campaign Hub to create campaigns</span>
+              </div>
+            )}
               </div>
             </div>
           </div>
