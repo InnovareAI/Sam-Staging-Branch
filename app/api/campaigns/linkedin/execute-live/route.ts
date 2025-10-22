@@ -118,6 +118,8 @@ export async function POST(req: NextRequest) {
     // Step 3.6: VERIFY account is active in Unipile
     try {
       const unipileCheckUrl = `https://${process.env.UNIPILE_DSN}/api/v1/accounts/${selectedAccount.unipile_account_id}`;
+      console.log(`🔍 Checking Unipile account: ${unipileCheckUrl}`);
+
       const unipileCheckResponse = await fetch(unipileCheckUrl, {
         method: 'GET',
         headers: {
@@ -142,7 +144,9 @@ export async function POST(req: NextRequest) {
       }
 
       const unipileAccountData = await unipileCheckResponse.json();
-      console.log(`✅ Unipile account verified: ${unipileAccountData.id}, status: ${unipileAccountData.status}`);
+      console.log(`✅ Unipile account verified:`, JSON.stringify(unipileAccountData, null, 2));
+      console.log(`   Account ID: ${unipileAccountData.id}`);
+      console.log(`   Status: ${unipileAccountData.status}`);
 
       // Check if account is actually active
       const hasActiveSource = unipileAccountData.sources?.some((s: any) => s.status === 'OK');
@@ -283,17 +287,23 @@ export async function POST(req: NextRequest) {
             console.log(`💬 Message: ${personalizedResult.message.substring(0, 100)}...`);
 
             // Send LinkedIn connection request via Unipile API
-            const unipileResponse = await fetch(`https://${process.env.UNIPILE_DSN}/api/v1/users/${selectedAccount.unipile_account_id}/messages`, {
+            // CORRECT ENDPOINT: /api/v1/users/invite (as per Unipile documentation)
+            const inviteEndpoint = `https://${process.env.UNIPILE_DSN}/api/v1/users/invite`;
+            console.log(`📤 Sending to Unipile: ${inviteEndpoint}`);
+            console.log(`   Account ID: ${selectedAccount.unipile_account_id}`);
+            console.log(`   Target LinkedIn: ${prospect.linkedin_url}`);
+
+            const unipileResponse = await fetch(inviteEndpoint, {
               method: 'POST',
               headers: {
                 'X-API-KEY': process.env.UNIPILE_API_KEY || '',
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
               },
               body: JSON.stringify({
-                attendees: [{ identifier: prospect.linkedin_url }],
-                provider_id: 'LINKEDIN',
-                text: personalizedResult.message,
-                type: 'INVITATION'
+                account_id: selectedAccount.unipile_account_id,
+                identifier: prospect.linkedin_url,
+                text: personalizedResult.message
               })
             });
 
