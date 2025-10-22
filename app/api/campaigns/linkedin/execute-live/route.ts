@@ -305,7 +305,7 @@ export async function POST(req: NextRequest) {
             console.log(`🔍 Step 1: Retrieving profile for ${linkedinIdentifier}`);
 
             const profileResponse = await fetch(
-              `https://${process.env.UNIPILE_DSN}/api/v1/users/${linkedinIdentifier}?account_id=${selectedAccount.unipile_account_id}`,
+              `https://${process.env.UNIPILE_DSN}/api/v1/users/${linkedinIdentifier}?account_id=${unipileSourceId}`,
               {
                 method: 'GET',
                 headers: {
