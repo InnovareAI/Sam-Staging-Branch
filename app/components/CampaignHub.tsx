@@ -5411,13 +5411,14 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                   campaignId: selectedCampaign.id,
-                                  workspaceId: workspaceId
+                                  workspaceId: workspaceId,
+                                  maxProspects: 2  // Limit to 2 prospects to prevent timeout
                                 })
                               });
 
                               if (execResponse.ok) {
                                 const execData = await execResponse.json().catch(() => ({ message: 'Execution started' }));
-                                toastSuccess(`Campaign execution started: ${execData.message || 'Messages being sent'}`);
+                                toastSuccess(`Campaign execution started: Processing first 2 prospects. ${execData.message || 'Activate again to send more.'}`);
                               } else {
                                 const execError = await execResponse.json().catch(() => ({
                                   error: 'Execution failed',
