@@ -245,7 +245,9 @@ const structuredProductSeeds = [
     pricing: {
       plan: 'Growth',
       monthly: 99,
-      trial: '14-day free trial with cancel anytime'
+      trial: '14-day free trial with cancel anytime',
+      signup_url: 'https://innovareai.com/sam',
+      contact_email: 'helloSam@innovareai.com'
     },
     features: [
       'Consultant orchestrator with discovery workflows',
@@ -388,7 +390,7 @@ async function createEmbedding(input) {
       headers: {
         'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://innovareai.com/sam',
         'X-Title': 'SAM KB Seeder'
       },
       body: JSON.stringify({

@@ -108,7 +108,7 @@ ENTERPRISE PLAN - $899/month
 - Custom integrations
 - Perfect for: Large sales organizations, regulated industries
 
-All plans include: 14-day free trial, setup assistance, HITL approval systems, CRM integrations, knowledge base access.', 
+All plans include: 14-day free trial, setup assistance, HITL approval systems, CRM integrations, knowledge base access. Sign up at https://innovareai.com/sam or email helloSam@innovareai.com',
 ARRAY['pricing', 'plans', 'startup', 'sme', 'enterprise']),
 
 ('pricing', 'value', 'ROI & Value Proposition', 
