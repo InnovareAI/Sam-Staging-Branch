@@ -5416,10 +5416,13 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                               });
 
                               if (execResponse.ok) {
-                                const execData = await execResponse.json();
+                                const execData = await execResponse.json().catch(() => ({ message: 'Execution started' }));
                                 toastSuccess(`Campaign execution started: ${execData.message || 'Messages being sent'}`);
                               } else {
-                                const execError = await execResponse.json();
+                                const execError = await execResponse.json().catch(() => ({
+                                  error: 'Execution failed',
+                                  details: { message: `Status ${execResponse.status}: ${execResponse.statusText}` }
+                                }));
                                 console.error('Campaign execution failed:', execError);
                                 toastError(`Campaign activated but execution failed: ${execError.details?.message || execError.error || 'Unknown error'}`);
                               }
