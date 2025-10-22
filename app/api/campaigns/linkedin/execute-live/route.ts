@@ -193,13 +193,21 @@ export async function POST(req: NextRequest) {
       cp.linkedin_url || cp.linkedin_user_id
     ) || [];
 
-    console.log(`📋 Found ${executableProspects.length} prospects ready for execution`);
+    console.log(`📋 Total prospects retrieved: ${campaignProspects?.length || 0}`);
+    console.log(`📋 Executable prospects (with LinkedIn URL): ${executableProspects.length}`);
+
+    if (campaignProspects && campaignProspects.length > 0 && executableProspects.length === 0) {
+      console.log('⚠️ Prospects exist but none have LinkedIn URLs');
+      console.log('Sample prospect data:', JSON.stringify(campaignProspects[0], null, 2));
+    }
 
     if (executableProspects.length === 0) {
       return NextResponse.json({
         success: true,
         message: 'No prospects ready for messaging',
         campaign: campaign.name,
+        total_prospects: campaignProspects?.length || 0,
+        executable_prospects: 0,
         suggestions: [
           'Check if prospects have LinkedIn URLs or internal IDs',
           'Verify prospect approval status',
@@ -207,6 +215,8 @@ export async function POST(req: NextRequest) {
         ]
       });
     }
+
+    console.log(`✅ Processing ${executableProspects.length} prospects with LinkedIn URLs`);
 
     // Step 5: Initialize cost-controlled personalization
     const personalizer = new CostControlledPersonalization();
@@ -324,10 +334,16 @@ export async function POST(req: NextRequest) {
             console.log('✅ Connection request sent successfully');
 
           } catch (sendError) {
-            console.error(`❌ Failed to send connection request to ${prospect.first_name}:`, sendError);
+            const prospectName = `${prospect.first_name || 'Unknown'} ${prospect.last_name || 'Unknown'}`;
+            console.error(`❌ SEND ERROR for ${prospectName}:`, sendError);
+            console.error(`   Prospect LinkedIn URL: ${prospect.linkedin_url}`);
+            console.error(`   Error details:`, sendError instanceof Error ? sendError.stack : sendError);
+
             results.errors.push({
-              prospect: `${prospect.first_name || 'Unknown'} ${prospect.last_name || 'Unknown'}`,
-              error: sendError instanceof Error ? sendError.message : 'Unknown error'
+              prospect: prospectName,
+              linkedin_url: prospect.linkedin_url,
+              error: sendError instanceof Error ? sendError.message : 'Unknown error',
+              error_stack: sendError instanceof Error ? sendError.stack : undefined
             });
           }
         }
@@ -359,6 +375,17 @@ export async function POST(req: NextRequest) {
     console.log('\n🎉 Campaign execution batch completed!');
     console.log(`📊 Results: ${results.messages_sent} sent, ${results.errors.length} errors`);
     console.log(`💰 Total cost: $${results.personalization_cost.toFixed(4)}`);
+
+    // Log errors if any occurred
+    if (results.errors.length > 0) {
+      console.error('\n❌ ERRORS DURING EXECUTION:');
+      results.errors.forEach((err, idx) => {
+        console.error(`   ${idx + 1}. ${err.prospect}: ${err.error}`);
+        if (err.linkedin_url) {
+          console.error(`      LinkedIn: ${err.linkedin_url}`);
+        }
+      });
+    }
 
     // Check if there are more prospects to process
     const { count: remainingCount } = await supabase
