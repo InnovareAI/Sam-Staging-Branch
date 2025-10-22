@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseKnowledge } from '@/lib/supabase-knowledge';
+import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler';
 
 // GET /api/knowledge - Get all knowledge base items or search
 export async function GET(req: NextRequest) {
@@ -10,7 +11,7 @@ export async function GET(req: NextRequest) {
     const workspaceId = searchParams.get('workspace_id');
 
     if (!workspaceId) {
-      return NextResponse.json({ error: 'Workspace ID is required' }, { status: 400 });
+      throw apiError.validation('Workspace ID is required');
     }
 
     let data;
@@ -26,18 +27,13 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       data,
       count: data.length
     });
 
   } catch (error) {
-    console.error('Knowledge API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'knowledge_fetch');
   }
 }
 
@@ -48,9 +44,9 @@ export async function POST(req: NextRequest) {
     const { workspace_id, category, subcategory, title, content, tags, version = '4.4' } = body;
 
     if (!workspace_id || !category || !title || !content) {
-      return NextResponse.json(
-        { error: 'Workspace ID, category, title, and content are required' },
-        { status: 400 }
+      throw apiError.validation(
+        'Missing required fields',
+        'Workspace ID, category, title, and content are required'
       );
     }
 
@@ -66,22 +62,12 @@ export async function POST(req: NextRequest) {
     });
 
     if (!newItem) {
-      return NextResponse.json(
-        { error: 'Failed to create knowledge item' },
-        { status: 500 }
-      );
+      throw apiError.internal('Failed to create knowledge item');
     }
 
-    return NextResponse.json({
-      success: true,
-      data: newItem
-    });
+    return apiSuccess({ data: newItem }, 'Knowledge item created successfully');
 
   } catch (error) {
-    console.error('Knowledge create API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'knowledge_create');
   }
 }

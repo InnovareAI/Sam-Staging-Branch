@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiError, handleApiError } from '@/lib/api-error-handler';
 
 export async function POST(req: NextRequest) {
   try {
     const { message } = await req.json();
 
     if (!message) {
-      return NextResponse.json({ error: 'Message required' }, { status: 400 });
+      throw apiError.validation('Message required');
     }
 
     console.log('🤖 SAM AI: Processing message:', message);
@@ -81,6 +82,7 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('❌ SAM AI Error:', error);
+    // Graceful fallback for SAM chat - return friendly greeting instead of error
     return NextResponse.json({
       response: "Hello! I'm Sam, your AI GTM consultant and outreach strategist.\n\nI help you build a go-to-market intelligence system in about 25 minutes, then use it to generate high-performing campaigns instantly.\n\nThink of this as building your sales playbook once, then getting campaigns on demand forever.\n\nWhat's your name?",
       timestamp: new Date().toISOString(),
