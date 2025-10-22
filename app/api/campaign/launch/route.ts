@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler';
+import { requireActiveSubscription } from '@/lib/subscription-guard';
 
 // Campaign launch API - connects Campaign Hub to N8N orchestration
 export async function POST(request: NextRequest) {
@@ -26,6 +27,9 @@ export async function POST(request: NextRequest) {
     }
 
     const workspaceId = workspaceMember.workspace_id;
+
+    // CRITICAL: Check subscription status before allowing campaign launch
+    await requireActiveSubscription(supabase, workspaceId);
 
     // Parse campaign configuration from request
     const campaignConfig = await request.json();

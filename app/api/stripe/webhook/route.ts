@@ -217,26 +217,73 @@ async function handleTrialEnding(supabase: any, subscription: Stripe.Subscriptio
 
 /**
  * Handle successful payment
+ * Automatically resumes paused campaigns and restores access
  */
 async function handlePaymentSucceeded(supabase: any, invoice: Stripe.Invoice) {
   console.log(`✅ Payment succeeded for invoice ${invoice.id}`)
 
   if (invoice.subscription) {
-    // Update subscription status to active if it was past_due
+    // Get workspace before updating
+    const { data: sub } = await supabase
+      .from('workspace_subscriptions')
+      .select('workspace_id, status')
+      .eq('stripe_subscription_id', invoice.subscription)
+      .single()
+
+    const wasPastDue = sub?.status === 'past_due'
+
+    // Update subscription status to active
     const { error } = await supabase
       .from('workspace_subscriptions')
       .update({ status: 'active' })
       .eq('stripe_subscription_id', invoice.subscription)
-      .eq('status', 'past_due')
 
     if (error) {
       console.error('❌ Failed to update subscription status:', error)
+      return
+    }
+
+    // Update workspace status
+    if (sub) {
+      await supabase
+        .from('workspaces')
+        .update({ subscription_status: 'active' })
+        .eq('id', sub.workspace_id)
+
+      // CRITICAL: Auto-resume campaigns that were paused due to payment failure
+      if (wasPastDue) {
+        console.log(`▶️  Auto-resuming campaigns for workspace ${sub.workspace_id}`)
+
+        const { data: resumedCampaigns, error: resumeError } = await supabase
+          .from('campaigns')
+          .update({
+            status: 'active',
+            updated_at: new Date().toISOString()
+          })
+          .eq('workspace_id', sub.workspace_id)
+          .eq('status', 'paused_payment')
+          .select('id, name')
+
+        if (resumeError) {
+          console.error('❌ Failed to resume campaigns:', resumeError)
+        } else {
+          console.log(`✅ Resumed ${resumedCampaigns?.length || 0} campaigns after payment success`)
+          if (resumedCampaigns && resumedCampaigns.length > 0) {
+            console.log('   Resumed campaigns:', resumedCampaigns.map(c => c.name).join(', '))
+          }
+        }
+
+        // TODO: Send payment success notification email
+        console.log(`📧 TODO: Send payment success email for workspace ${sub.workspace_id}`)
+        console.log(`   Include: Confirmation, list of resumed campaigns`)
+      }
     }
   }
 }
 
 /**
  * Handle failed payment
+ * Automatically pauses all active campaigns and restricts access
  */
 async function handlePaymentFailed(supabase: any, invoice: Stripe.Invoice) {
   console.error(`❌ Payment failed for invoice ${invoice.id}`)
@@ -260,13 +307,39 @@ async function handlePaymentFailed(supabase: any, invoice: Stripe.Invoice) {
       .single()
 
     if (sub) {
+      const workspaceId = sub.workspace_id
+
+      // Update workspace to past_due
       await supabase
         .from('workspaces')
         .update({ subscription_status: 'past_due' })
-        .eq('id', sub.workspace_id)
+        .eq('id', workspaceId)
 
-      // TODO: Send payment failed notification email
-      console.log(`📧 TODO: Send payment failed email for workspace ${sub.workspace_id}`)
+      // CRITICAL: Pause all active campaigns automatically
+      console.log(`⏸️  Auto-pausing all active campaigns for workspace ${workspaceId}`)
+
+      const { data: pausedCampaigns, error: pauseError } = await supabase
+        .from('campaigns')
+        .update({
+          status: 'paused_payment',
+          updated_at: new Date().toISOString()
+        })
+        .eq('workspace_id', workspaceId)
+        .in('status', ['active', 'running', 'scheduled'])
+        .select('id, name')
+
+      if (pauseError) {
+        console.error('❌ Failed to pause campaigns:', pauseError)
+      } else {
+        console.log(`✅ Paused ${pausedCampaigns?.length || 0} campaigns due to payment failure`)
+        if (pausedCampaigns && pausedCampaigns.length > 0) {
+          console.log('   Paused campaigns:', pausedCampaigns.map(c => c.name).join(', '))
+        }
+      }
+
+      // TODO: Send payment failed notification email with payment link
+      console.log(`📧 TODO: Send payment failed email for workspace ${workspaceId}`)
+      console.log(`   Include: Update payment method link, list of paused campaigns`)
     }
   }
 }
