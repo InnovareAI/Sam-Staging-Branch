@@ -283,7 +283,7 @@ export async function POST(req: NextRequest) {
             console.log(`💬 Message: ${personalizedResult.message.substring(0, 100)}...`);
 
             // Send LinkedIn connection request via Unipile API
-            const unipileResponse = await fetch(`${process.env.UNIPILE_DSN}/api/v1/users/${selectedAccount.unipile_account_id}/messages`, {
+            const unipileResponse = await fetch(`https://${process.env.UNIPILE_DSN}/api/v1/users/${selectedAccount.unipile_account_id}/messages`, {
               method: 'POST',
               headers: {
                 'X-API-KEY': process.env.UNIPILE_API_KEY || '',
