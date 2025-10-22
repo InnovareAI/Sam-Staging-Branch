@@ -5412,7 +5412,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                 body: JSON.stringify({
                                   campaignId: selectedCampaign.id,
                                   workspaceId: workspaceId,
-                                  maxProspects: 2  // Limit to 2 prospects to prevent timeout
+                                  maxProspects: 1  // Limit to 1 prospect per batch to prevent timeout
                                 })
                               });
 

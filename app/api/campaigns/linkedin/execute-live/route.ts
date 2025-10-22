@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { campaignId, maxProspects = 10, dryRun = false } = await req.json();
+    const { campaignId, maxProspects = 1, dryRun = false } = await req.json();
     
     if (!campaignId) {
       return NextResponse.json({ error: 'Campaign ID required' }, { status: 400 });
@@ -115,7 +115,8 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Step 3.6: VERIFY account is active in Unipile
+    // Step 3.6: VERIFY account is active in Unipile and get source ID
+    let unipileSourceId: string;
     try {
       const unipileCheckUrl = `https://${process.env.UNIPILE_DSN}/api/v1/accounts/${selectedAccount.unipile_account_id}`;
       console.log(`🔍 Checking Unipile account: ${unipileCheckUrl}`);
@@ -148,9 +149,9 @@ export async function POST(req: NextRequest) {
       console.log(`   Account ID: ${unipileAccountData.id}`);
       console.log(`   Status: ${unipileAccountData.status}`);
 
-      // Check if account is actually active
-      const hasActiveSource = unipileAccountData.sources?.some((s: any) => s.status === 'OK');
-      if (!hasActiveSource) {
+      // Check if account is actually active and extract source ID
+      const activeSource = unipileAccountData.sources?.find((s: any) => s.status === 'OK');
+      if (!activeSource) {
         console.error(`❌ Unipile account has no active sources`);
         return NextResponse.json({
           error: 'LinkedIn account not active',
@@ -164,6 +165,10 @@ export async function POST(req: NextRequest) {
           }
         }, { status: 400 });
       }
+
+      // CRITICAL: Store the source ID (used as account_id in Unipile API calls)
+      unipileSourceId = activeSource.id;
+      console.log(`✅ Active source ID: ${unipileSourceId}`);
 
     } catch (unipileError) {
       console.error('❌ Error verifying Unipile account:', unipileError);
@@ -244,8 +249,8 @@ export async function POST(req: NextRequest) {
       try {
         console.log(`\n📧 Processing: ${prospect.first_name || 'Unknown'} ${prospect.last_name || 'Unknown'} at ${prospect.company_name || 'Unknown Company'}`);
 
-        // Determine message type based on sequence step (default to 0 if not set)
-        const sequenceStep = prospect.sequence_step || 0;
+        // Determine message type based on sequence step (stored in personalization_data)
+        const sequenceStep = (prospect.personalization_data as any)?.sequence_step || 0;
         let templateType: 'connection_request' | 'follow_up_1' | 'follow_up_2' = 'connection_request';
         if (sequenceStep === 1) templateType = 'follow_up_1';
         else if (sequenceStep >= 2) templateType = 'follow_up_2';
@@ -289,9 +294,65 @@ export async function POST(req: NextRequest) {
             // Send LinkedIn connection request via Unipile API
             // CORRECT ENDPOINT: /api/v1/users/invite (as per Unipile documentation)
             const inviteEndpoint = `https://${process.env.UNIPILE_DSN}/api/v1/users/invite`;
-            console.log(`📤 Sending to Unipile: ${inviteEndpoint}`);
-            console.log(`   Account ID: ${selectedAccount.unipile_account_id}`);
-            console.log(`   Target LinkedIn: ${prospect.linkedin_url}`);
+
+            // STEP 1: Retrieve profile to get internal Unipile ID
+            // Extract LinkedIn identifier from URL (e.g., "lee-furnival" from "/in/lee-furnival")
+            const linkedinIdentifier = extractLinkedInUserId(prospect.linkedin_url);
+            if (!linkedinIdentifier) {
+              throw new Error(`Invalid LinkedIn profile URL: ${prospect.linkedin_url}`);
+            }
+
+            console.log(`🔍 Step 1: Retrieving profile for ${linkedinIdentifier}`);
+
+            const profileResponse = await fetch(
+              `https://${process.env.UNIPILE_DSN}/api/v1/users/${linkedinIdentifier}?account_id=${selectedAccount.unipile_account_id}`,
+              {
+                method: 'GET',
+                headers: {
+                  'X-API-KEY': process.env.UNIPILE_API_KEY || '',
+                  'Accept': 'application/json'
+                }
+              }
+            );
+
+            if (!profileResponse.ok) {
+              const errorText = await profileResponse.text();
+              console.error(`❌ Profile retrieval failed:`, errorText);
+              throw new Error(`Could not retrieve LinkedIn profile: ${profileResponse.statusText}`);
+            }
+
+            const profileData = await profileResponse.json();
+            console.log(`✅ Profile retrieved:`, JSON.stringify(profileData, null, 2));
+
+            // STEP 2: Send invitation using internal ID
+            const requestBody: any = {
+              provider_id: profileData.provider_id,  // CRITICAL: Use provider_id from profile response
+              account_id: unipileSourceId,  // FIXED: Use source ID from active account verification
+              message: personalizedResult.message  // Connection request message
+            };
+
+            // Validate required fields
+            if (!requestBody.provider_id) {
+              console.error(`❌ Missing provider_id in profile data:`, profileData);
+              throw new Error('Profile data missing provider_id field');
+            }
+            if (!requestBody.account_id) {
+              console.error(`❌ Missing account_id`);
+              throw new Error('Missing Unipile account ID');
+            }
+
+            // Add email if available (optional but recommended by Unipile)
+            if (prospect.email) {
+              requestBody.user_email = prospect.email;
+            }
+
+            console.log(`📤 Step 2: Sending invitation to Unipile`);
+            console.log(`   Endpoint: ${inviteEndpoint}`);
+            console.log(`   Provider ID: ${requestBody.provider_id}`);
+            console.log(`   Account ID (Source ID): ${requestBody.account_id}`);
+            console.log(`   Message length: ${personalizedResult.message.length} chars`);
+            console.log(`   Has email: ${!!requestBody.user_email}`);
+            console.log(`   Full request body:`, JSON.stringify(requestBody, null, 2));
 
             const unipileResponse = await fetch(inviteEndpoint, {
               method: 'POST',
@@ -300,36 +361,54 @@ export async function POST(req: NextRequest) {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
               },
-              body: JSON.stringify({
-                account_id: selectedAccount.unipile_account_id,
-                identifier: prospect.linkedin_url,
-                text: personalizedResult.message
-              })
+              body: JSON.stringify(requestBody)
             });
 
             if (!unipileResponse.ok) {
-              const errorData = await unipileResponse.json().catch(() => ({}));
-              throw new Error(`Unipile API error: ${errorData.message || unipileResponse.statusText}`);
+              const errorText = await unipileResponse.text();
+              console.error(`❌ Unipile API error response:`, errorText);
+              console.error(`❌ Unipile status: ${unipileResponse.status} ${unipileResponse.statusText}`);
+
+              let errorData;
+              try {
+                errorData = JSON.parse(errorText);
+                console.error(`❌ Parsed error details:`, JSON.stringify(errorData, null, 2));
+              } catch {
+                console.error(`❌ Raw error (not JSON):`, errorText);
+                errorData = { raw: errorText };
+              }
+
+              // Build detailed error message
+              const errorMessage = errorData.message || errorData.error || errorData.statusMessage || errorData.raw || unipileResponse.statusText;
+              const detailMessage = errorData.details ? `\nDetails: ${JSON.stringify(errorData.details)}` : '';
+
+              throw new Error(`Unipile API error (${unipileResponse.status}): ${errorMessage}${detailMessage}`);
             }
 
             const unipileData = await unipileResponse.json();
             console.log('✅ Unipile response:', unipileData);
 
             // Update prospect status
-            await supabase
+            const { error: updateError } = await supabase
               .from('campaign_prospects')
               .update({
                 status: 'connection_requested',
-                sequence_step: sequenceStep + 1,
                 contacted_at: new Date().toISOString(),
                 personalization_data: {
                   message: personalizedResult.message,
                   cost: personalizedResult.cost,
                   model: personalizedResult.model,
-                  unipile_message_id: unipileData.object?.id
+                  unipile_message_id: unipileData.object?.id,
+                  sequence_step: sequenceStep + 1
                 }
               })
               .eq('id', prospect.id);
+
+            if (updateError) {
+              console.error('⚠️  Failed to update prospect status:', updateError);
+            } else {
+              console.log('✅ Prospect status updated to connection_requested');
+            }
 
             results.messages_sent++;
             results.messages.push({
@@ -420,7 +499,7 @@ export async function POST(req: NextRequest) {
         },
         body: JSON.stringify({
           campaignId,
-          maxProspects: 2,
+          maxProspects: 1,  // Process 1 prospect per batch to avoid 26s timeout
           dryRun: false
         })
       }).catch(err => {
@@ -460,6 +539,28 @@ export async function POST(req: NextRequest) {
       timestamp: new Date().toISOString()
     }, { status: 500 });
   }
+}
+
+// Helper function to extract LinkedIn user ID from profile URL
+function extractLinkedInUserId(profileUrl: string | null | undefined): string | null {
+  if (!profileUrl) return null;
+
+  // Extract from various LinkedIn URL formats
+  const patterns = [
+    /linkedin\.com\/in\/([^\/\?]+)/,  // Standard: linkedin.com/in/john-doe
+    /linkedin\.com\/pub\/[^\/]+\/[^\/]+\/[^\/]+\/([^\/\?]+)/,  // Old pub format
+    /linkedin\.com\/profile\/view\?id=([^&]+)/  // Legacy profile view
+  ];
+
+  for (const pattern of patterns) {
+    const match = profileUrl.match(pattern);
+    if (match && match[1]) {
+      // Clean up trailing slashes or query parameters
+      return match[1].replace(/\/$/, '');
+    }
+  }
+
+  return null;
 }
 
 // GET endpoint for campaign status and execution history
