@@ -356,18 +356,51 @@ export async function POST(req: NextRequest) {
       })
       .eq('id', campaignId);
 
-    console.log('\n🎉 Campaign execution completed!');
+    console.log('\n🎉 Campaign execution batch completed!');
     console.log(`📊 Results: ${results.messages_sent} sent, ${results.errors.length} errors`);
     console.log(`💰 Total cost: $${results.personalization_cost.toFixed(4)}`);
 
+    // Check if there are more prospects to process
+    const { count: remainingCount } = await supabase
+      .from('campaign_prospects')
+      .select('*', { count: 'exact', head: true })
+      .eq('campaign_id', campaignId)
+      .in('status', ['pending', 'approved', 'ready_to_message', 'follow_up_due']);
+
+    const hasMoreProspects = (remainingCount || 0) > 0;
+
+    // If more prospects remain, trigger next batch asynchronously (fire-and-forget)
+    if (hasMoreProspects && !dryRun) {
+      console.log(`🔄 ${remainingCount} prospects remaining, triggering next batch...`);
+
+      // Fire async request without waiting
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `http://localhost:3000`;
+      fetch(`${baseUrl}/api/campaigns/linkedin/execute-live`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-trigger': 'true'  // Mark as internal
+        },
+        body: JSON.stringify({
+          campaignId,
+          maxProspects: 2,
+          dryRun: false
+        })
+      }).catch(err => {
+        console.error('⚠️ Failed to trigger next batch:', err.message);
+      });
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Campaign executed: ${results.messages_sent} connection requests sent`,
+      message: `Campaign executed: ${results.messages_sent} connection requests sent${hasMoreProspects ? `. Processing ${remainingCount} more in background.` : ''}`,
       execution_mode: dryRun ? 'dry_run' : 'live',
       campaign_name: campaign.name,
       linkedin_account: selectedAccount.account_name || 'Primary Account',
       results,
       cost_summary: personalizer.getCostStats(),
+      has_more_prospects: hasMoreProspects,
+      remaining_prospects: remainingCount || 0,
       timestamp: new Date().toISOString()
     });
 

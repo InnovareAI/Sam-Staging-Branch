@@ -5418,7 +5418,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
                               if (execResponse.ok) {
                                 const execData = await execResponse.json().catch(() => ({ message: 'Execution started' }));
-                                toastSuccess(`Campaign execution started: Processing first 2 prospects. ${execData.message || 'Activate again to send more.'}`);
+                                const progressMsg = execData.has_more_prospects
+                                  ? ` (${execData.remaining_prospects} more queued for background processing)`
+                                  : '';
+                                toastSuccess(`Campaign started! ${execData.message || 'Messages are being sent'}${progressMsg}`);
                               } else {
                                 const execError = await execResponse.json().catch(() => ({
                                   error: 'Execution failed',
