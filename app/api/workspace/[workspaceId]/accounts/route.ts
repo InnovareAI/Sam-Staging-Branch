@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/app/lib/supabase'
+import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler'
 
 export async function GET(
   request: NextRequest,
@@ -12,10 +13,7 @@ export async function GET(
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required'
-      }, { status: 401 })
+      throw apiError.unauthorized()
     }
 
     // Verify user has access to this workspace
@@ -27,10 +25,7 @@ export async function GET(
       .single()
 
     if (membershipError || !membership) {
-      return NextResponse.json({
-        success: false,
-        error: 'Access denied to this workspace'
-      }, { status: 403 })
+      throw apiError.forbidden('Access denied to this workspace')
     }
 
     // Get all workspace accounts with user details
@@ -42,7 +37,7 @@ export async function GET(
       .order('account_type', { ascending: true })
 
     if (error) {
-      throw error
+      throw apiError.database('workspace accounts fetch', error)
     }
 
     // Get workspace account sessions to show current selections
@@ -66,19 +61,14 @@ export async function GET(
       }
     })
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       accounts: accountsWithSessions,
       workspace_id: workspaceId,
       user_role: membership.role
     })
 
   } catch (error) {
-    console.error('Failed to get workspace accounts:', error)
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return handleApiError(error, 'get_workspace_accounts')
   }
 }
 
@@ -103,10 +93,7 @@ export async function POST(
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required'
-      }, { status: 401 })
+      throw apiError.unauthorized()
     }
 
     // Verify user has access to this workspace
@@ -118,10 +105,7 @@ export async function POST(
       .single()
 
     if (!membership) {
-      return NextResponse.json({
-        success: false,
-        error: 'Access denied to this workspace'
-      }, { status: 403 })
+      throw apiError.forbidden('Access denied to this workspace')
     }
 
     // Create workspace account
@@ -142,20 +126,12 @@ export async function POST(
       .single()
 
     if (error) {
-      throw error
+      throw apiError.database('workspace account creation', error)
     }
 
-    return NextResponse.json({
-      success: true,
-      account,
-      message: 'Account added successfully'
-    })
+    return apiSuccess({ account }, 'Account added successfully')
 
   } catch (error) {
-    console.error('Failed to add workspace account:', error)
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return handleApiError(error, 'add_workspace_account')
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,9 +20,9 @@ export async function POST(req: NextRequest) {
 
     // Validate required fields
     if (!prospect_id || typeof approved !== 'boolean' || !workspace_id || !user_id) {
-      return NextResponse.json(
-        { error: 'Missing required fields: prospect_id, approved, workspace_id, user_id' },
-        { status: 400 }
+      throw apiError.validation(
+        'Missing required fields',
+        'prospect_id, approved, workspace_id, and user_id are required'
       )
     }
 
@@ -34,10 +35,7 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (fetchError || !prospect) {
-      return NextResponse.json(
-        { error: 'Prospect not found' },
-        { status: 404 }
-      )
+      throw apiError.notFound('Enriched prospect')
     }
 
     // Update prospect status
@@ -53,7 +51,7 @@ export async function POST(req: NextRequest) {
       .eq('workspace_id', workspace_id)
 
     if (updateError) {
-      throw new Error(updateError.message)
+      throw apiError.database('prospect status update', updateError)
     }
 
     // Record approval decision
@@ -74,15 +72,14 @@ export async function POST(req: NextRequest) {
       })
 
     if (approvalError) {
-      console.error('Approval recording error:', approvalError)
       // CRITICAL: Fail the operation - approval logging is required for audit trail
-      throw new Error(`Failed to record approval decision: ${approvalError.message}`)
+      throw apiError.database('approval decision recording', approvalError)
     }
 
     // If approved, move to active prospects
     if (approved) {
       const enrichedData = prospect.enriched_data
-      
+
       const { error: prospectInsertError } = await supabase
         .from('prospects')
         .insert({
@@ -103,9 +100,8 @@ export async function POST(req: NextRequest) {
         })
 
       if (prospectInsertError) {
-        console.error('Prospect creation error:', prospectInsertError)
         // CRITICAL: Fail the operation - prospect must be created when approved
-        throw new Error(`Failed to create prospect in active prospects table: ${prospectInsertError.message}`)
+        throw apiError.database('prospect creation in active prospects table', prospectInsertError)
       }
 
       // Create initial engagement tasks if approved
@@ -117,22 +113,16 @@ export async function POST(req: NextRequest) {
       await updateQuotaUsage(user_id, workspace_id, prospect.estimated_cost)
     }
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       prospect_id,
       approved,
-      new_status: newStatus,
-      message: approved 
-        ? 'Prospect approved and added to active prospects'
-        : 'Prospect rejected'
-    })
+      new_status: newStatus
+    }, approved
+      ? 'Prospect approved and added to active prospects'
+      : 'Prospect rejected')
 
   } catch (error) {
-    console.error('Approval API error:', error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Approval failed' },
-      { status: 500 }
-    )
+    return handleApiError(error, 'prospect_approval')
   }
 }
 
@@ -205,9 +195,8 @@ async function createInitialEngagementTasks(
         .insert(tasks)
 
       if (taskError) {
-        console.error('Task creation error:', taskError)
-        // CRITICAL: Throw error instead of silent failure
-        throw new Error(`Failed to create engagement tasks: ${taskError.message}`)
+        // CRITICAL: Throw standardized error instead of silent failure
+        throw apiError.database('engagement task creation', taskError)
       }
     }
 

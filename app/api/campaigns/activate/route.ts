@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler'
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,15 +9,15 @@ export async function POST(request: NextRequest) {
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      throw apiError.unauthorized()
     }
 
     const { campaignId, workspaceId } = await request.json()
 
     if (!campaignId || !workspaceId) {
-      return NextResponse.json(
-        { error: 'campaignId and workspaceId are required' },
-        { status: 400 }
+      throw apiError.validation(
+        'Missing required fields',
+        'campaignId and workspaceId are required'
       )
     }
 
@@ -29,10 +30,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (!member) {
-      return NextResponse.json(
-        { error: 'Unauthorized - not a member of this workspace' },
-        { status: 403 }
-      )
+      throw apiError.forbidden('Not a member of this workspace')
     }
 
     // Get campaign details
@@ -44,17 +42,14 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (campaignError || !campaign) {
-      return NextResponse.json(
-        { error: 'Campaign not found' },
-        { status: 404 }
-      )
+      throw apiError.notFound('Campaign')
     }
 
     // Check if campaign is in inactive status
     if (campaign.status !== 'inactive') {
-      return NextResponse.json(
-        { error: `Campaign is already ${campaign.status}. Only inactive campaigns can be activated.` },
-        { status: 400 }
+      throw apiError.validation(
+        `Campaign is already ${campaign.status}`,
+        'Only inactive campaigns can be activated'
       )
     }
 
@@ -68,11 +63,7 @@ export async function POST(request: NextRequest) {
       .eq('id', campaignId)
 
     if (updateError) {
-      console.error('Failed to activate campaign:', updateError)
-      return NextResponse.json(
-        { error: 'Failed to activate campaign' },
-        { status: 500 }
-      )
+      throw apiError.database('campaign activation', updateError)
     }
 
     // Execute the campaign based on campaign type
@@ -106,7 +97,7 @@ export async function POST(request: NextRequest) {
         console.error('Campaign execution failed:', errorData)
 
         // CRITICAL: Rollback campaign status to inactive
-        await supabase
+        const { error: rollbackError } = await supabase
           .from('campaigns')
           .update({
             status: 'inactive',
@@ -114,25 +105,28 @@ export async function POST(request: NextRequest) {
           })
           .eq('id', campaignId)
 
-        console.log('⚠️ Campaign rolled back to inactive due to execution failure')
+        if (rollbackError) {
+          console.error('⚠️ Failed to rollback campaign status:', rollbackError)
+        } else {
+          console.log('⚠️ Campaign rolled back to inactive due to execution failure')
+        }
 
-        // Return error with correct status
-        return NextResponse.json({
-          success: false,
-          error: `Campaign execution failed: ${errorData.error || 'Unknown error'}`,
-          details: 'Campaign has been rolled back to inactive status. Please check your LinkedIn account connection and try again.',
-          campaign: {
-            id: campaign.id,
-            name: campaign.name,
-            status: 'inactive'
-          }
-        }, { status: 500 })
+        // Throw standardized error
+        throw apiError.internal(
+          'Campaign execution failed',
+          `${errorData.error || 'Unknown error'}. Campaign has been rolled back to inactive status. Please check your LinkedIn account connection and try again.`
+        )
       }
     } catch (executeError) {
+      // If it's already an ApiError, re-throw it
+      if (executeError instanceof Error && executeError.name === 'ApiError') {
+        throw executeError
+      }
+
       console.error('Campaign execution error:', executeError)
 
       // CRITICAL: Rollback campaign status to inactive
-      await supabase
+      const { error: rollbackError } = await supabase
         .from('campaigns')
         .update({
           status: 'inactive',
@@ -140,35 +134,27 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', campaignId)
 
-      console.log('⚠️ Campaign rolled back to inactive due to execution error')
+      if (rollbackError) {
+        console.error('⚠️ Failed to rollback campaign status:', rollbackError)
+      } else {
+        console.log('⚠️ Campaign rolled back to inactive due to execution error')
+      }
 
-      return NextResponse.json({
-        success: false,
-        error: `Campaign execution failed: ${executeError instanceof Error ? executeError.message : 'Unknown error'}`,
-        details: 'Campaign has been rolled back to inactive status. Please check your configuration and try again.',
-        campaign: {
-          id: campaign.id,
-          name: campaign.name,
-          status: 'inactive'
-        }
-      }, { status: 500 })
+      throw apiError.internal(
+        'Campaign execution failed',
+        `${executeError instanceof Error ? executeError.message : 'Unknown error'}. Campaign has been rolled back to inactive status. Please check your configuration and try again.`
+      )
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Campaign activated successfully',
+    return apiSuccess({
       campaign: {
         id: campaign.id,
         name: campaign.name,
         status: 'active'
       }
-    })
+    }, 'Campaign activated successfully')
 
   } catch (error) {
-    console.error('Activation error:', error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
-      { status: 500 }
-    )
+    return handleApiError(error, 'campaign_activation')
   }
 }
