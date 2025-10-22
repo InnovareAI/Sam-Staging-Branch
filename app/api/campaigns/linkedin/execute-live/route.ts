@@ -418,9 +418,19 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Include error summary in message if there were failures
+    let message = `Campaign executed: ${results.messages_sent} connection requests sent`;
+    if (results.errors.length > 0) {
+      const firstError = results.errors[0];
+      message += `. ${results.errors.length} failed: ${firstError.error}`;
+    }
+    if (hasMoreProspects) {
+      message += `. Processing ${remainingCount} more in background.`;
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Campaign executed: ${results.messages_sent} connection requests sent${hasMoreProspects ? `. Processing ${remainingCount} more in background.` : ''}`,
+      message,
       execution_mode: dryRun ? 'dry_run' : 'live',
       campaign_name: campaign.name,
       linkedin_account: selectedAccount.account_name || 'Primary Account',
