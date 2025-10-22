@@ -162,20 +162,25 @@ export async function POST(request: NextRequest) {
           .eq('user_id', user.id)
           .limit(1)
           .maybeSingle()
-        
+
         if (memberships?.workspace_id) {
           workspaceId = memberships.workspace_id
           console.log('✅ Workspace from memberships:', workspaceId)
         }
       } catch (membershipError) {
-        console.log('⚠️ Workspace_members table error, using user ID')
+        console.error('❌ Failed to get workspace from memberships:', membershipError)
       }
     }
-    
+
     if (!workspaceId) {
-      // Last resort: use user ID as workspace ID
-      workspaceId = user.id
-      console.log('⚠️ Using user ID as workspace ID:', workspaceId)
+      // CRITICAL: User has no workspace - must fail here
+      console.error(`🚨 CRITICAL: User ${user.id} (${user.email}) has no workspace_id. Cannot connect account without workspace.`)
+      return NextResponse.json({
+        success: false,
+        error: 'No workspace found for user. Please create or join a workspace first.',
+        details: 'Account connections require a workspace context. Contact support if this error persists.',
+        timestamp: new Date().toISOString()
+      }, { status: 400 })
     }
 
     const body = await request.json()

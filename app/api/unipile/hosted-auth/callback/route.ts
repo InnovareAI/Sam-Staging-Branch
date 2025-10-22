@@ -160,8 +160,9 @@ async function upsertWorkspaceAccount(
   unipileAccount: any
 ) {
   if (!workspaceId) {
-    console.log('⚠️ No workspace ID provided, skipping workspace account upsert')
-    return
+    const errorMsg = `🚨 CRITICAL: No workspace ID for user ${userId} account ${unipileAccount.id}. Account stored in user_unipile_accounts but NOT in workspace_accounts!`
+    console.error(errorMsg)
+    throw new Error('Workspace ID is required to associate account with workspace')
   }
 
   const connectionParams = unipileAccount.connection_params?.im || unipileAccount.connection_params || {}
@@ -440,24 +441,32 @@ export async function GET(request: NextRequest) {
                 targetUserId,
                 accountData
               )
-              
-              if (associationStored) {
-                console.log(`✅ Successfully stored association for user ${targetUserId}`)
+
+              if (!associationStored) {
+                throw new Error(`Failed to store user association for account ${accountId}`)
+              }
+
+              console.log(`✅ Successfully stored association for user ${targetUserId}`)
+
+              // CRITICAL: Store in workspace_accounts - this is required for campaigns
+              try {
                 await upsertWorkspaceAccount(supabase, targetWorkspaceId, targetUserId, accountData)
-                
-                // Redirect based on account type
-                if (accountType === 'LINKEDIN') {
-                  const redirectUrl = `/linkedin-integration?success=true&account_id=${accountId}`
-                  return NextResponse.redirect(new URL(redirectUrl, request.url))
-                } else if (accountType.includes('GOOGLE') || accountType.includes('OUTLOOK') || accountType === 'MESSAGING') {
-                  // Redirect to settings page with email provider section
-                  const providerName = accountType.includes('GOOGLE') ? 'google' :
-                                       accountType.includes('OUTLOOK') ? 'microsoft' : 'email';
-                  const redirectUrl = `/workspace/${targetWorkspaceId}/settings?tab=integrations&email_connected=true&provider=${providerName}&account_id=${accountId}`
-                  return NextResponse.redirect(new URL(redirectUrl, request.url))
-                }
-              } else {
-                console.log(`❌ Failed to store association for account ${accountId}`)
+                console.log(`✅ Successfully stored workspace account for workspace ${targetWorkspaceId}`)
+              } catch (workspaceError) {
+                console.error(`❌ CRITICAL: Failed to store workspace account:`, workspaceError)
+                throw new Error(`Failed to associate account with workspace: ${workspaceError instanceof Error ? workspaceError.message : 'Unknown error'}`)
+              }
+
+              // Redirect based on account type
+              if (accountType === 'LINKEDIN') {
+                const redirectUrl = `/linkedin-integration?success=true&account_id=${accountId}`
+                return NextResponse.redirect(new URL(redirectUrl, request.url))
+              } else if (accountType.includes('GOOGLE') || accountType.includes('OUTLOOK') || accountType === 'MESSAGING') {
+                // Redirect to settings page with email provider section
+                const providerName = accountType.includes('GOOGLE') ? 'google' :
+                                     accountType.includes('OUTLOOK') ? 'microsoft' : 'email';
+                const redirectUrl = `/workspace/${targetWorkspaceId}/settings?tab=integrations&email_connected=true&provider=${providerName}&account_id=${accountId}`
+                return NextResponse.redirect(new URL(redirectUrl, request.url))
               }
             }
           }
@@ -533,22 +542,31 @@ export async function POST(request: NextRequest) {
 
             if (accountResponse.ok) {
               const accountData = await accountResponse.json()
-              
+
               const associationStored = await storeUserAccountAssociation(
                 supabase,
                 user_context.user_id,
                 accountData
               )
-              
-              console.log(`Association result for webhook: ${associationStored}`)
 
-              if (associationStored) {
+              if (!associationStored) {
+                throw new Error(`Failed to store user association for account ${account_id}`)
+              }
+
+              console.log(`✅ Association stored for webhook: user ${user_context.user_id}`)
+
+              // CRITICAL: Store in workspace_accounts
+              try {
                 await upsertWorkspaceAccount(
                   supabase,
                   user_context.workspace_id,
                   user_context.user_id,
                   accountData
                 )
+                console.log(`✅ Workspace account stored for workspace ${user_context.workspace_id}`)
+              } catch (workspaceError) {
+                console.error(`❌ CRITICAL: Failed to store workspace account in webhook:`, workspaceError)
+                throw new Error(`Failed to associate account with workspace: ${workspaceError instanceof Error ? workspaceError.message : 'Unknown error'}`)
               }
             }
           }
