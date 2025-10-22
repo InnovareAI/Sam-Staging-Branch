@@ -378,7 +378,37 @@ export async function POST(req: NextRequest) {
                 errorData = { raw: errorText };
               }
 
-              // Build detailed error message
+              // Handle 422 "already_invited_recently" gracefully - this is not a fatal error
+              if (unipileResponse.status === 422 && errorData.type === 'errors/already_invited_recently') {
+                console.log('⚠️  Invitation already sent recently to this prospect - skipping');
+
+                // Mark prospect as already invited
+                await supabase
+                  .from('campaign_prospects')
+                  .update({
+                    status: 'already_invited',
+                    contacted_at: new Date().toISOString(),
+                    personalization_data: {
+                      error: 'already_invited_recently',
+                      detail: errorData.detail
+                    }
+                  })
+                  .eq('id', prospect.id);
+
+                results.messages.push({
+                  prospect: `${prospect.first_name || 'Unknown'} ${prospect.last_name || 'Unknown'}`,
+                  message: personalizedResult.message,
+                  cost: personalizedResult.cost,
+                  model: personalizedResult.model,
+                  linkedin_target: prospect.linkedin_url || prospect.linkedin_user_id,
+                  status: 'already_invited'
+                });
+
+                // Continue to next prospect instead of throwing error
+                continue;
+              }
+
+              // Build detailed error message for other errors
               const errorMessage = errorData.message || errorData.error || errorData.statusMessage || errorData.raw || unipileResponse.statusText;
               const detailMessage = errorData.details ? `\nDetails: ${JSON.stringify(errorData.details)}` : '';
 
