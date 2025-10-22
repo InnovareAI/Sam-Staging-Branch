@@ -105,28 +105,53 @@ export async function POST(request: NextRequest) {
         const errorData = await executeResponse.json().catch(() => ({}))
         console.error('Campaign execution failed:', errorData)
 
-        // Return the execution error to the user
+        // CRITICAL: Rollback campaign status to inactive
+        await supabase
+          .from('campaigns')
+          .update({
+            status: 'inactive',
+            activated_at: null
+          })
+          .eq('id', campaignId)
+
+        console.log('⚠️ Campaign rolled back to inactive due to execution failure')
+
+        // Return error with correct status
         return NextResponse.json({
           success: false,
-          error: `Campaign activated but execution failed: ${errorData.error || 'Unknown error'}`,
+          error: `Campaign execution failed: ${errorData.error || 'Unknown error'}`,
+          details: 'Campaign has been rolled back to inactive status. Please check your LinkedIn account connection and try again.',
           campaign: {
             id: campaign.id,
             name: campaign.name,
-            status: 'active'
+            status: 'inactive'
           }
-        }, { status: 200 }) // Still 200 because activation succeeded
+        }, { status: 500 })
       }
     } catch (executeError) {
       console.error('Campaign execution error:', executeError)
+
+      // CRITICAL: Rollback campaign status to inactive
+      await supabase
+        .from('campaigns')
+        .update({
+          status: 'inactive',
+          activated_at: null
+        })
+        .eq('id', campaignId)
+
+      console.log('⚠️ Campaign rolled back to inactive due to execution error')
+
       return NextResponse.json({
         success: false,
-        error: `Campaign activated but execution failed: ${executeError instanceof Error ? executeError.message : 'Unknown error'}`,
+        error: `Campaign execution failed: ${executeError instanceof Error ? executeError.message : 'Unknown error'}`,
+        details: 'Campaign has been rolled back to inactive status. Please check your configuration and try again.',
         campaign: {
           id: campaign.id,
           name: campaign.name,
-          status: 'active'
+          status: 'inactive'
         }
-      }, { status: 200 })
+      }, { status: 500 })
     }
 
     return NextResponse.json({

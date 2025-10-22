@@ -107,16 +107,26 @@ export async function GET(request: NextRequest) {
               });
 
             if (dbError) {
-              console.error('❌ Database error:', dbError);
+              console.error('❌ Database error storing email account:', dbError);
+              throw new Error(`Failed to store email account in workspace: ${dbError.message}`);
             } else {
               console.log('✅ Stored email account in workspace_accounts');
             }
+          } else {
+            throw new Error('No workspace found for user - cannot store email account');
           }
+        } else {
+          throw new Error('User not found - cannot store email account');
         }
+      } else {
+        throw new Error('No email address found in account data');
       }
     } catch (dbError) {
       console.error('❌ Database connection error:', dbError);
-      // Continue anyway - don't fail the OAuth flow
+      // CRITICAL: Fail the flow - don't let user think account is connected when it's not
+      return NextResponse.redirect(
+        `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/contact-center?error=account_connection_failed&message=${encodeURIComponent(dbError instanceof Error ? dbError.message : 'Failed to store email account')}`
+      );
     }
 
     console.log(`✅ ${accountData.type} account connected successfully: ${accountData.email}`);

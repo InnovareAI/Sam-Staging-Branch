@@ -75,7 +75,8 @@ export async function POST(req: NextRequest) {
 
     if (approvalError) {
       console.error('Approval recording error:', approvalError)
-      // Continue even if approval logging fails
+      // CRITICAL: Fail the operation - approval logging is required for audit trail
+      throw new Error(`Failed to record approval decision: ${approvalError.message}`)
     }
 
     // If approved, move to active prospects
@@ -103,7 +104,8 @@ export async function POST(req: NextRequest) {
 
       if (prospectInsertError) {
         console.error('Prospect creation error:', prospectInsertError)
-        // Don't fail the approval if prospect creation fails
+        // CRITICAL: Fail the operation - prospect must be created when approved
+        throw new Error(`Failed to create prospect in active prospects table: ${prospectInsertError.message}`)
       }
 
       // Create initial engagement tasks if approved
@@ -198,14 +200,21 @@ async function createInitialEngagementTasks(
     }
 
     if (tasks.length > 0) {
-      await supabase
+      const { error: taskError } = await supabase
         .from('tasks')
         .insert(tasks)
+
+      if (taskError) {
+        console.error('Task creation error:', taskError)
+        // CRITICAL: Throw error instead of silent failure
+        throw new Error(`Failed to create engagement tasks: ${taskError.message}`)
+      }
     }
 
   } catch (error) {
     console.error('Task creation error:', error)
-    // Don't fail approval if task creation fails
+    // CRITICAL: Propagate error up - don't hide failures
+    throw error
   }
 }
 

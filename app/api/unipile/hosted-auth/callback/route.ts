@@ -472,7 +472,13 @@ export async function GET(request: NextRequest) {
           }
         } catch (associationError) {
           console.error('❌ Error storing account association:', associationError)
-          // Don't fail the whole flow, just log the error
+          // CRITICAL: Fail the flow - redirect to error page instead of success
+          const workspaceId = parsedUserContext?.workspace_id
+          const errorMessage = associationError instanceof Error ? associationError.message : 'Failed to store account association'
+          const redirectUrl = workspaceId
+            ? `/workspace/${workspaceId}/settings?tab=integrations&error=account_connection_failed&message=${encodeURIComponent(errorMessage)}`
+            : `/?error=account_connection_failed&message=${encodeURIComponent(errorMessage)}`
+          return NextResponse.redirect(new URL(redirectUrl, request.url))
         }
       }
 
