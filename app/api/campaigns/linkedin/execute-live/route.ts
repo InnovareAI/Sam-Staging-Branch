@@ -101,6 +101,80 @@ export async function POST(req: NextRequest) {
     const selectedAccount = linkedinAccounts[0];
     console.log(`🎯 Using LinkedIn account: ${selectedAccount.account_name || 'Primary Account'}`);
 
+    // Step 3.5: VALIDATE account has required Unipile data
+    if (!selectedAccount.unipile_account_id) {
+      console.error('❌ LinkedIn account missing unipile_account_id');
+      return NextResponse.json({
+        error: 'LinkedIn account configuration error',
+        details: 'Account exists but missing Unipile integration ID. Please reconnect your LinkedIn account.',
+        troubleshooting: {
+          step1: 'Go to Workspace Settings → Integrations',
+          step2: 'Disconnect and reconnect your LinkedIn account',
+          step3: 'Ensure you complete the full OAuth flow'
+        }
+      }, { status: 400 });
+    }
+
+    // Step 3.6: VERIFY account is active in Unipile
+    try {
+      const unipileCheckUrl = `https://${process.env.UNIPILE_DSN}/api/v1/accounts/${selectedAccount.unipile_account_id}`;
+      const unipileCheckResponse = await fetch(unipileCheckUrl, {
+        method: 'GET',
+        headers: {
+          'X-API-KEY': process.env.UNIPILE_API_KEY || '',
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!unipileCheckResponse.ok) {
+        console.error(`❌ Unipile account check failed: ${unipileCheckResponse.status}`);
+        return NextResponse.json({
+          error: 'LinkedIn account not accessible',
+          details: `Account "${selectedAccount.account_name}" exists in database but is not accessible via Unipile`,
+          unipile_status: unipileCheckResponse.status,
+          troubleshooting: {
+            step1: 'The LinkedIn account may have been disconnected or deleted in Unipile',
+            step2: 'Go to Workspace Settings → Integrations',
+            step3: 'Reconnect your LinkedIn account',
+            step4: 'Contact support if problem persists'
+          }
+        }, { status: 400 });
+      }
+
+      const unipileAccountData = await unipileCheckResponse.json();
+      console.log(`✅ Unipile account verified: ${unipileAccountData.id}, status: ${unipileAccountData.status}`);
+
+      // Check if account is actually active
+      const hasActiveSource = unipileAccountData.sources?.some((s: any) => s.status === 'OK');
+      if (!hasActiveSource) {
+        console.error(`❌ Unipile account has no active sources`);
+        return NextResponse.json({
+          error: 'LinkedIn account not active',
+          details: `Account "${selectedAccount.account_name}" is connected but not active in Unipile`,
+          account_status: unipileAccountData.status,
+          sources: unipileAccountData.sources,
+          troubleshooting: {
+            step1: 'The LinkedIn session may have expired',
+            step2: 'Go to Workspace Settings → Integrations',
+            step3: 'Reconnect your LinkedIn account to refresh the session'
+          }
+        }, { status: 400 });
+      }
+
+    } catch (unipileError) {
+      console.error('❌ Error verifying Unipile account:', unipileError);
+      return NextResponse.json({
+        error: 'LinkedIn account verification failed',
+        details: 'Unable to verify account status with Unipile',
+        message: unipileError instanceof Error ? unipileError.message : 'Unknown error',
+        troubleshooting: {
+          step1: 'There may be a temporary connectivity issue',
+          step2: 'Try again in a few moments',
+          step3: 'If problem persists, reconnect your LinkedIn account'
+        }
+      }, { status: 500 });
+    }
+
     // Step 4: Get prospects ready for messaging
     const { data: campaignProspects, error: prospectsError } = await supabase
       .from('campaign_prospects')

@@ -435,27 +435,24 @@ export async function GET(request: NextRequest) {
                 }
               }
               
-              // Store the association with the correct user
-              const associationStored = await storeUserAccountAssociation(
-                supabase,
-                targetUserId,
-                accountData
-              )
+              // ATOMIC: Store LinkedIn account in both tables atomically using RPC function
+              // This prevents silent failures and table drift
+              console.log(`🔗 Atomically associating account ${accountId} for user ${targetUserId} in workspace ${targetWorkspaceId}`)
 
-              if (!associationStored) {
-                throw new Error(`Failed to store user association for account ${accountId}`)
+              const { data: rpcResult, error: rpcError } = await supabase.rpc('associate_linkedin_account_atomic', {
+                p_user_id: targetUserId,
+                p_workspace_id: targetWorkspaceId,
+                p_unipile_account_id: accountId,
+                p_account_data: accountData
+              })
+
+              if (rpcError) {
+                console.error(`❌ CRITICAL: Atomic account association failed:`, rpcError)
+                throw new Error(`Failed to associate LinkedIn account: ${rpcError.message}`)
               }
 
-              console.log(`✅ Successfully stored association for user ${targetUserId}`)
-
-              // CRITICAL: Store in workspace_accounts - this is required for campaigns
-              try {
-                await upsertWorkspaceAccount(supabase, targetWorkspaceId, targetUserId, accountData)
-                console.log(`✅ Successfully stored workspace account for workspace ${targetWorkspaceId}`)
-              } catch (workspaceError) {
-                console.error(`❌ CRITICAL: Failed to store workspace account:`, workspaceError)
-                throw new Error(`Failed to associate account with workspace: ${workspaceError instanceof Error ? workspaceError.message : 'Unknown error'}`)
-              }
+              console.log(`✅ Atomic account association successful:`, rpcResult)
+              console.log(`✅ Account stored in both user_unipile_accounts AND workspace_accounts`)
 
               // Redirect based on account type
               if (accountType === 'LINKEDIN') {
