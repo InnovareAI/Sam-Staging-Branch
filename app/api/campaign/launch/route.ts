@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler';
 
 // Campaign launch API - connects Campaign Hub to N8N orchestration
 export async function POST(request: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies: () => cookies() });
-    
+
     // Check authentication
     const { data: { session }, error: authError } = await supabase.auth.getSession();
     if (authError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw apiError.unauthorized();
     }
 
     // Get user's workspace
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!workspaceMember) {
-      return NextResponse.json({ error: 'No workspace found' }, { status: 404 });
+      throw apiError.notFound('Workspace');
     }
 
     const workspaceId = workspaceMember.workspace_id;
@@ -33,9 +34,10 @@ export async function POST(request: NextRequest) {
     const requiredFields = ['campaignName', 'campaignType', 'targetAudience'];
     for (const field of requiredFields) {
       if (!campaignConfig[field]) {
-        return NextResponse.json({ 
-          error: `Missing required field: ${field}` 
-        }, { status: 400 });
+        throw apiError.validation(
+          `Missing required field: ${field}`,
+          'Campaign name, type, and target audience are required'
+        );
       }
     }
 
@@ -47,9 +49,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!workspaceTier || workspaceTier.tier_status !== 'active') {
-      return NextResponse.json({ 
-        error: 'Workspace tier not active' 
-      }, { status: 403 });
+      throw apiError.forbidden('Workspace tier not active');
     }
 
     // Get integration configurations based on tier
@@ -65,9 +65,7 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (!unipileConfig) {
-        return NextResponse.json({ 
-          error: 'Unipile integration not configured' 
-        }, { status: 400 });
+        throw apiError.validation('Unipile integration not configured');
       }
 
       integrationConfig = {
@@ -102,9 +100,7 @@ export async function POST(request: NextRequest) {
       ]);
 
       if (!unipileResult.data || !reachinboxResult.data) {
-        return NextResponse.json({ 
-          error: 'Integrations not fully configured' 
-        }, { status: 400 });
+        throw apiError.validation('Integrations not fully configured');
       }
 
       integrationConfig = {
@@ -225,10 +221,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error('Error creating campaign execution:', insertError);
-      return NextResponse.json({ 
-        error: 'Failed to create campaign execution' 
-      }, { status: 500 });
+      throw apiError.database('campaign execution creation', insertError);
     }
 
     // Add campaign execution ID to N8N payload
@@ -237,9 +230,7 @@ export async function POST(request: NextRequest) {
     // Send to N8N orchestration webhook
     const n8nWebhookUrl = process.env.N8N_CAMPAIGN_WEBHOOK_URL;
     if (!n8nWebhookUrl) {
-      return NextResponse.json({ 
-        error: 'N8N webhook URL not configured' 
-      }, { status: 500 });
+      throw apiError.internal('N8N webhook URL not configured');
     }
 
     const n8nResponse = await fetch(n8nWebhookUrl, {
@@ -261,9 +252,7 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', campaignExecution.id);
 
-      return NextResponse.json({ 
-        error: 'Failed to trigger N8N campaign' 
-      }, { status: 500 });
+      throw apiError.internal(`Failed to trigger N8N campaign: ${n8nResponse.statusText}`);
     }
 
     const n8nResult = await n8nResponse.json();
@@ -306,20 +295,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Return campaign execution details
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       campaign_execution_id: campaignExecution.id,
       n8n_execution_id: n8nResult.execution_id,
       status: 'running',
       prospects_count: prospectData.length,
-      estimated_completion: n8nResult.estimated_completion,
-      message: 'Campaign launched successfully'
-    });
+      estimated_completion: n8nResult.estimated_completion
+    }, 'Campaign launched successfully');
 
   } catch (error) {
-    console.error('Campaign launch error:', error);
-    return NextResponse.json({ 
-      error: 'Internal server error' 
-    }, { status: 500 });
+    return handleApiError(error, 'campaign_launch');
   }
 }

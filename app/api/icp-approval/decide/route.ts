@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/app/lib/supabase'
+import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler'
 
 export async function POST(request: NextRequest) {
   try {
     const { sessionId, decision, prospectIndexes, notes } = await request.json()
-    
+
     const authHeader = request.headers.get('Authorization')
     if (!authHeader) {
-      return NextResponse.json({ success: false, error: 'Auth required' }, { status: 401 })
+      throw apiError.unauthorized()
     }
 
     const supabase = supabaseAdmin()
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
     if (authError || !user) {
-      return NextResponse.json({ success: false, error: 'Auth required' }, { status: 401 })
+      throw apiError.unauthorized()
     }
 
     // ULTRAFAST: Bulk operations for speed
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (!session) {
-        return NextResponse.json({ success: false, error: 'Session not found' }, { status: 404 })
+        throw apiError.notFound('ICP approval session')
       }
 
       // Bulk update session
@@ -68,12 +69,10 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      return NextResponse.json({
-        success: true,
+      return apiSuccess({
         decision: status,
-        count: session.total_count,
-        message: `${session.total_count} prospects ${status}`
-      })
+        count: session.total_count
+      }, `${session.total_count} prospects ${status}`)
     }
 
     // Individual prospect decisions
@@ -99,19 +98,15 @@ export async function POST(request: NextRequest) {
         })
         .eq('session_id', sessionId)
 
-      return NextResponse.json({
-        success: true,
+      return apiSuccess({
         processed: prospectIndexes.length,
         decision
       })
     }
 
-    return NextResponse.json({ success: false, error: 'Invalid request' }, { status: 400 })
+    throw apiError.validation('Invalid request', 'Either provide prospectIndexes or use approve_all/reject_all')
 
   } catch (error) {
-    return NextResponse.json({ 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    }, { status: 500 })
+    return handleApiError(error, 'icp_approval_decision')
   }
 }

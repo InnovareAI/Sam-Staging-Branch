@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { HITLApprovalEmailService } from '@/lib/services/hitl-approval-email-service'
 import { supabaseAdmin } from '@/app/lib/supabase'
+import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler'
 import { z } from 'zod'
 
 const supabase = supabaseAdmin()
@@ -39,11 +40,10 @@ export async function POST(request: NextRequest) {
     // Validate request body
     const validation = CreateApprovalSessionSchema.safeParse(body)
     if (!validation.success) {
-      return NextResponse.json({
-        success: false,
-        error: 'Invalid request data',
-        details: validation.error.issues
-      }, { status: 400 })
+      throw apiError.validation(
+        'Invalid request data',
+        JSON.stringify(validation.error.issues)
+      )
     }
 
     const data = validation.data
@@ -56,10 +56,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (workspaceError || !workspace) {
-      return NextResponse.json({
-        success: false,
-        error: 'Workspace not found'
-      }, { status: 404 })
+      throw apiError.notFound('Workspace')
     }
 
     // Skip reviewer verification for now - focus on HITL functionality
@@ -85,24 +82,15 @@ export async function POST(request: NextRequest) {
     })
 
     if (!result.success) {
-      return NextResponse.json({
-        success: false,
-        error: result.error || 'Failed to create approval session'
-      }, { status: 500 })
+      throw apiError.internal(result.error || 'Failed to create approval session')
     }
 
-    return NextResponse.json({
-      success: true,
-      session: result.session,
-      message: 'HITL approval session created and email sent'
-    })
+    return apiSuccess({
+      session: result.session
+    }, 'HITL approval session created and email sent')
 
   } catch (error) {
-    console.error('HITL approval session creation failed:', error)
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return handleApiError(error, 'hitl_approval_session_create')
   }
 }
 
@@ -117,10 +105,7 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0')
 
     if (!workspaceId) {
-      return NextResponse.json({
-        success: false,
-        error: 'workspace_id is required'
-      }, { status: 400 })
+      throw apiError.validation('workspace_id is required')
     }
 
     let query = supabase
@@ -144,10 +129,11 @@ export async function GET(request: NextRequest) {
 
     const { data: sessions, error } = await query
 
-    if (error) throw error
+    if (error) {
+      throw apiError.database('HITL sessions fetch', error)
+    }
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       sessions,
       pagination: {
         limit,
@@ -157,10 +143,6 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('HITL sessions fetch failed:', error)
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return handleApiError(error, 'hitl_approval_sessions_list')
   }
 }
