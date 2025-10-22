@@ -305,7 +305,7 @@ export async function POST(req: NextRequest) {
             console.log(`🔍 Step 1: Retrieving profile for ${linkedinIdentifier}`);
 
             const profileResponse = await fetch(
-              `https://${process.env.UNIPILE_DSN}/api/v1/users/${linkedinIdentifier}?account_id=${unipileSourceId}`,
+              `https://${process.env.UNIPILE_DSN}/api/v1/users/${linkedinIdentifier}?account_id=${selectedAccount.unipile_account_id}`,
               {
                 method: 'GET',
                 headers: {
@@ -327,7 +327,7 @@ export async function POST(req: NextRequest) {
             // STEP 2: Send invitation using internal ID
             const requestBody: any = {
               provider_id: profileData.provider_id,  // CRITICAL: Use provider_id from profile response
-              account_id: unipileSourceId,  // FIXED: Use source ID from active account verification
+              account_id: selectedAccount.unipile_account_id,  // Use base account ID (not source ID)
               message: personalizedResult.message  // Connection request message
             };
 
@@ -349,7 +349,7 @@ export async function POST(req: NextRequest) {
             console.log(`📤 Step 2: Sending invitation to Unipile`);
             console.log(`   Endpoint: ${inviteEndpoint}`);
             console.log(`   Provider ID: ${requestBody.provider_id}`);
-            console.log(`   Account ID (Source ID): ${requestBody.account_id}`);
+            console.log(`   Account ID: ${requestBody.account_id}`);
             console.log(`   Message length: ${personalizedResult.message.length} chars`);
             console.log(`   Has email: ${!!requestBody.user_email}`);
             console.log(`   Full request body:`, JSON.stringify(requestBody, null, 2));
