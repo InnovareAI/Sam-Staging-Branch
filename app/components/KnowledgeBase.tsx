@@ -1965,9 +1965,38 @@ const KnowledgeBase: React.FC = () => {
 
     const docCount = getDocumentsForSection(sectionId).length;
     if (docCount === 0) return 0;
-    if (docCount === 1) return 40;
-    if (docCount <= 3) return 70;
-    return 100;
+
+    // Section-specific scoring - realistic for business reality
+    // Some sections are complete with 1 doc, others benefit from variety
+    const singleDocCompleteSections = [
+      'products',    // Many companies have 1 core product
+      'pricing',     // Most companies have 1 pricing model
+      'competition', // Some markets have 1 main competitor
+      'company',     // Only need 1 company overview
+      'buying',      // 1 buying process description
+      'compliance',  // 1 compliance doc covers requirements
+      'tone'         // 1 brand voice guide is sufficient
+    ];
+
+    const varietyBenefitSections = [
+      'messaging',   // Multiple value props help
+      'objections',  // Different objections need coverage
+      'success',     // Multiple case studies build credibility
+      'personas'     // Different buyer personas
+    ];
+
+    if (singleDocCompleteSections.includes(sectionId)) {
+      // 1 quality document = 100%
+      return 100;
+    }
+
+    if (varietyBenefitSections.includes(sectionId)) {
+      // 1 doc = 70%, 2+ docs = 100%
+      return docCount >= 2 ? 100 : 70;
+    }
+
+    // Default fallback (shouldn't hit this)
+    return docCount >= 2 ? 100 : 70;
   };
 
   // Critical sections (60% total) - Required for SAM to function
@@ -2479,36 +2508,36 @@ const KnowledgeBase: React.FC = () => {
                           <div>
                             <p className="font-medium text-yellow-400">Critical Sections (60% total):</p>
                             <ul className="ml-3 space-y-0.5 text-gray-400">
-                              <li>• ICP: <span className="text-white">1+ profile</span> → 15% <span className="text-green-400 text-xs">(+2% bonus per extra ICP)</span></li>
-                              <li>• Products: <span className="text-white">4+ documents</span> → 15%</li>
-                              <li>• Messaging: <span className="text-white">4+ templates</span> → 15%</li>
-                              <li>• Pricing: <span className="text-white">4+ documents</span> → 15%</li>
+                              <li>• ICP: <span className="text-white">1 profile</span> → 15% <span className="text-green-400 text-xs">(+2% bonus per extra ICP)</span></li>
+                              <li>• Products: <span className="text-white">1 product/service</span> → 15%</li>
+                              <li>• Messaging: <span className="text-white">1 template = 70%, 2+ = 15%</span></li>
+                              <li>• Pricing: <span className="text-white">1 pricing doc</span> → 15%</li>
                             </ul>
                           </div>
 
                           <div>
                             <p className="font-medium text-orange-400">Important Sections (30% total):</p>
                             <ul className="ml-3 space-y-0.5 text-gray-400">
-                              <li>• Objections: <span className="text-white">4+ documents</span> → 10%</li>
-                              <li>• Success Stories: <span className="text-white">4+ case studies</span> → 10%</li>
-                              <li>• Competition: <span className="text-white">4+ competitor profiles</span> → 10%</li>
+                              <li>• Objections: <span className="text-white">1 doc = 70%, 2+ = 10%</span></li>
+                              <li>• Success Stories: <span className="text-white">1 story = 70%, 2+ = 10%</span></li>
+                              <li>• Competition: <span className="text-white">1 competitor</span> → 10%</li>
                             </ul>
                           </div>
 
                           <div>
                             <p className="font-medium text-blue-400">Supporting Sections (10% total):</p>
                             <ul className="ml-3 space-y-0.5 text-gray-400">
-                              <li>• Company Info: <span className="text-white">4+ documents</span> → 2%</li>
-                              <li>• Buying Process: <span className="text-white">4+ documents</span> → 2%</li>
-                              <li>• Personas: <span className="text-white">4+ personas</span> → 2%</li>
-                              <li>• Compliance: <span className="text-white">4+ documents</span> → 2%</li>
-                              <li>• Brand Voice: <span className="text-white">4+ documents</span> → 2%</li>
+                              <li>• Company Info: <span className="text-white">1 document</span> → 2%</li>
+                              <li>• Buying Process: <span className="text-white">1 document</span> → 2%</li>
+                              <li>• Personas: <span className="text-white">1 persona = 70%, 2+ = 2%</span></li>
+                              <li>• Compliance: <span className="text-white">1 document</span> → 2%</li>
+                              <li>• Brand Voice: <span className="text-white">1 guide</span> → 2%</li>
                             </ul>
                           </div>
 
                           <div className="pt-2 bg-gray-750 -ml-4 pl-4 pr-2 py-2 rounded">
                             <p className="font-medium text-green-400">💡 Quick Start:</p>
-                            <p className="text-gray-400 mt-1">Begin with 1-2 documents in each critical section (Products, ICP, Messaging, Pricing) to quickly reach 40-50% completion.</p>
+                            <p className="text-gray-400 mt-1">Upload just 1 document per critical section (ICP, Product, Pricing, Messaging) to unlock test campaigns at 50%+ immediately!</p>
                           </div>
                         </>
                       ) : (
