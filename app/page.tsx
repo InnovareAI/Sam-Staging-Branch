@@ -373,8 +373,8 @@ export default function Page() {
     }
   }, [isAuthLoading, user, session, showAuthModal]);
 
-  // Smart default for Campaign Hub: always show Campaign Hub view by default
-  // Do not auto-open the Prospect Approval panel here; users can use the Data Approval tab
+  // Smart default for Campaigns: always show Campaigns view by default
+  // Do not auto-open the Prospect Approval panel here; users can use the Prospect Database tab
   useEffect(() => {
     if (activeMenuItem === 'campaign') {
       setShowCampaignApprovalView(false);
@@ -929,7 +929,7 @@ export default function Page() {
     setSelectedProspects([]);
     
     if (status === 'approved') {
-      toastError(`✅ Approved ${selectedProspects.length} prospects!\n\n🎯 Next Steps:\n1. View all approved prospects in the "Data Approval" section below\n2. Create campaigns using your approved data\n3. Launch outreach campaigns with confidence`);
+      toastError(`✅ Approved ${selectedProspects.length} prospects!\n\n🎯 Next Steps:\n1. View all approved prospects in the "Prospect Database" section below\n2. Create campaigns using your approved data\n3. Launch outreach campaigns with confidence`);
     } else {
       toastError(`❌ Rejected ${selectedProspects.length} prospects`);
     }
@@ -949,7 +949,7 @@ export default function Page() {
     // Switch to campaign tab
     setActiveMenuItem('campaign');
     
-    toastError(`✅ ${approvedProspects.length} approved prospects transferred to Campaign Hub!\n\nSwitching to Campaign tab...`);
+    toastError(`✅ ${approvedProspects.length} approved prospects transferred to Campaigns!\n\nSwitching to Campaign tab...`);
   };
 
   // Update handleQuickAction to populate prospect review data
@@ -1613,7 +1613,7 @@ export default function Page() {
         const uploadMessage = {
           id: `msg_${Date.now()}`,
           role: 'assistant',
-          content: `I've successfully processed your pasted CSV data.\n\n📊 **Processing Summary:**\n• Total records: ${totalCount}\n• Valid prospects: ${validCount}\n• LinkedIn profiles: ${linkedinProspectsCount}\n• Quality score: ${qualityScore}%\n\n🔍 **LinkedIn Validation:**\nI'm checking each prospect for:\n✓ Valid LinkedIn profile URLs\n✓ Complete contact information\n✓ Company and title data\n✓ No duplicates\n\n📋 **Next Steps:**\n1. Review and approve prospects in the Data Approval dashboard\n2. Assign approved prospects to a campaign\n3. I'll help personalize outreach for each prospect\n\nThe Data Approval section is now open. Would you like me to automatically approve prospects with 80%+ quality scores?`,
+          content: `I've successfully processed your pasted CSV data.\n\n📊 **Processing Summary:**\n• Total records: ${totalCount}\n• Valid prospects: ${validCount}\n• LinkedIn profiles: ${linkedinProspectsCount}\n• Quality score: ${qualityScore}%\n\n🔍 **LinkedIn Validation:**\nI'm checking each prospect for:\n✓ Valid LinkedIn profile URLs\n✓ Complete contact information\n✓ Company and title data\n✓ No duplicates\n\n📋 **Next Steps:**\n1. Review and approve prospects in the Prospect Database\n2. Assign approved prospects to a campaign\n3. I'll help personalize outreach for each prospect\n\nThe Prospect Database section is now open. Would you like me to automatically approve prospects with 80%+ quality scores?`,
           created_at: new Date().toISOString()
         };
         
@@ -1765,7 +1765,7 @@ export default function Page() {
         const uploadMessage = {
           id: `msg_${Date.now()}`,
           role: 'assistant',
-          content: `I've successfully uploaded and validated your CSV file "${file.name}".\n\n📊 **Upload Summary:**\n• Total records: ${totalCount}\n• Valid prospects: ${validCount}\n• LinkedIn profiles: ${linkedinProspectsCount}\n• Quality score: ${qualityScore}%\n\n🔍 **LinkedIn Validation:**\nI'm checking each prospect for:\n✓ Valid LinkedIn profile URLs\n✓ Complete contact information\n✓ Company and title data\n✓ No duplicates\n\n📋 **Next Steps:**\n1. Review and approve prospects in the Data Approval dashboard\n2. Assign approved prospects to a campaign\n3. I'll help personalize outreach for each prospect\n\nThe Data Approval section is now open. Would you like me to automatically approve prospects with 80%+ quality scores, or would you prefer to review each one manually?`,
+          content: `I've successfully uploaded and validated your CSV file "${file.name}".\n\n📊 **Upload Summary:**\n• Total records: ${totalCount}\n• Valid prospects: ${validCount}\n• LinkedIn profiles: ${linkedinProspectsCount}\n• Quality score: ${qualityScore}%\n\n🔍 **LinkedIn Validation:**\nI'm checking each prospect for:\n✓ Valid LinkedIn profile URLs\n✓ Complete contact information\n✓ Company and title data\n✓ No duplicates\n\n📋 **Next Steps:**\n1. Review and approve prospects in the Prospect Database\n2. Assign approved prospects to a campaign\n3. I'll help personalize outreach for each prospect\n\nThe Prospect Database section is now open. Would you like me to automatically approve prospects with 80%+ quality scores, or would you prefer to review each one manually?`,
           created_at: new Date().toISOString()
         };
         
@@ -2842,7 +2842,7 @@ export default function Page() {
               console.log('Data collected:', data, 'Source:', source);
             }}
             onApprovalComplete={(approvedData) => {
-              // Store approved prospects and navigate to Campaign Hub
+              // Store approved prospects and navigate to Campaigns
               console.log('Approved prospects:', approvedData);
               setPendingCampaignProspects(approvedData);
               setActiveMenuItem('campaign');

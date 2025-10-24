@@ -112,7 +112,7 @@ export default function DataApprovalPanel({
   });
 
   const overallScore = kbStatus?.overall_score || 0;
-  const showKBWarning = workspaceId && overallScore > 0 && overallScore < 75;
+  const showKBWarning = workspaceId && overallScore < 75; // Show banner for all scores below 75%
 
   return (
     <Modal

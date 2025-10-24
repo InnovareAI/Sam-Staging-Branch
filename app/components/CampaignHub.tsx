@@ -77,11 +77,11 @@ function KBReadinessIndicator({ workspaceId }: { workspaceId: string }) {
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
-  if (isLoading || !kbStatus) {
+  if (isLoading) {
     return null;
   }
 
-  const overallScore = kbStatus.overall_score || 0;
+  const overallScore = kbStatus?.overall_score || 0;
   const isReady = overallScore >= 50;
   const isFullyOptimized = overallScore >= 75; // Complete essential set (4 docs)
   const criticalSections = kbStatus.sections?.filter((s: any) =>
@@ -2093,7 +2093,7 @@ Would you like me to adjust these or create more variations?`
                   <div className="text-center py-8 text-gray-400">Loading approval sessions...</div>
                 ) : approvalSessions.length === 0 ? (
                   <div className="text-center py-8 text-gray-400">
-                    No approval sessions found. Use the Data Approval section to approve some prospects first.
+                    No approval sessions found. Use the Prospect Database section to approve some prospects first.
                   </div>
                 ) : (
                   <div>
@@ -4632,7 +4632,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               <CheckCircle className="text-green-400" size={20} />
             </motion.div>
             <div className="flex-1">
-              <p className="text-white text-sm font-semibold">Prospects Loaded from Data Approval</p>
+              <p className="text-white text-sm font-semibold">Prospects Loaded from Prospect Database</p>
               <p className="text-gray-300 text-xs mt-1">Add your message templates below to complete the campaign setup</p>
             </div>
           </motion.div>
@@ -4908,7 +4908,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                       <div className="text-center py-12">
                         <CheckCircle className="mx-auto text-green-400 mb-4" size={48} />
                         <div className="text-white font-medium mb-2">No pending campaigns</div>
-                        <div className="text-gray-400">Approve prospects in Data Approval to create campaigns.</div>
+                        <div className="text-gray-400">Approve prospects in Prospect Database to create campaigns.</div>
                       </div>
                     );
                   }
@@ -4948,7 +4948,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                             </td>
                             <td className="px-6 py-4">
                               <span className="text-gray-300 text-sm">
-                                {source === 'database' ? 'Data Approval' : 'Recent'}
+                                {source === 'database' ? 'Prospect Database' : 'Recent'}
                               </span>
                             </td>
                             <td className="px-6 py-4">
