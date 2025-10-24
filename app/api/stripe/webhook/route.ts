@@ -43,6 +43,12 @@ export async function POST(request: NextRequest) {
 
     // Handle different event types
     switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session
+        await handleCheckoutCompleted(supabase, session)
+        break
+      }
+
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription
@@ -89,6 +95,57 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return handleApiError(error, 'stripe_webhook')
   }
+}
+
+/**
+ * Handle checkout session completed
+ * CRITICAL: Ensures user is added as workspace member after signup
+ */
+async function handleCheckoutCompleted(supabase: any, session: Stripe.Checkout.Session) {
+  const workspaceId = session.metadata?.workspace_id
+  const userId = session.metadata?.user_id || session.client_reference_id
+
+  if (!workspaceId || !userId) {
+    console.error('❌ Checkout session missing workspace_id or user_id:', session.id)
+    return
+  }
+
+  console.log(`✅ Checkout completed for workspace ${workspaceId}, user ${userId}`)
+
+  // CRITICAL FIX: Ensure user is added as workspace member
+  const { data: existingMember } = await supabase
+    .from('workspace_members')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .single()
+
+  if (!existingMember) {
+    console.log(`➡️ Adding user ${userId} as admin member of workspace ${workspaceId}`)
+    
+    const { error: memberError } = await supabase
+      .from('workspace_members')
+      .insert({
+        workspace_id: workspaceId,
+        user_id: userId,
+        role: 'admin',
+        joined_at: new Date().toISOString()
+      })
+
+    if (memberError) {
+      console.error('❌ Failed to add workspace member:', memberError)
+    } else {
+      console.log('✅ User added as workspace member')
+    }
+  } else {
+    console.log('✅ User already a workspace member')
+  }
+
+  // Update user's current workspace
+  await supabase
+    .from('users')
+    .update({ current_workspace_id: workspaceId })
+    .eq('id', userId)
 }
 
 /**
