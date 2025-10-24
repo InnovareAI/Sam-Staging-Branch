@@ -152,8 +152,17 @@ export default function DataApprovalPanel({
                     : `Almost Ready - ${50 - overallScore}% to Test Campaigns`}
                 </h3>
                 <p className="text-gray-300 text-xs">
-                  Your Knowledge Base is at {overallScore}%. SAM can now create {isFullyOptimized ? 'fully optimized' : isReady ? 'testing' : 'limited'} campaigns.
-                  {overallScore < 75 && <span className="text-yellow-300"> Complete all 4 essential docs (ICP, Product, Messaging, Pricing) for 75% and full optimization.</span>}
+                  {isReady ? (
+                    <>
+                      Your Knowledge Base is at {overallScore}%. SAM can now create {isFullyOptimized ? 'fully optimized' : 'testing'} campaigns.
+                    </>
+                  ) : (
+                    <>
+                      Currently at <span className="font-bold text-white">{overallScore}%</span>.
+                      Reach <span className="font-bold text-white">50%</span> to unlock testing campaigns and A/B tests.
+                      Without core knowledge, SAM can't personalize outreach or handle objections effectively.
+                    </>
+                  )}
                 </p>
               </div>
             </div>

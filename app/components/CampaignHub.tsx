@@ -70,14 +70,22 @@ function KBReadinessIndicator({ workspaceId }: { workspaceId: string }) {
   const { data: kbStatus, isLoading } = useQuery({
     queryKey: ['kb-completeness', workspaceId],
     queryFn: async () => {
+      if (!workspaceId) return null;
+      console.log('[CampaignHub] Fetching KB status for workspace:', workspaceId);
       const response = await fetch(`/api/knowledge-base/check-completeness?workspace_id=${workspaceId}`);
-      if (!response.ok) return null;
-      return response.json();
+      if (!response.ok) {
+        console.error('[CampaignHub] KB status fetch failed:', response.status);
+        return null;
+      }
+      const data = await response.json();
+      console.log('[CampaignHub] KB status received:', data);
+      return data;
     },
+    enabled: !!workspaceId,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
-  if (isLoading) {
+  if (isLoading || !kbStatus) {
     return null;
   }
 
@@ -106,7 +114,7 @@ function KBReadinessIndicator({ workspaceId }: { workspaceId: string }) {
             </h3>
             <p className="text-gray-300 text-sm">
               Your Knowledge Base is at {overallScore}%. SAM can now create {isFullyOptimized ? 'fully optimized' : 'testing'} campaigns.
-              {!isFullyOptimized && <span className="text-yellow-300"> Complete all 4 essential docs (ICP, Product, Messaging, Pricing) for 75% and full optimization.</span>}
+              {overallScore < 75 && <span className="text-yellow-300"> Complete all 4 essential docs (ICP, Product, Messaging, Pricing) for 75% and full optimization.</span>}
             </p>
           </div>
         </div>
