@@ -112,7 +112,8 @@ export default function DataApprovalPanel({
   });
 
   const overallScore = kbStatus?.overall_score || 0;
-  const showKBWarning = workspaceId && overallScore < 75; // Show banner for all scores below 75%
+  const isReady = overallScore >= 50;
+  const isFullyOptimized = overallScore >= 75;
 
   return (
     <Modal
@@ -125,31 +126,33 @@ export default function DataApprovalPanel({
       className={className}
     >
       {/* KB Readiness Banner */}
-      {showKBWarning && (
+      {workspaceId && (
         <div className="px-6 pt-4">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             className={`rounded-lg p-4 flex items-center justify-between ${
-              overallScore >= 50
-                ? 'bg-gradient-to-r from-blue-900/30 to-blue-800/20 border border-blue-500/40'
+              isReady
+                ? 'bg-gradient-to-r from-green-900/30 to-green-800/20 border border-green-500/40'
                 : 'bg-gradient-to-r from-yellow-900/30 to-orange-800/20 border border-yellow-500/40'
             }`}
           >
             <div className="flex items-center gap-3">
-              {overallScore >= 50 ? (
-                <CheckCircle className="text-blue-400 flex-shrink-0" size={24} />
+              {isReady ? (
+                <CheckCircle className="text-green-400 flex-shrink-0" size={24} />
               ) : (
                 <AlertTriangle className="text-yellow-400 flex-shrink-0" size={24} />
               )}
               <div>
-                <h3 className={`font-semibold text-sm ${overallScore >= 50 ? 'text-blue-400' : 'text-yellow-400'}`}>
-                  {overallScore >= 50
+                <h3 className={`font-semibold text-sm ${isReady ? 'text-green-400' : 'text-yellow-400'}`}>
+                  {isFullyOptimized
+                    ? 'Complete Essential Set - Full Campaigns Ready!'
+                    : isReady
                     ? 'Ready to Create Test Campaigns'
                     : `Almost Ready - ${50 - overallScore}% to Test Campaigns`}
                 </h3>
                 <p className="text-gray-300 text-xs">
-                  Your Knowledge Base is at {overallScore}%. SAM can now create {overallScore >= 50 ? 'testing' : 'limited'} campaigns.
+                  Your Knowledge Base is at {overallScore}%. SAM can now create {isFullyOptimized ? 'fully optimized' : isReady ? 'testing' : 'limited'} campaigns.
                   {overallScore < 75 && <span className="text-yellow-300"> Complete all 4 essential docs (ICP, Product, Messaging, Pricing) for 75% and full optimization.</span>}
                 </p>
               </div>
@@ -158,8 +161,8 @@ export default function DataApprovalPanel({
               <a
                 href={`/workspace/${workspaceId}/knowledge-base`}
                 className={`text-sm font-medium flex items-center gap-1 transition-colors flex-shrink-0 ${
-                  overallScore >= 50
-                    ? 'text-blue-400 hover:text-blue-300'
+                  isReady
+                    ? 'text-green-400 hover:text-green-300'
                     : 'text-yellow-400 hover:text-yellow-300'
                 }`}
               >
