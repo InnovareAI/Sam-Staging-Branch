@@ -102,18 +102,37 @@ export default function DataApprovalPanel({
   const { data: kbStatus } = useQuery({
     queryKey: ['kb-completeness', workspaceId],
     queryFn: async () => {
-      if (!workspaceId) return null;
+      if (!workspaceId) {
+        console.warn('[DataApprovalPanel] No workspaceId provided to KB query');
+        return null;
+      }
+      console.log('[DataApprovalPanel] Fetching KB status for workspace:', workspaceId);
       const response = await fetch(`/api/knowledge-base/check-completeness?workspace_id=${workspaceId}`);
-      if (!response.ok) return null;
-      return response.json();
+      if (!response.ok) {
+        console.error('[DataApprovalPanel] KB status fetch failed:', response.status);
+        return null;
+      }
+      const data = await response.json();
+      console.log('[DataApprovalPanel] KB status received:', data);
+      return data;
     },
     enabled: !!workspaceId,
     staleTime: 2 * 60 * 1000,
+    refetchOnMount: true, // Force refetch on mount
+    refetchOnWindowFocus: true, // Refetch when window gains focus
   });
 
   const overallScore = kbStatus?.overall_score || 0;
   const isReady = overallScore >= 50;
   const isFullyOptimized = overallScore >= 75;
+
+  console.log('[DataApprovalPanel] KB banner render:', {
+    workspaceId,
+    hasData: !!kbStatus,
+    overallScore,
+    isReady,
+    isFullyOptimized
+  });
 
   return (
     <Modal
