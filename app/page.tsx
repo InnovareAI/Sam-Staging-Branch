@@ -1300,13 +1300,13 @@ export default function Page() {
     },
     {
       id: 'data-approval',
-      label: 'Data Approval',
+      label: 'Prospect Database',
       description: 'Review, approve and manage prospect data',
       icon: CheckSquare,
     },
     {
       id: 'campaign',
-      label: 'Campaign Hub',
+      label: 'Campaigns',
       description: 'Plan multi-channel outreach with Sam',
       icon: Megaphone,
     },
