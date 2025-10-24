@@ -101,9 +101,36 @@ export async function GET(request: NextRequest) {
       // Don't fail the request, just return structured ICPs
     }
 
+    // Transform database schema to match frontend expectations
+    const transformedIcps = (icps ?? []).map((icp: any) => {
+      const metadata = typeof icp.metadata === 'string' ? JSON.parse(icp.metadata) : (icp.metadata || {});
+      const pain_points_parsed = typeof icp.pain_points === 'string' ? JSON.parse(icp.pain_points) : (icp.pain_points || []);
+      
+      // Parse company_size range if it exists
+      const companySizeMatch = icp.company_size?.match(/(\d+)-(\d+)/);
+      
+      return {
+        id: icp.id,
+        name: icp.title || icp.name || 'Untitled ICP',
+        workspace_id: icp.workspace_id,
+        is_active: icp.is_active,
+        created_at: icp.created_at,
+        // Map back to old schema for frontend compatibility
+        industries: metadata.industries || (icp.industry ? [icp.industry] : []),
+        job_titles: metadata.job_titles || [],
+        locations: icp.geography || [],
+        technologies: metadata.technologies || [],
+        pain_points: Array.isArray(pain_points_parsed) ? pain_points_parsed : [],
+        company_size_min: companySizeMatch ? parseInt(companySizeMatch[1]) : null,
+        company_size_max: companySizeMatch ? parseInt(companySizeMatch[2]) : null,
+        qualification_criteria: typeof icp.buying_process === 'string' ? JSON.parse(icp.buying_process) : (icp.buying_process || {}),
+        messaging_framework: metadata.messaging_framework || {}
+      };
+    });
+    
     // Combine structured ICPs and ICP documents for accurate count
     const allIcps = [
-      ...(icps ?? []),
+      ...transformedIcps,
       ...(icpDocs ?? []).map(doc => ({
         id: doc.id,
         name: doc.filename,
