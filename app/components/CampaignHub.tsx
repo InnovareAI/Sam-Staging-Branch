@@ -83,12 +83,12 @@ function KBReadinessIndicator({ workspaceId }: { workspaceId: string }) {
 
   const overallScore = kbStatus.overall_score || 0;
   const isReady = overallScore >= 50;
-  const isFullyOptimized = overallScore >= 70;
+  const isFullyOptimized = overallScore >= 75; // Complete essential set (4 docs)
   const criticalSections = kbStatus.sections?.filter((s: any) =>
     ['products', 'icp', 'messaging', 'pricing'].includes(s.section_id)
   ) || [];
 
-  const criticalGaps = criticalSections.filter((s: any) => (s.percentage || 0) < 70);
+  const criticalGaps = criticalSections.filter((s: any) => (s.percentage || 0) < 100); // Missing essential docs
 
   // If ready, show minimal success banner
   if (isReady) {
@@ -106,11 +106,11 @@ function KBReadinessIndicator({ workspaceId }: { workspaceId: string }) {
           <CheckCircle className={isFullyOptimized ? 'text-green-400' : 'text-blue-400'} size={24} />
           <div>
             <h3 className={`font-semibold ${isFullyOptimized ? 'text-green-400' : 'text-blue-400'}`}>
-              {isFullyOptimized ? 'Knowledge Base Fully Optimized' : 'Knowledge Base Ready for Testing'}
+              {isFullyOptimized ? 'Complete Essential Set - Full Campaigns Ready!' : 'Knowledge Base Ready for Testing'}
             </h3>
             <p className="text-gray-300 text-sm">
               {overallScore}% complete - SAM can create {isFullyOptimized ? 'fully optimized' : 'testing'} campaigns
-              {!isFullyOptimized && <span className="text-yellow-300"> • Reach 70%+ for full optimization</span>}
+              {!isFullyOptimized && <span className="text-yellow-300"> • Complete all 4 essential docs for 75% and full optimization</span>}
             </p>
           </div>
         </div>

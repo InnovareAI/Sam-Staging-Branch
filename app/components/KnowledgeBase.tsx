@@ -1999,22 +1999,22 @@ const KnowledgeBase: React.FC = () => {
     return docCount >= 2 ? 100 : 70;
   };
 
-  // Critical sections (60% total) - Required for SAM to function
+  // Critical sections (75% total) - ONE complete set = 75%
+  // This is what users MUST have to unlock full campaigns
   const criticalSections = [
-    { id: 'products', weight: 15, label: 'Products/Services' },
-    { id: 'icp', weight: 15, label: 'ICP/Target Profile' },
-    { id: 'messaging', weight: 15, label: 'Messaging/Value Prop' },
-    { id: 'pricing', weight: 15, label: 'Pricing' }
+    { id: 'products', weight: 18.75, label: 'Products/Services' },
+    { id: 'icp', weight: 18.75, label: 'ICP/Target Profile' },
+    { id: 'messaging', weight: 18.75, label: 'Messaging/Value Prop' },
+    { id: 'pricing', weight: 18.75, label: 'Pricing' }
   ];
 
-  // Important sections (30% total) - High value for effectiveness
+  // Bonus sections (25% total) - Everything else is bonus to reach 100%
   const importantSections = [
-    { id: 'objections', weight: 10, label: 'Objection Handling' },
-    { id: 'success', weight: 10, label: 'Success Stories' },
-    { id: 'competition', weight: 10, label: 'Competitive Intel' }
+    { id: 'objections', weight: 5, label: 'Objection Handling' },
+    { id: 'success', weight: 5, label: 'Success Stories' },
+    { id: 'competition', weight: 5, label: 'Competitive Intel' }
   ];
 
-  // Supporting sections (10% total) - Nice to have
   const supportingSections = [
     { id: 'company', weight: 2, label: 'Company Info' },
     { id: 'buying', weight: 2, label: 'Buying Process' },
@@ -2394,11 +2394,13 @@ const KnowledgeBase: React.FC = () => {
                   {knowledgeCompletion >= 50 ? (
                     <>
                       <h3 className="text-green-400 font-semibold text-lg mb-1">
-                        Ready to Create Test Campaigns
+                        {knowledgeCompletion >= 75
+                          ? 'Complete Essential Set - Full Campaigns Ready!'
+                          : 'Ready to Create Test Campaigns'}
                       </h3>
                       <p className="text-gray-300 text-sm">
-                        Your Knowledge Base is at {knowledgeCompletion}%. SAM can now create testing campaigns and A/B tests.
-                        {knowledgeCompletion < 70 && <span className="text-yellow-300"> Reach 70%+ for full campaign optimization.</span>}
+                        Your Knowledge Base is at {knowledgeCompletion}%. SAM can now create {knowledgeCompletion >= 75 ? 'fully optimized' : 'testing'} campaigns.
+                        {knowledgeCompletion < 75 && <span className="text-yellow-300"> Complete all 4 essential docs (ICP, Product, Messaging, Pricing) for 75% and full optimization.</span>}
                       </p>
                     </>
                   ) : (
@@ -2478,9 +2480,9 @@ const KnowledgeBase: React.FC = () => {
                 {!isKnowledgeLoading && (
                   <div className="text-xs text-gray-400 mt-3 space-y-1">
                     <p className="font-medium text-gray-300">Score Breakdown:</p>
-                    <p>• Critical Sections: {Math.round(criticalScore)}/60% (Products, ICP, Messaging, Pricing)</p>
-                    <p>• Important Sections: {Math.round(importantScore)}/30% (Objections, Success Stories, Competition)</p>
-                    <p>• Supporting Sections: {Math.round(supportingScore)}/10% (Company, Personas, Compliance, etc.)</p>
+                    <p>• <span className="text-yellow-400 font-semibold">Essential Set: {Math.round(criticalScore)}/75%</span> (1 doc each: ICP, Product, Messaging, Pricing)</p>
+                    <p>• <span className="text-blue-400">Bonus Content: {Math.round(importantScore + supportingScore)}/25%</span> (Objections, Case Studies, etc.)</p>
+                    {icpBonus > 0 && <p className="text-green-400">• Extra ICPs: +{icpBonus}%</p>}
                   </div>
                 )}
 
@@ -2500,44 +2502,32 @@ const KnowledgeBase: React.FC = () => {
                       {knowledgeCompletion === 0 ? (
                         // General guidance for completely empty KB
                         <>
-                          <div>
-                            <p className="font-medium text-gray-300 mb-1">Perfect Score Requirements:</p>
-                            <p className="text-gray-400">Each section needs a minimum number of documents to contribute its full weight:</p>
+                          <div className="bg-gradient-to-r from-yellow-900/20 to-yellow-800/10 border border-yellow-600/30 rounded-lg p-4 -ml-4 pl-6 mb-3">
+                            <p className="font-bold text-yellow-400 mb-2">🎯 ONE Complete Set = 75%</p>
+                            <p className="text-gray-300 text-sm mb-2">Upload these 4 essential documents to unlock full campaigns:</p>
+                            <ul className="ml-3 space-y-1 text-gray-300">
+                              <li>✓ 1 ICP Profile → <span className="text-white font-semibold">18.75%</span></li>
+                              <li>✓ 1 Product/Service Doc → <span className="text-white font-semibold">18.75%</span></li>
+                              <li>✓ 1 Messaging Template → <span className="text-white font-semibold">18.75%</span></li>
+                              <li>✓ 1 Pricing Document → <span className="text-white font-semibold">18.75%</span></li>
+                            </ul>
+                            <p className="text-yellow-300 font-semibold mt-2">= 75% Total</p>
                           </div>
 
                           <div>
-                            <p className="font-medium text-yellow-400">Critical Sections (60% total):</p>
-                            <ul className="ml-3 space-y-0.5 text-gray-400">
-                              <li>• ICP: <span className="text-white">1 profile</span> → 15% <span className="text-green-400 text-xs">(+2% bonus per extra ICP)</span></li>
-                              <li>• Products: <span className="text-white">1 product/service</span> → 15%</li>
-                              <li>• Messaging: <span className="text-white">1 template = 70%, 2+ = 15%</span></li>
-                              <li>• Pricing: <span className="text-white">1 pricing doc</span> → 15%</li>
+                            <p className="font-medium text-blue-400 mb-1">Bonus Content (25% to reach 100%):</p>
+                            <p className="text-gray-400 text-xs mb-2">Everything else is bonus to maximize SAM's effectiveness:</p>
+                            <ul className="ml-3 space-y-0.5 text-gray-400 text-xs">
+                              <li>• Objections, Case Studies, Competitor Intel → 5% each</li>
+                              <li>• Company, Buying Process, Personas, Compliance, Tone → 2% each</li>
+                              <li>• Extra ICPs → +2% bonus each (max +4%)</li>
+                              <li>• Additional messaging variants → Better A/B testing</li>
                             </ul>
                           </div>
 
-                          <div>
-                            <p className="font-medium text-orange-400">Important Sections (30% total):</p>
-                            <ul className="ml-3 space-y-0.5 text-gray-400">
-                              <li>• Objections: <span className="text-white">1 doc = 70%, 2+ = 10%</span></li>
-                              <li>• Success Stories: <span className="text-white">1 story = 70%, 2+ = 10%</span></li>
-                              <li>• Competition: <span className="text-white">1 competitor</span> → 10%</li>
-                            </ul>
-                          </div>
-
-                          <div>
-                            <p className="font-medium text-blue-400">Supporting Sections (10% total):</p>
-                            <ul className="ml-3 space-y-0.5 text-gray-400">
-                              <li>• Company Info: <span className="text-white">1 document</span> → 2%</li>
-                              <li>• Buying Process: <span className="text-white">1 document</span> → 2%</li>
-                              <li>• Personas: <span className="text-white">1 persona = 70%, 2+ = 2%</span></li>
-                              <li>• Compliance: <span className="text-white">1 document</span> → 2%</li>
-                              <li>• Brand Voice: <span className="text-white">1 guide</span> → 2%</li>
-                            </ul>
-                          </div>
-
-                          <div className="pt-2 bg-gray-750 -ml-4 pl-4 pr-2 py-2 rounded">
-                            <p className="font-medium text-green-400">💡 Quick Start:</p>
-                            <p className="text-gray-400 mt-1">Upload just 1 document per critical section (ICP, Product, Pricing, Messaging) to unlock test campaigns at 50%+ immediately!</p>
+                          <div className="pt-3 bg-green-900/20 -ml-4 pl-4 pr-2 py-3 rounded border border-green-700/30 mt-3">
+                            <p className="font-medium text-green-400">💡 Quick Path to 75%:</p>
+                            <p className="text-gray-300 mt-1 text-sm">Just upload 4 documents (ICP, Product, Messaging, Pricing) and you're ready to launch!</p>
                           </div>
                         </>
                       ) : (
