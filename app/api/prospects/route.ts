@@ -37,7 +37,8 @@ export async function GET(req: NextRequest) {
           )
         )
       `)
-      .eq('workspace_id', workspaceId);
+      .eq('workspace_id', workspaceId)
+      .neq('approval_status', 'approved'); // Hide approved prospects from Prospect Database
 
     if (status) {
       query = query.eq('prospect_status', status);
@@ -65,7 +66,8 @@ export async function GET(req: NextRequest) {
     let countQuery = supabase
       .from('workspace_prospects')
       .select('*', { count: 'exact', head: true })
-      .eq('workspace_id', workspaceId);
+      .eq('workspace_id', workspaceId)
+      .neq('approval_status', 'approved'); // Hide approved prospects from count
 
     if (status) {
       countQuery = countQuery.eq('prospect_status', status);

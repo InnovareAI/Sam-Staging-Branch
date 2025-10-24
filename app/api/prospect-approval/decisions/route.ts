@@ -134,6 +134,12 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
+    // Update approval_status in workspace_prospects table
+    await supabase
+      .from('workspace_prospects')
+      .update({ approval_status: decision })
+      .eq('id', prospect_id)
+
     // Update session counts in background (non-blocking)
     updateSessionCounts(supabase, session_id).catch(console.error)
 
