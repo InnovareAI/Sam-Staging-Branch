@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, ChevronDown, ChevronUp, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star, AlertTriangle, CheckCircle, Target } from 'lucide-react';
 import { toastError, toastSuccess } from '@/lib/toast';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import ImportProspectsModal from '@/components/ImportProspectsModal'
 import { Checkbox } from '@/components/ui/checkbox'
+import { motion } from 'framer-motion'
 
 
 // LinkedIn Campaign Types
@@ -246,6 +247,19 @@ export default function DataCollectionHub({
 
   const serverProspects = data?.prospects || []
   const pagination = data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 0, hasNext: false, hasPrev: false, showing: 0 }
+
+  // Fetch KB completeness for banner
+  const { data: kbStatus } = useQuery({
+    queryKey: ['kb-completeness', workspaceId],
+    queryFn: async () => {
+      if (!workspaceId) return null;
+      const response = await fetch(`/api/knowledge-base/check-completeness?workspace_id=${workspaceId}`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!workspaceId,
+    staleTime: 2 * 60 * 1000,
+  });
 
   const [prospectData, setProspectData] = useState<ProspectData[]>([])
   const [expandedProspect, setExpandedProspect] = useState<string | null>(null)
@@ -1226,6 +1240,65 @@ export default function DataCollectionHub({
       )}
 
       <div className="max-w-[1400px] mx-auto">
+        {/* KB Readiness Banner */}
+        {workspaceId && (() => {
+          const overallScore = kbStatus?.overall_score || 0;
+          const isReady = overallScore >= 50;
+          const isFullyOptimized = overallScore >= 75;
+
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`mb-6 rounded-lg p-4 flex items-center justify-between ${
+                isReady
+                  ? 'bg-gradient-to-r from-green-900/30 to-green-800/20 border border-green-500/40'
+                  : 'bg-gradient-to-r from-yellow-900/30 to-orange-800/20 border border-yellow-500/40'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                {isReady ? (
+                  <CheckCircle className="text-green-400 flex-shrink-0" size={24} />
+                ) : (
+                  <AlertTriangle className="text-yellow-400 flex-shrink-0" size={24} />
+                )}
+                <div>
+                  <h3 className={`font-semibold text-lg ${isReady ? 'text-green-400' : 'text-yellow-400'}`}>
+                    {isFullyOptimized
+                      ? 'Complete Essential Set - Full Campaigns Ready!'
+                      : isReady
+                      ? 'Ready to Create Test Campaigns'
+                      : `Almost Ready - ${50 - overallScore}% to Test Campaigns`}
+                  </h3>
+                  <p className="text-gray-300 text-sm">
+                    {isReady ? (
+                      <>
+                        Your Knowledge Base is at {overallScore}%. SAM can now create {isFullyOptimized ? 'fully optimized' : 'testing'} campaigns.
+                      </>
+                    ) : (
+                      <>
+                        Currently at <span className="font-bold text-white">{overallScore}%</span>.
+                        Reach <span className="font-bold text-white">50%</span> to unlock testing campaigns and A/B tests.
+                        Without core knowledge, SAM can't personalize outreach or handle objections effectively.
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <a
+                href={`/workspace/${workspaceId}/knowledge-base`}
+                className={`text-sm font-medium flex items-center gap-1 transition-colors flex-shrink-0 ${
+                  isReady
+                    ? 'text-green-400 hover:text-green-300'
+                    : 'text-yellow-400 hover:text-yellow-300'
+                }`}
+              >
+                Complete KB <Target size={14} />
+              </a>
+            </motion.div>
+          );
+        })()}
+
         {/* Prospect Approval Dashboard */}
         <div>
           {/* Action Bar */}

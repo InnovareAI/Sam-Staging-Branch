@@ -120,59 +120,32 @@ function KBReadinessIndicator({ workspaceId }: { workspaceId: string }) {
     );
   }
 
-  // If not ready, show warning banner with action items
+  // If not ready (<50%), show warning banner
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mb-6 bg-gradient-to-r from-yellow-900/30 to-orange-800/20 border border-yellow-500/40 rounded-lg p-5"
+      className="mb-6 bg-gradient-to-r from-yellow-900/30 to-orange-800/20 border border-yellow-500/40 rounded-lg p-4 flex items-center justify-between"
     >
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0">
-          <AlertTriangle className="text-yellow-400" size={28} />
-        </div>
-        <div className="flex-1">
-          <h3 className="text-yellow-400 font-semibold text-lg mb-1">
-            Complete Your Knowledge Base to Unlock Test Campaigns
+      <div className="flex items-center gap-3">
+        <AlertTriangle className="text-yellow-400 flex-shrink-0" size={24} />
+        <div>
+          <h3 className="text-yellow-400 font-semibold text-lg">
+            Almost Ready - {50 - overallScore}% to Test Campaigns
           </h3>
-          <p className="text-gray-300 text-sm mb-3">
-            Your KB is at <span className="font-bold text-white">{overallScore}%</span>.
-            Need <span className="font-bold text-white">50%+</span> for testing campaigns and A/B tests. Reach 70%+ for fully optimized campaigns.
+          <p className="text-gray-300 text-sm">
+            Currently at <span className="font-bold text-white">{overallScore}%</span>.
+            Reach <span className="font-bold text-white">50%</span> to unlock testing campaigns and A/B tests.
+            Without core knowledge, SAM can't personalize outreach or handle objections effectively.
           </p>
-
-          {criticalGaps.length > 0 && (
-            <div className="bg-gray-800/50 rounded-lg p-3 mb-3">
-              <p className="text-gray-300 text-xs font-medium mb-2">Missing Critical Sections:</p>
-              <div className="grid grid-cols-2 gap-2">
-                {criticalGaps.map((section: any) => (
-                  <div key={section.section_id} className="flex items-center justify-between text-xs">
-                    <span className="text-gray-400">
-                      {section.section_id === 'products' ? '📦 Products' :
-                       section.section_id === 'icp' ? '🎯 ICP' :
-                       section.section_id === 'messaging' ? '💬 Messaging' :
-                       '💰 Pricing'}
-                    </span>
-                    <span className="text-yellow-400 font-medium">{section.percentage || 0}%</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-center gap-3">
-            <a
-              href={`/workspace/${workspaceId}/knowledge-base`}
-              className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-            >
-              <Upload size={16} />
-              Complete Knowledge Base
-            </a>
-            <span className="text-gray-400 text-xs">
-              Upload docs or chat with SAM • Takes 5-10 minutes
-            </span>
-          </div>
         </div>
       </div>
+      <a
+        href={`/workspace/${workspaceId}/knowledge-base`}
+        className="text-sm font-medium flex items-center gap-1 transition-colors text-yellow-400 hover:text-yellow-300 flex-shrink-0"
+      >
+        Complete KB <Target size={14} />
+      </a>
     </motion.div>
   );
 }
