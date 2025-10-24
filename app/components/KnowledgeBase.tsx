@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Brain, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, FileText, Package, MessageSquare, Cpu, Clock, AlertCircle, Mic, Briefcase, Trophy, GitBranch, Mail, Shield, UserCheck, MessageCircle, DollarSign, Zap, BarChart, Bot, HelpCircle, Globe, ArrowLeft, Trash2, Activity } from 'lucide-react';
+import { Brain, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, FileText, Package, MessageSquare, Cpu, Clock, AlertCircle, Mic, Briefcase, Trophy, GitBranch, Mail, Shield, UserCheck, MessageCircle, DollarSign, Zap, BarChart, Bot, HelpCircle, Globe, ArrowLeft, Trash2, Activity, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import SAMOnboarding from './SAMOnboarding';
 import KnowledgeBaseAnalytics from './KnowledgeBaseAnalytics';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -2011,6 +2012,81 @@ const KnowledgeBase: React.FC = () => {
   const completionWidth = isKnowledgeLoading ? '0%' : `${knowledgeCompletion}%`;
   const latestDocuments = documents.slice(0, 4);
 
+  // Generate dynamic recommendations based on current state
+  const getDocCountForSection = (sectionId: string): number => {
+    if (sectionId === 'icp') {
+      return (icpCount ?? 0) + getDocumentsForSection(sectionId).length;
+    }
+    return getDocumentsForSection(sectionId).length;
+  };
+
+  const getSamImpact = (sectionId: string): string => {
+    const impacts: Record<string, string> = {
+      'products': 'SAM can explain features, benefits, and use cases',
+      'icp': 'SAM can qualify prospects and personalize outreach',
+      'messaging': 'SAM can articulate value propositions clearly',
+      'pricing': 'SAM can discuss ROI, pricing, and business cases',
+      'objections': 'SAM can handle concerns and objections confidently',
+      'success': 'SAM can share relevant case studies and proof points',
+      'competition': 'SAM can differentiate you vs. competitors',
+      'company': 'SAM can introduce your company professionally',
+      'buying': 'SAM can guide prospects through your sales process',
+      'personas': 'SAM can tailor conversations to buyer roles',
+      'compliance': 'SAM can address security and compliance questions',
+      'tone': 'SAM can match your brand voice and style'
+    };
+    return impacts[sectionId] || 'SAM can have more effective conversations';
+  };
+
+  const generateRecommendations = () => {
+    const allSections = [
+      ...criticalSections.map(s => ({ ...s, category: 'critical' })),
+      ...importantSections.map(s => ({ ...s, category: 'important' })),
+      ...supportingSections.map(s => ({ ...s, category: 'supporting' }))
+    ];
+
+    return allSections.map(section => {
+      const currentCount = getDocCountForSection(section.id);
+      const currentScore = getSectionScore(section.id);
+      const isICP = section.id === 'icp';
+
+      // Determine next milestone
+      let nextMilestone = 0;
+      let docsNeeded = 0;
+      let impactPercent = 0;
+
+      if (currentScore === 0) {
+        nextMilestone = 40;
+        docsNeeded = 1 - currentCount;
+        impactPercent = Math.round(section.weight * 0.4);
+      } else if (currentScore === 40) {
+        nextMilestone = 70;
+        docsNeeded = 2 - currentCount;
+        impactPercent = Math.round(section.weight * 0.3);
+      } else if (currentScore === 70) {
+        nextMilestone = 100;
+        docsNeeded = isICP ? (3 - currentCount) : (4 - currentCount);
+        impactPercent = Math.round(section.weight * 0.3);
+      }
+
+      return {
+        ...section,
+        currentCount,
+        currentScore,
+        nextMilestone,
+        docsNeeded,
+        impactPercent,
+        samImpact: getSamImpact(section.id),
+        isComplete: currentScore === 100
+      };
+    }).sort((a, b) => {
+      // Sort by: incomplete first, then by impact, then by category priority
+      if (a.isComplete !== b.isComplete) return a.isComplete ? 1 : -1;
+      if (a.impactPercent !== b.impactPercent) return b.impactPercent - a.impactPercent;
+      return a.weight - b.weight;
+    });
+  };
+
   const formatRelativeTime = (input?: string | null) => {
     if (!input) return 'Just now';
     const parsed = new Date(input);
@@ -2264,6 +2340,56 @@ const KnowledgeBase: React.FC = () => {
         <div>
         {activeSection === 'overview' && (
           <div className="space-y-6">
+            {/* Campaign Readiness Banner */}
+            {!isKnowledgeLoading && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`rounded-lg p-5 flex items-start gap-4 ${
+                  knowledgeCompletion >= 70
+                    ? 'bg-gradient-to-r from-green-900/30 to-green-800/20 border border-green-500/40'
+                    : 'bg-gradient-to-r from-yellow-900/30 to-orange-800/20 border border-yellow-500/40'
+                }`}
+              >
+                <div className="flex-shrink-0">
+                  {knowledgeCompletion >= 70 ? (
+                    <CheckCircle className="text-green-400" size={28} />
+                  ) : (
+                    <AlertTriangle className="text-yellow-400" size={28} />
+                  )}
+                </div>
+                <div className="flex-1">
+                  {knowledgeCompletion >= 70 ? (
+                    <>
+                      <h3 className="text-green-400 font-semibold text-lg mb-1">
+                        Ready to Create Campaigns
+                      </h3>
+                      <p className="text-gray-300 text-sm">
+                        Your Knowledge Base is at {knowledgeCompletion}%. SAM can now create quality outreach and handle prospect conversations effectively.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="text-yellow-400 font-semibold text-lg mb-1">
+                        Almost Ready - {70 - knowledgeCompletion}% to Campaign Unlock
+                      </h3>
+                      <p className="text-gray-300 text-sm mb-3">
+                        Currently at <span className="font-bold text-white">{knowledgeCompletion}%</span>.
+                        Reach <span className="font-bold text-white">70%</span> to unlock campaign creation.
+                        Without complete knowledge, SAM can't personalize outreach or handle objections effectively.
+                      </p>
+                      <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="h-2 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full transition-all duration-500"
+                          style={{ width: `${(knowledgeCompletion / 70) * 100}%` }}
+                        ></div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
             {/* KB Completeness and Health - First Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* KB Completeness Meter */}
@@ -2324,6 +2450,167 @@ const KnowledgeBase: React.FC = () => {
                     <p>• Supporting Sections: {Math.round(supportingScore)}/10% (Company, Personas, Compliance, etc.)</p>
                   </div>
                 )}
+
+                {!isKnowledgeLoading && (
+                  <details className="mt-4 text-xs text-gray-400">
+                    <summary className="cursor-pointer text-blue-400 hover:text-blue-300 font-medium">
+                      {knowledgeCompletion === 0
+                        ? '📊 How to reach 100% (Perfect Score)'
+                        : `🎯 Your Action Plan to ${knowledgeCompletion >= 100 ? 'Perfect' : 'Improve Your'} Score`}
+                    </summary>
+                    <div className="mt-3 space-y-3 pl-4 border-l-2 border-gray-700">
+                      {knowledgeCompletion === 0 ? (
+                        // General guidance for completely empty KB
+                        <>
+                          <div>
+                            <p className="font-medium text-gray-300 mb-1">Perfect Score Requirements:</p>
+                            <p className="text-gray-400">Each section needs a minimum number of documents to contribute its full weight:</p>
+                          </div>
+
+                          <div>
+                            <p className="font-medium text-yellow-400">Critical Sections (60% total):</p>
+                            <ul className="ml-3 space-y-0.5 text-gray-400">
+                              <li>• ICP: <span className="text-white">3+ profiles</span> → 15%</li>
+                              <li>• Products: <span className="text-white">4+ documents</span> → 15%</li>
+                              <li>• Messaging: <span className="text-white">4+ templates</span> → 15%</li>
+                              <li>• Pricing: <span className="text-white">4+ documents</span> → 15%</li>
+                            </ul>
+                          </div>
+
+                          <div>
+                            <p className="font-medium text-orange-400">Important Sections (30% total):</p>
+                            <ul className="ml-3 space-y-0.5 text-gray-400">
+                              <li>• Objections: <span className="text-white">4+ documents</span> → 10%</li>
+                              <li>• Success Stories: <span className="text-white">4+ case studies</span> → 10%</li>
+                              <li>• Competition: <span className="text-white">4+ competitor profiles</span> → 10%</li>
+                            </ul>
+                          </div>
+
+                          <div>
+                            <p className="font-medium text-blue-400">Supporting Sections (10% total):</p>
+                            <ul className="ml-3 space-y-0.5 text-gray-400">
+                              <li>• Company Info: <span className="text-white">4+ documents</span> → 2%</li>
+                              <li>• Buying Process: <span className="text-white">4+ documents</span> → 2%</li>
+                              <li>• Personas: <span className="text-white">4+ personas</span> → 2%</li>
+                              <li>• Compliance: <span className="text-white">4+ documents</span> → 2%</li>
+                              <li>• Brand Voice: <span className="text-white">4+ documents</span> → 2%</li>
+                            </ul>
+                          </div>
+
+                          <div className="pt-2 bg-gray-750 -ml-4 pl-4 pr-2 py-2 rounded">
+                            <p className="font-medium text-green-400">💡 Quick Start:</p>
+                            <p className="text-gray-400 mt-1">Begin with 1-2 documents in each critical section (Products, ICP, Messaging, Pricing) to quickly reach 40-50% completion.</p>
+                          </div>
+                        </>
+                      ) : (
+                        // Dynamic personalized recommendations
+                        <>
+                          {(() => {
+                            const recommendations = generateRecommendations();
+                            const incomplete = recommendations.filter(r => !r.isComplete);
+                            const complete = recommendations.filter(r => r.isComplete);
+
+                            return (
+                              <>
+                                {knowledgeCompletion >= 100 ? (
+                                  <div className="pt-2 bg-green-900/20 -ml-4 pl-4 pr-2 py-2 rounded border border-green-700">
+                                    <p className="font-medium text-green-400">🎉 Perfect Score Achieved!</p>
+                                    <p className="text-gray-400 mt-1">Your knowledge base is fully optimized. SAM has everything needed for maximum effectiveness.</p>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div>
+                                      <p className="font-medium text-gray-300 mb-1">Priority Actions (by impact):</p>
+                                      <p className="text-gray-400 text-xs">Fill these gaps to improve SAM's knowledge:</p>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                      {incomplete.slice(0, 6).map(rec => {
+                                        const categoryColor = rec.category === 'critical' ? 'text-yellow-400' :
+                                                             rec.category === 'important' ? 'text-orange-400' : 'text-blue-400';
+                                        const icon = rec.currentScore === 0 ? '❌' : '⚠️';
+
+                                        return (
+                                          <div key={rec.id} className="flex items-start justify-between gap-2 pb-2 border-b border-gray-700/50 last:border-0">
+                                            <div className="flex-1">
+                                              <p className={`font-medium ${categoryColor}`}>
+                                                {icon} {rec.label}
+                                              </p>
+                                              <p className="text-gray-400 text-xs mt-0.5">
+                                                {rec.currentCount > 0
+                                                  ? `Has ${rec.currentCount}, add ${rec.docsNeeded} more → ${rec.nextMilestone}%`
+                                                  : `Add ${rec.docsNeeded} document${rec.docsNeeded > 1 ? 's' : ''} to start`}
+                                              </p>
+                                              <p className="text-blue-300 text-xs mt-1 italic">
+                                                📞 {rec.samImpact}
+                                              </p>
+                                            </div>
+                                            <div className="text-right ml-2 flex-shrink-0">
+                                              <p className="text-green-400 font-medium">+{rec.impactPercent}%</p>
+                                              <p className="text-gray-500 text-xs">impact</p>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+
+                                    {incomplete.length > 6 && (
+                                      <p className="text-gray-500 text-xs italic">
+                                        +{incomplete.length - 6} more sections to optimize
+                                      </p>
+                                    )}
+
+                                    {complete.length > 0 && (
+                                      <div className="pt-2 border-t border-gray-700">
+                                        <p className="font-medium text-green-400 text-xs">
+                                          ✅ Completed: {complete.map(c => c.label).join(', ')}
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    <div className="pt-2 border-t border-gray-700">
+                                      <p className="font-medium text-gray-300 text-xs mb-2">How to Fill Knowledge Gaps:</p>
+                                      <div className="space-y-1.5 text-xs text-gray-400">
+                                        <div className="flex items-start gap-2">
+                                          <span className="text-green-400">💬</span>
+                                          <div>
+                                            <span className="text-gray-300 font-medium">Complete SAM's Interview:</span> Answer targeted questions to fill specific sections quickly
+                                          </div>
+                                        </div>
+                                        <div className="flex items-start gap-2">
+                                          <span className="text-blue-400">📄</span>
+                                          <div>
+                                            <span className="text-gray-300 font-medium">Upload Documents:</span> Upload your existing sales collateral, playbooks, and guides
+                                          </div>
+                                        </div>
+                                        <div className="flex items-start gap-2 opacity-60">
+                                          <span className="text-purple-400">✅</span>
+                                          <div>
+                                            <span className="text-gray-300 font-medium">Website Content:</span> Already extracted during onboarding
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="pt-2 bg-gray-750 -ml-4 pl-4 pr-2 py-2 rounded">
+                                      <p className="font-medium text-green-400">💡 Quick Win:</p>
+                                      <p className="text-gray-400 mt-1">
+                                        {incomplete.length > 0 && incomplete[0].impactPercent >= 6
+                                          ? `Focus on ${incomplete[0].label} first for the biggest impact (+${incomplete[0].impactPercent}%).`
+                                          : 'Focus on critical sections (Products, ICP, Messaging, Pricing) for maximum impact.'}
+                                      </p>
+                                    </div>
+                                  </>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </>
+                      )}
+                    </div>
+                  </details>
+                )}
+
                 {isKnowledgeLoading && (
                   <p className="text-xs text-gray-400 mt-2">
                     Calculating coverage based on critical sales enablement content...
