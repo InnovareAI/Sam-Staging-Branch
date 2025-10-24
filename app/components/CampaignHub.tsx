@@ -84,7 +84,7 @@ function KBReadinessIndicator({ workspaceId }: { workspaceId: string }) {
   const overallScore = kbStatus?.overall_score || 0;
   const isReady = overallScore >= 50;
   const isFullyOptimized = overallScore >= 75; // Complete essential set (4 docs)
-  const criticalSections = kbStatus.sections?.filter((s: any) =>
+  const criticalSections = kbStatus?.sections?.filter((s: any) =>
     ['products', 'icp', 'messaging', 'pricing'].includes(s.section_id)
   ) || [];
 
