@@ -769,6 +769,10 @@ export default function DataCollectionHub({
         }
       }
     }
+
+    // Auto-forward to Campaign screen with approved prospects
+    const approvedProspects = pendingProspects.map(p => ({ ...p, approvalStatus: 'approved' as const }))
+    handleProceedToCampaignHub(approvedProspects)
   }
 
   const handleRejectAll = async () => {
@@ -1006,17 +1010,11 @@ export default function DataCollectionHub({
       }
     }
 
-    // Navigate to Campaign Hub
-    setLoadingMessage('Redirecting to Campaign Hub...')
-    await new Promise(resolve => setTimeout(resolve, 500)) // Brief pause for UX
+    setLoading(false)
 
-    // Redirect to Campaign Hub - user can click the tab themselves
-    if (workspaceId) {
-      router.push(`/workspace/${workspaceId}/campaign-hub`)
-    } else {
-      // Fallback to demo if no workspace ID
-      router.push(`/demo/campaign-hub`)
-    }
+    // Auto-forward to Campaign screen with approved prospects
+    const approvedProspects = selectedProspects.map(p => ({ ...p, approvalStatus: 'approved' as const }))
+    handleProceedToCampaignHub(approvedProspects)
   }
 
   const bulkRejectSelected = async () => {
@@ -1126,6 +1124,10 @@ export default function DataCollectionHub({
         }
       }
     }
+
+    // Auto-forward to Campaign screen with approved prospects
+    const approvedProspects = nonDismissed.map(p => ({ ...p, approvalStatus: 'approved' as const }))
+    handleProceedToCampaignHub(approvedProspects)
   }
 
   // Proceed to Campaign Hub with approved prospects
@@ -1133,7 +1135,7 @@ export default function DataCollectionHub({
     const approvedProspects = prospectsOverride && prospectsOverride.length > 0
       ? prospectsOverride
       : prospectData.filter(p => p.approvalStatus === 'approved')
-    
+
     if (approvedProspects.length === 0) {
       toastError('⚠️ No approved prospects found. Please approve at least one prospect before proceeding to Campaign Hub.')
       return
@@ -1147,12 +1149,20 @@ export default function DataCollectionHub({
       }
     }
 
-    // Call the onApprovalComplete callback
+    // Clear approved prospects from Prospect Database (keep only pending/rejected)
+    const approvedIds = new Set(approvedProspects.map(p => p.id))
+    setProspectData(prev => prev.filter(p => !approvedIds.has(p.id)))
+
+    // Clear selections
+    setSelectedProspectIds(new Set())
+    setDismissedProspectIds(new Set())
+
+    // Call the onApprovalComplete callback to navigate to Campaign screen
     if (onApprovalComplete) {
       onApprovalComplete(approvedProspects)
     }
 
-    toastError(`✅ Success!\n\n${approvedProspects.length} approved prospects are ready for campaigns.\n\nProceeding to Campaign Hub...`)
+    toastSuccess(`✅ Success!\n\n${approvedProspects.length} approved prospects forwarded to Campaign Hub.\n\nPending prospects remain in Prospect Database.`)
   }
 
   // Download only approved prospects
@@ -1262,7 +1272,7 @@ export default function DataCollectionHub({
               disabled={selectedProspectIds.size === 0}
               size="sm"
               className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-              title="Approve selected prospects and save them. Go to Campaign Hub → New Campaigns to create campaigns from approved prospects."
+              title="Approve selected prospects and save them. Go to Campaign Hub → Campaign Creator to create campaigns from approved prospects."
             >
               <Check className="w-3.5 h-3.5" />
               <span>Approve Selection ({selectedProspectIds.size})</span>
