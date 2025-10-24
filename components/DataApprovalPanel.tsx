@@ -24,6 +24,7 @@ interface DataApprovalPanelProps {
   onApprove: (approvedData: ProspectData[]) => void
   onReject: (rejectedData: ProspectData[]) => void
   className?: string
+  workspaceId?: string
 }
 
 export default function DataApprovalPanel({
@@ -32,7 +33,8 @@ export default function DataApprovalPanel({
   prospectData,
   onApprove,
   onReject,
-  className = ''
+  className = '',
+  workspaceId
 }: DataApprovalPanelProps) {
   const [dismissedProspects, setDismissedProspects] = useState<Set<string>>(new Set())
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')

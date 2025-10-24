@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircle, ChevronDown, ChevronUp, Save, Upload, XCircle } from 'lucide-react';
+import { CheckCircle, ChevronDown, ChevronUp, Save, Upload, XCircle, AlertTriangle, Target } from 'lucide-react';
 import { toastError, toastSuccess, toastInfo } from '@/lib/toast';
+import { useQuery } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 
 
 interface CampaignApprovalScreenProps {
@@ -120,6 +122,20 @@ export default function CampaignApprovalScreen({
     onApprove(finalData);
   };
 
+  // Fetch KB completeness
+  const { data: kbStatus } = useQuery({
+    queryKey: ['kb-completeness', workspaceId],
+    queryFn: async () => {
+      const response = await fetch(`/api/knowledge-base/check-completeness?workspace_id=${workspaceId}`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const overallScore = kbStatus?.overall_score || 0;
+  const showWarning = overallScore < 50;
+
   return (
     <div className="flex-1 bg-gray-900 overflow-y-auto">
       <div className="max-w-6xl mx-auto p-6">
@@ -128,6 +144,34 @@ export default function CampaignApprovalScreen({
           <h1 className="text-3xl font-bold text-white mb-2">Message Approval</h1>
           <p className="text-gray-300">Review and finalize your campaign messaging before launch</p>
         </div>
+
+        {/* KB Warning Banner */}
+        {showWarning && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 bg-gradient-to-r from-yellow-900/30 to-orange-800/20 border border-yellow-500/40 rounded-lg p-4"
+          >
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="text-yellow-400 flex-shrink-0" size={24} />
+              <div className="flex-1">
+                <h3 className="text-yellow-400 font-semibold mb-1">
+                  Limited Knowledge Base ({overallScore}%)
+                </h3>
+                <p className="text-gray-300 text-sm">
+                  Your KB is below 50%. SAM may struggle to personalize messages and handle prospect objections effectively.
+                  Consider completing your KB before launching for better results.
+                </p>
+              </div>
+              <a
+                href={`/workspace/${workspaceId}/knowledge-base`}
+                className="text-yellow-400 hover:text-yellow-300 text-sm font-medium flex items-center gap-1 transition-colors flex-shrink-0"
+              >
+                Complete KB <Target size={14} />
+              </a>
+            </div>
+          </motion.div>
+        )}
 
         {/* Campaign Summary */}
         <div className="bg-gray-800 rounded-lg p-4 mb-6 border border-gray-700">
