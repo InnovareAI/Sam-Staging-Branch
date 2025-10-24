@@ -681,13 +681,8 @@ export default function DataCollectionHub({
     const prospect = prospectData.find(p => p.id === prospectId)
     if (!prospect || !prospect.sessionId) return
 
-    // Optimistic UI update
-    setProspectData(prev => prev.map(p =>
-      p.id === prospectId ? { ...p, approvalStatus: 'rejected' as const } : p
-    ))
-
     try {
-      // Save to database
+      // Save rejection to database
       const response = await fetch('/api/prospect-approval/decisions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -700,13 +695,20 @@ export default function DataCollectionHub({
 
       if (!response.ok) {
         console.error('Failed to save rejection')
-        // Revert on error
-        setProspectData(prev => prev.map(p =>
-          p.id === prospectId ? { ...p, approvalStatus: 'pending' as const } : p
-        ))
+        return
       }
+
+      // Delete rejected prospect from database
+      await fetch(`/api/prospects/${prospectId}`, {
+        method: 'DELETE'
+      })
+
+      // Remove from UI
+      setProspectData(prev => prev.filter(p => p.id !== prospectId))
+      toastSuccess('Prospect rejected and removed')
     } catch (error) {
       console.error('Error rejecting prospect:', error)
+      toastError('Failed to reject prospect')
     }
   }
 
@@ -776,15 +778,12 @@ export default function DataCollectionHub({
   }
 
   const handleRejectAll = async () => {
-    if (!confirm('Are you sure you want to reject all prospects?')) return
+    if (!confirm('Are you sure you want to reject and delete all prospects?')) return
 
-    const pendingProspects = prospectData.filter(p => p.approvalStatus === 'pending')
+    const allProspects = prospectData
 
-    // Optimistic UI update
-    setProspectData(prev => prev.map(p => ({ ...p, approvalStatus: 'rejected' as const })))
-
-    // Save all to database
-    for (const prospect of pendingProspects) {
+    // Save rejections and delete all from database
+    for (const prospect of allProspects) {
       if (prospect.sessionId) {
         try {
           await fetch('/api/prospect-approval/decisions', {
@@ -800,7 +799,20 @@ export default function DataCollectionHub({
           console.error('Error rejecting prospect:', prospect.id, error)
         }
       }
+
+      // Delete from database
+      try {
+        await fetch(`/api/prospects/${prospect.id}`, {
+          method: 'DELETE'
+        })
+      } catch (error) {
+        console.error('Error deleting prospect:', prospect.id, error)
+      }
     }
+
+    // Clear all from UI
+    setProspectData([])
+    toastSuccess('All prospects rejected and removed')
   }
 
   const handleCampaignTagChange = (prospectId: string, tag: string) => {
@@ -1022,14 +1034,7 @@ export default function DataCollectionHub({
 
     const selectedProspects = prospectData.filter(p => selectedProspectIds.has(p.id))
 
-    // Optimistic UI update
-    setProspectData(prev => prev.map(p =>
-      selectedProspectIds.has(p.id) ? { ...p, approvalStatus: 'rejected' as const } : p
-    ))
-    toastSuccess(`Rejected ${selectedProspectIds.size} prospects`)
-    deselectAll()
-
-    // Save all to database
+    // Save rejections and delete from database
     for (const prospect of selectedProspects) {
       if (prospect.sessionId) {
         try {
@@ -1046,7 +1051,21 @@ export default function DataCollectionHub({
           console.error('Error rejecting prospect:', prospect.id, error)
         }
       }
+
+      // Delete from database
+      try {
+        await fetch(`/api/prospects/${prospect.id}`, {
+          method: 'DELETE'
+        })
+      } catch (error) {
+        console.error('Error deleting prospect:', prospect.id, error)
+      }
     }
+
+    // Remove from UI
+    setProspectData(prev => prev.filter(p => !selectedProspectIds.has(p.id)))
+    toastSuccess(`Rejected and removed ${selectedProspectIds.size} prospects`)
+    deselectAll()
   }
 
   // Dismiss-based approval handlers
@@ -1123,6 +1142,13 @@ export default function DataCollectionHub({
           console.error('Error rejecting prospect:', prospect.id, error)
         }
       }
+
+      // Delete rejected from database
+      try {
+        await fetch(`/api/prospects/${prospect.id}`, { method: 'DELETE' })
+      } catch (error) {
+        console.error('Error deleting prospect:', prospect.id, error)
+      }
     }
 
     // Auto-forward to Campaign screen with approved prospects
@@ -1131,7 +1157,7 @@ export default function DataCollectionHub({
   }
 
   // Proceed to Campaign Hub with approved prospects
-  const handleProceedToCampaignHub = (prospectsOverride?: ProspectData[]) => {
+  const handleProceedToCampaignHub = async (prospectsOverride?: ProspectData[]) => {
     const approvedProspects = prospectsOverride && prospectsOverride.length > 0
       ? prospectsOverride
       : prospectData.filter(p => p.approvalStatus === 'approved')
@@ -1149,7 +1175,7 @@ export default function DataCollectionHub({
       }
     }
 
-    // Clear approved prospects from Prospect Database (keep only pending/rejected)
+    // Remove approved prospects from Prospect Database VIEW (they stay in DB, just shown in Campaign Creator)
     const approvedIds = new Set(approvedProspects.map(p => p.id))
     setProspectData(prev => prev.filter(p => !approvedIds.has(p.id)))
 
@@ -1162,7 +1188,7 @@ export default function DataCollectionHub({
       onApprovalComplete(approvedProspects)
     }
 
-    toastSuccess(`✅ Success!\n\n${approvedProspects.length} approved prospects forwarded to Campaign Hub.\n\nPending prospects remain in Prospect Database.`)
+    toastSuccess(`✅ Success!\n\n${approvedProspects.length} approved prospects moved to Campaign Creator view.`)
   }
 
   // Download only approved prospects
