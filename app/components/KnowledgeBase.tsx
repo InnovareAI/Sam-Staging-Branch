@@ -2456,11 +2456,16 @@ const KnowledgeBase: React.FC = () => {
                 )}
 
                 {!isKnowledgeLoading && (
-                  <details className="mt-4 text-xs text-gray-400">
-                    <summary className="cursor-pointer text-blue-400 hover:text-blue-300 font-medium">
-                      {knowledgeCompletion === 0
-                        ? '📊 How to reach 100% (Perfect Score)'
-                        : `🎯 Your Action Plan to ${knowledgeCompletion >= 100 ? 'Perfect' : 'Improve Your'} Score`}
+                  <details className="mt-4 text-xs text-gray-400 group">
+                    <summary className="cursor-pointer font-bold text-base px-4 py-3 rounded-lg transition-all list-none bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg hover:shadow-xl">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          {knowledgeCompletion === 0
+                            ? '📊 How to reach 100% (Perfect Score)'
+                            : `🎯 Your Action Plan to ${knowledgeCompletion >= 100 ? 'Perfect' : 'Improve Your'} Score`}
+                        </span>
+                        <span className="text-xs opacity-75 group-open:rotate-180 transition-transform">▼</span>
+                      </div>
                     </summary>
                     <div className="mt-3 space-y-3 pl-4 border-l-2 border-gray-700">
                       {knowledgeCompletion === 0 ? (
