@@ -2406,7 +2406,7 @@ const KnowledgeBase: React.FC = () => {
                   ) : (
                     <>
                       <h3 className="text-yellow-400 font-semibold text-lg mb-1">
-                        Almost Ready - {50 - knowledgeCompletion}% to Test Campaigns
+                        {knowledgeCompletion >= 25 ? 'Almost Ready' : 'Getting Started'} - {50 - knowledgeCompletion}% to Test Campaigns
                       </h3>
                       <p className="text-gray-300 text-sm mb-3">
                         Currently at <span className="font-bold text-white">{knowledgeCompletion}%</span>.

@@ -40,7 +40,7 @@ export function useSamChat() {
     try {
       setIsLoading(true);
       setError(null); // Clear any previous errors
-      const response = await fetch('/api/sam/conversations');
+      const response = await fetch('/api/sam/threads?status=active');
       
       if (!response.ok) {
         // If unauthorized, don't show error (user not signed in)
@@ -53,7 +53,7 @@ export function useSamChat() {
       }
 
       const data = await response.json();
-      setConversations(data.conversations || []);
+      setConversations(data.threads || []);
     } catch (err) {
       console.error('💥 Load conversations error:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -66,7 +66,7 @@ export function useSamChat() {
   const loadMessages = useCallback(async (conversationId: string) => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/sam/conversations/${conversationId}/messages`);
+      const response = await fetch(`/api/sam/threads/${conversationId}/messages`);
       
       if (!response.ok) {
         throw new Error('Failed to load messages');
@@ -86,12 +86,17 @@ export function useSamChat() {
     console.log('🆕 Creating conversation with title:', title);
     try {
       setIsLoading(true);
-      const response = await fetch('/api/sam/conversations', {
+      const response = await fetch('/api/sam/threads', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ title }),
+        body: JSON.stringify({
+          title: title || `Sales Chat – ${new Date().toLocaleDateString()}`,
+          thread_type: 'general',
+          priority: 'medium',
+          sales_methodology: 'meddic'
+        }),
       });
 
       console.log('📡 Create conversation response:', response.status);
@@ -103,7 +108,7 @@ export function useSamChat() {
       }
 
       const data = await response.json();
-      const newConversation = data.conversation;
+      const newConversation = data.thread;
       
       setConversations(prev => [newConversation, ...prev]);
       setCurrentConversation(newConversation);
@@ -141,7 +146,7 @@ export function useSamChat() {
 
     try {
       setIsSending(true);
-      const response = await fetch(`/api/sam/conversations/${targetId}/messages`, {
+      const response = await fetch(`/api/sam/threads/${targetId}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
