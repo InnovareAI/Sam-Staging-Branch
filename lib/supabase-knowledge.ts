@@ -463,7 +463,43 @@ You are context-aware and adapt your responses based on the user's industry, rol
         return [];
       }
 
-      return (data || []) as KnowledgeBaseICP[];
+      // ALSO count ICP documents from knowledge_base table
+      // This fixes completion calculation for workspaces with uploaded ICP docs
+      const { data: icpDocs, error: docsError } = await supabaseAdmin
+        .from('knowledge_base')
+        .select('id, title, created_at, content')
+        .eq('workspace_id', workspaceId)
+        .or('section.eq.icp,category.eq.icp-intelligence,category.ilike.%icp%')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (docsError) {
+        console.error('Error fetching ICP documents:', docsError);
+        // Don't fail, just return structured ICPs
+      }
+
+      // Combine structured ICPs and ICP documents
+      const structuredICPs = (data || []) as KnowledgeBaseICP[];
+      const documentICPs = (icpDocs || []).map(doc => ({
+        id: doc.id,
+        workspace_id: workspaceId,
+        name: doc.title,
+        company_size_min: null,
+        company_size_max: null,
+        industries: null,
+        job_titles: null,
+        locations: null,
+        technologies: null,
+        pain_points: null,
+        qualification_criteria: null,
+        messaging_framework: null,
+        is_active: true,
+        created_by: null,
+        created_at: doc.created_at,
+        updated_at: doc.created_at
+      })) as KnowledgeBaseICP[];
+
+      return [...structuredICPs, ...documentICPs];
     } catch (error) {
       console.error('Knowledge base ICP fetch error:', error);
       return [];
@@ -493,7 +529,39 @@ You are context-aware and adapt your responses based on the user's industry, rol
         return [];
       }
 
-      return (data || []) as KnowledgeBaseProduct[];
+      // ALSO count product documents from knowledge_base table
+      const { data: productDocs, error: docsError } = await supabaseAdmin
+        .from('knowledge_base')
+        .select('id, title, created_at, content')
+        .eq('workspace_id', workspaceId)
+        .or('section.eq.products,category.eq.products,category.ilike.%product%')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (docsError) {
+        console.error('Error fetching product documents:', docsError);
+      }
+
+      const structuredProducts = (data || []) as KnowledgeBaseProduct[];
+      const documentProducts = (productDocs || []).map(doc => ({
+        id: doc.id,
+        workspace_id: workspaceId,
+        name: doc.title,
+        description: doc.content?.substring(0, 500) || null,
+        category: null,
+        pricing: null,
+        features: null,
+        benefits: null,
+        use_cases: null,
+        competitive_advantages: null,
+        target_segments: null,
+        is_active: true,
+        created_by: null,
+        created_at: doc.created_at,
+        updated_at: doc.created_at
+      })) as KnowledgeBaseProduct[];
+
+      return [...structuredProducts, ...documentProducts];
     } catch (error) {
       console.error('Knowledge base products fetch error:', error);
       return [];
@@ -523,7 +591,39 @@ You are context-aware and adapt your responses based on the user's industry, rol
         return [];
       }
 
-      return (data || []) as KnowledgeBaseCompetitor[];
+      // ALSO count competitor documents from knowledge_base table
+      const { data: competitorDocs, error: docsError } = await supabaseAdmin
+        .from('knowledge_base')
+        .select('id, title, created_at, content')
+        .eq('workspace_id', workspaceId)
+        .or('section.eq.competition,category.eq.competitive-intelligence,category.ilike.%compet%')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (docsError) {
+        console.error('Error fetching competitor documents:', docsError);
+      }
+
+      const structuredCompetitors = (data || []) as KnowledgeBaseCompetitor[];
+      const documentCompetitors = (competitorDocs || []).map(doc => ({
+        id: doc.id,
+        workspace_id: workspaceId,
+        name: doc.title,
+        website: null,
+        description: doc.content?.substring(0, 500) || null,
+        strengths: null,
+        weaknesses: null,
+        pricing_model: null,
+        key_features: null,
+        target_market: null,
+        competitive_positioning: null,
+        is_active: true,
+        created_by: null,
+        created_at: doc.created_at,
+        updated_at: doc.created_at
+      })) as KnowledgeBaseCompetitor[];
+
+      return [...structuredCompetitors, ...documentCompetitors];
     } catch (error) {
       console.error('Knowledge base competitors fetch error:', error);
       return [];
@@ -572,23 +672,33 @@ You are context-aware and adapt your responses based on the user's industry, rol
     missingCritical: string[];
   }> {
     try {
-      // Define KB sections and their importance (critical, important, valuable)
+      // Define KB sections and their importance (aligned with frontend UX)
+      // Critical sections (60% total) - Required for SAM to function
+      // Important sections (30% total) - High value for effectiveness
+      // Supporting sections (10% total) - Nice to have
       const sections = {
-        overview: { category: 'business-model', weight: 3, minEntries: 2 },
-        icp: { category: 'icp-intelligence', weight: 3, minEntries: 3 },
-        products: { category: 'products', weight: 3, minEntries: 2 },
-        messaging: { category: 'messaging', weight: 2, minEntries: 3 },
-        success_stories: { category: 'case-studies', weight: 2, minEntries: 2 },
-        objections: { category: 'objection-handling', weight: 2, minEntries: 3 },
-        competition: { category: 'competitive-intelligence', weight: 2, minEntries: 2 },
+        // Critical: 60% total weight
+        products: { category: 'products', weight: 15, minEntries: 2 },
+        icp: { category: 'icp-intelligence', weight: 15, minEntries: 3 },
+        messaging: { category: 'messaging', weight: 15, minEntries: 3 },
+        pricing: { category: 'pricing', weight: 15, minEntries: 1 },
+        
+        // Important: 30% total weight
+        objections: { category: 'objection-handling', weight: 10, minEntries: 3 },
+        success_stories: { category: 'case-studies', weight: 10, minEntries: 2 },
+        competition: { category: 'competitive-intelligence', weight: 10, minEntries: 2 },
+        
+        // Supporting: 10% total weight
+        company_info: { category: 'company-info', weight: 2, minEntries: 1 },
+        buying_process: { category: 'sales-process', weight: 2, minEntries: 1 },
         personas: { category: 'personas', weight: 2, minEntries: 2 },
-        pricing: { category: 'pricing', weight: 1, minEntries: 1 },
-        tone_of_voice: { category: 'tone-of-voice', weight: 1, minEntries: 1 },
-        company_info: { category: 'company-info', weight: 1, minEntries: 1 },
-        buying_process: { category: 'sales-process', weight: 1, minEntries: 1 },
-        compliance: { category: 'compliance', weight: 1, minEntries: 1 },
-        success_metrics: { category: 'success-metrics', weight: 1, minEntries: 1 },
-        documents: { category: 'documents', weight: 1, minEntries: 0 }
+        compliance: { category: 'compliance', weight: 2, minEntries: 1 },
+        tone_of_voice: { category: 'tone-of-voice', weight: 2, minEntries: 1 },
+        
+        // Optional/deprecated
+        overview: { category: 'business-model', weight: 0, minEntries: 0 },
+        success_metrics: { category: 'success-metrics', weight: 0, minEntries: 0 },
+        documents: { category: 'documents', weight: 0, minEntries: 0 }
       };
 
       const sectionResults: Record<string, { percentage: number; entries: number; depth: number }> = {};
@@ -648,17 +758,17 @@ You are context-aware and adapt your responses based on the user's industry, rol
 
         sectionResults[sectionName] = { percentage, entries, depth };
 
-        // Track critical missing sections
-        if (config.weight === 3 && percentage < 70) {
+        // Track critical missing sections (weight 15 = critical)
+        if (config.weight === 15 && percentage < 70) {
           missingCritical.push(sectionName);
         }
 
         // Calculate weighted score
         totalWeightedScore += percentage * config.weight;
-        totalWeight += config.weight * 100;
+        totalWeight += config.weight;
       }
 
-      const overallCompleteness = Math.round(totalWeightedScore / totalWeight * 100);
+      const overallCompleteness = Math.round(totalWeightedScore / totalWeight);
 
       return {
         overallCompleteness,

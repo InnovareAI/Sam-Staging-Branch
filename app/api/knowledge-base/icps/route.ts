@@ -86,7 +86,34 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch ICPs' }, { status: 500 });
     }
 
-    return NextResponse.json({ icps: icps ?? [] });
+    // ALSO count ICP documents from knowledge_base table (section='icp')
+    // This fixes the completion calculation for workspaces with uploaded ICP docs
+    const { data: icpDocs, error: icpDocsError } = await supabase
+      .from('knowledge_base')
+      .select('id, title, created_at')
+      .eq('workspace_id', workspaceId)
+      .eq('section', 'icp')
+      .order('created_at', { ascending: false });
+
+    if (icpDocsError) {
+      console.error('Error fetching ICP documents:', icpDocsError);
+      // Don't fail the request, just return structured ICPs
+    }
+
+    // Combine structured ICPs and ICP documents for accurate count
+    const allIcps = [
+      ...(icps ?? []),
+      ...(icpDocs ?? []).map(doc => ({
+        id: doc.id,
+        name: doc.title,
+        workspace_id: workspaceId,
+        is_active: true,
+        created_at: doc.created_at,
+        source: 'document' as const
+      }))
+    ];
+
+    return NextResponse.json({ icps: allIcps });
   } catch (error) {
     console.error('Unexpected error in ICPs API:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
