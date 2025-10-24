@@ -134,11 +134,20 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Update approval_status in workspace_prospects table
-    await supabase
-      .from('workspace_prospects')
+    // Update approval_status in prospect_approval_data table
+    const { error: updateError } = await supabase
+      .from('prospect_approval_data')
       .update({ approval_status: decision })
-      .eq('id', prospect_id)
+      .eq('session_id', session_id)
+      .eq('prospect_id', prospect_id)
+
+    if (updateError) {
+      console.error('Failed to update approval_status in prospect_approval_data:', updateError)
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to update prospect approval status'
+      }, { status: 500 })
+    }
 
     // Update session counts in background (non-blocking)
     updateSessionCounts(supabase, session_id).catch(console.error)

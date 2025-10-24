@@ -233,7 +233,7 @@ export default function DataCollectionHub({
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(50)
-  const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [filterStatus, setFilterStatus] = useState<string>('pending') // Only show pending prospects by default
 
   // REACT QUERY: Fetch and cache approval sessions with pagination
   const { data, isLoading: isLoadingSessions, refetch } = useQuery({
@@ -678,7 +678,7 @@ export default function DataCollectionHub({
   }
 
   const handleReject = async (prospectId: string) => {
-    const prospect = prospectData.find(p => p.id === prospectId)
+    const prospect = serverProspects.find(p => p.id === prospectId)
     if (!prospect || !prospect.sessionId) return
 
     try {
@@ -695,17 +695,13 @@ export default function DataCollectionHub({
 
       if (!response.ok) {
         console.error('Failed to save rejection')
+        toastError('Failed to reject prospect')
         return
       }
 
-      // Delete rejected prospect from database
-      await fetch(`/api/prospects/${prospectId}`, {
-        method: 'DELETE'
-      })
-
-      // Remove from UI
-      setProspectData(prev => prev.filter(p => p.id !== prospectId))
-      toastSuccess('Prospect rejected and removed')
+      toastSuccess('Prospect rejected')
+      // Refetch to update UI with filtered data
+      await refetch()
     } catch (error) {
       console.error('Error rejecting prospect:', error)
       toastError('Failed to reject prospect')
@@ -713,13 +709,8 @@ export default function DataCollectionHub({
   }
 
   const handleApprove = async (prospectId: string) => {
-    const prospect = prospectData.find(p => p.id === prospectId)
+    const prospect = serverProspects.find(p => p.id === prospectId)
     if (!prospect || !prospect.sessionId) return
-
-    // Optimistic UI update
-    setProspectData(prev => prev.map(p =>
-      p.id === prospectId ? { ...p, approvalStatus: 'approved' as const } : p
-    ))
 
     try {
       // Save to database
@@ -735,13 +726,16 @@ export default function DataCollectionHub({
 
       if (!response.ok) {
         console.error('Failed to save approval')
-        // Revert on error
-        setProspectData(prev => prev.map(p =>
-          p.id === prospectId ? { ...p, approvalStatus: 'pending' as const } : p
-        ))
+        toastError('Failed to approve prospect')
+        return
       }
+
+      toastSuccess('Prospect approved')
+      // Refetch to update UI with filtered data
+      await refetch()
     } catch (error) {
       console.error('Error approving prospect:', error)
+      toastError('Failed to approve prospect')
     }
   }
 

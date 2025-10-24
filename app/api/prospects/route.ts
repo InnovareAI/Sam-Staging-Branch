@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
         )
       `)
       .eq('workspace_id', workspaceId)
-      .neq('approval_status', 'approved'); // Hide approved prospects from Prospect Database
+      .eq('approval_status', 'pending'); // Only show pending prospects in Prospect Database
 
     if (status) {
       query = query.eq('prospect_status', status);
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
       .from('workspace_prospects')
       .select('*', { count: 'exact', head: true })
       .eq('workspace_id', workspaceId)
-      .neq('approval_status', 'approved'); // Hide approved prospects from count
+      .eq('approval_status', 'pending'); // Only count pending prospects
 
     if (status) {
       countQuery = countQuery.eq('prospect_status', status);

@@ -132,10 +132,10 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error
 
-    // Get all decisions for this session
+    // Get all decisions for this session to get decision metadata
     const { data: decisions } = await supabase
       .from('prospect_approval_decisions')
-      .select('prospect_id, decision, reason, decided_by, decided_at')
+      .select('prospect_id, reason, decided_by, decided_at')
       .eq('session_id', sessionId)
 
     // Create a map of decisions by prospect_id for fast lookup
@@ -143,12 +143,12 @@ export async function GET(request: NextRequest) {
       (decisions || []).map(d => [d.prospect_id, d])
     )
 
-    // Merge prospects with their decisions
+    // Merge prospects with their decision metadata (approval_status comes from prospect_approval_data)
     const prospects = (prospectsRaw || []).map((p: any) => {
       const decision = decisionsMap.get(p.prospect_id)
       return {
         ...p,
-        approval_status: decision?.decision || 'pending', // Default to pending - requires user approval
+        approval_status: p.approval_status || 'pending', // Use status from prospect_approval_data table
         decision_reason: decision?.reason || null,
         decided_by: decision?.decided_by || null,
         decided_at: decision?.decided_at || null
