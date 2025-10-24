@@ -82,7 +82,8 @@ function KBReadinessIndicator({ workspaceId }: { workspaceId: string }) {
   }
 
   const overallScore = kbStatus.overall_score || 0;
-  const isReady = overallScore >= 70;
+  const isReady = overallScore >= 50;
+  const isFullyOptimized = overallScore >= 70;
   const criticalSections = kbStatus.sections?.filter((s: any) =>
     ['products', 'icp', 'messaging', 'pricing'].includes(s.section_id)
   ) || [];
@@ -95,18 +96,31 @@ function KBReadinessIndicator({ workspaceId }: { workspaceId: string }) {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-6 bg-gradient-to-r from-green-900/30 to-green-800/20 border border-green-500/40 rounded-lg p-4 flex items-center justify-between"
+        className={`mb-6 rounded-lg p-4 flex items-center justify-between ${
+          isFullyOptimized
+            ? 'bg-gradient-to-r from-green-900/30 to-green-800/20 border border-green-500/40'
+            : 'bg-gradient-to-r from-blue-900/30 to-blue-800/20 border border-blue-500/40'
+        }`}
       >
         <div className="flex items-center gap-3">
-          <CheckCircle className="text-green-400" size={24} />
+          <CheckCircle className={isFullyOptimized ? 'text-green-400' : 'text-blue-400'} size={24} />
           <div>
-            <h3 className="text-green-400 font-semibold">Knowledge Base Ready</h3>
-            <p className="text-gray-300 text-sm">{overallScore}% complete - SAM can create quality campaigns</p>
+            <h3 className={`font-semibold ${isFullyOptimized ? 'text-green-400' : 'text-blue-400'}`}>
+              {isFullyOptimized ? 'Knowledge Base Fully Optimized' : 'Knowledge Base Ready for Testing'}
+            </h3>
+            <p className="text-gray-300 text-sm">
+              {overallScore}% complete - SAM can create {isFullyOptimized ? 'fully optimized' : 'testing'} campaigns
+              {!isFullyOptimized && <span className="text-yellow-300"> • Reach 70%+ for full optimization</span>}
+            </p>
           </div>
         </div>
         <a
           href={`/workspace/${workspaceId}/knowledge-base`}
-          className="text-green-400 hover:text-green-300 text-sm font-medium flex items-center gap-1 transition-colors"
+          className={`text-sm font-medium flex items-center gap-1 transition-colors ${
+            isFullyOptimized
+              ? 'text-green-400 hover:text-green-300'
+              : 'text-blue-400 hover:text-blue-300'
+          }`}
         >
           View KB <Target size={14} />
         </a>
@@ -127,11 +141,11 @@ function KBReadinessIndicator({ workspaceId }: { workspaceId: string }) {
         </div>
         <div className="flex-1">
           <h3 className="text-yellow-400 font-semibold text-lg mb-1">
-            Complete Your Knowledge Base to Unlock Campaigns
+            Complete Your Knowledge Base to Unlock Test Campaigns
           </h3>
           <p className="text-gray-300 text-sm mb-3">
             Your KB is at <span className="font-bold text-white">{overallScore}%</span>.
-            Need <span className="font-bold text-white">70%+</span> for SAM to create quality outreach and handle replies effectively.
+            Need <span className="font-bold text-white">50%+</span> for testing campaigns and A/B tests. Reach 70%+ for fully optimized campaigns.
           </p>
 
           {criticalGaps.length > 0 && (

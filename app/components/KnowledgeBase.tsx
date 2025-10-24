@@ -1959,8 +1959,7 @@ const KnowledgeBase: React.FC = () => {
       const icpDocs = getDocumentsForSection(sectionId).length;
       const count = structuredICPs + icpDocs;
       if (count === 0) return 0;
-      if (count === 1) return 40;
-      if (count === 2) return 70;
+      // ONE well-defined ICP is complete - many companies only have one target customer
       return 100;
     }
 
@@ -2006,7 +2005,11 @@ const KnowledgeBase: React.FC = () => {
   const importantScore = calculateCategoryScore(importantSections);
   const supportingScore = calculateCategoryScore(supportingSections);
 
-  const knowledgeCompletion = Math.round(criticalScore + importantScore + supportingScore);
+  // Bonus points for multiple ICPs (encourages depth)
+  const icpTotal = (icpCount ?? 0) + getDocumentsForSection('icp').length;
+  const icpBonus = icpTotal > 1 ? Math.min((icpTotal - 1) * 2, 4) : 0; // +2% per extra ICP, max +4%
+
+  const knowledgeCompletion = Math.round(criticalScore + importantScore + supportingScore + icpBonus);
   const isKnowledgeLoading = documentsLoading || icpCount === null;
   const completionDisplay = isKnowledgeLoading ? '—' : `${knowledgeCompletion}%`;
   const completionWidth = isKnowledgeLoading ? '0%' : `${knowledgeCompletion}%`;
@@ -2346,42 +2349,43 @@ const KnowledgeBase: React.FC = () => {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={`rounded-lg p-5 flex items-start gap-4 ${
-                  knowledgeCompletion >= 70
+                  knowledgeCompletion >= 50
                     ? 'bg-gradient-to-r from-green-900/30 to-green-800/20 border border-green-500/40'
                     : 'bg-gradient-to-r from-yellow-900/30 to-orange-800/20 border border-yellow-500/40'
                 }`}
               >
                 <div className="flex-shrink-0">
-                  {knowledgeCompletion >= 70 ? (
+                  {knowledgeCompletion >= 50 ? (
                     <CheckCircle className="text-green-400" size={28} />
                   ) : (
                     <AlertTriangle className="text-yellow-400" size={28} />
                   )}
                 </div>
                 <div className="flex-1">
-                  {knowledgeCompletion >= 70 ? (
+                  {knowledgeCompletion >= 50 ? (
                     <>
                       <h3 className="text-green-400 font-semibold text-lg mb-1">
-                        Ready to Create Campaigns
+                        Ready to Create Test Campaigns
                       </h3>
                       <p className="text-gray-300 text-sm">
-                        Your Knowledge Base is at {knowledgeCompletion}%. SAM can now create quality outreach and handle prospect conversations effectively.
+                        Your Knowledge Base is at {knowledgeCompletion}%. SAM can now create testing campaigns and A/B tests.
+                        {knowledgeCompletion < 70 && <span className="text-yellow-300"> Reach 70%+ for full campaign optimization.</span>}
                       </p>
                     </>
                   ) : (
                     <>
                       <h3 className="text-yellow-400 font-semibold text-lg mb-1">
-                        Almost Ready - {70 - knowledgeCompletion}% to Campaign Unlock
+                        Almost Ready - {50 - knowledgeCompletion}% to Test Campaigns
                       </h3>
                       <p className="text-gray-300 text-sm mb-3">
                         Currently at <span className="font-bold text-white">{knowledgeCompletion}%</span>.
-                        Reach <span className="font-bold text-white">70%</span> to unlock campaign creation.
-                        Without complete knowledge, SAM can't personalize outreach or handle objections effectively.
+                        Reach <span className="font-bold text-white">50%</span> to unlock testing campaigns and A/B tests.
+                        Without core knowledge, SAM can't personalize outreach or handle objections effectively.
                       </p>
                       <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
                         <div
                           className="h-2 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full transition-all duration-500"
-                          style={{ width: `${(knowledgeCompletion / 70) * 100}%` }}
+                          style={{ width: `${(knowledgeCompletion / 50) * 100}%` }}
                         ></div>
                       </div>
                     </>
@@ -2470,7 +2474,7 @@ const KnowledgeBase: React.FC = () => {
                           <div>
                             <p className="font-medium text-yellow-400">Critical Sections (60% total):</p>
                             <ul className="ml-3 space-y-0.5 text-gray-400">
-                              <li>• ICP: <span className="text-white">3+ profiles</span> → 15%</li>
+                              <li>• ICP: <span className="text-white">1+ profile</span> → 15% <span className="text-green-400 text-xs">(+2% bonus per extra ICP)</span></li>
                               <li>• Products: <span className="text-white">4+ documents</span> → 15%</li>
                               <li>• Messaging: <span className="text-white">4+ templates</span> → 15%</li>
                               <li>• Pricing: <span className="text-white">4+ documents</span> → 15%</li>
