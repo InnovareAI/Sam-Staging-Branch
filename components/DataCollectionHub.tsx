@@ -678,8 +678,13 @@ export default function DataCollectionHub({
   }
 
   const handleReject = async (prospectId: string) => {
-    const prospect = serverProspects.find(p => p.id === prospectId)
-    if (!prospect || !prospect.sessionId) return
+    // Find prospect in server data first, fallback to local filtered data
+    const prospect = serverProspects.find(p => p.id === prospectId) || prospectData.find(p => p.id === prospectId)
+    if (!prospect || !prospect.sessionId) {
+      console.error('Prospect not found or missing sessionId:', prospectId)
+      toastError('Cannot reject: prospect data not found')
+      return
+    }
 
     try {
       // Save rejection to database
@@ -709,8 +714,13 @@ export default function DataCollectionHub({
   }
 
   const handleApprove = async (prospectId: string) => {
-    const prospect = serverProspects.find(p => p.id === prospectId)
-    if (!prospect || !prospect.sessionId) return
+    // Find prospect in server data first, fallback to local filtered data
+    const prospect = serverProspects.find(p => p.id === prospectId) || prospectData.find(p => p.id === prospectId)
+    if (!prospect || !prospect.sessionId) {
+      console.error('Prospect not found or missing sessionId:', prospectId)
+      toastError('Cannot approve: prospect data not found')
+      return
+    }
 
     try {
       // Save to database
