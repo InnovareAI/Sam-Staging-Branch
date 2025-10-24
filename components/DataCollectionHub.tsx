@@ -1494,30 +1494,29 @@ export default function DataCollectionHub({
                     <div className="flex items-center justify-center space-x-2">
                       {prospect.approvalStatus === 'approved' ? (
                         <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-600 text-green-100">
-                          approved
+                          ✓ Approved
                         </span>
                       ) : prospect.approvalStatus === 'rejected' ? (
                         <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-600 text-red-100">
-                          dismissed
+                          ✗ Rejected
                         </span>
-                      ) : dismissedProspectIds.has(prospect.id) ? (
-                        <button
-                          onClick={() => undoDismiss(prospect.id)}
-                          className="px-3 py-1.5 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-colors font-medium border border-green-500/40 text-sm"
-                          title="Undo dismissal"
-                        >
-                          <Check className="w-3 h-3 inline mr-1" />
-                          Undo
-                        </button>
                       ) : (
-                        <button
-                          onClick={() => dismissProspect(prospect.id)}
-                          className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors font-medium border border-red-500/40 text-sm"
-                          title="Dismiss this prospect"
-                        >
-                          <X className="w-3 h-3 inline mr-1" />
-                          Dismiss
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleApprove(prospect.id)}
+                            className="p-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-colors border border-green-500/40"
+                            title="Approve this prospect"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleReject(prospect.id)}
+                            className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors border border-red-500/40"
+                            title="Reject this prospect"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>
