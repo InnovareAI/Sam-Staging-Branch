@@ -1,9 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Check, X, Eye, Download, AlertTriangle, Users, CheckSquare, CheckCircle, Target } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
+import { Check, X, Eye, Download, AlertTriangle, Users, CheckSquare } from 'lucide-react'
 import Modal from './ui/Modal'
 
 interface ProspectData {
@@ -98,42 +96,6 @@ export default function DataApprovalPanel({
     window.URL.revokeObjectURL(url)
   }
 
-  // Fetch KB completeness if workspaceId provided
-  const { data: kbStatus } = useQuery({
-    queryKey: ['kb-completeness', workspaceId],
-    queryFn: async () => {
-      if (!workspaceId) {
-        console.warn('[DataApprovalPanel] No workspaceId provided to KB query');
-        return null;
-      }
-      console.log('[DataApprovalPanel] Fetching KB status for workspace:', workspaceId);
-      const response = await fetch(`/api/knowledge-base/check-completeness?workspace_id=${workspaceId}`);
-      if (!response.ok) {
-        console.error('[DataApprovalPanel] KB status fetch failed:', response.status);
-        return null;
-      }
-      const data = await response.json();
-      console.log('[DataApprovalPanel] KB status received:', data);
-      return data;
-    },
-    enabled: !!workspaceId,
-    staleTime: 2 * 60 * 1000,
-    refetchOnMount: true, // Force refetch on mount
-    refetchOnWindowFocus: true, // Refetch when window gains focus
-  });
-
-  const overallScore = kbStatus?.overall_score || 0;
-  const isReady = overallScore >= 50;
-  const isFullyOptimized = overallScore >= 75;
-
-  console.log('[DataApprovalPanel] KB banner render:', {
-    workspaceId,
-    hasData: !!kbStatus,
-    overallScore,
-    isReady,
-    isFullyOptimized
-  });
-
   return (
     <Modal
       isVisible={isVisible}
@@ -144,63 +106,6 @@ export default function DataApprovalPanel({
       size="6xl"
       className={className}
     >
-      {/* KB Readiness Banner */}
-      {workspaceId && (
-        <div className="px-6 pt-4">
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`rounded-lg p-4 flex items-center justify-between ${
-              isReady
-                ? 'bg-gradient-to-r from-green-900/30 to-green-800/20 border border-green-500/40'
-                : 'bg-gradient-to-r from-yellow-900/30 to-orange-800/20 border border-yellow-500/40'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              {isReady ? (
-                <CheckCircle className="text-green-400 flex-shrink-0" size={24} />
-              ) : (
-                <AlertTriangle className="text-yellow-400 flex-shrink-0" size={24} />
-              )}
-              <div>
-                <h3 className={`font-semibold text-sm ${isReady ? 'text-green-400' : 'text-yellow-400'}`}>
-                  {isFullyOptimized
-                    ? 'Complete Essential Set - Full Campaigns Ready!'
-                    : isReady
-                    ? 'Ready to Create Test Campaigns'
-                    : `Almost Ready - ${50 - overallScore}% to Test Campaigns`}
-                </h3>
-                <p className="text-gray-300 text-xs">
-                  {isReady ? (
-                    <>
-                      Your Knowledge Base is at {overallScore}%. SAM can now create {isFullyOptimized ? 'fully optimized' : 'testing'} campaigns.
-                    </>
-                  ) : (
-                    <>
-                      Currently at <span className="font-bold text-white">{overallScore}%</span>.
-                      Reach <span className="font-bold text-white">50%</span> to unlock testing campaigns and A/B tests.
-                      Without core knowledge, SAM can't personalize outreach or handle objections effectively.
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-            {workspaceId && (
-              <a
-                href={`/workspace/${workspaceId}/knowledge-base`}
-                className={`text-sm font-medium flex items-center gap-1 transition-colors flex-shrink-0 ${
-                  isReady
-                    ? 'text-green-400 hover:text-green-300'
-                    : 'text-yellow-400 hover:text-yellow-300'
-                }`}
-              >
-                Complete KB <Target size={14} />
-              </a>
-            )}
-          </motion.div>
-        </div>
-      )}
-
       {/* Controls Bar */}
       <div className="bg-surface-highlight/30 px-6 py-4 border-b border-border/60">
         <div className="flex items-center justify-between">

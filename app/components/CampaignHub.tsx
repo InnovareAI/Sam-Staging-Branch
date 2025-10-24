@@ -65,107 +65,6 @@ function getCampaignTypeLabel(type: string): string {
   return typeLabels[type] || (type ? type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown');
 }
 
-// KB Readiness Indicator Component
-function KBReadinessIndicator({ workspaceId }: { workspaceId: string | null | undefined }) {
-  const { data: kbStatus, isLoading } = useQuery({
-    queryKey: ['kb-completeness', workspaceId],
-    queryFn: async () => {
-      if (!workspaceId) {
-        console.warn('[CampaignHub] No workspaceId provided to KB query');
-        return null;
-      }
-      console.log('[CampaignHub] Fetching KB status for workspace:', workspaceId);
-      const response = await fetch(`/api/knowledge-base/check-completeness?workspace_id=${workspaceId}`);
-      if (!response.ok) {
-        console.error('[CampaignHub] KB status fetch failed:', response.status);
-        return null;
-      }
-      const data = await response.json();
-      console.log('[CampaignHub] KB status received:', data);
-      return data;
-    },
-    enabled: !!workspaceId,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    refetchOnMount: true, // Force refetch on mount
-    refetchOnWindowFocus: true, // Refetch when window gains focus
-  });
-
-  // Don't render if no workspace ID
-  if (!workspaceId) {
-    console.warn('[CampaignHub] KBReadinessIndicator: No workspaceId, not rendering banner');
-    return null;
-  }
-
-  if (isLoading || !kbStatus) {
-    console.log('[CampaignHub] KBReadinessIndicator: Loading or no data', { isLoading, hasData: !!kbStatus });
-    return null;
-  }
-
-  const overallScore = kbStatus?.overall_score || 0;
-  const isReady = overallScore >= 50;
-  const isFullyOptimized = overallScore >= 75; // Complete essential set (4 docs)
-
-  console.log('[CampaignHub] KBReadinessIndicator rendering with score:', overallScore);
-
-  // If ready (50%+), show success banner
-  if (isReady) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-6 rounded-lg p-4 flex items-center justify-between bg-gradient-to-r from-green-900/30 to-green-800/20 border border-green-500/40"
-      >
-        <div className="flex items-center gap-3">
-          <CheckCircle className="text-green-400 flex-shrink-0" size={24} />
-          <div>
-            <h3 className="font-semibold text-green-400 text-lg">
-              {isFullyOptimized ? 'Complete Essential Set - Full Campaigns Ready!' : 'Ready to Create Test Campaigns'}
-            </h3>
-            <p className="text-gray-300 text-sm">
-              Your Knowledge Base is at {overallScore}%. SAM can now create {isFullyOptimized ? 'fully optimized' : 'testing'} campaigns.
-            </p>
-          </div>
-        </div>
-        <a
-          href={`/workspace/${workspaceId}/knowledge-base`}
-          className="text-sm font-medium flex items-center gap-1 transition-colors text-green-400 hover:text-green-300 flex-shrink-0"
-        >
-          View KB <Target size={14} />
-        </a>
-      </motion.div>
-    );
-  }
-
-  // If not ready (<50%), show warning banner
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="mb-6 bg-gradient-to-r from-yellow-900/30 to-orange-800/20 border border-yellow-500/40 rounded-lg p-4 flex items-center justify-between"
-    >
-      <div className="flex items-center gap-3">
-        <AlertTriangle className="text-yellow-400 flex-shrink-0" size={24} />
-        <div>
-          <h3 className="text-yellow-400 font-semibold text-lg">
-            Almost Ready - {50 - overallScore}% to Test Campaigns
-          </h3>
-          <p className="text-gray-300 text-sm">
-            Currently at <span className="font-bold text-white">{overallScore}%</span>.
-            Reach <span className="font-bold text-white">50%</span> to unlock testing campaigns and A/B tests.
-            Without core knowledge, SAM can't personalize outreach or handle objections effectively.
-          </p>
-        </div>
-      </div>
-      <a
-        href={`/workspace/${workspaceId}/knowledge-base`}
-        className="text-sm font-medium flex items-center gap-1 transition-colors text-yellow-400 hover:text-yellow-300 flex-shrink-0"
-      >
-        Complete KB <Target size={14} />
-      </a>
-    </motion.div>
-  );
-}
-
 function CampaignList() {
   const queryClient = useQueryClient();
 
@@ -4667,11 +4566,6 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               />
             </div>
           </div>
-        )}
-
-        {/* KB Readiness Indicator */}
-        {!showBuilder && !showApprovalScreen && (!isAutoCreateMode || showFullFeatures) && (
-          <KBReadinessIndicator workspaceId={workspaceId} />
         )}
 
         {/* Campaign List with Tabs */}
