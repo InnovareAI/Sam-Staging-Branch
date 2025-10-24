@@ -155,18 +155,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
+    // Map fields to match actual schema
     const payload = {
       workspace_id: workspaceId,
-      name: name.trim(),
-      company_size_min: company_size_min ?? null,
-      company_size_max: company_size_max ?? null,
-      industries: toStringArray(industries),
-      job_titles: toStringArray(job_titles),
-      locations: toStringArray(locations),
-      technologies: toStringArray(technologies),
-      pain_points: toStringArray(pain_points),
-      qualification_criteria: toRecord(qualification_criteria),
-      messaging_framework: toRecord(messaging_framework),
+      title: name.trim(),
+      description: body.description || null,
+      industry: industries && industries.length > 0 ? industries[0] : null,
+      company_size: company_size_min && company_size_max ? `${company_size_min}-${company_size_max}` : null,
+      revenue_range: body.revenue_range || null,
+      geography: toStringArray(locations),
+      pain_points: JSON.stringify(toStringArray(pain_points)),
+      buying_process: qualification_criteria ? JSON.stringify(qualification_criteria) : null,
+      metadata: JSON.stringify({
+        industries: toStringArray(industries),
+        job_titles: toStringArray(job_titles),
+        technologies: toStringArray(technologies),
+        messaging_framework: messaging_framework || {}
+      }),
+      tags: [],
       is_active: true,
       created_by: user.id
     };
