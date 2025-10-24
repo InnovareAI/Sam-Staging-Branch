@@ -307,8 +307,8 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Try to resolve workspace but don't fail if it's not available
-    let workspaceId: string | null = null
+    // Resolve workspace - this is required for thread creation
+    let workspaceId: string
     try {
       workspaceId = await resolveWorkspaceId({
         id: user.id,
@@ -316,8 +316,11 @@ export async function POST(request: NextRequest) {
         user_metadata: user.user_metadata as Record<string, unknown> | undefined
       }, providedWorkspaceId)
     } catch (error) {
-      console.warn('Workspace resolution failed, creating thread without workspace:', error)
-      // Don't fail - just create thread without workspace
+      console.error('❌ Workspace resolution failed:', error)
+      return NextResponse.json({
+        success: false,
+        error: `Unable to resolve workspace: ${error instanceof Error ? error.message : 'Unknown error'}`
+      }, { status: 400 })
     }
 
     // Get user's organization (if any)
@@ -336,29 +339,23 @@ export async function POST(request: NextRequest) {
       // Continue without organization - not critical
     }
 
-    // Create thread - only include workspace_id if resolved
-    const threadData: any = {
-      user_id: user.id,
-      organization_id: organizationId,
-      title,
-      thread_type,
-      prospect_name,
-      prospect_company,
-      prospect_linkedin_url,
-      campaign_name,
-      tags,
-      priority,
-      sales_methodology
-    }
-    
-    // Only add workspace_id if it was successfully resolved
-    if (workspaceId) {
-      threadData.workspace_id = workspaceId
-    }
-    
+    // Create thread
     const { data: thread, error } = await supabaseAdmin
       .from('sam_conversation_threads')
-      .insert(threadData)
+      .insert({
+        user_id: user.id,
+        organization_id: organizationId,
+        workspace_id: workspaceId,
+        title,
+        thread_type,
+        prospect_name,
+        prospect_company,
+        prospect_linkedin_url,
+        campaign_name,
+        tags,
+        priority,
+        sales_methodology
+      })
       .select()
       .single()
 
