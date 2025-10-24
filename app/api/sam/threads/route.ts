@@ -336,31 +336,47 @@ export async function POST(request: NextRequest) {
       // Continue without organization - not critical
     }
 
-    // Create thread
+    // Create thread - only include workspace_id if resolved
+    const threadData: any = {
+      user_id: user.id,
+      organization_id: organizationId,
+      title,
+      thread_type,
+      prospect_name,
+      prospect_company,
+      prospect_linkedin_url,
+      campaign_name,
+      tags,
+      priority,
+      sales_methodology
+    }
+    
+    // Only add workspace_id if it was successfully resolved
+    if (workspaceId) {
+      threadData.workspace_id = workspaceId
+    }
+    
     const { data: thread, error } = await supabaseAdmin
       .from('sam_conversation_threads')
-      .insert({
-        user_id: user.id,
-        organization_id: organizationId,
-        workspace_id: workspaceId,
-        title,
-        thread_type,
-        prospect_name,
-        prospect_company,
-        prospect_linkedin_url,
-        campaign_name,
-        tags,
-        priority,
-        sales_methodology
-      })
+      .insert(threadData)
       .select()
       .single()
 
     if (error) {
-      console.error('Failed to create thread:', error)
+      console.error('Failed to create thread:', {
+        error,
+        errorCode: error.code,
+        errorMessage: error.message,
+        errorDetails: error.details,
+        userId: user.id,
+        workspaceId,
+        organizationId,
+        title,
+        thread_type
+      })
       return NextResponse.json({
         success: false,
-        error: 'Failed to create conversation thread'
+        error: `Failed to create conversation thread: ${error.message || error.code || 'Unknown error'}`
       }, { status: 500 })
     }
 
