@@ -1913,22 +1913,22 @@ const KnowledgeBase: React.FC = () => {
   }, [loadDocuments, loadIcpProfiles, loadProducts, loadCompetitors, loadPersonas]);
 
   const SECTION_ALIAS_MAP: Record<string, string[]> = {
-    buying: ['process', 'buying-process'],
+    buying: ['buying-process', 'process'],
     company: ['company-info', 'company', 'about'],
-    competition: ['competition', 'competitors'],
+    competition: ['competition', 'competitors', 'competitive-intelligence'],
     compliance: ['compliance', 'regulatory'],
     documents: ['documents', 'general'],
-    icp: ['icp'],
+    icp: ['icp', 'icp-intelligence'],
     inquiry_responses: ['inquiry-responses', 'faq', 'customer-questions'],
-    messaging: ['messaging', 'templates'],
+    messaging: ['messaging', 'templates', 'value-prop'],
     metrics: ['metrics', 'success-metrics'],
-    objections: ['objections'],
+    objections: ['objections', 'objection-handling'],
     personas: ['personas', 'buyer-personas', 'roles'],
     pricing: ['pricing', 'roi'],
     products: ['products', 'product'],
     sam_onboarding: ['sam-onboarding', 'sam_onboarding'],
     collateral: ['collateral', 'sales-collateral', 'battlecards', 'one-pagers', 'decks', 'email-templates', 'snippets', 'templates', 'inquiry-responses'],
-    success: ['stories', 'success-stories', 'case-studies'],
+    success: ['success', 'stories', 'success-stories', 'case-studies'],
     tone: ['tone', 'tone-of-voice', 'brand-voice']
   };
 
@@ -1953,7 +1953,10 @@ const KnowledgeBase: React.FC = () => {
 
   const getSectionScore = (sectionId: string, icpCountOverride?: number): number => {
     if (sectionId === 'icp') {
-      const count = icpCountOverride ?? icpCount ?? 0;
+      // Count both structured ICPs and ICP documents
+      const structuredICPs = icpCountOverride ?? icpCount ?? 0;
+      const icpDocs = getDocumentsForSection(sectionId).length;
+      const count = structuredICPs + icpDocs;
       if (count === 0) return 0;
       if (count === 1) return 40;
       if (count === 2) return 70;

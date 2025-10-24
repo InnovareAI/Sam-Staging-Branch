@@ -463,15 +463,16 @@ You are context-aware and adapt your responses based on the user's industry, rol
         return [];
       }
 
-      // ALSO count ICP documents from knowledge_base table
+      // ALSO count ICP documents from knowledge_base_documents table
       // This fixes completion calculation for workspaces with uploaded ICP docs
-      const { data: icpDocs, error: docsError } = await supabaseAdmin
-        .from('knowledge_base')
-        .select('id, title, created_at, content')
+      // Also catches ICP docs that may be miscategorized (e.g., "Ideal Client Dossier" in products section)
+      const { data: icpDocs, error: docsError} = await supabaseAdmin
+        .from('knowledge_base_documents')
+        .select('id, filename, created_at')
         .eq('workspace_id', workspaceId)
-        .or('section.eq.icp,category.eq.icp-intelligence,category.ilike.%icp%')
+        .or('section_id.eq.icp,section_id.eq.ideal-customer,filename.ilike.%ideal%client%,filename.ilike.%icp%')
         .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false});
 
       if (docsError) {
         console.error('Error fetching ICP documents:', docsError);
@@ -483,7 +484,7 @@ You are context-aware and adapt your responses based on the user's industry, rol
       const documentICPs = (icpDocs || []).map(doc => ({
         id: doc.id,
         workspace_id: workspaceId,
-        name: doc.title,
+        name: doc.filename,
         company_size_min: null,
         company_size_max: null,
         industries: null,
@@ -529,12 +530,12 @@ You are context-aware and adapt your responses based on the user's industry, rol
         return [];
       }
 
-      // ALSO count product documents from knowledge_base table
+      // ALSO count product documents from knowledge_base_documents table
       const { data: productDocs, error: docsError } = await supabaseAdmin
-        .from('knowledge_base')
-        .select('id, title, created_at, content')
+        .from('knowledge_base_documents')
+        .select('id, filename, created_at, extracted_content')
         .eq('workspace_id', workspaceId)
-        .or('section.eq.products,category.eq.products,category.ilike.%product%')
+        .eq('section_id', 'products')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
@@ -546,8 +547,8 @@ You are context-aware and adapt your responses based on the user's industry, rol
       const documentProducts = (productDocs || []).map(doc => ({
         id: doc.id,
         workspace_id: workspaceId,
-        name: doc.title,
-        description: doc.content?.substring(0, 500) || null,
+        name: doc.filename,
+        description: doc.extracted_content?.substring(0, 500) || null,
         category: null,
         pricing: null,
         features: null,
@@ -591,12 +592,12 @@ You are context-aware and adapt your responses based on the user's industry, rol
         return [];
       }
 
-      // ALSO count competitor documents from knowledge_base table
+      // ALSO count competitor documents from knowledge_base_documents table
       const { data: competitorDocs, error: docsError } = await supabaseAdmin
-        .from('knowledge_base')
-        .select('id, title, created_at, content')
+        .from('knowledge_base_documents')
+        .select('id, filename, created_at, extracted_content')
         .eq('workspace_id', workspaceId)
-        .or('section.eq.competition,category.eq.competitive-intelligence,category.ilike.%compet%')
+        .eq('section_id', 'competition')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
@@ -608,9 +609,9 @@ You are context-aware and adapt your responses based on the user's industry, rol
       const documentCompetitors = (competitorDocs || []).map(doc => ({
         id: doc.id,
         workspace_id: workspaceId,
-        name: doc.title,
+        name: doc.filename,
         website: null,
-        description: doc.content?.substring(0, 500) || null,
+        description: doc.extracted_content?.substring(0, 500) || null,
         strengths: null,
         weaknesses: null,
         pricing_model: null,

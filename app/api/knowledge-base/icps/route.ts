@@ -86,13 +86,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch ICPs' }, { status: 500 });
     }
 
-    // ALSO count ICP documents from knowledge_base table (section='icp')
+    // ALSO count ICP documents from knowledge_base_documents table (section_id='icp')
     // This fixes the completion calculation for workspaces with uploaded ICP docs
+    // Also catches ICP docs that may be miscategorized (e.g., "Ideal Client Dossier" in products section)
     const { data: icpDocs, error: icpDocsError } = await supabase
-      .from('knowledge_base')
-      .select('id, title, created_at')
+      .from('knowledge_base_documents')
+      .select('id, filename, created_at')
       .eq('workspace_id', workspaceId)
-      .eq('section', 'icp')
+      .or('section_id.eq.icp,section_id.eq.ideal-customer,filename.ilike.%ideal%client%,filename.ilike.%icp%')
+      .eq('is_active', true)
       .order('created_at', { ascending: false });
 
     if (icpDocsError) {
@@ -105,7 +107,7 @@ export async function GET(request: NextRequest) {
       ...(icps ?? []),
       ...(icpDocs ?? []).map(doc => ({
         id: doc.id,
-        name: doc.title,
+        name: doc.filename,
         workspace_id: workspaceId,
         is_active: true,
         created_at: doc.created_at,
