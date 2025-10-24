@@ -94,7 +94,6 @@ export async function GET(request: NextRequest) {
       .select('id, filename, created_at')
       .eq('workspace_id', workspaceId)
       .or('section_id.eq.icp,section_id.eq.ideal-customer,filename.ilike.%ideal%client%,filename.ilike.%icp%')
-      .eq('is_active', true)
       .order('created_at', { ascending: false });
 
     if (icpDocsError) {

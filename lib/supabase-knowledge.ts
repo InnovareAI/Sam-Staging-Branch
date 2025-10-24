@@ -471,7 +471,6 @@ You are context-aware and adapt your responses based on the user's industry, rol
         .select('id, filename, created_at')
         .eq('workspace_id', workspaceId)
         .or('section_id.eq.icp,section_id.eq.ideal-customer,filename.ilike.%ideal%client%,filename.ilike.%icp%')
-        .eq('is_active', true)
         .order('created_at', { ascending: false});
 
       if (docsError) {
@@ -536,7 +535,6 @@ You are context-aware and adapt your responses based on the user's industry, rol
         .select('id, filename, created_at, extracted_content')
         .eq('workspace_id', workspaceId)
         .eq('section_id', 'products')
-        .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (docsError) {
@@ -598,7 +596,6 @@ You are context-aware and adapt your responses based on the user's industry, rol
         .select('id, filename, created_at, extracted_content')
         .eq('workspace_id', workspaceId)
         .eq('section_id', 'competition')
-        .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (docsError) {
