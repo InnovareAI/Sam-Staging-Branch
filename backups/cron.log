@@ -1670,3 +1670,73 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main 3d262c3] 🔄 Auto-backup: auto-backup-20251026_000000
+ Committer: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 20 files changed, 3001 insertions(+)
+ create mode 100644 APPLY_MIGRATION_NOW.md
+ create mode 100644 LINKEDIN_FIXES_SUMMARY_2025-10-25.md
+ create mode 100644 LINKEDIN_SCHEMA_FIX_DEPLOYMENT.md
+ create mode 100644 scripts/apply-linkedin-fix.js
+ create mode 100644 scripts/check-actual-tables.mjs
+ create mode 100644 scripts/check-duplicate-accounts.mjs
+ create mode 100644 scripts/check-pg-schema.mjs
+ create mode 100755 scripts/check-unipile-structure.mjs
+ create mode 100644 scripts/map-accounts-per-workspace.mjs
+ create mode 100644 scripts/run-migration-now.mjs
+ create mode 100755 scripts/run-migration.mjs
+ create mode 100644 scripts/sync-orphaned-accounts.mjs
+ create mode 100644 scripts/test-constraints.mjs
+ create mode 100644 scripts/verify-fix.mjs
+ create mode 100755 scripts/verify-linkedin-fix.mjs
+ create mode 100644 supabase/migrations/20251025_enforce_single_workspace_per_account.sql
+ create mode 100644 supabase/migrations/20251025_fix_linkedin_workspace_schema.sql
+ create mode 100644 supabase/migrations/20251025_linkedin_fix_real.sql
+ create mode 100644 supabase/migrations/20251025_safe_linkedin_fix.sql
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251026_000000[0m
+[0;32m📅 Timestamp: Sun Oct 26 00:00:01 +08 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║          SAM AI - Automated Backup System             ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32mBackup started: Sun Oct 26 06:01:09 +08 2025[0m
+[0;32mBackup name: auto-backup-20251026_060109[0m
+
+[1;33m📦 Step 1: Backing up to Airtable...[0m
+
+/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/scripts/auto-backup.sh: line 76: node: command not found
+[0;31m❌ Airtable backup failed (non-critical)[0m
+
+[1;33m📝 Step 2: Creating Git snapshot...[0m
+
