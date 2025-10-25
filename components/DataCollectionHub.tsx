@@ -704,6 +704,11 @@ export default function DataCollectionHub({
         return
       }
 
+      // Update local state immediately
+      setProspectData(prev => prev.map(p =>
+        p.id === prospectId ? { ...p, approvalStatus: 'rejected' as const } : p
+      ))
+
       toastSuccess('Prospect rejected')
       // Refetch to update UI with filtered data
       await refetch()
@@ -739,6 +744,11 @@ export default function DataCollectionHub({
         toastError('Failed to approve prospect')
         return
       }
+
+      // Update local state immediately
+      setProspectData(prev => prev.map(p =>
+        p.id === prospectId ? { ...p, approvalStatus: 'approved' as const } : p
+      ))
 
       toastSuccess('Prospect approved')
       // Refetch to update UI with filtered data
