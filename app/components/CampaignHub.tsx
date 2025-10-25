@@ -3416,69 +3416,53 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
   // REACT QUERY: Fetch pending campaigns with caching - LAZY LOAD when tab is active
   const { data: pendingCampaignsFromDB = [], isLoading: loadingPendingFromDB } = useQuery({
-    queryKey: ['pendingCampaigns'],
+    queryKey: ['pendingCampaigns', workspaceId],
     queryFn: async () => {
-      // Fetch all approval sessions
-      const sessionsResponse = await fetch('/api/prospect-approval/sessions/list');
-      if (!sessionsResponse.ok) return [];
+      if (!workspaceId) return [];
 
-      const sessionsData = await sessionsResponse.json();
-      if (!sessionsData.success || !sessionsData.sessions) return [];
+      // Use new optimized approved prospects API
+      const response = await fetch(`/api/prospect-approval/approved?workspace_id=${workspaceId}`);
+      if (!response.ok) return [];
 
-      // Group approved prospects by campaign
+      const data = await response.json();
+      if (!data.success || !data.prospects) return [];
+
+      // Group approved prospects by campaign name
       const campaignGroups: Record<string, any> = {};
 
-      for (const session of sessionsData.sessions) {
-        if (session.status === 'active' || session.status === 'completed') {
-          const prospectsResponse = await fetch(`/api/prospect-approval/prospects?session_id=${session.id}`);
-          if (prospectsResponse.ok) {
-            const prospectsData = await prospectsResponse.json();
-            if (prospectsData.success && prospectsData.prospects) {
-              // Filter only approved prospects
-              const approvedProspects = prospectsData.prospects.filter(
-                (p: any) => p.approval_status === 'approved'
-              );
+      for (const prospect of data.prospects) {
+        const campaignName = prospect.prospect_approval_sessions?.campaign_name || `Session-${prospect.session_id?.slice(0, 8)}`;
 
-              if (approvedProspects.length > 0) {
-                const campaignName = session.campaign_name || `Session-${session.id.slice(0, 8)}`;
-
-                if (!campaignGroups[campaignName]) {
-                  campaignGroups[campaignName] = {
-                    campaignName,
-                    campaignTag: session.campaign_tag || session.prospect_source || 'linkedin',
-                    sessionId: session.id,
-                    prospects: [],
-                    createdAt: session.created_at
-                  };
-                }
-
-                // Map to expected format
-                campaignGroups[campaignName].prospects.push(...approvedProspects.map((p: any) => {
-                  // Split name into first and last
-                  const nameParts = (p.name || '').trim().split(' ');
-                  const firstName = nameParts[0] || '';
-                  const lastName = nameParts.slice(1).join(' ') || '';
-
-                  return {
-                    id: p.prospect_id,
-                    name: p.name,
-                    first_name: firstName,
-                    last_name: lastName,
-                    title: p.title || '',
-                    company: p.company?.name || '',
-                    company_name: p.company?.name || '',
-                    email: p.contact?.email || '',
-                    linkedin_url: p.contact?.linkedin_url || '',
-                    phone: p.contact?.phone || '',
-                    industry: p.company?.industry || '',
-                    location: p.location || '',
-                    campaignTag: session.campaign_tag || session.campaign_name || 'linkedin'
-                  };
-                }));
-              }
-            }
-          }
+        if (!campaignGroups[campaignName]) {
+          campaignGroups[campaignName] = {
+            campaignName,
+            campaignTag: prospect.prospect_approval_sessions?.campaign_tag || prospect.prospect_approval_sessions?.prospect_source || 'linkedin',
+            sessionId: prospect.session_id,
+            prospects: [],
+            createdAt: prospect.created_at
+          };
         }
+
+        // Split name into first and last
+        const nameParts = (prospect.name || '').trim().split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        campaignGroups[campaignName].prospects.push({
+          id: prospect.prospect_id,
+          name: prospect.name,
+          first_name: firstName,
+          last_name: lastName,
+          title: prospect.title || '',
+          company: prospect.company?.name || '',
+          company_name: prospect.company?.name || '',
+          email: prospect.contact?.email || '',
+          linkedin_url: prospect.contact?.linkedin_url || '',
+          phone: prospect.contact?.phone || '',
+          industry: prospect.company?.industry?.[0] || '',
+          location: prospect.location || '',
+          campaignTag: prospect.prospect_approval_sessions?.campaign_tag || prospect.prospect_approval_sessions?.campaign_name || 'linkedin'
+        });
       }
 
       // Convert to array sorted by creation date
@@ -3488,7 +3472,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
       return campaigns;
     },
-    enabled: campaignFilter === 'pending', // Only fetch when Pending tab is active
+    enabled: campaignFilter === 'pending' && !!workspaceId, // Only fetch when Pending tab is active
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
   });
