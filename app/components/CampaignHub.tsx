@@ -3,6 +3,7 @@
 import React from 'react';
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { useState, useEffect } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users,
@@ -307,34 +308,22 @@ function CampaignBuilder({
   initialProspects,
   draftToLoad,
   onPrepareForApproval,
-  workspaceId
+  workspaceId,
+  clientCode
 }: {
   onClose?: () => void;
   initialProspects?: any[] | null;
   draftToLoad?: any;
   onPrepareForApproval?: (campaignData: any) => void;
   workspaceId?: string | null;
+  clientCode?: string | null;
 }) {
-  // Helper function to get user initials from email
-  const getUserInitials = (email: string): string => {
-    if (!email) return 'XX';
-    if (email.includes('@')) {
-      const emailPart = email.split('@')[0];
-      const parts = emailPart.split(/[._-]/);
-      if (parts.length >= 2) {
-        return (parts[0][0] + parts[1][0]).toUpperCase();
-      }
-      return emailPart.substring(0, 2).toUpperCase();
-    }
-    return email.substring(0, 2).toUpperCase();
-  };
-
-  // Generate default campaign name following search naming convention: YYYYMMDD-Initials-Description
+  // Generate default campaign name following search naming convention: YYYYMMDD-ClientCode-Description
   const generateDefaultCampaignName = () => {
     const today = new Date();
     const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
-    const initials = workspaceId ? getUserInitials(workspaceId) : 'XX';
-    return `${dateStr}-${initials}-Outreach Campaign`;
+    const code = clientCode || 'XX';
+    return `${dateStr}-${code}-Outreach Campaign`;
   };
 
   // Derive campaign name from initialProspects if available
@@ -3363,6 +3352,26 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
   const queryClient = useQueryClient();
 
+  // Fetch workspace data to get client_code
+  const { data: workspaceData } = useQuery({
+    queryKey: ['workspace', workspaceId],
+    queryFn: async () => {
+      if (!workspaceId) return null;
+      const supabase = createClientComponentClient();
+      const { data, error } = await supabase
+        .from('workspaces')
+        .select('id, name, client_code')
+        .eq('id', workspaceId)
+        .single();
+      if (error) {
+        console.error('Failed to fetch workspace:', error);
+        return null;
+      }
+      return data;
+    },
+    enabled: !!workspaceId
+  });
+
   // Auto-open pending approvals toggle (stored in localStorage)
   const [autoOpenApprovals, setAutoOpenApprovals] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -4547,6 +4556,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   setShowApprovalScreen(true);
                 }}
                 workspaceId={workspaceId}
+                clientCode={workspaceData?.client_code || null}
               />
             </div>
           </div>
