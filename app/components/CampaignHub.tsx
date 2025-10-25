@@ -322,7 +322,7 @@ function CampaignBuilder({
   const generateDefaultCampaignName = () => {
     const today = new Date();
     const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
-    const code = clientCode || 'XX';
+    const code = clientCode || 'XXX'; // Always 3 digits
     return `${dateStr}-${code}-Outreach Campaign`;
   };
 
