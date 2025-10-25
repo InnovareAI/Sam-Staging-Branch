@@ -1501,33 +1501,47 @@ export default function DataCollectionHub({
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center justify-center space-x-2">
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      {/* Status Badge */}
                       {prospect.approvalStatus === 'approved' ? (
-                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-600 text-green-100">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-600/80 text-green-100">
                           ✓ Approved
                         </span>
                       ) : prospect.approvalStatus === 'rejected' ? (
-                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-600 text-red-100">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-600/80 text-red-100">
                           ✗ Rejected
                         </span>
                       ) : (
-                        <>
-                          <button
-                            onClick={() => handleApprove(prospect.id)}
-                            className="p-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-colors border border-green-500/40"
-                            title="Approve this prospect"
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleReject(prospect.id)}
-                            className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors border border-red-500/40"
-                            title="Reject this prospect"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-600/80 text-gray-300">
+                          Pending
+                        </span>
                       )}
+
+                      {/* Action Buttons - Always visible */}
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleApprove(prospect.id)}
+                          className={`p-1.5 rounded-lg transition-colors border ${
+                            prospect.approvalStatus === 'approved'
+                              ? 'bg-green-500/40 text-green-300 border-green-500/60'
+                              : 'bg-green-500/20 hover:bg-green-500/30 text-green-400 border-green-500/40'
+                          }`}
+                          title={prospect.approvalStatus === 'approved' ? 'Already approved' : 'Approve this prospect'}
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleReject(prospect.id)}
+                          className={`p-1.5 rounded-lg transition-colors border ${
+                            prospect.approvalStatus === 'rejected'
+                              ? 'bg-red-500/40 text-red-300 border-red-500/60'
+                              : 'bg-red-500/20 hover:bg-red-500/30 text-red-400 border-red-500/40'
+                          }`}
+                          title={prospect.approvalStatus === 'rejected' ? 'Already rejected' : 'Reject this prospect'}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">
