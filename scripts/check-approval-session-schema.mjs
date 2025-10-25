@@ -15,12 +15,12 @@ const SERVICE_ROLE_KEY = envContent.match(/SUPABASE_SERVICE_ROLE_KEY=(.*)/)[1].t
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-console.log('\n🔍 CHECKING PROSPECT APPROVAL SCHEMA\n');
+console.log('\n🔍 CHECKING PROSPECT APPROVAL SESSIONS SCHEMA\n');
 console.log('='.repeat(80) + '\n');
 
-// Get sample from prospect_approval_data
+// Get sample from prospect_approval_sessions
 const { data: sample, error } = await supabase
-  .from('prospect_approval_data')
+  .from('prospect_approval_sessions')
   .select('*')
   .limit(1)
   .single();
@@ -28,12 +28,12 @@ const { data: sample, error } = await supabase
 if (error) {
   console.log('❌ Error:', error.message);
 } else if (sample) {
-  console.log('Sample prospect_approval_data record:\n');
+  console.log('Sample prospect_approval_sessions record:\n');
   console.log(JSON.stringify(sample, null, 2));
   console.log('\n');
   console.log('Fields:', Object.keys(sample).join(', '));
 } else {
-  console.log('No data found in prospect_approval_data');
+  console.log('No data found in prospect_approval_sessions');
 }
 
 console.log('\n');

@@ -1,0 +1,395 @@
+{
+  "object": "AccountList",
+  "items": [
+    {
+      "object": "Account",
+      "connection_params": {
+        "im": {
+          "id": "ACoAADop-UABEUd5Sn_XycUyk52X73muKIaW4cc",
+          "publicIdentifier": "𝗖𝗵𝗮𝗿𝗶𝘀𝘀𝗮-𝗦𝗮𝗻𝗶𝗲𝗹-054978232",
+          "username": "𝗖𝗵𝗮𝗿𝗶𝘀𝘀𝗮 𝗦𝗮𝗻𝗶𝗲𝗹",
+          "premiumId": null,
+          "premiumFeatures": [
+            "premium"
+          ],
+          "premiumContractId": null,
+          "organizations": []
+        }
+      },
+      "name": "𝗖𝗵𝗮𝗿𝗶𝘀𝘀𝗮 𝗦𝗮𝗻𝗶𝗲𝗹",
+      "type": "LINKEDIN",
+      "created_at": "2025-10-01T15:01:33.283Z",
+      "sources": [
+        {
+          "id": "4nt1J-blSnGUPBjH2Nfjpg_MESSAGING",
+          "status": "OK"
+        }
+      ],
+      "id": "4nt1J-blSnGUPBjH2Nfjpg",
+      "groups": []
+    },
+    {
+      "object": "Account",
+      "connection_params": {
+        "im": {
+          "id": "ACoAAAAoXnUBef58Udb99Y38wqb1KkKG7LdVy4A",
+          "publicIdentifier": "stanbounev",
+          "username": "Stan Bounev",
+          "premiumId": null,
+          "premiumFeatures": [],
+          "premiumContractId": null,
+          "organizations": [
+            {
+              "name": "VeriClouds (acquired by Enzoic)",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:2646517",
+              "organization_urn": "urn:li:fsd_company:15158025"
+            },
+            {
+              "name": "AppBugs, Inc.",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:7898371",
+              "organization_urn": "urn:li:fsd_company:4829509"
+            },
+            {
+              "name": "VaaS Tech",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:7462946",
+              "organization_urn": "urn:li:fsd_company:4817871"
+            }
+          ]
+        }
+      },
+      "name": "Stan Bounev",
+      "type": "LINKEDIN",
+      "created_at": "2025-10-06T18:22:28.091Z",
+      "sources": [
+        {
+          "id": "FhQYuy9yS2KETw-OYIa0Yw_MESSAGING",
+          "status": "OK"
+        }
+      ],
+      "id": "FhQYuy9yS2KETw-OYIa0Yw",
+      "groups": []
+    },
+    {
+      "object": "Account",
+      "connection_params": {
+        "im": {
+          "id": "ACoAAAAgVMUBJZZth4z5yNQdv4eNMMxvWrStYJo",
+          "publicIdentifier": "jim-heim-231862",
+          "username": "Jim Heim",
+          "premiumId": null,
+          "premiumFeatures": [],
+          "premiumContractId": null,
+          "organizations": [
+            {
+              "name": "SendingCell",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:77695444",
+              "organization_urn": "urn:li:fsd_company:106052221"
+            }
+          ]
+        }
+      },
+      "name": "Jim Heim",
+      "type": "LINKEDIN",
+      "created_at": "2025-10-07T13:40:30.343Z",
+      "sources": [
+        {
+          "id": "J6pyDIoQSfmGDEIbwXBy3A_MESSAGING",
+          "status": "OK"
+        }
+      ],
+      "id": "J6pyDIoQSfmGDEIbwXBy3A",
+      "groups": []
+    },
+    {
+      "object": "Account",
+      "connection_params": {
+        "im": {
+          "id": "ACoAAADILf4BvCVSeI5_uRsgtWwbdZted-eJ5cE",
+          "publicIdentifier": "dave-stuteville-bba4874",
+          "username": "Dave Stuteville",
+          "premiumId": null,
+          "premiumFeatures": [
+            "premium"
+          ],
+          "premiumContractId": null,
+          "organizations": [
+            {
+              "name": "SendingCell",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:77695444",
+              "organization_urn": "urn:li:fsd_company:106052221"
+            }
+          ]
+        }
+      },
+      "name": "Dave Stuteville",
+      "type": "LINKEDIN",
+      "created_at": "2025-10-16T12:49:04.204Z",
+      "sources": [
+        {
+          "id": "Kffb2MbOR8Cy4yPfqNGMyQ_MESSAGING",
+          "status": "OK"
+        }
+      ],
+      "id": "Kffb2MbOR8Cy4yPfqNGMyQ",
+      "groups": []
+    },
+    {
+      "object": "Account",
+      "connection_params": {
+        "im": {
+          "id": "ACoAACRgSV0BPj_T9fu_NqDi6PNJQMabqk4eOcE",
+          "publicIdentifier": "michellegestuveo",
+          "username": "Michelle Angelica  Gestuveo ",
+          "premiumId": null,
+          "premiumFeatures": [
+            "premium"
+          ],
+          "premiumContractId": null,
+          "organizations": [
+            {
+              "name": "InnovareAI",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:15157661",
+              "organization_urn": "urn:li:fsd_company:13041391"
+            },
+            {
+              "name": "SAM: Your AI Sales Assistant",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:79020546",
+              "organization_urn": "urn:li:fsd_company:107154421"
+            },
+            {
+              "name": "InnovareAI Services",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:71354463",
+              "organization_urn": "urn:li:fsd_company:92877362"
+            }
+          ]
+        }
+      },
+      "name": "Michelle Angelica  Gestuveo ",
+      "type": "LINKEDIN",
+      "created_at": "2025-10-07T16:15:45.831Z",
+      "sources": [
+        {
+          "id": "MT39bAEDTJ6e_ZPY337UgQ_MESSAGING",
+          "status": "OK"
+        }
+      ],
+      "id": "MT39bAEDTJ6e_ZPY337UgQ",
+      "groups": []
+    },
+    {
+      "object": "Account",
+      "connection_params": {
+        "im": {
+          "id": "ACoAACjdh2IBb8lp_tUbzduKedE22yVTTpMgLEQ",
+          "publicIdentifier": "irish-maguad-202737171",
+          "username": "Irish Maguad",
+          "premiumId": null,
+          "premiumFeatures": [
+            "premium"
+          ],
+          "premiumContractId": null,
+          "organizations": []
+        }
+      },
+      "name": "Irish Maguad",
+      "type": "LINKEDIN",
+      "created_at": "2025-10-08T13:09:10.804Z",
+      "sources": [
+        {
+          "id": "avp6xHsCRZaP5uSPmjc2jg_MESSAGING",
+          "status": "OK"
+        }
+      ],
+      "id": "avp6xHsCRZaP5uSPmjc2jg",
+      "groups": []
+    },
+    {
+      "object": "Account",
+      "connection_params": {
+        "im": {
+          "id": "ACoAADC98uUB5d-Xo1XklmRMtrEOsXrRybvxx7g",
+          "publicIdentifier": "samanthatruman",
+          "username": "Samantha Truman",
+          "premiumId": null,
+          "premiumFeatures": [],
+          "premiumContractId": null,
+          "organizations": [
+            {
+              "name": "True People Consulting",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:29075456",
+              "organization_urn": "urn:li:fsd_company:90663109"
+            }
+          ]
+        }
+      },
+      "name": "Samantha Truman",
+      "type": "LINKEDIN",
+      "created_at": "2025-10-21T13:28:02.112Z",
+      "sources": [
+        {
+          "id": "fntPg3vJTZ2Z1MP4rISntg_MESSAGING",
+          "status": "OK"
+        }
+      ],
+      "id": "fntPg3vJTZ2Z1MP4rISntg",
+      "groups": []
+    },
+    {
+      "object": "Account",
+      "connection_params": {
+        "im": {
+          "id": "ACoAAAAwOXwBT9Jh0v-mzkm9PcmW1iShDrHCk0I",
+          "publicIdentifier": "noriko-yokoi",
+          "username": "Noriko Yokoi, Ph.D.",
+          "premiumId": null,
+          "premiumFeatures": [
+            "premium"
+          ],
+          "premiumContractId": null,
+          "organizations": [
+            {
+              "name": "Amber + Forge LLC",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:39155776",
+              "organization_urn": "urn:li:fsd_company:42139934"
+            },
+            {
+              "name": "StartupIdeation",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:64524977",
+              "organization_urn": "urn:li:fsd_company:79016369"
+            },
+            {
+              "name": "3cubed.AI",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:64222358",
+              "organization_urn": "urn:li:fsd_company:96308264"
+            }
+          ]
+        }
+      },
+      "name": "Noriko Yokoi, Ph.D.",
+      "type": "LINKEDIN",
+      "created_at": "2025-10-17T15:26:59.484Z",
+      "sources": [
+        {
+          "id": "lN6tdIWOStK_dEaxhygCEQ_MESSAGING",
+          "status": "OK"
+        }
+      ],
+      "id": "lN6tdIWOStK_dEaxhygCEQ",
+      "groups": []
+    },
+    {
+      "object": "Account",
+      "connection_params": {
+        "im": {
+          "id": "ACoAAACYv0MB5sgfg5P09EbKyGzp2OH-qwKEmgc",
+          "publicIdentifier": "tvonlinz",
+          "username": "Thorsten Linz",
+          "premiumId": "ACwAAACYv0MBXiW9C23Wa6Fo-Xgh8lK1IKScj-A",
+          "premiumFeatures": [
+            "premium",
+            "sales_navigator"
+          ],
+          "premiumContractId": "1441566407",
+          "organizations": [
+            {
+              "name": "CHILLMINE",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:78558524",
+              "organization_urn": "urn:li:fsd_company:106816561"
+            },
+            {
+              "name": "SIA - Startup Investor Accelerator",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:63514768",
+              "organization_urn": "urn:li:fsd_company:76554204"
+            },
+            {
+              "name": "InnovareAI",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:15157661",
+              "organization_urn": "urn:li:fsd_company:13041391"
+            },
+            {
+              "name": "red-dragonfly.vc",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:71365094",
+              "organization_urn": "urn:li:fsd_company:92898219"
+            },
+            {
+              "name": "Impact Finance Center",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:773885",
+              "organization_urn": "urn:li:fsd_company:7574433"
+            },
+            {
+              "name": "Innovare Digital",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:9698252",
+              "organization_urn": "urn:li:fsd_company:6925246"
+            },
+            {
+              "name": "InnovareAI Services",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:71354463",
+              "organization_urn": "urn:li:fsd_company:92877362"
+            },
+            {
+              "name": "3cubed.AI",
+              "messaging_enabled": true,
+              "mailbox_urn": "urn:li:fsd_pageMailbox:64222358",
+              "organization_urn": "urn:li:fsd_company:96308264"
+            }
+          ]
+        }
+      },
+      "name": "Thorsten Linz",
+      "type": "LINKEDIN",
+      "created_at": "2025-10-14T10:57:32.903Z",
+      "sources": [
+        {
+          "id": "mERQmojtSZq5GeomZZazlw_MESSAGING",
+          "status": "OK"
+        }
+      ],
+      "id": "mERQmojtSZq5GeomZZazlw",
+      "groups": []
+    },
+    {
+      "object": "Account",
+      "name": "tl@innovareai.com",
+      "type": "GOOGLE_OAUTH",
+      "created_at": "2025-10-07T11:46:17.360Z",
+      "connection_params": {
+        "mail": {
+          "id": "tl@innovareai.com",
+          "username": "tl@innovareai.com"
+        },
+        "calendar": {
+          "id": "tl@innovareai.com",
+          "username": "tl@innovareai.com"
+        }
+      },
+      "sources": [
+        {
+          "id": "nefy7jYjS5K6X3U7ORxHNQ_MAILS",
+          "status": "OK"
+        }
+      ],
+      "id": "nefy7jYjS5K6X3U7ORxHNQ",
+      "groups": []
+    }
+  ],
+  "cursor": null
+}

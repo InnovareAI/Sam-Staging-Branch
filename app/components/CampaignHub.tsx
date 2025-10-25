@@ -1498,9 +1498,9 @@ Would you like me to adjust these or create more variations?`
         firstName: prospect.first_name || prospect.name?.split(' ')[0] || '',
         lastName: prospect.last_name || prospect.name?.split(' ').slice(1).join(' ') || '',
         email: prospect.email || prospect.contact?.email,
-        company: prospect.company || prospect.company_name,
+        company: prospect.company?.name || prospect.company_name || prospect.company || '',
         title: prospect.title,
-        industry: prospect.industry || 'Not specified',
+        industry: prospect.industry || prospect.company?.industry?.[0] || 'Not specified',
         linkedin_url: prospect.linkedin_url || prospect.contact?.linkedin_url,
         linkedin_user_id: prospect.linkedin_user_id
       }));
@@ -1575,7 +1575,7 @@ Would you like me to adjust these or create more variations?`
         prospects = initialProspects.map(prospect => ({
           name: prospect.name,
           email: prospect.email || prospect.contact?.email,
-          company: prospect.company || prospect.company_name,
+          company: prospect.company?.name || prospect.company_name || prospect.company || '',
           title: prospect.title,
           linkedin_url: prospect.linkedin_url || prospect.contact?.linkedin_url,
           linkedin_user_id: prospect.linkedin_user_id
