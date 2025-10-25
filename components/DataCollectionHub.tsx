@@ -699,8 +699,9 @@ export default function DataCollectionHub({
       })
 
       if (!response.ok) {
-        console.error('Failed to save rejection')
-        toastError('Failed to reject prospect')
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Failed to save rejection:', errorData)
+        toastError(`Failed to reject: ${errorData.error || 'Unknown error'}`)
         return
       }
 
@@ -714,7 +715,7 @@ export default function DataCollectionHub({
       await refetch()
     } catch (error) {
       console.error('Error rejecting prospect:', error)
-      toastError('Failed to reject prospect')
+      toastError(`Failed to reject: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -740,8 +741,9 @@ export default function DataCollectionHub({
       })
 
       if (!response.ok) {
-        console.error('Failed to save approval')
-        toastError('Failed to approve prospect')
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Failed to save approval:', errorData)
+        toastError(`Failed to approve: ${errorData.error || 'Unknown error'}`)
         return
       }
 
@@ -755,7 +757,7 @@ export default function DataCollectionHub({
       await refetch()
     } catch (error) {
       console.error('Error approving prospect:', error)
-      toastError('Failed to approve prospect')
+      toastError(`Failed to approve: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
