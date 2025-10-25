@@ -1497,11 +1497,11 @@ Would you like me to adjust these or create more variations?`
       prospects = initialProspects.map(prospect => ({
         firstName: prospect.first_name || prospect.name?.split(' ')[0] || '',
         lastName: prospect.last_name || prospect.name?.split(' ').slice(1).join(' ') || '',
-        email: prospect.email,
-        company: prospect.company,
+        email: prospect.email || prospect.contact?.email,
+        company: prospect.company || prospect.company_name,
         title: prospect.title,
         industry: prospect.industry || 'Not specified',
-        linkedin_url: prospect.linkedin_url,
+        linkedin_url: prospect.linkedin_url || prospect.contact?.linkedin_url,
         linkedin_user_id: prospect.linkedin_user_id
       }));
     } else if (dataSource === 'upload' && csvData.length > 0) {
@@ -1574,10 +1574,10 @@ Would you like me to adjust these or create more variations?`
       if (initialProspects && initialProspects.length > 0) {
         prospects = initialProspects.map(prospect => ({
           name: prospect.name,
-          email: prospect.email,
-          company: prospect.company,
+          email: prospect.email || prospect.contact?.email,
+          company: prospect.company || prospect.company_name,
           title: prospect.title,
-          linkedin_url: prospect.linkedin_url,
+          linkedin_url: prospect.linkedin_url || prospect.contact?.linkedin_url,
           linkedin_user_id: prospect.linkedin_user_id
         }));
       } else if (dataSource === 'upload' && csvData.length > 0) {
