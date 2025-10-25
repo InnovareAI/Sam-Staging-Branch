@@ -4597,9 +4597,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 }`}
               >
                 Campaign Creator
-                {((initialProspects?.length || 0) + pendingCampaignsFromDB.length) > 0 && (
+                {((initialProspects?.filter(p => p.approvalStatus === 'approved').length || 0) + pendingCampaignsFromDB.length) > 0 && (
                   <span className="px-2 py-0.5 bg-yellow-600 text-white text-xs rounded-full">
-                    {(initialProspects?.length || 0) + pendingCampaignsFromDB.length}
+                    {(initialProspects?.filter(p => p.approvalStatus === 'approved').length || 0) + pendingCampaignsFromDB.length}
                   </span>
                 )}
               </button>
@@ -4734,9 +4734,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   // Merge temp initialProspects and persistent DB campaigns
                   const allCampaigns: any[] = [];
 
-                  // Add temp campaigns from initialProspects
+                  // Add temp campaigns from initialProspects - ONLY APPROVED ONES
                   if (initialProspects && initialProspects.length > 0) {
-                    const campaignGroups = initialProspects.reduce((acc: any, prospect: any) => {
+                    const approvedProspects = initialProspects.filter(p => p.approvalStatus === 'approved');
+                    const campaignGroups = approvedProspects.reduce((acc: any, prospect: any) => {
                       const campaignName = prospect.campaignName || prospect.campaignTag || 'Unnamed Campaign';
                       if (!acc[campaignName]) {
                         acc[campaignName] = { campaignName, prospects: [], source: 'temp', createdAt: new Date() };
