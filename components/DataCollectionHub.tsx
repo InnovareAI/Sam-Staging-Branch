@@ -899,9 +899,20 @@ export default function DataCollectionHub({
       })[0]?.campaignName
     : null
 
+  // Auto-expiration: Remove old prospect data to prevent clutter
+  // Prospects older than this many days will be automatically filtered out
+  const PROSPECT_EXPIRATION_DAYS = 7
+  const expirationDate = new Date()
+  expirationDate.setDate(expirationDate.getDate() - PROSPECT_EXPIRATION_DAYS)
+
   // Filter prospects - SERVER-SIDE: status filter is handled by API
-  // CLIENT-SIDE: only search term filter (applied to current page)
+  // CLIENT-SIDE: search term, campaign filters, and auto-expiration
   let filteredProspects = prospectsWithScores.filter(p => {
+    // Auto-expiration: Filter out old unused prospect data (older than 30 days)
+    if (p.createdAt && p.createdAt < expirationDate) {
+      return false
+    }
+
     // Campaign name filter - user explicitly selects which campaign to view
     if (selectedCampaignName === 'latest' && latestCampaignName && p.campaignName !== latestCampaignName) {
       return false
@@ -1178,9 +1189,32 @@ export default function DataCollectionHub({
       }
     }
 
-    // Remove approved prospects from Prospect Database VIEW (they stay in DB, just shown in Campaign Creator)
+    // Get rejected prospects to delete
+    const rejectedProspects = prospectData.filter(p => p.approvalStatus === 'rejected')
+
+    // Delete rejected prospects from database
+    for (const prospect of rejectedProspects) {
+      if (prospect.sessionId) {
+        try {
+          await fetch('/api/prospect-approval/decisions', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              session_id: prospect.sessionId,
+              prospect_id: prospect.id
+            })
+          })
+        } catch (error) {
+          console.error('Error deleting rejected prospect:', prospect.id, error)
+        }
+      }
+    }
+
+    // Remove approved and rejected prospects from view
+    // Keep pending prospects in the list for future decisions
     const approvedIds = new Set(approvedProspects.map(p => p.id))
-    setProspectData(prev => prev.filter(p => !approvedIds.has(p.id)))
+    const rejectedIds = new Set(rejectedProspects.map(p => p.id))
+    setProspectData(prev => prev.filter(p => !approvedIds.has(p.id) && !rejectedIds.has(p.id)))
 
     // Clear selections
     setSelectedProspectIds(new Set())
@@ -1191,7 +1225,9 @@ export default function DataCollectionHub({
       onApprovalComplete(approvedProspects)
     }
 
-    toastSuccess(`✅ Success!\n\n${approvedProspects.length} approved prospects moved to Campaign Creator view.`)
+    const deletedCount = rejectedProspects.length
+    const deletedMsg = deletedCount > 0 ? `\n🗑️ ${deletedCount} rejected prospect(s) deleted` : ''
+    toastSuccess(`✅ Success!\n\n${approvedProspects.length} approved prospects moved to Campaign Creator${deletedMsg}`)
   }
 
   // Download only approved prospects
