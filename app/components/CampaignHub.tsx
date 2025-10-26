@@ -1562,22 +1562,28 @@ Would you like me to adjust these or create more variations?`
       let prospects;
       if (initialProspects && initialProspects.length > 0) {
         prospects = initialProspects.map(prospect => ({
-          name: prospect.name,
-          email: prospect.email || prospect.contact?.email,
+          // Handle both workspace_prospects schema and other schemas
+          first_name: prospect.first_name || (prospect.name ? prospect.name.split(' ')[0] : ''),
+          last_name: prospect.last_name || (prospect.name ? prospect.name.split(' ').slice(1).join(' ') : ''),
+          name: prospect.name || `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
+          email: prospect.email || prospect.email_address || prospect.contact?.email,
           company: prospect.company?.name || prospect.company_name || prospect.company || '',
-          title: prospect.title,
-          linkedin_url: prospect.linkedin_url || prospect.contact?.linkedin_url,
+          title: prospect.title || prospect.job_title,
+          linkedin_url: prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url,
           linkedin_user_id: prospect.linkedin_user_id
         }));
       } else if (dataSource === 'upload' && csvData.length > 0) {
         prospects = csvData;
       } else {
         prospects = selectedProspects.map(prospect => ({
-          name: prospect.name,
-          email: prospect.email,
-          company: prospect.company,
-          title: prospect.title,
-          linkedin_url: prospect.linkedin_url,
+          // Handle both workspace_prospects schema and other schemas
+          first_name: prospect.first_name || (prospect.name ? prospect.name.split(' ')[0] : ''),
+          last_name: prospect.last_name || (prospect.name ? prospect.name.split(' ').slice(1).join(' ') : ''),
+          name: prospect.name || `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
+          email: prospect.email || prospect.email_address,
+          company: prospect.company || prospect.company_name,
+          title: prospect.title || prospect.job_title,
+          linkedin_url: prospect.linkedin_url || prospect.linkedin_profile_url,
           linkedin_user_id: prospect.linkedin_user_id
         }));
       }
@@ -3638,13 +3644,27 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       const campaignData = await campaignResponse.json();
       const campaign = campaignData.campaign; // Extract nested campaign object
 
-      // Step 2: Upload prospects
+      // Step 2: Upload prospects (with proper schema mapping)
+      const mappedProspects = finalCampaignData.prospects.map((prospect: any) => ({
+        // Handle both workspace_prospects schema and other schemas
+        first_name: prospect.first_name || (prospect.name ? prospect.name.split(' ')[0] : ''),
+        last_name: prospect.last_name || (prospect.name ? prospect.name.split(' ').slice(1).join(' ') : ''),
+        name: prospect.name || `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
+        email: prospect.email || prospect.email_address || prospect.contact?.email,
+        company: prospect.company?.name || prospect.company_name || prospect.company || '',
+        title: prospect.title || prospect.job_title,
+        linkedin_url: prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url,
+        linkedin_user_id: prospect.linkedin_user_id,
+        connection_degree: prospect.connection_degree || prospect.degree,
+        sessionId: prospect.sessionId
+      }));
+
       const uploadResponse = await fetch('/api/campaigns/upload-prospects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaign_id: campaign.id,
-          prospects: finalCampaignData.prospects
+          prospects: mappedProspects
         })
       });
 
@@ -3656,7 +3676,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       const uploadResult = await uploadResponse.json();
 
       // Calculate connection degrees for these prospects
-      const prospectDegrees = finalCampaignData.prospects.map((p: any) => {
+      const prospectDegrees = mappedProspects.map((p: any) => {
         const degree = p.connection_degree || p.degree || 'unknown';
         return degree.toLowerCase().includes('1st') ? '1st' :
                (degree.toLowerCase().includes('2nd') || degree.toLowerCase().includes('3rd')) ? '2nd/3rd' : 'unknown';
@@ -3711,13 +3731,13 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           const syncMessage = syncedCount > 0
             ? `\n🔗 ${syncedCount} LinkedIn IDs auto-resolved from message history`
             : '';
-          toastError(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded${syncMessage}\n🚀 Campaign sent to N8N for execution`);
+          toastError(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${mappedProspects.length} prospects uploaded${syncMessage}\n🚀 Campaign sent to N8N for execution`);
         } else {
           toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Manual launch required from campaign dashboard`);
         }
       } else {
         // Calculate connection degrees for approval prospects
-        const approvalProspectDegrees = finalCampaignData.prospects.map((p: any) => {
+        const approvalProspectDegrees = mappedProspects.map((p: any) => {
           const degree = p.connection_degree || p.degree || 'unknown';
           return degree.toLowerCase().includes('1st') ? '1st' :
                  (degree.toLowerCase().includes('2nd') || degree.toLowerCase().includes('3rd')) ? '2nd/3rd' : 'unknown';
@@ -3746,7 +3766,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             if (syncResponse.ok) {
               const syncData = await syncResponse.json();
               if (syncData.stats?.campaign_prospects_resolved > 0) {
-                toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved and ready!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n🔗 ${syncData.stats.campaign_prospects_resolved} LinkedIn IDs auto-resolved\n🚀 Campaign is ready for launch!`);
+                toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved and ready!\n\n📊 ${mappedProspects.length} prospects uploaded\n🔗 ${syncData.stats.campaign_prospects_resolved} LinkedIn IDs auto-resolved\n🚀 Campaign is ready for launch!`);
 
                 // Auto-launch the campaign now that IDs are resolved
                 try {
@@ -3766,19 +3786,19 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   console.error('Auto-launch error:', launchError);
                 }
               } else {
-                toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID sync completed but no matches found\n\nℹ️ These prospects may not be in your LinkedIn connections yet. Connect with them first, then retry.`);
+                toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${mappedProspects.length} prospects uploaded\n⚠️ LinkedIn ID sync completed but no matches found\n\nℹ️ These prospects may not be in your LinkedIn connections yet. Connect with them first, then retry.`);
               }
             } else {
-              toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID auto-sync failed - will retry automatically`);
+              toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${mappedProspects.length} prospects uploaded\n⚠️ LinkedIn ID auto-sync failed - will retry automatically`);
             }
           } catch (syncError) {
             console.error('Auto-sync error:', syncError);
-            toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects uploaded\n⚠️ LinkedIn ID discovery in progress...`);
+            toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${mappedProspects.length} prospects uploaded\n⚠️ LinkedIn ID discovery in progress...`);
           }
         } else {
           // No sync needed - either IDs already resolved OR it's a Connector campaign
           // Open campaign settings modal to allow user to activate
-          toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${finalCampaignData.prospects.length} prospects ready\n\n💡 Opening settings to activate...`);
+          toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${mappedProspects.length} prospects ready\n\n💡 Opening settings to activate...`);
 
           // Open settings modal for the new campaign
           setSelectedCampaign(campaign);
@@ -3787,7 +3807,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       }
 
       // Mark approval session as completed if prospects came from approval flow
-      const sessionId = finalCampaignData.prospects[0]?.sessionId || initialProspects?.[0]?.sessionId;
+      const sessionId = mappedProspects[0]?.sessionId || initialProspects?.[0]?.sessionId;
       if (sessionId) {
         try {
           await fetch('/api/prospect-approval/complete', {
