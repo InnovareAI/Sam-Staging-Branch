@@ -492,7 +492,8 @@ function CampaignBuilder({
   // Message templates
   const [connectionMessage, setConnectionMessage] = useState('');
   const [alternativeMessage, setAlternativeMessage] = useState('');
-  const [followUpMessages, setFollowUpMessages] = useState<string[]>(['']);
+  // Initialize with 5 follow-up messages (Messages 2-6 in the sequence)
+  const [followUpMessages, setFollowUpMessages] = useState<string[]>(['', '', '', '', '']);
   const [activeField, setActiveField] = useState<{type: 'connection' | 'alternative' | 'followup', index?: number}>({type: 'connection'});
   const [activeTextarea, setActiveTextarea] = useState<HTMLTextAreaElement | null>(null);
 
@@ -2335,52 +2336,46 @@ Would you like me to adjust these or create more variations?`
           <div>
             <div className="flex items-center justify-between mb-3">
               <Label className="text-gray-400">
-                {campaignType === 'messenger' ? 'Messages' : 'Follow-up Messages'}
+                6-Step Messaging Sequence (5 Follow-ups)
               </Label>
-              <Button
-                onClick={addFollowUpMessage}
-                variant="link"
-                size="sm"
-                className="text-purple-400 hover:text-purple-300 h-auto p-0"
-              >
-                <Plus size={16} className="mr-1" /> {campaignType === 'messenger' ? 'Add Message' : 'Add Follow-up'}
-              </Button>
             </div>
             <p className="text-xs text-gray-500 mb-3">
-              {campaignType === 'messenger'
-                ? 'Direct messages sent to your 1st degree connections'
-                : 'Messages sent after connection is accepted'}
+              Messages 2-6 sent after connection is accepted
             </p>
-            
-            {followUpMessages.map((message, index) => (
-              <div key={index} className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <Label className="text-gray-400">
-                    {campaignType === 'messenger' ? `Message ${index + 1}` : `Follow-up ${index + 1}`}
-                  </Label>
-                  {followUpMessages.length > 1 && (
-                    <Button
-                      onClick={() => removeFollowUpMessage(index)}
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-400 hover:text-red-300 h-6 w-6"
-                    >
-                      <XCircle size={16} />
-                    </Button>
-                  )}
-                </div>
-                <Textarea
-                  className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
-                  rows={3}
-                  value={message}
-                  onChange={e => updateFollowUpMessage(index, e.target.value)}
-                  onFocus={(e) => {
-                    setActiveField({type: 'followup', index});
-                    setActiveTextarea(e.target as HTMLTextAreaElement);
-                  }}
-                  placeholder={`Follow-up message ${index + 1}...`}
-                  data-followup-index={index}
-                />
+
+            {followUpMessages.map((message, index) => {
+              // Helper function to get message label and requirements
+              const getMessageLabel = () => {
+                if (index === 0) return 'Message 2 - Must start with "Hello {first_name},"';
+                if (index === 4) return 'Message 6 - Goodbye message (no first name)';
+                return `Message ${index + 2} (no first name)`;
+              };
+
+              const getMessagePlaceholder = () => {
+                if (index === 0) return 'Hello {first_name}, [your message here]...';
+                if (index === 4) return 'Polite goodbye message leaving door open for future connection...';
+                return `Follow-up message ${index + 2}...`;
+              };
+
+              return (
+                <div key={index} className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-gray-400">
+                      {getMessageLabel()}
+                    </Label>
+                  </div>
+                  <Textarea
+                    className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+                    rows={3}
+                    value={message}
+                    onChange={e => updateFollowUpMessage(index, e.target.value)}
+                    onFocus={(e) => {
+                      setActiveField({type: 'followup', index});
+                      setActiveTextarea(e.target as HTMLTextAreaElement);
+                    }}
+                    placeholder={getMessagePlaceholder()}
+                    data-followup-index={index}
+                  />
                 {message.length > 0 && (
                   <div className="flex justify-end mt-2">
                     <Button
@@ -2544,50 +2539,46 @@ Would you like me to adjust these or create more variations?`
           <div>
             <div className="flex items-center justify-between mb-3">
               <Label className="text-gray-400">
-                Follow-up Messages (Optional)
+                6-Step Messaging Sequence (5 Follow-ups)
               </Label>
-              <Button
-                onClick={addFollowUpMessage}
-                variant="link"
-                size="sm"
-                className="text-purple-400 hover:text-purple-300 h-auto p-0"
-              >
-                <Plus size={16} className="mr-1" /> Add Follow-up
-              </Button>
             </div>
             <p className="text-xs text-gray-500 mb-3">
-              Additional messages sent after the initial message
+              Messages 2-6 sent to your 1st degree connections
             </p>
 
-            {followUpMessages.map((message, index) => (
-              <div key={index} className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <Label className="text-gray-400">
-                    {campaignType === 'messenger' ? `Message ${index + 1}` : `Follow-up ${index + 1}`}
-                  </Label>
-                  {followUpMessages.length > 1 && (
-                    <Button
-                      onClick={() => removeFollowUpMessage(index)}
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-400 hover:text-red-300 h-6 w-6"
-                    >
-                      <XCircle size={16} />
-                    </Button>
-                  )}
-                </div>
-                <Textarea
-                  className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
-                  rows={4}
-                  value={message}
-                  onChange={e => updateFollowUpMessage(index, e.target.value)}
-                  onFocus={(e) => {
-                    setActiveField({type: 'followup', index});
-                    setActiveTextarea(e.target as HTMLTextAreaElement);
-                  }}
-                  placeholder={`Follow-up message ${index + 1}...`}
-                  data-followup-index={index}
-                />
+            {followUpMessages.map((message, index) => {
+              // Helper function to get message label and requirements
+              const getMessageLabel = () => {
+                if (index === 0) return 'Message 2 - Must start with "Hello {first_name},"';
+                if (index === 4) return 'Message 6 - Goodbye message (no first name)';
+                return `Message ${index + 2} (no first name)`;
+              };
+
+              const getMessagePlaceholder = () => {
+                if (index === 0) return 'Hello {first_name}, [your message here]...';
+                if (index === 4) return 'Polite goodbye message leaving door open for future connection...';
+                return `Follow-up message ${index + 2}...`;
+              };
+
+              return (
+                <div key={index} className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-gray-400">
+                      {getMessageLabel()}
+                    </Label>
+                  </div>
+                  <Textarea
+                    className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+                    rows={4}
+                    value={message}
+                    onChange={e => updateFollowUpMessage(index, e.target.value)}
+                    onFocus={(e) => {
+                      setActiveField({type: 'followup', index});
+                      setActiveTextarea(e.target as HTMLTextAreaElement);
+                    }}
+                    placeholder={getMessagePlaceholder()}
+                    data-followup-index={index}
+                  />
                 {message.length > 0 && (
                   <div className="flex justify-end mt-2">
                     <Button

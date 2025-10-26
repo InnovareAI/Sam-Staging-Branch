@@ -130,35 +130,76 @@ async function generateLinkedInTemplates(context: any) {
 
 **Instructions:**
 ${context.campaign.type === 'connector'
-  ? `1. Generate a CONNECTION REQUEST message (max 275 characters) - this is sent with the connection request
-2. Generate an ALTERNATIVE MESSAGE (max 115 characters) - for prospects already connected
-3. Generate 2-3 FOLLOW-UP messages - sent after connection is accepted`
-  : `1. Generate an INITIAL MESSAGE - direct message for 1st degree connections
-2. Generate 2-3 FOLLOW-UP messages - sent if no response`}
+  ? `Generate a 6-step LinkedIn messaging sequence:
+
+1. CONNECTION REQUEST (max 275 characters including {first_name} variable)
+   - Sent with the connection request to 2nd/3rd degree connections
+   - Must include {first_name} personalization variable
+
+2. MESSAGE 2 - Starts with "Hello {first_name},"
+   - First message after connection is accepted
+   - Must begin with "Hello {first_name}," greeting
+
+3. MESSAGE 3 (no first name)
+   - Follow-up message if no response to Message 2
+
+4. MESSAGE 4 (no first name)
+   - Continue building value and engagement
+
+5. MESSAGE 5 (no first name)
+   - Maintain relationship and offer
+
+6. MESSAGE 6 - Goodbye message (no first name)
+   - Polite closing if still no response
+   - Leave door open for future connection`
+  : `Generate a 6-step LinkedIn direct messaging sequence:
+
+1. INITIAL MESSAGE - Direct message for 1st degree connections
+   - Must include {first_name} personalization
+
+2. MESSAGE 2 - Starts with "Hello {first_name},"
+   - Must begin with "Hello {first_name}," greeting
+
+3-5. MESSAGES 3-5 (no first name)
+   - Progressive follow-ups building value
+
+6. MESSAGE 6 - Goodbye message (no first name)
+   - Polite closing if still no response`}
 
 **Template Requirements:**
 - Use personalization variables: {first_name}, {last_name}, {company_name}, {title}, {industry}
+- Connection Request: MUST be max 275 characters including all variables
+- Message 2: MUST start with "Hello {first_name},"
+- Messages 3-6: NO first name greeting
+- Message 6: Should be a polite goodbye/closing message
 - Be concise, professional, and value-focused
 - Avoid overly salesy language
 - Focus on genuine connection and value exchange
 - Match the tone requested by the user
+- Reference the user's Knowledge Base goals, ICP, and value proposition
 
 **Output Format:**
 Provide templates in this EXACT format:
 
-**Connection Request Message:**
-"[Your connection request here]"
-
-**Alternative Message:**
-"[Your alternative message here]"
+**Connection Request:**
+"[Your connection request here - max 275 characters with {first_name}]"
 
 **Follow-up Message 1:**
-"[Your first follow-up here]"
+"Hello {first_name}, [Your first follow-up message here]"
 
 **Follow-up Message 2:**
-"[Your second follow-up here]"
+"[Your second follow-up here - no first name]"
 
-Then provide a brief explanation of your template strategy.`;
+**Follow-up Message 3:**
+"[Your third follow-up here - no first name]"
+
+**Follow-up Message 4:**
+"[Your fourth follow-up here - no first name]"
+
+**Follow-up Message 5:**
+"[Your goodbye message here - no first name]"
+
+Then provide a brief explanation of your template strategy based on the Knowledge Base insights.`;
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -212,23 +253,43 @@ Then provide a brief explanation of your template strategy.`;
 }
 
 function parseAITemplates(aiResponse: string, campaignType: string) {
-  // Extract connection message
-  const connectionMatch = aiResponse.match(/\*\*Connection Request Message:\*\*\s*\n?"([^"]+)"/i);
+  // Extract connection message (for connector campaigns)
+  const connectionMatch = aiResponse.match(/\*\*Connection Request:?\*\*\s*\n?"([^"]+)"/i);
   const connectionMessage = connectionMatch ? connectionMatch[1].trim() : '';
 
-  // Extract alternative message
-  const altMatch = aiResponse.match(/\*\*Alternative Message:\*\*\s*\n?"([^"]+)"/i);
-  const alternativeMessage = altMatch ? altMatch[1].trim() : '';
+  // Extract all 5 follow-up messages (Messages 2-6)
+  const followUpMessages: string[] = [];
 
-  // Extract follow-up messages
-  const followUpMatches = [...aiResponse.matchAll(/\*\*Follow-up Message \d+:\*\*\s*\n?"([^"]+)"/gi)];
-  const followUpMessages = followUpMatches.map(match => match[1].trim());
+  // Try to extract each follow-up message individually
+  for (let i = 1; i <= 5; i++) {
+    const regex = new RegExp(`\\*\\*Follow-up Message ${i}:?\\*\\*\\s*\\n?"([^"]+)"`, 'i');
+    const match = aiResponse.match(regex);
+    if (match) {
+      followUpMessages.push(match[1].trim());
+    }
+  }
+
+  // Fallback: try alternative formats if specific numbered messages not found
+  if (followUpMessages.length === 0) {
+    const altMatches = [...aiResponse.matchAll(/\*\*Follow-up Message \d+:?\*\*\s*\n?"([^"]+)"/gi)];
+    followUpMessages.push(...altMatches.map(match => match[1].trim()));
+  }
+
+  // Ensure we have exactly 5 follow-up messages (pad with empty strings if needed)
+  while (followUpMessages.length < 5) {
+    followUpMessages.push('');
+  }
+
+  // Alternative message is no longer used - keeping for backwards compatibility
+  const alternativeMessage = '';
+
+  console.log(`📋 Parsed ${followUpMessages.length} follow-up messages`);
 
   return {
     response: aiResponse,
     connection_message: connectionMessage,
     alternative_message: alternativeMessage,
-    follow_up_messages: followUpMessages
+    follow_up_messages: followUpMessages.slice(0, 5) // Ensure exactly 5 messages
   };
 }
 
