@@ -141,11 +141,12 @@ export async function POST(request: NextRequest) {
     // Update approval_status in prospect_approval_data table
     // Already have adminClient from above
     // NOTE: prospect_approval_data does NOT have updated_at column, only created_at
-    const { error: updateError } = await adminClient
+    const { data: updatedData, error: updateError } = await adminClient
       .from('prospect_approval_data')
       .update({ approval_status: decision })
       .eq('session_id', session_id)
       .eq('prospect_id', prospect_id)
+      .select()
 
     if (updateError) {
       console.error('Failed to update approval_status in prospect_approval_data:', updateError)
@@ -155,6 +156,18 @@ export async function POST(request: NextRequest) {
         details: updateError.message
       }, { status: 500 })
     }
+
+    // Check if any rows were actually updated
+    if (!updatedData || updatedData.length === 0) {
+      console.error('No rows updated in prospect_approval_data for:', { session_id, prospect_id })
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to update prospect approval status',
+        details: 'No matching record found to update'
+      }, { status: 404 })
+    }
+
+    console.log('Successfully updated approval_status:', updatedData[0])
 
     // Update session counts in background (non-blocking)
     updateSessionCounts(supabase, session_id).catch(console.error)
