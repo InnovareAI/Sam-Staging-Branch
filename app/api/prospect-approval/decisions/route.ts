@@ -138,16 +138,20 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Update approval_status in prospect_approval_data table
+    // Update approval_status in prospect_approval_data table using UPSERT
+    // This handles cases where the record might not exist or has constraints
     // Already have adminClient from above
     const { error: updateError } = await adminClient
       .from('prospect_approval_data')
-      .update({
+      .upsert({
+        session_id,
+        prospect_id,
         approval_status: decision,
         updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'session_id,prospect_id',
+        ignoreDuplicates: false
       })
-      .eq('session_id', session_id)
-      .eq('prospect_id', prospect_id)
 
     if (updateError) {
       console.error('Failed to update approval_status in prospect_approval_data:', updateError)
