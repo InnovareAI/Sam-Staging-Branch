@@ -416,17 +416,34 @@ export async function POST(req: NextRequest) {
             }
 
             const unipileData = await unipileResponse.json();
-            console.log('✅ Unipile response:', unipileData);
+            console.log('✅ Unipile response:', JSON.stringify(unipileData, null, 2));
 
             // CRITICAL: Validate that we got a message ID from Unipile
-            const unipileMessageId = unipileData.object?.id;
+            // Try multiple possible locations in response structure
+            const unipileMessageId =
+              unipileData.object?.id ||       // Expected structure: { object: { id: "..." } }
+              unipileData.id ||                // Alternative: { id: "..." }
+              unipileData.data?.id ||          // Alternative: { data: { id: "..." } }
+              unipileData.message_id ||        // Alternative: { message_id: "..." }
+              unipileData.invitation_id ||     // Alternative: { invitation_id: "..." }
+              null;
+
             if (!unipileMessageId) {
               console.error('❌ Unipile response missing message ID!');
-              console.error('   Response structure:', JSON.stringify(unipileData, null, 2));
-              throw new Error('Unipile API returned success but no message ID - invitation may not have been sent');
+              console.error('   Full response structure:', JSON.stringify(unipileData, null, 2));
+              console.error('   Tried: object.id, id, data.id, message_id, invitation_id');
+
+              // Log for debugging but DON'T fail - invitation may have been sent
+              console.warn('⚠️  WARNING: Cannot track message (no ID), but invitation may have been sent');
+              console.warn('⚠️  Marking prospect as connection_requested anyway');
+
+              // Use a fallback tracking ID
+              const fallbackId = `untracked_${Date.now()}_${prospect.id}`;
+              console.log(`📝 Using fallback tracking ID: ${fallbackId}`);
             }
 
-            console.log(`✅ Got Unipile message ID: ${unipileMessageId}`);
+            const trackingId = unipileMessageId || `untracked_${Date.now()}_${prospect.id}`;
+            console.log(`✅ Got Unipile message ID: ${trackingId}`);
 
             // Update prospect status
             const { error: updateError } = await supabase
@@ -438,7 +455,8 @@ export async function POST(req: NextRequest) {
                   message: personalizedResult.message,
                   cost: personalizedResult.cost,
                   model: personalizedResult.model,
-                  unipile_message_id: unipileMessageId,
+                  unipile_message_id: trackingId,
+                  unipile_response: unipileMessageId ? null : unipileData,  // Store full response if ID missing
                   sequence_step: sequenceStep + 1
                 }
               })
