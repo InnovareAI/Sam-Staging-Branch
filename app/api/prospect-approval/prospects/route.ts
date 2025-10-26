@@ -143,12 +143,15 @@ export async function GET(request: NextRequest) {
       (decisions || []).map(d => [d.prospect_id, d])
     )
 
-    // Merge prospects with their decision metadata (approval_status comes from prospect_approval_data)
+    // Merge prospects with their decision metadata
+    // IMPORTANT: Prioritize decision from prospect_approval_decisions table over approval_status
+    // because approval_status in prospect_approval_data may not be updated due to RLS/constraints
     const prospects = (prospectsRaw || []).map((p: any) => {
       const decision = decisionsMap.get(p.prospect_id)
       return {
         ...p,
-        approval_status: p.approval_status || 'pending', // Use status from prospect_approval_data table
+        // Use decision from prospect_approval_decisions if it exists, fallback to approval_status
+        approval_status: decision?.decision || p.approval_status || 'pending',
         decision_reason: decision?.reason || null,
         decided_by: decision?.decided_by || null,
         decided_at: decision?.decided_at || null
