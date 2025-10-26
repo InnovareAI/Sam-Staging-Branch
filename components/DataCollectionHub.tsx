@@ -800,11 +800,11 @@ export default function DataCollectionHub({
   }
 
   const handleRejectAll = async () => {
-    if (!confirm('Are you sure you want to reject and delete all prospects?')) return
+    if (!confirm('Are you sure you want to reject all prospects?\n\nThey will be kept for 7 days before auto-deletion.')) return
 
     const allProspects = prospectData
 
-    // Save rejections and delete all from database
+    // Save rejections (but don't delete - let them auto-expire after 7 days)
     for (const prospect of allProspects) {
       if (prospect.sessionId) {
         try {
@@ -821,20 +821,12 @@ export default function DataCollectionHub({
           console.error('Error rejecting prospect:', prospect.id, error)
         }
       }
-
-      // Delete from database
-      try {
-        await fetch(`/api/prospects/${prospect.id}`, {
-          method: 'DELETE'
-        })
-      } catch (error) {
-        console.error('Error deleting prospect:', prospect.id, error)
-      }
     }
 
-    // Clear all from UI
-    setProspectData([])
-    toastSuccess('All prospects rejected and removed')
+    // Update local state to rejected
+    setProspectData(prev => prev.map(p => ({ ...p, approvalStatus: 'rejected' as const })))
+
+    toastSuccess(`All prospects rejected\n\nℹ️ Prospects will auto-delete after 7 days\n(View in "Dismissed" filter)`)
   }
 
   const handleCampaignTagChange = (prospectId: string, tag: string) => {
@@ -1189,32 +1181,11 @@ export default function DataCollectionHub({
       }
     }
 
-    // Get rejected prospects to delete
-    const rejectedProspects = prospectData.filter(p => p.approvalStatus === 'rejected')
-
-    // Delete rejected prospects from database
-    for (const prospect of rejectedProspects) {
-      if (prospect.sessionId) {
-        try {
-          await fetch('/api/prospect-approval/decisions', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              session_id: prospect.sessionId,
-              prospect_id: prospect.id
-            })
-          })
-        } catch (error) {
-          console.error('Error deleting rejected prospect:', prospect.id, error)
-        }
-      }
-    }
-
-    // Remove approved and rejected prospects from view
-    // Keep pending prospects in the list for future decisions
+    // Remove approved prospects from view
+    // Keep pending AND rejected prospects in the list for future decisions
+    // Rejected prospects will auto-expire after 7 days (see PROSPECT_EXPIRATION_DAYS)
     const approvedIds = new Set(approvedProspects.map(p => p.id))
-    const rejectedIds = new Set(rejectedProspects.map(p => p.id))
-    setProspectData(prev => prev.filter(p => !approvedIds.has(p.id) && !rejectedIds.has(p.id)))
+    setProspectData(prev => prev.filter(p => !approvedIds.has(p.id)))
 
     // Clear selections
     setSelectedProspectIds(new Set())
@@ -1225,9 +1196,7 @@ export default function DataCollectionHub({
       onApprovalComplete(approvedProspects)
     }
 
-    const deletedCount = rejectedProspects.length
-    const deletedMsg = deletedCount > 0 ? `\n🗑️ ${deletedCount} rejected prospect(s) deleted` : ''
-    toastSuccess(`✅ Success!\n\n${approvedProspects.length} approved prospects moved to Campaign Creator${deletedMsg}`)
+    toastSuccess(`✅ Success!\n\n${approvedProspects.length} approved prospects moved to Campaign Creator\n\nℹ️ Rejected prospects kept for 7 days (visible in "Dismissed" filter)`)
   }
 
   // Download only approved prospects
