@@ -1010,44 +1010,23 @@ export default function DataCollectionHub({
   }
 
   const bulkApproveSelected = async () => {
-    if (selectedProspectIds.size === 0) return
+    // Get ONLY prospects that are already marked as approved (ignore rejected and pending)
+    const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved')
 
-    const selectedProspects = prospectData.filter(p => selectedProspectIds.has(p.id))
+    if (approvedProspects.length === 0) {
+      toastError('No approved prospects to send. Please approve prospects first.')
+      return
+    }
 
     // Show loading state
     setLoading(true)
-    setLoadingMessage('Saving approved prospects...')
+    setLoadingMessage(`Sending ${approvedProspects.length} approved prospects to Campaign Hub...`)
 
-    // Optimistic UI update
-    setProspectData(prev => prev.map(p =>
-      selectedProspectIds.has(p.id) ? { ...p, approvalStatus: 'approved' as const } : p
-    ))
-    toastSuccess(`Approved ${selectedProspectIds.size} prospects`)
-    deselectAll()
-
-    // Save all to database
-    for (const prospect of selectedProspects) {
-      if (prospect.sessionId) {
-        try {
-          await fetch('/api/prospect-approval/decisions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              session_id: prospect.sessionId,
-              prospect_id: prospect.id,
-              decision: 'approved'
-            })
-          })
-        } catch (error) {
-          console.error('Error approving prospect:', prospect.id, error)
-        }
-      }
-    }
+    toastSuccess(`Sending ${approvedProspects.length} approved prospects to Campaign Hub`)
 
     setLoading(false)
 
-    // Auto-forward to Campaign screen with approved prospects
-    const approvedProspects = selectedProspects.map(p => ({ ...p, approvalStatus: 'approved' as const }))
+    // Forward ONLY approved prospects to Campaign Hub (disregard rejected and pending)
     handleProceedToCampaignHub(approvedProspects)
   }
 
@@ -1178,10 +1157,12 @@ export default function DataCollectionHub({
     handleProceedToCampaignHub(approvedProspects)
   }
 
-  // Proceed to Campaign Hub with approved prospects
+  // Proceed to Campaign Hub with approved prospects ONLY (disregard rejected and pending)
   const handleProceedToCampaignHub = async (prospectsOverride?: ProspectData[]) => {
+    // ALWAYS filter for approved prospects only, even if override is provided
+    // This ensures rejected and pending prospects are never sent to Campaign Hub
     const approvedProspects = prospectsOverride && prospectsOverride.length > 0
-      ? prospectsOverride
+      ? prospectsOverride.filter(p => p.approvalStatus === 'approved')
       : prospectData.filter(p => p.approvalStatus === 'approved')
 
     if (approvedProspects.length === 0) {
@@ -1314,16 +1295,16 @@ export default function DataCollectionHub({
                 )}
 
 
-            {/* Approve Selection - Saves prospects for later campaign creation */}
+            {/* Send Approved Prospects - Only sends approved prospects to Campaign Hub */}
             <Button
               onClick={bulkApproveSelected}
-              disabled={selectedProspectIds.size === 0}
+              disabled={prospectData.filter(p => p.approvalStatus === 'approved').length === 0}
               size="sm"
               className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-              title="Approve selected prospects and save them. Go to Campaign Hub → Campaign Creator to create campaigns from approved prospects."
+              title="Send only approved prospects to Campaign Hub. Rejected and pending prospects will be ignored."
             >
               <Check className="w-3.5 h-3.5" />
-              <span>Approve Selection ({selectedProspectIds.size})</span>
+              <span>Send Approved to Campaign ({prospectData.filter(p => p.approvalStatus === 'approved').length})</span>
             </Button>
 
             {/* Info message about next steps */}
