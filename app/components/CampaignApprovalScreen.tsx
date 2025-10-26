@@ -16,6 +16,8 @@ interface CampaignApprovalScreenProps {
       follow_up_1?: string;
       follow_up_2?: string;
       follow_up_3?: string;
+      follow_up_4?: string;
+      follow_up_5?: string;
     };
   };
   workspaceId: string;
@@ -92,7 +94,9 @@ export default function CampaignApprovalScreen({
           alternative_message: messages.follow_up_1 || '',
           follow_up_messages: [
             messages.follow_up_2 || '',
-            messages.follow_up_3 || ''
+            messages.follow_up_3 || '',
+            messages.follow_up_4 || '',
+            messages.follow_up_5 || ''
           ].filter(m => m.trim())
         })
       });
@@ -230,6 +234,28 @@ export default function CampaignApprovalScreen({
                   placeholder="Enter your third follow-up message..."
                 />
               </div>
+
+              {/* Follow-up 4 */}
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="font-semibold text-white mb-3">Follow-up Message 4</h3>
+                <textarea
+                  value={messages.follow_up_4 || ''}
+                  onChange={(e) => setMessages({ ...messages, follow_up_4: e.target.value })}
+                  className="w-full bg-gray-600 border border-gray-500 rounded-lg p-3 text-white text-sm min-h-[100px]"
+                  placeholder="Enter your fourth follow-up message..."
+                />
+              </div>
+
+              {/* Follow-up 5 - Goodbye Message */}
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="font-semibold text-white mb-3">Follow-up Message 5 (Goodbye)</h3>
+                <textarea
+                  value={messages.follow_up_5 || ''}
+                  onChange={(e) => setMessages({ ...messages, follow_up_5: e.target.value })}
+                  className="w-full bg-gray-600 border border-gray-500 rounded-lg p-3 text-white text-sm min-h-[100px]"
+                  placeholder="Enter your goodbye message (polite closing)..."
+                />
+              </div>
             </div>
           )}
 
@@ -247,7 +273,9 @@ export default function CampaignApprovalScreen({
                         connection_request: template.connection_message || '',
                         follow_up_1: template.alternative_message || '',
                         follow_up_2: template.follow_up_messages?.[0] || '',
-                        follow_up_3: template.follow_up_messages?.[1] || ''
+                        follow_up_3: template.follow_up_messages?.[1] || '',
+                        follow_up_4: template.follow_up_messages?.[2] || '',
+                        follow_up_5: template.follow_up_messages?.[3] || ''
                       });
                       setShowTemplateLibrary(false);
                       toastSuccess('Template loaded!');

@@ -1520,7 +1520,9 @@ Would you like me to adjust these or create more variations?`
         connection_request: connectionMessage,
         follow_up_1: followUpMessages[0] || '',
         follow_up_2: followUpMessages[1] || '',
-        follow_up_3: followUpMessages[2] || ''
+        follow_up_3: followUpMessages[2] || '',
+        follow_up_4: followUpMessages[3] || '',
+        follow_up_5: followUpMessages[4] || ''
       },
       // Store additional data needed for execution
       _executionData: {
