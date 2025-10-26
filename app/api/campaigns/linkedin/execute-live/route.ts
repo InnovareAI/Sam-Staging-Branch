@@ -80,26 +80,35 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Campaign: ${campaign.name} in workspace: ${campaign.workspaces.name}`);
 
-    // Step 2: Get workspace LinkedIn accounts from database
-    console.log('🔍 Getting workspace LinkedIn accounts...');
-    const { data: linkedinAccounts, error: accountsError } = await supabase
+    // Step 2: Get authenticated user's LinkedIn account (NEVER use other team members' accounts)
+    console.log(`🔍 Getting LinkedIn account for user: ${user.email}...`);
+    const { data: userLinkedInAccount, error: accountsError } = await supabase
       .from('workspace_accounts')
       .select('*')
       .eq('workspace_id', campaign.workspace_id)
+      .eq('user_id', user.id)  // CRITICAL: Only use authenticated user's account
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected');
+      .eq('connection_status', 'connected')
+      .single();
 
-    if (accountsError || !linkedinAccounts || linkedinAccounts.length === 0) {
-      console.error('❌ No LinkedIn accounts found:', accountsError);
+    if (accountsError || !userLinkedInAccount) {
+      console.error('❌ User LinkedIn account not found:', accountsError);
       return NextResponse.json({
-        error: 'No LinkedIn accounts connected',
-        details: 'Please connect a LinkedIn account in workspace settings first'
+        error: 'No LinkedIn account connected',
+        details: `You must connect YOUR OWN LinkedIn account. LinkedIn accounts cannot be shared among team members.`,
+        troubleshooting: {
+          step1: 'Go to Workspace Settings → Integrations',
+          step2: 'Click "Connect LinkedIn Account"',
+          step3: 'Complete the OAuth flow with YOUR LinkedIn credentials',
+          note: 'Each user must use their own LinkedIn account for compliance'
+        }
       }, { status: 400 });
     }
 
-    // Step 3: Select primary LinkedIn account
-    const selectedAccount = linkedinAccounts[0];
-    console.log(`🎯 Using LinkedIn account: ${selectedAccount.account_name || 'Primary Account'}`);
+    // Step 3: Use authenticated user's LinkedIn account
+    const selectedAccount = userLinkedInAccount;
+    console.log(`🎯 Using YOUR LinkedIn account: ${selectedAccount.account_name || 'Your Account'}`);
+    console.log(`   User: ${user.email}`);
 
     // Step 3.5: VALIDATE account has required Unipile data
     if (!selectedAccount.unipile_account_id) {
