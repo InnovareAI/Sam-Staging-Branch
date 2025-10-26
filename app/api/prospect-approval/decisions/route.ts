@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { supabaseAdmin } from '@/app/lib/supabase'
 
 /**
  * GET /api/prospect-approval/decisions?session_id=xxx
@@ -110,7 +111,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert or update decision (upsert to handle changing mind)
-    const { data, error } = await supabase
+    // Use admin client to bypass RLS policies
+    const adminClient = supabaseAdmin()
+    const { data, error } = await adminClient
       .from('prospect_approval_decisions')
       .upsert({
         session_id,
@@ -130,14 +133,19 @@ export async function POST(request: NextRequest) {
       console.error('Error saving decision:', error)
       return NextResponse.json({
         success: false,
-        error: 'Failed to save decision'
+        error: 'Failed to save decision',
+        details: error.message
       }, { status: 500 })
     }
 
     // Update approval_status in prospect_approval_data table
-    const { error: updateError } = await supabase
+    // Already have adminClient from above
+    const { error: updateError } = await adminClient
       .from('prospect_approval_data')
-      .update({ approval_status: decision })
+      .update({
+        approval_status: decision,
+        updated_at: new Date().toISOString()
+      })
       .eq('session_id', session_id)
       .eq('prospect_id', prospect_id)
 
@@ -145,7 +153,8 @@ export async function POST(request: NextRequest) {
       console.error('Failed to update approval_status in prospect_approval_data:', updateError)
       return NextResponse.json({
         success: false,
-        error: 'Failed to update prospect approval status'
+        error: 'Failed to update prospect approval status',
+        details: updateError.message
       }, { status: 500 })
     }
 
@@ -209,8 +218,11 @@ export async function DELETE(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Use admin client to bypass RLS for deletions
+    const adminClient = supabaseAdmin()
+
     // Delete the decision record
-    const { error: decisionError } = await supabase
+    const { error: decisionError } = await adminClient
       .from('prospect_approval_decisions')
       .delete()
       .eq('session_id', session_id)
@@ -221,7 +233,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Delete from prospect_approval_data
-    const { error: dataError } = await supabase
+    const { error: dataError } = await adminClient
       .from('prospect_approval_data')
       .delete()
       .eq('session_id', session_id)
