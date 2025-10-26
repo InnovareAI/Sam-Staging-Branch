@@ -293,7 +293,7 @@ export default function ProspectApprovalModal({
                 key={prospect.id}
                 className={`group p-5 rounded-xl border transition-all duration-200 ${
                   isDismissed
-                    ? 'border-red-500/40 bg-red-500/5 opacity-50'
+                    ? 'border-red-600 bg-red-500/20 ring-2 ring-red-500/50'
                     : 'border-border/60 bg-surface-highlight/50 hover:border-border hover:bg-surface-highlight'
                 }`}
               >
@@ -305,6 +305,11 @@ export default function ProspectApprovalModal({
                     <h3 className="text-lg font-semibold text-foreground">
                       {prospect.name}
                     </h3>
+                    {isDismissed && (
+                      <span className="px-3 py-1 rounded-lg text-xs font-bold border-2 bg-red-600 text-white border-red-500 uppercase tracking-wide">
+                        ✗ REJECTED
+                      </span>
+                    )}
                     <span className={`px-2 py-1 rounded-lg text-xs font-medium border ${getSourceBadgeStyle(prospect.source)}`}>
                       {prospect.source}
                     </span>
