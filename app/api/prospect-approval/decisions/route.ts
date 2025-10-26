@@ -102,10 +102,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    if (!['approved', 'rejected'].includes(decision)) {
+    if (!['approved', 'rejected', 'pending'].includes(decision)) {
       return NextResponse.json({
         success: false,
-        error: 'Decision must be "approved" or "rejected"'
+        error: 'Decision must be "approved", "rejected", or "pending"'
       }, { status: 400 })
     }
 
@@ -166,9 +166,95 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * DELETE /api/prospect-approval/decisions
+ * Delete a prospect decision (used when deleting rejected prospects)
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options)
+            })
+          }
+        }
+      }
+    )
+
+    // Authenticate
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { session_id, prospect_id } = body
+
+    if (!session_id || !prospect_id) {
+      return NextResponse.json({
+        success: false,
+        error: 'Missing required fields: session_id, prospect_id'
+      }, { status: 400 })
+    }
+
+    // Delete the decision record
+    const { error: decisionError } = await supabase
+      .from('prospect_approval_decisions')
+      .delete()
+      .eq('session_id', session_id)
+      .eq('prospect_id', prospect_id)
+
+    if (decisionError) {
+      console.error('Error deleting decision:', decisionError)
+    }
+
+    // Delete from prospect_approval_data
+    const { error: dataError } = await supabase
+      .from('prospect_approval_data')
+      .delete()
+      .eq('session_id', session_id)
+      .eq('prospect_id', prospect_id)
+
+    if (dataError) {
+      console.error('Error deleting prospect data:', dataError)
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to delete prospect'
+      }, { status: 500 })
+    }
+
+    // Update session counts in background (non-blocking)
+    updateSessionCounts(supabase, session_id).catch(console.error)
+
+    return NextResponse.json({
+      success: true,
+      message: 'Prospect deleted successfully'
+    })
+
+  } catch (error) {
+    console.error('Delete decision error:', error)
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}
+
 // Helper function to update session counts
 async function updateSessionCounts(supabase: any, sessionId: string) {
-  // Count decisions
+  // Count decisions by type
   const { count: approvedCount } = await supabase
     .from('prospect_approval_decisions')
     .select('*', { count: 'exact', head: true })
@@ -181,11 +267,19 @@ async function updateSessionCounts(supabase: any, sessionId: string) {
     .eq('session_id', sessionId)
     .eq('decision', 'rejected')
 
+  const { count: pendingDecisionCount } = await supabase
+    .from('prospect_approval_decisions')
+    .select('*', { count: 'exact', head: true })
+    .eq('session_id', sessionId)
+    .eq('decision', 'pending')
+
   const { count: totalCount } = await supabase
     .from('prospect_approval_data')
     .select('*', { count: 'exact', head: true })
     .eq('session_id', sessionId)
 
+  // Pending count includes: explicit pending decisions + prospects with no decision
+  const totalDecisions = (approvedCount || 0) + (rejectedCount || 0) + (pendingDecisionCount || 0)
   const pendingCount = (totalCount || 0) - (approvedCount || 0) - (rejectedCount || 0)
 
   // Update session
