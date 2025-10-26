@@ -705,14 +705,14 @@ export default function DataCollectionHub({
         return
       }
 
-      // Update local state immediately
+      // Update local state immediately (optimistic update)
       setProspectData(prev => prev.map(p =>
         p.id === prospectId ? { ...p, approvalStatus: 'rejected' as const } : p
       ))
 
       toastSuccess('Prospect rejected')
-      // Refetch to update UI with filtered data
-      await refetch()
+      // Note: No refetch needed - optimistic update handles UI
+      // Data will refresh on next filter change or page load
     } catch (error) {
       console.error('Error rejecting prospect:', error)
       toastError(`Failed to reject: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -747,14 +747,14 @@ export default function DataCollectionHub({
         return
       }
 
-      // Update local state immediately
+      // Update local state immediately (optimistic update)
       setProspectData(prev => prev.map(p =>
         p.id === prospectId ? { ...p, approvalStatus: 'approved' as const } : p
       ))
 
       toastSuccess('Prospect approved')
-      // Refetch to update UI with filtered data
-      await refetch()
+      // Note: No refetch needed - optimistic update handles UI
+      // Data will refresh on next filter change or page load
     } catch (error) {
       console.error('Error approving prospect:', error)
       toastError(`Failed to approve: ${error instanceof Error ? error.message : 'Unknown error'}`)
