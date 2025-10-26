@@ -686,36 +686,39 @@ export default function DataCollectionHub({
       return
     }
 
+    // Toggle logic: if already rejected, revert to pending
+    const newStatus = prospect.approvalStatus === 'rejected' ? 'pending' : 'rejected'
+
     try {
-      // Save rejection to database
+      // Save decision to database
       const response = await fetch('/api/prospect-approval/decisions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           session_id: prospect.sessionId,
           prospect_id: prospectId,
-          decision: 'rejected'
+          decision: newStatus
         })
       })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        console.error('Failed to save rejection:', errorData)
-        toastError(`Failed to reject: ${errorData.error || 'Unknown error'}`)
+        console.error('Failed to save decision:', errorData)
+        toastError(`Failed to update: ${errorData.error || 'Unknown error'}`)
         return
       }
 
       // Update local state immediately (optimistic update)
       setProspectData(prev => prev.map(p =>
-        p.id === prospectId ? { ...p, approvalStatus: 'rejected' as const } : p
+        p.id === prospectId ? { ...p, approvalStatus: newStatus as const } : p
       ))
 
-      toastSuccess('Prospect rejected')
+      toastSuccess(newStatus === 'rejected' ? 'Prospect rejected' : 'Rejection reverted')
       // Note: No refetch needed - optimistic update handles UI
       // Data will refresh on next filter change or page load
     } catch (error) {
-      console.error('Error rejecting prospect:', error)
-      toastError(`Failed to reject: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.error('Error updating prospect:', error)
+      toastError(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -728,36 +731,39 @@ export default function DataCollectionHub({
       return
     }
 
+    // Toggle logic: if already approved, revert to pending
+    const newStatus = prospect.approvalStatus === 'approved' ? 'pending' : 'approved'
+
     try {
-      // Save to database
+      // Save decision to database
       const response = await fetch('/api/prospect-approval/decisions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           session_id: prospect.sessionId,
           prospect_id: prospectId,
-          decision: 'approved'
+          decision: newStatus
         })
       })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        console.error('Failed to save approval:', errorData)
-        toastError(`Failed to approve: ${errorData.error || 'Unknown error'}`)
+        console.error('Failed to save decision:', errorData)
+        toastError(`Failed to update: ${errorData.error || 'Unknown error'}`)
         return
       }
 
       // Update local state immediately (optimistic update)
       setProspectData(prev => prev.map(p =>
-        p.id === prospectId ? { ...p, approvalStatus: 'approved' as const } : p
+        p.id === prospectId ? { ...p, approvalStatus: newStatus as const } : p
       ))
 
-      toastSuccess('Prospect approved')
+      toastSuccess(newStatus === 'approved' ? 'Prospect approved' : 'Approval reverted')
       // Note: No refetch needed - optimistic update handles UI
       // Data will refresh on next filter change or page load
     } catch (error) {
-      console.error('Error approving prospect:', error)
-      toastError(`Failed to approve: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.error('Error updating prospect:', error)
+      toastError(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
