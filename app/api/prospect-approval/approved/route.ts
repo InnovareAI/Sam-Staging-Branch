@@ -110,15 +110,20 @@ export async function GET(request: NextRequest) {
     // Filter out prospects that are already in campaigns
     const prospectsWithCampaignStatus = await Promise.all(
       (approvedData || []).map(async (prospect) => {
+        // CRITICAL FIX: Extract LinkedIn URL from contact JSONB object
+        const linkedinUrl = prospect.contact?.linkedin_url || prospect.linkedin_url || null;
+
         // Check if this prospect is already in a campaign
         const { data: campaignProspect } = await supabase
           .from('campaign_prospects')
           .select('campaign_id, campaigns(name, status)')
-          .eq('linkedin_url', prospect.linkedin_url)
+          .eq('linkedin_url', linkedinUrl)
           .single()
 
         return {
           ...prospect,
+          // CRITICAL FIX: Flatten linkedin_url to top level for campaign creation
+          linkedin_url: linkedinUrl,
           in_campaign: !!campaignProspect,
           campaign_id: campaignProspect?.campaign_id,
           campaign_name: campaignProspect?.campaigns?.name
