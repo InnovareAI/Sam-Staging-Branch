@@ -418,6 +418,16 @@ export async function POST(req: NextRequest) {
             const unipileData = await unipileResponse.json();
             console.log('✅ Unipile response:', unipileData);
 
+            // CRITICAL: Validate that we got a message ID from Unipile
+            const unipileMessageId = unipileData.object?.id;
+            if (!unipileMessageId) {
+              console.error('❌ Unipile response missing message ID!');
+              console.error('   Response structure:', JSON.stringify(unipileData, null, 2));
+              throw new Error('Unipile API returned success but no message ID - invitation may not have been sent');
+            }
+
+            console.log(`✅ Got Unipile message ID: ${unipileMessageId}`);
+
             // Update prospect status
             const { error: updateError } = await supabase
               .from('campaign_prospects')
@@ -428,7 +438,7 @@ export async function POST(req: NextRequest) {
                   message: personalizedResult.message,
                   cost: personalizedResult.cost,
                   model: personalizedResult.model,
-                  unipile_message_id: unipileData.object?.id,
+                  unipile_message_id: unipileMessageId,
                   sequence_step: sequenceStep + 1
                 }
               })

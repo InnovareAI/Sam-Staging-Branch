@@ -3625,7 +3625,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             follow_up_messages: [
               finalCampaignData.messages.follow_up_1,
               finalCampaignData.messages.follow_up_2,
-              finalCampaignData.messages.follow_up_3
+              finalCampaignData.messages.follow_up_3,
+              finalCampaignData.messages.follow_up_4,
+              finalCampaignData.messages.follow_up_5
             ].filter(msg => msg?.trim())
           }
         })
