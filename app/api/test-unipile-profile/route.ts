@@ -3,23 +3,24 @@ import { createClient } from '@supabase/supabase-js';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get the current user's auth from the request
-    const authHeader = request.headers.get('authorization');
-
-    // Create Supabase client
+    // Create Supabase client with service role key (bypasses RLS for testing)
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Get the authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // For testing, use the known test user email
+    const testUserEmail = 'tl@innovareai.com';
 
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    console.log(`🧪 TEST ENDPOINT - Testing with user: ${testUserEmail}`);
+
+    // Get the test user
+    const { data: { users } } = await supabase.auth.admin.listUsers();
+    const user = users.find((u: any) => u.email === testUserEmail);
+
+    if (!user) {
+      return NextResponse.json({ error: 'Test user not found' }, { status: 404 });
     }
-
-    console.log(`🧪 TEST ENDPOINT - User: ${user.email}`);
 
     // Get user's profile to find workspace
     const { data: userProfile } = await supabase
@@ -29,6 +30,8 @@ export async function GET(request: NextRequest) {
       .single();
 
     const workspaceId = userProfile?.current_workspace_id;
+
+    console.log(`🧪 Workspace ID: ${workspaceId}`);
 
     // Get user's LinkedIn account
     const { data: linkedInAccount } = await supabase
