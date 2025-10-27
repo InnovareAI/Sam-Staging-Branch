@@ -506,11 +506,24 @@ export async function POST(req: NextRequest) {
             console.error(`   Prospect LinkedIn URL: ${prospect.linkedin_url}`);
             console.error(`   Error details:`, sendError instanceof Error ? sendError.stack : sendError);
 
+            // Extract detailed debugging info
+            const linkedinIdentifier = extractLinkedInUserId(prospect.linkedin_url);
+            const profileUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/${linkedinIdentifier}?account_id=${selectedAccount.unipile_account_id}`;
+
             results.errors.push({
               prospect: prospectName,
               linkedin_url: prospect.linkedin_url,
+              linkedin_identifier: linkedinIdentifier,
               error: sendError instanceof Error ? sendError.message : 'Unknown error',
-              error_stack: sendError instanceof Error ? sendError.stack : undefined
+              error_stack: sendError instanceof Error ? sendError.stack : undefined,
+              debug_info: {
+                account_name: selectedAccount.account_name,
+                account_id_base: selectedAccount.unipile_account_id,
+                account_id_source: selectedAccount.unipile_sources?.find((s: any) => s.status === 'OK')?.id,
+                unipile_dsn: process.env.UNIPILE_DSN,
+                profile_url_used: profileUrl,
+                has_api_key: !!process.env.UNIPILE_API_KEY
+              }
             });
           }
         }
