@@ -51,14 +51,25 @@ export async function GET(req: NextRequest) {
         .select('*', { count: 'exact', head: true })
         .eq('campaign_id', campaign.id);
 
-      // Get message stats
+      // CRITICAL FIX: Count LinkedIn connection requests from campaign_prospects
+      // LinkedIn campaigns update campaign_prospects, not campaign_messages
+      const { count: linkedinSent } = await supabase
+        .from('campaign_prospects')
+        .select('*', { count: 'exact', head: true })
+        .eq('campaign_id', campaign.id)
+        .eq('status', 'connection_requested');
+
+      // Get message stats from campaign_messages (for email campaigns)
       const { data: messages } = await supabase
         .from('campaign_messages')
         .select('id, status')
         .eq('campaign_id', campaign.id);
 
-      const sent = messages?.length || 0;
+      const emailSent = messages?.length || 0;
       const connected = messages?.filter((m: any) => m.status === 'accepted' || m.status === 'connected').length || 0;
+
+      // Total sent = LinkedIn connection requests + email messages
+      const totalSent = (linkedinSent || 0) + emailSent;
 
       // Get reply count
       const { count: replyCount } = await supabase
@@ -70,10 +81,12 @@ export async function GET(req: NextRequest) {
         ...campaign,
         type: campaign.campaign_type || campaign.type, // Use campaign_type as type for consistency
         prospects: prospectCount || 0,
-        sent: sent,
+        sent: totalSent,
+        opened: 0, // TODO: Implement opened tracking
+        replied: replyCount || 0,
         connections: connected,
         replies: replyCount || 0,
-        response_rate: sent > 0 ? ((replyCount || 0) / sent * 100).toFixed(1) : 0
+        response_rate: totalSent > 0 ? ((replyCount || 0) / totalSent * 100).toFixed(1) : 0
       };
     }));
 

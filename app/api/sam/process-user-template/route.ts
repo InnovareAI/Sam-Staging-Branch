@@ -12,18 +12,19 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Clean and format the template message
+    // CRITICAL: Keep user's original template intact
+    // Only clean whitespace - do NOT modify copy
     const cleanedTemplate = template_message
       .trim()
-      .replace(/\n{3,}/g, '\n\n') // Remove excessive line breaks
-      .replace(/\s+/g, ' ') // Normalize spaces
+      .replace(/\n{3,}/g, '\n\n') // Remove excessive line breaks only
       .trim();
 
     // Analyze the template for personalization variables
     const detectedVariables = analyzeTemplateVariables(cleanedTemplate);
-    
-    // Enhance template with standard variables if missing
-    const enhancedTemplate = enhanceTemplateWithVariables(cleanedTemplate, detectedVariables);
+
+    // IMPORTANT: Do NOT enhance automatically - only analyze
+    // User must explicitly request improvements via "ask sam to improve messaging"
+    const enhancedTemplate = cleanedTemplate; // Use original, not enhanced
 
     switch (action) {
       case 'process': {
@@ -115,23 +116,19 @@ function analyzeTemplateVariables(template: string): string[] {
 }
 
 /**
- * Enhance template with standard variables if they're missing
+ * CRITICAL FIX: NEVER modify user templates automatically
+ * Only analyze and suggest - let user explicitly request improvements
  */
 function enhanceTemplateWithVariables(template: string, existingVariables: string[]): string {
-  let enhanced = template;
-  
-  // If no first_name variable, try to add it naturally at the beginning
-  if (!existingVariables.includes('first_name') && !enhanced.toLowerCase().startsWith('hi ')) {
-    enhanced = `Hi {{first_name}}, ${enhanced.charAt(0).toLowerCase() + enhanced.slice(1)}`;
-  }
-  
-  // Look for company mentions and suggest variable replacement
-  const companyMentions = enhanced.match(/\b(company|organization|firm|business)\b/gi);
-  if (companyMentions && !existingVariables.includes('company_name')) {
-    // Don't automatically replace - just suggest in analysis
-  }
-  
-  return enhanced;
+  // IMPORTANT: Return original template unmodified
+  // User must explicitly request SAM to improve messaging
+  // This function now ONLY analyzes - does NOT modify
+  return template;
+
+  // Old auto-modification code REMOVED:
+  // - No longer adds "Hi {{first_name}}, " automatically
+  // - No longer changes any user copy without permission
+  // - User must use "ask sam to improve messaging" function
 }
 
 /**
