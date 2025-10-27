@@ -314,8 +314,11 @@ export async function POST(req: NextRequest) {
             console.log(`🔍 Step 1: Retrieving profile for ${linkedinIdentifier}`);
             console.log(`   Using BASE account ID: ${selectedAccount.unipile_account_id}`);
 
+            const profileUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/${linkedinIdentifier}?account_id=${selectedAccount.unipile_account_id}`;
+            console.log(`   Profile URL: ${profileUrl}`);
+
             const profileResponse = await fetch(
-              `https://${process.env.UNIPILE_DSN}/api/v1/users/${linkedinIdentifier}?account_id=${selectedAccount.unipile_account_id}`,
+              profileUrl,
               {
                 method: 'GET',
                 headers: {
@@ -325,9 +328,15 @@ export async function POST(req: NextRequest) {
               }
             );
 
+            console.log(`   Profile response status: ${profileResponse.status} ${profileResponse.statusText}`);
+
             if (!profileResponse.ok) {
               const errorText = await profileResponse.text();
-              console.error(`❌ Profile retrieval failed:`, errorText);
+              console.error(`❌ Profile retrieval failed for URL: ${profileUrl}`);
+              console.error(`   Status: ${profileResponse.status}`);
+              console.error(`   Response: ${errorText}`);
+              console.error(`   Account ID used: ${selectedAccount.unipile_account_id}`);
+              console.error(`   LinkedIn ID: ${linkedinIdentifier}`);
               throw new Error(`Could not retrieve LinkedIn profile: ${profileResponse.statusText}`);
             }
 
