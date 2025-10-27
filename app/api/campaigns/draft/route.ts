@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
         .from('campaigns')
         .update({
           name,
-          type: campaignType,
+          campaign_type: campaignType || 'linkedin', // Use campaign_type (primary field)
+          type: campaignType, // Keep type for backward compatibility
           current_step: currentStep,
           connection_message: connectionMessage,
           alternative_message: alternativeMessage,
@@ -94,7 +95,8 @@ export async function POST(request: NextRequest) {
         .insert({
           workspace_id: workspaceId,
           name,
-          type: campaignType,
+          campaign_type: campaignType || 'linkedin', // Use campaign_type (primary field)
+          type: campaignType, // Keep type for backward compatibility
           status: 'draft',
           current_step: currentStep || 1,
           connection_message: connectionMessage,
