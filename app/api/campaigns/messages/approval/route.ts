@@ -33,15 +33,17 @@ export async function GET(req: NextRequest) {
     }
 
     // Base query for messages requiring approval
+    // FIXED: Removed campaign_prospects join - no FK relationship exists
+    // campaign_messages only relates to campaigns, not directly to campaign_prospects
     let query = supabase
       .from('campaign_messages')
       .select(`
         *,
-        campaign_prospects!inner(
-          *,
-          workspace_prospects!inner(*)
-        ),
-        campaigns!inner(workspace_id)
+        campaigns!inner(
+          id,
+          name,
+          workspace_id
+        )
       `)
       .eq('campaigns.workspace_id', workspaceId);
 
@@ -151,11 +153,11 @@ export async function POST(req: NextRequest) {
         .in('id', message_ids)
         .select(`
           *,
-          campaign_prospects!inner(
-            *,
-            workspace_prospects!inner(*)
-          ),
-          campaigns!inner(workspace_id)
+          campaigns!inner(
+            id,
+            name,
+            workspace_id
+          )
         `)
         .eq('campaigns.workspace_id', workspace_id);
 
@@ -194,11 +196,11 @@ export async function POST(req: NextRequest) {
       .eq('id', message_id)
       .select(`
         *,
-        campaign_prospects!inner(
-          *,
-          workspace_prospects!inner(*)
-        ),
-        campaigns!inner(workspace_id)
+        campaigns!inner(
+          id,
+          name,
+          workspace_id
+        )
       `)
       .eq('campaigns.workspace_id', workspace_id)
       .single();
