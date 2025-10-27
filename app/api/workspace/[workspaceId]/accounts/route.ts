@@ -28,12 +28,12 @@ export async function GET(
       throw apiError.forbidden('Access denied to this workspace')
     }
 
-    // Get all workspace accounts with user details
+    // Get ONLY current user's accounts (privacy: never show other team members' accounts)
     const { data: accounts, error } = await supabase
       .from('user_workspace_accounts')
       .select('*')
       .eq('workspace_id', workspaceId)
-      .order('user_email', { ascending: true })
+      .eq('user_id', user.id)  // CRITICAL: Only show current user's own accounts
       .order('account_type', { ascending: true })
 
     if (error) {
