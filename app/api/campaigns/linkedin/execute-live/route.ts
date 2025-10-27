@@ -312,10 +312,10 @@ export async function POST(req: NextRequest) {
             }
 
             console.log(`🔍 Step 1: Retrieving profile for ${linkedinIdentifier}`);
-            console.log(`   Using source ID: ${unipileSourceId}`);
+            console.log(`   Using BASE account ID: ${selectedAccount.unipile_account_id}`);
 
             const profileResponse = await fetch(
-              `https://${process.env.UNIPILE_DSN}/api/v1/users/${linkedinIdentifier}?account_id=${unipileSourceId}`,
+              `https://${process.env.UNIPILE_DSN}/api/v1/users/${linkedinIdentifier}?account_id=${selectedAccount.unipile_account_id}`,
               {
                 method: 'GET',
                 headers: {
@@ -337,7 +337,7 @@ export async function POST(req: NextRequest) {
             // STEP 2: Send invitation using internal ID
             const requestBody: any = {
               provider_id: profileData.provider_id,  // CRITICAL: Use provider_id from profile response
-              account_id: unipileSourceId,  // CRITICAL FIX: Use source ID (not base account ID) for Unipile API
+              account_id: unipileSourceId,  // CRITICAL: Use SOURCE ID for sending invitations (base ID for lookups)
               message: personalizedResult.message  // Connection request message
             };
 
