@@ -66,14 +66,20 @@ function getCampaignTypeLabel(type: string): string {
   return typeLabels[type] || (type ? type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown');
 }
 
-function CampaignList() {
+function CampaignList({ workspaceId }: { workspaceId: string }) {
   const queryClient = useQueryClient();
 
   // REACT QUERY: Fetch and cache campaigns
   const { data: campaigns = [], isLoading: loading, refetch } = useQuery({
-    queryKey: ['campaigns'],
+    queryKey: ['campaigns', workspaceId],
     queryFn: async () => {
-      const response = await fetch('/api/campaigns');
+      // Return empty if no workspaceId
+      if (!workspaceId) {
+        console.warn('CampaignList: No workspaceId provided');
+        return [];
+      }
+
+      const response = await fetch(`/api/campaigns?workspace_id=${workspaceId}`);
 
       if (!response.ok) {
         console.error('Failed to load campaigns:', response.statusText);
@@ -84,6 +90,7 @@ function CampaignList() {
       const data = await response.json();
       return data.campaigns || [];
     },
+    enabled: !!workspaceId, // Only fetch if workspaceId is available
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
   });
