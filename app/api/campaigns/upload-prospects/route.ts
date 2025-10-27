@@ -58,6 +58,16 @@ export async function POST(req: NextRequest) {
       try {
         const prospect = prospects[i];
 
+        // DEBUG: Log what we received
+        console.log(`📋 Processing prospect ${i + 1}:`, {
+          name: prospect.name,
+          first_name: prospect.first_name,
+          linkedin_url: prospect.linkedin_url,
+          'contact.linkedin_url': prospect.contact?.linkedin_url,
+          'company.name': prospect.company?.name,
+          company: prospect.company
+        });
+
         // Prepare prospect data
         // CRITICAL: Handle both direct fields and nested JSONB fields (contact, company)
         const prospectData = {
