@@ -3394,7 +3394,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   useEffect(() => {
     const checkPendingApprovals = async () => {
       try {
-        const response = await fetch('/api/campaigns/messages/approval');
+        // Skip if no workspaceId available
+        if (!workspaceId) return;
+
+        const response = await fetch(`/api/campaigns/messages/approval?workspace_id=${workspaceId}`);
         if (response.ok) {
           const result = await response.json();
           const counts = result.counts || { pending: 0, approved: 0, rejected: 0, total: 0 };
@@ -3412,7 +3415,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     };
 
     checkPendingApprovals();
-  }, [autoOpenApprovals]);
+  }, [autoOpenApprovals, workspaceId]);
 
   // Save auto-open preference to localStorage
   useEffect(() => {
@@ -3921,10 +3924,27 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
   // REACT QUERY: Load approval messages
   const { data: approvalData, isLoading: loadingApproval, refetch: refetchApprovalMessages } = useQuery({
-    queryKey: ['approvalMessages'],
+    queryKey: ['approvalMessages', workspaceId],
     queryFn: async () => {
-      const response = await fetch('/api/campaigns/messages/approval');
-      if (!response.ok) throw new Error('Failed to load approval messages');
+      // Return empty data if no workspaceId - prevents crash
+      if (!workspaceId) {
+        return {
+          messages: { pending: [], approved: [], rejected: [] },
+          counts: { pending: 0, approved: 0, rejected: 0, total: 0 }
+        };
+      }
+
+      const response = await fetch(`/api/campaigns/messages/approval?workspace_id=${workspaceId}`);
+
+      // Graceful error handling - don't crash the page
+      if (!response.ok) {
+        console.error('Failed to load approval messages:', response.statusText);
+        return {
+          messages: { pending: [], approved: [], rejected: [] },
+          counts: { pending: 0, approved: 0, rejected: 0, total: 0 }
+        };
+      }
+
       const result = await response.json();
 
       // Transform the data to include campaign_name from joined campaigns table
@@ -3946,7 +3966,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         counts: result.counts || { pending: 0, approved: 0, rejected: 0, total: 0 }
       };
     },
-    enabled: showMessageApproval,
+    enabled: showMessageApproval && !!workspaceId,
     staleTime: 2 * 60 * 1000, // 2 minutes
     refetchOnWindowFocus: true,
   });
