@@ -12,12 +12,16 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // CRITICAL: Keep user's original template intact
-    // Only clean whitespace - do NOT modify copy
+    // CRITICAL: Preserve user's original formatting and paragraphs
+    // Only remove excessive blank lines (3+ becomes 2)
+    // Keep single line breaks, double line breaks (paragraphs), and all intentional formatting
     const cleanedTemplate = template_message
       .trim()
-      .replace(/\n{3,}/g, '\n\n') // Remove excessive line breaks only
+      .replace(/\n{3,}/g, '\n\n') // Limit excessive blank lines to double line breaks (paragraphs)
       .trim();
+
+    // DO NOT normalize spaces or remove any line breaks
+    // User's paragraph structure and formatting must be preserved exactly
 
     // Analyze the template for personalization variables
     const detectedVariables = analyzeTemplateVariables(cleanedTemplate);
