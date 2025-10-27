@@ -151,6 +151,7 @@ export async function POST(request: NextRequest) {
             account_identifier: accountIdentifier,
             account_name: unipileAccount.name || connectionParams.publicIdentifier || accountIdentifier,
             unipile_account_id: unipileAccount.id,
+            unipile_sources: unipileAccount.sources || [], // CRITICAL FIX: Store sources for campaign execution
             connection_status: connectionStatus,
             is_active: true,
             connected_at: new Date().toISOString(),
