@@ -433,6 +433,7 @@ function CampaignBuilder({
                   phone: p.contact?.phone || '',
                   industry: p.company?.industry || '',
                   location: p.location || '',
+                  contact: p.contact, // PRESERVE contact object for fallback
                   sessionId: session.id,
                   campaignName: session.campaign_name || 'Untitled',
                   source: p.source || 'prospect_approval'
