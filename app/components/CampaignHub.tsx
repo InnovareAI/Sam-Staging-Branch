@@ -3398,14 +3398,6 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   //   }
   // }, [initialProspects]);
 
-  // NOTE: Approval data is now loaded via React Query (see line ~3934)
-  // Auto-open approval screen if there are pending approvals and toggle is enabled
-  useEffect(() => {
-    if (autoOpenApprovals && approvalData?.counts?.pending > 0) {
-      setShowMessageApproval(true);
-    }
-  }, [autoOpenApprovals, approvalData?.counts?.pending]);
-
   // Save auto-open preference to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -3962,6 +3954,13 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
   const approvalMessages = approvalData?.messages || { pending: [], approved: [], rejected: [] };
   const approvalCounts = approvalData?.counts || { pending: 0, approved: 0, rejected: 0, total: 0 };
+
+  // Auto-open approval screen if there are pending approvals and toggle is enabled
+  useEffect(() => {
+    if (autoOpenApprovals && approvalCounts.pending > 0) {
+      setShowMessageApproval(true);
+    }
+  }, [autoOpenApprovals, approvalCounts.pending]);
 
   const openMessageApproval = () => {
     setShowMessageApproval(true);
