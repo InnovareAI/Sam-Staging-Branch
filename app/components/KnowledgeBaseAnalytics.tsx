@@ -361,11 +361,11 @@ export default function KnowledgeBaseAnalytics() {
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm">Avg Uses/Doc</p>
-                  <p className="text-2xl font-bold text-white">{section.avg_uses_per_doc.toFixed(1)}</p>
+                  <p className="text-2xl font-bold text-white">{(section.avg_uses_per_doc || 0).toFixed(1)}</p>
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm">Usage Rate</p>
-                  <p className="text-2xl font-bold text-white">{section.usage_rate.toFixed(0)}%</p>
+                  <p className="text-2xl font-bold text-white">{(section.usage_rate || 0).toFixed(0)}%</p>
                 </div>
               </div>
 

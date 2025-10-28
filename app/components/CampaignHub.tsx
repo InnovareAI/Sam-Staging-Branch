@@ -3398,32 +3398,13 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   //   }
   // }, [initialProspects]);
 
-  // Load approval counts on mount and auto-open if enabled
+  // NOTE: Approval data is now loaded via React Query (see line ~3934)
+  // Auto-open approval screen if there are pending approvals and toggle is enabled
   useEffect(() => {
-    const checkPendingApprovals = async () => {
-      try {
-        // Skip if no workspaceId available
-        if (!workspaceId) return;
-
-        const response = await fetch(`/api/campaigns/messages/approval?workspace_id=${workspaceId}`);
-        if (response.ok) {
-          const result = await response.json();
-          const counts = result.counts || { pending: 0, approved: 0, rejected: 0, total: 0 };
-          setApprovalCounts(counts);
-
-          // Auto-open if there are pending approvals and toggle is enabled
-          if (autoOpenApprovals && counts.pending > 0) {
-            setApprovalMessages(result.grouped || { pending: [], approved: [], rejected: [] });
-            setShowMessageApproval(true);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to check pending approvals:', error);
-      }
-    };
-
-    checkPendingApprovals();
-  }, [autoOpenApprovals, workspaceId]);
+    if (autoOpenApprovals && approvalData?.counts?.pending > 0) {
+      setShowMessageApproval(true);
+    }
+  }, [autoOpenApprovals, approvalData?.counts?.pending]);
 
   // Save auto-open preference to localStorage
   useEffect(() => {
@@ -4940,7 +4921,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-white">{campaign.replies || 0}</div>
-                        <div className="text-gray-400 text-sm">{campaign.response_rate?.toFixed(1)}%</div>
+                        <div className="text-gray-400 text-sm">{(campaign.response_rate || 0).toFixed(1)}%</div>
                       </td>
                       <td className="px-6 py-4">
                         <button

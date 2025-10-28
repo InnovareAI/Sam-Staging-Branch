@@ -2003,7 +2003,7 @@ export default function Page() {
           // Fetch pending invitations
           const { data: invitationsData, error: invitationsError } = await supabase
             .from('workspace_invitations')
-            .select('email, status')
+            .select('invited_email, status')
             .eq('workspace_id', workspace.id)
             .eq('status', 'pending');
 
@@ -2012,8 +2012,8 @@ export default function Page() {
           }
 
           const pendingInvitations = invitationsData || [];
-          const pendingList = pendingInvitations.map((inv: any) => 
-            `${inv.email} (pending)`
+          const pendingList = pendingInvitations.map((inv: any) =>
+            `${inv.invited_email} (pending)`
           );
 
           // Determine company based on workspace name

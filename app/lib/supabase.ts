@@ -50,20 +50,13 @@ export function createClient() {
 
         // Only check Supabase cookies
         if (name.includes('supabase') || name.includes('sb-')) {
-          // If value starts with "base64-", try to decode it
+          // Delete ANY cookie with "base64-" prefix - this prefix shouldn't exist
+          // Supabase's parser can't handle it even if the base64 itself is valid
           if (value.startsWith('base64-')) {
-            try {
-              const base64Value = value.substring(7);
-              // Try to decode - if this throws, it's truly corrupted
-              atob(base64Value);
-              // If we get here, it decoded successfully - it's a VALID cookie, keep it
-            } catch (e) {
-              // Only delete if we can't decode it - it's truly corrupted
-              console.log(`🔧 Deleting corrupted cookie (failed to decode): ${name}`);
-              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
-              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname}`;
-            }
+            console.log(`🔧 Deleting malformed cookie (has base64- prefix): ${name}`);
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname}`;
           }
         }
       });
