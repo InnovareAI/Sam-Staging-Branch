@@ -4920,7 +4920,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-white">{campaign.replies || 0}</div>
-                        <div className="text-gray-400 text-sm">{(campaign.response_rate || 0).toFixed(1)}%</div>
+                        <div className="text-gray-400 text-sm">{(Number(campaign.response_rate) || 0).toFixed(1)}%</div>
                       </td>
                       <td className="px-6 py-4">
                         <button
