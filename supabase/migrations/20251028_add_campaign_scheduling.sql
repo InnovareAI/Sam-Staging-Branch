@@ -12,6 +12,15 @@ ADD COLUMN IF NOT EXISTS daily_message_limit INTEGER DEFAULT 20,
 ADD COLUMN IF NOT EXISTS messages_sent_today INTEGER DEFAULT 0,
 ADD COLUMN IF NOT EXISTS last_message_date DATE DEFAULT CURRENT_DATE;
 
+-- Add campaign execution preferences to campaigns table
+ALTER TABLE campaigns
+ADD COLUMN IF NOT EXISTS timezone VARCHAR(100) DEFAULT 'UTC',
+ADD COLUMN IF NOT EXISTS working_hours_start INTEGER DEFAULT 7,  -- 7 AM
+ADD COLUMN IF NOT EXISTS working_hours_end INTEGER DEFAULT 18,    -- 6 PM
+ADD COLUMN IF NOT EXISTS skip_weekends BOOLEAN DEFAULT true,
+ADD COLUMN IF NOT EXISTS skip_holidays BOOLEAN DEFAULT true,
+ADD COLUMN IF NOT EXISTS country_code VARCHAR(2) DEFAULT 'US';  -- For holiday calendar
+
 -- Create index for cron job performance
 CREATE INDEX IF NOT EXISTS idx_campaigns_scheduled
 ON campaigns(next_execution_time)
@@ -20,6 +29,12 @@ WHERE status = 'scheduled' AND next_execution_time IS NOT NULL;
 -- Add comments
 COMMENT ON COLUMN campaigns.next_execution_time IS 'Scheduled time for next prospect execution (2-30 minute randomized delays)';
 COMMENT ON COLUMN campaigns.auto_execute IS 'Whether to automatically execute remaining prospects';
+COMMENT ON COLUMN campaigns.timezone IS 'Timezone for campaign execution (default UTC, supports IANA timezone names)';
+COMMENT ON COLUMN campaigns.working_hours_start IS 'Start of working hours (0-23, default 7 = 7 AM)';
+COMMENT ON COLUMN campaigns.working_hours_end IS 'End of working hours (0-23, default 18 = 6 PM)';
+COMMENT ON COLUMN campaigns.skip_weekends IS 'Skip execution on Saturday and Sunday (default true)';
+COMMENT ON COLUMN campaigns.skip_holidays IS 'Skip execution on public holidays (default true)';
+COMMENT ON COLUMN campaigns.country_code IS 'Country code for holiday calendar (default US)';
 COMMENT ON COLUMN workspace_accounts.daily_message_limit IS 'Max connection requests per day (default 20 for free LinkedIn, can be increased for premium accounts)';
 COMMENT ON COLUMN workspace_accounts.messages_sent_today IS 'Number of messages sent today from this account';
 COMMENT ON COLUMN workspace_accounts.last_message_date IS 'Date of last message sent (used to reset daily counter)';

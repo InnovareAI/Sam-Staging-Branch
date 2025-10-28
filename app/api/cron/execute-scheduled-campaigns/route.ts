@@ -13,6 +13,52 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+// Helper function to check if execution should proceed based on campaign settings
+function shouldExecuteNow(campaign: any): { allowed: boolean; reason?: string } {
+  const {
+    timezone = 'UTC',
+    working_hours_start = 7,
+    working_hours_end = 18,
+    skip_weekends = true,
+    skip_holidays = true,
+    country_code = 'US'
+  } = campaign;
+
+  // Get current time in campaign's timezone
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    hour12: false,
+    weekday: 'short'
+  });
+
+  const parts = formatter.formatToParts(now);
+  const currentHour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
+  const currentDay = parts.find(p => p.type === 'weekday')?.value;
+
+  // Check working hours
+  if (currentHour < working_hours_start || currentHour >= working_hours_end) {
+    return {
+      allowed: false,
+      reason: `Outside working hours (${working_hours_start}:00-${working_hours_end}:00 ${timezone})`
+    };
+  }
+
+  // Check weekends
+  if (skip_weekends && (currentDay === 'Sat' || currentDay === 'Sun')) {
+    return {
+      allowed: false,
+      reason: 'Weekend - campaign configured to skip weekends'
+    };
+  }
+
+  // TODO: Check holidays (requires holiday calendar integration)
+  // For now, skip_holidays is noted but not enforced
+
+  return { allowed: true };
+}
+
 export async function POST(req: NextRequest) {
   try {
     console.log('⏰ Cron: Checking for scheduled campaigns (2-30 min delays)...');
@@ -40,7 +86,7 @@ export async function POST(req: NextRequest) {
     const now = new Date().toISOString();
     const { data: scheduledCampaigns, error: queryError } = await supabase
       .from('campaigns')
-      .select('id, name, workspace_id, next_execution_time')
+      .select('id, name, workspace_id, next_execution_time, timezone, working_hours_start, working_hours_end, skip_weekends, skip_holidays, country_code')
       .eq('status', 'scheduled')
       .eq('auto_execute', true)
       .lte('next_execution_time', now)
@@ -68,7 +114,31 @@ export async function POST(req: NextRequest) {
     // Execute each campaign
     for (const campaign of scheduledCampaigns) {
       try {
-        console.log(`\n🚀 Executing campaign: ${campaign.name} (${campaign.id})`);
+        console.log(`\n🔍 Checking campaign: ${campaign.name} (${campaign.id})`);
+
+        // Check if current time is within working hours and allowed days
+        const executionCheck = shouldExecuteNow(campaign);
+        if (!executionCheck.allowed) {
+          console.log(`⏸️  Skipping execution: ${executionCheck.reason}`);
+
+          // Reschedule for next opportunity (30 minutes from now)
+          const nextCheckTime = new Date(Date.now() + 30 * 60 * 1000);
+          await supabase
+            .from('campaigns')
+            .update({ next_execution_time: nextCheckTime.toISOString() })
+            .eq('id', campaign.id);
+
+          results.push({
+            campaign_id: campaign.id,
+            campaign_name: campaign.name,
+            status: 'rescheduled',
+            reason: executionCheck.reason,
+            next_check: nextCheckTime.toISOString()
+          });
+          continue;
+        }
+
+        console.log(`🚀 Executing campaign: ${campaign.name} (within working hours)`);
 
         // Get the user who created the campaign (to use their LinkedIn account)
         const { data: campaignOwner } = await supabase
