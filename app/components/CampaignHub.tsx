@@ -411,9 +411,9 @@ function CampaignBuilder({
         if (prospectsResponse.ok) {
           const prospectsData = await prospectsResponse.json();
           if (prospectsData.success && prospectsData.prospects) {
-            // Filter only approved prospects
-            const approved = prospectsData.prospects
-              .filter((p: any) => p.approval_status === 'approved')
+            // Filter pending prospects (awaiting approval)
+            const pendingProspects = prospectsData.prospects
+              .filter((p: any) => p.approval_status === 'pending')
               .map((p: any) => {
                 // Split name into first and last
                 const nameParts = (p.name || '').trim().split(' ');
@@ -436,19 +436,20 @@ function CampaignBuilder({
                   contact: p.contact, // PRESERVE contact object for fallback
                   sessionId: session.id,
                   campaignName: session.campaign_name || 'Untitled',
-                  source: p.source || 'prospect_approval'
+                  source: p.source || 'prospect_approval',
+                  approval_status: p.approval_status // Preserve approval status
                 };
               });
 
-            if (approved.length > 0) {
+            if (pendingProspects.length > 0) {
               sessionsWithProspects.push({
                 id: session.id,
                 name: session.campaign_name || 'Untitled Session',
                 createdAt: session.created_at,
-                prospectsCount: approved.length,
-                prospects: approved
+                prospectsCount: pendingProspects.length,
+                prospects: pendingProspects
               });
-              allApprovedProspects.push(...approved);
+              allApprovedProspects.push(...pendingProspects);
             }
           }
         }
