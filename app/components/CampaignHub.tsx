@@ -647,10 +647,26 @@ function CampaignBuilder({
       const data = await response.json();
       const campaigns = data.campaigns || [];
 
+      console.log('📋 Previous campaigns debug:', {
+        totalCampaigns: campaigns.length,
+        sampleCampaign: campaigns[0],
+        campaignNames: campaigns.map((c: any) => c.name)
+      });
+
       // Filter campaigns that have messages
-      const campaignsWithMessages = campaigns.filter((c: any) =>
-        c.connection_message || c.alternative_message || (c.follow_up_messages && c.follow_up_messages.length > 0)
-      );
+      const campaignsWithMessages = campaigns.filter((c: any) => {
+        const hasMessages = c.connection_message || c.alternative_message || (c.follow_up_messages && c.follow_up_messages.length > 0);
+        if (!hasMessages && campaigns.length > 0) {
+          console.log(`⚠️ Campaign "${c.name}" has no messages:`, {
+            connection_message: !!c.connection_message,
+            alternative_message: !!c.alternative_message,
+            follow_up_messages: c.follow_up_messages?.length || 0
+          });
+        }
+        return hasMessages;
+      });
+
+      console.log(`✅ Found ${campaignsWithMessages.length} campaigns with messages out of ${campaigns.length} total`);
 
       // Save to localStorage for next session
       try {
@@ -3083,8 +3099,19 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
               ) : previousCampaigns.length === 0 ? (
                 <div className="text-center py-12">
                   <Clock size={48} className="text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-400 mb-2">No previous campaigns found</p>
-                  <p className="text-gray-500 text-sm">Create some campaigns first to load their messages</p>
+                  <p className="text-gray-400 mb-2">No previous campaigns with messages found</p>
+                  <p className="text-gray-500 text-sm mb-3">
+                    Create a campaign with connection messages or follow-ups to see them here
+                  </p>
+                  <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 max-w-md mx-auto text-left">
+                    <p className="text-blue-300 text-xs">
+                      <strong>💡 Tip:</strong> Messages are automatically saved when you:
+                    </p>
+                    <ul className="text-blue-400 text-xs mt-2 space-y-1 list-disc list-inside">
+                      <li>Complete Step 3 (Messages) in campaign creation</li>
+                      <li>Save a campaign with connection/follow-up messages</li>
+                    </ul>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
