@@ -1963,39 +1963,3 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
-📚 Auto-updating documentation before commit...
-.git/hooks/pre-commit: line 6: node: command not found
-✅ No documentation updates needed
-✅ Commit completed with auto-documentation update
-[main 8c45a658] 🔄 Auto-backup: auto-backup-20251028_180000
- Committer: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
-Your name and email address were configured automatically based
-on your username and hostname. Please check that they are accurate.
-You can suppress this message by setting them explicitly:
-
-    git config --global user.name "Your Name"
-    git config --global user.email you@example.com
-
-After doing this, you may fix the identity used for this commit with:
-
-    git commit --amend --reset-author
-
- 1 file changed, 15 insertions(+)
-[0;32m✅ Git snapshot created[0m
-
-[1;33m⏭️  Skipping SQL dump[0m
-
-[0;34m╔════════════════════════════════════════════════════════╗[0m
-[0;34m║              Backup Summary                            ║[0m
-[0;34m╚════════════════════════════════════════════════════════╝[0m
-
-[0;32m✅ Backup completed: auto-backup-20251028_180000[0m
-[0;32m📅 Timestamp: Tue Oct 28 18:00:00 PST 2025[0m
-
-Backed up components:
-  ✅ Airtable backup (workspace_accounts, workspace_members, users)
-  ✅ Git snapshot
-  ⏭️  SQL dump (optional, not enabled)
-
-[0;34m═══════════════════════════════════════════════════════[0m
-

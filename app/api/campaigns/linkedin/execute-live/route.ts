@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import CostControlledPersonalization from '@/lib/llm/cost-controlled-personalization';
 
 // MCP tools for LinkedIn execution
 declare global {
@@ -236,21 +237,8 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Processing ${executableProspects.length} prospects with LinkedIn URLs`);
 
-    // Step 5: Get campaign messages (NO AI MODIFICATION)
-    // Support both old (message_templates) and new (connection_message) structures
-    const connectionMsg = campaign.connection_message || campaign.message_templates?.connection_request;
-    const alternativeMsg = campaign.alternative_message || campaign.message_templates?.alternative_message;
-    const followUpMsgs = campaign.follow_up_messages?.length > 0
-      ? campaign.follow_up_messages
-      : campaign.message_templates?.follow_up_messages || [];
-
-    console.log('📋 Campaign message templates:', {
-      has_connection_message: !!connectionMsg,
-      has_alternative_message: !!alternativeMsg,
-      follow_up_count: followUpMsgs.length,
-      structure: campaign.connection_message ? 'new' : 'legacy'
-    });
-
+    // Step 5: Initialize cost-controlled personalization
+    const personalizer = new CostControlledPersonalization();
     const results = {
       campaign_id: campaignId,
       campaign_name: campaign.name,
@@ -271,51 +259,38 @@ export async function POST(req: NextRequest) {
       try {
         console.log(`\n📧 Processing: ${prospect.first_name || 'Unknown'} ${prospect.last_name || 'Unknown'} at ${prospect.company_name || 'Unknown Company'}`);
 
-        // Determine message type based on sequence step
+        // Determine message type based on sequence step (stored in personalization_data)
         const sequenceStep = (prospect.personalization_data as any)?.sequence_step || 0;
-        let messageTemplate: string;
+        let templateType: 'connection_request' | 'follow_up_1' | 'follow_up_2' = 'connection_request';
+        if (sequenceStep === 1) templateType = 'follow_up_1';
+        else if (sequenceStep >= 2) templateType = 'follow_up_2';
 
-        if (sequenceStep === 0) {
-          // First message: use connection_message
-          messageTemplate = connectionMsg || alternativeMsg || '';
-        } else if (sequenceStep >= 1 && followUpMsgs.length > 0) {
-          // Follow-up: use appropriate follow-up message
-          const followUpIndex = Math.min(sequenceStep - 1, followUpMsgs.length - 1);
-          messageTemplate = followUpMsgs[followUpIndex] || '';
-        } else {
-          // Fallback to connection message
-          messageTemplate = connectionMsg || '';
-        }
+        // Personalize message using cost-controlled LLM
+        const personalizationRequest = {
+          templateType,
+          campaignType: 'sales_outreach' as const,
+          prospectData: {
+            firstName: prospect.first_name || 'there',
+            company: prospect.company_name || 'your company',
+            title: prospect.title || 'Professional',
+            industry: prospect.industry || 'Business'
+          },
+          personalizationLevel: 'standard' as const
+        };
 
-        if (!messageTemplate || messageTemplate.trim().length === 0) {
-          console.error(`❌ No message template found for sequence step ${sequenceStep}`);
-          results.errors.push({
-            prospect: `${prospect.first_name || 'Unknown'} ${prospect.last_name || 'Unknown'}`,
-            error: 'No message template configured for this sequence step'
-          });
-          continue;
-        }
+        const personalizedResult = await personalizer.personalizeMessage(personalizationRequest);
+        results.personalization_cost += personalizedResult.cost;
 
-        // CRITICAL: Simple variable replacement ONLY - NO AI MODIFICATION
-        const personalizedMessage = messageTemplate
-          .replace(/\{first_name\}/gi, prospect.first_name || 'there')
-          .replace(/\{last_name\}/gi, prospect.last_name || '')
-          .replace(/\{company_name\}/gi, prospect.company_name || 'your company')
-          .replace(/\{job_title\}/gi, prospect.title || prospect.job_title || 'your role')
-          .replace(/\{title\}/gi, prospect.title || prospect.job_title || 'your role')
-          .replace(/\{industry\}/gi, prospect.industry || 'Business')
-          .replace(/\{location\}/gi, prospect.location || '');
-
-        console.log(`💬 Message (EXACT from campaign): "${personalizedMessage.substring(0, 100)}..."`);
-        console.log(`📏 Message length: ${personalizedMessage.length} characters`);
+        console.log(`💬 Message: "${personalizedResult.message.substring(0, 100)}..."`);
+        console.log(`💰 Cost: $${personalizedResult.cost.toFixed(4)}, Model: ${personalizedResult.model}`);
 
         if (dryRun) {
           console.log('🧪 DRY RUN - Message would be sent');
           results.messages.push({
             prospect: `${prospect.first_name || 'Unknown'} ${prospect.last_name || 'Unknown'}`,
-            message: personalizedMessage,
-            cost: 0,  // No AI cost - simple variable replacement
-            model: 'none',
+            message: personalizedResult.message,
+            cost: personalizedResult.cost,
+            model: personalizedResult.model,
             linkedin_target: prospect.linkedin_url || prospect.linkedin_user_id,
             status: 'dry_run'
           });
@@ -324,7 +299,7 @@ export async function POST(req: NextRequest) {
           try {
             console.log(`🚀 LIVE: Sending connection request from account ${selectedAccount.account_name}`);
             console.log(`🎯 Target: ${prospect.linkedin_url || prospect.linkedin_user_id}`);
-            console.log(`💬 Message: ${personalizedMessage.substring(0, 100)}...`);
+            console.log(`💬 Message: ${personalizedResult.message.substring(0, 100)}...`);
 
             // Send LinkedIn connection request via Unipile API
             // CORRECT ENDPOINT: /api/v1/users/invite (as per Unipile documentation)
@@ -373,7 +348,7 @@ export async function POST(req: NextRequest) {
             const requestBody: any = {
               provider_id: profileData.provider_id,  // CRITICAL: Use provider_id from profile response
               account_id: selectedAccount.unipile_account_id,  // CRITICAL: Use BASE ID for both lookups AND invitations
-              message: personalizedMessage  // EXACT message from campaign template (no AI modification)
+              message: personalizedResult.message  // Connection request message
             };
 
             // Validate required fields
@@ -395,7 +370,7 @@ export async function POST(req: NextRequest) {
             console.log(`   Endpoint: ${inviteEndpoint}`);
             console.log(`   Provider ID: ${requestBody.provider_id}`);
             console.log(`   Account ID (base): ${requestBody.account_id}`);
-            console.log(`   Message length: ${personalizedMessage.length} chars`);
+            console.log(`   Message length: ${personalizedResult.message.length} chars`);
             console.log(`   Has email: ${!!requestBody.user_email}`);
             console.log(`   Full request body:`, JSON.stringify(requestBody, null, 2));
 
@@ -442,9 +417,9 @@ export async function POST(req: NextRequest) {
 
                 results.messages.push({
                   prospect: `${prospect.first_name || 'Unknown'} ${prospect.last_name || 'Unknown'}`,
-                  message: personalizedMessage,
-                  cost: 0,
-                  model: 'none',
+                  message: personalizedResult.message,
+                  cost: personalizedResult.cost,
+                  model: personalizedResult.model,
                   linkedin_target: prospect.linkedin_url || prospect.linkedin_user_id,
                   status: 'already_invited'
                 });
@@ -497,9 +472,9 @@ export async function POST(req: NextRequest) {
                 status: 'connection_requested',
                 contacted_at: new Date().toISOString(),
                 personalization_data: {
-                  message: personalizedMessage,  // EXACT message sent (no AI modification)
-                  cost: 0,  // No AI cost - simple variable replacement
-                  model: 'none',  // No AI model used
+                  message: personalizedResult.message,
+                  cost: personalizedResult.cost,
+                  model: personalizedResult.model,
                   unipile_message_id: trackingId,
                   unipile_response: unipileMessageId ? null : unipileData,  // Store full response if ID missing
                   sequence_step: sequenceStep + 1
@@ -516,9 +491,9 @@ export async function POST(req: NextRequest) {
             results.messages_sent++;
             results.messages.push({
               prospect: `${prospect.first_name || 'Unknown'} ${prospect.last_name || 'Unknown'}`,
-              message: personalizedMessage,
-              cost: 0,
-              model: 'none',
+              message: personalizedResult.message,
+              cost: personalizedResult.cost,
+              model: personalizedResult.model,
               linkedin_target: prospect.linkedin_url || prospect.linkedin_user_id,
               status: 'sent'
             });
@@ -640,6 +615,7 @@ export async function POST(req: NextRequest) {
       campaign_name: campaign.name,
       linkedin_account: selectedAccount.account_name || 'Primary Account',
       results,
+      cost_summary: personalizer.getCostStats(),
       has_more_prospects: hasMoreProspects,
       remaining_prospects: remainingCount || 0,
       timestamp: new Date().toISOString()
