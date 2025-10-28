@@ -19,6 +19,7 @@ import {
   XCircle,
   X,
   Clock,
+  Globe,
   AlertCircle,
   Megaphone,
   Pause,
