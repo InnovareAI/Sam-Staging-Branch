@@ -1524,7 +1524,7 @@ Would you like me to adjust these or create more variations?`
         company: prospect.company?.name || prospect.company_name || prospect.company || '',
         title: prospect.title,
         industry: prospect.industry || prospect.company?.industry?.[0] || 'Not specified',
-        linkedin_url: prospect.linkedin_url || prospect.contact?.linkedin_url,
+        linkedin_url: prospect.linkedin_url || prospect.linkedinUrl || prospect.contact?.linkedin_url,
         linkedin_user_id: prospect.linkedin_user_id
       }));
     } else if (dataSource === 'upload' && csvData.length > 0) {
@@ -1539,7 +1539,7 @@ Would you like me to adjust these or create more variations?`
         company: prospect.company,
         title: prospect.title,
         industry: prospect.industry || 'Not specified',
-        linkedin_url: prospect.linkedin_url,
+        linkedin_url: prospect.linkedin_url || prospect.linkedinUrl,
         linkedin_user_id: prospect.linkedin_user_id
       }));
     }
