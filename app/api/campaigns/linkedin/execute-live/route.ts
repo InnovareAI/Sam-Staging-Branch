@@ -415,6 +415,48 @@ export async function POST(req: NextRequest) {
             const profileData = await profileResponse.json();
             console.log(`✅ Profile retrieved:`, JSON.stringify(profileData, null, 2));
 
+            // EXTRACT AND UPDATE MISSING NAMES from profile data
+            if ((!prospect.first_name || !prospect.last_name) && profileData) {
+              let extractedFirstName = prospect.first_name || '';
+              let extractedLastName = prospect.last_name || '';
+
+              // Try to get name from various profile fields
+              if (profileData.first_name) {
+                extractedFirstName = profileData.first_name;
+              }
+              if (profileData.last_name) {
+                extractedLastName = profileData.last_name;
+              }
+
+              // If still missing, try splitting the full name
+              if ((!extractedFirstName || !extractedLastName) && profileData.name) {
+                const nameParts = profileData.name.split(' ');
+                if (!extractedFirstName && nameParts.length > 0) {
+                  extractedFirstName = nameParts[0];
+                }
+                if (!extractedLastName && nameParts.length > 1) {
+                  extractedLastName = nameParts.slice(1).join(' ');
+                }
+              }
+
+              // Update prospect record if we extracted names
+              if (extractedFirstName || extractedLastName) {
+                console.log(`📝 Updating missing names: ${extractedFirstName} ${extractedLastName}`);
+                await supabase
+                  .from('campaign_prospects')
+                  .update({
+                    first_name: extractedFirstName,
+                    last_name: extractedLastName,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', prospect.id);
+
+                // Update local prospect object for message personalization
+                prospect.first_name = extractedFirstName;
+                prospect.last_name = extractedLastName;
+              }
+            }
+
             // CHECK: Handle first-degree connections differently
             if (profileData.network_distance === 'FIRST_DEGREE') {
               console.log(`🔗 First-degree connection detected - sending direct message instead of invitation`);
