@@ -342,10 +342,55 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
+        // 🚨 CRITICAL VALIDATION: NEVER send without names 🚨
+        // This prevents sending generic "Hi there" messages
+        if (!prospect.first_name || prospect.first_name.trim() === '') {
+          console.error(`🚨 BLOCKED: Missing first name for ${prospect.linkedin_url}`);
+          results.errors.push({
+            prospect: `${prospect.linkedin_url}`,
+            error: 'BLOCKED: Cannot send message without first name. Names are required for all messages.'
+          });
+
+          // Mark prospect as failed so it doesn't get retried without fixing
+          await supabase
+            .from('campaign_prospects')
+            .update({
+              status: 'failed',
+              error_message: 'Missing first name - cannot send personalized message',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', prospect.id);
+
+          continue;
+        }
+
+        if (!prospect.last_name || prospect.last_name.trim() === '') {
+          console.error(`🚨 BLOCKED: Missing last name for ${prospect.first_name} ${prospect.linkedin_url}`);
+          results.errors.push({
+            prospect: `${prospect.first_name} (${prospect.linkedin_url})`,
+            error: 'BLOCKED: Cannot send message without last name. Names are required for all messages.'
+          });
+
+          // Mark prospect as failed so it doesn't get retried without fixing
+          await supabase
+            .from('campaign_prospects')
+            .update({
+              status: 'failed',
+              error_message: 'Missing last name - cannot send personalized message',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', prospect.id);
+
+          continue;
+        }
+
+        console.log(`✅ Name validation passed: ${prospect.first_name} ${prospect.last_name}`);
+
         // CRITICAL: Simple variable replacement ONLY - NO AI MODIFICATION
+        // Note: Fallbacks removed - validation above ensures names exist
         const personalizedMessage = messageTemplate
-          .replace(/\{first_name\}/gi, prospect.first_name || 'there')
-          .replace(/\{last_name\}/gi, prospect.last_name || '')
+          .replace(/\{first_name\}/gi, prospect.first_name)
+          .replace(/\{last_name\}/gi, prospect.last_name)
           .replace(/\{company_name\}/gi, prospect.company_name || 'your company')
           .replace(/\{job_title\}/gi, prospect.title || prospect.job_title || 'your role')
           .replace(/\{title\}/gi, prospect.title || prospect.job_title || 'your role')
