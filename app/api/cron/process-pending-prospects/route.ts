@@ -6,7 +6,7 @@
  *
  * Setup: Configure in Netlify:
  * - Path: /.netlify/functions/api/cron/process-pending-prospects
- * - Schedule: every 5 minutes (cron: */5 * * * *)
+ * - Schedule: every 5 minutes (star-slash-5 star star star star)
  * - Method: POST
  */
 
