@@ -1259,7 +1259,14 @@ Would you like me to adjust these or create more variations?`
 
       if (result.success) {
         setParsedPreview(result.parsed);
-        toastSuccess('Template parsed successfully!');
+
+        // Show warning if fallback was used
+        if (result.warning) {
+          console.warn('⚠️ Parse warning:', result.warning);
+          toastWarning(`Using original text (AI parsing had issues)`);
+        } else {
+          toastSuccess('Template parsed successfully!');
+        }
       } else {
         const errorMessage = result.error || 'Failed to parse template';
         console.error('Parse template failed:', result);
@@ -2760,7 +2767,7 @@ Would you like me to adjust these or create more variations?`
                     Paste Message Template
                   </h3>
                   <p className="text-gray-400 text-sm mt-1">
-                    Paste your existing message sequence and SAM AI will intelligently parse and add placeholders
+                    Paste your message and SAM will <strong className="text-green-400">only add placeholders</strong> (like {"{first_name}"}) - your original wording stays exactly the same
                   </p>
                 </div>
                 <button

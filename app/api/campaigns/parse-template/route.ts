@@ -45,34 +45,50 @@ export async function POST(request: NextRequest) {
         messages: [
           {
             role: 'system',
-            content: `You are an expert at parsing LinkedIn message templates. Your task is to:
+            content: `CRITICAL: You are a TEMPLATE PLACEHOLDER REPLACER, NOT a copywriter. Your ONLY job is to replace specific names/companies with placeholders while keeping EVERYTHING ELSE EXACTLY AS-IS.
 
-1. Analyze the pasted text and identify the message sequence:
-   - Connection message (for 2nd/3rd degree connections)
-   - Alternative message (for existing 1st degree connections)
-   - Follow-up messages (numbered sequence)
+🚨 STRICT RULES - DO NOT DEVIATE:
 
-2. Replace specific personal information with placeholders:
-   - Names → {first_name} or {last_name}
-   - Job titles → {job_title}
-   - Company names → {company_name}
-   - Industries → {industry}
-   - Locations → {location}
+1. PRESERVE THE EXACT ORIGINAL WORDING
+   - DO NOT rewrite, rephrase, improve, or change ANY words
+   - DO NOT change tone, style, punctuation, or formatting
+   - DO NOT add or remove emoji, exclamation marks, or slang
+   - Keep casual language casual ("Hey", "love", "wanna" stay as-is)
+   - Keep typos and grammar as-is (user may want them)
 
-3. Return a JSON object with this exact structure:
+2. ONLY REPLACE THESE SPECIFIC VALUES:
+   - Person's first/last names → {first_name} or {last_name}
+   - Company names (proper nouns) → {company_name}
+   - Job titles (when referencing a specific person) → {job_title}
+   - Industries (when specific like "SaaS", "FinTech") → {industry}
+   - Locations (cities/states when personal) → {location}
+
+3. NEVER REPLACE GENERIC WORDS:
+   - Generic roles: "sales", "marketing", "CEO" in general context stay as-is
+   - Product categories: "CRM", "software", "platform" stay as-is
+   - Common phrases: "VP of Sales", "your company" stay as-is UNLESS specific name follows
+
+4. IDENTIFY MESSAGE TYPES:
+   - First substantial message = connectionMessage
+   - If contains "Follow-up:", "Follow up 2:", split into followUpMessages
+   - Alternative message only if explicitly labeled
+
+5. RETURN JSON EXACTLY:
 {
-  "connectionMessage": "string or null",
-  "alternativeMessage": "string or null",
-  "followUpMessages": ["string", "string", ...] or []
+  "connectionMessage": "exact text with only placeholders replaced",
+  "alternativeMessage": "exact text or null",
+  "followUpMessages": ["exact text array"] or []
 }
 
-Rules:
-- Keep the tone and structure of the original messages
-- Only replace values that appear to be specific to an individual/company
-- Generic words stay as-is (e.g., "sales" stays "sales", but "VP of Sales at Acme" becomes "VP of {job_title} at {company_name}")
-- If text contains phrases like "Follow-up:", "Follow-up 2:", etc., separate them into followUpMessages array
-- If unsure about message type, default to connectionMessage
-- Preserve line breaks and formatting`
+EXAMPLE - CORRECT:
+Input: "Hey Sarah! Love your work at Acme Corp. Wanna grab coffee?"
+Output: "Hey {first_name}! Love your work at {company_name}. Wanna grab coffee?"
+
+EXAMPLE - WRONG (don't do this):
+Input: "Hey Sarah! Love your work at Acme Corp. Wanna grab coffee?"
+Output: "Hi {first_name}, I noticed your role at {company_name}. Would you like to connect?" ❌
+
+Remember: You are NOT a copywriter. You are a FIND-AND-REPLACE tool. Keep the user's voice intact!`
           },
           {
             role: 'user',
@@ -120,11 +136,46 @@ Please parse this into the JSON structure with proper placeholder replacement.`
       }
     } catch (parseError) {
       console.error('Failed to parse AI response:', aiContent);
-      return NextResponse.json(
-        { error: 'Failed to parse AI response', rawResponse: aiContent },
-        { status: 500 }
-      );
+
+      // SAFETY: Return original text as fallback instead of failing
+      console.warn('⚠️ Parse failed - returning original text as fallback');
+      return NextResponse.json({
+        success: true,
+        parsed: {
+          connectionMessage: pastedText,
+          alternativeMessage: '',
+          followUpMessages: []
+        },
+        originalText: pastedText,
+        warning: 'AI parsing failed, using original text'
+      });
     }
+
+    // CRITICAL SAFETY CHECK: Ensure at least one message exists
+    const hasConnectionMsg = parsedTemplate.connectionMessage && parsedTemplate.connectionMessage.trim().length > 0;
+    const hasAltMsg = parsedTemplate.alternativeMessage && parsedTemplate.alternativeMessage.trim().length > 0;
+    const hasFollowUps = Array.isArray(parsedTemplate.followUpMessages) && parsedTemplate.followUpMessages.length > 0;
+
+    if (!hasConnectionMsg && !hasAltMsg && !hasFollowUps) {
+      console.error('⚠️ SAFETY: Parsed template is empty! Returning original text as fallback');
+      return NextResponse.json({
+        success: true,
+        parsed: {
+          connectionMessage: pastedText,
+          alternativeMessage: '',
+          followUpMessages: []
+        },
+        originalText: pastedText,
+        warning: 'Parsed result was empty, using original text'
+      });
+    }
+
+    console.log('✅ Template parsed successfully:', {
+      hasConnectionMsg,
+      hasAltMsg,
+      hasFollowUps,
+      connectionMsgLength: parsedTemplate.connectionMessage?.length || 0
+    });
 
     return NextResponse.json({
       success: true,
