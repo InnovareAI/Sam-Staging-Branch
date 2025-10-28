@@ -575,13 +575,13 @@ export async function POST(req: NextRequest) {
     const hasMoreProspects = (remainingCount || 0) > 0;
 
     // If more prospects remain, mark campaign for scheduled execution
-    // A cron job will pick this up and execute the next batch after 30-90 minutes
+    // A cron job will pick this up and execute the next batch after 2-30 minutes
     if (hasMoreProspects && !dryRun) {
       console.log(`🔄 ${remainingCount} prospects remaining`);
 
-      // Calculate next execution time (30-90 minutes from now)
-      const minDelayMs = 30 * 60 * 1000; // 30 minutes
-      const maxDelayMs = 90 * 60 * 1000; // 90 minutes
+      // Calculate next execution time (2-30 minutes from now)
+      const minDelayMs = 2 * 60 * 1000; // 2 minutes
+      const maxDelayMs = 30 * 60 * 1000; // 30 minutes
       const delayMs = Math.floor(Math.random() * (maxDelayMs - minDelayMs + 1)) + minDelayMs;
       const nextExecutionTime = new Date(Date.now() + delayMs);
       const delayMinutes = Math.round(delayMs / 60000);

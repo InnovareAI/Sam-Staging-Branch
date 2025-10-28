@@ -1,12 +1,12 @@
 /**
  * Cron Job: Execute Scheduled LinkedIn Campaigns
  *
- * Runs every 5 minutes to check for campaigns that are due for execution.
- * Implements 30-90 minute randomized delays between connection requests for LinkedIn safety.
+ * Runs every 2 minutes to check for campaigns that are due for execution.
+ * Implements 2-30 minute randomized delays between connection requests for LinkedIn safety.
  *
  * Setup: Configure in Netlify:
  * - Path: /.netlify/functions/api/cron/execute-scheduled-campaigns
- * - Schedule: every 5 minutes (cron: star-slash-5 * * * *)
+ * - Schedule: every 2 minutes (cron: star-slash-2 * * * *)
  * - Method: POST
  */
 
@@ -15,7 +15,7 @@ import { createClient } from '@supabase/supabase-js';
 
 export async function POST(req: NextRequest) {
   try {
-    console.log('⏰ Cron: Checking for scheduled campaigns...');
+    console.log('⏰ Cron: Checking for scheduled campaigns (2-30 min delays)...');
 
     // Verify cron secret (optional security)
     const cronSecret = req.headers.get('x-cron-secret');
@@ -165,8 +165,8 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   return NextResponse.json({
     name: 'Execute Scheduled Campaigns Cron',
-    description: 'Executes LinkedIn campaigns with 30-90 minute randomized delays',
-    schedule: 'Every 5 minutes',
+    description: 'Executes LinkedIn campaigns with 2-30 minute randomized delays',
+    schedule: 'Every 2 minutes',
     endpoint: '/api/cron/execute-scheduled-campaigns',
     method: 'POST'
   });
