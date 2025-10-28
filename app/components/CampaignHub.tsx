@@ -3784,6 +3784,28 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
           // Open settings modal for the new campaign
           setSelectedCampaign(campaign);
+
+          // Initialize editable settings from campaign data
+          const execPrefs = campaign.execution_preferences || {};
+          setEditedCampaignSettings({
+            name: campaign.name || '',
+            daily_connection_limit: execPrefs.daily_connection_limit || 15,
+            daily_follow_up_limit: execPrefs.daily_follow_up_limit || 20,
+            use_priority: execPrefs.use_priority !== false,
+            priority: execPrefs.priority || 'medium',
+            start_immediately: execPrefs.start_immediately !== false,
+            scheduled_start: execPrefs.scheduled_start || null,
+            timezone: campaign.timezone || 'America/New_York',
+            working_hours_start: campaign.working_hours_start || 7,
+            working_hours_end: campaign.working_hours_end || 18,
+            skip_weekends: campaign.skip_weekends !== false,
+            skip_holidays: campaign.skip_holidays !== false,
+            country_code: campaign.country_code || 'US',
+            allow_same_company: execPrefs.allow_same_company || false,
+            allow_duplicate_emails: execPrefs.allow_duplicate_emails || false,
+            skip_bounced_emails: execPrefs.skip_bounced_emails !== false
+          });
+
           setShowCampaignSettings(true);
         }
       }
@@ -4381,6 +4403,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         priority: execPrefs.priority || 'medium',
         start_immediately: execPrefs.start_immediately !== false,
         scheduled_start: execPrefs.scheduled_start || null,
+        timezone: campaign.timezone || 'America/New_York',
+        working_hours_start: campaign.working_hours_start || 7,
+        working_hours_end: campaign.working_hours_end || 18,
+        skip_weekends: campaign.skip_weekends !== false,
+        skip_holidays: campaign.skip_holidays !== false,
+        country_code: campaign.country_code || 'US',
         allow_same_company: execPrefs.allow_same_company || false,
         allow_duplicate_emails: execPrefs.allow_duplicate_emails || false,
         skip_bounced_emails: execPrefs.skip_bounced_emails !== false
@@ -4410,6 +4438,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: editedCampaignSettings.name,
+          timezone: editedCampaignSettings.timezone,
+          working_hours_start: editedCampaignSettings.working_hours_start,
+          working_hours_end: editedCampaignSettings.working_hours_end,
+          skip_weekends: editedCampaignSettings.skip_weekends,
+          skip_holidays: editedCampaignSettings.skip_holidays,
+          country_code: editedCampaignSettings.country_code,
           execution_preferences: {
             daily_connection_limit: editedCampaignSettings.daily_connection_limit,
             daily_follow_up_limit: editedCampaignSettings.daily_follow_up_limit,
@@ -4432,6 +4466,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         setSelectedCampaign({
           ...selectedCampaign,
           name: editedCampaignSettings.name,
+          timezone: editedCampaignSettings.timezone,
+          working_hours_start: editedCampaignSettings.working_hours_start,
+          working_hours_end: editedCampaignSettings.working_hours_end,
+          skip_weekends: editedCampaignSettings.skip_weekends,
+          skip_holidays: editedCampaignSettings.skip_holidays,
+          country_code: editedCampaignSettings.country_code,
           execution_preferences: {
             daily_connection_limit: editedCampaignSettings.daily_connection_limit,
             daily_follow_up_limit: editedCampaignSettings.daily_follow_up_limit,
@@ -5323,7 +5363,121 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   disabled={editedCampaignSettings.start_immediately}
                   className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 />
-                <p className="text-gray-400 text-xs mt-2">Times are set according to the time zone US/Mountain (GMT -0600), which can also be set from the <span className="text-purple-400">account settings</span>.</p>
+
+                {/* Timezone Selector */}
+                <div className="mt-4">
+                  <label className="text-gray-300 text-sm mb-2 block">
+                    <Globe size={14} className="inline mr-1" />
+                    Timezone
+                  </label>
+                  <select
+                    value={editedCampaignSettings.timezone || 'America/New_York'}
+                    onChange={(e) => handleCampaignSettingChange('timezone', e.target.value)}
+                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                  >
+                    <option value="America/New_York">Eastern Time (ET)</option>
+                    <option value="America/Chicago">Central Time (CT)</option>
+                    <option value="America/Denver">Mountain Time (MT)</option>
+                    <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                    <option value="America/Anchorage">Alaska Time (AKT)</option>
+                    <option value="Pacific/Honolulu">Hawaii Time (HT)</option>
+                    <option value="Europe/London">London (GMT/BST)</option>
+                    <option value="Europe/Paris">Paris (CET/CEST)</option>
+                    <option value="Europe/Berlin">Berlin (CET/CEST)</option>
+                    <option value="Asia/Tokyo">Tokyo (JST)</option>
+                    <option value="Asia/Shanghai">Shanghai (CST)</option>
+                    <option value="Asia/Singapore">Singapore (SGT)</option>
+                    <option value="Australia/Sydney">Sydney (AEDT)</option>
+                    <option value="UTC">UTC</option>
+                  </select>
+                  <p className="text-gray-400 text-xs mt-1">Campaign messages will be sent according to this timezone</p>
+                </div>
+
+                {/* Working Hours */}
+                <div className="mt-4">
+                  <label className="text-gray-300 text-sm mb-2 block">
+                    <Clock size={14} className="inline mr-1" />
+                    Working Hours
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-gray-400 text-xs mb-1 block">Start Time</label>
+                      <select
+                        value={editedCampaignSettings.working_hours_start || 7}
+                        onChange={(e) => handleCampaignSettingChange('working_hours_start', parseInt(e.target.value))}
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                      >
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-gray-400 text-xs mb-1 block">End Time</label>
+                      <select
+                        value={editedCampaignSettings.working_hours_end || 18}
+                        onChange={(e) => handleCampaignSettingChange('working_hours_end', parseInt(e.target.value))}
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                      >
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <p className="text-gray-400 text-xs mt-1">Messages will only be sent between {editedCampaignSettings.working_hours_start || 7}:00 and {editedCampaignSettings.working_hours_end || 18}:00</p>
+                </div>
+
+                {/* Skip Weekends */}
+                <div className="mt-4">
+                  <label className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={editedCampaignSettings.skip_weekends !== false}
+                      onChange={(e) => handleCampaignSettingChange('skip_weekends', e.target.checked)}
+                      className="w-4 h-4 rounded"
+                    />
+                    <div className="flex-1">
+                      <span className="text-white text-sm">Skip Weekends</span>
+                      <p className="text-gray-400 text-xs">Don't send messages on Saturday and Sunday</p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Skip Holidays */}
+                <div className="mt-4">
+                  <label className="flex items-center gap-3 mb-2">
+                    <input
+                      type="checkbox"
+                      checked={editedCampaignSettings.skip_holidays !== false}
+                      onChange={(e) => handleCampaignSettingChange('skip_holidays', e.target.checked)}
+                      className="w-4 h-4 rounded"
+                    />
+                    <div className="flex-1">
+                      <span className="text-white text-sm">Skip Public Holidays</span>
+                      <p className="text-gray-400 text-xs">Don't send messages on public holidays</p>
+                    </div>
+                  </label>
+                  {editedCampaignSettings.skip_holidays !== false && (
+                    <div className="ml-7">
+                      <label className="text-gray-400 text-xs mb-1 block">Holiday Calendar</label>
+                      <select
+                        value={editedCampaignSettings.country_code || 'US'}
+                        onChange={(e) => handleCampaignSettingChange('country_code', e.target.value)}
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                      >
+                        <option value="US">United States</option>
+                        <option value="GB">United Kingdom</option>
+                        <option value="CA">Canada</option>
+                        <option value="DE">Germany</option>
+                        <option value="FR">France</option>
+                        <option value="AU">Australia</option>
+                        <option value="JP">Japan</option>
+                        <option value="SG">Singapore</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Prospects */}
