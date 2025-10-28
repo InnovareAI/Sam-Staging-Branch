@@ -34,14 +34,21 @@ interface LinkedInAccount {
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createSupabaseRouteClient();
-    
+
+    // Check for internal cron trigger (bypass user auth for cron jobs)
+    const isInternalTrigger = req.headers.get('x-internal-trigger') === 'cron-pending-prospects';
+
     // Authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    let user = null;
+    if (!isInternalTrigger) {
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      if (authError || !authUser) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      user = authUser;
     }
 
-    const { campaignId, maxProspects = 1, dryRun = false } = await req.json();
+    const { campaignId, maxProspects = 1, dryRun = false, specificProspectId } = await req.json();
     
     if (!campaignId) {
       return NextResponse.json({ error: 'Campaign ID required' }, { status: 400 });
@@ -65,50 +72,82 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
     }
 
-    // Verify user has access to this workspace
-    const { data: membershipCheck } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', campaign.workspace_id)
-      .eq('user_id', user.id)
-      .single();
+    // Verify user has access to this workspace (skip for internal cron)
+    if (!isInternalTrigger) {
+      const { data: membershipCheck } = await supabase
+        .from('workspace_members')
+        .select('role')
+        .eq('workspace_id', campaign.workspace_id)
+        .eq('user_id', user.id)
+        .single();
 
-    if (!membershipCheck) {
-      console.error('❌ User not authorized for this workspace');
-      return NextResponse.json({ error: 'Unauthorized workspace access' }, { status: 403 });
+      if (!membershipCheck) {
+        console.error('❌ User not authorized for this workspace');
+        return NextResponse.json({ error: 'Unauthorized workspace access' }, { status: 403 });
+      }
     }
 
     console.log(`✅ Campaign: ${campaign.name} in workspace: ${campaign.workspaces.name}`);
+    if (isInternalTrigger) {
+      console.log(`🤖 Internal cron trigger - bypassing user auth`);
+    }
 
-    // Step 2: Get authenticated user's LinkedIn account (NEVER use other team members' accounts)
-    console.log(`🔍 Getting LinkedIn account for user: ${user.email}...`);
-    const { data: userLinkedInAccount, error: accountsError } = await supabase
-      .from('workspace_accounts')
-      .select('*')
-      .eq('workspace_id', campaign.workspace_id)
-      .eq('user_id', user.id)  // CRITICAL: Only use authenticated user's account
-      .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected')
-      .single();
+    // Step 2: Get LinkedIn account for campaign execution
+    // For user-triggered: use authenticated user's account only
+    // For cron-triggered: use any active account in the workspace
+    let userLinkedInAccount;
+    let accountsError;
+
+    if (isInternalTrigger) {
+      // Cron trigger: use any active LinkedIn account in workspace
+      console.log(`🔍 Getting any active LinkedIn account in workspace...`);
+      const result = await supabase
+        .from('workspace_accounts')
+        .select('*')
+        .eq('workspace_id', campaign.workspace_id)
+        .eq('account_type', 'linkedin')
+        .eq('connection_status', 'connected')
+        .limit(1)
+        .single();
+      userLinkedInAccount = result.data;
+      accountsError = result.error;
+    } else {
+      // User trigger: use authenticated user's account only
+      console.log(`🔍 Getting LinkedIn account for user: ${user?.email}...`);
+      const result = await supabase
+        .from('workspace_accounts')
+        .select('*')
+        .eq('workspace_id', campaign.workspace_id)
+        .eq('user_id', user.id)  // CRITICAL: Only use authenticated user's account
+        .eq('account_type', 'linkedin')
+        .eq('connection_status', 'connected')
+        .single();
+      userLinkedInAccount = result.data;
+      accountsError = result.error;
+    }
 
     if (accountsError || !userLinkedInAccount) {
-      console.error('❌ User LinkedIn account not found:', accountsError);
+      console.error('❌ LinkedIn account not found:', accountsError);
       return NextResponse.json({
         error: 'No LinkedIn account connected',
-        details: `You must connect YOUR OWN LinkedIn account. LinkedIn accounts cannot be shared among team members.`,
-        troubleshooting: {
+        details: isInternalTrigger
+          ? 'No active LinkedIn account found in workspace'
+          : `You must connect YOUR OWN LinkedIn account. LinkedIn accounts cannot be shared among team members.`,
+        troubleshooting: !isInternalTrigger ? {
           step1: 'Go to Workspace Settings → Integrations',
           step2: 'Click "Connect LinkedIn Account"',
           step3: 'Complete the OAuth flow with YOUR LinkedIn credentials',
           note: 'Each user must use their own LinkedIn account for compliance'
-        }
+        } : undefined
       }, { status: 400 });
     }
 
-    // Step 3: Use authenticated user's LinkedIn account
+    // Step 3: Use LinkedIn account
     const selectedAccount = userLinkedInAccount;
-    console.log(`🎯 Using YOUR LinkedIn account: ${selectedAccount.account_name || 'Your Account'}`);
-    console.log(`   User: ${user.email}`);
+    console.log(`🎯 Using LinkedIn account: ${selectedAccount.account_name || 'LinkedIn Account'} ${isInternalTrigger ? '(workspace account)' : '(your account)'}`);
+    if (user) {
+      console.log(`   User: ${user.email}`);
+    }
 
     // Step 3.5: VALIDATE account has required Unipile data
     if (!selectedAccount.unipile_account_id) {
