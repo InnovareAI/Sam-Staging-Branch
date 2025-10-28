@@ -16,7 +16,7 @@ export default async (req, context) => {
 
     console.log(`📡 Calling API endpoint: ${apiUrl}`);
 
-    // Call the Next.js API route
+    // Call the Next.js API route for scheduled campaigns
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -41,6 +41,31 @@ export default async (req, context) => {
     }
 
     console.log('✅ Campaign execution completed:', data.message);
+
+    // Also process pending prospects (background processing)
+    const pendingProspectsUrl = `${baseUrl}/api/cron/process-pending-prospects`;
+    console.log(`📡 Processing pending prospects: ${pendingProspectsUrl}`);
+
+    try {
+      const pendingResponse = await fetch(pendingProspectsUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-cron-secret': process.env.CRON_SECRET || '',
+          'x-netlify-scheduled': 'true'
+        }
+      });
+
+      const pendingData = await pendingResponse.json();
+
+      if (pendingResponse.ok) {
+        console.log('✅ Pending prospects processed:', pendingData.message || 'No pending prospects');
+      } else {
+        console.error('⚠️ Pending prospects processing failed (non-critical):', pendingData.error);
+      }
+    } catch (pendingError) {
+      console.error('⚠️ Error processing pending prospects (non-critical):', pendingError.message);
+    }
 
     return new Response(JSON.stringify({
       success: true,
