@@ -26,9 +26,8 @@ export function createClient() {
 
   // Only use cookie-based auth in browser
   if (typeof window !== 'undefined') {
-    // CRITICAL: Clean corrupted localStorage AND cookies on initialization
+    // Clean corrupted localStorage (but leave cookies alone - they work despite warnings)
     try {
-      // 1. Clean localStorage
       const storageKeys = Object.keys(localStorage);
       storageKeys.forEach(key => {
         if (key.includes('supabase') || key.includes('sb-')) {
@@ -39,29 +38,8 @@ export function createClient() {
           }
         }
       });
-
-      // 2. Clean corrupted cookies BEFORE Supabase tries to read them
-      // IMPORTANT: Only delete cookies that are ACTUALLY corrupted (malformed, can't be decoded)
-      // DO NOT delete valid session cookies that happen to have base64- prefix
-      const allCookies = document.cookie.split(';');
-      allCookies.forEach(cookie => {
-        const [name, ...valueParts] = cookie.trim().split('=');
-        const value = valueParts.join('=');
-
-        // Only check Supabase cookies
-        if (name.includes('supabase') || name.includes('sb-')) {
-          // Delete ANY cookie with "base64-" prefix - this prefix shouldn't exist
-          // Supabase's parser can't handle it even if the base64 itself is valid
-          if (value.startsWith('base64-')) {
-            console.log(`🔧 Deleting malformed cookie (has base64- prefix): ${name}`);
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname}`;
-          }
-        }
-      });
     } catch (e) {
-      console.warn('Could not clean storage/cookies:', e);
+      console.warn('Could not clean storage:', e);
     }
 
     return createBrowserSupabaseClient(
