@@ -58,15 +58,18 @@ export async function POST(req: NextRequest) {
       try {
         const prospect = prospects[i];
 
-        // DEBUG: Log what we received
-        console.log(`📋 Processing prospect ${i + 1}:`, {
-          name: prospect.name,
-          first_name: prospect.first_name,
-          linkedin_url: prospect.linkedin_url,
-          'contact.linkedin_url': prospect.contact?.linkedin_url,
-          'company.name': prospect.company?.name,
-          company: prospect.company
-        });
+        // DEBUG: Log what we received (ENHANCED FOR DEBUGGING)
+        console.log(`\n🔍 ===== PROSPECT ${i + 1} RAW DATA =====`);
+        console.log('Full prospect object:', JSON.stringify(prospect, null, 2));
+        console.log('Key fields:');
+        console.log('  - name:', prospect.name);
+        console.log('  - first_name:', prospect.first_name);
+        console.log('  - linkedin_url (direct):', prospect.linkedin_url);
+        console.log('  - linkedin_profile_url:', prospect.linkedin_profile_url);
+        console.log('  - contact object:', JSON.stringify(prospect.contact, null, 2));
+        console.log('  - contact.linkedin_url:', prospect.contact?.linkedin_url);
+        console.log('  - company.name:', prospect.company?.name);
+        console.log('==========================================\n');
 
         // Prepare prospect data
         // CRITICAL: Handle both direct fields and nested JSONB fields (contact, company)
@@ -89,6 +92,13 @@ export async function POST(req: NextRequest) {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
+
+        console.log('💾 PREPARED DATA TO STORE:');
+        console.log('  - first_name:', prospectData.first_name);
+        console.log('  - last_name:', prospectData.last_name);
+        console.log('  - linkedin_url:', prospectData.linkedin_url);
+        console.log('  - company_name:', prospectData.company_name);
+        console.log('  - email:', prospectData.email);
 
         // Check if prospect already exists for this campaign
         const { data: existing } = await supabase
