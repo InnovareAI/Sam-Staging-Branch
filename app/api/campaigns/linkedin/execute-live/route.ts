@@ -415,7 +415,100 @@ export async function POST(req: NextRequest) {
             const profileData = await profileResponse.json();
             console.log(`✅ Profile retrieved:`, JSON.stringify(profileData, null, 2));
 
-            // STEP 2: Send invitation using internal ID
+            // CHECK: Handle first-degree connections differently
+            if (profileData.network_distance === 'FIRST_DEGREE') {
+              console.log(`🔗 First-degree connection detected - sending direct message instead of invitation`);
+
+              try {
+                // Send direct message via Unipile (creates chat if needed)
+                const messageResponse = await fetch(
+                  `https://${process.env.UNIPILE_DSN}/api/v1/messages`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      'X-API-KEY': process.env.UNIPILE_API_KEY || '',
+                      'Content-Type': 'application/json',
+                      'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      account_id: selectedAccount.unipile_account_id,
+                      provider: 'LINKEDIN',
+                      text: personalizedMessage,
+                      attendees: [{
+                        messaging_id: profileData.public_identifier || linkedinIdentifier
+                      }]
+                    })
+                  }
+                );
+
+                if (!messageResponse.ok) {
+                  const errorText = await messageResponse.text();
+                  console.error(`❌ Failed to send direct message:`, errorText);
+                  throw new Error(`Direct message failed: ${messageResponse.statusText}`);
+                }
+
+                const messageData = await messageResponse.json();
+                console.log(`✅ Direct message sent successfully:`, messageData);
+
+                // Update prospect status to messaged
+                await supabase
+                  .from('campaign_prospects')
+                  .update({
+                    status: 'messaged',
+                    contacted_at: new Date().toISOString(),
+                    personalization_data: {
+                      message: personalizedMessage,
+                      chat_id: messageData.chat_id,
+                      message_id: messageData.id,
+                      network_distance: 'FIRST_DEGREE',
+                      cost: 0,
+                      model: 'none'
+                    }
+                  })
+                  .eq('id', prospect.id);
+
+                results.prospects_processed++;
+                results.messages_sent++;
+                results.messages.push({
+                  prospect: `${prospect.first_name || 'Unknown'} ${prospect.last_name || 'Unknown'}`,
+                  message: personalizedMessage,
+                  cost: 0,
+                  model: 'none',
+                  linkedin_target: prospect.linkedin_url || prospect.linkedin_user_id,
+                  status: 'messaged'
+                });
+
+                console.log(`✅ Successfully messaged first-degree connection: ${prospect.first_name} ${prospect.last_name}`);
+                continue; // Skip invitation logic, move to next prospect
+              } catch (messageError) {
+                console.error(`❌ Error sending message to first-degree connection:`, messageError);
+                results.errors.push({
+                  prospect: `${prospect.first_name || 'Unknown'} ${prospect.last_name || 'Unknown'}`,
+                  error: messageError instanceof Error ? messageError.message : 'Unknown error sending direct message'
+                });
+                continue; // Skip this prospect
+              }
+            }
+
+            // CHECK: Skip if invitation already pending
+            if (profileData.invitation?.type === 'SENT' && profileData.invitation?.status === 'PENDING') {
+              console.log(`⏳ Invitation already pending - skipping`);
+
+              await supabase
+                .from('campaign_prospects')
+                .update({
+                  status: 'invitation_pending',
+                  contacted_at: new Date().toISOString(),
+                  personalization_data: {
+                    note: 'Invitation already sent and pending'
+                  }
+                })
+                .eq('id', prospect.id);
+
+              continue; // Skip to next prospect
+            }
+
+            // STEP 2: Send invitation using internal ID (for non-connected prospects)
             const requestBody: any = {
               provider_id: profileData.provider_id,  // CRITICAL: Use provider_id from profile response
               account_id: selectedAccount.unipile_account_id,  // CRITICAL: Use BASE ID for both lookups AND invitations
