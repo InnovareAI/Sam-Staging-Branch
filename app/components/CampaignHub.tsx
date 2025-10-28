@@ -1778,20 +1778,42 @@ Would you like me to adjust these or create more variations?`
                 const isMessenger = type.value === 'messenger';
                 const isBuilder = type.value === 'builder';
 
-                // Disable Connector if all prospects are 1st degree (already connected)
-                // Disable Messenger if all prospects are 2nd/3rd degree (not connected)
-                // Disable Builder (coming soon)
-                const hasOnly2nd3rdDegree = connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0;
-                const isDisabled = (isConnector && hasOnly1stDegree) || (isMessenger && hasOnly2nd3rdDegree) || isBuilder;
+                // Calculate percentages for stricter enforcement
+                const firstDegreePercent = connectionDegrees.total > 0
+                  ? (connectionDegrees.firstDegree / connectionDegrees.total) * 100
+                  : 0;
+                const secondThirdPercent = connectionDegrees.total > 0
+                  ? (connectionDegrees.secondThird / connectionDegrees.total) * 100
+                  : 0;
 
-                // Determine which warning to show
+                // STRICT ENFORCEMENT: Disable campaign types that don't match the majority
+                const hasOnly2nd3rdDegree = connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0;
+
+                let isDisabled = false;
                 let disabledReason = '';
-                if (isConnector && hasOnly1stDegree) {
-                  disabledReason = 'Your prospects are already 1st degree connections';
-                } else if (isMessenger && hasOnly2nd3rdDegree) {
-                  disabledReason = 'Your prospects are 2nd/3rd degree - send connection requests first';
-                } else if (isBuilder) {
+
+                if (isBuilder) {
+                  isDisabled = true;
                   disabledReason = '🚧 Coming Soon - Advanced features in development';
+                } else if (connectionDegrees.total > 0) {
+                  // Disable Connector if prospects are predominantly 1st degree (70%+)
+                  if (isConnector && (hasOnly1stDegree || firstDegreePercent >= 70)) {
+                    isDisabled = true;
+                    if (hasOnly1stDegree) {
+                      disabledReason = 'All prospects are already 1st degree connections';
+                    } else {
+                      disabledReason = `${Math.round(firstDegreePercent)}% are 1st degree - use Messenger instead`;
+                    }
+                  }
+                  // Disable Messenger if prospects are predominantly 2nd/3rd degree (70%+)
+                  else if (isMessenger && (hasOnly2nd3rdDegree || secondThirdPercent >= 70)) {
+                    isDisabled = true;
+                    if (hasOnly2nd3rdDegree) {
+                      disabledReason = 'All prospects are 2nd/3rd degree - send connection requests first';
+                    } else {
+                      disabledReason = `${Math.round(secondThirdPercent)}% are 2nd/3rd degree - use Connector instead`;
+                    }
+                  }
                 }
 
                 return (
@@ -1821,17 +1843,14 @@ Would you like me to adjust these or create more variations?`
                 );
               })}
             </div>
-            {hasOnly1stDegree && (
+            {connectionDegrees.total > 0 && (
               <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mt-3">
                 <p className="text-blue-300 text-sm">
-                  💡 <strong>Tip:</strong> All {connectionDegrees.firstDegree} prospects are 1st degree connections. Use <strong>Messenger</strong> or <strong>Builder</strong> campaigns.
-                </p>
-              </div>
-            )}
-            {connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0 && (
-              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mt-3">
-                <p className="text-blue-300 text-sm">
-                  💡 <strong>Tip:</strong> All {connectionDegrees.secondThird} prospects are 2nd/3rd degree connections. Use <strong>Connector</strong> to send connection requests first, then follow up with messages.
+                  <strong>Auto-selected:</strong> {campaignType === 'messenger' ? 'Messenger' : 'Connector'} campaign
+                  {hasOnly1stDegree && ` (all ${connectionDegrees.firstDegree} prospects are 1st degree connections)`}
+                  {connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0 && ` (all ${connectionDegrees.secondThird} prospects are 2nd/3rd degree connections)`}
+                  {!hasOnly1stDegree && connectionDegrees.firstDegree > 0 && connectionDegrees.secondThird > 0 &&
+                    ` (${Math.round((campaignType === 'messenger' ? connectionDegrees.firstDegree : connectionDegrees.secondThird) / connectionDegrees.total * 100)}% match)`}
                 </p>
               </div>
             )}
