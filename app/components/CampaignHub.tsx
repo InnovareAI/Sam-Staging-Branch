@@ -3681,19 +3681,46 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       const campaign = campaignData.campaign; // Extract nested campaign object
 
       // Step 2: Upload prospects (with proper schema mapping)
-      const mappedProspects = finalCampaignData.prospects.map((prospect: any) => ({
-        // Handle both workspace_prospects schema and other schemas
-        first_name: prospect.first_name || (prospect.name ? prospect.name.split(' ')[0] : ''),
-        last_name: prospect.last_name || (prospect.name ? prospect.name.split(' ').slice(1).join(' ') : ''),
-        name: prospect.name || `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
-        email: prospect.email || prospect.email_address || prospect.contact?.email,
-        company: prospect.company?.name || prospect.company_name || prospect.company || '',
-        title: prospect.title || prospect.job_title,
-        linkedin_url: prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url,
-        linkedin_user_id: prospect.linkedin_user_id,
-        connection_degree: prospect.connection_degree || prospect.degree,
-        sessionId: prospect.sessionId
-      }));
+      console.log('🔍 DEBUG: finalCampaignData.prospects BEFORE mapping:', JSON.stringify(finalCampaignData.prospects.slice(0, 2), null, 2));
+
+      const mappedProspects = finalCampaignData.prospects.map((prospect: any, index: number) => {
+        const mapped = {
+          // Handle both workspace_prospects schema and other schemas
+          first_name: prospect.first_name || (prospect.name ? prospect.name.split(' ')[0] : ''),
+          last_name: prospect.last_name || (prospect.name ? prospect.name.split(' ').slice(1).join(' ') : ''),
+          name: prospect.name || `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
+          email: prospect.email || prospect.email_address || prospect.contact?.email,
+          company: prospect.company?.name || prospect.company_name || prospect.company || '',
+          title: prospect.title || prospect.job_title,
+          linkedin_url: prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url,
+          linkedin_user_id: prospect.linkedin_user_id,
+          connection_degree: prospect.connection_degree || prospect.degree,
+          sessionId: prospect.sessionId
+        };
+
+        if (index < 2) {
+          console.log(`🔍 DEBUG: Prospect ${index + 1} AFTER mapping:`, {
+            name: mapped.name,
+            linkedin_url: mapped.linkedin_url,
+            had_linkedin_url: !!prospect.linkedin_url,
+            had_linkedin_profile_url: !!prospect.linkedin_profile_url,
+            had_contact_linkedin_url: !!prospect.contact?.linkedin_url,
+            raw_contact: prospect.contact
+          });
+        }
+
+        return mapped;
+      });
+
+      console.log('🔍 DEBUG: About to send to /api/campaigns/upload-prospects:', {
+        campaign_id: campaign.id,
+        prospect_count: mappedProspects.length,
+        first_two_prospects: mappedProspects.slice(0, 2).map(p => ({
+          name: p.name,
+          linkedin_url: p.linkedin_url,
+          company: p.company
+        }))
+      });
 
       const uploadResponse = await fetch('/api/campaigns/upload-prospects', {
         method: 'POST',
