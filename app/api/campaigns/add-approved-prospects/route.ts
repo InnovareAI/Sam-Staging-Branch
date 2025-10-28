@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
         title: prospect.title || '',
         location: prospect.location || null,
         industry: prospect.company?.industry?.[0] || 'Not specified',
-        status: 'new',
+        status: 'approved',
         notes: null,
         personalization_data: {
           source: 'approved_prospects',
