@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { createClient } from '@supabase/supabase-js';
 
 // MCP tools for LinkedIn execution
 declare global {
@@ -33,10 +34,16 @@ interface LinkedInAccount {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-
     // Check for internal cron trigger (bypass user auth for cron jobs)
     const isInternalTrigger = req.headers.get('x-internal-trigger') === 'cron-pending-prospects';
+
+    // Use service role client for cron (no cookies), regular client for users
+    const supabase = isInternalTrigger
+      ? createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+      : await createSupabaseRouteClient();
 
     // Authentication
     let user = null;
