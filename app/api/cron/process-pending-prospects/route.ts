@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       .in('status', ['pending', 'approved', 'ready_to_message'])
       .not('linkedin_url', 'is', null)
       .in('campaigns.status', ['active', 'scheduled'])
-      .limit(20); // Process up to 20 prospects per run
+      .limit(3); // Process 3 prospects per run to avoid Netlify timeout (26s max)
 
     if (queryError) {
       console.error('❌ Error querying prospects:', queryError);
@@ -144,8 +144,8 @@ export async function POST(req: NextRequest) {
               message: result.message
             });
 
-            // Add a small delay between prospects to avoid rate limits (2-5 seconds)
-            await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000));
+            // Add a small delay between prospects to avoid rate limits (1-2 seconds)
+            await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
 
           } catch (prospectError) {
             console.error(`    ❌ Error processing prospect ${prospect.id}:`, prospectError);
