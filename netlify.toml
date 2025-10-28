@@ -24,6 +24,11 @@
 
 [functions]
   node_bundler = "esbuild"
+  directory = "netlify/functions"
 
 [functions."*"]
   body_size_limit = "10mb"
+
+# Scheduled function: Execute campaigns every 2 minutes
+[functions."scheduled-campaign-execution"]
+  schedule = "*/2 * * * *"
