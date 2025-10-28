@@ -528,10 +528,8 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // Rate limiting: Wait 2-5 seconds between messages
-        const delay = Math.random() * 3000 + 2000; // 2-5 seconds
-        console.log(`⏳ Waiting ${Math.round(delay/1000)}s before next message...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        // No delay needed here - each batch processes only 1 prospect
+        // Delay between batches is handled by scheduled next batch trigger below
 
       } catch (prospectError) {
         console.error(`❌ Error processing prospect ${prospect.first_name}:`, prospectError);
@@ -576,26 +574,28 @@ export async function POST(req: NextRequest) {
 
     const hasMoreProspects = (remainingCount || 0) > 0;
 
-    // If more prospects remain, trigger next batch asynchronously (fire-and-forget)
+    // If more prospects remain, mark campaign for scheduled execution
+    // A cron job will pick this up and execute the next batch after 30-90 minutes
     if (hasMoreProspects && !dryRun) {
-      console.log(`🔄 ${remainingCount} prospects remaining, triggering next batch...`);
+      console.log(`🔄 ${remainingCount} prospects remaining`);
 
-      // Fire async request without waiting
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `http://localhost:3000`;
-      fetch(`${baseUrl}/api/campaigns/linkedin/execute-live`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-trigger': 'true'  // Mark as internal
-        },
-        body: JSON.stringify({
-          campaignId,
-          maxProspects: 1,  // Process 1 prospect per batch to avoid 26s timeout
-          dryRun: false
+      // Calculate next execution time (30-90 minutes from now)
+      const minDelayMs = 30 * 60 * 1000; // 30 minutes
+      const maxDelayMs = 90 * 60 * 1000; // 90 minutes
+      const delayMs = Math.floor(Math.random() * (maxDelayMs - minDelayMs + 1)) + minDelayMs;
+      const nextExecutionTime = new Date(Date.now() + delayMs);
+      const delayMinutes = Math.round(delayMs / 60000);
+
+      console.log(`⏰ Next batch scheduled for ${nextExecutionTime.toISOString()} (in ${delayMinutes} minutes)`);
+
+      // Update campaign with next_execution_time for cron job to pick up
+      await supabase
+        .from('campaigns')
+        .update({
+          next_execution_time: nextExecutionTime.toISOString(),
+          status: 'scheduled' // Mark as scheduled for auto-execution
         })
-      }).catch(err => {
-        console.error('⚠️ Failed to trigger next batch:', err.message);
-      });
+        .eq('id', campaignId);
     }
 
     // Include error summary in message if there were failures
