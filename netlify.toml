@@ -32,3 +32,7 @@
 # Scheduled function: Execute campaigns every 2 minutes
 [functions."scheduled-campaign-execution"]
   schedule = "*/2 * * * *"
+
+# Scheduled function: Process pending prospects every 5 minutes
+[functions."process-pending-prospects"]
+  schedule = "*/5 * * * *"
