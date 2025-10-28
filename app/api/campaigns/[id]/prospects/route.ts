@@ -193,7 +193,7 @@ export async function POST(
         last_name: prospect.last_name || '',
         email: prospect.email || null,
         company_name: prospect.company_name || null,
-        linkedin_url: prospect.linkedin_url || null,
+        linkedin_url: prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url || null,
         title: prospect.title || null,
         phone: prospect.phone || null,
         location: prospect.location || null,
