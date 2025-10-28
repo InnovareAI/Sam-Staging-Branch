@@ -4462,7 +4462,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   // Filter campaigns based on selected tab
   const filteredCampaigns = allCampaigns.filter((c: any) => {
     if (campaignFilter === 'active') return c.status === 'active' || c.status === 'paused';
-    if (campaignFilter === 'inactive') return c.status === 'inactive'; // Show campaigns ready to activate
+    if (campaignFilter === 'inactive') return c.status === 'inactive' || c.status === 'scheduled'; // Show campaigns ready to activate (inactive and scheduled)
     if (campaignFilter === 'archived') return c.status === 'completed' || c.status === 'archived';
     return true;
   });

@@ -16,12 +16,12 @@ function extractLinkedInUserId(url) {
 
 console.log('🔧 Fixing missing first and last names from LinkedIn profiles...\n');
 
-// Get ALL prospects with missing names
+// Get ALL prospects with missing names (including failed to retry them)
 const { data: prospects } = await supabase
   .from('campaign_prospects')
-  .select('id, first_name, last_name, linkedin_url, campaign_id, campaigns(workspace_id)')
+  .select('id, first_name, last_name, linkedin_url, campaign_id, status, campaigns(workspace_id)')
   .or('first_name.is.null,last_name.is.null,first_name.eq.,last_name.eq.')
-  .in('status', ['pending', 'approved', 'ready_to_message'])
+  .in('status', ['pending', 'approved', 'ready_to_message', 'failed'])
   .not('linkedin_url', 'is', null)
   .limit(150);
 
@@ -109,17 +109,26 @@ for (const prospect of prospects || []) {
     }
 
     // Update database
-    if (firstName || lastName) {
+    if (firstName && lastName) {
+      const updateData = {
+        first_name: firstName,
+        last_name: lastName,
+        updated_at: new Date().toISOString()
+      };
+
+      // If prospect was failed due to missing name, reset to pending
+      if (prospect.status === 'failed') {
+        updateData.status = 'pending';
+        updateData.error_message = null;
+      }
+
       await supabase
         .from('campaign_prospects')
-        .update({
-          first_name: firstName,
-          last_name: lastName,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', prospect.id);
 
-      console.log(`✅ ${firstName} ${lastName}`);
+      const statusNote = prospect.status === 'failed' ? ' (reset to pending)' : '';
+      console.log(`✅ ${firstName} ${lastName}${statusNote}`);
       fixed++;
     } else {
       console.log(`⚠️  No name found in profile for ${linkedinId}`);
