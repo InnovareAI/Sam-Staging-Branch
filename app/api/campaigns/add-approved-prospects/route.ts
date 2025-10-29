@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client'
+import { enrichProspectName } from '@/lib/enrich-prospect-name'
 
 /**
  * POST /api/campaigns/add-approved-prospects
  * Add approved prospects to a campaign
+ * IMPORTANT: Automatically enriches missing names from LinkedIn via Unipile
  */
 export async function POST(request: NextRequest) {
   try {
@@ -96,22 +98,36 @@ export async function POST(request: NextRequest) {
 
     const unipileAccountId = linkedInAccount?.unipile_account_id || null
 
-    // Transform prospects to campaign_prospects format
-    const campaignProspects = validProspects.map(prospect => {
-      // Extract name parts
+    // Transform prospects to campaign_prospects format with automatic name enrichment
+    const campaignProspects = await Promise.all(validProspects.map(async prospect => {
+      // Extract name parts from SAM data
       const nameParts = (prospect.name || '').split(' ')
-      const firstName = nameParts[0] || ''
-      const lastName = nameParts.slice(1).join(' ') || ''
+      let firstName = nameParts[0] || ''
+      let lastName = nameParts.slice(1).join(' ') || ''
 
-      // DEBUG: Log name extraction
+      // AUTOMATIC ENRICHMENT: If names are missing, fetch from LinkedIn
       if (!firstName || !lastName) {
-        console.log('⚠️ NAME EXTRACTION DEBUG:', {
+        console.log('⚠️ Missing name for prospect, attempting enrichment:', {
           prospect_id: prospect.prospect_id,
-          raw_name: prospect.name,
+          linkedin_url: prospect.contact?.linkedin_url
+        });
+
+        const enriched = await enrichProspectName(
+          prospect.contact?.linkedin_url || null,
           firstName,
           lastName,
-          company: prospect.company?.name
-        });
+          unipileAccountId
+        );
+
+        firstName = enriched.firstName;
+        lastName = enriched.lastName;
+
+        if (enriched.enriched) {
+          console.log('✅ Successfully enriched name:', {
+            prospect_id: prospect.prospect_id,
+            name: `${firstName} ${lastName}`
+          });
+        }
       }
 
       return {
@@ -136,7 +152,7 @@ export async function POST(request: NextRequest) {
           connection_degree: prospect.connection_degree
         }
       }
-    })
+    }))
 
     // Insert into campaign_prospects
     const { data: insertedProspects, error: insertError } = await supabase
