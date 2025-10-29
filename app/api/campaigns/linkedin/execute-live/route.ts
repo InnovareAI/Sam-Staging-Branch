@@ -418,10 +418,14 @@ export async function POST(req: NextRequest) {
 
           console.log(`   ✅ Got provider_id: ${providerId}`);
 
-          // ENRICHMENT FALLBACK: Extract name from LinkedIn profile if missing in database
+          // ENRICHMENT FALLBACK: Extract name and company from LinkedIn profile if missing in database
           let enrichedFirstName = prospect.first_name;
           let enrichedLastName = prospect.last_name;
+          let enrichedCompany = prospect.company_name;
+          let enrichedTitle = prospect.title;
+          let needsEnrichment = false;
 
+          // Enrich names if missing
           if (!enrichedFirstName || !enrichedLastName) {
             // Unipile returns first_name and last_name directly - use them!
             enrichedFirstName = enrichedFirstName || profileData.first_name || '';
@@ -429,6 +433,7 @@ export async function POST(req: NextRequest) {
 
             if (enrichedFirstName || enrichedLastName) {
               console.log(`   📝 Enriched name from LinkedIn: ${enrichedFirstName} ${enrichedLastName}`);
+              needsEnrichment = true;
             } else {
               // Fallback: try to build from other fields if direct fields not available
               const displayName = profileData.display_name ||
@@ -441,21 +446,55 @@ export async function POST(req: NextRequest) {
                 enrichedFirstName = enrichedFirstName || nameParts[0] || '';
                 enrichedLastName = enrichedLastName || nameParts.slice(1).join(' ') || '';
                 console.log(`   📝 Enriched name from display_name: ${enrichedFirstName} ${enrichedLastName}`);
+                needsEnrichment = true;
               } else {
                 console.log(`   ⚠️ WARNING: Could not find name in LinkedIn profile, will send with empty name`);
               }
             }
           }
 
+          // Enrich company if missing
+          if (!enrichedCompany) {
+            enrichedCompany = profileData.company_name || profileData.company?.name || '';
+            if (enrichedCompany) {
+              console.log(`   📝 Enriched company from LinkedIn: ${enrichedCompany}`);
+              needsEnrichment = true;
+            }
+          }
+
+          // Enrich title if missing
+          if (!enrichedTitle) {
+            enrichedTitle = profileData.headline || '';
+            if (enrichedTitle) {
+              console.log(`   📝 Enriched title from LinkedIn: ${enrichedTitle}`);
+              needsEnrichment = true;
+            }
+          }
+
+          // Save enriched data to database for future use
+          if (needsEnrichment) {
+            await supabase
+              .from('campaign_prospects')
+              .update({
+                first_name: enrichedFirstName,
+                last_name: enrichedLastName,
+                company_name: enrichedCompany || 'Unknown Company',
+                title: enrichedTitle,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', prospect.id);
+            console.log(`   💾 Saved enriched data to database`);
+          }
+
           // STEP 2: Send invitation using provider_id
-          // Re-personalize message with enriched names
+          // Re-personalize message with enriched data
           let finalPersonalizedMsg = (connectionMsg || alternativeMsg || '')
             .replace(/\{first_name\}/gi, enrichedFirstName || '')
             .replace(/\{last_name\}/gi, enrichedLastName || '')
-            .replace(/\{company\}/gi, prospect.company_name || '')
-            .replace(/\{company_name\}/gi, prospect.company_name || '')
+            .replace(/\{company\}/gi, enrichedCompany || '')
+            .replace(/\{company_name\}/gi, enrichedCompany || '')
             .replace(/\{industry\}/gi, prospect.industry || '')
-            .replace(/\{title\}/gi, prospect.job_title || prospect.title || '');
+            .replace(/\{title\}/gi, enrichedTitle || '');
 
           // CRITICAL: LinkedIn has 300 character limit for connection messages
           // Replace multiple newlines with single space for cleaner messages
