@@ -392,6 +392,7 @@ export async function POST(req: NextRequest) {
     const n8nPayload = {
       workspace_id: campaign.workspace_id,
       campaign_id: campaignId,
+      campaign_name: campaign.name, // For N8N tagging/debugging
       unipile_account_id: selectedAccount.unipile_account_id,
       prospects: n8nProspects,
       messages: n8nMessages,
@@ -423,6 +424,7 @@ export async function POST(req: NextRequest) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${process.env.N8N_API_KEY || ''}`,
             'X-SAM-Campaign-ID': campaignId,
+            'X-SAM-Campaign-Name': campaign.name, // For N8N tagging
             'X-SAM-Workspace-ID': campaign.workspace_id
           },
           body: JSON.stringify(n8nPayload)
