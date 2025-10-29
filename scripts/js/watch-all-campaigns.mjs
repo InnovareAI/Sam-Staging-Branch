@@ -13,32 +13,45 @@ const cronUrl = 'https://app.meet-sam.com/api/cron/process-pending-prospects';
 const cronSecret = process.env.CRON_SECRET;
 
 async function getAllPendingCount() {
-  const { data: campaigns } = await supabase
-    .from('campaigns')
-    .select('id, name, status, workspaces(name)')
-    .in('status', ['active', 'scheduled']);
+  // Use same query as cron endpoint - single JOIN query instead of loop
+  const { data: pendingProspects, error } = await supabase
+    .from('campaign_prospects')
+    .select(`
+      id,
+      campaign_id,
+      campaigns (
+        id,
+        name,
+        status,
+        workspace_id,
+        workspaces(name)
+      )
+    `)
+    .in('status', ['pending', 'approved', 'ready_to_message'])
+    .not('linkedin_url', 'is', null)
+    .in('campaigns.status', ['active', 'scheduled']);
 
-  const pending = [];
-
-  for (const campaign of campaigns || []) {
-    const { count } = await supabase
-      .from('campaign_prospects')
-      .select('*', { count: 'exact', head: true })
-      .eq('campaign_id', campaign.id)
-      .in('status', ['pending', 'approved', 'ready_to_message'])
-      .not('linkedin_url', 'is', null);
-
-    if (count > 0) {
-      pending.push({
-        campaign_id: campaign.id,
-        campaign_name: campaign.name,
-        workspace: campaign.workspaces.name,
-        count
-      });
-    }
+  if (error) {
+    console.error('❌ Error querying prospects:', error.message);
+    return [];
   }
 
-  return pending;
+  // Group by campaign
+  const byCampaign = {};
+  (pendingProspects || []).forEach(p => {
+    const campaignId = p.campaign_id;
+    if (!byCampaign[campaignId]) {
+      byCampaign[campaignId] = {
+        campaign_id: campaignId,
+        campaign_name: p.campaigns?.name || 'Unknown',
+        workspace: p.campaigns?.workspaces?.name || 'Unknown',
+        count: 0
+      };
+    }
+    byCampaign[campaignId].count++;
+  });
+
+  return Object.values(byCampaign);
 }
 
 async function triggerCron() {
