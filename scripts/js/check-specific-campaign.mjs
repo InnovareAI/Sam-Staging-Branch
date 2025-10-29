@@ -7,49 +7,63 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// 3cubed campaign ID
-const campaignId = '51803ded-bbc9-4564-aefb-c6d11d69f17c';
-
-console.log('🔍 Checking 3cubed campaign...\n');
+console.log('🔍 CHECKING CAMPAIGN "20251029-IAI-test 7"\n');
 
 const { data: campaign } = await supabase
   .from('campaigns')
-  .select('name, status, workspace_id')
-  .eq('id', campaignId)
+  .select('*')
+  .ilike('name', '%test 7%')
+  .order('created_at', { ascending: false })
+  .limit(1)
   .single();
 
-console.log(`Campaign: ${campaign?.name || 'Not found'}`);
-console.log(`Status: ${campaign?.status}\n`);
+if (!campaign) {
+  console.log('❌ Campaign not found');
+  process.exit(0);
+}
+
+console.log(`📋 Campaign: ${campaign.name}`);
+console.log(`   ID: ${campaign.id}`);
+console.log(`   Status: ${campaign.status}\n`);
 
 const { data: prospects } = await supabase
   .from('campaign_prospects')
-  .select('id, status, first_name, last_name, linkedin_url')
-  .eq('campaign_id', campaignId);
+  .select('*')
+  .eq('campaign_id', campaign.id);
 
-console.log(`📊 Total prospects: ${prospects?.length || 0}\n`);
+console.log(`📊 Prospects: ${prospects?.length || 0}\n`);
+
+prospects?.forEach((p, i) => {
+  console.log(`${i + 1}. ${p.first_name} ${p.last_name}`);
+  console.log(`   ID: ${p.id}`);
+  console.log(`   Status: ${p.status}`);
+  console.log(`   LinkedIn URL: ${p.linkedin_url || 'MISSING'}`);
+  console.log(`   Added by Unipile: ${p.added_by_unipile_account || 'NULL'}\n`);
+});
+
+const { data: linkedInAccount } = await supabase
+  .from('workspace_accounts')
+  .select('*')
+  .eq('workspace_id', campaign.workspace_id)
+  .eq('user_id', campaign.created_by)
+  .eq('account_type', 'linkedin')
+  .eq('connection_status', 'connected')
+  .single();
+
+console.log(`🔗 Your LinkedIn Account:`);
+console.log(`   Unipile ID: ${linkedInAccount?.unipile_account_id}\n`);
 
 if (prospects && prospects.length > 0) {
-  const statusCounts = prospects.reduce((acc, p) => {
-    acc[p.status] = (acc[p.status] || 0) + 1;
-    return acc;
-  }, {});
+  console.log('✅ Execution Check:');
+  prospects.forEach(p => {
+    const hasLinkedIn = !!(p.linkedin_url || p.linkedin_user_id);
+    const isYours = p.added_by_unipile_account === linkedInAccount.unipile_account_id || p.added_by_unipile_account === null;
+    const statusOk = ['pending', 'approved', 'ready_to_message'].includes(p.status);
 
-  console.log('Status breakdown:');
-  Object.entries(statusCounts).forEach(([status, count]) => {
-    console.log(`  ${status}: ${count}`);
+    console.log(`\n${p.first_name} ${p.last_name}:`);
+    console.log(`   Has LinkedIn: ${hasLinkedIn ? '✅' : '❌'}`);
+    console.log(`   Owned by you: ${isYours ? '✅' : '❌'}`);
+    console.log(`   Status OK: ${statusOk ? '✅' : '❌'}`);
+    console.log(`   CAN EXECUTE: ${hasLinkedIn && isYours && statusOk ? '✅ YES' : '❌ NO'}`);
   });
-
-  const readyToMessage = prospects.filter(p =>
-    ['pending', 'approved', 'ready_to_message'].includes(p.status) &&
-    p.linkedin_url
-  );
-
-  console.log(`\n✅ Ready to message: ${readyToMessage.length}`);
-  
-  if (readyToMessage.length > 0) {
-    console.log('\nWill be messaged automatically by cron (every 2 minutes)');
-  } else {
-    console.log('\n⚠️ No prospects ready to message');
-    console.log('   Add prospects to this campaign to start messaging');
-  }
 }
