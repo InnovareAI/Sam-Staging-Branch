@@ -1593,16 +1593,45 @@ Would you like me to adjust these or create more variations?`
       const campaignData = await campaignResponse.json();
       const campaign = campaignData.campaign; // Extract nested campaign object
 
-      // Step 2: Upload prospects with LinkedIn ID resolution
-      // Priority: initialProspects (from Data Approval) > csvData (upload) > selectedProspects
-      let prospects;
-      if (initialProspects && initialProspects.length > 0) {
-        prospects = initialProspects.map(prospect => ({
-          // Handle both workspace_prospects schema and other schemas
-          first_name: prospect.first_name || (prospect.name ? prospect.name.split(' ')[0] : ''),
-          last_name: prospect.last_name || (prospect.name ? prospect.name.split(' ').slice(1).join(' ') : ''),
-          name: prospect.name || `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
-          email: prospect.email || prospect.email_address || prospect.contact?.email,
+      // Step 2: Add prospects to campaign
+      // CRITICAL FIX: Use different API for approved prospects vs raw uploads
+      if (initialProspects && initialProspects.length > 0 && initialProspects[0].id) {
+        // Prospects from Data Approval - use add-approved-prospects API
+        console.log('✅ Adding approved prospects via /api/campaigns/add-approved-prospects');
+
+        const addProspectsResponse = await fetch('/api/campaigns/add-approved-prospects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            campaign_id: campaign.id,
+            workspace_id: workspaceId,
+            prospect_ids: initialProspects.map(p => p.id)  // Use IDs from prospect_approval_data
+          })
+        });
+
+        if (!addProspectsResponse.ok) {
+          const errorData = await addProspectsResponse.json();
+          throw new Error(errorData.error || 'Failed to add approved prospects to campaign');
+        }
+
+        const addResult = await addProspectsResponse.json();
+        console.log(`✅ Added ${addResult.count || 0} approved prospects to campaign`);
+
+        // Success message for approved prospects
+        toastSuccess(`✅ Campaign "${name}" created!\n\n📊 ${addResult.count || 0} approved prospects added\n🎯 Campaign ready for execution`);
+
+      } else {
+        // Raw prospect data (CSV/manual upload) - use upload-prospects API
+        console.log('📤 Uploading raw prospects via /api/campaigns/upload-prospects');
+
+        let prospects;
+        if (initialProspects && initialProspects.length > 0) {
+          prospects = initialProspects.map(prospect => ({
+            // Handle both workspace_prospects schema and other schemas
+            first_name: prospect.first_name || (prospect.name ? prospect.name.split(' ')[0] : ''),
+            last_name: prospect.last_name || (prospect.name ? prospect.name.split(' ').slice(1).join(' ') : ''),
+            name: prospect.name || `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
+            email: prospect.email || prospect.email_address || prospect.contact?.email,
           company: prospect.company?.name || prospect.company_name || prospect.company || '',
           title: prospect.title || prospect.job_title,
           linkedin_url: prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url,
@@ -1703,6 +1732,7 @@ Would you like me to adjust these or create more variations?`
       } else {
         toastError(`✅ Campaign "${name}" created!\n\n📊 Upload Results:\n• ${csvData.length} prospects uploaded\n• LinkedIn ID discovery needed for messaging\n• Run connection campaign first to capture IDs`);
       }
+      } // Close else block for raw prospect upload
 
       // Reset form and refresh campaign list
       setCurrentStep(1);
