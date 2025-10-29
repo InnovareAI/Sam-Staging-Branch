@@ -5675,7 +5675,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                               let executeEndpoint = '/api/campaigns/linkedin/execute-direct'; // Default for messenger
 
                               if (selectedCampaign.campaign_type === 'connector') {
-                                executeEndpoint = '/api/campaigns/linkedin/execute-via-n8n';
+                                executeEndpoint = '/api/campaigns/linkedin/execute-live'; // Use execute-live for LinkedIn connection requests
                               } else if (selectedCampaign.campaign_type === 'email') {
                                 executeEndpoint = '/api/campaigns/email/execute';
                               }
