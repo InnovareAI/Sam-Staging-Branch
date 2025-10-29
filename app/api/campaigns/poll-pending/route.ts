@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
           .from('workspace_accounts')
           .select('unipile_account_id')
           .eq('workspace_id', campaign.workspace_id)
-          .eq('provider', 'linkedin')
+          .eq('account_type', 'linkedin')
           .eq('is_active', true)
           .single();
 
