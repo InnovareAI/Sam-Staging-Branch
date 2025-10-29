@@ -260,12 +260,20 @@ export async function POST(req: NextRequest) {
     }
 
     // CRITICAL TOS COMPLIANCE: Filter prospects by ownership
-    // Users can ONLY message prospects they personally added
+    // Users can ONLY message prospects they personally added OR prospects in their own campaigns
     const executableProspects = campaignProspects?.filter(cp => {
       const hasLinkedIn = cp.linkedin_url || cp.linkedin_user_id;
-      const isOwnedByUser = cp.added_by === selectedAccount.user_id;
 
-      if (hasLinkedIn && !isOwnedByUser) {
+      // Allow if:
+      // 1. Prospect explicitly owned by user (added_by = user_id)
+      // 2. Prospect has no owner BUT campaign created by user (their search/campaign)
+      const isOwnedByUser = cp.added_by === selectedAccount.user_id ||
+                             (cp.added_by === null && campaign.created_by === selectedAccount.user_id);
+
+      // ONLY block if prospect is explicitly owned by ANOTHER user
+      const isOwnedByOther = cp.added_by !== null && cp.added_by !== selectedAccount.user_id;
+
+      if (hasLinkedIn && isOwnedByOther) {
         console.warn(`⚠️ TOS VIOLATION PREVENTED: Prospect ${cp.first_name} ${cp.last_name} owned by ${cp.added_by}, cannot message from ${selectedAccount.user_id}'s account`);
       }
 
