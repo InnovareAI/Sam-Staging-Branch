@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase-server';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
 /**
  * N8N Polling Endpoint - Returns pending prospects that need CRs sent
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = createClient();
+    const supabase = await createSupabaseRouteClient();
 
     // Get pending prospects (limit to 10 per poll to avoid overwhelming)
     const { data: prospects, error } = await supabase
