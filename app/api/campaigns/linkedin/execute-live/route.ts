@@ -375,6 +375,8 @@ export async function POST(req: NextRequest) {
             .replace(/\{first_name\}/gi, prospect.first_name || '')
             .replace(/\{last_name\}/gi, prospect.last_name || '')
             .replace(/\{company\}/gi, prospect.company_name || '')
+            .replace(/\{company_name\}/gi, prospect.company_name || '')
+            .replace(/\{industry\}/gi, prospect.industry || '')
             .replace(/\{title\}/gi, prospect.title || prospect.job_title || '');
 
           // STEP 1: Get LinkedIn profile to retrieve provider_id
