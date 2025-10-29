@@ -370,53 +370,61 @@ export async function POST(req: NextRequest) {
           console.log(`\n📤 Sending CR to: ${prospectName}`);
           console.log(`   LinkedIn: ${prospect.linkedin_url}`);
 
-          // STEP 1: Get LinkedIn profile to retrieve provider_id
-          const linkedinUsername = prospect.linkedin_url.split('/in/')[1]?.split('?')[0]?.replace('/', '');
-          if (!linkedinUsername) {
-            console.error(`❌ Invalid LinkedIn URL: ${prospect.linkedin_url}`);
-            failedResults.push({
-              prospect: prospectName,
-              error: 'Invalid LinkedIn URL format'
-            });
-            continue;
-          }
+          // Check for cached provider_id first (saves Sales Nav quota)
+          let providerId = prospect.personalization_data?.provider_id;
+          let profileData = null;
 
-          const profileUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/${linkedinUsername}?account_id=${selectedAccount.unipile_account_id}`;
-          console.log(`   🔍 Fetching profile: ${linkedinUsername}`);
-
-          const profileResponse = await fetch(profileUrl, {
-            method: 'GET',
-            headers: {
-              'X-API-KEY': process.env.UNIPILE_API_KEY || '',
-              'Accept': 'application/json'
+          if (providerId) {
+            console.log(`   ✅ Using cached provider_id: ${providerId}`);
+          } else {
+            // STEP 1: Get LinkedIn profile to retrieve provider_id
+            const linkedinUsername = prospect.linkedin_url.split('/in/')[1]?.split('?')[0]?.replace('/', '');
+            if (!linkedinUsername) {
+              console.error(`❌ Invalid LinkedIn URL: ${prospect.linkedin_url}`);
+              failedResults.push({
+                prospect: prospectName,
+                error: 'Invalid LinkedIn URL format'
+              });
+              continue;
             }
-          });
 
-          if (!profileResponse.ok) {
-            const errorText = await profileResponse.text();
-            console.error(`❌ Profile fetch error (${profileResponse.status}): ${errorText}`);
-            failedResults.push({
-              prospect: prospectName,
-              error: `Profile fetch ${profileResponse.status}: ${errorText}`
+            const profileUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/${linkedinUsername}?account_id=${selectedAccount.unipile_account_id}`;
+            console.log(`   🔍 Fetching profile: ${linkedinUsername}`);
+
+            const profileResponse = await fetch(profileUrl, {
+              method: 'GET',
+              headers: {
+                'X-API-KEY': process.env.UNIPILE_API_KEY || '',
+                'Accept': 'application/json'
+              }
             });
-            continue;
+
+            if (!profileResponse.ok) {
+              const errorText = await profileResponse.text();
+              console.error(`❌ Profile fetch error (${profileResponse.status}): ${errorText}`);
+              failedResults.push({
+                prospect: prospectName,
+                error: `Profile fetch ${profileResponse.status}: ${errorText}`
+              });
+              continue;
+            }
+
+            profileData = await profileResponse.json();
+            console.log(`   🔍 LinkedIn profile response:`, JSON.stringify(profileData, null, 2));
+
+            providerId = profileData.provider_id;
+
+            if (!providerId) {
+              console.error(`❌ No provider_id in profile response`);
+              failedResults.push({
+                prospect: prospectName,
+                error: 'No provider_id in profile'
+              });
+              continue;
+            }
+
+            console.log(`   ✅ Got provider_id: ${providerId}`);
           }
-
-          const profileData = await profileResponse.json();
-          console.log(`   🔍 LinkedIn profile response:`, JSON.stringify(profileData, null, 2));
-
-          const providerId = profileData.provider_id;
-
-          if (!providerId) {
-            console.error(`❌ No provider_id in profile response`);
-            failedResults.push({
-              prospect: prospectName,
-              error: 'No provider_id in profile'
-            });
-            continue;
-          }
-
-          console.log(`   ✅ Got provider_id: ${providerId}`);
 
           // ENRICHMENT FALLBACK: Extract name and company from LinkedIn profile if missing in database
           let enrichedFirstName = prospect.first_name;
@@ -425,65 +433,68 @@ export async function POST(req: NextRequest) {
           let enrichedTitle = prospect.title;
           let needsEnrichment = false;
 
-          // Enrich names if missing
-          if (!enrichedFirstName || !enrichedLastName) {
-            // Unipile returns first_name and last_name directly - use them!
-            enrichedFirstName = enrichedFirstName || profileData.first_name || '';
-            enrichedLastName = enrichedLastName || profileData.last_name || '';
+          // Only enrich if we have profileData (skipped when using cached provider_id)
+          if (profileData) {
+            // Enrich names if missing
+            if (!enrichedFirstName || !enrichedLastName) {
+              // Unipile returns first_name and last_name directly - use them!
+              enrichedFirstName = enrichedFirstName || profileData.first_name || '';
+              enrichedLastName = enrichedLastName || profileData.last_name || '';
 
-            if (enrichedFirstName || enrichedLastName) {
-              console.log(`   📝 Enriched name from LinkedIn: ${enrichedFirstName} ${enrichedLastName}`);
-              needsEnrichment = true;
-            } else {
-              // Fallback: try to build from other fields if direct fields not available
-              const displayName = profileData.display_name ||
-                                 profileData.name ||
-                                 profileData.full_name ||
-                                 '';
-
-              if (displayName) {
-                const nameParts = displayName.trim().split(' ');
-                enrichedFirstName = enrichedFirstName || nameParts[0] || '';
-                enrichedLastName = enrichedLastName || nameParts.slice(1).join(' ') || '';
-                console.log(`   📝 Enriched name from display_name: ${enrichedFirstName} ${enrichedLastName}`);
+              if (enrichedFirstName || enrichedLastName) {
+                console.log(`   📝 Enriched name from LinkedIn: ${enrichedFirstName} ${enrichedLastName}`);
                 needsEnrichment = true;
               } else {
-                console.log(`   ⚠️ WARNING: Could not find name in LinkedIn profile, will send with empty name`);
+                // Fallback: try to build from other fields if direct fields not available
+                const displayName = profileData.display_name ||
+                                   profileData.name ||
+                                   profileData.full_name ||
+                                   '';
+
+                if (displayName) {
+                  const nameParts = displayName.trim().split(' ');
+                  enrichedFirstName = enrichedFirstName || nameParts[0] || '';
+                  enrichedLastName = enrichedLastName || nameParts.slice(1).join(' ') || '';
+                  console.log(`   📝 Enriched name from display_name: ${enrichedFirstName} ${enrichedLastName}`);
+                  needsEnrichment = true;
+                } else {
+                  console.log(`   ⚠️ WARNING: Could not find name in LinkedIn profile, will send with empty name`);
+                }
               }
             }
-          }
 
-          // Enrich company if missing
-          if (!enrichedCompany) {
-            enrichedCompany = profileData.company_name || profileData.company?.name || '';
-            if (enrichedCompany) {
-              console.log(`   📝 Enriched company from LinkedIn: ${enrichedCompany}`);
-              needsEnrichment = true;
+            // Enrich company if missing
+            if (!enrichedCompany) {
+              enrichedCompany = profileData.company_name || profileData.company?.name || '';
+              if (enrichedCompany) {
+                console.log(`   📝 Enriched company from LinkedIn: ${enrichedCompany}`);
+                needsEnrichment = true;
+              }
             }
-          }
 
-          // Enrich title if missing
-          if (!enrichedTitle) {
-            enrichedTitle = profileData.headline || '';
-            if (enrichedTitle) {
-              console.log(`   📝 Enriched title from LinkedIn: ${enrichedTitle}`);
-              needsEnrichment = true;
+            // Enrich title if missing
+            if (!enrichedTitle) {
+              enrichedTitle = profileData.headline || '';
+              if (enrichedTitle) {
+                console.log(`   📝 Enriched title from LinkedIn: ${enrichedTitle}`);
+                needsEnrichment = true;
+              }
             }
-          }
 
-          // Save enriched data to database for future use
-          if (needsEnrichment) {
-            await supabase
-              .from('campaign_prospects')
-              .update({
-                first_name: enrichedFirstName,
-                last_name: enrichedLastName,
-                company_name: enrichedCompany || 'Unknown Company',
-                title: enrichedTitle,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', prospect.id);
-            console.log(`   💾 Saved enriched data to database`);
+            // Save enriched data to database for future use
+            if (needsEnrichment) {
+              await supabase
+                .from('campaign_prospects')
+                .update({
+                  first_name: enrichedFirstName,
+                  last_name: enrichedLastName,
+                  company_name: enrichedCompany || 'Unknown Company',
+                  title: enrichedTitle,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', prospect.id);
+              console.log(`   💾 Saved enriched data to database`);
+            }
           }
 
           // STEP 2: Send invitation using provider_id
