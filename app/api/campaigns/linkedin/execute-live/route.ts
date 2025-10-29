@@ -259,25 +259,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to load prospects' }, { status: 500 });
     }
 
-    // CRITICAL TOS COMPLIANCE: Filter prospects by ownership
-    // Users can ONLY message prospects they personally added OR prospects in their own campaigns
+    // CRITICAL TOS COMPLIANCE: Filter prospects by Unipile account ownership
+    // LinkedIn TOS: prospects can ONLY be messaged by the Unipile account that found them
     const executableProspects = campaignProspects?.filter(cp => {
       const hasLinkedIn = cp.linkedin_url || cp.linkedin_user_id;
 
+      // Check Unipile account ownership
       // Allow if:
-      // 1. Prospect explicitly owned by user (added_by = user_id)
-      // 2. Prospect has no owner BUT campaign created by user (their search/campaign)
-      const isOwnedByUser = cp.added_by === selectedAccount.user_id ||
-                             (cp.added_by === null && campaign.created_by === selectedAccount.user_id);
+      // 1. Prospect found by THIS Unipile account
+      // 2. Prospect has no Unipile owner (legacy) AND campaign created by current user
+      const ownedByThisUnipileAccount = cp.added_by_unipile_account === selectedAccount.unipile_account_id;
+      const isLegacyProspect = cp.added_by_unipile_account === null && campaign.created_by === selectedAccount.user_id;
 
-      // ONLY block if prospect is explicitly owned by ANOTHER user
-      const isOwnedByOther = cp.added_by !== null && cp.added_by !== selectedAccount.user_id;
+      const canMessage = ownedByThisUnipileAccount || isLegacyProspect;
 
-      if (hasLinkedIn && isOwnedByOther) {
-        console.warn(`⚠️ TOS VIOLATION PREVENTED: Prospect ${cp.first_name} ${cp.last_name} owned by ${cp.added_by}, cannot message from ${selectedAccount.user_id}'s account`);
+      // ONLY block if prospect is explicitly owned by ANOTHER Unipile account
+      const ownedByOtherUnipileAccount =
+        cp.added_by_unipile_account !== null &&
+        cp.added_by_unipile_account !== selectedAccount.unipile_account_id;
+
+      if (hasLinkedIn && ownedByOtherUnipileAccount) {
+        console.warn(`⚠️ TOS VIOLATION PREVENTED: Prospect ${cp.first_name} ${cp.last_name} found by Unipile account ${cp.added_by_unipile_account}, cannot message from ${selectedAccount.unipile_account_id}`);
       }
 
-      return hasLinkedIn && isOwnedByUser;
+      return hasLinkedIn && canMessage;
     }) || [];
 
     const totalWithLinkedIn = campaignProspects?.filter(cp => cp.linkedin_url || cp.linkedin_user_id).length || 0;

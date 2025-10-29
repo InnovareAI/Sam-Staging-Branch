@@ -22,4 +22,5 @@ SELECT * FROM workspace_tiers LIMIT 3;
 
 -- 4. Try adding column manually to see error message
 ALTER TABLE workspace_tiers
-ADD COLUMN IF NOT EXISTS lead_search_tier TEXT DEFAULT 'external';
+ADD COLUMN IF NOT EXISTS lead_search_tier TEXT DEFAULT 'external
+continue

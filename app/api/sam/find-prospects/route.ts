@@ -82,7 +82,12 @@ export async function POST(request: NextRequest) {
         // CRITICAL: Use /simple endpoint which saves to approval tables
         const linkedinSearchResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/linkedin/search/simple`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Internal-Auth': 'true',
+            'X-User-Id': user.id,
+            'X-Workspace-Id': workspaceId
+          },
           body: JSON.stringify({
             search_criteria: {
               keywords: search_criteria.keywords,

@@ -77,6 +77,25 @@ export async function POST(request: NextRequest) {
       }, { status: 404 })
     }
 
+    // Get campaign and its LinkedIn account to set prospect ownership
+    const { data: campaign } = await supabase
+      .from('campaigns')
+      .select('id, created_by, workspace_id')
+      .eq('id', campaign_id)
+      .single()
+
+    // Get the campaign creator's LinkedIn account (Unipile)
+    const { data: linkedInAccount } = await supabase
+      .from('workspace_accounts')
+      .select('unipile_account_id')
+      .eq('workspace_id', workspace_id)
+      .eq('user_id', campaign?.created_by)
+      .eq('account_type', 'linkedin')
+      .eq('connection_status', 'connected')
+      .single()
+
+    const unipileAccountId = linkedInAccount?.unipile_account_id || null
+
     // Transform prospects to campaign_prospects format
     const campaignProspects = validProspects.map(prospect => {
       // Extract name parts
@@ -97,6 +116,7 @@ export async function POST(request: NextRequest) {
         industry: prospect.company?.industry?.[0] || 'Not specified',
         status: 'approved',
         notes: null,
+        added_by_unipile_account: unipileAccountId, // LinkedIn TOS: track which account found this prospect
         personalization_data: {
           source: 'approved_prospects',
           campaign_name: prospect.prospect_approval_sessions?.campaign_name,

@@ -3,7 +3,7 @@ import { createClient } from '@/app/lib/supabase/server';
 
 // N8N Workflow configuration - Master Funnel URL
 const N8N_BASE_URL = process.env.N8N_BASE_URL || 'https://workflows.innovareai.com';
-const N8N_MASTER_FUNNEL_WEBHOOK = `${N8N_BASE_URL}/webhook/sam-master-funnel`;
+const N8N_MASTER_FUNNEL_WEBHOOK = `${N8N_BASE_URL}/webhook/campaign-execute`;
 
 // HITL Email configuration for approval system
 const HITL_EMAIL_CONFIG = {
