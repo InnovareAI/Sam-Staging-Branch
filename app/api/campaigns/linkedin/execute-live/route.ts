@@ -423,25 +423,27 @@ export async function POST(req: NextRequest) {
           let enrichedLastName = prospect.last_name;
 
           if (!enrichedFirstName || !enrichedLastName) {
-            // Try multiple possible fields where name might be stored
-            const displayName = profileData.display_name ||
-                               profileData.name ||
-                               profileData.full_name ||
-                               profileData.displayName ||
-                               profileData.fullName ||
-                               (profileData.first_name && profileData.last_name ?
-                                 `${profileData.first_name} ${profileData.last_name}` : '') ||
-                               '';
+            // Unipile returns first_name and last_name directly - use them!
+            enrichedFirstName = enrichedFirstName || profileData.first_name || '';
+            enrichedLastName = enrichedLastName || profileData.last_name || '';
 
-            console.log(`   🔍 Found name in profile: "${displayName}"`);
-
-            if (displayName) {
-              const nameParts = displayName.trim().split(' ');
-              enrichedFirstName = enrichedFirstName || nameParts[0] || '';
-              enrichedLastName = enrichedLastName || nameParts.slice(1).join(' ') || '';
+            if (enrichedFirstName || enrichedLastName) {
               console.log(`   📝 Enriched name from LinkedIn: ${enrichedFirstName} ${enrichedLastName}`);
             } else {
-              console.log(`   ⚠️ WARNING: Could not find name in LinkedIn profile, will send with empty name`);
+              // Fallback: try to build from other fields if direct fields not available
+              const displayName = profileData.display_name ||
+                                 profileData.name ||
+                                 profileData.full_name ||
+                                 '';
+
+              if (displayName) {
+                const nameParts = displayName.trim().split(' ');
+                enrichedFirstName = enrichedFirstName || nameParts[0] || '';
+                enrichedLastName = enrichedLastName || nameParts.slice(1).join(' ') || '';
+                console.log(`   📝 Enriched name from display_name: ${enrichedFirstName} ${enrichedLastName}`);
+              } else {
+                console.log(`   ⚠️ WARNING: Could not find name in LinkedIn profile, will send with empty name`);
+              }
             }
           }
 
