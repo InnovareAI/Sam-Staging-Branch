@@ -449,13 +449,26 @@ export async function POST(req: NextRequest) {
 
           // STEP 2: Send invitation using provider_id
           // Re-personalize message with enriched names
-          const finalPersonalizedMsg = (connectionMsg || alternativeMsg || '')
+          let finalPersonalizedMsg = (connectionMsg || alternativeMsg || '')
             .replace(/\{first_name\}/gi, enrichedFirstName || '')
             .replace(/\{last_name\}/gi, enrichedLastName || '')
             .replace(/\{company\}/gi, prospect.company_name || '')
             .replace(/\{company_name\}/gi, prospect.company_name || '')
             .replace(/\{industry\}/gi, prospect.industry || '')
             .replace(/\{title\}/gi, prospect.title || prospect.job_title || '');
+
+          // CRITICAL: LinkedIn has 300 character limit for connection messages
+          if (finalPersonalizedMsg.length > 300) {
+            console.log(`   ⚠️ Message too long (${finalPersonalizedMsg.length} chars), truncating to 300...`);
+            // Truncate at word boundary for cleaner messages
+            finalPersonalizedMsg = finalPersonalizedMsg.substring(0, 297).trim();
+            const lastSpace = finalPersonalizedMsg.lastIndexOf(' ');
+            if (lastSpace > 250) {
+              finalPersonalizedMsg = finalPersonalizedMsg.substring(0, lastSpace) + '...';
+            } else {
+              finalPersonalizedMsg = finalPersonalizedMsg + '...';
+            }
+          }
 
           const inviteUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/invite`;
           const requestBody: any = {
