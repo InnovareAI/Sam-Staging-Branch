@@ -1181,6 +1181,61 @@ export default function DataCollectionHub({
       }
     }
 
+    // CRITICAL FIX: Save approved prospects to database FIRST to get prospect_ids
+    setLoading(true)
+    setLoadingMessage(`Saving ${approvedProspects.length} approved prospects...`)
+
+    let savedProspects = approvedProspects;
+
+    try {
+      // Check if prospects need to be saved to database (don't have prospect_id yet)
+      const needsSaving = approvedProspects.some(p => !p.prospect_id || p.prospect_id.startsWith('temp_'));
+
+      if (needsSaving && workspaceId) {
+        // Save to prospect_approval_data via upload-prospects API
+        const response = await fetch('/api/prospect-approval/upload-prospects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            campaign_name: approvedProspects[0]?.campaignName || 'Approved Prospects',
+            campaign_tag: approvedProspects[0]?.campaignTag || 'approved',
+            source: 'data-approval',
+            prospects: approvedProspects.map(p => ({
+              name: p.name,
+              title: p.title || '',
+              company: p.company || { name: '' },
+              location: p.location || '',
+              contact: p.contact || {
+                email: p.email,
+                linkedin_url: p.linkedinUrl || p.linkedin_url
+              },
+              source: 'data-approval',
+              enrichment_score: p.enrichment_score || 70,
+              approval_status: 'approved'
+            }))
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('✅ Prospects saved to database:', result);
+
+          // Fetch the saved prospects to get their database IDs
+          const approvedResponse = await fetch(`/api/prospect-approval/approved?workspace_id=${workspaceId}`);
+          if (approvedResponse.ok) {
+            const approvedData = await approvedResponse.json();
+            savedProspects = approvedData.prospects || approvedProspects;
+            console.log('✅ Fetched saved prospects with IDs:', savedProspects.length);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error saving prospects to database:', error)
+      // Continue anyway - prospects will still be passed to campaign hub
+    }
+
+    setLoading(false)
+
     // Remove approved prospects from view
     // Keep pending AND rejected prospects in the list for future decisions
     // Rejected prospects will auto-expire after 7 days (see PROSPECT_EXPIRATION_DAYS)
@@ -1192,11 +1247,12 @@ export default function DataCollectionHub({
     setDismissedProspectIds(new Set())
 
     // Call the onApprovalComplete callback to navigate to Campaign screen
+    // Use savedProspects (with database IDs) instead of local approvedProspects
     if (onApprovalComplete) {
-      onApprovalComplete(approvedProspects)
+      onApprovalComplete(savedProspects)
     }
 
-    toastSuccess(`✅ Success!\n\n${approvedProspects.length} approved prospects moved to Campaign Creator\n\nℹ️ Rejected prospects kept for 7 days (visible in "Dismissed" filter)`)
+    toastSuccess(`✅ Success!\n\n${approvedProspects.length} approved prospects ready for campaign\n\nNext: Select or create a campaign to add them to`)
   }
 
   // Download only approved prospects
