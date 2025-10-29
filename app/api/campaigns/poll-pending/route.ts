@@ -27,7 +27,6 @@ export async function GET(request: NextRequest) {
         status,
         company_name,
         title,
-        job_title,
         campaigns (
           id,
           name,
@@ -96,7 +95,7 @@ export async function GET(request: NextRequest) {
         .replace(/\{first_name\}/gi, prospect.first_name || '')
         .replace(/\{last_name\}/gi, prospect.last_name || '')
         .replace(/\{company\}/gi, prospect.company_name || '')
-        .replace(/\{title\}/gi, prospect.title || prospect.job_title || '');
+        .replace(/\{title\}/gi, prospect.title || '');
 
       campaignMap.get(campaignId).prospects.push({
         id: prospect.id,
