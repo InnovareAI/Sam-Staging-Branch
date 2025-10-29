@@ -47,9 +47,9 @@ export async function GET(req: NextRequest) {
     if (search) {
       query = query.or(`
         full_name.ilike.%${search}%,
-        email_address.ilike.%${search}%,
+        email.ilike.%${search}%,
         company_name.ilike.%${search}%,
-        job_title.ilike.%${search}%
+        title.ilike.%${search}%
       `);
     }
 
@@ -76,9 +76,9 @@ export async function GET(req: NextRequest) {
     if (search) {
       countQuery = countQuery.or(`
         full_name.ilike.%${search}%,
-        email_address.ilike.%${search}%,
+        email.ilike.%${search}%,
         company_name.ilike.%${search}%,
-        job_title.ilike.%${search}%
+        title.ilike.%${search}%
       `);
     }
 

@@ -9,14 +9,14 @@ import { supabaseAdmin } from '@/app/lib/supabase'
 export interface WorkspaceProspect {
   id: string
   workspace_id: string
-  email_address?: string
-  linkedin_profile_url?: string
+  email?: string
+  linkedin_url?: string
   phone_number?: string
   company_domain?: string
   full_name?: string
   first_name?: string
   last_name?: string
-  job_title?: string
+  title?: string
   company_name?: string
   location?: string
   assigned_to?: string
@@ -67,8 +67,8 @@ export interface ProspectContactAttempt {
 
 export class WorkspaceProspectManager {
   private static readonly DEDUPLICATION_FIELDS = [
-    'email_address',
-    'linkedin_profile_url', 
+    'email',
+    'linkedin_url',
     'phone_number',
     'company_domain'
   ]
@@ -83,16 +83,16 @@ export class WorkspaceProspectManager {
   ): Promise<WorkspaceProspect> {
     const supabase = supabaseAdmin()
 
-    const { data, error } = await supabase.rpc('add_or_get_workspace_prospect', {
+    const { data, error} = await supabase.rpc('add_or_get_workspace_prospect', {
       p_workspace_id: workspace_id,
-      p_email_address: prospectData.email_address || null,
-      p_linkedin_profile_url: prospectData.linkedin_profile_url || null,
+      p_email: prospectData.email || null,
+      p_linkedin_url: prospectData.linkedin_url || null,
       p_phone_number: prospectData.phone_number || null,
       p_company_domain: prospectData.company_domain || null,
       p_full_name: prospectData.full_name || null,
       p_first_name: prospectData.first_name || null,
       p_last_name: prospectData.last_name || null,
-      p_job_title: prospectData.job_title || null,
+      p_title: prospectData.title || null,
       p_company_name: prospectData.company_name || null,
       p_location: prospectData.location || null,
       p_data_source: data_source
@@ -182,11 +182,11 @@ export class WorkspaceProspectManager {
     // Build OR conditions for potential matches
     const orConditions: any[] = []
 
-    if (prospectData.email_address) {
-      orConditions.push({ email_address: prospectData.email_address })
+    if (prospectData.email) {
+      orConditions.push({ email: prospectData.email })
     }
-    if (prospectData.linkedin_profile_url) {
-      orConditions.push({ linkedin_profile_url: prospectData.linkedin_profile_url })
+    if (prospectData.linkedin_url) {
+      orConditions.push({ linkedin_url: prospectData.linkedin_url })
     }
     if (prospectData.phone_number) {
       orConditions.push({ phone_number: prospectData.phone_number })
