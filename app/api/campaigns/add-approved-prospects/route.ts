@@ -130,6 +130,18 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // CRITICAL: Extract LinkedIn URL from multiple possible locations
+      const linkedinUrl = prospect.contact?.linkedin_url || prospect.linkedin_url || null;
+
+      console.log('📊 Prospect data:', {
+        prospect_id: prospect.prospect_id,
+        name: `${firstName} ${lastName}`,
+        linkedin_url: linkedinUrl,
+        has_contact: !!prospect.contact,
+        contact_linkedin: prospect.contact?.linkedin_url,
+        direct_linkedin: prospect.linkedin_url
+      });
+
       return {
         campaign_id,
         workspace_id,
@@ -137,7 +149,7 @@ export async function POST(request: NextRequest) {
         last_name: lastName,
         email: prospect.contact?.email || null,
         company_name: prospect.company?.name || '',
-        linkedin_url: prospect.contact?.linkedin_url || null,
+        linkedin_url: linkedinUrl, // FIXED: Check both locations
         title: prospect.title || '',
         location: prospect.location || null,
         industry: prospect.company?.industry?.[0] || 'Not specified',
@@ -169,10 +181,27 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
+    // Log what was inserted
+    const prospectsWithLinkedIn = insertedProspects.filter(p => p.linkedin_url);
+    const prospectsWithoutLinkedIn = insertedProspects.filter(p => !p.linkedin_url);
+
+    console.log(`✅ Inserted ${insertedProspects.length} prospects to campaign`);
+    console.log(`📊 With LinkedIn URL: ${prospectsWithLinkedIn.length}`);
+    console.log(`⚠️  Without LinkedIn URL: ${prospectsWithoutLinkedIn.length}`);
+
+    if (prospectsWithoutLinkedIn.length > 0) {
+      console.warn('❌ Prospects missing LinkedIn URL:', prospectsWithoutLinkedIn.map(p => ({
+        id: p.id,
+        name: `${p.first_name} ${p.last_name}`
+      })));
+    }
+
     return NextResponse.json({
       success: true,
       message: `Added ${insertedProspects.length} prospects to campaign`,
       added_count: insertedProspects.length,
+      with_linkedin: prospectsWithLinkedIn.length,
+      without_linkedin: prospectsWithoutLinkedIn.length,
       prospects: insertedProspects
     })
 
