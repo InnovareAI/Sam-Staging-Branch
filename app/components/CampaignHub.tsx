@@ -3529,6 +3529,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
         campaignGroups[campaignName].prospects.push({
           id: prospect.prospect_id,
+          prospect_id: prospect.prospect_id, // CRITICAL: Also include as prospect_id for API compatibility
           name: prospect.name,
           first_name: firstName,
           last_name: lastName,
@@ -3536,7 +3537,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           company: prospect.company?.name || '',
           company_name: prospect.company?.name || '',
           email: prospect.contact?.email || '',
-          linkedin_url: prospect.contact?.linkedin_url || '',
+          linkedin_url: prospect.contact?.linkedin_url || prospect.linkedin_url || '', // Check both locations
           phone: prospect.contact?.phone || '',
           industry: prospect.company?.industry?.[0] || '',
           location: prospect.location || '',
