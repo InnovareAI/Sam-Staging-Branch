@@ -556,6 +556,7 @@ export async function POST(req: NextRequest) {
               contacted_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
               personalization_data: {
+                ...(prospect.personalization_data || {}),  // PRESERVE existing data (campaign_name, etc.)
                 unipile_invitation_id: unipileData.invitation_id || unipileData.object?.id || unipileData.id,
                 sent_at: new Date().toISOString(),
                 campaign_id: campaignId,
