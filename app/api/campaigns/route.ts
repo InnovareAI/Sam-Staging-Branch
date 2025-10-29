@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
       target_icp = {},
       ab_test_variant,
       message_templates = {},
-      status = 'inactive' // Default to 'inactive' so approved campaigns show in Inactive tab
+      status = 'draft' // Default to 'draft' - campaigns must be explicitly activated
     } = await req.json();
 
     if (!workspace_id || !name) {

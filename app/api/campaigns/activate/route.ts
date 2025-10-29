@@ -45,11 +45,11 @@ export async function POST(request: NextRequest) {
       throw apiError.notFound('Campaign')
     }
 
-    // Check if campaign is in inactive status
-    if (campaign.status !== 'inactive') {
+    // Check if campaign can be activated (draft or inactive status)
+    if (campaign.status !== 'inactive' && campaign.status !== 'draft') {
       throw apiError.validation(
         `Campaign is already ${campaign.status}`,
-        'Only inactive campaigns can be activated'
+        'Only draft or inactive campaigns can be activated'
       )
     }
 
