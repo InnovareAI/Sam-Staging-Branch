@@ -403,6 +403,8 @@ export async function POST(req: NextRequest) {
           }
 
           const profileData = await profileResponse.json();
+          console.log(`   🔍 LinkedIn profile response:`, JSON.stringify(profileData, null, 2));
+
           const providerId = profileData.provider_id;
 
           if (!providerId) {
@@ -421,13 +423,25 @@ export async function POST(req: NextRequest) {
           let enrichedLastName = prospect.last_name;
 
           if (!enrichedFirstName || !enrichedLastName) {
-            // LinkedIn profile usually contains display_name like "FirstName LastName"
-            const displayName = profileData.display_name || profileData.name || '';
+            // Try multiple possible fields where name might be stored
+            const displayName = profileData.display_name ||
+                               profileData.name ||
+                               profileData.full_name ||
+                               profileData.displayName ||
+                               profileData.fullName ||
+                               (profileData.first_name && profileData.last_name ?
+                                 `${profileData.first_name} ${profileData.last_name}` : '') ||
+                               '';
+
+            console.log(`   🔍 Found name in profile: "${displayName}"`);
+
             if (displayName) {
               const nameParts = displayName.trim().split(' ');
               enrichedFirstName = enrichedFirstName || nameParts[0] || '';
               enrichedLastName = enrichedLastName || nameParts.slice(1).join(' ') || '';
               console.log(`   📝 Enriched name from LinkedIn: ${enrichedFirstName} ${enrichedLastName}`);
+            } else {
+              console.log(`   ⚠️ WARNING: Could not find name in LinkedIn profile, will send with empty name`);
             }
           }
 
