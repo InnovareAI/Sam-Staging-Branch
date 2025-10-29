@@ -96,15 +96,15 @@ export async function POST(req: NextRequest) {
         // CRITICAL: Handle both direct fields and nested JSONB fields (contact, company)
 
         // Extract names from SAM data first
-        let firstName = prospect.first_name || (prospect.name ? prospect.name.split(' ')[0] : '');
-        let lastName = prospect.last_name || (prospect.name ? prospect.name.split(' ').slice(1).join(' ') : '');
+        let firstName = prospect.first_name?.trim() || (prospect.name ? prospect.name.split(' ')[0]?.trim() : '');
+        let lastName = prospect.last_name?.trim() || (prospect.name ? prospect.name.split(' ').slice(1).join(' ')?.trim() : '');
 
-        // AUTOMATIC ENRICHMENT: If names missing, fetch from LinkedIn
-        if (!firstName || !lastName) {
+        // MANDATORY ENRICHMENT: If names missing or empty, fetch from LinkedIn
+        if (!firstName || !lastName || firstName === '' || lastName === '') {
           const linkedinUrl = prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url || null;
 
           if (linkedinUrl && unipileAccountId) {
-            console.log(`⚠️ Missing name for prospect ${i + 1}, attempting enrichment from LinkedIn`);
+            console.log(`⚠️ Missing name for prospect ${i + 1}, ENRICHING from LinkedIn (REQUIRED)`);
 
             const enriched = await enrichProspectName(
               linkedinUrl,
@@ -119,6 +119,17 @@ export async function POST(req: NextRequest) {
             if (enriched.enriched) {
               console.log(`✅ Successfully enriched name: ${firstName} ${lastName}`);
             }
+          }
+
+          // CRITICAL: Reject prospects without names
+          if (!firstName || !lastName || firstName === '' || lastName === '') {
+            console.error(`❌ REJECTING prospect ${i + 1}: Missing name even after enrichment`);
+            failedUploads.push({
+              row: i + 1,
+              error: 'Missing required field: first_name or last_name',
+              data: prospect
+            });
+            continue; // Skip this prospect
           }
         }
 
