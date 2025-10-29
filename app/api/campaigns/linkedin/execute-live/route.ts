@@ -388,7 +388,7 @@ export async function POST(req: NextRequest) {
             continue;
           }
 
-          const profileUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/${linkedinUsername}?account_id=${unipileSourceId}`;
+          const profileUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/${linkedinUsername}?account_id=${selectedAccount.unipile_account_id}`;
           console.log(`   🔍 Fetching profile: ${linkedinUsername}`);
 
           const profileResponse = await fetch(profileUrl, {
@@ -427,7 +427,7 @@ export async function POST(req: NextRequest) {
           const inviteUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/invite`;
           const requestBody: any = {
             provider_id: providerId,
-            account_id: unipileSourceId,
+            account_id: selectedAccount.unipile_account_id,
             message: personalizedMsg
           };
 
