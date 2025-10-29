@@ -1,0 +1,313 @@
+{
+  "name": "SAM Campaign Polling Orchestrator",
+  "nodes": [
+    {
+      "id": "schedule_trigger",
+      "name": "Poll Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "get_pending_prospects",
+      "name": "Get Pending Prospects",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300],
+      "parameters": {
+        "url": "https://app.meet-sam.com/api/campaigns/poll-pending",
+        "method": "GET",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-trigger",
+              "value": "n8n-polling"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "check_has_prospects",
+      "name": "Has Prospects?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [650, 300],
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.prospects?.length || 0 }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "prepare_prospects",
+      "name": "Prepare Prospects",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 200],
+      "parameters": {
+        "functionCode": "const data = $input.item.json;\nreturn data.prospects.map(prospect => ({\n  json: {\n    prospect_id: prospect.id,\n    first_name: prospect.first_name,\n    last_name: prospect.last_name,\n    linkedin_url: prospect.linkedin_url,\n    campaign_id: prospect.campaign_id,\n    campaign_name: data.campaign_name,\n    unipile_dsn: data.unipile_dsn,\n    unipile_api_key: data.unipile_api_key,\n    unipile_account_id: data.unipile_account_id,\n    message: prospect.personalized_message\n  }\n}));"
+      }
+    },
+    {
+      "id": "split_batches",
+      "name": "Process One at a Time",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1050, 200],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "send_cr",
+      "name": "Send CR via Unipile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1250, 200],
+      "parameters": {
+        "url": {
+          "value": "={{ 'https://' + $json.unipile_dsn + '/api/v1/messaging/messages' }}",
+          "expression": true
+        },
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": {
+                "value": "={{ $json.unipile_api_key }}",
+                "expression": true
+              }
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContent": {
+          "value": "{{ JSON.stringify({ account_id: $json.unipile_account_id, attendees: [{ identifier: $json.linkedin_url }], text: $json.message, type: 'LINKEDIN' }) }}",
+          "expression": true
+        },
+        "options": {
+          "bodyContentType": "json"
+        }
+      }
+    },
+    {
+      "id": "update_status",
+      "name": "Update Prospect Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1450, 200],
+      "parameters": {
+        "url": {
+          "value": "={{ 'https://app.meet-sam.com/api/campaigns/update-prospect-status/' + $json.prospect_id }}",
+          "expression": true
+        },
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-trigger",
+              "value": "n8n-polling"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": {
+          "value": "={{ JSON.stringify({ status: 'connection_requested', contacted_at: new Date().toISOString() }) }}",
+          "expression": true
+        }
+      }
+    },
+    {
+      "id": "log_result",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1650, 200],
+      "parameters": {
+        "functionCode": "console.log('✅ Sent CR to:', $json.first_name, $json.last_name);\nreturn $input.all();"
+      }
+    },
+    {
+      "id": "check_loop",
+      "name": "More Prospects?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1850, 200],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $run['Process One at a Time'].hasNext }}",
+              "value2": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "loop_done",
+      "name": "Batch Complete",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2050, 300],
+      "parameters": {}
+    },
+    {
+      "id": "no_prospects",
+      "name": "No Prospects to Process",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [850, 400],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Poll Every 5 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Prospects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Prospects": {
+      "main": [
+        [
+          {
+            "node": "Has Prospects?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Prospects?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Prospects",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Prospects to Process",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Prospects": {
+      "main": [
+        [
+          {
+            "node": "Process One at a Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process One at a Time": {
+      "main": [
+        [
+          {
+            "node": "Send CR via Unipile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send CR via Unipile": {
+      "main": [
+        [
+          {
+            "node": "Update Prospect Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Prospect Status": {
+      "main": [
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Result": {
+      "main": [
+        [
+          {
+            "node": "More Prospects?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "More Prospects?": {
+      "main": [
+        [
+          {
+            "node": "Process One at a Time",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Batch Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/New_York",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all",
+    "executionTimeout": 3600
+  },
+  "active": false
+}
