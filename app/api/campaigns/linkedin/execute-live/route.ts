@@ -101,20 +101,21 @@ export async function POST(req: NextRequest) {
 
     // Step 2: Get LinkedIn account for campaign execution
     // For user-triggered: use authenticated user's account only
-    // For cron-triggered: use any active account in the workspace
+    // For cron-triggered: use campaign creator's account (prevents account misuse)
     let userLinkedInAccount;
     let accountsError;
 
     if (isInternalTrigger) {
-      // Cron trigger: use any active LinkedIn account in workspace
-      console.log(`🔍 Getting any active LinkedIn account in workspace...`);
+      // Cron trigger: use campaign creator's LinkedIn account
+      // CRITICAL: Each campaign must use the LinkedIn account of the person who created it
+      console.log(`🔍 Getting LinkedIn account for campaign creator: ${campaign.created_by}...`);
       const result = await supabase
         .from('workspace_accounts')
         .select('*')
         .eq('workspace_id', campaign.workspace_id)
+        .eq('user_id', campaign.created_by)  // Use campaign creator's account
         .eq('account_type', 'linkedin')
         .eq('connection_status', 'connected')
-        .limit(1)
         .single();
       userLinkedInAccount = result.data;
       accountsError = result.error;
@@ -138,20 +139,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         error: 'No LinkedIn account connected',
         details: isInternalTrigger
-          ? 'No active LinkedIn account found in workspace'
+          ? `Campaign creator (user ${campaign.created_by}) does not have a connected LinkedIn account`
           : `You must connect YOUR OWN LinkedIn account. LinkedIn accounts cannot be shared among team members.`,
         troubleshooting: !isInternalTrigger ? {
           step1: 'Go to Workspace Settings → Integrations',
           step2: 'Click "Connect LinkedIn Account"',
           step3: 'Complete the OAuth flow with YOUR LinkedIn credentials',
           note: 'Each user must use their own LinkedIn account for compliance'
-        } : undefined
+        } : {
+          step1: 'The person who created this campaign must connect their LinkedIn account',
+          step2: 'Go to Workspace Settings → Integrations',
+          step3: 'Connect LinkedIn account via OAuth',
+          campaign_creator: campaign.created_by
+        }
       }, { status: 400 });
     }
 
     // Step 3: Use LinkedIn account
     const selectedAccount = userLinkedInAccount;
-    console.log(`🎯 Using LinkedIn account: ${selectedAccount.account_name || 'LinkedIn Account'} ${isInternalTrigger ? '(workspace account)' : '(your account)'}`);
+    console.log(`🎯 Using LinkedIn account: ${selectedAccount.account_name || 'LinkedIn Account'} ${isInternalTrigger ? '(campaign creator account)' : '(your account)'}`);
     if (user) {
       console.log(`   User: ${user.email}`);
     }
@@ -253,12 +259,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to load prospects' }, { status: 500 });
     }
 
-    const executableProspects = campaignProspects?.filter(cp =>
-      cp.linkedin_url || cp.linkedin_user_id
-    ) || [];
+    // CRITICAL TOS COMPLIANCE: Filter prospects by ownership
+    // Users can ONLY message prospects they personally added
+    const executableProspects = campaignProspects?.filter(cp => {
+      const hasLinkedIn = cp.linkedin_url || cp.linkedin_user_id;
+      const isOwnedByUser = cp.added_by === selectedAccount.user_id;
+
+      if (hasLinkedIn && !isOwnedByUser) {
+        console.warn(`⚠️ TOS VIOLATION PREVENTED: Prospect ${cp.first_name} ${cp.last_name} owned by ${cp.added_by}, cannot message from ${selectedAccount.user_id}'s account`);
+      }
+
+      return hasLinkedIn && isOwnedByUser;
+    }) || [];
+
+    const totalWithLinkedIn = campaignProspects?.filter(cp => cp.linkedin_url || cp.linkedin_user_id).length || 0;
+    const blockedByOwnership = totalWithLinkedIn - executableProspects.length;
 
     console.log(`📋 Total prospects retrieved: ${campaignProspects?.length || 0}`);
-    console.log(`📋 Executable prospects (with LinkedIn URL): ${executableProspects.length}`);
+    console.log(`📋 Prospects with LinkedIn URL: ${totalWithLinkedIn}`);
+    console.log(`🔒 Blocked by ownership rules: ${blockedByOwnership}`);
+    console.log(`✅ Executable prospects (owned by user): ${executableProspects.length}`);
 
     if (campaignProspects && campaignProspects.length > 0 && executableProspects.length === 0) {
       console.log('⚠️ Prospects exist but none have LinkedIn URLs');
@@ -266,17 +286,29 @@ export async function POST(req: NextRequest) {
     }
 
     if (executableProspects.length === 0) {
+      const suggestions = [
+        'Check if prospects have LinkedIn URLs or internal IDs',
+        'Verify prospect approval status',
+        'Review campaign sequence settings'
+      ];
+
+      if (blockedByOwnership > 0) {
+        suggestions.unshift(
+          `🚨 TOS COMPLIANCE: ${blockedByOwnership} prospects cannot be messaged because they were added by other users`,
+          'LinkedIn TOS requires each user to ONLY message prospects they personally added',
+          'Each team member must create their own prospect lists and campaigns'
+        );
+      }
+
       return NextResponse.json({
         success: true,
         message: 'No prospects ready for messaging',
         campaign: campaign.name,
         total_prospects: campaignProspects?.length || 0,
+        prospects_with_linkedin: totalWithLinkedIn,
+        blocked_by_ownership: blockedByOwnership,
         executable_prospects: 0,
-        suggestions: [
-          'Check if prospects have LinkedIn URLs or internal IDs',
-          'Verify prospect approval status',
-          'Review campaign sequence settings'
-        ]
+        suggestions
       });
     }
 
