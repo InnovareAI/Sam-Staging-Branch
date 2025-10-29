@@ -72,6 +72,15 @@
         "AIRTABLE_API_KEY": "${AIRTABLE_API_KEY}"
       },
       "description": "Airtable MCP for database backups and management"
+    },
+    "n8n": {
+      "command": "npx",
+      "args": ["-y", "@n8n/mcp-server-n8n@latest"],
+      "env": {
+        "N8N_API_URL": "${N8N_API_URL}",
+        "N8N_API_KEY": "${N8N_API_KEY}"
+      },
+      "description": "N8N workflow automation MCP"
     }
   }
 }

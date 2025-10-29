@@ -382,10 +382,13 @@ return {
   },
 
   settings: {
+    executionOrder: "v1", // CRITICAL: v1 required for webhook execution
     timezone: "America/New_York",
     saveManualExecutions: true,
     saveExecutionProgress: true,
-    executionTimeout: 2592000 // 30 days
+    saveDataSuccessExecution: "all", // CRITICAL: Save ALL successful executions including webhooks
+    saveDataErrorExecution: "all", // Save all failed executions
+    executionTimeout: 3600 // 1 hour (max allowed)
   }
 };
 
