@@ -133,7 +133,7 @@ const fullWorkflow = {
       parameters: {
         path: "campaign-execute",
         httpMethod: "POST",
-        responseMode: "lastNode",
+        responseMode: "onReceived",
         options: { rawBody: false }
       }
     },
