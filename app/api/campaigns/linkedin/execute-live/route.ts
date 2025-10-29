@@ -351,126 +351,147 @@ export async function POST(req: NextRequest) {
       errors: []
     };
 
-    // Step 6: Trigger N8N workflow for ALL messaging (CR + follow-ups)
-    // N8N handles: sending CR, connection acceptance check, reply detection, follow-ups (FU1-FU4, GB)
-    console.log('🎯 Triggering N8N workflow for all prospects...');
+    // Step 6: Send Connection Requests Directly via Unipile
+    console.log('🚀 Sending connection requests directly via Unipile...');
+    console.log(`   Prospects: ${executableProspects.length}`);
+    console.log(`   Account: ${selectedAccount.account_name} (${unipileSourceId})`);
 
-    // Build N8N payload with all prospects and messages
-    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL || 'https://workflows.innovareai.com';
-    const webhookEndpoint = `${n8nWebhookUrl}/webhook/campaign-execute`;
-
-    // Build messages object for N8N
-    const n8nMessages: any = {
-      cr: connectionMsg || alternativeMsg || ''
-    };
-
-    // Add follow-up messages (FU1-FU4)
-    if (followUpMsgs && followUpMsgs.length > 0) {
-      followUpMsgs.forEach((msg: string, index: number) => {
-        n8nMessages[`fu${index + 1}`] = msg;
-      });
-    }
-
-    // Add goodbye message if available (typically 5th follow-up)
-    if (followUpMsgs && followUpMsgs.length >= 5) {
-      n8nMessages.gb = followUpMsgs[4]; // 5th message is goodbye
-    }
-
-    // Prepare prospects for N8N (with personalization variables)
-    const n8nProspects = executableProspects.map(prospect => ({
-      id: prospect.id,
-      linkedin_url: prospect.linkedin_url,
-      linkedin_user_id: prospect.linkedin_user_id,
-      first_name: prospect.first_name,
-      last_name: prospect.last_name,
-      company_name: prospect.company_name,
-      title: prospect.title || prospect.job_title,
-      industry: prospect.industry,
-      location: prospect.location
-    }));
-
-    const n8nPayload = {
-      workspace_id: campaign.workspace_id,
-      workspace_name: campaign.workspaces?.name || 'Unknown Workspace', // For N8N tagging/debugging
-      campaign_id: campaignId,
-      campaign_name: campaign.name, // For N8N tagging/debugging
-      linkedin_account_name: selectedAccount.name, // For N8N tagging/debugging (multi-user workspaces)
-      unipile_account_id: selectedAccount.unipile_account_id,
-      prospects: n8nProspects,
-      messages: n8nMessages,
-      timing: campaign.timing || {
-        fu1_delay_days: 2,
-        fu2_delay_days: 5,
-        fu3_delay_days: 7,
-        fu4_delay_days: 5,
-        gb_delay_days: 7
-      },
-      template: campaign.template || 'cr_4fu_1gb'
-    };
-
-    console.log(`🚀 Triggering N8N workflow:`);
-    console.log(`   Webhook: ${webhookEndpoint}`);
-    console.log(`   Prospects: ${n8nProspects.length}`);
-    console.log(`   Messages: CR + ${followUpMsgs?.length || 0} follow-ups`);
-    console.log(`   Account: ${selectedAccount.name} (${selectedAccount.unipile_account_id})`);
+    const sentResults = [];
+    const failedResults = [];
 
     if (dryRun) {
-      console.log('🧪 DRY RUN - Would trigger N8N with payload:', JSON.stringify(n8nPayload, null, 2));
+      console.log('🧪 DRY RUN - Would send CRs to:', executableProspects.map(p => `${p.first_name} ${p.last_name}`).join(', '));
       results.n8n_triggered = false;
     } else {
-      // LIVE: Trigger N8N workflow
-      try {
-        const n8nResponse = await fetch(webhookEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.N8N_API_KEY || ''}`,
-            'X-SAM-Campaign-ID': campaignId,
-            'X-SAM-Campaign-Name': campaign.name, // For N8N tagging
-            'X-SAM-Workspace-ID': campaign.workspace_id,
-            'X-SAM-Workspace-Name': campaign.workspaces?.name || 'Unknown', // For N8N tagging
-            'X-SAM-LinkedIn-Account': selectedAccount.name // For N8N tagging (multi-user)
-          },
-          body: JSON.stringify(n8nPayload)
-        });
+      // LIVE: Send connection requests via Unipile
+      for (const prospect of executableProspects) {
+        try {
+          const prospectName = `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim() || 'Unknown';
+          console.log(`\n📤 Sending CR to: ${prospectName}`);
+          console.log(`   LinkedIn: ${prospect.linkedin_url}`);
 
-        if (!n8nResponse.ok) {
-          const errorText = await n8nResponse.text();
-          console.error(`❌ N8N workflow trigger failed (${n8nResponse.status}): ${errorText}`);
-          throw new Error(`N8N workflow failed: ${n8nResponse.status} - ${errorText}`);
-        }
+          // Personalize message
+          const personalizedMsg = (connectionMsg || alternativeMsg || '')
+            .replace(/\{first_name\}/gi, prospect.first_name || '')
+            .replace(/\{last_name\}/gi, prospect.last_name || '')
+            .replace(/\{company\}/gi, prospect.company_name || '')
+            .replace(/\{title\}/gi, prospect.title || prospect.job_title || '');
 
-        const n8nResult = await n8nResponse.json();
-        console.log('✅ N8N workflow triggered successfully:', n8nResult);
-        results.n8n_triggered = true;
+          // STEP 1: Get LinkedIn profile to retrieve provider_id
+          const linkedinUsername = prospect.linkedin_url.split('/in/')[1]?.split('?')[0]?.replace('/', '');
+          if (!linkedinUsername) {
+            console.error(`❌ Invalid LinkedIn URL: ${prospect.linkedin_url}`);
+            failedResults.push({
+              prospect: prospectName,
+              error: 'Invalid LinkedIn URL format'
+            });
+            continue;
+          }
 
-        // Mark all prospects as queued in N8N
-        const prospectIds = executableProspects.map(p => p.id);
-        const { error: updateError } = await supabase
-          .from('campaign_prospects')
-          .update({
-            status: 'queued_in_n8n',
-            updated_at: new Date().toISOString(),
-            personalization_data: {
-              n8n_queued_at: new Date().toISOString(),
-              n8n_workflow_id: 'aVG6LC4ZFRMN7Bw6',
-              campaign_id: campaignId
+          const profileUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/${linkedinUsername}?account_id=${unipileSourceId}`;
+          console.log(`   🔍 Fetching profile: ${linkedinUsername}`);
+
+          const profileResponse = await fetch(profileUrl, {
+            method: 'GET',
+            headers: {
+              'X-API-KEY': process.env.UNIPILE_API_KEY || '',
+              'Accept': 'application/json'
             }
-          })
-          .in('id', prospectIds);
+          });
 
-        if (updateError) {
-          console.error('⚠️  Failed to update prospect statuses:', updateError);
-        } else {
-          console.log(`✅ Marked ${prospectIds.length} prospects as queued in N8N`);
+          if (!profileResponse.ok) {
+            const errorText = await profileResponse.text();
+            console.error(`❌ Profile fetch error (${profileResponse.status}): ${errorText}`);
+            failedResults.push({
+              prospect: prospectName,
+              error: `Profile fetch ${profileResponse.status}: ${errorText}`
+            });
+            continue;
+          }
+
+          const profileData = await profileResponse.json();
+          const providerId = profileData.provider_id;
+
+          if (!providerId) {
+            console.error(`❌ No provider_id in profile response`);
+            failedResults.push({
+              prospect: prospectName,
+              error: 'No provider_id in profile'
+            });
+            continue;
+          }
+
+          console.log(`   ✅ Got provider_id: ${providerId}`);
+
+          // STEP 2: Send invitation using provider_id
+          const inviteUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/invite`;
+          const requestBody: any = {
+            provider_id: providerId,
+            account_id: unipileSourceId,
+            message: personalizedMsg
+          };
+
+          if (prospect.email) {
+            requestBody.user_email = prospect.email;
+          }
+
+          console.log(`   🚀 Sending invitation...`);
+
+          const unipileResponse = await fetch(inviteUrl, {
+            method: 'POST',
+            headers: {
+              'X-API-KEY': process.env.UNIPILE_API_KEY || '',
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+          });
+
+          if (!unipileResponse.ok) {
+            const errorText = await unipileResponse.text();
+            console.error(`❌ Unipile API error (${unipileResponse.status}): ${errorText}`);
+            failedResults.push({
+              prospect: prospectName,
+              error: `Unipile API ${unipileResponse.status}: ${errorText}`
+            });
+            continue;
+          }
+
+          const unipileData = await unipileResponse.json();
+          console.log(`✅ CR sent successfully to ${prospectName}`);
+
+          // Update prospect status
+          await supabase
+            .from('campaign_prospects')
+            .update({
+              status: 'connection_requested',
+              contacted_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              personalization_data: {
+                unipile_invitation_id: unipileData.invitation_id || unipileData.object?.id || unipileData.id,
+                sent_at: new Date().toISOString(),
+                campaign_id: campaignId,
+                provider_id: providerId
+              }
+            })
+            .eq('id', prospect.id);
+
+          sentResults.push({
+            prospect: prospectName,
+            linkedin_url: prospect.linkedin_url
+          });
+
+        } catch (prospectError) {
+          console.error(`❌ Error sending to ${prospect.first_name} ${prospect.last_name}:`, prospectError);
+          failedResults.push({
+            prospect: `${prospect.first_name} ${prospect.last_name}`,
+            error: prospectError instanceof Error ? prospectError.message : 'Unknown error'
+          });
         }
-
-      } catch (n8nError) {
-        console.error('❌ N8N workflow trigger error:', n8nError);
-        results.errors.push({
-          error: n8nError instanceof Error ? n8nError.message : 'N8N trigger failed'
-        });
       }
+
+      results.n8n_triggered = sentResults.length > 0;
+      results.errors = failedResults;
     }
 
     // Step 7: Update campaign status and return results
@@ -484,23 +505,24 @@ export async function POST(req: NextRequest) {
       .eq('id', campaignId);
 
     console.log('\n🎉 Campaign execution completed!');
-    console.log(`📊 Results: ${results.prospects_processed} prospects queued in N8N`);
-    console.log(`🔄 N8N triggered: ${results.n8n_triggered}`);
+    console.log(`📊 Sent: ${sentResults.length}, Failed: ${failedResults.length}`);
 
     // Log errors if any occurred
-    if (results.errors.length > 0) {
+    if (failedResults.length > 0) {
       console.error('\n❌ ERRORS DURING EXECUTION:');
-      results.errors.forEach((err: any, idx: number) => {
-        console.error(`   ${idx + 1}. ${err.prospect || 'N8N'}: ${err.error}`);
+      failedResults.forEach((err: any, idx: number) => {
+        console.error(`   ${idx + 1}. ${err.prospect}: ${err.error}`);
       });
     }
 
     return NextResponse.json({
       success: true,
-      message: `N8N workflow triggered for ${results.prospects_processed} prospects`,
+      messages_sent: sentResults.length,
+      messages_failed: failedResults.length,
+      sent_to: sentResults,
+      failed: failedResults,
+      message: `Sent ${sentResults.length} connection requests, ${failedResults.length} failed`,
       execution_mode: dryRun ? 'dry_run' : 'live',
-      prospects_queued: results.prospects_processed,
-      n8n_triggered: results.n8n_triggered,
       linkedin_account: selectedAccount.name,
       errors: results.errors
     });
