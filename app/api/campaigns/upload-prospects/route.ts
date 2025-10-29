@@ -137,7 +137,12 @@ export async function POST(req: NextRequest) {
           industry: prospect.industry || prospect.company?.industry?.[0] || prospect.company?.industry || null,
           status: 'pending',
           notes: prospect.notes || null,
-          personalization_data: prospect.personalization_data || {},
+          personalization_data: {
+            ...(prospect.personalization_data || {}),
+            campaign_name: campaign.name,  // ALWAYS include campaign name
+            source: 'upload_prospects',
+            uploaded_at: new Date().toISOString()
+          },
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
