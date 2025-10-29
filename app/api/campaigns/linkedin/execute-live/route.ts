@@ -370,15 +370,6 @@ export async function POST(req: NextRequest) {
           console.log(`\n📤 Sending CR to: ${prospectName}`);
           console.log(`   LinkedIn: ${prospect.linkedin_url}`);
 
-          // Personalize message
-          const personalizedMsg = (connectionMsg || alternativeMsg || '')
-            .replace(/\{first_name\}/gi, prospect.first_name || '')
-            .replace(/\{last_name\}/gi, prospect.last_name || '')
-            .replace(/\{company\}/gi, prospect.company_name || '')
-            .replace(/\{company_name\}/gi, prospect.company_name || '')
-            .replace(/\{industry\}/gi, prospect.industry || '')
-            .replace(/\{title\}/gi, prospect.title || prospect.job_title || '');
-
           // STEP 1: Get LinkedIn profile to retrieve provider_id
           const linkedinUsername = prospect.linkedin_url.split('/in/')[1]?.split('?')[0]?.replace('/', '');
           if (!linkedinUsername) {
@@ -425,12 +416,36 @@ export async function POST(req: NextRequest) {
 
           console.log(`   ✅ Got provider_id: ${providerId}`);
 
+          // ENRICHMENT FALLBACK: Extract name from LinkedIn profile if missing in database
+          let enrichedFirstName = prospect.first_name;
+          let enrichedLastName = prospect.last_name;
+
+          if (!enrichedFirstName || !enrichedLastName) {
+            // LinkedIn profile usually contains display_name like "FirstName LastName"
+            const displayName = profileData.display_name || profileData.name || '';
+            if (displayName) {
+              const nameParts = displayName.trim().split(' ');
+              enrichedFirstName = enrichedFirstName || nameParts[0] || '';
+              enrichedLastName = enrichedLastName || nameParts.slice(1).join(' ') || '';
+              console.log(`   📝 Enriched name from LinkedIn: ${enrichedFirstName} ${enrichedLastName}`);
+            }
+          }
+
           // STEP 2: Send invitation using provider_id
+          // Re-personalize message with enriched names
+          const finalPersonalizedMsg = (connectionMsg || alternativeMsg || '')
+            .replace(/\{first_name\}/gi, enrichedFirstName || '')
+            .replace(/\{last_name\}/gi, enrichedLastName || '')
+            .replace(/\{company\}/gi, prospect.company_name || '')
+            .replace(/\{company_name\}/gi, prospect.company_name || '')
+            .replace(/\{industry\}/gi, prospect.industry || '')
+            .replace(/\{title\}/gi, prospect.title || prospect.job_title || '');
+
           const inviteUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/invite`;
           const requestBody: any = {
             provider_id: providerId,
             account_id: selectedAccount.unipile_account_id,
-            message: personalizedMsg
+            message: finalPersonalizedMsg
           };
 
           if (prospect.email) {
