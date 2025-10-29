@@ -2135,3 +2135,95 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main d95b2546] 🔄 Auto-backup: auto-backup-20251030_000000
+ Committer: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 44 files changed, 3621 insertions(+), 17 deletions(-)
+ create mode 100644 FOLLOWUP_AUTOMATION_SETUP.md
+ create mode 100644 SCHEMA_STANDARDIZATION_INSTRUCTIONS.md
+ create mode 100644 scripts/js/add-stan-as-member.mjs
+ create mode 100755 scripts/js/apply-schema-migration.mjs
+ create mode 100644 scripts/js/apply-schema-standardization.mjs
+ create mode 100644 scripts/js/audit-all-accounts.mjs
+ create mode 100644 scripts/js/backfill-company-from-approval-data.mjs
+ create mode 100644 scripts/js/check-blue-label-detailed.mjs
+ create mode 100644 scripts/js/check-blue-label-labs.mjs
+ create mode 100644 scripts/js/check-company-names.mjs
+ create mode 100644 scripts/js/check-existing-prospects.mjs
+ create mode 100644 scripts/js/check-failed-prospects.mjs
+ create mode 100644 scripts/js/check-inactive-campaigns.mjs
+ create mode 100644 scripts/js/check-linkedin-account.mjs
+ create mode 100644 scripts/js/check-noriko-campaign-details.mjs
+ create mode 100644 scripts/js/check-prospect-source.mjs
+ create mode 100644 scripts/js/check-rls-policies.mjs
+ create mode 100644 scripts/js/check-schema.mjs
+ create mode 100644 scripts/js/check-sendingcell-accounts-detail.mjs
+ create mode 100644 scripts/js/check-sendingcell.mjs
+ create mode 100644 scripts/js/check-specific-campaign.mjs
+ create mode 100644 scripts/js/check-stan-kb-data.mjs
+ create mode 100644 scripts/js/check-where-company-data-is.mjs
+ create mode 100644 scripts/js/debug-failed-prospects.mjs
+ create mode 100644 scripts/js/debug-unipile-response.mjs
+ create mode 100644 scripts/js/enrich-all-failed.mjs
+ create mode 100644 scripts/js/enrich-failed-prospects-correct.mjs
+ create mode 100644 scripts/js/enrich-prospects-final.mjs
+ create mode 100644 scripts/js/extract-company-from-title.mjs
+ create mode 100644 scripts/js/find-noriko-workspace.mjs
+ create mode 100644 scripts/js/find-stan.mjs
+ create mode 100644 scripts/js/fix-failed-prospects.mjs
+ create mode 100644 scripts/js/list-all-prospects.mjs
+ create mode 100644 scripts/js/raw-query-prospects.mjs
+ create mode 100644 scripts/js/re-enrich-failed-prospects.mjs
+ create mode 100644 scripts/js/reactivate-noriko-campaign.mjs
+ create mode 100644 scripts/js/show-failed-prospects.mjs
+ create mode 100644 scripts/js/show-prospects-data.mjs
+ create mode 100644 scripts/js/verify-company-in-approval-data.mjs
+ create mode 100644 scripts/js/verify-schema-standardization.mjs
+ create mode 100644 sql/standardize-prospect-schema.sql
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251030_000000[0m
+[0;32m📅 Timestamp: Thu Oct 30 00:00:00 PST 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║          SAM AI - Automated Backup System             ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32mBackup started: Thu Oct 30 06:00:00 PST 2025[0m
+[0;32mBackup name: auto-backup-20251030_060000[0m
+
+[1;33m📦 Step 1: Backing up to Airtable...[0m
+
+/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/scripts/auto-backup.sh: line 76: node: command not found
+[0;31m❌ Airtable backup failed (non-critical)[0m
+
+[1;33m📝 Step 2: Creating Git snapshot...[0m
+
