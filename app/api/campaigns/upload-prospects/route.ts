@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { enrichProspectName } from '@/lib/enrich-prospect-name';
 
 // Simple JSON-based prospect upload for campaigns
 // Used by CampaignHub when prospects are already in memory (not from CSV upload)
+// IMPORTANT: Automatically enriches missing names from LinkedIn via Unipile
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,6 +50,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Access denied to workspace' }, { status: 403 });
     }
 
+    // Get campaign details including creator for automatic name enrichment
+    const { data: campaignDetails } = await supabase
+      .from('campaigns')
+      .select('created_by')
+      .eq('id', campaign_id)
+      .single();
+
+    // Get the campaign creator's LinkedIn account for name enrichment
+    const { data: linkedInAccount } = await supabase
+      .from('workspace_accounts')
+      .select('unipile_account_id')
+      .eq('workspace_id', campaign.workspace_id)
+      .eq('user_id', campaignDetails?.created_by)
+      .eq('account_type', 'linkedin')
+      .eq('connection_status', 'connected')
+      .single();
+
+    const unipileAccountId = linkedInAccount?.unipile_account_id || null;
+
     let inserted_count = 0;
     let updated_count = 0;
     let error_count = 0;
@@ -71,13 +92,41 @@ export async function POST(req: NextRequest) {
         console.log('  - company.name:', prospect.company?.name);
         console.log('==========================================\n');
 
-        // Prepare prospect data
+        // Prepare prospect data with automatic name enrichment
         // CRITICAL: Handle both direct fields and nested JSONB fields (contact, company)
+
+        // Extract names from SAM data first
+        let firstName = prospect.first_name || (prospect.name ? prospect.name.split(' ')[0] : '');
+        let lastName = prospect.last_name || (prospect.name ? prospect.name.split(' ').slice(1).join(' ') : '');
+
+        // AUTOMATIC ENRICHMENT: If names missing, fetch from LinkedIn
+        if (!firstName || !lastName) {
+          const linkedinUrl = prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url || null;
+
+          if (linkedinUrl && unipileAccountId) {
+            console.log(`⚠️ Missing name for prospect ${i + 1}, attempting enrichment from LinkedIn`);
+
+            const enriched = await enrichProspectName(
+              linkedinUrl,
+              firstName,
+              lastName,
+              unipileAccountId
+            );
+
+            firstName = enriched.firstName;
+            lastName = enriched.lastName;
+
+            if (enriched.enriched) {
+              console.log(`✅ Successfully enriched name: ${firstName} ${lastName}`);
+            }
+          }
+        }
+
         const prospectData = {
           campaign_id: campaign_id,
           workspace_id: campaign.workspace_id,
-          first_name: prospect.first_name || (prospect.name ? prospect.name.split(' ')[0] : ''),
-          last_name: prospect.last_name || (prospect.name ? prospect.name.split(' ').slice(1).join(' ') : ''),
+          first_name: firstName,
+          last_name: lastName,
           email: prospect.email || prospect.email_address || prospect.contact?.email || null,
           company_name: prospect.company_name || prospect.company?.name || prospect.company || '',
           title: prospect.title || prospect.job_title || '',
