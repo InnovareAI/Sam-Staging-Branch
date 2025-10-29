@@ -4463,14 +4463,14 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const filteredCampaigns = allCampaigns.filter((c: any) => {
     if (campaignFilter === 'active') return c.status === 'active' || c.status === 'paused';
     if (campaignFilter === 'inactive') return c.status === 'inactive' || c.status === 'scheduled'; // Show campaigns ready to activate (inactive and scheduled)
-    if (campaignFilter === 'archived') return c.status === 'completed' || c.status === 'archived';
+    if (campaignFilter === 'completed') return c.status === 'completed' || c.status === 'archived'; // Campaigns that finished their sequence
     return true;
   });
 
   // Calculate counts for each tab
   const activeCampaignsCount = allCampaigns.filter((c: any) => c.status === 'active' || c.status === 'paused').length;
   const inactiveCampaignsCount = allCampaigns.filter((c: any) => c.status === 'inactive' || c.status === 'scheduled').length;
-  const archivedCampaignsCount = allCampaigns.filter((c: any) => c.status === 'completed' || c.status === 'archived').length;
+  const completedCampaignsCount = allCampaigns.filter((c: any) => c.status === 'completed' || c.status === 'archived').length;
 
   // Handle campaign action menu (open settings)
   const handleCampaignAction = (campaignId: string) => {
@@ -4750,17 +4750,17 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 )}
               </button>
               <button
-                onClick={() => setCampaignFilter('archived')}
+                onClick={() => setCampaignFilter('completed')}
                 className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
-                  campaignFilter === 'archived'
+                  campaignFilter === 'completed'
                     ? 'text-white border-b-2 border-purple-500'
                     : 'text-gray-400 hover:text-white'
                 }`}
               >
-                Archived
-                {archivedCampaignsCount > 0 && (
+                Completed
+                {completedCampaignsCount > 0 && (
                   <span className="px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full">
-                    {archivedCampaignsCount}
+                    {completedCampaignsCount}
                   </span>
                 )}
               </button>
