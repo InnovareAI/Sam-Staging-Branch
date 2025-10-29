@@ -250,7 +250,7 @@ export async function POST(req: NextRequest) {
       .from('campaign_prospects')
       .select('*')
       .eq('campaign_id', campaignId)
-      .in('status', ['pending', 'approved', 'ready_to_message', 'follow_up_due', 'queued_in_n8n'])
+      .in('status', ['pending', 'approved', 'ready_to_message', 'follow_up_due'])
       .limit(maxProspects)
       .order('created_at', { ascending: true });
 
