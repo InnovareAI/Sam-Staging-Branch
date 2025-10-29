@@ -20,17 +20,28 @@ export async function POST(
 
     const supabase = await createSupabaseRouteClient();
 
+    // First, get existing prospect data to preserve personalization_data
+    const { data: existingProspect } = await supabase
+      .from('campaign_prospects')
+      .select('personalization_data')
+      .eq('id', prospectId)
+      .single();
+
+    // Merge new personalization_data with existing (preserve campaign_name, etc)
+    const mergedPersonalizationData = {
+      ...(existingProspect?.personalization_data || {}),  // Keep existing data
+      ...(body.personalization_data || {}),               // Add new data
+      updated_via: 'n8n-polling',
+      updated_at: new Date().toISOString()
+    };
+
     // Update prospect status
     const { data, error } = await supabase
       .from('campaign_prospects')
       .update({
         status: body.status || 'connection_requested',
         contacted_at: body.contacted_at || new Date().toISOString(),
-        personalization_data: {
-          ...(body.personalization_data || {}),
-          updated_via: 'n8n-polling',
-          updated_at: new Date().toISOString()
-        }
+        personalization_data: mergedPersonalizationData
       })
       .eq('id', prospectId)
       .select()
