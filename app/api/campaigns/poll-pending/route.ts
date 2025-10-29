@@ -25,11 +25,15 @@ export async function GET(request: NextRequest) {
         last_name,
         linkedin_url,
         status,
+        company_name,
+        title,
+        job_title,
         campaigns (
           id,
           name,
           workspace_id,
-          messages
+          connection_message,
+          message_templates
         )
       `)
       .in('status', ['pending', 'approved', 'ready_to_message'])
@@ -86,8 +90,8 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // Personalize message
-      const crMessage = campaign.messages?.cr || campaign.messages?.connection_request || '';
+      // Personalize message (same logic as execute-live)
+      const crMessage = campaign.connection_message || campaign.message_templates?.connection_request || '';
       const personalizedMessage = crMessage
         .replace(/\{first_name\}/gi, prospect.first_name || '')
         .replace(/\{last_name\}/gi, prospect.last_name || '')
