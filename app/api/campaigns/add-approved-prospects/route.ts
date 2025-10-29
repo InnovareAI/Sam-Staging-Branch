@@ -103,6 +103,17 @@ export async function POST(request: NextRequest) {
       const firstName = nameParts[0] || ''
       const lastName = nameParts.slice(1).join(' ') || ''
 
+      // DEBUG: Log name extraction
+      if (!firstName || !lastName) {
+        console.log('⚠️ NAME EXTRACTION DEBUG:', {
+          prospect_id: prospect.prospect_id,
+          raw_name: prospect.name,
+          firstName,
+          lastName,
+          company: prospect.company?.name
+        });
+      }
+
       return {
         campaign_id,
         workspace_id,
