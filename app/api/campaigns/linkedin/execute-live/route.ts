@@ -391,6 +391,7 @@ export async function POST(req: NextRequest) {
 
     const n8nPayload = {
       workspace_id: campaign.workspace_id,
+      workspace_name: campaign.workspaces?.name || 'Unknown Workspace', // For N8N tagging/debugging
       campaign_id: campaignId,
       campaign_name: campaign.name, // For N8N tagging/debugging
       unipile_account_id: selectedAccount.unipile_account_id,
@@ -425,7 +426,8 @@ export async function POST(req: NextRequest) {
             'Authorization': `Bearer ${process.env.N8N_API_KEY || ''}`,
             'X-SAM-Campaign-ID': campaignId,
             'X-SAM-Campaign-Name': campaign.name, // For N8N tagging
-            'X-SAM-Workspace-ID': campaign.workspace_id
+            'X-SAM-Workspace-ID': campaign.workspace_id,
+            'X-SAM-Workspace-Name': campaign.workspaces?.name || 'Unknown' // For N8N tagging
           },
           body: JSON.stringify(n8nPayload)
         });
