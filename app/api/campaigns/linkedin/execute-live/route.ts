@@ -455,9 +455,12 @@ export async function POST(req: NextRequest) {
             .replace(/\{company\}/gi, prospect.company_name || '')
             .replace(/\{company_name\}/gi, prospect.company_name || '')
             .replace(/\{industry\}/gi, prospect.industry || '')
-            .replace(/\{title\}/gi, prospect.title || prospect.job_title || '');
+            .replace(/\{title\}/gi, prospect.job_title || prospect.title || '');
 
           // CRITICAL: LinkedIn has 300 character limit for connection messages
+          // Replace multiple newlines with single space for cleaner messages
+          finalPersonalizedMsg = finalPersonalizedMsg.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+
           if (finalPersonalizedMsg.length > 300) {
             console.log(`   ⚠️ Message too long (${finalPersonalizedMsg.length} chars), truncating to 300...`);
             // Truncate at word boundary for cleaner messages
