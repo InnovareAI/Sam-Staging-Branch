@@ -1,0 +1,307 @@
+{
+  "createdAt": "2025-10-07T15:41:12.400Z",
+  "updatedAt": "2025-10-29T05:28:31.444Z",
+  "id": "aVG6LC4ZFRMN7Bw6",
+  "name": "SAM Master Campaign Orchestrator",
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "webhook_trigger",
+      "name": "Campaign Execute Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {
+        "path": "campaign-execute",
+        "httpMethod": "POST",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "campaign_handler",
+      "name": "Campaign Handler",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "parameters": {
+        "functionCode": "const data = $input.item.json.body || $input.item.json;\nreturn [{\n  json: {\n    campaign_name: data.campaign_name,\n    unipile_dsn: data.unipile_dsn,\n    unipile_api_key: data.unipile_api_key,\n    unipile_account_id: data.unipile_account_id,\n    messages: data.messages,\n    prospects: data.prospects\n  }\n}];"
+      }
+    },
+    {
+      "id": "prepare_prospects",
+      "name": "Prepare Prospects List",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "parameters": {
+        "functionCode": "const campaignData = $json;\nreturn campaignData.prospects.map(prospect => ({\n  json: {\n    prospect_id: prospect.id,\n    first_name: prospect.first_name,\n    last_name: prospect.last_name,\n    linkedin_url: prospect.linkedin_url,\n    campaign_name: campaignData.campaign_name,\n    unipile_dsn: campaignData.unipile_dsn,\n    unipile_api_key: campaignData.unipile_api_key,\n    unipile_account_id: campaignData.unipile_account_id,\n    messages: campaignData.messages\n  }\n}));"
+      }
+    },
+    {
+      "id": "split_batches",
+      "name": "Split Prospects",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        850,
+        300
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "send_cr",
+      "name": "Send CR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1050,
+        300
+      ],
+      "parameters": {
+        "url": {
+          "value": "={{ 'https://' + $json.unipile_dsn + '/api/v1/messaging/messages' }}",
+          "expression": true
+        },
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": {
+                "value": "={{ $json.unipile_api_key }}",
+                "expression": true
+              }
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContent": {
+          "value": "{{ JSON.stringify({ account_id: $json.unipile_account_id, attendees: [{ identifier: $json.linkedin_url }], text: $json.messages.cr, type: 'LINKEDIN' }) }}",
+          "expression": true
+        },
+        "options": {
+          "bodyContentType": "json"
+        }
+      }
+    },
+    {
+      "id": "log_result",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ],
+      "parameters": {
+        "functionCode": "console.log('\u2705 Sent CR:', $json); return $input.all();"
+      }
+    },
+    {
+      "id": "check_loop",
+      "name": "Should Loop Again?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1450,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $run['Split Prospects'].hasNext }}",
+              "value2": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "loop_end",
+      "name": "Loop Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        400
+      ],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Campaign Execute Webhook": {
+      "main": [
+        [
+          {
+            "node": "Campaign Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campaign Handler": {
+      "main": [
+        [
+          {
+            "node": "Prepare Prospects List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Prospects List": {
+      "main": [
+        [
+          {
+            "node": "Split Prospects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Prospects": {
+      "main": [
+        [
+          {
+            "node": "Send CR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send CR": {
+      "main": [
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Result": {
+      "main": [
+        [
+          {
+            "node": "Should Loop Again?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Loop Again?": {
+      "main": [
+        [
+          {
+            "node": "Split Prospects",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/New_York",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all",
+    "executionTimeout": 3600
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "7eb8978e-10dc-4c7b-a0a3-87840ee16eeb",
+  "triggerCount": 1,
+  "shared": [
+    {
+      "createdAt": "2025-10-07T15:41:12.406Z",
+      "updatedAt": "2025-10-07T15:41:12.406Z",
+      "role": "workflow:owner",
+      "workflowId": "aVG6LC4ZFRMN7Bw6",
+      "projectId": "E9Xq0Sqn9jUGEbhJ",
+      "project": {
+        "createdAt": "2025-07-12T06:02:59.801Z",
+        "updatedAt": "2025-07-12T06:08:41.888Z",
+        "id": "E9Xq0Sqn9jUGEbhJ",
+        "name": "Thorsten Linz <tl@innovareai.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "projectRelations": [
+          {
+            "createdAt": "2025-07-12T06:02:59.801Z",
+            "updatedAt": "2025-07-12T06:02:59.801Z",
+            "role": "project:personalOwner",
+            "userId": "9c8841b7-d88f-4eac-afb9-77f989fc9916",
+            "projectId": "E9Xq0Sqn9jUGEbhJ",
+            "user": {
+              "createdAt": "2025-07-12T06:02:58.862Z",
+              "updatedAt": "2025-10-29T03:55:08.000Z",
+              "id": "9c8841b7-d88f-4eac-afb9-77f989fc9916",
+              "email": "tl@innovareai.com",
+              "firstName": "Thorsten",
+              "lastName": "Linz",
+              "personalizationAnswers": {
+                "version": "v4",
+                "personalization_survey_submitted_at": "2025-07-12T06:09:06.052Z",
+                "personalization_survey_n8n_version": "1.101.2",
+                "companySize": "<20",
+                "companyType": "saas",
+                "role": "business-owner",
+                "reportedSource": "google"
+              },
+              "settings": {
+                "userActivated": true,
+                "firstSuccessfulWorkflowId": "JHIOAOorkZSRmpA8",
+                "userActivatedAt": 1752382374010,
+                "easyAIWorkflowOnboarded": true,
+                "npsSurvey": {
+                  "responded": true,
+                  "lastShownAt": 1754499132724
+                }
+              },
+              "role": "global:owner",
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2025-10-29",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": []
+}

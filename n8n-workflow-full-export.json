@@ -1,0 +1,151 @@
+{
+  "createdAt": "2025-10-07T15:41:12.400Z",
+  "updatedAt": "2025-10-29T05:28:31.444Z",
+  "id": "aVG6LC4ZFRMN7Bw6",
+  "name": "SAM Master Campaign Orchestrator",
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "webhook_trigger",
+      "name": "Campaign Execute Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "campaign-execute",
+      "parameters": {
+        "path": "campaign-execute",
+        "httpMethod": "POST",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "campaign_handler",
+      "name": "Campaign Handler",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "parameters": {
+        "functionCode": "\n// Extract data\nconst data = $input.item.json.body || $input.item.json;\nconsole.log('📨 Got campaign:', data.campaign_name);\n\nreturn [{\n  json: {\n    campaign_name: data.campaign_name,\n    prospect: data.prospects[0],\n    message: data.messages.cr\n  }\n}];\n        "
+      }
+    },
+    {
+      "id": "log_result",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "parameters": {
+        "functionCode": "\nconsole.log('✅ Campaign Handler output:', JSON.stringify($input.item.json, null, 2));\nreturn $input.all();\n        "
+      }
+    }
+  ],
+  "connections": {
+    "Campaign Execute Webhook": {
+      "main": [
+        [
+          {
+            "node": "Campaign Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campaign Handler": {
+      "main": [
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/New_York",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all",
+    "executionTimeout": 3600
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "7eb8978e-10dc-4c7b-a0a3-87840ee16eeb",
+  "triggerCount": 1,
+  "shared": [
+    {
+      "createdAt": "2025-10-07T15:41:12.406Z",
+      "updatedAt": "2025-10-07T15:41:12.406Z",
+      "role": "workflow:owner",
+      "workflowId": "aVG6LC4ZFRMN7Bw6",
+      "projectId": "E9Xq0Sqn9jUGEbhJ",
+      "project": {
+        "createdAt": "2025-07-12T06:02:59.801Z",
+        "updatedAt": "2025-07-12T06:08:41.888Z",
+        "id": "E9Xq0Sqn9jUGEbhJ",
+        "name": "Thorsten Linz <tl@innovareai.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "projectRelations": [
+          {
+            "createdAt": "2025-07-12T06:02:59.801Z",
+            "updatedAt": "2025-07-12T06:02:59.801Z",
+            "role": "project:personalOwner",
+            "userId": "9c8841b7-d88f-4eac-afb9-77f989fc9916",
+            "projectId": "E9Xq0Sqn9jUGEbhJ",
+            "user": {
+              "createdAt": "2025-07-12T06:02:58.862Z",
+              "updatedAt": "2025-10-29T03:55:08.000Z",
+              "id": "9c8841b7-d88f-4eac-afb9-77f989fc9916",
+              "email": "tl@innovareai.com",
+              "firstName": "Thorsten",
+              "lastName": "Linz",
+              "personalizationAnswers": {
+                "version": "v4",
+                "personalization_survey_submitted_at": "2025-07-12T06:09:06.052Z",
+                "personalization_survey_n8n_version": "1.101.2",
+                "companySize": "<20",
+                "companyType": "saas",
+                "role": "business-owner",
+                "reportedSource": "google"
+              },
+              "settings": {
+                "userActivated": true,
+                "firstSuccessfulWorkflowId": "JHIOAOorkZSRmpA8",
+                "userActivatedAt": 1752382374010,
+                "easyAIWorkflowOnboarded": true,
+                "npsSurvey": {
+                  "responded": true,
+                  "lastShownAt": 1754499132724
+                }
+              },
+              "role": "global:owner",
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2025-10-29",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": []
+}
