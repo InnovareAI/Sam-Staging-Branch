@@ -4467,6 +4467,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     return true;
   });
 
+  // Calculate counts for each tab
+  const activeCampaignsCount = allCampaigns.filter((c: any) => c.status === 'active' || c.status === 'paused').length;
+  const inactiveCampaignsCount = allCampaigns.filter((c: any) => c.status === 'inactive' || c.status === 'scheduled').length;
+  const archivedCampaignsCount = allCampaigns.filter((c: any) => c.status === 'completed' || c.status === 'archived').length;
+
   // Handle campaign action menu (open settings)
   const handleCampaignAction = (campaignId: string) => {
     console.log('Opening settings for campaign:', campaignId);
@@ -4716,33 +4721,48 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             <div className="flex border-b border-gray-700">
               <button
                 onClick={() => setCampaignFilter('active')}
-                className={`px-6 py-3 text-sm font-medium transition-colors ${
+                className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
                   campaignFilter === 'active'
                     ? 'text-white border-b-2 border-purple-500'
                     : 'text-gray-400 hover:text-white'
                 }`}
               >
                 Active
+                {activeCampaignsCount > 0 && (
+                  <span className="px-2 py-0.5 bg-green-600 text-white text-xs rounded-full">
+                    {activeCampaignsCount}
+                  </span>
+                )}
               </button>
               <button
                 onClick={() => setCampaignFilter('inactive')}
-                className={`px-6 py-3 text-sm font-medium transition-colors ${
+                className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
                   campaignFilter === 'inactive'
                     ? 'text-white border-b-2 border-purple-500'
                     : 'text-gray-400 hover:text-white'
                 }`}
               >
                 Inactive
+                {inactiveCampaignsCount > 0 && (
+                  <span className="px-2 py-0.5 bg-gray-600 text-white text-xs rounded-full">
+                    {inactiveCampaignsCount}
+                  </span>
+                )}
               </button>
               <button
                 onClick={() => setCampaignFilter('archived')}
-                className={`px-6 py-3 text-sm font-medium transition-colors ${
+                className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
                   campaignFilter === 'archived'
                     ? 'text-white border-b-2 border-purple-500'
                     : 'text-gray-400 hover:text-white'
                 }`}
               >
                 Archived
+                {archivedCampaignsCount > 0 && (
+                  <span className="px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full">
+                    {archivedCampaignsCount}
+                  </span>
+                )}
               </button>
               {/* Campaign Creator Tab - Shows campaigns with approved prospects */}
               <button
