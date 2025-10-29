@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * N8N Polling Endpoint - Returns pending prospects that need CRs sent
@@ -65,7 +66,13 @@ export async function GET(request: NextRequest) {
 
       if (!campaignMap.has(campaignId)) {
         // Get LinkedIn account for this campaign's workspace
-        const { data: account } = await supabase
+        // Use service role client to bypass RLS for account lookup
+        const serviceClient = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        const { data: account } = await serviceClient
           .from('workspace_accounts')
           .select('unipile_account_id')
           .eq('workspace_id', campaign.workspace_id)
