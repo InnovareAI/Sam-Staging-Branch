@@ -3,16 +3,23 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 /**
- * Smart LinkedIn Search Router
+ * Smart LinkedIn Search Router with Automatic Fallback
  *
  * COST OPTIMIZATION STRATEGY:
  * 1. Prioritize Unipile (FREE) - use whenever possible
  * 2. Use BrightData (PAID) only when Unipile is limited
+ * 3. AUTO-FALLBACK: Automatically use BrightData when Unipile hits rate limits
  *
  * Routing Logic:
  * - Sales Navigator/Recruiter: Use Unipile for ALL searches (1st, 2nd, 3rd degree)
  * - Premium: Use Unipile for 2nd/3rd, BrightData for 1st degree only
  * - Classic: Use BrightData (Unipile very limited on Classic accounts)
+ *
+ * Rate Limit Protection:
+ * - Detects when Unipile account hits rate limits
+ * - Automatically falls back to BrightData MCP for seamless data retrieval
+ * - Logs fallback events for cost tracking
+ * - Returns data from BrightData without user-facing errors
  *
  * Email Enrichment:
  * - LinkedIn (even Sales Nav) doesn't provide emails
@@ -72,6 +79,7 @@ export async function POST(request: NextRequest) {
 
     // === SALES NAVIGATOR / RECRUITER ===
     // ✅ Use Unipile for ALL searches (1st, 2nd, 3rd) - FREE
+    // ⚠️ Auto-fallback to BrightData if Unipile rate-limited
     if (accountType.type === 'sales_navigator' || accountType.type === 'recruiter') {
       console.log('✅ Using Unipile (FREE) - Sales Navigator/Recruiter can search all degrees');
 
@@ -83,8 +91,26 @@ export async function POST(request: NextRequest) {
         target_count
       });
 
-      // If emails needed, enrich with BrightData
-      if (needs_emails && searchResult.success) {
+      // AUTO-FALLBACK: If Unipile failed due to rate limits, use BrightData
+      if (!searchResult.success && isRateLimitError(searchResult)) {
+        console.log('⚠️ Unipile rate limit detected - falling back to BrightData (PAID)');
+        searchResult = await searchViaBrightData({
+          workspaceId,
+          connectionDegree,
+          search_criteria,
+          target_count,
+          include_emails: needs_emails
+        });
+        searchResult.fallback_used = true;
+        searchResult.fallback_reason = 'unipile_rate_limit';
+        searchResult.cost_breakdown = {
+          unipile_search: 'FAILED (rate limit)',
+          brightdata_fallback: 'PAID',
+          email_enrichment: needs_emails ? 'INCLUDED' : 'N/A'
+        };
+      }
+      // If Unipile succeeded and emails needed, enrich with BrightData
+      else if (needs_emails && searchResult.success) {
         console.log('📧 Email enrichment needed - calling BrightData (PAID)');
         searchResult.prospects = await enrichWithBrightData(searchResult.prospects);
         searchResult.email_enrichment = 'brightdata';
@@ -92,7 +118,7 @@ export async function POST(request: NextRequest) {
           unipile_search: 'FREE',
           brightdata_enrichment: 'PAID'
         };
-      } else {
+      } else if (searchResult.success) {
         searchResult.cost_breakdown = {
           unipile_search: 'FREE'
         };
@@ -102,6 +128,7 @@ export async function POST(request: NextRequest) {
     // === PREMIUM (CAREER/BUSINESS) ===
     // ✅ Use Unipile for 2nd/3rd degree (FREE)
     // ⚠️ Use BrightData for 1st degree (PAID) - different API
+    // ⚠️ Auto-fallback to BrightData if Unipile rate-limited
     else if (accountType.type === 'premium_career' || accountType.type === 'premium_business') {
       if (connectionDegree === '1st') {
         console.log('⚠️ Using BrightData (PAID) - Premium accounts need BrightData for 1st degree connections');
@@ -126,7 +153,26 @@ export async function POST(request: NextRequest) {
           target_count
         });
 
-        if (needs_emails && searchResult.success) {
+        // AUTO-FALLBACK: If Unipile failed due to rate limits, use BrightData
+        if (!searchResult.success && isRateLimitError(searchResult)) {
+          console.log('⚠️ Unipile rate limit detected - falling back to BrightData (PAID)');
+          searchResult = await searchViaBrightData({
+            workspaceId,
+            connectionDegree,
+            search_criteria,
+            target_count,
+            include_emails: needs_emails
+          });
+          searchResult.fallback_used = true;
+          searchResult.fallback_reason = 'unipile_rate_limit';
+          searchResult.cost_breakdown = {
+            unipile_search: 'FAILED (rate limit)',
+            brightdata_fallback: 'PAID',
+            email_enrichment: needs_emails ? 'INCLUDED' : 'N/A'
+          };
+        }
+        // If Unipile succeeded and emails needed, enrich with BrightData
+        else if (needs_emails && searchResult.success) {
           console.log('📧 Email enrichment needed - calling BrightData (PAID)');
           searchResult.prospects = await enrichWithBrightData(searchResult.prospects);
           searchResult.email_enrichment = 'brightdata';
@@ -134,7 +180,7 @@ export async function POST(request: NextRequest) {
             unipile_search: 'FREE',
             brightdata_enrichment: 'PAID'
           };
-        } else {
+        } else if (searchResult.success) {
           searchResult.cost_breakdown = {
             unipile_search: 'FREE'
           };
@@ -409,6 +455,31 @@ function buildLinkedInSearchUrl(connectionDegree: string, criteria: any): string
   if (criteria.company) params.append('company', criteria.company);
 
   return `${baseUrl}?${params}`;
+}
+
+/**
+ * Detect if search result failed due to rate limiting
+ */
+function isRateLimitError(searchResult: any): boolean {
+  if (!searchResult || !searchResult.error) {
+    return false;
+  }
+
+  const error = searchResult.error.toLowerCase();
+
+  // Check for common rate limit indicators
+  const rateLimitIndicators = [
+    'rate limit',
+    'too many requests',
+    'quota exceeded',
+    'limit exceeded',
+    'throttled',
+    '429',
+    'slow down',
+    'try again later'
+  ];
+
+  return rateLimitIndicators.some(indicator => error.includes(indicator));
 }
 
 /**
