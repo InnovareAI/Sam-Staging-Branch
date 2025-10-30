@@ -122,7 +122,8 @@ export async function POST(req: NextRequest) {
       target_icp = {},
       ab_test_variant,
       message_templates = {},
-      status = 'draft' // Default to 'draft' - campaigns must be explicitly activated
+      status = 'draft', // Default to 'draft' - campaigns must be explicitly activated
+      session_id // Optional: if provided, auto-transfer approved prospects from this session
     } = await req.json();
 
     if (!workspace_id || !name) {
@@ -161,6 +162,86 @@ export async function POST(req: NextRequest) {
       console.error('Failed to update campaign status:', statusError);
     }
 
+    // AUTO-TRANSFER: If session_id provided, automatically transfer approved prospects
+    let prospectsTransferred = 0;
+    if (session_id) {
+      console.log(`📦 Auto-transferring approved prospects from session ${session_id} to campaign ${campaignId}`);
+
+      // Get approved prospects from the session
+      const { data: approvedProspects } = await supabase
+        .from('prospect_approval_data')
+        .select('*')
+        .eq('session_id', session_id)
+        .eq('approval_status', 'approved');
+
+      if (approvedProspects && approvedProspects.length > 0) {
+        // Get LinkedIn account for prospect ownership
+        const { data: linkedInAccount } = await supabase
+          .from('workspace_accounts')
+          .select('unipile_account_id')
+          .eq('workspace_id', workspace_id)
+          .eq('user_id', user.id)
+          .eq('account_type', 'linkedin')
+          .eq('connection_status', 'connected')
+          .single();
+
+        const unipileAccountId = linkedInAccount?.unipile_account_id || null;
+
+        // Transform and insert prospects
+        const campaignProspects = approvedProspects.map(prospect => {
+          const contact = prospect.contact || {};
+          const linkedinUrl = contact.linkedin_url || contact.linkedinUrl || prospect.linkedin_url || null;
+
+          // Extract names from LinkedIn URL if missing
+          let firstName = contact.firstName || 'Unknown';
+          let lastName = contact.lastName || 'User';
+
+          if (linkedinUrl && (!contact.firstName || !contact.lastName)) {
+            const match = linkedinUrl.match(/\/in\/([^\/\?]+)/);
+            if (match) {
+              const urlName = match[1].split('-');
+              if (!contact.firstName && urlName.length > 0) firstName = urlName[0];
+              if (!contact.lastName && urlName.length > 1) lastName = urlName.slice(1).join('-');
+            }
+          }
+
+          return {
+            campaign_id: campaignId,
+            workspace_id,
+            first_name: firstName,
+            last_name: lastName,
+            email: contact.email || null,
+            company_name: prospect.company?.name || contact.company || contact.companyName || '',
+            linkedin_url: linkedinUrl,
+            title: prospect.title || contact.title || contact.headline || '',
+            location: prospect.location || contact.location || null,
+            industry: prospect.company?.industry?.[0] || 'Not specified',
+            status: 'approved',
+            notes: null,
+            added_by_unipile_account: unipileAccountId,
+            personalization_data: {
+              source: 'approval_session',
+              session_id: session_id,
+              approval_data_id: prospect.id,
+              approved_at: new Date().toISOString()
+            }
+          };
+        });
+
+        const { data: inserted, error: insertError } = await supabase
+          .from('campaign_prospects')
+          .insert(campaignProspects)
+          .select();
+
+        if (insertError) {
+          console.error('❌ Failed to auto-transfer prospects:', insertError);
+        } else {
+          prospectsTransferred = inserted.length;
+          console.log(`✅ Auto-transferred ${prospectsTransferred} approved prospects to campaign`);
+        }
+      }
+    }
+
     // Get the created campaign with details
     const { data: campaign, error: fetchError } = await supabase
       .from('campaigns')
@@ -170,15 +251,17 @@ export async function POST(req: NextRequest) {
 
     if (fetchError) {
       console.error('Failed to fetch created campaign:', fetchError);
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Campaign created but failed to fetch details',
-        campaign_id: campaignId 
+        campaign_id: campaignId,
+        prospects_transferred: prospectsTransferred
       }, { status: 201 });
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Campaign created successfully',
-      campaign 
+      campaign,
+      prospects_transferred: prospectsTransferred
     }, { status: 201 });
 
   } catch (error: any) {
