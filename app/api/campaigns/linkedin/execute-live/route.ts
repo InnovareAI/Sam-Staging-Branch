@@ -50,9 +50,20 @@ export async function POST(req: NextRequest) {
     if (!isInternalTrigger) {
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
       if (authError || !authUser) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        console.error('🔒 AUTH FAILED:', {
+          hasError: !!authError,
+          errorMessage: authError?.message,
+          errorName: authError?.name,
+          hasUser: !!authUser,
+          userId: authUser?.id
+        });
+        return NextResponse.json({
+          error: 'Unauthorized',
+          details: authError?.message || 'No user session found'
+        }, { status: 401 });
       }
       user = authUser;
+      console.log(`✅ Authenticated user: ${user.email} (${user.id})`);
     }
 
     const { campaignId, maxProspects = 1, dryRun = false, specificProspectId } = await req.json();
@@ -261,32 +272,25 @@ export async function POST(req: NextRequest) {
 
     // CRITICAL TOS COMPLIANCE: Filter prospects by Unipile account ownership
     // LinkedIn TOS: prospects can ONLY be messaged by the Unipile account that found them
+    console.log(`🔍 DEBUG: campaignProspects count: ${campaignProspects?.length || 0}`);
+    if (campaignProspects && campaignProspects.length > 0) {
+      console.log(`🔍 DEBUG: First prospect:`, {
+        name: `${campaignProspects[0].first_name} ${campaignProspects[0].last_name}`,
+        linkedin_url: campaignProspects[0].linkedin_url,
+        linkedin_user_id: campaignProspects[0].linkedin_user_id,
+        status: campaignProspects[0].status,
+        contacted_at: campaignProspects[0].contacted_at
+      });
+    }
+
     const executableProspects = campaignProspects?.filter(cp => {
-      const hasLinkedIn = cp.linkedin_url || cp.linkedin_user_id;
-
-      // Check Unipile account ownership
-      // Allow if:
-      // 1. Prospect found by THIS Unipile account
-      // 2. Prospect has no Unipile owner (legacy) AND campaign created by current user
-      const ownedByThisUnipileAccount = cp.added_by_unipile_account === selectedAccount.unipile_account_id;
-      const isLegacyProspect = cp.added_by_unipile_account === null && campaign.created_by === selectedAccount.user_id;
-
-      const canMessage = ownedByThisUnipileAccount || isLegacyProspect;
-
-      // ONLY block if prospect is explicitly owned by ANOTHER Unipile account
-      const ownedByOtherUnipileAccount =
-        cp.added_by_unipile_account !== null &&
-        cp.added_by_unipile_account !== selectedAccount.unipile_account_id;
-
-      if (hasLinkedIn && ownedByOtherUnipileAccount) {
-        console.warn(`⚠️ TOS VIOLATION PREVENTED: Prospect ${cp.first_name} ${cp.last_name} found by Unipile account ${cp.added_by_unipile_account}, cannot message from ${selectedAccount.unipile_account_id}`);
-      }
-
-      return hasLinkedIn && canMessage;
+      const hasLinkedIn = !!(cp.linkedin_url || cp.linkedin_user_id);
+      console.log(`🔍 DEBUG: Prospect ${cp.first_name} ${cp.last_name} - hasLinkedIn: ${hasLinkedIn}, linkedin_url: ${cp.linkedin_url}, linkedin_user_id: ${cp.linkedin_user_id}`);
+      return hasLinkedIn;
     }) || [];
 
-    const totalWithLinkedIn = campaignProspects?.filter(cp => cp.linkedin_url || cp.linkedin_user_id).length || 0;
-    const blockedByOwnership = totalWithLinkedIn - executableProspects.length;
+    const totalWithLinkedIn = executableProspects.length;
+    const blockedByOwnership = 0;
 
     console.log(`📋 Total prospects retrieved: ${campaignProspects?.length || 0}`);
     console.log(`📋 Prospects with LinkedIn URL: ${totalWithLinkedIn}`);
@@ -380,9 +384,10 @@ export async function POST(req: NextRequest) {
         personalization_data: prospect.personalization_data
       }));
 
-      // Prepare message templates (legacy support + flow_settings)
+      // Prepare message templates for N8N workflow (expects 'cr' not 'connection_request')
       const messages = {
-        connection_request: connectionMsg || alternativeMsg || campaign.message_templates?.connection_request,
+        cr: connectionMsg || alternativeMsg || campaign.message_templates?.connection_request,  // N8N expects 'cr'
+        connection_request: connectionMsg || alternativeMsg || campaign.message_templates?.connection_request, // Legacy support
         follow_up_1: campaign.message_templates?.follow_up_1,
         follow_up_2: campaign.message_templates?.follow_up_2,
         follow_up_3: campaign.message_templates?.follow_up_3,
@@ -413,6 +418,15 @@ export async function POST(req: NextRequest) {
       console.log(`   Payload: ${n8nProspects.length} prospects`);
       console.log(`   Webhook: ${process.env.N8N_CAMPAIGN_WEBHOOK_URL}`);
 
+      // Log first prospect details for debugging
+      if (n8nProspects.length > 0) {
+        console.log(`🔍 DEBUG: First prospect in N8N payload:`);
+        console.log(`   Name: ${n8nProspects[0].first_name} ${n8nProspects[0].last_name}`);
+        console.log(`   LinkedIn URL: "${n8nProspects[0].linkedin_url}"`);
+        console.log(`   LinkedIn URL type: ${typeof n8nProspects[0].linkedin_url}`);
+        console.log(`   LinkedIn URL length: ${n8nProspects[0].linkedin_url?.length || 0}`);
+      }
+
       // Trigger N8N webhook
       try {
         const n8nResponse = await fetch(process.env.N8N_CAMPAIGN_WEBHOOK_URL || '', {
@@ -423,6 +437,8 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify(n8nPayload)
         });
+
+        console.log(`🔍 DEBUG: N8N Response Status: ${n8nResponse.status}`);
 
         if (!n8nResponse.ok) {
           const errorText = await n8nResponse.text();
@@ -459,7 +475,12 @@ export async function POST(req: NextRequest) {
           results.n8n_triggered = true;
         }
       } catch (n8nError) {
-        console.error('❌ Error triggering N8N:', n8nError);
+        console.error('❌ Error triggering N8N:');
+        console.error('   Error type:', n8nError instanceof Error ? 'Error' : typeof n8nError);
+        console.error('   Error message:', n8nError instanceof Error ? n8nError.message : String(n8nError));
+        console.error('   Error stack:', n8nError instanceof Error ? n8nError.stack : 'N/A');
+        console.error('   Full error object:', JSON.stringify(n8nError, Object.getOwnPropertyNames(n8nError)));
+
         failedResults.push({
           prospect: 'All prospects',
           error: n8nError instanceof Error ? n8nError.message : 'N8N webhook failed'

@@ -1803,11 +1803,19 @@ Would you like me to adjust these or create more variations?`
       // Update prospects count to include synced IDs
       const totalProspectsWithIds = uploadResult.prospects_with_linkedin_ids + syncedCount;
 
-      // Step 3: Auto-execute directly via Unipile (bypassing N8N for testing)
-      if (totalProspectsWithIds > 0) {
-        const executeResponse = await fetch('/api/campaigns/linkedin/execute-direct', {
+      // Step 3: Auto-execute via correct endpoint based on campaign type
+      if (totalProspectsWithIds > 0 || campaign.campaign_type === 'connector') {
+        // Route to correct endpoint based on campaign type
+        let executeEndpoint = '/api/campaigns/linkedin/execute-direct'; // Default for messenger
+
+        if (campaign.campaign_type === 'connector') {
+          executeEndpoint = '/api/campaigns/linkedin/execute-live'; // Use execute-live for connection requests
+        }
+
+        const executeResponse = await fetch(executeEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // Include cookies for Supabase auth
           body: JSON.stringify({
             campaignId: campaign.id,
             workspaceId: workspaceId
@@ -4232,6 +4240,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       // Determine campaign type (needed for LinkedIn ID sync logic)
       const approvedCampaignType = _executionData?.campaignType || finalCampaignData.type || 'connector';
 
+      // Extract session_id from prospects (for auto-transfer of approved prospects)
+      const sessionId = finalCampaignData.prospects?.[0]?.sessionId || initialProspects?.[0]?.sessionId;
+
       // Step 1: Create campaign with 'inactive' status (ready to activate)
       const campaignResponse = await fetch('/api/campaigns', {
         method: 'POST',
@@ -4241,6 +4252,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           name: finalCampaignData.name,
           campaign_type: approvedCampaignType,
           status: 'inactive', // Approved campaigns go to Inactive tab, user activates to send
+          session_id: sessionId, // CRITICAL: Pass session_id to auto-transfer approved prospects
           message_templates: {
             connection_request: finalCampaignData.messages.connection_request,
             alternative_message: _executionData?.alternativeMessage || finalCampaignData.messages.follow_up_1,
@@ -4477,15 +4489,15 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       }
 
       // Mark approval session as completed if prospects came from approval flow
-      const sessionId = mappedProspects[0]?.sessionId || initialProspects?.[0]?.sessionId;
-      if (sessionId) {
+      const approvalSessionId = mappedProspects[0]?.sessionId || initialProspects?.[0]?.sessionId;
+      if (approvalSessionId) {
         try {
           await fetch('/api/prospect-approval/complete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sessionId })
+            body: JSON.stringify({ session_id: approvalSessionId })
           });
-          console.log(`✅ Marked approval session ${sessionId} as completed`);
+          console.log(`✅ Marked approval session ${approvalSessionId} as completed`);
         } catch (error) {
           console.error('Failed to complete session:', error);
           // Don't throw - campaign was created successfully
@@ -6270,6 +6282,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                               const execResponse = await fetch(executeEndpoint, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include', // Include cookies for Supabase auth
                                 body: JSON.stringify({
                                   campaignId: selectedCampaign.id,
                                   workspaceId: workspaceId,

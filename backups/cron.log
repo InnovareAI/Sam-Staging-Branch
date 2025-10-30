@@ -2345,3 +2345,85 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main 5e4b355d] 🔄 Auto-backup: auto-backup-20251030_180000
+ Committer: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 34 files changed, 2656 insertions(+), 148 deletions(-)
+ create mode 100644 scripts/js/check-accounts-schema.mjs
+ create mode 100644 scripts/js/check-all-linkedin-accounts.mjs
+ create mode 100644 scripts/js/check-approval-session-prospects.mjs
+ create mode 100644 scripts/js/check-campaign-creator-account.mjs
+ create mode 100644 scripts/js/check-campaign-prospects-schema.mjs
+ create mode 100644 scripts/js/check-campaign-test9.mjs
+ create mode 100644 scripts/js/check-current-status.mjs
+ create mode 100644 scripts/js/check-database-direct.mjs
+ create mode 100644 scripts/js/check-recent-campaign-activity.mjs
+ create mode 100644 scripts/js/check-workflow-details.mjs
+ create mode 100644 scripts/js/check-workspace-campaigns.mjs
+ create mode 100644 scripts/js/debug-campaign-prospects.mjs
+ create mode 100644 scripts/js/debug-execution-failure.mjs
+ create mode 100644 scripts/js/delete-all-approval-sessions.mjs
+ create mode 100644 scripts/js/delete-all-test-campaigns.mjs
+ create mode 100644 scripts/js/dry-run-test.mjs
+ create mode 100644 scripts/js/find-campaign-with-prospects.mjs
+ create mode 100644 scripts/js/find-linkedin-account.mjs
+ create mode 100644 scripts/js/find-linkedin-by-type.mjs
+ create mode 100644 scripts/js/find-workspace-id.mjs
+ create mode 100644 scripts/js/fix-linkedin-accounts.mjs
+ create mode 100644 scripts/js/fix-prospect-ownership-all.mjs
+ create mode 100644 scripts/js/list-all-campaigns.mjs
+ create mode 100644 scripts/js/test-campaign-73bedc34.mjs
+ create mode 100644 scripts/js/test-campaign-execution.mjs
+ create mode 100644 scripts/js/test-campaign-live-execution.mjs
+ create mode 100644 scripts/js/test-campaign-live.mjs
+ create mode 100755 scripts/js/test-messaging-system.mjs
+ create mode 100644 scripts/js/transfer-approved-prospects-fixed.mjs
+ create mode 100644 scripts/js/transfer-approved-prospects.mjs
+ create mode 100644 scripts/js/verify-prospect-status.mjs
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251030_180000[0m
+[0;32m📅 Timestamp: Thu Oct 30 18:00:01 PST 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║          SAM AI - Automated Backup System             ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32mBackup started: Fri Oct 31 00:00:00 PST 2025[0m
+[0;32mBackup name: auto-backup-20251031_000000[0m
+
+[1;33m📦 Step 1: Backing up to Airtable...[0m
+
+/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/scripts/auto-backup.sh: line 76: node: command not found
+[0;31m❌ Airtable backup failed (non-critical)[0m
+
+[1;33m📝 Step 2: Creating Git snapshot...[0m
+
