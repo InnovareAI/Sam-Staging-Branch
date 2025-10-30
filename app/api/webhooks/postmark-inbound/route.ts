@@ -1012,41 +1012,138 @@ async function generateReplyDraft(replyId: string, context: { campaignId: string
   const supabase = getServiceClient()
 
   try {
-    console.log('🤖 Generating SAM draft response (priority):', replyId)
+    // Check if enhanced draft generation is enabled (feature flag)
+    const useEnhancedDrafts = process.env.ENABLE_ENHANCED_REPLY_DRAFTS === 'true'
 
-    // Get campaign and prospect context
-    const { data: campaign } = await supabase
-      .from('campaigns')
-      .select('name, message_template, workspace_id')
-      .eq('id', context.campaignId)
-      .single()
-
-    const { data: prospect } = await supabase
-      .from('workspace_prospects')
-      .select('name, company, title, industry, notes')
-      .eq('id', context.prospectId)
-      .single()
-
-    if (!campaign || !prospect) {
-      console.error('Missing campaign or prospect data for draft generation')
-      return
+    if (useEnhancedDrafts) {
+      // Use enhanced draft generation with web scraping
+      await generateEnhancedReplyDraftWithScraping(replyId, context, email, supabase)
+    } else {
+      // Use basic draft generation (original implementation)
+      await generateBasicReplyDraft(replyId, context, email, supabase)
     }
 
-    // Call OpenRouter AI to generate response draft
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
-        'X-Title': 'SAM AI - Reply Draft Generation'
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet',
-        messages: [
-          {
-            role: 'system',
-            content: `You are SAM, an expert B2B sales assistant. Generate a professional, personalized response to a prospect's reply.
+  } catch (error) {
+    console.error('Failed to generate reply draft:', error)
+    // Don't throw - this is non-critical, user can still respond manually
+  }
+}
+
+/**
+ * Enhanced draft generation with web scraping (NEW)
+ */
+async function generateEnhancedReplyDraftWithScraping(
+  replyId: string,
+  context: { campaignId: string, prospectId: string },
+  email: PostmarkInboundEmail,
+  supabase: any
+) {
+  console.log('🚀 Generating ENHANCED draft with web scraping:', replyId)
+
+  // Import enhanced draft generation service
+  const { generateEnhancedReplyDraft, saveEnhancedDraft } = await import('@/lib/services/reply-agent-draft-generation')
+
+  // Get campaign and prospect context
+  const { data: campaign } = await supabase
+    .from('campaigns')
+    .select('name, message_template, workspace_id, metadata')
+    .eq('id', context.campaignId)
+    .single()
+
+  const { data: prospect } = await supabase
+    .from('workspace_prospects')
+    .select('id, name, company, title, industry, notes, linkedin_url, company_website, metadata')
+    .eq('id', context.prospectId)
+    .single()
+
+  if (!campaign || !prospect) {
+    console.error('Missing campaign or prospect data for draft generation')
+    return
+  }
+
+  // Build context for enhanced generation
+  const draftContext = {
+    replyId,
+    prospectReply: email.TextBody,
+    prospect: {
+      id: prospect.id,
+      name: prospect.name,
+      title: prospect.title,
+      company: prospect.company,
+      company_website: prospect.company_website || prospect.metadata?.company_website,
+      linkedin_url: prospect.linkedin_url,
+      industry: prospect.industry,
+      notes: prospect.notes
+    },
+    campaign: {
+      id: campaign.id,
+      name: campaign.name,
+      message_template: campaign.message_template,
+      products: campaign.metadata?.products || [],
+      services: campaign.metadata?.services || [],
+      value_props: campaign.metadata?.value_propositions || []
+    },
+    workspace_id: campaign.workspace_id
+  }
+
+  // Generate enhanced draft with scraping (pass supabase for calendar settings)
+  const generatedDraft = await generateEnhancedReplyDraft(draftContext, supabase)
+
+  // Save to database
+  await saveEnhancedDraft(replyId, generatedDraft, supabase)
+
+  console.log('✅ Enhanced draft generated with enrichment:', {
+    replyId,
+    sources_scraped: generatedDraft.enrichment_data.enrichment_metadata.sources_scraped,
+    confidence_score: generatedDraft.confidence_score,
+    matched_offers: generatedDraft.matched_offers
+  })
+}
+
+/**
+ * Basic draft generation without scraping (ORIGINAL)
+ */
+async function generateBasicReplyDraft(
+  replyId: string,
+  context: { campaignId: string, prospectId: string },
+  email: PostmarkInboundEmail,
+  supabase: any
+) {
+  console.log('🤖 Generating SAM draft response (basic):', replyId)
+
+  // Get campaign and prospect context
+  const { data: campaign } = await supabase
+    .from('campaigns')
+    .select('name, message_template, workspace_id')
+    .eq('id', context.campaignId)
+    .single()
+
+  const { data: prospect } = await supabase
+    .from('workspace_prospects')
+    .select('name, company, title, industry, notes')
+    .eq('id', context.prospectId)
+    .single()
+
+  if (!campaign || !prospect) {
+    console.error('Missing campaign or prospect data for draft generation')
+    return
+  }
+
+  // Call OpenRouter AI to generate response draft
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
+      'X-Title': 'SAM AI - Reply Draft Generation'
+    },
+    body: JSON.stringify({
+      model: 'anthropic/claude-3.5-sonnet',
+      messages: [
+        {
+          role: 'system',
+          content: `You are SAM, an expert B2B sales assistant. Generate a professional, personalized response to a prospect's reply.
 
 Your response should:
 - Address their specific message directly
@@ -1060,47 +1157,42 @@ Context:
 - Prospect: ${prospect.name}, ${prospect.title || 'Professional'} at ${prospect.company}
 - Industry: ${prospect.industry || 'Not specified'}
 - Original message template: ${campaign.message_template || 'Not available'}`
-          },
-          {
-            role: 'user',
-            content: `The prospect (${prospect.name}) just replied with:\n\n"${email.TextBody}"\n\nGenerate a response draft.`
-          }
-        ],
-        max_tokens: 500,
-        temperature: 0.7
-      })
-    })
-
-    if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.statusText}`)
-    }
-
-    const data = await response.json()
-    const draftResponse = data.choices[0].message.content
-
-    // Save draft to database
-    await supabase
-      .from('campaign_replies')
-      .update({
-        ai_suggested_response: draftResponse,
-        draft_generated_at: new Date().toISOString(),
-        metadata: {
-          model: 'claude-3.5-sonnet',
-          tokens_used: data.usage?.total_tokens || 0
+        },
+        {
+          role: 'user',
+          content: `The prospect (${prospect.name}) just replied with:\n\n"${email.TextBody}"\n\nGenerate a response draft.`
         }
-      })
-      .eq('id', replyId)
-
-    console.log('✅ SAM draft response generated:', {
-      replyId,
-      length: draftResponse.length,
-      model: 'claude-3.5-sonnet'
+      ],
+      max_tokens: 500,
+      temperature: 0.7
     })
+  })
 
-  } catch (error) {
-    console.error('Failed to generate reply draft:', error)
-    // Don't throw - this is non-critical, user can still respond manually
+  if (!response.ok) {
+    throw new Error(`OpenRouter API error: ${response.statusText}`)
   }
+
+  const data = await response.json()
+  const draftResponse = data.choices[0].message.content
+
+  // Save draft to database
+  await supabase
+    .from('campaign_replies')
+    .update({
+      ai_suggested_response: draftResponse,
+      draft_generated_at: new Date().toISOString(),
+      metadata: {
+        model: 'claude-3.5-sonnet',
+        tokens_used: data.usage?.total_tokens || 0
+      }
+    })
+    .eq('id', replyId)
+
+  console.log('✅ SAM draft response generated (basic):', {
+    replyId,
+    length: draftResponse.length,
+    model: 'claude-3.5-sonnet'
+  })
 }
 
 /**

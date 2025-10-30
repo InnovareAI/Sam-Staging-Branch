@@ -2282,3 +2282,51 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main 6aa5dd76] 🔄 Auto-backup: auto-backup-20251030_120316
+ Committer: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 27 files changed, 4943 insertions(+), 69 deletions(-)
+ create mode 100644 app/api/campaigns/linkedin/execute-live/route.ts.backup
+ create mode 100644 docs/DATA_DRIVEN_CAMPAIGNS.md
+ create mode 100644 docs/DEPLOYMENT_SUMMARY_OCT_30_2025.md
+ create mode 100644 docs/N8N_DEPLOYMENT_COMPLETE.md
+ create mode 100644 docs/RUN_POSTGRES_MIGRATION.md
+ create mode 100755 scripts/js/activate-n8n-workflow.mjs
+ create mode 100755 scripts/js/add-followups-2-6.mjs
+ create mode 100755 scripts/js/get-n8n-workflow.mjs
+ create mode 100644 scripts/js/migrate-add-flow-settings.mjs
+ create mode 100755 scripts/js/update-n8n-dynamic-flow.mjs
+ create mode 100755 scripts/js/verify-flow-settings-migration.mjs
+ create mode 100644 sql/migrations/add-campaign-flow-settings.sql
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251030_120316[0m
+[0;32m📅 Timestamp: Thu Oct 30 12:03:17 PST 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+

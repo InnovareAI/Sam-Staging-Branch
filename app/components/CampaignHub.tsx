@@ -37,7 +37,8 @@ import {
   Eye,
   Grid3x3,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Link
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -378,9 +379,13 @@ function CampaignBuilder({
   const [isDragOver, setIsDragOver] = useState(false);
   
   // Approved prospects state
-  const [dataSource, setDataSource] = useState<'approved' | 'upload'>('approved');
+  const [dataSource, setDataSource] = useState<'approved' | 'upload' | 'quick-add'>('approved');
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]); // Selected session IDs
   const [selectedProspects, setSelectedProspects] = useState<any[]>([]);
+
+  // Quick Add state
+  const [quickAddUrl, setQuickAddUrl] = useState('');
+  const [isAddingQuickProspect, setIsAddingQuickProspect] = useState(false);
 
   // React Query + localStorage for approved prospects (persistent across sessions)
   const {
@@ -1451,6 +1456,71 @@ Would you like me to adjust these or create more variations?`
     toastSuccess(`Messages from "${campaign.name || 'Untitled'}" applied to campaign!`);
   };
 
+  const handleQuickAddProspect = async () => {
+    if (!quickAddUrl.trim()) {
+      toastError('Please enter a LinkedIn URL');
+      return;
+    }
+
+    // Basic URL validation
+    if (!quickAddUrl.toLowerCase().includes('linkedin.com/in/')) {
+      toastError('Invalid LinkedIn URL. Expected format: https://linkedin.com/in/username');
+      return;
+    }
+
+    setIsAddingQuickProspect(true);
+
+    try {
+      const response = await fetch('/api/prospects/quick-add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          linkedin_url: quickAddUrl.trim(),
+          workspace_id: workspaceId
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to add prospect');
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.prospect) {
+        // Add prospect to csvData
+        const newProspect = {
+          name: data.prospect.name,
+          linkedin_url: data.prospect.linkedin_url,
+          linkedin_user_id: data.prospect.linkedin_user_id || null,
+          connection_degree: data.prospect.connection_degree,
+          source: 'quick_add'
+        };
+
+        setCsvData([...csvData, newProspect]);
+        setShowPreview(true);
+
+        // Clear input
+        setQuickAddUrl('');
+
+        // Show success message with campaign type suggestion
+        toastSuccess(data.message);
+
+        // Auto-suggest campaign type based on connection degree
+        if (data.campaign_type_suggestion === 'messenger' && campaignType !== 'messenger') {
+          toastSuccess('💡 Tip: This is a 1st degree connection - consider using Messenger campaign type');
+        } else if (data.campaign_type_suggestion === 'connector' && campaignType !== 'connector') {
+          toastSuccess('💡 Tip: This is a 2nd/3rd degree connection - Connector campaign will send a connection request first');
+        }
+      }
+    } catch (error) {
+      console.error('Quick add prospect error:', error);
+      toastError(error instanceof Error ? error.message : 'Failed to add prospect');
+    } finally {
+      setIsAddingQuickProspect(false);
+    }
+  };
+
   const processFile = (file: File) => {
     if (file && file.type === 'text/csv') {
       setCsvFile(file);
@@ -1577,11 +1647,14 @@ Would you like me to adjust these or create more variations?`
         follow_up_4: followUpMessages[3] || '',
         follow_up_5: followUpMessages[4] || ''
       },
+      // Include message timing/cadence settings
+      message_delays: campaignSettings.message_delays || ['2-3 days', '3-5 days', '5-7 days', '1 week', '2 weeks'],
       // Store additional data needed for execution
       _executionData: {
         campaignType,
         alternativeMessage,
-        followUpMessages
+        followUpMessages,
+        message_delays: campaignSettings.message_delays
       }
     };
 
@@ -2046,19 +2119,35 @@ Would you like me to adjust these or create more variations?`
           {!(initialProspects && initialProspects.length > 0) && (
           <div className="bg-gray-700 rounded-lg p-4 mb-6">
             <h4 className="text-white font-medium mb-3">Choose Prospect Data Source</h4>
-            <Button
-              onClick={() => setDataSource('approved')}
-              variant="outline"
-              className={`h-auto p-4 flex flex-col items-start ${
-                dataSource === 'approved'
-                  ? 'border-purple-500 bg-purple-600/20 text-purple-300'
-                  : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500'
-              }`}
-            >
-              <Users className="mb-2" size={24} />
-              <div className="font-medium">Use Approved Prospects</div>
-              <div className="text-xs text-gray-400 mt-1">Select from previously approved prospect data</div>
-            </Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Button
+                onClick={() => setDataSource('approved')}
+                variant="outline"
+                className={`h-auto p-4 flex flex-col items-start ${
+                  dataSource === 'approved'
+                    ? 'border-purple-500 bg-purple-600/20 text-purple-300'
+                    : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500'
+                }`}
+              >
+                <Users className="mb-2" size={24} />
+                <div className="font-medium">Use Approved Prospects</div>
+                <div className="text-xs text-gray-400 mt-1">Select from previously approved prospect data</div>
+              </Button>
+
+              <Button
+                onClick={() => setDataSource('quick-add')}
+                variant="outline"
+                className={`h-auto p-4 flex flex-col items-start ${
+                  dataSource === 'quick-add'
+                    ? 'border-purple-500 bg-purple-600/20 text-purple-300'
+                    : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500'
+                }`}
+              >
+                <Link className="mb-2" size={24} />
+                <div className="font-medium">Quick Add LinkedIn URL</div>
+                <div className="text-xs text-gray-400 mt-1">Paste a LinkedIn profile URL to add instantly</div>
+              </Button>
+            </div>
           </div>
           )}
 
@@ -2208,6 +2297,92 @@ Would you like me to adjust these or create more variations?`
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Quick Add URL Input - show when quick-add is selected */}
+          {dataSource === 'quick-add' && (
+            <div className="bg-gray-700 rounded-lg p-4 mb-6">
+              <h4 className="text-white font-medium mb-3">Add LinkedIn Profile</h4>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="https://linkedin.com/in/username"
+                  value={quickAddUrl}
+                  onChange={(e) => setQuickAddUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !isAddingQuickProspect) {
+                      handleQuickAddProspect();
+                    }
+                  }}
+                  className="flex-1 bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                  disabled={isAddingQuickProspect}
+                />
+                <Button
+                  onClick={handleQuickAddProspect}
+                  disabled={!quickAddUrl.trim() || isAddingQuickProspect}
+                  className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600"
+                >
+                  {isAddingQuickProspect ? (
+                    <>
+                      <Loader2 className="mr-2 animate-spin" size={16} />
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="mr-2" size={16} />
+                      Add
+                    </>
+                  )}
+                </Button>
+              </div>
+              <p className="text-gray-400 text-xs mt-2">
+                Paste a LinkedIn profile URL and we'll automatically detect if they're a 1st degree connection
+              </p>
+
+              {/* Show added prospects */}
+              {csvData.length > 0 && (
+                <div className="mt-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-gray-400 text-sm">Added Prospects ({csvData.length})</span>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => setCsvData([])}
+                      className="text-red-400 hover:text-red-300"
+                    >
+                      Clear All
+                    </Button>
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {csvData.map((prospect, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between bg-gray-800 p-3 rounded-lg border border-gray-600"
+                      >
+                        <div className="flex-1">
+                          <div className="text-white font-medium">{prospect.name}</div>
+                          <div className="text-gray-400 text-xs mt-1">{prospect.linkedin_url}</div>
+                          <div className="text-gray-500 text-xs mt-1">
+                            {prospect.connection_degree} degree connection
+                            {prospect.linkedin_user_id && ' • Ready for Messenger'}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setCsvData(csvData.filter((_, i) => i !== index));
+                          }}
+                          className="text-gray-400 hover:text-red-400"
+                        >
+                          <X size={16} />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -4076,7 +4251,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               finalCampaignData.messages.follow_up_4,
               finalCampaignData.messages.follow_up_5
             ].filter(msg => msg?.trim())
-          }
+          },
+          // Include message timing/cadence for dynamic N8N scheduling
+          message_delays: finalCampaignData.message_delays || _executionData?.message_delays || ['2-3 days', '3-5 days', '5-7 days', '1 week', '2 weeks']
         })
       });
 

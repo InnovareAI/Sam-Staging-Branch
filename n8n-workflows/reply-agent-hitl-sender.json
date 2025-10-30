@@ -1,0 +1,462 @@
+{
+  "name": "Reply Agent - HITL Approved Message Sender",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds",
+              "secondsInterval": 10
+            }
+          ]
+        }
+      },
+      "id": "poll-trigger",
+      "name": "Poll Every 10 Seconds",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  mo.id,\n  mo.workspace_id,\n  mo.campaign_id,\n  mo.prospect_id,\n  mo.reply_id,\n  mo.channel,\n  mo.message_content,\n  mo.subject,\n  mo.metadata,\n  w.name as workspace_name,\n  cr.sender_email,\n  cr.sender_name,\n  cr.reply_text as prospect_reply\nFROM message_outbox mo\nJOIN workspaces w ON mo.workspace_id = w.id\nLEFT JOIN campaign_replies cr ON mo.reply_id = cr.id\nWHERE mo.status = 'queued'\n  AND mo.scheduled_send_time <= NOW()\nORDER BY mo.scheduled_send_time ASC\nLIMIT 10;",
+        "options": {}
+      },
+      "id": "fetch-queued-messages",
+      "name": "Fetch Queued Messages",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [450, 300],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.length }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "check-has-messages",
+      "name": "Has Messages?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE message_outbox\nSET status = 'sending',\n    updated_at = NOW()\nWHERE id = '{{ $json.id }}';",
+        "options": {}
+      },
+      "id": "update-status-sending",
+      "name": "Update Status to Sending",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [850, 200],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{ $json.channel }}",
+                    "operation": "equals",
+                    "value2": "email"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "email"
+            },
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{ $json.channel }}",
+                    "operation": "equals",
+                    "value2": "linkedin"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "linkedin"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "route-by-channel",
+      "name": "Route by Channel",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT unipile_account_id, provider\nFROM workspace_accounts\nWHERE workspace_id = '{{ $json.workspace_id }}'\n  AND account_type = 'email'\n  AND is_active = true\nLIMIT 1;",
+        "options": {}
+      },
+      "id": "get-email-account",
+      "name": "Get Email Account",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1250, 100],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{ $env.UNIPILE_DSN }}/api/v1/emails",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $json.unipile_account_id }}"
+            },
+            {
+              "name": "to",
+              "value": "=[{\"email\": \"{{ $('Update Status to Sending').item.json.metadata.prospect_email }}\"}]"
+            },
+            {
+              "name": "subject",
+              "value": "={{ $('Update Status to Sending').item.json.subject || 'Re: Your inquiry' }}"
+            },
+            {
+              "name": "body",
+              "value": "={\"html\": \"{{ $('Update Status to Sending').item.json.message_content.replace(/\\n/g, '<br>') }}\", \"text\": \"{{ $('Update Status to Sending').item.json.message_content }}\"}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-email-unipile",
+      "name": "Send Email via Unipile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1450, 100]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE message_outbox\nSET status = 'sent',\n    sent_at = NOW(),\n    external_message_id = '{{ $json.object.id }}',\n    n8n_execution_id = '{{ $execution.id }}',\n    updated_at = NOW()\nWHERE id = '{{ $('Update Status to Sending').item.json.id }}';\n\nUPDATE campaign_replies\nSET response_sent_at = NOW(),\n    metadata = jsonb_set(\n      COALESCE(metadata, '{}'::jsonb),\n      '{external_message_id}',\n      to_jsonb('{{ $json.object.id }}'::text)\n    )\nWHERE id = '{{ $('Update Status to Sending').item.json.reply_id }}';",
+        "options": {}
+      },
+      "id": "update-email-success",
+      "name": "Update Email Success",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1650, 100],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT unipile_account_id\nFROM workspace_accounts\nWHERE workspace_id = '{{ $json.workspace_id }}'\n  AND account_type = 'linkedin'\n  AND is_active = true\nLIMIT 1;",
+        "options": {}
+      },
+      "id": "get-linkedin-account",
+      "name": "Get LinkedIn Account",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1250, 300],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{ $env.UNIPILE_DSN }}/api/v1/chats/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $json.unipile_account_id }}"
+            },
+            {
+              "name": "attendees",
+              "value": "=[{\"provider_id\": \"{{ $('Update Status to Sending').item.json.metadata.prospect_linkedin_id }}\"}]"
+            },
+            {
+              "name": "text",
+              "value": "={{ $('Update Status to Sending').item.json.message_content }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-linkedin-unipile",
+      "name": "Send LinkedIn via Unipile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE message_outbox\nSET status = 'sent',\n    sent_at = NOW(),\n    external_message_id = '{{ $json.object.id }}',\n    n8n_execution_id = '{{ $execution.id }}',\n    updated_at = NOW()\nWHERE id = '{{ $('Update Status to Sending').item.json.id }}';\n\nUPDATE campaign_replies\nSET response_sent_at = NOW(),\n    metadata = jsonb_set(\n      COALESCE(metadata, '{}'::jsonb),\n      '{external_message_id}',\n      to_jsonb('{{ $json.object.id }}'::text)\n    )\nWHERE id = '{{ $('Update Status to Sending').item.json.reply_id }}';",
+        "options": {}
+      },
+      "id": "update-linkedin-success",
+      "name": "Update LinkedIn Success",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1650, 300],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE message_outbox\nSET status = 'failed',\n    failed_at = NOW(),\n    failure_reason = '{{ $json.error.message }}',\n    n8n_execution_id = '{{ $execution.id }}',\n    updated_at = NOW(),\n    metadata = jsonb_set(\n      COALESCE(metadata, '{}'::jsonb),\n      '{retry_count}',\n      to_jsonb(COALESCE((metadata->>'retry_count')::int, 0) + 1)\n    )\nWHERE id = '{{ $('Update Status to Sending').item.json.id }}';",
+        "options": {}
+      },
+      "id": "update-failure",
+      "name": "Update Failure",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1450, 500],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Retry failed messages (up to 3 attempts)\nUPDATE message_outbox\nSET status = 'queued',\n    scheduled_send_time = NOW() + (COALESCE((metadata->>'retry_count')::int, 0) * INTERVAL '5 minutes'),\n    updated_at = NOW()\nWHERE status = 'failed'\n  AND COALESCE((metadata->>'retry_count')::int, 0) < 3\n  AND failed_at > NOW() - INTERVAL '1 hour';",
+        "options": {}
+      },
+      "id": "retry-failed-messages",
+      "name": "Retry Failed Messages",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1650, 500],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase PostgreSQL"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Poll Every 10 Seconds": {
+      "main": [
+        [
+          {
+            "node": "Fetch Queued Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Queued Messages": {
+      "main": [
+        [
+          {
+            "node": "Has Messages?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Messages?": {
+      "main": [
+        [
+          {
+            "node": "Update Status to Sending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Status to Sending": {
+      "main": [
+        [
+          {
+            "node": "Route by Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Channel": {
+      "main": [
+        [
+          {
+            "node": "Get Email Account",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get LinkedIn Account",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Email Account": {
+      "main": [
+        [
+          {
+            "node": "Send Email via Unipile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email via Unipile": {
+      "main": [
+        [
+          {
+            "node": "Update Email Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get LinkedIn Account": {
+      "main": [
+        [
+          {
+            "node": "Send LinkedIn via Unipile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send LinkedIn via Unipile": {
+      "main": [
+        [
+          {
+            "node": "Update LinkedIn Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Failure": {
+      "main": [
+        [
+          {
+            "node": "Retry Failed Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-10-30T00:00:00.000Z",
+      "updatedAt": "2025-10-30T00:00:00.000Z",
+      "id": "reply-agent",
+      "name": "Reply Agent"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-10-30T00:00:00.000Z",
+  "versionId": "1"
+}

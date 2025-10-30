@@ -1,0 +1,32 @@
+{
+  "name": "LinkedIn Commenting - Comment Poster",
+  "nodes": [
+    {"id": "trigger", "name": "Every 2 Minutes", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1, "position": [250, 300], "parameters": {"rule": {"interval": [{"field": "minutes", "minutesInterval": 2}]}}},
+    {"id": "get_ready", "name": "Get Ready Comments", "type": "n8n-nodes-base.httpRequest", "typeVersion": 3, "position": [450, 300], "parameters": {"url": "https://app.meet-sam.com/api/linkedin-commenting/ready-to-post", "method": "GET", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "x-internal-trigger", "value": "n8n-commenting-agent"}]}}},
+    {"id": "has_comments", "name": "Has Comments?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [650, 300], "parameters": {"conditions": {"number": [{"value1": "={{ $json.comments?.length || 0 }}", "operation": "larger", "value2": 0}]}}},
+    {"id": "check_rate", "name": "Check Rate Limit", "type": "n8n-nodes-base.httpRequest", "typeVersion": 3, "position": [850, 200], "parameters": {"url": "https://app.meet-sam.com/api/linkedin-commenting/rate-limit-check", "method": "POST", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "x-internal-trigger", "value": "n8n-commenting-agent"}, {"name": "Content-Type", "value": "application/json"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": {"value": "={{ JSON.stringify({ workspace_id: $json.comments[0].workspace_id }) }}", "expression": true}}},
+    {"id": "within_limits", "name": "Within Limits?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [1050, 200], "parameters": {"conditions": {"boolean": [{"value1": "={{ $json.within_limits }}", "value2": true}]}}},
+    {"id": "split", "name": "Process Each", "type": "n8n-nodes-base.splitInBatches", "typeVersion": 3, "position": [1250, 100], "parameters": {"batchSize": 1}},
+    {"id": "post", "name": "Post Comment", "type": "n8n-nodes-base.httpRequest", "typeVersion": 3, "position": [1450, 100], "parameters": {"url": "https://app.meet-sam.com/api/linkedin-commenting/post", "method": "POST", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "x-internal-trigger", "value": "n8n-commenting-agent"}, {"name": "Content-Type", "value": "application/json"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": {"value": "={{ JSON.stringify({ comment_queue_id: $json.id }) }}", "expression": true}}},
+    {"id": "log", "name": "Log", "type": "n8n-nodes-base.function", "typeVersion": 1, "position": [1650, 100], "parameters": {"functionCode": "console.log('✅ Posted:', $json.comment_id);\nreturn $input.all();"}},
+    {"id": "wait", "name": "Wait 2 Min", "type": "n8n-nodes-base.wait", "typeVersion": 1, "position": [1850, 100], "parameters": {"unit": "minutes", "amount": 2}},
+    {"id": "loop", "name": "More?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [2050, 100], "parameters": {"conditions": {"boolean": [{"value1": "={{ $run['Process Each'].hasNext }}", "value2": true}]}}},
+    {"id": "done", "name": "Done", "type": "n8n-nodes-base.noOp", "typeVersion": 1, "position": [2250, 200], "parameters": {}},
+    {"id": "rate_exceeded", "name": "Rate Limit Hit", "type": "n8n-nodes-base.noOp", "typeVersion": 1, "position": [1250, 300], "parameters": {}},
+    {"id": "none", "name": "No Comments", "type": "n8n-nodes-base.noOp", "typeVersion": 1, "position": [850, 400], "parameters": {}}
+  ],
+  "connections": {
+    "Every 2 Minutes": {"main": [[{"node": "Get Ready Comments", "type": "main", "index": 0}]]},
+    "Get Ready Comments": {"main": [[{"node": "Has Comments?", "type": "main", "index": 0}]]},
+    "Has Comments?": {"main": [[{"node": "Check Rate Limit", "type": "main", "index": 0}], [{"node": "No Comments", "type": "main", "index": 0}]]},
+    "Check Rate Limit": {"main": [[{"node": "Within Limits?", "type": "main", "index": 0}]]},
+    "Within Limits?": {"main": [[{"node": "Process Each", "type": "main", "index": 0}], [{"node": "Rate Limit Hit", "type": "main", "index": 0}]]},
+    "Process Each": {"main": [[{"node": "Post Comment", "type": "main", "index": 0}]]},
+    "Post Comment": {"main": [[{"node": "Log", "type": "main", "index": 0}]]},
+    "Log": {"main": [[{"node": "Wait 2 Min", "type": "main", "index": 0}]]},
+    "Wait 2 Min": {"main": [[{"node": "More?", "type": "main", "index": 0}]]},
+    "More?": {"main": [[{"node": "Process Each", "type": "main", "index": 0}], [{"node": "Done", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1", "saveManualExecutions": true, "saveExecutionProgress": true, "saveDataSuccessExecution": "all", "saveDataErrorExecution": "all"},
+  "active": false
+}

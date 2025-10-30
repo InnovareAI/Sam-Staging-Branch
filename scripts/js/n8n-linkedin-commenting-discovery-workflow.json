@@ -1,0 +1,516 @@
+{
+  "name": "LinkedIn Commenting - Post Discovery",
+  "nodes": [
+    {
+      "id": "schedule_trigger",
+      "name": "Poll Every 30 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 400],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "get_monitors",
+      "name": "Get Active Monitors",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 400],
+      "parameters": {
+        "url": "https://app.meet-sam.com/api/linkedin-commenting/monitors/poll",
+        "method": "GET",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-trigger",
+              "value": "n8n-commenting-agent"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "check_has_monitors",
+      "name": "Has Monitors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [650, 400],
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.monitors?.length || 0 }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "split_monitors",
+      "name": "Process Each Monitor",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [850, 300],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "route_by_type",
+      "name": "Route by Monitor Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "parameters": {
+        "options": {},
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{ $json.monitor_type }}",
+                    "value2": "profile"
+                  }
+                ]
+              },
+              "output": 0
+            },
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{ $json.monitor_type }}",
+                    "value2": "keyword"
+                  }
+                ]
+              },
+              "output": 1
+            },
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{ $json.monitor_type }}",
+                    "value2": "hashtag"
+                  }
+                ]
+              },
+              "output": 2
+            },
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{ $json.monitor_type }}",
+                    "value2": "company"
+                  }
+                ]
+              },
+              "output": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "get_profile_posts",
+      "name": "Get Profile Posts (Unipile)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1250, 100],
+      "parameters": {
+        "url": {
+          "value": "={{ 'https://' + $json.unipile_dsn + '/api/v1/users/' + $json.target_linkedin_id + '/posts' }}",
+          "expression": true
+        },
+        "method": "GET",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": {
+                "value": "={{ $json.unipile_api_key }}",
+                "expression": true
+              }
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "search_keyword_posts",
+      "name": "Search Keyword Posts (Unipile)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1250, 250],
+      "parameters": {
+        "url": {
+          "value": "={{ 'https://' + $json.unipile_dsn + '/api/v1/search/posts?keywords=' + encodeURIComponent($json.target_value) }}",
+          "expression": true
+        },
+        "method": "GET",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": {
+                "value": "={{ $json.unipile_api_key }}",
+                "expression": true
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "search_hashtag_posts",
+      "name": "Search Hashtag Posts (Unipile)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1250, 400],
+      "parameters": {
+        "url": {
+          "value": "={{ 'https://' + $json.unipile_dsn + '/api/v1/search/posts?hashtags=' + encodeURIComponent($json.target_value.replace('#', '')) }}",
+          "expression": true
+        },
+        "method": "GET",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": {
+                "value": "={{ $json.unipile_api_key }}",
+                "expression": true
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "get_company_posts",
+      "name": "Get Company Posts (Unipile)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1250, 550],
+      "parameters": {
+        "url": {
+          "value": "={{ 'https://' + $json.unipile_dsn + '/api/v1/companies/' + $json.target_linkedin_id + '/posts' }}",
+          "expression": true
+        },
+        "method": "GET",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": {
+                "value": "={{ $json.unipile_api_key }}",
+                "expression": true
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "merge_results",
+      "name": "Merge All Post Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [1450, 300],
+      "parameters": {
+        "mode": "combine",
+        "options": {}
+      }
+    },
+    {
+      "id": "save_posts",
+      "name": "Save Discovered Posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1650, 300],
+      "parameters": {
+        "url": "https://app.meet-sam.com/api/linkedin-commenting/save-discovered-posts",
+        "method": "POST",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-trigger",
+              "value": "n8n-commenting-agent"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": {
+          "value": "={{ JSON.stringify({ monitor: $('Process Each Monitor').item.json, posts: $json.items || $json }) }}",
+          "expression": true
+        }
+      }
+    },
+    {
+      "id": "log_saved",
+      "name": "Log Saved Posts",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1850, 300],
+      "parameters": {
+        "functionCode": "console.log('✅ Posts saved:', {\n  monitor_type: $('Process Each Monitor').item.json.monitor_type,\n  posts_saved: $json.posts_saved || 0\n});\nreturn $input.all();"
+      }
+    },
+    {
+      "id": "check_more_monitors",
+      "name": "More Monitors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2050, 300],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $run['Process Each Monitor'].hasNext }}",
+              "value2": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "all_done",
+      "name": "Discovery Complete",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2250, 400],
+      "parameters": {}
+    },
+    {
+      "id": "no_monitors",
+      "name": "No Monitors Active",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [850, 500],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Poll Every 30 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Get Active Monitors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Monitors": {
+      "main": [
+        [
+          {
+            "node": "Has Monitors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Monitors?": {
+      "main": [
+        [
+          {
+            "node": "Process Each Monitor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Monitors Active",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Each Monitor": {
+      "main": [
+        [
+          {
+            "node": "Route by Monitor Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Monitor Type": {
+      "main": [
+        [
+          {
+            "node": "Get Profile Posts (Unipile)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search Keyword Posts (Unipile)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search Hashtag Posts (Unipile)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Company Posts (Unipile)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Profile Posts (Unipile)": {
+      "main": [
+        [
+          {
+            "node": "Merge All Post Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Keyword Posts (Unipile)": {
+      "main": [
+        [
+          {
+            "node": "Merge All Post Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Hashtag Posts (Unipile)": {
+      "main": [
+        [
+          {
+            "node": "Merge All Post Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Company Posts (Unipile)": {
+      "main": [
+        [
+          {
+            "node": "Merge All Post Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All Post Results": {
+      "main": [
+        [
+          {
+            "node": "Save Discovered Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Discovered Posts": {
+      "main": [
+        [
+          {
+            "node": "Log Saved Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Saved Posts": {
+      "main": [
+        [
+          {
+            "node": "More Monitors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "More Monitors?": {
+      "main": [
+        [
+          {
+            "node": "Process Each Monitor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Discovery Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/New_York",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all",
+    "executionTimeout": 3600
+  },
+  "active": false
+}

@@ -1,0 +1,379 @@
+{
+  "name": "Follow-up Agent - Automated Re-engagement",
+  "nodes": [
+    {
+      "id": "schedule_trigger",
+      "name": "Poll Every Minute",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "get_ready_followups",
+      "name": "Get Ready Follow-ups",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300],
+      "parameters": {
+        "url": "https://app.meet-sam.com/api/follow-ups/poll-ready",
+        "method": "GET",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-trigger",
+              "value": "n8n-followup-agent"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "check_has_followups",
+      "name": "Has Follow-ups?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [650, 300],
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.follow_ups?.length || 0 }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "prepare_followups",
+      "name": "Prepare Follow-up Contexts",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 200],
+      "parameters": {
+        "functionCode": "const data = $input.item.json;\nreturn data.follow_ups.map(followUp => ({\n  json: {\n    follow_up_id: followUp.id,\n    prospect_id: followUp.prospect_id,\n    prospect_name: followUp.prospect_name,\n    prospect_email: followUp.prospect_email,\n    prospect_company: followUp.prospect_company,\n    prospect_title: followUp.prospect_title,\n    prospect_linkedin_url: followUp.prospect_linkedin_url,\n    campaign_id: followUp.campaign_id,\n    campaign_name: followUp.campaign_name,\n    campaign_channel: followUp.campaign_channel,\n    follow_up_attempt: followUp.follow_up_attempt,\n    days_since_last_contact: followUp.days_since_last_contact,\n    conversation_history: followUp.conversation_history,\n    workspace_id: followUp.workspace_id\n  }\n}));"
+      }
+    },
+    {
+      "id": "split_batches",
+      "name": "Process One at a Time",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1050, 200],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "generate_followup",
+      "name": "Generate Follow-up Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1250, 200],
+      "parameters": {
+        "url": "https://app.meet-sam.com/api/follow-ups/generate",
+        "method": "POST",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-trigger",
+              "value": "n8n-followup-agent"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": {
+          "value": "={{ JSON.stringify({\n  follow_up_id: $json.follow_up_id,\n  prospect: {\n    id: $json.prospect_id,\n    name: $json.prospect_name,\n    email: $json.prospect_email,\n    company: $json.prospect_company,\n    title: $json.prospect_title,\n    linkedin_url: $json.prospect_linkedin_url\n  },\n  campaign: {\n    id: $json.campaign_id,\n    name: $json.campaign_name,\n    channel: $json.campaign_channel\n  },\n  conversation_history: $json.conversation_history,\n  follow_up_attempt: $json.follow_up_attempt,\n  days_since_last_contact: $json.days_since_last_contact\n}) }}",
+          "expression": true
+        }
+      }
+    },
+    {
+      "id": "queue_message",
+      "name": "Queue to Outbox",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1450, 200],
+      "parameters": {
+        "url": "https://app.meet-sam.com/api/message-outbox/queue",
+        "method": "POST",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-trigger",
+              "value": "n8n-followup-agent"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": {
+          "value": "={{ JSON.stringify({\n  workspace_id: $json.workspace_id,\n  prospect_id: $json.prospect_id,\n  campaign_id: $json.campaign_id,\n  channel: $json.campaign_channel,\n  subject: $json.generated_subject,\n  message: $json.generated_message,\n  message_type: 'follow_up',\n  follow_up_id: $json.follow_up_id,\n  follow_up_attempt: $json.follow_up_attempt\n}) }}",
+          "expression": true
+        }
+      }
+    },
+    {
+      "id": "update_followup_status",
+      "name": "Update Follow-up Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1650, 200],
+      "parameters": {
+        "url": {
+          "value": "={{ 'https://app.meet-sam.com/api/follow-ups/' + $json.follow_up_id + '/status' }}",
+          "expression": true
+        },
+        "method": "PUT",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-trigger",
+              "value": "n8n-followup-agent"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": {
+          "value": "={{ JSON.stringify({\n  status: 'sent',\n  sent_at: new Date().toISOString()\n}) }}",
+          "expression": true
+        }
+      }
+    },
+    {
+      "id": "log_result",
+      "name": "Log Follow-up Sent",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1850, 200],
+      "parameters": {
+        "functionCode": "console.log('✅ Follow-up sent:', {\n  attempt: $json.follow_up_attempt,\n  prospect: $json.prospect_name,\n  company: $json.prospect_company,\n  tone: $json.generated_tone\n});\nreturn $input.all();"
+      }
+    },
+    {
+      "id": "wait_between_sends",
+      "name": "Wait 30 Seconds",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [2050, 200],
+      "parameters": {
+        "unit": "seconds",
+        "amount": 30
+      }
+    },
+    {
+      "id": "check_loop",
+      "name": "More Follow-ups?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2250, 200],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $run['Process One at a Time'].hasNext }}",
+              "value2": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "loop_done",
+      "name": "Batch Complete",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2450, 300],
+      "parameters": {}
+    },
+    {
+      "id": "no_followups",
+      "name": "No Follow-ups Ready",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [850, 400],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Poll Every Minute": {
+      "main": [
+        [
+          {
+            "node": "Get Ready Follow-ups",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Ready Follow-ups": {
+      "main": [
+        [
+          {
+            "node": "Has Follow-ups?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Follow-ups?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Follow-up Contexts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Follow-ups Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Follow-up Contexts": {
+      "main": [
+        [
+          {
+            "node": "Process One at a Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process One at a Time": {
+      "main": [
+        [
+          {
+            "node": "Generate Follow-up Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Follow-up Message": {
+      "main": [
+        [
+          {
+            "node": "Queue to Outbox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue to Outbox": {
+      "main": [
+        [
+          {
+            "node": "Update Follow-up Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Follow-up Status": {
+      "main": [
+        [
+          {
+            "node": "Log Follow-up Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Follow-up Sent": {
+      "main": [
+        [
+          {
+            "node": "Wait 30 Seconds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 30 Seconds": {
+      "main": [
+        [
+          {
+            "node": "More Follow-ups?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "More Follow-ups?": {
+      "main": [
+        [
+          {
+            "node": "Process One at a Time",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Batch Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/New_York",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all",
+    "executionTimeout": 3600
+  },
+  "active": false
+}

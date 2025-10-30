@@ -1,8 +1,268 @@
 # N8N Reply Agent Integration
 
 **Purpose**: N8N workflow to send HITL-approved replies to prospects
-**Date**: October 7, 2025
-**Status**: Specification (Needs Implementation)
+**Date**: October 7, 2025 (Specification) | October 30, 2025 (Implementation)
+**Status**: ✅ Implemented - Ready for Deployment
+
+---
+
+## 🎉 Implementation Complete
+
+The Reply Agent N8N workflow has been implemented and is ready for deployment!
+
+**Implemented Files**:
+- ✅ `/n8n-workflows/reply-agent-hitl-sender.json` - Complete N8N workflow
+- ✅ `/scripts/js/deploy-reply-agent-workflow.mjs` - Automated deployment script
+- ✅ `/scripts/js/test-reply-agent-workflow.mjs` - Workflow validation tests
+
+**Test Results**: All validation tests passed ✅
+
+**Next Step**: Deploy to N8N instance using deployment script
+
+---
+
+## 🚀 Deployment Guide
+
+### Prerequisites
+
+Before deploying, ensure you have:
+
+1. **N8N Instance Access**
+   - N8N instance running at `https://workflows.innovareai.com`
+   - N8N API key with workflow create/update permissions
+   - Set in `.env`: `N8N_API_KEY=your_api_key`
+
+2. **Database Access**
+   - Supabase PostgreSQL credentials
+   - Connection details for N8N Postgres nodes
+   - Tables created: `message_outbox`, `campaign_replies`, `workspace_accounts`
+
+3. **Unipile Integration**
+   - Unipile DSN (domain)
+   - Unipile API key
+   - At least one connected workspace account (email or LinkedIn)
+
+### Step 1: Validate Workflow
+
+Run the validation tests to ensure the workflow is properly structured:
+
+```bash
+node scripts/js/test-reply-agent-workflow.mjs
+```
+
+Expected output:
+```
+✅ All tests passed!
+📋 Workflow is ready for deployment
+```
+
+If any tests fail, check the workflow JSON file and fix issues before proceeding.
+
+### Step 2: Deploy to N8N
+
+Deploy the workflow using the automated deployment script:
+
+```bash
+node scripts/js/deploy-reply-agent-workflow.mjs
+```
+
+This script will:
+- Check if workflow already exists (by name)
+- Create new workflow OR update existing workflow
+- Return workflow ID and configuration instructions
+
+Expected output:
+```
+✅ Workflow created!
+   ID: [workflow-id]
+
+🔗 Workflow URL: https://workflows.innovareai.com/workflow/[workflow-id]
+```
+
+### Step 3: Configure N8N Credentials
+
+1. **Open the workflow in N8N**:
+   - Go to: `https://workflows.innovareai.com/workflow/[workflow-id]`
+   - Click "Open workflow"
+
+2. **Configure Supabase PostgreSQL Connection**:
+   - Click on any Postgres node (e.g., "Fetch Queued Messages")
+   - Click "Credential to connect with" dropdown
+   - Select "Create New Credential"
+   - Enter connection details:
+     ```
+     Name: Supabase PostgreSQL
+     Host: latxadqrvrrrcvkktrog.supabase.co
+     Database: postgres
+     User: postgres
+     Password: [your-supabase-password]
+     Port: 5432
+     SSL: Enabled (Required)
+     ```
+   - Click "Save"
+   - Apply this credential to ALL Postgres nodes in the workflow:
+     - Fetch Queued Messages
+     - Update Status to Sending
+     - Get Email Account
+     - Get LinkedIn Account
+     - Update Email Success
+     - Update LinkedIn Success
+     - Update Failure
+     - Retry Failed Messages
+
+3. **Configure Environment Variables**:
+   - Go to: Settings → Variables
+   - Add the following variables:
+     ```
+     UNIPILE_DSN: [your-unipile-dsn]
+     UNIPILE_API_KEY: [your-unipile-api-key]
+     ```
+   - These are automatically used by the HTTP Request nodes
+
+### Step 4: Test the Workflow
+
+Before activating, test with a sample message:
+
+1. **Insert test message into database**:
+   ```sql
+   INSERT INTO message_outbox (
+     id,
+     workspace_id,
+     campaign_id,
+     prospect_id,
+     reply_id,
+     channel,
+     message_content,
+     subject,
+     status,
+     scheduled_send_time,
+     metadata
+   ) VALUES (
+     gen_random_uuid(),
+     '[your-workspace-id]',
+     '[your-campaign-id]',
+     '[your-prospect-id]',
+     '[your-reply-id]',
+     'email',
+     'This is a test reply message from SAM AI Reply Agent. If you receive this, the workflow is working correctly!',
+     'Re: Test Reply',
+     'queued',
+     NOW(),
+     jsonb_build_object(
+       'prospect_email', '[your-email-address]',
+       'test', true
+     )
+   );
+   ```
+
+2. **Run workflow manually in N8N**:
+   - Click "Test workflow" button
+   - Wait 10 seconds for polling trigger to execute
+   - Check execution log for results
+
+3. **Verify results**:
+   - Check N8N execution log for success
+   - Query database to verify status updated:
+     ```sql
+     SELECT id, status, sent_at, external_message_id, failure_reason
+     FROM message_outbox
+     WHERE metadata->>'test' = 'true'
+     ORDER BY created_at DESC
+     LIMIT 1;
+     ```
+   - Expected: `status = 'sent'`, `sent_at` populated, `external_message_id` from Unipile
+   - Check your email inbox for the test message
+
+### Step 5: Activate the Workflow
+
+Once testing is successful:
+
+1. Toggle the "Active" switch in N8N UI
+2. Workflow will now poll every 10 seconds automatically
+3. Monitor N8N executions tab for the first few minutes
+
+### Step 6: Monitor & Verify
+
+**Monitor N8N Executions**:
+- Go to: Executions tab in N8N
+- Look for executions of "Reply Agent - HITL Approved Message Sender"
+- Verify successful executions (green checkmarks)
+- If errors occur, click execution to see detailed logs
+
+**Monitor Database**:
+```sql
+-- Check messages sent in last hour
+SELECT
+  status,
+  channel,
+  COUNT(*) as count,
+  MAX(sent_at) as last_sent
+FROM message_outbox
+WHERE sent_at > NOW() - INTERVAL '1 hour'
+GROUP BY status, channel;
+
+-- Check for failed messages
+SELECT
+  id,
+  channel,
+  failure_reason,
+  failed_at,
+  metadata->>'retry_count' as retries
+FROM message_outbox
+WHERE status = 'failed'
+  AND failed_at > NOW() - INTERVAL '24 hours'
+ORDER BY failed_at DESC;
+```
+
+**Expected Performance**:
+- Messages processed within 10 seconds of being queued
+- Success rate: >95%
+- No stuck messages in 'sending' status for >1 minute
+
+### Troubleshooting
+
+**Issue: Workflow not picking up messages**
+- Verify workflow is Active (toggle should be ON)
+- Check polling trigger is set to 10 seconds
+- Verify database credentials are correct
+- Check messages have `status = 'queued'` and `scheduled_send_time <= NOW()`
+
+**Issue: Messages failing to send**
+- Check Unipile credentials are correct (UNIPILE_DSN, UNIPILE_API_KEY)
+- Verify workspace has active Unipile account connected
+- Check Unipile account has not expired or been disconnected
+- Review failure_reason in message_outbox table
+
+**Issue: Database credential error**
+- Verify Supabase credentials are correct
+- Check SSL is enabled in Postgres credential
+- Ensure all Postgres nodes use the same credential
+- Test connection directly using psql: `psql -h latxadqrvrrrcvkktrog.supabase.co -U postgres -d postgres`
+
+**Issue: Environment variables not found**
+- Go to N8N Settings → Variables
+- Verify UNIPILE_DSN and UNIPILE_API_KEY are set
+- Check variable names match exactly (case-sensitive)
+- Restart N8N workflow if variables were just added
+
+### Deployment Checklist
+
+Use this checklist to ensure complete deployment:
+
+- [ ] Validate workflow JSON (run test script)
+- [ ] Deploy workflow to N8N (run deployment script)
+- [ ] Configure Supabase PostgreSQL credential in N8N
+- [ ] Apply Supabase credential to all Postgres nodes
+- [ ] Set UNIPILE_DSN environment variable
+- [ ] Set UNIPILE_API_KEY environment variable
+- [ ] Insert test message into message_outbox
+- [ ] Run manual test execution in N8N
+- [ ] Verify test message sent successfully
+- [ ] Verify database status updated correctly
+- [ ] Activate workflow (toggle Active switch)
+- [ ] Monitor executions for 5-10 minutes
+- [ ] Verify production messages sending correctly
+- [ ] Set up monitoring alerts (optional but recommended)
 
 ---
 
@@ -452,17 +712,23 @@ Expected:
 ## Implementation Checklist
 
 ### Setup
-- [ ] Create N8N workflow
-- [ ] Configure Supabase connection
-- [ ] Add Unipile API credentials
-- [ ] Set up polling trigger (10 seconds)
+- [x] Create N8N workflow - ✅ Complete
+- [x] Create automated deployment script - ✅ Complete
+- [x] Create workflow validation tests - ✅ Complete
+- [ ] Configure Supabase connection - Requires N8N UI access
+- [ ] Add Unipile API credentials - Requires N8N UI access
+- [x] Set up polling trigger (10 seconds) - ✅ Complete
 
 ### Testing
-- [ ] Test email sending (Startup tier)
-- [ ] Test LinkedIn sending
-- [ ] Test error handling
-- [ ] Test retry logic
-- [ ] Verify status updates
+- [x] Validate workflow structure - ✅ All tests passed
+- [x] Validate SQL queries - ✅ All queries validated
+- [x] Validate Unipile API configuration - ✅ Complete
+- [x] Validate node connections - ✅ Complete
+- [ ] Test email sending (Startup tier) - Requires deployment
+- [ ] Test LinkedIn sending - Requires deployment
+- [ ] Test error handling - Requires deployment
+- [ ] Test retry logic - Requires deployment
+- [ ] Verify status updates - Requires deployment
 
 ### Monitoring
 - [ ] Set up success rate alerts
@@ -471,23 +737,31 @@ Expected:
 - [ ] Configure failure notifications
 
 ### Documentation
-- [ ] Document N8N workflow
-- [ ] Create troubleshooting guide
-- [ ] Document Unipile integration
+- [x] Document N8N workflow - ✅ Complete
+- [x] Create deployment guide - ✅ Complete
+- [x] Create troubleshooting guide - ✅ Complete
+- [x] Document Unipile integration - ✅ Complete
 
 ---
 
 ## Next Steps
 
-1. **Create N8N workflow** using template above
-2. **Test with low-volume workspace** (Startup tier)
-3. **Monitor for 24 hours** to verify reliability
-4. **Scale to SME/Enterprise** tiers
-5. **Set up monitoring** and alerts
+1. ✅ **Create N8N workflow** - COMPLETE
+2. ✅ **Create deployment script** - COMPLETE
+3. ✅ **Validate workflow structure** - COMPLETE
+4. **Deploy to N8N** - Run `node scripts/js/deploy-reply-agent-workflow.mjs`
+5. **Configure N8N credentials** - Follow deployment guide above
+6. **Test with sample message** - Insert test message into message_outbox
+7. **Monitor for 24 hours** to verify reliability
+8. **Set up monitoring** and alerts
 
 ---
 
-**Created**: October 7, 2025
-**Status**: Specification Ready
+**Created**: October 7, 2025 (Specification)
+**Implemented**: October 30, 2025
+**Status**: ✅ Ready for Deployment
 **Priority**: P1 (Required for complete HITL workflow)
-**Estimated Time**: 4-6 hours for N8N setup + testing
+**Files Created**:
+- `/n8n-workflows/reply-agent-hitl-sender.json`
+- `/scripts/js/deploy-reply-agent-workflow.mjs`
+- `/scripts/js/test-reply-agent-workflow.mjs`

@@ -1,0 +1,27 @@
+{
+  "name": "LinkedIn Commenting - Comment Generator",
+  "nodes": [
+    {"id": "trigger", "name": "Every 5 Minutes", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1, "position": [250, 300], "parameters": {"rule": {"interval": [{"field": "minutes", "minutesInterval": 5}]}}},
+    {"id": "get_pending", "name": "Get Pending Posts", "type": "n8n-nodes-base.httpRequest", "typeVersion": 3, "position": [450, 300], "parameters": {"url": "https://app.meet-sam.com/api/linkedin-commenting/pending-posts", "method": "GET", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "x-internal-trigger", "value": "n8n-commenting-agent"}]}}},
+    {"id": "has_posts", "name": "Has Posts?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [650, 300], "parameters": {"conditions": {"number": [{"value1": "={{ $json.posts?.length || 0 }}", "operation": "larger", "value2": 0}]}}},
+    {"id": "split", "name": "Process Each", "type": "n8n-nodes-base.splitInBatches", "typeVersion": 3, "position": [850, 200], "parameters": {"batchSize": 1}},
+    {"id": "generate", "name": "Generate Comment", "type": "n8n-nodes-base.httpRequest", "typeVersion": 3, "position": [1050, 200], "parameters": {"url": "https://app.meet-sam.com/api/linkedin-commenting/generate", "method": "POST", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "x-internal-trigger", "value": "n8n-commenting-agent"}, {"name": "Content-Type", "value": "application/json"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": {"value": "={{ JSON.stringify({ post_id: $json.id, workspace_id: $json.workspace_id }) }}", "expression": true}}},
+    {"id": "log", "name": "Log", "type": "n8n-nodes-base.function", "typeVersion": 1, "position": [1250, 200], "parameters": {"functionCode": "console.log('✅ Comment:', $json.comment_queue_id, 'Confidence:', $json.confidence_score);\nreturn $input.all();"}},
+    {"id": "wait", "name": "Wait 2s", "type": "n8n-nodes-base.wait", "typeVersion": 1, "position": [1450, 200], "parameters": {"unit": "seconds", "amount": 2}},
+    {"id": "loop", "name": "More?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [1650, 200], "parameters": {"conditions": {"boolean": [{"value1": "={{ $run['Process Each'].hasNext }}", "value2": true}]}}},
+    {"id": "done", "name": "Done", "type": "n8n-nodes-base.noOp", "typeVersion": 1, "position": [1850, 300], "parameters": {}},
+    {"id": "none", "name": "No Posts", "type": "n8n-nodes-base.noOp", "typeVersion": 1, "position": [850, 400], "parameters": {}}
+  ],
+  "connections": {
+    "Every 5 Minutes": {"main": [[{"node": "Get Pending Posts", "type": "main", "index": 0}]]},
+    "Get Pending Posts": {"main": [[{"node": "Has Posts?", "type": "main", "index": 0}]]},
+    "Has Posts?": {"main": [[{"node": "Process Each", "type": "main", "index": 0}], [{"node": "No Posts", "type": "main", "index": 0}]]},
+    "Process Each": {"main": [[{"node": "Generate Comment", "type": "main", "index": 0}]]},
+    "Generate Comment": {"main": [[{"node": "Log", "type": "main", "index": 0}]]},
+    "Log": {"main": [[{"node": "Wait 2s", "type": "main", "index": 0}]]},
+    "Wait 2s": {"main": [[{"node": "More?", "type": "main", "index": 0}]]},
+    "More?": {"main": [[{"node": "Process Each", "type": "main", "index": 0}], [{"node": "Done", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1", "saveManualExecutions": true, "saveExecutionProgress": true, "saveDataSuccessExecution": "all", "saveDataErrorExecution": "all"},
+  "active": false
+}

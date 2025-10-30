@@ -1,0 +1,169 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+
+/**
+ * Quick Add Single Prospect API
+ * Just paste LinkedIn URL - system handles everything automatically
+ */
+export async function POST(request: NextRequest) {
+  try {
+    console.log('🚀 Quick Add API called');
+
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+
+    // Get authenticated user (using getUser instead of getSession for security)
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    console.log('Auth check:', {
+      hasUser: !!user,
+      userId: user?.id,
+      authError: authError?.message
+    });
+
+    if (authError || !user) {
+      console.error('❌ Auth error:', authError);
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    const { linkedin_url, workspace_id, campaign_name } = await request.json();
+
+    console.log('Request data:', { linkedin_url, workspace_id, campaign_name, userId: user.id });
+
+    if (!linkedin_url) {
+      return NextResponse.json({ error: 'LinkedIn URL required' }, { status: 400 });
+    }
+
+    if (!workspace_id) {
+      return NextResponse.json({ error: 'Workspace ID required' }, { status: 400 });
+    }
+
+    console.log('🚀 Quick Add Prospect:', linkedin_url);
+
+    // Step 1: Extract LinkedIn username from URL
+    const username = extractLinkedInUsername(linkedin_url);
+    if (!username) {
+      return NextResponse.json({
+        error: 'Invalid LinkedIn URL. Expected format: https://linkedin.com/in/username'
+      }, { status: 400 });
+    }
+
+    console.log('📝 Extracted username:', username);
+
+    // Step 2: Check if it's a 1st degree connection (has chat ID)
+    let linkedinUserId = null;
+    let connectionDegree = '2nd/3rd'; // Default assumption
+    let fullName = 'LinkedIn User';
+
+    try {
+      // Try to find this person in Unipile connections
+      const unipileResponse = await fetch(`https://${process.env.UNIPILE_DSN}/api/v1/users/${username}?account_id=${process.env.UNIPILE_ACCOUNT_ID}`, {
+        headers: {
+          'X-API-KEY': process.env.UNIPILE_API_KEY || ''
+        }
+      });
+
+      if (unipileResponse.ok) {
+        const unipileData = await unipileResponse.json();
+
+        // If we got profile data, they might be a connection
+        if (unipileData.provider_id) {
+          linkedinUserId = unipileData.provider_id;
+          connectionDegree = '1st'; // They're in our connections
+          fullName = unipileData.display_name || unipileData.name || 'LinkedIn User';
+          console.log('✅ Found 1st degree connection:', linkedinUserId);
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not check Unipile connection, treating as 2nd/3rd degree');
+      // Continue - we'll treat as 2nd/3rd degree connection
+    }
+
+    // Step 3: Create approval session
+    const sessionId = `quick_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const { error: sessionError } = await supabase
+      .from('prospect_approval_sessions')
+      .insert({
+        id: sessionId,
+        workspace_id: workspace_id,
+        campaign_name: campaign_name || `Quick Add - ${new Date().toLocaleDateString()}`,
+        status: 'pending',
+        total_count: 1,
+        approved_count: 0,
+        created_by: user.id
+      });
+
+    if (sessionError) {
+      console.error('Session creation error:', sessionError);
+      throw new Error('Failed to create approval session');
+    }
+
+    // Step 4: Save prospect to approval database
+    const prospectData = {
+      session_id: sessionId,
+      workspace_id: workspace_id,
+      contact: {
+        name: fullName,
+        linkedin_url: linkedin_url,
+        linkedin_user_id: linkedinUserId,
+        connection_degree: connectionDegree
+      },
+      source: 'quick_add',
+      confidence_score: 0.8,
+      status: 'pending'
+    };
+
+    const { error: insertError } = await supabase
+      .from('prospect_approval_data')
+      .insert(prospectData);
+
+    if (insertError) {
+      console.error('Prospect insert error:', insertError);
+      throw new Error('Failed to save prospect');
+    }
+
+    console.log('✅ Prospect saved to database');
+
+    // Step 5: Return success
+    return NextResponse.json({
+      success: true,
+      message: connectionDegree === '1st'
+        ? '✅ Added as 1st degree connection (Messenger campaign ready)'
+        : '✅ Added as 2nd/3rd degree (Connector campaign ready)',
+      campaign_type_suggestion: connectionDegree === '1st' ? 'messenger' : 'connector',
+      session_id: sessionId
+    });
+
+  } catch (error) {
+    console.error('Quick add prospect error:', error);
+    return NextResponse.json({
+      error: 'Failed to add prospect',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+  }
+}
+
+/**
+ * Extract LinkedIn username from various URL formats
+ */
+function extractLinkedInUsername(url: string): string | null {
+  try {
+    // Handle various LinkedIn URL formats
+    const patterns = [
+      /linkedin\.com\/in\/([^\/\?]+)/i,           // https://linkedin.com/in/username
+      /linkedin\.com\/profile\/view\?id=([^&]+)/i // Old format
+    ];
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+    }
+
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
