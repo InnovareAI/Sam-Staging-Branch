@@ -622,6 +622,396 @@ function generateSamSignature(payload: any): string {
   return `sam_${timestamp}_${Buffer.from(data).toString('base64').substring(0, 16)}`;
 }
 
+/**
+ * Create a LinkedIn campaign with flexible flow settings
+ * Enables SAM to create campaigns via conversational interface
+ */
+export async function mcp__sam__create_linkedin_campaign_with_flow(params: {
+  workspace_id: string;
+  name: string;
+  connection_wait_hours?: number; // 12-96, default 36
+  followup_wait_days?: number; // 1-30, default 5
+  messages: {
+    connection_request: string;
+    follow_up_1?: string | null;
+    follow_up_2?: string | null;
+    follow_up_3?: string | null;
+    follow_up_4?: string | null;
+    follow_up_5?: string | null;
+    follow_up_6?: string | null;
+    goodbye?: string | null;
+  };
+  metadata?: any;
+}): Promise<{
+  success: boolean;
+  campaign_id?: string;
+  campaign_name?: string;
+  flow_preview?: {
+    total_steps: number;
+    total_days: number;
+    timeline: string[];
+  };
+  error?: string;
+}> {
+  try {
+    const supabase = supabaseAdmin();
+
+    const flow_settings = {
+      connection_wait_hours: params.connection_wait_hours || 36,
+      followup_wait_days: params.followup_wait_days || 5,
+      messages: {
+        connection_request: params.messages.connection_request,
+        follow_up_1: params.messages.follow_up_1 || null,
+        follow_up_2: params.messages.follow_up_2 || null,
+        follow_up_3: params.messages.follow_up_3 || null,
+        follow_up_4: params.messages.follow_up_4 || null,
+        follow_up_5: params.messages.follow_up_5 || null,
+        follow_up_6: params.messages.follow_up_6 || null,
+        goodbye: params.messages.goodbye || null
+      }
+    };
+
+    const { data, error } = await supabase
+      .from('campaigns')
+      .insert({
+        workspace_id: params.workspace_id,
+        name: params.name,
+        channel: 'linkedin',
+        status: 'draft',
+        flow_settings,
+        metadata: params.metadata || {}
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    // Generate flow preview
+    const flowPreview = generateFlowPreview(flow_settings);
+
+    return {
+      success: true,
+      campaign_id: data.id,
+      campaign_name: data.name,
+      flow_preview: flowPreview
+    };
+
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Campaign creation failed'
+    };
+  }
+}
+
+/**
+ * Create multiple campaigns at once for A/B testing
+ * Enables SAM to create A/B tests via conversation
+ */
+export async function mcp__sam__create_ab_test_campaigns(params: {
+  workspace_id: string;
+  test_name: string;
+  campaigns: Array<{
+    variant_name: string; // "A", "B", "C"
+    variant_label?: string; // "Aggressive", "Nurturing"
+    connection_wait_hours?: number;
+    followup_wait_days?: number;
+    messages: {
+      connection_request: string;
+      follow_up_1?: string | null;
+      follow_up_2?: string | null;
+      follow_up_3?: string | null;
+      follow_up_4?: string | null;
+      follow_up_5?: string | null;
+      follow_up_6?: string | null;
+      goodbye?: string | null;
+    };
+  }>;
+}): Promise<{
+  success: boolean;
+  test_name?: string;
+  campaigns?: Array<{
+    id: string;
+    name: string;
+    variant: string;
+    variant_label?: string;
+  }>;
+  error?: string;
+}> {
+  try {
+    const supabase = supabaseAdmin();
+    const createdCampaigns = [];
+
+    for (const config of params.campaigns) {
+      const flow_settings = {
+        connection_wait_hours: config.connection_wait_hours || 36,
+        followup_wait_days: config.followup_wait_days || 5,
+        messages: {
+          connection_request: config.messages.connection_request,
+          follow_up_1: config.messages.follow_up_1 || null,
+          follow_up_2: config.messages.follow_up_2 || null,
+          follow_up_3: config.messages.follow_up_3 || null,
+          follow_up_4: config.messages.follow_up_4 || null,
+          follow_up_5: config.messages.follow_up_5 || null,
+          follow_up_6: config.messages.follow_up_6 || null,
+          goodbye: config.messages.goodbye || null
+        }
+      };
+
+      const { data, error } = await supabase
+        .from('campaigns')
+        .insert({
+          workspace_id: params.workspace_id,
+          name: `${params.test_name} - ${config.variant_label || config.variant_name}`,
+          channel: 'linkedin',
+          status: 'draft',
+          flow_settings,
+          metadata: {
+            ab_test_group: params.test_name,
+            variant: config.variant_name,
+            variant_label: config.variant_label
+          }
+        })
+        .select()
+        .single();
+
+      if (error) {
+        return { success: false, error: `Failed to create variant ${config.variant_name}: ${error.message}` };
+      }
+
+      createdCampaigns.push({
+        id: data.id,
+        name: data.name,
+        variant: config.variant_name,
+        variant_label: config.variant_label
+      });
+    }
+
+    return {
+      success: true,
+      test_name: params.test_name,
+      campaigns: createdCampaigns
+    };
+
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'A/B test creation failed'
+    };
+  }
+}
+
+/**
+ * Split prospects evenly between campaigns for A/B testing
+ */
+export async function mcp__sam__split_prospects_between_campaigns(params: {
+  prospect_ids: string[];
+  campaign_ids: string[];
+  shuffle?: boolean; // Default true for randomization
+}): Promise<{
+  success: boolean;
+  distribution?: Array<{
+    campaign_id: string;
+    prospect_count: number;
+  }>;
+  error?: string;
+}> {
+  try {
+    const supabase = supabaseAdmin();
+
+    // Shuffle prospects for random distribution
+    const prospects = params.shuffle !== false
+      ? params.prospect_ids.sort(() => Math.random() - 0.5)
+      : params.prospect_ids;
+
+    const perCampaign = Math.ceil(prospects.length / params.campaign_ids.length);
+    const distribution = [];
+
+    for (let i = 0; i < params.campaign_ids.length; i++) {
+      const campaignProspects = prospects.slice(
+        i * perCampaign,
+        (i + 1) * perCampaign
+      );
+
+      if (campaignProspects.length > 0) {
+        const { error } = await supabase
+          .from('campaign_prospects')
+          .insert(
+            campaignProspects.map(prospectId => ({
+              campaign_id: params.campaign_ids[i],
+              prospect_id: prospectId,
+              status: 'pending'
+            }))
+          );
+
+        if (error) {
+          return { success: false, error: error.message };
+        }
+
+        distribution.push({
+          campaign_id: params.campaign_ids[i],
+          prospect_count: campaignProspects.length
+        });
+      }
+    }
+
+    return {
+      success: true,
+      distribution
+    };
+
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Prospect split failed'
+    };
+  }
+}
+
+/**
+ * Generate flow preview timeline
+ */
+function generateFlowPreview(flow_settings: any) {
+  const messages = flow_settings.messages;
+  const enabledSteps = Object.entries(messages).filter(([_, msg]) => msg !== null);
+
+  const timeline: string[] = [];
+  let currentDay = 0;
+
+  timeline.push(`Day 0: Connection Request`);
+
+  currentDay += flow_settings.connection_wait_hours / 24;
+
+  enabledSteps.slice(1).forEach(([key, _], index) => {
+    const stepName = key.split('_').map((word: string) =>
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+
+    timeline.push(`Day ${currentDay.toFixed(1)}: ${stepName}`);
+
+    if (index < enabledSteps.length - 2) { // Not the last step
+      currentDay += flow_settings.followup_wait_days;
+    }
+  });
+
+  return {
+    total_steps: enabledSteps.length,
+    total_days: Math.ceil(currentDay),
+    timeline
+  };
+}
+
+/**
+ * Create LinkedIn DM campaign for 1st degree connections
+ * For people already connected - no connection request needed
+ */
+export async function mcp__sam__create_linkedin_dm_campaign(params: {
+  workspace_id: string;
+  name: string;
+  message_wait_days?: number; // Default: 5
+  messages: {
+    message_1: string;
+    message_2?: string | null;
+    message_3?: string | null;
+    message_4?: string | null;
+    message_5?: string | null;
+    message_6?: string | null;
+    message_7?: string | null;
+    message_8?: string | null;
+    message_9?: string | null;
+    message_10?: string | null;
+  };
+  metadata?: any;
+}): Promise<{
+  success: boolean;
+  campaign_id?: string;
+  campaign_name?: string;
+  flow_preview?: {
+    total_messages: number;
+    total_days: number;
+    timeline: string[];
+  };
+  error?: string;
+}> {
+  try {
+    const supabase = supabaseAdmin();
+
+    const flow_settings = {
+      campaign_type: 'linkedin_dm',
+      message_wait_days: params.message_wait_days || 5,
+      messages: {
+        // Clear connection request fields (not used for DM campaigns)
+        connection_request: null,
+        follow_up_1: null,
+        follow_up_2: null,
+        follow_up_3: null,
+        follow_up_4: null,
+        follow_up_5: null,
+        follow_up_6: null,
+        goodbye: null,
+        // DM messages
+        message_1: params.messages.message_1,
+        message_2: params.messages.message_2 || null,
+        message_3: params.messages.message_3 || null,
+        message_4: params.messages.message_4 || null,
+        message_5: params.messages.message_5 || null,
+        message_6: params.messages.message_6 || null,
+        message_7: params.messages.message_7 || null,
+        message_8: params.messages.message_8 || null,
+        message_9: params.messages.message_9 || null,
+        message_10: params.messages.message_10 || null
+      }
+    };
+
+    const { data, error } = await supabase
+      .from('campaigns')
+      .insert({
+        workspace_id: params.workspace_id,
+        name: params.name,
+        channel: 'linkedin',
+        status: 'draft',
+        flow_settings,
+        metadata: params.metadata || {}
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    // Generate timeline preview
+    const messageCount = Object.entries(params.messages)
+      .filter(([_, msg]) => msg !== null)
+      .length;
+
+    const timeline: string[] = [];
+    for (let i = 0; i < messageCount; i++) {
+      const day = i * (params.message_wait_days || 5);
+      timeline.push(`Day ${day}: Message ${i + 1}`);
+    }
+
+    return {
+      success: true,
+      campaign_id: data.id,
+      campaign_name: data.name,
+      flow_preview: {
+        total_messages: messageCount,
+        total_days: (messageCount - 1) * (params.message_wait_days || 5),
+        timeline
+      }
+    };
+
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'LinkedIn DM campaign creation failed'
+    };
+  }
+}
+
 export {
   findBestTemplate,
   findProspectsForCampaign,
@@ -629,5 +1019,6 @@ export {
   personalizeForProspect,
   determineNextAction,
   executeViaN8NWorkflow,
-  generateSamSignature
+  generateSamSignature,
+  generateFlowPreview
 };

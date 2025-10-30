@@ -380,7 +380,7 @@ export async function POST(req: NextRequest) {
         personalization_data: prospect.personalization_data
       }));
 
-      // Prepare message templates (legacy support + flow_settings)
+      // Prepare message templates
       const messages = {
         connection_request: connectionMsg || alternativeMsg || campaign.message_templates?.connection_request,
         follow_up_1: campaign.message_templates?.follow_up_1,
@@ -390,24 +390,13 @@ export async function POST(req: NextRequest) {
         goodbye: campaign.message_templates?.goodbye
       };
 
-      // Get flow_settings from campaign (new data-driven approach)
-      const flowSettings = campaign.flow_settings || {
-        connection_wait_hours: 36,
-        followup_wait_days: 5,
-        messages: messages // Fallback to legacy messages if no flow_settings
-      };
-
       const n8nPayload = {
         campaignId: campaign.id,
         campaignName: campaign.name,
         workspaceId: campaign.workspace_id,
         unipileAccountId: selectedAccount.unipile_account_id,
-        prospects: n8nProspects.map(p => ({
-          ...p,
-          flow_settings: flowSettings // Attach flow_settings to each prospect
-        })),
-        messages, // Legacy support
-        flow_settings: flowSettings // Also at campaign level
+        prospects: n8nProspects,
+        messages
       };
 
       console.log(`   Payload: ${n8nProspects.length} prospects`);
@@ -474,6 +463,7 @@ export async function POST(req: NextRequest) {
       // - Check connection acceptance
       // - Send follow-ups (FU1-4, Goodbye)
       // - Reply detection
+      */
 
       results.errors = failedResults;
     }
@@ -526,6 +516,288 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// Helper function to extract LinkedIn user ID from URL
+function extractLinkedInUserId(linkedinUrl: string): string | null {
+  if (!linkedinUrl) return null;
+
+  try {
+    // Handle various LinkedIn URL formats:
+    // - https://www.linkedin.com/in/username
+    // - https://linkedin.com/in/username/
+    // - /in/username
+    // - username (bare)
+
+    // Remove trailing slash
+
+          // Check for cached provider_id first (saves Sales Nav quota)
+          let providerId = prospect.personalization_data?.provider_id;
+          let profileData = null;
+
+          if (providerId) {
+            console.log(`   ✅ Using cached provider_id: ${providerId}`);
+          } else {
+            // STEP 1: Get LinkedIn profile to retrieve provider_id
+            const linkedinUsername = prospect.linkedin_url.split('/in/')[1]?.split('?')[0]?.replace('/', '');
+            if (!linkedinUsername) {
+              console.error(`❌ Invalid LinkedIn URL: ${prospect.linkedin_url}`);
+              failedResults.push({
+                prospect: prospectName,
+                error: 'Invalid LinkedIn URL format'
+              });
+              continue;
+            }
+
+            const profileUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/${linkedinUsername}?account_id=${selectedAccount.unipile_account_id}`;
+            console.log(`   🔍 Fetching profile: ${linkedinUsername}`);
+
+            const profileResponse = await fetch(profileUrl, {
+              method: 'GET',
+              headers: {
+                'X-API-KEY': process.env.UNIPILE_API_KEY || '',
+                'Accept': 'application/json'
+              }
+            });
+
+            if (!profileResponse.ok) {
+              const errorText = await profileResponse.text();
+              console.error(`❌ Profile fetch error (${profileResponse.status}): ${errorText}`);
+              failedResults.push({
+                prospect: prospectName,
+                error: `Profile fetch ${profileResponse.status}: ${errorText}`
+              });
+              continue;
+            }
+
+            profileData = await profileResponse.json();
+            console.log(`   🔍 LinkedIn profile response:`, JSON.stringify(profileData, null, 2));
+
+            providerId = profileData.provider_id;
+
+            if (!providerId) {
+              console.error(`❌ No provider_id in profile response`);
+              failedResults.push({
+                prospect: prospectName,
+                error: 'No provider_id in profile'
+              });
+              continue;
+            }
+
+            console.log(`   ✅ Got provider_id: ${providerId}`);
+          }
+
+          // ENRICHMENT FALLBACK: Extract name and company from LinkedIn profile if missing in database
+          let enrichedFirstName = prospect.first_name;
+          let enrichedLastName = prospect.last_name;
+          let enrichedCompany = prospect.company_name;
+          let enrichedTitle = prospect.title;
+          let needsEnrichment = false;
+
+          // Only enrich if we have profileData (skipped when using cached provider_id)
+          if (profileData) {
+            // Enrich names if missing
+            if (!enrichedFirstName || !enrichedLastName) {
+              // Unipile returns first_name and last_name directly - use them!
+              enrichedFirstName = enrichedFirstName || profileData.first_name || '';
+              enrichedLastName = enrichedLastName || profileData.last_name || '';
+
+              if (enrichedFirstName || enrichedLastName) {
+                console.log(`   📝 Enriched name from LinkedIn: ${enrichedFirstName} ${enrichedLastName}`);
+                needsEnrichment = true;
+              } else {
+                // Fallback: try to build from other fields if direct fields not available
+                const displayName = profileData.display_name ||
+                                   profileData.name ||
+                                   profileData.full_name ||
+                                   '';
+
+                if (displayName) {
+                  const nameParts = displayName.trim().split(' ');
+                  enrichedFirstName = enrichedFirstName || nameParts[0] || '';
+                  enrichedLastName = enrichedLastName || nameParts.slice(1).join(' ') || '';
+                  console.log(`   📝 Enriched name from display_name: ${enrichedFirstName} ${enrichedLastName}`);
+                  needsEnrichment = true;
+                } else {
+                  console.log(`   ⚠️ WARNING: Could not find name in LinkedIn profile, will send with empty name`);
+                }
+              }
+            }
+
+            // Enrich company if missing
+            if (!enrichedCompany) {
+              enrichedCompany = profileData.company_name || profileData.company?.name || '';
+              if (enrichedCompany) {
+                console.log(`   📝 Enriched company from LinkedIn: ${enrichedCompany}`);
+                needsEnrichment = true;
+              }
+            }
+
+            // Enrich title if missing
+            if (!enrichedTitle) {
+              enrichedTitle = profileData.headline || '';
+              if (enrichedTitle) {
+                console.log(`   📝 Enriched title from LinkedIn: ${enrichedTitle}`);
+                needsEnrichment = true;
+              }
+            }
+
+            // Save enriched data to database for future use
+            if (needsEnrichment) {
+              await supabase
+                .from('campaign_prospects')
+                .update({
+                  first_name: enrichedFirstName,
+                  last_name: enrichedLastName,
+                  company_name: enrichedCompany || 'Unknown Company',
+                  title: enrichedTitle,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', prospect.id);
+              console.log(`   💾 Saved enriched data to database`);
+            }
+          }
+
+          // STEP 2: Send invitation using provider_id
+          // Re-personalize message with enriched data
+          let finalPersonalizedMsg = (connectionMsg || alternativeMsg || '')
+            .replace(/\{first_name\}/gi, enrichedFirstName || '')
+            .replace(/\{last_name\}/gi, enrichedLastName || '')
+            .replace(/\{company\}/gi, enrichedCompany || '')
+            .replace(/\{company_name\}/gi, enrichedCompany || '')
+            .replace(/\{industry\}/gi, prospect.industry || '')
+            .replace(/\{title\}/gi, enrichedTitle || '');
+
+          // CRITICAL: LinkedIn has 300 character limit for connection messages
+          // Replace multiple newlines with single space for cleaner messages
+          finalPersonalizedMsg = finalPersonalizedMsg.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+
+          if (finalPersonalizedMsg.length > 300) {
+            console.log(`   ⚠️ Message too long (${finalPersonalizedMsg.length} chars), truncating to 300...`);
+            // Truncate at word boundary for cleaner messages
+            finalPersonalizedMsg = finalPersonalizedMsg.substring(0, 297).trim();
+            const lastSpace = finalPersonalizedMsg.lastIndexOf(' ');
+            if (lastSpace > 250) {
+              finalPersonalizedMsg = finalPersonalizedMsg.substring(0, lastSpace) + '...';
+            } else {
+              finalPersonalizedMsg = finalPersonalizedMsg + '...';
+            }
+          }
+
+          const inviteUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/invite`;
+          const requestBody: any = {
+            provider_id: providerId,
+            account_id: selectedAccount.unipile_account_id,
+            message: finalPersonalizedMsg
+          };
+
+          if (prospect.email) {
+            requestBody.user_email = prospect.email;
+          }
+
+          console.log(`   🚀 Sending invitation...`);
+
+          const unipileResponse = await fetch(inviteUrl, {
+            method: 'POST',
+            headers: {
+              'X-API-KEY': process.env.UNIPILE_API_KEY || '',
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+          });
+
+          if (!unipileResponse.ok) {
+            const errorText = await unipileResponse.text();
+            console.error(`❌ Unipile API error (${unipileResponse.status}): ${errorText}`);
+            failedResults.push({
+              prospect: prospectName,
+              error: `Unipile API ${unipileResponse.status}: ${errorText}`
+            });
+            continue;
+          }
+
+          const unipileData = await unipileResponse.json();
+          console.log(`✅ CR sent successfully to ${prospectName}`);
+
+          // Update prospect status
+          await supabase
+            .from('campaign_prospects')
+            .update({
+              status: 'connection_requested',
+              contacted_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              personalization_data: {
+                ...(prospect.personalization_data || {}),  // PRESERVE existing data (campaign_name, etc.)
+                unipile_invitation_id: unipileData.invitation_id || unipileData.object?.id || unipileData.id,
+                sent_at: new Date().toISOString(),
+                campaign_id: campaignId,
+                provider_id: providerId
+              }
+            })
+            .eq('id', prospect.id);
+
+          sentResults.push({
+            prospect: prospectName,
+            linkedin_url: prospect.linkedin_url
+          });
+
+        } catch (prospectError) {
+          console.error(`❌ Error sending to ${prospect.first_name} ${prospect.last_name}:`, prospectError);
+          failedResults.push({
+            prospect: `${prospect.first_name} ${prospect.last_name}`,
+            error: prospectError instanceof Error ? prospectError.message : 'Unknown error'
+          });
+        }
+      }
+
+      results.n8n_triggered = sentResults.length > 0;
+      results.errors = failedResults;
+    }
+
+    // Step 7: Update campaign status and return results
+    const executionStatus = results.n8n_triggered ? 'active' : campaign.status;
+    await supabase
+      .from('campaigns')
+      .update({
+        status: executionStatus,
+        launched_at: new Date().toISOString()
+      })
+      .eq('id', campaignId);
+
+    console.log('\n🎉 Campaign execution completed!');
+    console.log(`📊 Sent: ${sentResults.length}, Failed: ${failedResults.length}`);
+
+    // Log errors if any occurred
+    if (failedResults.length > 0) {
+      console.error('\n❌ ERRORS DURING EXECUTION:');
+      failedResults.forEach((err: any, idx: number) => {
+        console.error(`   ${idx + 1}. ${err.prospect}: ${err.error}`);
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      messages_sent: sentResults.length,
+      messages_failed: failedResults.length,
+      sent_to: sentResults,
+      failed: failedResults,
+      message: `Sent ${sentResults.length} connection requests, ${failedResults.length} failed`,
+      execution_mode: dryRun ? 'dry_run' : 'live',
+      linkedin_account: selectedAccount.name,
+      errors: results.errors
+    });
+
+  } catch (error) {
+    console.error('Campaign execution error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        details: error instanceof Error ? error.stack : undefined
+      },
+      { status: 500 }
+    );
+  }
+}
 
 // Helper function to extract LinkedIn user ID from URL
 function extractLinkedInUserId(linkedinUrl: string): string | null {

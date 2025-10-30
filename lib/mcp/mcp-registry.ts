@@ -203,7 +203,11 @@ export class MCPRegistry {
       // Campaign orchestration tools
       { name: 'mcp__sam__create_campaign', description: 'Sam creates campaign from conversation' },
       { name: 'mcp__sam__execute_campaign', description: 'Sam executes campaign with personalization' },
-      { name: 'mcp__sam__get_campaign_status', description: 'Sam monitors campaign progress' }
+      { name: 'mcp__sam__get_campaign_status', description: 'Sam monitors campaign progress' },
+      { name: 'mcp__sam__create_linkedin_campaign_with_flow', description: 'Create LinkedIn connection campaign with custom timing and messages' },
+      { name: 'mcp__sam__create_linkedin_dm_campaign', description: 'Create LinkedIn DM campaign for 1st degree connections' },
+      { name: 'mcp__sam__create_ab_test_campaigns', description: 'Create A/B test campaigns with multiple variants' },
+      { name: 'mcp__sam__split_prospects_between_campaigns', description: 'Split prospects evenly between multiple campaigns' }
     ]
 
     samAITools.forEach(tool => {
@@ -380,7 +384,11 @@ export class MCPRegistry {
     const samCampaignTools = [
       'mcp__sam__create_campaign',
       'mcp__sam__execute_campaign',
-      'mcp__sam__get_campaign_status'
+      'mcp__sam__get_campaign_status',
+      'mcp__sam__create_linkedin_campaign_with_flow',
+      'mcp__sam__create_linkedin_dm_campaign',
+      'mcp__sam__create_ab_test_campaigns',
+      'mcp__sam__split_prospects_between_campaigns'
     ]
 
     if (brightDataTools.includes(toolName)) {
@@ -548,6 +556,39 @@ export class MCPRegistry {
 
       if (toolName === 'mcp__sam__get_campaign_status') {
         const result = await CampaignOrchestrationMCP.mcp__sam__get_campaign_status(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      // New data-driven campaign tools
+      if (toolName === 'mcp__sam__create_linkedin_campaign_with_flow') {
+        const result = await CampaignOrchestrationMCP.mcp__sam__create_linkedin_campaign_with_flow(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      if (toolName === 'mcp__sam__create_linkedin_dm_campaign') {
+        const result = await CampaignOrchestrationMCP.mcp__sam__create_linkedin_dm_campaign(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      if (toolName === 'mcp__sam__create_ab_test_campaigns') {
+        const result = await CampaignOrchestrationMCP.mcp__sam__create_ab_test_campaigns(args)
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          isError: !result.success
+        }
+      }
+
+      if (toolName === 'mcp__sam__split_prospects_between_campaigns') {
+        const result = await CampaignOrchestrationMCP.mcp__sam__split_prospects_between_campaigns(args)
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
           isError: !result.success

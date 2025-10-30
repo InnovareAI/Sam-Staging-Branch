@@ -9,6 +9,70 @@ interface EnrichNameResult {
   enriched: boolean;
 }
 
+/**
+ * Normalizes a full name by removing titles, credentials, and descriptions
+ * Examples:
+ * - "Stephen T King CIO, Startups 7x, strategy..." → "Stephen T King"
+ * - "John Doe PhD, MBA" → "John Doe"
+ * - "Jane Smith, CEO at Company" → "Jane Smith"
+ */
+export function normalizeFullName(fullName: string): { firstName: string; lastName: string; fullName: string } {
+  if (!fullName || fullName.trim() === '') {
+    return { firstName: '', lastName: '', fullName: '' };
+  }
+
+  let cleanedName = fullName.trim();
+
+  // Remove everything after first comma (usually contains titles/descriptions)
+  if (cleanedName.includes(',')) {
+    cleanedName = cleanedName.split(',')[0].trim();
+  }
+
+  // Common titles and credentials to remove
+  const titlesAndCredentials = [
+    'CEO', 'CTO', 'CFO', 'COO', 'CIO', 'CMO', 'CDO', 'CPO', 'CISO',
+    'President', 'VP', 'SVP', 'EVP', 'AVP',
+    'Director', 'Manager', 'Head', 'Lead', 'Principal', 'Senior', 'Junior',
+    'PhD', 'Ph.D', 'MBA', 'MD', 'JD', 'MSc', 'BSc', 'MA', 'BA',
+    'Founder', 'Co-Founder', 'Owner', 'Partner',
+    'Engineer', 'Developer', 'Designer', 'Analyst', 'Architect', 'Consultant',
+    'Dr', 'Mr', 'Mrs', 'Ms', 'Prof', 'Professor'
+  ];
+
+  // Remove titles that appear as standalone words (case insensitive)
+  const words = cleanedName.split(/\s+/);
+  const nameWords = words.filter(word => {
+    const wordClean = word.replace(/[.,;:]/g, '').trim();
+    return !titlesAndCredentials.some(title =>
+      wordClean.toLowerCase() === title.toLowerCase()
+    );
+  });
+
+  cleanedName = nameWords.join(' ').trim();
+
+  // Split into first and last name
+  const nameParts = cleanedName.split(/\s+/).filter(part => part.length > 0);
+
+  let firstName = '';
+  let lastName = '';
+
+  if (nameParts.length >= 2) {
+    // First word is first name, rest is last name
+    firstName = nameParts[0];
+    lastName = nameParts.slice(1).join(' ');
+  } else if (nameParts.length === 1) {
+    // Only one name part
+    firstName = nameParts[0];
+    lastName = '';
+  }
+
+  return {
+    firstName,
+    lastName,
+    fullName: cleanedName
+  };
+}
+
 export async function enrichProspectName(
   linkedinUrl: string | null,
   currentFirstName: string,

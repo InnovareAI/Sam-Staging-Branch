@@ -351,7 +351,7 @@ export default function Page() {
 
   // Auto-open sign-in modal for unauthenticated users
   useEffect(() => {
-    const bypassAuth = process.env.NODE_ENV === 'development';
+    const bypassAuth = process.env.NODE_ENV === 'development'; // Re-enabled for dev testing
 
     // Only auto-open modal if:
     // 1. Auth loading is complete
@@ -2560,10 +2560,10 @@ export default function Page() {
   }
 
   // Authentication required - redirect to sign-in if not authenticated
-  // 🚨 DEV: Bypass authentication for development
-  const bypassAuth = process.env.NODE_ENV === 'development'; // Enable bypass for dev environment
+  // 🚨 DEV: Bypass authentication enabled for dev environment
+  const bypassAuth = process.env.NODE_ENV === 'development'; // Enabled for dev testing
   const testUser = bypassAuth && !user ? { id: 'dev-user-access', email: 'dev@innovareai.com' } : user;
-  
+
   if (!user && !bypassAuth) {
     return (
       <>

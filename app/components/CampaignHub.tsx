@@ -527,6 +527,14 @@ function CampaignBuilder({
   const [showKBModal, setShowKBModal] = useState(false);
   const [selectedKBTemplate, setSelectedKBTemplate] = useState<any>(null);
 
+  // Campaign Settings state (timing/cadence)
+  const [campaignSettings, setCampaignSettings] = useState<any>({
+    connection_request_delay: '1-3 hours',
+    follow_up_delay: '2-3 days',
+    // Per-message delays: array matching followUpMessages length
+    message_delays: ['2-3 days', '3-5 days', '5-7 days', '1 week', '2 weeks']
+  });
+
   // React Query + localStorage for KB templates (persistent across sessions)
   const {
     data: kbTemplates = [],
@@ -986,6 +994,9 @@ function CampaignBuilder({
 
   const addFollowUpMessage = () => {
     setFollowUpMessages([...followUpMessages, '']);
+    // Add default delay for new message
+    const newDelays = [...(campaignSettings.message_delays || []), '2-3 days'];
+    setCampaignSettings({...campaignSettings, message_delays: newDelays});
   };
 
   const updateFollowUpMessage = (index: number, value: string) => {
@@ -997,7 +1008,16 @@ function CampaignBuilder({
   const removeFollowUpMessage = (index: number) => {
     if (followUpMessages.length > 1) {
       setFollowUpMessages(followUpMessages.filter((_, i) => i !== index));
+      // Also remove the corresponding delay
+      const newDelays = (campaignSettings.message_delays || []).filter((_: any, i: number) => i !== index);
+      setCampaignSettings({...campaignSettings, message_delays: newDelays});
     }
+  };
+
+  const updateMessageDelay = (index: number, delay: string) => {
+    const newDelays = [...(campaignSettings.message_delays || [])];
+    newDelays[index] = delay;
+    setCampaignSettings({...campaignSettings, message_delays: newDelays});
   };
 
   const insertPlaceholder = (placeholder: string, messageType?: 'connection' | 'alternative' | 'followup', index?: number) => {
@@ -2401,12 +2421,48 @@ Would you like me to adjust these or create more variations?`
                     variant="secondary"
                     size="sm"
                     className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
-                    onClick={() => {
-                      setSamMessages([{
-                        role: 'assistant',
-                        content: `Hi! I'll help you improve your alternative message.\n\n**Current Message:**\n"${alternativeMessage}"\n\nWhat would you like me to improve? I can help with:\n- Making it more engaging\n- Adding personalization\n- Improving tone\n- Keeping it concise\n\nTell me what you'd like to change!`
-                      }]);
-                      setShowSamGenerationModal(true);
+                    onClick={async () => {
+                      // Call SAM API directly to improve the message
+                      try {
+                        toastInfo('SAM is improving your alternative message...');
+
+                        const response = await fetch('/api/sam/generate-templates', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            workspace_id: workspaceId,
+                            campaign_name: name,
+                            campaign_type: 'connector',
+                            prospect_count: csvData.length,
+                            user_input: `Please improve this alternative message. Keep it under 115 characters and maintain a friendly, concise tone.\n\nCurrent message (${alternativeMessage.length} chars):\n"${alternativeMessage}"\n\nMake it more engaging while staying brief.`,
+                            conversation_history: [],
+                            prospect_sample: csvData.slice(0, 3)
+                          })
+                        });
+
+                        if (response.ok) {
+                          const result = await response.json();
+
+                          if (result.templates?.alternative_message) {
+                            const improved = result.templates.alternative_message;
+                            if (improved.length <= 115) {
+                              setAlternativeMessage(improved);
+                              toastSuccess(`Alternative message improved! (${improved.length}/115 characters)`);
+                            } else {
+                              toastWarning(`Improved message is ${improved.length} characters. Truncating to 115.`);
+                              setAlternativeMessage(improved.substring(0, 115));
+                            }
+                          } else {
+                            toastError('Could not extract improved message.');
+                          }
+                        } else {
+                          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                          toastError(`Failed to improve message: ${errorData.error || 'Unknown error'}`);
+                        }
+                      } catch (error) {
+                        console.error('Improve alternative message error:', error);
+                        toastError(`Error improving message: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                      }
                     }}
                   >
                     <Zap size={12} className="mr-1" />
@@ -2443,6 +2499,25 @@ Would you like me to adjust these or create more variations?`
 
               return (
                 <div key={index} className="mb-4">
+                  {/* Delay before this message */}
+                  <div className="mb-3 flex items-center gap-2 bg-gray-800/50 border border-gray-600 rounded-lg p-3">
+                    <Clock size={16} className="text-purple-400 flex-shrink-0" />
+                    <span className="text-gray-400 text-sm">Wait</span>
+                    <select
+                      className="bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none flex-1 max-w-xs"
+                      value={(campaignSettings.message_delays || [])[index] || '2-3 days'}
+                      onChange={(e) => updateMessageDelay(index, e.target.value)}
+                    >
+                      <option value="1 day">1 day</option>
+                      <option value="2-3 days">2-3 days</option>
+                      <option value="3-5 days">3-5 days</option>
+                      <option value="5-7 days">5-7 days</option>
+                      <option value="1 week">1 week</option>
+                      <option value="2 weeks">2 weeks</option>
+                    </select>
+                    <span className="text-gray-400 text-sm">before sending</span>
+                  </div>
+
                   <div className="flex items-center justify-between mb-2">
                     <Label className="text-gray-400">
                       {getMessageLabel()}
@@ -2461,17 +2536,74 @@ Would you like me to adjust these or create more variations?`
                     data-followup-index={index}
                   />
                   {message.length > 0 && (
-                    <div className="flex justify-end mt-2">
+                    <div className="flex justify-between items-center mt-2">
+                      {/* Remove button */}
+                      {followUpMessages.length > 1 && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 text-xs px-2 py-1"
+                          onClick={() => {
+                            if (confirm(`Remove Message ${index + 2}?`)) {
+                              removeFollowUpMessage(index);
+                              toastSuccess(`Message ${index + 2} removed`);
+                            }
+                          }}
+                        >
+                          <X size={12} className="mr-1" />
+                          Remove
+                        </Button>
+                      )}
+                      <div className="flex-grow"></div>
                       <Button
                         variant="secondary"
                         size="sm"
                         className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
-                        onClick={() => {
-                          setSamMessages([{
-                            role: 'assistant',
-                            content: `Hi! I'll help you improve follow-up message #${index + 1}.\n\n**Current Message:**\n"${message}"\n\nWhat would you like me to improve? I can help with:\n- Making it more engaging\n- Adding value\n- Improving the call-to-action\n- Adjusting the tone\n\nTell me what you'd like to change!`
-                          }]);
-                          setShowSamGenerationModal(true);
+                        onClick={async () => {
+                          // Call SAM API directly to improve the message
+                          try {
+                            toastInfo(`SAM is improving message ${index + 2}...`);
+
+                            const messageType = index === 0 ? 'Message 2 (must start with "Hello {first_name},")' :
+                                              index === 4 ? 'Message 6 (goodbye message)' :
+                                              `Message ${index + 2}`;
+
+                            const response = await fetch('/api/sam/generate-templates', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                workspace_id: workspaceId,
+                                campaign_name: name,
+                                campaign_type: 'connector',
+                                prospect_count: csvData.length,
+                                user_input: `Please improve this follow-up message (${messageType}). ${index === 0 ? 'It MUST start with "Hello {first_name},"' : index === 4 ? 'This is a goodbye message - keep it polite and leave the door open.' : 'Make it engaging and valuable.'}\n\nCurrent message:\n"${message}"\n\nMake it more effective while maintaining personalization placeholders.`,
+                                conversation_history: [],
+                                prospect_sample: csvData.slice(0, 3)
+                              })
+                            });
+
+                            if (response.ok) {
+                              const result = await response.json();
+
+                              if (result.templates?.follow_up_messages?.[index]) {
+                                const improved = result.templates.follow_up_messages[index];
+                                updateFollowUpMessage(index, improved);
+                                toastSuccess(`Message ${index + 2} improved!`);
+                              } else if (result.templates?.message) {
+                                // Fallback to generic message field
+                                updateFollowUpMessage(index, result.templates.message);
+                                toastSuccess(`Message ${index + 2} improved!`);
+                              } else {
+                                toastError('Could not extract improved message.');
+                              }
+                            } else {
+                              const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                              toastError(`Failed to improve message: ${errorData.error || 'Unknown error'}`);
+                            }
+                          } catch (error) {
+                            console.error(`Improve follow-up ${index} error:`, error);
+                            toastError(`Error improving message: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                          }
                         }}
                       >
                         <Zap size={12} className="mr-1" />
@@ -2482,6 +2614,22 @@ Would you like me to adjust these or create more variations?`
                 </div>
               );
             })}
+
+            {/* Add Follow-Up Message Button */}
+            <div className="mt-4">
+              <Button
+                onClick={addFollowUpMessage}
+                variant="secondary"
+                size="sm"
+                className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30"
+              >
+                <Plus size={16} className="mr-2" />
+                Add Follow-Up Message
+              </Button>
+              <p className="text-xs text-gray-500 mt-2">
+                Add additional steps to your messaging sequence (currently {followUpMessages.length} follow-up{followUpMessages.length !== 1 ? 's' : ''})
+              </p>
+            </div>
           </div>
 
           <div className="bg-gray-700 rounded-lg p-4">
@@ -2503,6 +2651,59 @@ Would you like me to adjust these or create more variations?`
             <p className="text-xs text-gray-500 mt-2">
               Click any placeholder to insert it into your message
             </p>
+          </div>
+
+          {/* Message Timing & Cadence */}
+          <div className="bg-gray-700 rounded-lg p-4">
+            <h4 className="text-white font-medium mb-3">Message Timing & Cadence</h4>
+            <p className="text-xs text-gray-500 mb-4">
+              Configure delays between messages to optimize engagement
+            </p>
+            <div className="space-y-4">
+              {/* Connection Request Delay */}
+              <div>
+                <Label className="text-gray-400 text-sm mb-2 block">
+                  Connection Request Delay
+                </Label>
+                <select
+                  className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                  value={campaignSettings.connection_request_delay || '1-3 hours'}
+                  onChange={(e) => setCampaignSettings({...campaignSettings, connection_request_delay: e.target.value})}
+                >
+                  <option value="immediate">Immediate</option>
+                  <option value="15-30 minutes">15-30 minutes</option>
+                  <option value="1-3 hours">1-3 hours (recommended)</option>
+                  <option value="3-6 hours">3-6 hours</option>
+                  <option value="6-12 hours">6-12 hours</option>
+                  <option value="12-24 hours">12-24 hours</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Time to wait between sending connection requests
+                </p>
+              </div>
+
+              {/* Follow-up Message Delay */}
+              <div>
+                <Label className="text-gray-400 text-sm mb-2 block">
+                  Follow-up Message Delay
+                </Label>
+                <select
+                  className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                  value={campaignSettings.follow_up_delay || '2-3 days'}
+                  onChange={(e) => setCampaignSettings({...campaignSettings, follow_up_delay: e.target.value})}
+                >
+                  <option value="1 day">1 day</option>
+                  <option value="2-3 days">2-3 days (recommended)</option>
+                  <option value="3-5 days">3-5 days</option>
+                  <option value="5-7 days">5-7 days</option>
+                  <option value="1 week">1 week</option>
+                  <option value="2 weeks">2 weeks</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Time to wait between follow-up messages after connection is accepted
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -2606,12 +2807,43 @@ Would you like me to adjust these or create more variations?`
                   variant="secondary"
                   size="sm"
                   className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
-                  onClick={() => {
-                    setSamMessages([{
-                      role: 'assistant',
-                      content: `Hi! I'll help you improve your initial message.\n\n**Current Message:**\n"${alternativeMessage}"\n\nWhat would you like me to improve? I can help with:\n- Making it more engaging\n- Adding personalization\n- Improving tone\n- Strengthening the call-to-action\n\nTell me what you'd like to change!`
-                    }]);
-                    setShowSamGenerationModal(true);
+                  onClick={async () => {
+                    // Call SAM API directly to improve the message
+                    try {
+                      toastInfo('SAM is improving your initial message...');
+
+                      const response = await fetch('/api/sam/generate-templates', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          workspace_id: workspaceId,
+                          campaign_name: name,
+                          campaign_type: 'messenger',
+                          prospect_count: csvData.length,
+                          user_input: `Please improve this initial messenger message for 1st degree connections.\n\nCurrent message (${alternativeMessage.length} chars):\n"${alternativeMessage}"\n\nMake it more engaging, personalized, and effective while maintaining personalization placeholders.`,
+                          conversation_history: [],
+                          prospect_sample: csvData.slice(0, 3)
+                        })
+                      });
+
+                      if (response.ok) {
+                        const result = await response.json();
+
+                        if (result.templates?.initial_message || result.templates?.alternative_message) {
+                          const improved = result.templates.initial_message || result.templates.alternative_message;
+                          setAlternativeMessage(improved);
+                          toastSuccess(`Initial message improved!`);
+                        } else {
+                          toastError('Could not extract improved message.');
+                        }
+                      } else {
+                        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                        toastError(`Failed to improve message: ${errorData.error || 'Unknown error'}`);
+                      }
+                    } catch (error) {
+                      console.error('Improve initial message error:', error);
+                      toastError(`Error improving message: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    }
                   }}
                 >
                   <Zap size={12} className="mr-1" />
@@ -2647,6 +2879,25 @@ Would you like me to adjust these or create more variations?`
 
               return (
                 <div key={index} className="mb-4">
+                  {/* Delay before this message */}
+                  <div className="mb-3 flex items-center gap-2 bg-gray-800/50 border border-gray-600 rounded-lg p-3">
+                    <Clock size={16} className="text-purple-400 flex-shrink-0" />
+                    <span className="text-gray-400 text-sm">Wait</span>
+                    <select
+                      className="bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none flex-1 max-w-xs"
+                      value={(campaignSettings.message_delays || [])[index] || '2-3 days'}
+                      onChange={(e) => updateMessageDelay(index, e.target.value)}
+                    >
+                      <option value="1 day">1 day</option>
+                      <option value="2-3 days">2-3 days</option>
+                      <option value="3-5 days">3-5 days</option>
+                      <option value="5-7 days">5-7 days</option>
+                      <option value="1 week">1 week</option>
+                      <option value="2 weeks">2 weeks</option>
+                    </select>
+                    <span className="text-gray-400 text-sm">before sending</span>
+                  </div>
+
                   <div className="flex items-center justify-between mb-2">
                     <Label className="text-gray-400">
                       {getMessageLabel()}
@@ -2665,17 +2916,74 @@ Would you like me to adjust these or create more variations?`
                     data-followup-index={index}
                   />
                   {message.length > 0 && (
-                    <div className="flex justify-end mt-2">
+                    <div className="flex justify-between items-center mt-2">
+                      {/* Remove button */}
+                      {followUpMessages.length > 1 && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 text-xs px-2 py-1"
+                          onClick={() => {
+                            if (confirm(`Remove Message ${index + 2}?`)) {
+                              removeFollowUpMessage(index);
+                              toastSuccess(`Message ${index + 2} removed`);
+                            }
+                          }}
+                        >
+                          <X size={12} className="mr-1" />
+                          Remove
+                        </Button>
+                      )}
+                      <div className="flex-grow"></div>
                       <Button
                         variant="secondary"
                         size="sm"
                         className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
-                        onClick={() => {
-                          setSamMessages([{
-                            role: 'assistant',
-                            content: `Hi! I'll help you improve follow-up #${index + 1}.\n\n**Current Message:**\n"${message}"\n\nWhat would you like me to improve? I can help with:\n- Making it more engaging\n- Adding personalization\n- Improving the call-to-action\n- Adjusting the tone\n\nTell me what you'd like to change!`
-                          }]);
-                          setShowSamGenerationModal(true);
+                        onClick={async () => {
+                          // Call SAM API directly to improve the message
+                          try {
+                            toastInfo(`SAM is improving message ${index + 2}...`);
+
+                            const messageType = index === 0 ? 'Message 2 (must start with "Hello {first_name},")' :
+                                              index === 4 ? 'Message 6 (goodbye message)' :
+                                              `Message ${index + 2}`;
+
+                            const response = await fetch('/api/sam/generate-templates', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                workspace_id: workspaceId,
+                                campaign_name: name,
+                                campaign_type: 'messenger',
+                                prospect_count: csvData.length,
+                                user_input: `Please improve this follow-up message for messenger campaign (${messageType}). ${index === 0 ? 'It MUST start with "Hello {first_name},"' : index === 4 ? 'This is a goodbye message - keep it polite and leave the door open.' : 'Make it engaging and valuable.'}\n\nCurrent message:\n"${message}"\n\nMake it more effective while maintaining personalization placeholders.`,
+                                conversation_history: [],
+                                prospect_sample: csvData.slice(0, 3)
+                              })
+                            });
+
+                            if (response.ok) {
+                              const result = await response.json();
+
+                              if (result.templates?.follow_up_messages?.[index]) {
+                                const improved = result.templates.follow_up_messages[index];
+                                updateFollowUpMessage(index, improved);
+                                toastSuccess(`Message ${index + 2} improved!`);
+                              } else if (result.templates?.message) {
+                                // Fallback to generic message field
+                                updateFollowUpMessage(index, result.templates.message);
+                                toastSuccess(`Message ${index + 2} improved!`);
+                              } else {
+                                toastError('Could not extract improved message.');
+                              }
+                            } else {
+                              const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                              toastError(`Failed to improve message: ${errorData.error || 'Unknown error'}`);
+                            }
+                          } catch (error) {
+                            console.error(`Improve messenger follow-up ${index} error:`, error);
+                            toastError(`Error improving message: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                          }
                         }}
                       >
                         <Zap size={12} className="mr-1" />
@@ -2686,6 +2994,22 @@ Would you like me to adjust these or create more variations?`
                 </div>
               );
             })}
+
+            {/* Add Follow-Up Message Button */}
+            <div className="mt-4">
+              <Button
+                onClick={addFollowUpMessage}
+                variant="secondary"
+                size="sm"
+                className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30"
+              >
+                <Plus size={16} className="mr-2" />
+                Add Follow-Up Message
+              </Button>
+              <p className="text-xs text-gray-500 mt-2">
+                Add additional steps to your messaging sequence (currently {followUpMessages.length} follow-up{followUpMessages.length !== 1 ? 's' : ''})
+              </p>
+            </div>
           </div>
 
           <div className="bg-gray-700 rounded-lg p-4">
@@ -2707,6 +3031,59 @@ Would you like me to adjust these or create more variations?`
             <p className="text-xs text-gray-500 mt-2">
               Click any placeholder to insert it into your message
             </p>
+          </div>
+
+          {/* Message Timing & Cadence */}
+          <div className="bg-gray-700 rounded-lg p-4">
+            <h4 className="text-white font-medium mb-3">Message Timing & Cadence</h4>
+            <p className="text-xs text-gray-500 mb-4">
+              Configure delays between messages to optimize engagement
+            </p>
+            <div className="space-y-4">
+              {/* Initial Message Delay (for Messenger campaigns) */}
+              <div>
+                <Label className="text-gray-400 text-sm mb-2 block">
+                  Initial Message Delay
+                </Label>
+                <select
+                  className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                  value={campaignSettings.connection_request_delay || '1-3 hours'}
+                  onChange={(e) => setCampaignSettings({...campaignSettings, connection_request_delay: e.target.value})}
+                >
+                  <option value="immediate">Immediate</option>
+                  <option value="15-30 minutes">15-30 minutes</option>
+                  <option value="1-3 hours">1-3 hours (recommended)</option>
+                  <option value="3-6 hours">3-6 hours</option>
+                  <option value="6-12 hours">6-12 hours</option>
+                  <option value="12-24 hours">12-24 hours</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Time to wait between sending initial messages
+                </p>
+              </div>
+
+              {/* Follow-up Message Delay */}
+              <div>
+                <Label className="text-gray-400 text-sm mb-2 block">
+                  Follow-up Message Delay
+                </Label>
+                <select
+                  className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                  value={campaignSettings.follow_up_delay || '2-3 days'}
+                  onChange={(e) => setCampaignSettings({...campaignSettings, follow_up_delay: e.target.value})}
+                >
+                  <option value="1 day">1 day</option>
+                  <option value="2-3 days">2-3 days (recommended)</option>
+                  <option value="3-5 days">3-5 days</option>
+                  <option value="5-7 days">5-7 days</option>
+                  <option value="1 week">1 week</option>
+                  <option value="2 weeks">2 weeks</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Time to wait between follow-up messages
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}

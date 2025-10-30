@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useMemo } from 'react'
-import { Check, X, Users, CheckSquare, Download, AlertTriangle, Filter, Search } from 'lucide-react'
+import { Check, X, Users, CheckSquare, Download, AlertTriangle, Filter, Search, Edit2, Save } from 'lucide-react'
 import Modal from './ui/Modal'
 
 export interface ProspectData {
@@ -57,6 +57,8 @@ export default function ProspectApprovalModal({
   const [dismissedProspects, setDismissedProspects] = useState<Set<string>>(new Set())
   const [searchTerm, setSearchTerm] = useState('')
   const [filterSource, setFilterSource] = useState<string>('all')
+  const [editingProspectId, setEditingProspectId] = useState<string | null>(null)
+  const [editedNames, setEditedNames] = useState<Record<string, string>>({})
 
   // Filter prospects based on search and filters
   const filteredProspects = useMemo(() => {
@@ -106,6 +108,34 @@ export default function ProspectApprovalModal({
 
   const clearDismissed = () => {
     setDismissedProspects(new Set())
+  }
+
+  const startEditingName = (prospectId: string, currentName: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    setEditingProspectId(prospectId)
+    setEditedNames({ ...editedNames, [prospectId]: currentName })
+  }
+
+  const saveEditedName = (prospectId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    // Update the prospect data with the edited name
+    const editedName = editedNames[prospectId]
+    if (editedName && editedName.trim()) {
+      const prospectIndex = prospects.findIndex(p => p.id === prospectId)
+      if (prospectIndex !== -1) {
+        prospects[prospectIndex].name = editedName.trim()
+      }
+    }
+    setEditingProspectId(null)
+  }
+
+  const cancelEditingName = (e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    setEditingProspectId(null)
+  }
+
+  const updateEditedName = (prospectId: string, newName: string) => {
+    setEditedNames({ ...editedNames, [prospectId]: newName })
   }
 
   const handleApproveAll = () => {
@@ -302,15 +332,56 @@ export default function ProspectApprovalModal({
                   <div className="flex-1">
                   {/* Header with name and badges */}
                   <div className="flex items-center space-x-3 mb-3 flex-wrap gap-2">
-                    <h3 className="text-lg font-semibold text-foreground">
-                      {prospect.name}
-                    </h3>
+                    {editingProspectId === prospect.id ? (
+                      // Inline edit mode
+                      <div className="flex items-center gap-2 flex-1">
+                        <input
+                          type="text"
+                          value={editedNames[prospect.id] || prospect.name}
+                          onChange={(e) => updateEditedName(prospect.id, e.target.value)}
+                          className="px-3 py-1.5 bg-surface border border-primary/60 rounded-lg text-foreground text-lg font-semibold focus:outline-none focus:border-primary flex-1 min-w-0"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveEditedName(prospect.id)
+                            if (e.key === 'Escape') cancelEditingName()
+                          }}
+                        />
+                        <button
+                          onClick={(e) => saveEditedName(prospect.id, e)}
+                          className="p-1.5 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-colors border border-green-500/40 flex-shrink-0"
+                          title="Save changes"
+                        >
+                          <Save size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => cancelEditingName(e)}
+                          className="p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors border border-red-500/40 flex-shrink-0"
+                          title="Cancel"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      // Display mode with edit button
+                      <>
+                        <h3 className="text-lg font-semibold text-foreground">
+                          {prospect.name}
+                        </h3>
+                        <button
+                          onClick={(e) => startEditingName(prospect.id, prospect.name, e)}
+                          className="p-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors border border-blue-500/40 opacity-0 group-hover:opacity-100 flex-shrink-0"
+                          title="Edit name"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                      </>
+                    )}
                     {isDismissed && (
-                      <span className="px-3 py-1 rounded-lg text-xs font-bold border-2 bg-red-600 text-white border-red-500 uppercase tracking-wide">
+                      <span className="px-3 py-1 rounded-lg text-xs font-bold border-2 bg-red-600 text-white border-red-500 uppercase tracking-wide flex-shrink-0">
                         ✗ REJECTED
                       </span>
                     )}
-                    <span className={`px-2 py-1 rounded-lg text-xs font-medium border ${getSourceBadgeStyle(prospect.source)}`}>
+                    <span className={`px-2 py-1 rounded-lg text-xs font-medium border ${getSourceBadgeStyle(prospect.source)} flex-shrink-0`}>
                       {prospect.source}
                     </span>
                     {prospect.confidence !== undefined && (

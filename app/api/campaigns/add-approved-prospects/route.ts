@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client'
-import { enrichProspectName } from '@/lib/enrich-prospect-name'
+import { enrichProspectName, normalizeFullName } from '@/lib/enrich-prospect-name'
 
 /**
  * POST /api/campaigns/add-approved-prospects
@@ -100,10 +100,11 @@ export async function POST(request: NextRequest) {
 
     // Transform prospects to campaign_prospects format with automatic name enrichment
     const campaignProspects = await Promise.all(validProspects.map(async prospect => {
-      // Extract name parts from SAM data
-      const nameParts = (prospect.name || '').split(' ')
-      let firstName = nameParts[0] || ''
-      let lastName = nameParts.slice(1).join(' ') || ''
+      // Normalize and extract name parts from SAM data
+      // This removes titles, credentials, and descriptions (e.g., "John Doe CEO, Startups..." → "John Doe")
+      const normalized = normalizeFullName(prospect.name || '')
+      let firstName = normalized.firstName
+      let lastName = normalized.lastName
 
       // AUTOMATIC ENRICHMENT: If names are missing, fetch from LinkedIn
       if (!firstName || !lastName) {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircle, ChevronDown, ChevronUp, Save, Upload, XCircle } from 'lucide-react';
+import { CheckCircle, ChevronDown, ChevronUp, Save, Upload, XCircle, Clock, Calendar } from 'lucide-react';
 import { toastError, toastSuccess, toastInfo } from '@/lib/toast';
 
 
@@ -38,9 +38,14 @@ export default function CampaignApprovalScreen({
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
+    timing: true,
     messages: true,
     templates: false
   });
+
+  // Timing controls for flow_settings
+  const [connectionWait, setConnectionWait] = useState(36); // hours (12-96)
+  const [followupWait, setFollowupWait] = useState(5);      // days (1-30)
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -115,9 +120,33 @@ export default function CampaignApprovalScreen({
   };
 
   const handleApprove = () => {
+    // Build flow_settings for data-driven campaigns
+    const flow_settings = {
+      campaign_type: campaignData.campaignType === 'messenger' ? 'linkedin_dm' : 'linkedin_connection',
+      connection_wait_hours: connectionWait,
+      followup_wait_days: followupWait,
+      message_wait_days: followupWait, // For DM campaigns
+      messages: {
+        connection_request: messages.connection_request || null,
+        follow_up_1: messages.follow_up_1 || null,
+        follow_up_2: messages.follow_up_2 || null,
+        follow_up_3: messages.follow_up_3 || null,
+        follow_up_4: messages.follow_up_4 || null,
+        follow_up_5: messages.follow_up_5 || null,
+        goodbye: messages.follow_up_5 || null, // Use last message as goodbye
+        // DM campaign messages (same data, different naming)
+        message_1: messages.follow_up_1 || null,
+        message_2: messages.follow_up_2 || null,
+        message_3: messages.follow_up_3 || null,
+        message_4: messages.follow_up_4 || null,
+        message_5: messages.follow_up_5 || null
+      }
+    };
+
     const finalData = {
       ...campaignData,
       messages,
+      flow_settings, // Add flow_settings for N8N
       approvedAt: new Date().toISOString(),
       status: 'approved'
     };
@@ -148,6 +177,155 @@ export default function CampaignApprovalScreen({
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Campaign Timing */}
+        <div className="bg-gray-800 rounded-lg p-6 mb-6 border border-gray-700">
+          <div
+            className="flex items-center justify-between cursor-pointer mb-4"
+            onClick={() => toggleSection('timing')}
+          >
+            <div className="flex items-center gap-2">
+              <Clock className="text-purple-400" size={20} />
+              <h2 className="text-xl font-semibold text-white">Campaign Timing</h2>
+            </div>
+            {expandedSections.timing ? <ChevronUp className="text-gray-400" /> : <ChevronDown className="text-gray-400" />}
+          </div>
+
+          {expandedSections.timing && (
+            <div className="space-y-6">
+              {/* Connection Wait */}
+              {campaignData.campaignType === 'connector' && (
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-white font-medium">Connection Wait Time</label>
+                    <span className="text-purple-400 font-semibold">{connectionWait} hours</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="12"
+                    max="96"
+                    step="12"
+                    value={connectionWait}
+                    onChange={(e) => setConnectionWait(Number(e.target.value))}
+                    className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  />
+                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                    <span>12h (Aggressive)</span>
+                    <span>36h (Balanced)</span>
+                    <span>96h (Nurturing)</span>
+                  </div>
+                  <p className="text-sm text-gray-400 mt-2">
+                    Time to wait after connection request is accepted before sending first follow-up
+                  </p>
+                </div>
+              )}
+
+              {/* Follow-up Wait */}
+              <div className="bg-gray-700 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-white font-medium">
+                    {campaignData.campaignType === 'messenger' ? 'Message Cadence' : 'Follow-up Cadence'}
+                  </label>
+                  <span className="text-purple-400 font-semibold">{followupWait} days</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="30"
+                  step="1"
+                  value={followupWait}
+                  onChange={(e) => setFollowupWait(Number(e.target.value))}
+                  className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                />
+                <div className="flex justify-between text-xs text-gray-400 mt-1">
+                  <span>1d (Fast)</span>
+                  <span>7d (Standard)</span>
+                  <span>30d (Slow)</span>
+                </div>
+                <p className="text-sm text-gray-400 mt-2">
+                  {campaignData.campaignType === 'messenger'
+                    ? 'Time between each message in your sequence'
+                    : 'Time between each follow-up message'
+                  }
+                </p>
+              </div>
+
+              {/* Timeline Preview */}
+              <div className="bg-gray-700 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Calendar className="text-blue-400" size={18} />
+                  <h3 className="text-white font-medium">Timeline Preview</h3>
+                </div>
+                <div className="space-y-2">
+                  {campaignData.campaignType === 'connector' && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="bg-purple-600 text-white px-2 py-1 rounded font-mono text-xs min-w-[60px] text-center">
+                        Day 0
+                      </div>
+                      <div className="text-gray-300">Connection Request</div>
+                    </div>
+                  )}
+                  {campaignData.campaignType === 'connector' && messages.connection_request && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="bg-blue-600 text-white px-2 py-1 rounded font-mono text-xs min-w-[60px] text-center">
+                        Day {(connectionWait / 24).toFixed(1)}
+                      </div>
+                      <div className="text-gray-300">Follow-Up 1</div>
+                    </div>
+                  )}
+                  {messages.follow_up_1 && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="bg-blue-600 text-white px-2 py-1 rounded font-mono text-xs min-w-[60px] text-center">
+                        Day {campaignData.campaignType === 'connector'
+                          ? ((connectionWait / 24) + followupWait).toFixed(1)
+                          : followupWait
+                        }
+                      </div>
+                      <div className="text-gray-300">
+                        {campaignData.campaignType === 'messenger' ? 'Message 1' : 'Follow-Up 2'}
+                      </div>
+                    </div>
+                  )}
+                  {messages.follow_up_2 && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="bg-blue-600 text-white px-2 py-1 rounded font-mono text-xs min-w-[60px] text-center">
+                        Day {campaignData.campaignType === 'connector'
+                          ? ((connectionWait / 24) + (followupWait * 2)).toFixed(1)
+                          : (followupWait * 2)
+                        }
+                      </div>
+                      <div className="text-gray-300">
+                        {campaignData.campaignType === 'messenger' ? 'Message 2' : 'Follow-Up 3'}
+                      </div>
+                    </div>
+                  )}
+                  {messages.follow_up_3 && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="bg-blue-600 text-white px-2 py-1 rounded font-mono text-xs min-w-[60px] text-center">
+                        Day {campaignData.campaignType === 'connector'
+                          ? ((connectionWait / 24) + (followupWait * 3)).toFixed(1)
+                          : (followupWait * 3)
+                        }
+                      </div>
+                      <div className="text-gray-300">
+                        {campaignData.campaignType === 'messenger' ? 'Message 3' : 'Follow-Up 4'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3 pt-3 border-t border-gray-600">
+                  <div className="text-sm text-gray-400">
+                    <span className="font-medium text-white">Total Duration:</span>{' '}
+                    {campaignData.campaignType === 'connector'
+                      ? ((connectionWait / 24) + (followupWait * Object.keys(messages).filter(k => k.includes('follow_up') && messages[k]).length)).toFixed(1)
+                      : (followupWait * Object.keys(messages).filter(k => k.includes('follow_up') && messages[k]).length).toFixed(1)
+                    } days
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Messaging Sequence */}

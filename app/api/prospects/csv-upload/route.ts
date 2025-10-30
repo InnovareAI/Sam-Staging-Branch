@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { normalizeFullName } from '@/lib/enrich-prospect-name'
 
 export async function POST(request: NextRequest) {
   try {
@@ -341,14 +342,21 @@ function mapToStandardFields(prospect: any, fieldMapping: any) {
     id: `csv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     source: 'csv_upload'
   }
-  
-  // Handle first_name + last_name
+
+  // Handle first_name + last_name with normalization
+  let rawName = '';
   if (fieldMapping.first_name && fieldMapping.last_name) {
     const firstName = prospect[fieldMapping.first_name.toLowerCase().replace(/\s+/g, '_')] || '';
     const lastName = prospect[fieldMapping.last_name.toLowerCase().replace(/\s+/g, '_')] || '';
-    mapped.name = `${firstName} ${lastName}`.trim();
+    rawName = `${firstName} ${lastName}`.trim();
   } else if (fieldMapping.name && prospect[fieldMapping.name.toLowerCase().replace(/\s+/g, '_')]) {
-    mapped.name = prospect[fieldMapping.name.toLowerCase().replace(/\s+/g, '_')]
+    rawName = prospect[fieldMapping.name.toLowerCase().replace(/\s+/g, '_')]
+  }
+
+  // Normalize the name to remove titles, credentials, and descriptions
+  if (rawName) {
+    const normalized = normalizeFullName(rawName);
+    mapped.name = normalized.fullName;
   }
   
   if (fieldMapping.email && prospect[fieldMapping.email.toLowerCase().replace(/\s+/g, '_')]) {

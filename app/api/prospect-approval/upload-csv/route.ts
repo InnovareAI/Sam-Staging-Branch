@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { normalizeFullName } from '@/lib/enrich-prospect-name';
 
 export async function POST(request: NextRequest) {
   try {
@@ -136,12 +137,16 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Build prospect object
-      const fullName = prospect.name || `${prospect.firstName || ''} ${prospect.lastName || ''}`.trim();
-      if (!fullName) {
+      // Build prospect object with name normalization
+      const rawName = prospect.name || `${prospect.firstName || ''} ${prospect.lastName || ''}`.trim();
+      if (!rawName) {
         skippedRows.push({ row: i, reason: 'no name', prospect });
         continue;
       }
+
+      // Normalize the full name to remove titles, credentials, and descriptions
+      const normalized = normalizeFullName(rawName);
+      const fullName = normalized.fullName;
 
       prospects.push({
         name: fullName,
