@@ -3,7 +3,7 @@
  * Called by N8N to generate AI-powered follow-up message
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/app/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateFollowUpMessage, FollowUpContext } from '@/lib/services/follow-up-agent';
 

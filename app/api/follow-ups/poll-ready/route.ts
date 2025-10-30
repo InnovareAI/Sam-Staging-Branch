@@ -3,7 +3,7 @@
  * N8N polls this endpoint every minute to get follow-ups ready to send
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/app/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';

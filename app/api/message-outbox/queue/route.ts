@@ -4,7 +4,7 @@
  * Used by Follow-up Agent and other automated messaging systems
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/app/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';

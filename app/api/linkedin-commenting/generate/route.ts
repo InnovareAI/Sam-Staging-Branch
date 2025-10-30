@@ -3,7 +3,7 @@
  * Called by N8N to generate AI comment for a discovered post
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/app/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   generateLinkedInComment,
