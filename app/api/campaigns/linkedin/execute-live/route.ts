@@ -489,7 +489,7 @@ export async function POST(req: NextRequest) {
       .eq('id', campaignId);
 
     console.log('\n🎉 Campaign execution completed!');
-    console.log(`📊 Queued in N8N: ${sentResults.length}, Failed: ${failedResults.length}`);
+    console.log(`📊 Queued: ${sentResults.length}, Failed: ${failedResults.length}`);
 
     // Log errors if any occurred
     if (failedResults.length > 0) {
@@ -501,13 +501,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      messages_sent: 0, // N8N will send, not immediate
+      messages_sent: 0, // Workflow will send, not immediate
       messages_queued: sentResults.length,
       messages_failed: failedResults.length,
       queued_prospects: sentResults,
       failed: failedResults,
-      message: `Queued ${sentResults.length} prospects in N8N for execution, ${failedResults.length} failed`,
-      execution_mode: dryRun ? 'dry_run' : 'n8n_async',
+      message: `Campaign started! Queued ${sentResults.length} prospects for execution, ${failedResults.length} failed`,
+      execution_mode: dryRun ? 'dry_run' : 'async',
       linkedin_account: selectedAccount.name,
       n8n_triggered: results.n8n_triggered,
       errors: results.errors
