@@ -352,245 +352,118 @@ export async function POST(req: NextRequest) {
     };
 
     // Step 6: Send Connection Requests Directly via Unipile
-    console.log('🚀 Sending connection requests directly via Unipile...');
+    console.log('🚀 Triggering N8N workflow for campaign execution...');
     console.log(`   Prospects: ${executableProspects.length}`);
-    console.log(`   Account: ${selectedAccount.account_name} (${unipileSourceId})`);
+    console.log(`   Account: ${selectedAccount.account_name}`);
 
     const sentResults = [];
     const failedResults = [];
 
     if (dryRun) {
-      console.log('🧪 DRY RUN - Would send CRs to:', executableProspects.map(p => `${p.first_name} ${p.last_name}`).join(', '));
+      console.log('🧪 DRY RUN - Would send to N8N:', executableProspects.map(p => `${p.first_name} ${p.last_name}`).join(', '));
       results.n8n_triggered = false;
     } else {
-      // LIVE: Send connection requests via Unipile
-      for (const prospect of executableProspects) {
-        try {
-          const prospectName = `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim() || 'Unknown';
-          console.log(`\n📤 Sending CR to: ${prospectName}`);
-          console.log(`   LinkedIn: ${prospect.linkedin_url}`);
+      // LIVE: Trigger N8N workflow for complete campaign lifecycle
+      console.log('\n📡 Preparing N8N payload...');
 
-          // Check for cached provider_id first (saves Sales Nav quota)
-          let providerId = prospect.personalization_data?.provider_id;
-          let profileData = null;
+      // Prepare prospect data for N8N
+      const n8nProspects = executableProspects.map(prospect => ({
+        id: prospect.id,
+        first_name: prospect.first_name,
+        last_name: prospect.last_name,
+        linkedin_url: prospect.linkedin_url,
+        company_name: prospect.company_name,
+        title: prospect.title,
+        email: prospect.email,
+        location: prospect.location,
+        industry: prospect.industry,
+        personalization_data: prospect.personalization_data
+      }));
 
-          if (providerId) {
-            console.log(`   ✅ Using cached provider_id: ${providerId}`);
-          } else {
-            // STEP 1: Get LinkedIn profile to retrieve provider_id
-            const linkedinUsername = prospect.linkedin_url.split('/in/')[1]?.split('?')[0]?.replace('/', '');
-            if (!linkedinUsername) {
-              console.error(`❌ Invalid LinkedIn URL: ${prospect.linkedin_url}`);
-              failedResults.push({
-                prospect: prospectName,
-                error: 'Invalid LinkedIn URL format'
-              });
-              continue;
-            }
+      // Prepare message templates
+      const messages = {
+        connection_request: connectionMsg || alternativeMsg || campaign.message_templates?.connection_request,
+        follow_up_1: campaign.message_templates?.follow_up_1,
+        follow_up_2: campaign.message_templates?.follow_up_2,
+        follow_up_3: campaign.message_templates?.follow_up_3,
+        follow_up_4: campaign.message_templates?.follow_up_4,
+        goodbye: campaign.message_templates?.goodbye
+      };
 
-            const profileUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/${linkedinUsername}?account_id=${selectedAccount.unipile_account_id}`;
-            console.log(`   🔍 Fetching profile: ${linkedinUsername}`);
+      const n8nPayload = {
+        campaignId: campaign.id,
+        campaignName: campaign.name,
+        workspaceId: campaign.workspace_id,
+        unipileAccountId: selectedAccount.unipile_account_id,
+        prospects: n8nProspects,
+        messages
+      };
 
-            const profileResponse = await fetch(profileUrl, {
-              method: 'GET',
-              headers: {
-                'X-API-KEY': process.env.UNIPILE_API_KEY || '',
-                'Accept': 'application/json'
-              }
-            });
+      console.log(`   Payload: ${n8nProspects.length} prospects`);
+      console.log(`   Webhook: ${process.env.N8N_CAMPAIGN_WEBHOOK_URL}`);
 
-            if (!profileResponse.ok) {
-              const errorText = await profileResponse.text();
-              console.error(`❌ Profile fetch error (${profileResponse.status}): ${errorText}`);
-              failedResults.push({
-                prospect: prospectName,
-                error: `Profile fetch ${profileResponse.status}: ${errorText}`
-              });
-              continue;
-            }
+      // Trigger N8N webhook
+      try {
+        const n8nResponse = await fetch(process.env.N8N_CAMPAIGN_WEBHOOK_URL || '', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.N8N_API_KEY || ''}`
+          },
+          body: JSON.stringify(n8nPayload)
+        });
 
-            profileData = await profileResponse.json();
-            console.log(`   🔍 LinkedIn profile response:`, JSON.stringify(profileData, null, 2));
-
-            providerId = profileData.provider_id;
-
-            if (!providerId) {
-              console.error(`❌ No provider_id in profile response`);
-              failedResults.push({
-                prospect: prospectName,
-                error: 'No provider_id in profile'
-              });
-              continue;
-            }
-
-            console.log(`   ✅ Got provider_id: ${providerId}`);
-          }
-
-          // ENRICHMENT FALLBACK: Extract name and company from LinkedIn profile if missing in database
-          let enrichedFirstName = prospect.first_name;
-          let enrichedLastName = prospect.last_name;
-          let enrichedCompany = prospect.company_name;
-          let enrichedTitle = prospect.title;
-          let needsEnrichment = false;
-
-          // Only enrich if we have profileData (skipped when using cached provider_id)
-          if (profileData) {
-            // Enrich names if missing
-            if (!enrichedFirstName || !enrichedLastName) {
-              // Unipile returns first_name and last_name directly - use them!
-              enrichedFirstName = enrichedFirstName || profileData.first_name || '';
-              enrichedLastName = enrichedLastName || profileData.last_name || '';
-
-              if (enrichedFirstName || enrichedLastName) {
-                console.log(`   📝 Enriched name from LinkedIn: ${enrichedFirstName} ${enrichedLastName}`);
-                needsEnrichment = true;
-              } else {
-                // Fallback: try to build from other fields if direct fields not available
-                const displayName = profileData.display_name ||
-                                   profileData.name ||
-                                   profileData.full_name ||
-                                   '';
-
-                if (displayName) {
-                  const nameParts = displayName.trim().split(' ');
-                  enrichedFirstName = enrichedFirstName || nameParts[0] || '';
-                  enrichedLastName = enrichedLastName || nameParts.slice(1).join(' ') || '';
-                  console.log(`   📝 Enriched name from display_name: ${enrichedFirstName} ${enrichedLastName}`);
-                  needsEnrichment = true;
-                } else {
-                  console.log(`   ⚠️ WARNING: Could not find name in LinkedIn profile, will send with empty name`);
-                }
-              }
-            }
-
-            // Enrich company if missing
-            if (!enrichedCompany) {
-              enrichedCompany = profileData.company_name || profileData.company?.name || '';
-              if (enrichedCompany) {
-                console.log(`   📝 Enriched company from LinkedIn: ${enrichedCompany}`);
-                needsEnrichment = true;
-              }
-            }
-
-            // Enrich title if missing
-            if (!enrichedTitle) {
-              enrichedTitle = profileData.headline || '';
-              if (enrichedTitle) {
-                console.log(`   📝 Enriched title from LinkedIn: ${enrichedTitle}`);
-                needsEnrichment = true;
-              }
-            }
-
-            // Save enriched data to database for future use
-            if (needsEnrichment) {
-              await supabase
-                .from('campaign_prospects')
-                .update({
-                  first_name: enrichedFirstName,
-                  last_name: enrichedLastName,
-                  company_name: enrichedCompany || 'Unknown Company',
-                  title: enrichedTitle,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', prospect.id);
-              console.log(`   💾 Saved enriched data to database`);
-            }
-          }
-
-          // STEP 2: Send invitation using provider_id
-          // Re-personalize message with enriched data
-          let finalPersonalizedMsg = (connectionMsg || alternativeMsg || '')
-            .replace(/\{first_name\}/gi, enrichedFirstName || '')
-            .replace(/\{last_name\}/gi, enrichedLastName || '')
-            .replace(/\{company\}/gi, enrichedCompany || '')
-            .replace(/\{company_name\}/gi, enrichedCompany || '')
-            .replace(/\{industry\}/gi, prospect.industry || '')
-            .replace(/\{title\}/gi, enrichedTitle || '');
-
-          // CRITICAL: LinkedIn has 300 character limit for connection messages
-          // Replace multiple newlines with single space for cleaner messages
-          finalPersonalizedMsg = finalPersonalizedMsg.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
-
-          if (finalPersonalizedMsg.length > 300) {
-            console.log(`   ⚠️ Message too long (${finalPersonalizedMsg.length} chars), truncating to 300...`);
-            // Truncate at word boundary for cleaner messages
-            finalPersonalizedMsg = finalPersonalizedMsg.substring(0, 297).trim();
-            const lastSpace = finalPersonalizedMsg.lastIndexOf(' ');
-            if (lastSpace > 250) {
-              finalPersonalizedMsg = finalPersonalizedMsg.substring(0, lastSpace) + '...';
-            } else {
-              finalPersonalizedMsg = finalPersonalizedMsg + '...';
-            }
-          }
-
-          const inviteUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/invite`;
-          const requestBody: any = {
-            provider_id: providerId,
-            account_id: selectedAccount.unipile_account_id,
-            message: finalPersonalizedMsg
-          };
-
-          if (prospect.email) {
-            requestBody.user_email = prospect.email;
-          }
-
-          console.log(`   🚀 Sending invitation...`);
-
-          const unipileResponse = await fetch(inviteUrl, {
-            method: 'POST',
-            headers: {
-              'X-API-KEY': process.env.UNIPILE_API_KEY || '',
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
+        if (!n8nResponse.ok) {
+          const errorText = await n8nResponse.text();
+          console.error(`❌ N8N webhook error (${n8nResponse.status}): ${errorText}`);
+          failedResults.push({
+            prospect: 'All prospects',
+            error: `N8N webhook ${n8nResponse.status}: ${errorText}`
           });
+        } else {
+          const n8nData = await n8nResponse.json();
+          console.log('✅ N8N workflow triggered successfully');
+          console.log(`   Execution ID: ${n8nData.executionId || 'N/A'}`);
 
-          if (!unipileResponse.ok) {
-            const errorText = await unipileResponse.text();
-            console.error(`❌ Unipile API error (${unipileResponse.status}): ${errorText}`);
-            failedResults.push({
-              prospect: prospectName,
-              error: `Unipile API ${unipileResponse.status}: ${errorText}`
-            });
-            continue;
-          }
-
-          const unipileData = await unipileResponse.json();
-          console.log(`✅ CR sent successfully to ${prospectName}`);
-
-          // Update prospect status
+          // Update all prospects to 'queued_in_n8n' status
+          const prospectIds = executableProspects.map(p => p.id);
           await supabase
             .from('campaign_prospects')
             .update({
-              status: 'connection_requested',
-              contacted_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
+              status: 'queued_in_n8n',
               personalization_data: {
-                ...(prospect.personalization_data || {}),  // PRESERVE existing data (campaign_name, etc.)
-                unipile_invitation_id: unipileData.invitation_id || unipileData.object?.id || unipileData.id,
-                sent_at: new Date().toISOString(),
-                campaign_id: campaignId,
-                provider_id: providerId
+                ...(executableProspects[0].personalization_data || {}),
+                n8n_execution_id: n8nData.executionId,
+                queued_at: new Date().toISOString()
               }
             })
-            .eq('id', prospect.id);
+            .in('id', prospectIds);
 
-          sentResults.push({
-            prospect: prospectName,
-            linkedin_url: prospect.linkedin_url
-          });
+          sentResults.push(...n8nProspects.map(p => ({
+            prospect: `${p.first_name} ${p.last_name}`,
+            linkedin_url: p.linkedin_url,
+            status: 'queued_in_n8n'
+          })));
 
-        } catch (prospectError) {
-          console.error(`❌ Error sending to ${prospect.first_name} ${prospect.last_name}:`, prospectError);
-          failedResults.push({
-            prospect: `${prospect.first_name} ${prospect.last_name}`,
-            error: prospectError instanceof Error ? prospectError.message : 'Unknown error'
-          });
+          results.n8n_triggered = true;
         }
+      } catch (n8nError) {
+        console.error('❌ Error triggering N8N:', n8nError);
+        failedResults.push({
+          prospect: 'All prospects',
+          error: n8nError instanceof Error ? n8nError.message : 'N8N webhook failed'
+        });
       }
 
-      results.n8n_triggered = sentResults.length > 0;
+      // Original direct API code replaced with N8N workflow
+      // N8N will handle:
+      // - LinkedIn profile lookup (GET /api/v1/users/{username})
+      // - Connection request (POST /api/v1/users/invite)
+      // - Wait 24-48 hours
+      // - Check connection acceptance
+      // - Send follow-ups (FU1-4, Goodbye)
+      // - Reply detection
+
       results.errors = failedResults;
     }
 
@@ -605,7 +478,7 @@ export async function POST(req: NextRequest) {
       .eq('id', campaignId);
 
     console.log('\n🎉 Campaign execution completed!');
-    console.log(`📊 Sent: ${sentResults.length}, Failed: ${failedResults.length}`);
+    console.log(`📊 Queued in N8N: ${sentResults.length}, Failed: ${failedResults.length}`);
 
     // Log errors if any occurred
     if (failedResults.length > 0) {
@@ -617,13 +490,15 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      messages_sent: sentResults.length,
+      messages_sent: 0, // N8N will send, not immediate
+      messages_queued: sentResults.length,
       messages_failed: failedResults.length,
-      sent_to: sentResults,
+      queued_prospects: sentResults,
       failed: failedResults,
-      message: `Sent ${sentResults.length} connection requests, ${failedResults.length} failed`,
-      execution_mode: dryRun ? 'dry_run' : 'live',
+      message: `Queued ${sentResults.length} prospects in N8N for execution, ${failedResults.length} failed`,
+      execution_mode: dryRun ? 'dry_run' : 'n8n_async',
       linkedin_account: selectedAccount.name,
+      n8n_triggered: results.n8n_triggered,
       errors: results.errors
     });
 
@@ -639,6 +514,7 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
 
 // Helper function to extract LinkedIn user ID from URL
 function extractLinkedInUserId(linkedinUrl: string): string | null {
