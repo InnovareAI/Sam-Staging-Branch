@@ -257,13 +257,80 @@ export async function POST(req: NextRequest) {
       }, { status: 500 });
     }
 
-    // Step 4: Get prospects ready for messaging
+    // Step 4: Generate daily random sending pattern (anti-bot detection)
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const todaySeed = parseInt(today.replace(/-/g, '')); // Use date as seed for reproducibility
+
+    // Generate random daily pattern using date as seed
+    function generateDailyPattern(seed: number, maxSends: number = 20) {
+      // Deterministic random based on seed
+      let rng = seed;
+      const random = () => {
+        rng = (rng * 9301 + 49297) % 233280;
+        return rng / 233280;
+      };
+
+      // Random number of sends today (3-maxSends)
+      const sendsToday = Math.floor(random() * (maxSends - 3) + 3);
+      const intervals: number[] = [];
+
+      for (let i = 0; i < sendsToday - 1; i++) {
+        // 60% chance short burst (1-30min), 40% chance long pause (30-120min)
+        const interval = random() < 0.6
+          ? Math.floor(random() * 30 + 1)
+          : Math.floor(random() * 90 + 30);
+        intervals.push(interval);
+      }
+
+      return { sendsToday, intervals };
+    }
+
+    // Count connection requests sent today by this account
+    const { data: todaysSends, error: countError } = await supabase
+      .from('campaign_prospects')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', campaign.workspace_id)
+      .gte('contacted_at', `${today}T00:00:00Z`)
+      .lte('contacted_at', `${today}T23:59:59Z`)
+      .eq('status', 'connection_requested');
+
+    const todaysCount = todaysSends || 0;
+    const DAILY_CR_LIMIT = 20; // Michelle's daily connection request limit
+    const remainingToday = Math.max(0, DAILY_CR_LIMIT - todaysCount);
+
+    // Generate today's sending pattern
+    const dailyPattern = generateDailyPattern(todaySeed, DAILY_CR_LIMIT);
+
+    console.log(`📊 Daily Rate Limit & Pattern:`);
+    console.log(`   Date: ${today}`);
+    console.log(`   Sent today: ${todaysCount}/${DAILY_CR_LIMIT}`);
+    console.log(`   Remaining: ${remainingToday}`);
+    console.log(`   Today's pattern: ${dailyPattern.sendsToday} sends with intervals: ${dailyPattern.intervals.slice(0, 5).join(', ')}... minutes`);
+
+    if (remainingToday === 0) {
+      console.log('⚠️ Daily rate limit reached - no more connection requests today');
+      return NextResponse.json({
+        success: true,
+        message: 'Daily rate limit reached',
+        campaign: campaign.name,
+        daily_limit: DAILY_CR_LIMIT,
+        sent_today: todaysCount,
+        remaining_today: 0,
+        next_available: `${new Date(Date.now() + 86400000).toISOString().split('T')[0]} 09:00:00 UTC`
+      });
+    }
+
+    // Limit maxProspects to remaining daily quota
+    const effectiveMaxProspects = Math.min(maxProspects, remainingToday);
+    console.log(`   Effective max prospects: ${effectiveMaxProspects} (requested: ${maxProspects})`);
+
+    // Step 5: Get prospects ready for messaging
     const { data: campaignProspects, error: prospectsError } = await supabase
       .from('campaign_prospects')
       .select('*')
       .eq('campaign_id', campaignId)
       .in('status', ['pending', 'approved', 'ready_to_message', 'follow_up_due'])
-      .limit(maxProspects)
+      .limit(effectiveMaxProspects)
       .order('created_at', { ascending: true });
 
     if (prospectsError) {
@@ -371,19 +438,30 @@ export async function POST(req: NextRequest) {
       // LIVE: Trigger N8N workflow for complete campaign lifecycle
       console.log('\n📡 Preparing N8N payload...');
 
-      // Prepare prospect data for N8N
-      const n8nProspects = executableProspects.map(prospect => ({
-        id: prospect.id,
-        first_name: prospect.first_name,
-        last_name: prospect.last_name,
-        linkedin_url: prospect.linkedin_url,
-        company_name: prospect.company_name,
-        title: prospect.title,
-        email: prospect.email,
-        location: prospect.location,
-        industry: prospect.industry,
-        personalization_data: prospect.personalization_data
-      }));
+      // Prepare prospect data for N8N with daily random delays
+      const n8nProspects = executableProspects.map((prospect, index) => {
+        // Get delay from daily pattern for this prospect's position in queue
+        const delayMinutes = index < dailyPattern.intervals.length
+          ? dailyPattern.intervals.slice(0, index + 1).reduce((a, b) => a + b, 0)
+          : dailyPattern.intervals.reduce((a, b) => a + b, 0);
+
+        return {
+          id: prospect.id,
+          first_name: prospect.first_name,
+          last_name: prospect.last_name,
+          linkedin_url: prospect.linkedin_url,
+          company_name: prospect.company_name,
+          title: prospect.title,
+          email: prospect.email,
+          location: prospect.location,
+          industry: prospect.industry,
+          personalization_data: prospect.personalization_data,
+          // Add daily pattern delay for anti-bot behavior
+          send_delay_minutes: delayMinutes,
+          pattern_index: index,
+          daily_pattern_seed: today
+        };
+      });
 
       // Prepare message templates for N8N workflow (expects 'cr' not 'connection_request')
       const messages = {
