@@ -231,8 +231,11 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Step 5: Match user's accounts to Unipile accounts - use first available
+    // Step 5: Match user's accounts to Unipile accounts - PRIORITIZE Sales Navigator/Recruiter
     let selectedAccount = null;
+    let salesNavAccount = null;
+    let recruiterAccount = null;
+    let premiumAccount = null; // Includes Career, Business Premium, Learning, Job Seeker
 
     for (const dbAccount of ownAccounts) {
       console.log(`\n  🔍 Checking user's account: ${dbAccount.account_name} (${dbAccount.unipile_account_id})`);
@@ -247,9 +250,45 @@ export async function POST(request: NextRequest) {
       const premiumFeatures = unipileAccount.connection_params?.im?.premiumFeatures || [];
       console.log(`     Features detected: ${premiumFeatures.join(', ') || 'none (Unipile will auto-detect)'}`);
 
-      selectedAccount = unipileAccount;
-      console.log(`     ✅ SELECTED - Using this account for search`);
-      break;
+      // Prioritize accounts by capability
+      if (premiumFeatures.includes('sales_navigator')) {
+        salesNavAccount = unipileAccount;
+        console.log(`     ⭐ SALES NAVIGATOR account found`);
+      } else if (premiumFeatures.includes('recruiter')) {
+        recruiterAccount = unipileAccount;
+        console.log(`     ⭐ RECRUITER account found`);
+      } else if (
+        premiumFeatures.includes('premium') ||
+        premiumFeatures.includes('premium_career') ||
+        premiumFeatures.includes('premium_business') ||
+        premiumFeatures.includes('learning') ||
+        premiumFeatures.includes('job_seeker')
+      ) {
+        premiumAccount = unipileAccount;
+        const accountType = premiumFeatures.find(f =>
+          ['premium', 'premium_career', 'premium_business', 'learning', 'job_seeker'].includes(f)
+        ) || 'premium';
+        console.log(`     ⚠️  ${accountType.toUpperCase()} account (Classic API - limited data)`);
+      } else {
+        // Free account
+        if (!premiumAccount) premiumAccount = unipileAccount; // Use free as fallback
+        console.log(`     ⚠️  Free account (Classic API - limited data)`);
+      }
+    }
+
+    // Select best available account (Sales Nav > Recruiter > Premium/Business/Learning/JobSeeker/Free)
+    selectedAccount = salesNavAccount || recruiterAccount || premiumAccount;
+
+    if (selectedAccount === salesNavAccount) {
+      console.log(`\n✅ SELECTED: Sales Navigator account (BEST for prospect scraping)`);
+    } else if (selectedAccount === recruiterAccount) {
+      console.log(`\n✅ SELECTED: Recruiter account (GOOD for prospect scraping)`);
+    } else if (selectedAccount === premiumAccount) {
+      const premiumFeatures = selectedAccount.connection_params?.im?.premiumFeatures || [];
+      const accountType = premiumFeatures.find(f =>
+        ['premium', 'premium_career', 'premium_business', 'learning', 'job_seeker'].includes(f)
+      ) || 'free';
+      console.log(`\n⚠️  SELECTED: ${accountType.toUpperCase()} account (Classic API - limited data)`);
     }
 
     if (!selectedAccount) {
@@ -280,6 +319,51 @@ export async function POST(request: NextRequest) {
     console.log('✅ Selected LinkedIn account:', selectedAccount.name || selectedAccount.id);
     console.log(`🎯 Using LinkedIn API: ${api}`);
     console.log(`📧 Account email: ${selectedAccount.connection_params?.im?.email || selectedAccount.connection_params?.im?.username}`);
+
+    // ⚠️ VALIDATION: Check if search criteria requires Sales Navigator features
+    const unsupportedCriteria = [];
+    const warnings = [];
+
+    if (api === 'classic') {
+      console.warn('⚠️  WARNING: Classic LinkedIn API has limited data');
+      console.warn('   Selected account does not have Sales Navigator or Recruiter');
+      console.warn('   Premium features found:', premiumFeatures);
+      console.warn('   Account name:', selectedAccount.name || 'Unknown');
+
+      // Check for Sales Navigator-only filters and warn (but don't block)
+      if (search_criteria.company_size || search_criteria.companySize) {
+        unsupportedCriteria.push('Company Size');
+        warnings.push('Company Size filtering is not available with your account - results may include all company sizes');
+      }
+      if (search_criteria.seniority_level || search_criteria.seniorityLevel) {
+        unsupportedCriteria.push('Seniority Level');
+        warnings.push('Seniority Level filtering is not available with your account - results may include all seniority levels');
+      }
+      if (search_criteria.years_at_company || search_criteria.yearsAtCompany) {
+        unsupportedCriteria.push('Years at Company');
+        warnings.push('Years at Company filtering is not available with your account - results may include all tenure lengths');
+      }
+      if (search_criteria.function || search_criteria.job_function) {
+        unsupportedCriteria.push('Job Function');
+        warnings.push('Job Function filtering is not available with your account - results may include all functions');
+      }
+
+      // General warnings for Classic API limitations
+      if (!warnings.some(w => w.includes('Company data'))) {
+        warnings.push('Company data will be parsed from headlines (may be less accurate)');
+      }
+      warnings.push('Results limited to basic LinkedIn search (fewer filters available)');
+
+      // Log but don't block - let search proceed with warnings
+      if (unsupportedCriteria.length > 0) {
+        console.warn('⚠️  UNSUPPORTED CRITERIA (will be ignored):', unsupportedCriteria);
+        console.warn('   Recommendation: Upgrade to Sales Navigator for full filtering');
+      }
+
+      if (warnings.length > 0) {
+        console.warn('⚠️  DATA QUALITY WARNINGS:', warnings);
+      }
+    }
 
     // Use selected account for the search
     const linkedinAccount = {
@@ -654,39 +738,23 @@ export async function POST(request: NextRequest) {
         // Sales Navigator API - has detailed current_positions array
         company = item.current_positions[0].company || '';
         industry = item.current_positions[0].industry || item.industry || '';
+        console.log(`✅ Company from Sales Navigator API: "${company}"`);
       } else {
-        // Classic LinkedIn API - company is NOT in separate field!
-        // Unipile Classic returns: industry: null, no company field
-        // Company is ALWAYS in headline: "Title at Company"
+        // Classic LinkedIn API - NO structured company field available
+        // DO NOT parse from headline - headlines are unreliable and error-prone
         industry = item.industry || '';
 
-        // ALWAYS parse company from headline for Classic LinkedIn
-        if (item.headline) {
-          // Headlines format: "Director of Creative Operations at WKNY"
-          // Split on " at " and take everything after
-          if (item.headline.includes(' at ')) {
-            const parts = item.headline.split(' at ');
-            if (parts.length > 1) {
-              // Take everything after the last " at " (handles "Title at Company at Location")
-              company = parts.slice(1).join(' at ').trim();
-              console.log(`📌 Extracted company from headline: "${company}"`);
-            }
-          } else if (item.headline.includes(' | ')) {
-            // Alternative format: "Title | Company"
-            const parts = item.headline.split(' | ');
-            if (parts.length > 1) {
-              company = parts[parts.length - 1].trim();
-              console.log(`📌 Extracted company from headline (pipe format): "${company}"`);
-            }
-          } else {
-            // No " at " or " | " - might be freelancer or unemployed
-            console.log(`⚠️ No company in headline: "${item.headline}"`);
-          }
-        }
+        // Check if there's a direct company field (unlikely in Classic API)
+        company = item.company || item.company_name || item.current_company || '';
 
-        // Fallback to separate company fields (Sales Navigator older format)
-        if (!company) {
-          company = item.company || item.company_name || item.current_company || '';
+        if (company) {
+          console.log(`✅ Company from direct field: "${company}"`);
+        } else {
+          // No structured company data available
+          console.log(`⚠️ No structured company data available for ${item.name || 'prospect'}`);
+          console.log(`   Headline: "${item.headline}"`);
+          console.log(`   This prospect will be marked for enrichment`);
+          // Leave company empty - will be handled by enrichment system
         }
       }
 
@@ -774,16 +842,22 @@ export async function POST(request: NextRequest) {
       // Extract location
       const location = item.location || item.geo_region || '';
 
+      // Flag for enrichment: Mark prospects with missing/uncertain company data
+      const needsEnrichment = !company || company.length < 2;
+
       return {
         firstName,
         lastName,
         fullName: `${firstName} ${lastName}`,
         title,
-        company,
-        industry,
+        company: company || 'unavailable', // 'unavailable' = needs enrichment (Classic API limitation)
+        industry: industry || 'unavailable', // 'unavailable' when Classic API doesn't provide
         location,
         linkedinUrl,
-        connectionDegree
+        connectionDegree,
+        needsEnrichment: !company || company === 'unavailable', // Flag for downstream enrichment
+        apiType: api, // Track which API was used (classic, sales_navigator, recruiter)
+        headline: item.headline || null // Store headline for reference only, never as company
       };
     }).filter(p => p !== null); // Remove prospects without names AND mismatched connection degrees
 
@@ -793,6 +867,19 @@ export async function POST(request: NextRequest) {
     const rejectedCount = (data.items?.length || 0) - prospects.length;
     if (rejectedCount > 0) {
       console.log(`⚠️ Rejected ${rejectedCount} prospects due to missing name data or connection degree mismatch`);
+    }
+
+    // Log enrichment needs
+    const needsEnrichmentCount = prospects.filter((p: any) => p.needsEnrichment).length;
+    if (needsEnrichmentCount > 0) {
+      console.log(`📊 Data Quality: ${needsEnrichmentCount}/${prospects.length} prospects need company enrichment`);
+      console.log(`   API used: ${api}`);
+      if (api === 'classic') {
+        console.log(`   ℹ️  Classic API does not provide structured company data`);
+        console.log(`   💡 Recommendation: Use Sales Navigator account for better data quality`);
+      }
+    } else {
+      console.log(`✅ Data Quality: All prospects have company data`);
     }
 
     // Save to workspace_prospects with correct column names
@@ -811,8 +898,14 @@ export async function POST(request: NextRequest) {
         first_name: p.firstName,
         last_name: p.lastName,
         job_title: p.title || null,
-        company_name: p.company || null,
-        linkedin_profile_url: p.linkedinUrl
+        company_name: p.company, // Already 'unavailable' if missing
+        industry: p.industry, // Already 'unavailable' if missing
+        location: p.location || null,
+        linkedin_profile_url: p.linkedinUrl,
+        // BrightData will enrich these fields:
+        email_address: null,              // Will be enriched by BrightData
+        company_domain: null,             // Will be enriched by BrightData (website)
+        company_linkedin_url: null        // Will be enriched by BrightData
       }));
 
       console.log('🔵 Inserting to database (workspace_prospects, best-effort):', JSON.stringify(toInsert[0]));
@@ -984,24 +1077,23 @@ export async function POST(request: NextRequest) {
           prospect_id: `prospect_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           name: p.fullName,
           title: p.title || '',
-          company: {  // CORRECTED: company is JSONB object
-            name: p.company || '',
+          company: {  // JSONB object - 'unavailable' for Classic API
+            name: p.company, // Already 'unavailable' if missing
             size: '',
             website: '',
-            industry: p.industry || ''  // FIXED: Save industry from LinkedIn data
+            industry: p.industry  // Already 'unavailable' if missing
           },
-          contact: {  // CORRECTED: contact is JSONB object
+          contact: {  // JSONB object
             email: '',
             linkedin_url: p.linkedinUrl || ''
           },
           location: p.location || '',
           profile_image: '',
           recent_activity: '',
-          connection_degree: p.connectionDegree,  // FIXED: Use actual connection degree from search
-          enrichment_score: 80,  // CORRECTED: number not decimal
+          connection_degree: p.connectionDegree,  // Actual connection degree from search
+          enrichment_score: 80,
           source: `linkedin_${api}`,
           enriched_at: new Date().toISOString(),
-          // NO approval_status column!
           created_at: new Date().toISOString()
         }));
 
@@ -1017,6 +1109,26 @@ export async function POST(request: NextRequest) {
           console.log(`✅ Added ${approvalProspects.length} prospects to approval session`);
         }
       }
+    }
+
+    // Trigger automatic enrichment for Classic API prospects
+    let enrichmentTriggered = false;
+    if (api === 'classic' && sessionId && needsEnrichmentCount > 0) {
+      console.log(`🔄 Triggering automatic BrightData enrichment for ${needsEnrichmentCount} prospects...`);
+
+      // Trigger enrichment in background (non-blocking)
+      fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/prospects/enrich`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          autoEnrich: true
+        })
+      }).catch(error => {
+        console.error('⚠️ Background enrichment failed:', error);
+      });
+
+      enrichmentTriggered = true;
     }
 
     // Return response - include persistence errors as warnings if any
@@ -1037,7 +1149,19 @@ export async function POST(request: NextRequest) {
       total_found: prospects.length,
       api: api,
       session_id: sessionId,
-      persistence_warnings: persistenceErrors.length > 0 ? persistenceErrors : undefined
+      persistence_warnings: persistenceErrors.length > 0 ? persistenceErrors : undefined,
+      enrichment_triggered: enrichmentTriggered,
+      data_quality: {
+        needsEnrichmentCount,
+        enrichmentRate: prospects.length > 0 ? Math.round((needsEnrichmentCount / prospects.length) * 100) : 0,
+        warnings: warnings.length > 0 ? warnings : undefined,
+        unsupportedCriteria: unsupportedCriteria.length > 0 ? unsupportedCriteria : undefined,
+        recommendation: api === 'classic' && needsEnrichmentCount > 0
+          ? enrichmentTriggered
+            ? `Enriching ${needsEnrichmentCount} prospects with BrightData (estimated cost: $${(needsEnrichmentCount * 0.01).toFixed(2)})`
+            : 'Consider upgrading to LinkedIn Sales Navigator for better data quality and full filtering capabilities'
+          : undefined
+      }
     });
 
   } catch (error) {

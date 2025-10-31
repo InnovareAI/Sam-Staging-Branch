@@ -40,6 +40,31 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Check LinkedIn account capabilities before search
+    let accountCapabilities = null;
+    if (search_type === 'unipile_linkedin_search') {
+      accountCapabilities = await checkLinkedInAccountCapabilities(supabase, user.id, workspaceId);
+
+      // Validate search criteria against account capabilities
+      const validation = validateSearchCriteria(search_criteria, accountCapabilities);
+
+      if (validation.unsupportedCriteria.length > 0) {
+        // Return early with capabilities info for SAM to handle
+        return NextResponse.json({
+          success: false,
+          error: 'account_limitations',
+          accountType: accountCapabilities.apiType,
+          accountName: accountCapabilities.accountName,
+          unsupportedCriteria: validation.unsupportedCriteria,
+          supportedCriteria: validation.supportedCriteria,
+          message: `Your ${accountCapabilities.accountType === 'classic' ? 'LinkedIn Premium' : accountCapabilities.apiType} account does not support: ${validation.unsupportedCriteria.join(', ')}`,
+          recommendation: accountCapabilities.apiType === 'classic'
+            ? 'Upgrade to LinkedIn Sales Navigator for full search capabilities'
+            : null
+        }, { status: 200 }); // 200 so SAM can handle gracefully
+      }
+    }
+
     let prospectResults;
 
     switch (search_type) {
@@ -415,4 +440,157 @@ export async function GET(request: NextRequest) {
       unipile_network: "✅ Connected - LinkedIn network access"
     }
   });
+}
+
+/**
+ * Check user's LinkedIn account capabilities
+ */
+async function checkLinkedInAccountCapabilities(supabase: any, userId: string, workspaceId: string) {
+  // Get user's LinkedIn accounts
+  const { data: accounts } = await supabase
+    .from('workspace_accounts')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .eq('provider', 'linkedin');
+
+  if (!accounts || accounts.length === 0) {
+    return {
+      apiType: 'none',
+      accountName: null,
+      hasSalesNavigator: false,
+      hasRecruiter: false,
+      capabilities: []
+    };
+  }
+
+  // Get Unipile account details to check premium features
+  const unipileDSN = process.env.UNIPILE_DSN;
+  const unipileApiKey = process.env.UNIPILE_API_KEY;
+
+  const accountsUrl = unipileDSN?.includes('.')
+    ? `https://${unipileDSN}/api/v1/accounts`
+    : `https://${unipileDSN}.unipile.com:13443/api/v1/accounts`;
+
+  const response = await fetch(accountsUrl, {
+    headers: {
+      'X-API-KEY': unipileApiKey!,
+      'Accept': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    return {
+      apiType: 'unknown',
+      accountName: accounts[0].account_name,
+      hasSalesNavigator: false,
+      hasRecruiter: false,
+      capabilities: []
+    };
+  }
+
+  const unipileData = await response.json();
+  const allLinkedInAccounts = Array.isArray(unipileData) ? unipileData : (unipileData.items || unipileData.accounts || []);
+
+  // Find user's account in Unipile
+  const userAccount = allLinkedInAccounts.find((acc: any) =>
+    acc.id === accounts[0].unipile_account_id
+  );
+
+  if (!userAccount) {
+    return {
+      apiType: 'unknown',
+      accountName: accounts[0].account_name,
+      hasSalesNavigator: false,
+      hasRecruiter: false,
+      capabilities: []
+    };
+  }
+
+  const premiumFeatures = userAccount.connection_params?.im?.premiumFeatures || [];
+  const hasSalesNavigator = premiumFeatures.includes('sales_navigator');
+  const hasRecruiter = premiumFeatures.includes('recruiter');
+
+  let apiType = 'classic';
+  if (hasRecruiter) {
+    apiType = 'recruiter';
+  } else if (hasSalesNavigator) {
+    apiType = 'sales_navigator';
+  }
+
+  return {
+    apiType,
+    accountName: userAccount.name || accounts[0].account_name,
+    hasSalesNavigator,
+    hasRecruiter,
+    capabilities: apiType === 'sales_navigator' || apiType === 'recruiter'
+      ? ['company_size', 'seniority_level', 'years_at_company', 'job_function', 'structured_company_data']
+      : ['basic_search', 'headline_parsing']
+  };
+}
+
+/**
+ * Validate search criteria against account capabilities
+ */
+function validateSearchCriteria(searchCriteria: any, accountCapabilities: any) {
+  const unsupportedCriteria = [];
+  const supportedCriteria = [];
+
+  if (!accountCapabilities || accountCapabilities.apiType === 'none') {
+    return {
+      unsupportedCriteria: ['LinkedIn account not connected'],
+      supportedCriteria: []
+    };
+  }
+
+  const requested = {
+    companySize: searchCriteria.company_size || searchCriteria.companySize,
+    seniorityLevel: searchCriteria.seniority_level || searchCriteria.seniorityLevel,
+    yearsAtCompany: searchCriteria.years_at_company || searchCriteria.yearsAtCompany,
+    jobFunction: searchCriteria.function || searchCriteria.job_function,
+    jobTitles: searchCriteria.job_titles,
+    industries: searchCriteria.industries,
+    locations: searchCriteria.locations,
+    keywords: searchCriteria.keywords
+  };
+
+  // Check advanced filters (Sales Nav only)
+  if (accountCapabilities.apiType === 'classic') {
+    if (requested.companySize) {
+      unsupportedCriteria.push('Company Size');
+    } else {
+      supportedCriteria.push('Company Size (all sizes)');
+    }
+
+    if (requested.seniorityLevel) {
+      unsupportedCriteria.push('Seniority Level');
+    } else {
+      supportedCriteria.push('Seniority Level (all levels)');
+    }
+
+    if (requested.yearsAtCompany) {
+      unsupportedCriteria.push('Years at Company');
+    }
+
+    if (requested.jobFunction) {
+      unsupportedCriteria.push('Job Function');
+    }
+  } else {
+    // Sales Navigator or Recruiter - all criteria supported
+    if (requested.companySize) supportedCriteria.push('Company Size');
+    if (requested.seniorityLevel) supportedCriteria.push('Seniority Level');
+    if (requested.yearsAtCompany) supportedCriteria.push('Years at Company');
+    if (requested.jobFunction) supportedCriteria.push('Job Function');
+  }
+
+  // Basic criteria (all account types)
+  if (requested.jobTitles) supportedCriteria.push('Job Titles');
+  if (requested.industries) supportedCriteria.push('Industries');
+  if (requested.locations) supportedCriteria.push('Locations');
+  if (requested.keywords) supportedCriteria.push('Keywords');
+
+  return {
+    unsupportedCriteria,
+    supportedCriteria
+  };
 }

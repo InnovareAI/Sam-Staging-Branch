@@ -2,9 +2,9 @@
   "description": "Application MCP servers for SAM AI",
   "mcpServers": {
     "brightdata": {
-      "command": "curl",
-      "args": ["https://mcp.brightdata.com/sse?token=e8*****************************************42"],
-      "description": "Bright Data managed MCP"
+      "transport": "sse",
+      "url": "https://mcp.brightdata.com/sse?token=e8*****************************************42",
+      "description": "Bright Data managed MCP for web scraping"
     },
     "apify": {
       "command": "npx",
