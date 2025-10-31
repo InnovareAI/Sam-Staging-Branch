@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/app/lib/supabase/server';
 
-// N8N Workflow configuration - Master Funnel URL
-const N8N_BASE_URL = process.env.N8N_BASE_URL || 'https://workflows.innovareai.com';
-const N8N_MASTER_FUNNEL_WEBHOOK = `${N8N_BASE_URL}/webhook/campaign-execute`;
+// N8N Workflow configuration - n8n Cloud URL
+const N8N_MASTER_FUNNEL_WEBHOOK = process.env.N8N_CAMPAIGN_WEBHOOK_URL || 'https://innovareai.app.n8n.cloud/webhook/campaign-execute';
 
 // HITL Email configuration for approval system
 const HITL_EMAIL_CONFIG = {
@@ -905,7 +904,7 @@ export async function POST(req: NextRequest) {
         
         // Monitoring
         monitoring: {
-          n8n_workflow_url: `${N8N_BASE_URL}/workflow/SAM_MASTER_FUNNEL`,
+          n8n_workflow_url: `https://innovareai.app.n8n.cloud/workflow/2bmFPN5t2y6A4Rx2`,
           status_webhook: masterFunnelPayload.webhook_config.status_update_url,
           completion_webhook: masterFunnelPayload.webhook_config.completion_notification_url
         },

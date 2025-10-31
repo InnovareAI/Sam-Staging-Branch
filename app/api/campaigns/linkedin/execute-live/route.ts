@@ -403,16 +403,22 @@ export async function POST(req: NextRequest) {
       };
 
       const n8nPayload = {
-        campaignId: campaign.id,
-        campaignName: campaign.name,
         workspaceId: campaign.workspace_id,
+        campaignId: campaign.id,
         unipileAccountId: selectedAccount.unipile_account_id,
-        prospects: n8nProspects.map(p => ({
-          ...p,
-          flow_settings: flowSettings // Attach flow_settings to each prospect
-        })),
-        messages, // Legacy support
-        flow_settings: flowSettings // Also at campaign level
+        prospects: n8nProspects,
+        messages: messages,
+        timing: {
+          fu1_delay_days: flowSettings.followup_wait_days || 2,
+          fu2_delay_days: flowSettings.followup_wait_days || 5,
+          fu3_delay_days: flowSettings.followup_wait_days || 7,
+          fu4_delay_days: flowSettings.followup_wait_days || 5,
+          gb_delay_days: flowSettings.followup_wait_days || 7
+        },
+        supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+        supabase_service_key: process.env.SUPABASE_SERVICE_ROLE_KEY,
+        unipile_dsn: process.env.UNIPILE_DSN,
+        unipile_api_key: process.env.UNIPILE_API_KEY
       };
 
       console.log(`   Payload: ${n8nProspects.length} prospects`);

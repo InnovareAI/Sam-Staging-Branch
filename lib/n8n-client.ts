@@ -1,5 +1,5 @@
-// N8N API Client for workflows.innovareai.com integration
-// This handles all communication with the N8N instance
+// N8N API Client for n8n Cloud (innovareai.app.n8n.cloud) integration
+// This handles all communication with the N8N Cloud instance
 // Now includes enterprise-grade circuit breaker protection
 
 import { 
@@ -96,7 +96,7 @@ export class N8NClient {
   private circuitBreaker: CircuitBreaker
 
   constructor() {
-    this.baseUrl = process.env.N8N_INSTANCE_URL || 'https://workflows.innovareai.com'
+    this.baseUrl = process.env.N8N_INSTANCE_URL || 'https://innovareai.app.n8n.cloud'
     this.apiKey = process.env.N8N_API_KEY || ''
     
     // Initialize circuit breaker for N8N API calls
@@ -579,7 +579,7 @@ export const n8nClient = new N8NClient()
 
 // Environment check helper
 export function checkN8NConfiguration() {
-  const baseUrl = process.env.N8N_INSTANCE_URL || 'https://workflows.innovareai.com'
+  const baseUrl = process.env.N8N_INSTANCE_URL || 'https://innovareai.app.n8n.cloud'
   const apiKey = process.env.N8N_API_KEY
   const hasApiKey = !!apiKey
 

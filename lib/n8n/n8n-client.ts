@@ -421,7 +421,7 @@ export class N8NClient {
  */
 export function createN8NClient(): N8NClient {
   const config: N8NConfig = {
-    baseUrl: process.env.N8N_API_URL || 'https://workflows.innovareai.com/api/v1',
+    baseUrl: process.env.N8N_API_BASE_URL || 'https://innovareai.app.n8n.cloud/api/v1',
     apiKey: process.env.N8N_API_KEY || '',
     timeout: parseInt(process.env.N8N_TIMEOUT || '30000')
   };
