@@ -1944,8 +1944,8 @@ const KnowledgeBase: React.FC = () => {
   const getDocumentsForSection = (sectionId: string) => {
     const normalizedMatches = getSectionMatches(sectionId).map((slug) => slug.toLowerCase());
     return documents.filter((doc) => {
-      if (!doc.section) return false;
-      return normalizedMatches.includes(doc.section.toLowerCase());
+      if (!doc.category) return false;
+      return normalizedMatches.includes(doc.category.toLowerCase());
     });
   };
 
@@ -2790,7 +2790,7 @@ const KnowledgeBase: React.FC = () => {
                           )}
                         </div>
                         <span className="text-blue-400 text-xs bg-blue-400/10 px-2 py-1 rounded">
-                          {getSectionLabel(doc.section || 'documents')}
+                          {getSectionLabel(doc.category || 'documents')}
                         </span>
                       </div>
                       <div className="mt-2 flex items-center text-gray-400 text-xs">
@@ -2835,13 +2835,13 @@ const KnowledgeBase: React.FC = () => {
                       onClick={() => {
                         console.log('[KB] Document clicked:', doc);
                         // TODO: Implement document detail view or actions
-                        alert(`Document: ${doc.title}\n\nSection: ${doc.section}\n\nSummary: ${doc.summary || 'No summary'}\n\nTags: ${doc.tags?.join(', ') || 'None'}`);
+                        alert(`Document: ${doc.title}\n\nCategory: ${doc.category}\n\nSummary: ${doc.summary || 'No summary'}\n\nTags: ${doc.tags?.join(', ') || 'None'}`);
                       }}
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
                           <p className="text-white text-sm font-semibold">{doc.title}</p>
-                          <p className="text-gray-400 text-xs">Section: {doc.section}</p>
+                          <p className="text-gray-400 text-xs">Category: {doc.category}</p>
                         </div>
                         <div className="flex items-center gap-2 ml-2">
                           <span className="text-xs text-gray-300">
