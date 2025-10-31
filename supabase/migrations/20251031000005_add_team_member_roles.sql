@@ -74,7 +74,7 @@ SET team_member_count = (
 -- =====================================================================
 
 CREATE OR REPLACE FUNCTION can_add_team_member(
-  p_workspace_id UUID
+  p_workspace_id TEXT
 )
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -97,7 +97,7 @@ $$;
 -- =====================================================================
 
 CREATE OR REPLACE FUNCTION add_team_member_to_workspace(
-  p_workspace_id UUID,
+  p_workspace_id TEXT,
   p_user_id UUID,
   p_role TEXT DEFAULT 'viewer',
   p_added_by UUID DEFAULT NULL
@@ -136,7 +136,7 @@ BEGIN
   -- Check if user already a member
   IF EXISTS (
     SELECT 1 FROM workspace_members
-    WHERE workspace_id = p_workspace_id
+    WHERE id = p_workspace_id::uuid
       AND user_id = p_user_id
   ) THEN
     RETURN jsonb_build_object('success', false, 'error', 'User already a member');
@@ -175,7 +175,7 @@ $$;
 -- =====================================================================
 
 CREATE OR REPLACE FUNCTION remove_team_member_from_workspace(
-  p_workspace_id UUID,
+  p_workspace_id TEXT,
   p_user_id UUID
 )
 RETURNS JSONB
@@ -188,7 +188,7 @@ BEGIN
   -- Get member
   SELECT * INTO v_member
   FROM workspace_members
-  WHERE workspace_id = p_workspace_id
+  WHERE id = p_workspace_id::uuid
     AND user_id = p_user_id;
 
   IF v_member.id IS NULL THEN
@@ -218,6 +218,7 @@ $$;
 -- =====================================================================
 
 -- Team members can view data but not modify critical settings
+DROP POLICY IF EXISTS "Team members read access" ON workspace_accounts;
 CREATE POLICY "Team members read access" ON workspace_accounts
   FOR SELECT TO authenticated
   USING (
@@ -229,6 +230,7 @@ CREATE POLICY "Team members read access" ON workspace_accounts
   );
 
 -- Only owner can modify accounts
+DROP POLICY IF EXISTS "Only owner modifies accounts" ON workspace_accounts;
 CREATE POLICY "Only owner modifies accounts" ON workspace_accounts
   FOR ALL TO authenticated
   USING (

@@ -40,14 +40,16 @@ CREATE TABLE IF NOT EXISTS workspace_encryption_keys (
 ALTER TABLE workspace_encryption_keys ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policy: Only service role can access encryption keys
+DROP POLICY IF EXISTS "Service role only" ON workspace_encryption_keys;
 CREATE POLICY "Service role only" ON workspace_encryption_keys
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Block all user access" ON workspace_encryption_keys;
 CREATE POLICY "Block all user access" ON workspace_encryption_keys
   FOR ALL TO authenticated USING (false) WITH CHECK (false);
 
 -- Index
-CREATE INDEX idx_workspace_encryption_keys_workspace
+CREATE INDEX IF NOT EXISTS idx_workspace_encryption_keys_workspace
 ON workspace_encryption_keys(workspace_id)
 WHERE is_active = true;
 
@@ -58,7 +60,6 @@ WHERE is_active = true;
 -- Add new encrypted columns (will migrate data in next step)
 ALTER TABLE workspace_prospects
 ADD COLUMN IF NOT EXISTS email_address_encrypted BYTEA,
-ADD COLUMN IF NOT EXISTS phone_number_encrypted BYTEA,
 ADD COLUMN IF NOT EXISTS linkedin_profile_url_encrypted BYTEA,
 ADD COLUMN IF NOT EXISTS pii_encryption_version INTEGER DEFAULT 1,
 ADD COLUMN IF NOT EXISTS pii_encrypted_at TIMESTAMPTZ;
@@ -72,7 +73,7 @@ ADD COLUMN IF NOT EXISTS pii_is_encrypted BOOLEAN DEFAULT false;
 -- =====================================================================
 
 -- Function to get active encryption key for workspace
-CREATE OR REPLACE FUNCTION get_workspace_encryption_key(p_workspace_id UUID)
+CREATE OR REPLACE FUNCTION get_workspace_encryption_key(p_workspace_id TEXT)
 RETURNS TEXT
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -101,7 +102,7 @@ $$;
 
 -- Function to encrypt PII field
 CREATE OR REPLACE FUNCTION encrypt_pii(
-  p_workspace_id UUID,
+  p_workspace_id TEXT,
   p_plaintext TEXT
 )
 RETURNS BYTEA
@@ -124,7 +125,7 @@ $$;
 
 -- Function to decrypt PII field
 CREATE OR REPLACE FUNCTION decrypt_pii(
-  p_workspace_id UUID,
+  p_workspace_id TEXT,
   p_ciphertext BYTEA
 )
 RETURNS TEXT
@@ -155,11 +156,11 @@ $$;
 -- =====================================================================
 
 CREATE OR REPLACE FUNCTION migrate_workspace_prospects_to_encrypted(
-  p_workspace_id UUID DEFAULT NULL,
+  p_workspace_id TEXT DEFAULT NULL,
   p_batch_size INTEGER DEFAULT 100
 )
 RETURNS TABLE (
-  workspace_id UUID,
+  workspace_id TEXT,
   migrated_count INTEGER,
   error_count INTEGER
 )
@@ -167,7 +168,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  v_workspace_id UUID;
+  v_workspace_id TEXT;
   v_migrated INTEGER := 0;
   v_errors INTEGER := 0;
 BEGIN
@@ -225,17 +226,12 @@ SELECT
 
   -- Decrypt PII fields if encrypted, otherwise return plain text
   CASE
-    WHEN wp.pii_is_encrypted THEN decrypt_pii(wp.workspace_id::uuid, wp.email_address_encrypted)
+    WHEN wp.pii_is_encrypted THEN decrypt_pii(wp.workspace_id, wp.email_address_encrypted)
     ELSE wp.email_address
   END as email_address,
 
   CASE
-    WHEN wp.pii_is_encrypted THEN decrypt_pii(wp.workspace_id::uuid, wp.phone_number_encrypted)
-    ELSE wp.phone_number
-  END as phone_number,
-
-  CASE
-    WHEN wp.pii_is_encrypted THEN decrypt_pii(wp.workspace_id::uuid, wp.linkedin_profile_url_encrypted)
+    WHEN wp.pii_is_encrypted THEN decrypt_pii(wp.workspace_id, wp.linkedin_profile_url_encrypted)
     ELSE wp.linkedin_profile_url
   END as linkedin_profile_url,
 
@@ -281,22 +277,24 @@ CREATE TABLE IF NOT EXISTS pii_access_log (
 ALTER TABLE pii_access_log ENABLE ROW LEVEL SECURITY;
 
 -- RLS: Users can only see their own access logs
+DROP POLICY IF EXISTS "Users see own access logs" ON pii_access_log;
 CREATE POLICY "Users see own access logs" ON pii_access_log
   FOR SELECT TO authenticated
   USING (user_id = auth.uid());
 
 -- Service role can see all
+DROP POLICY IF EXISTS "Service role sees all" ON pii_access_log;
 CREATE POLICY "Service role sees all" ON pii_access_log
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- Indexes
-CREATE INDEX idx_pii_access_log_workspace ON pii_access_log(workspace_id);
-CREATE INDEX idx_pii_access_log_user ON pii_access_log(user_id);
-CREATE INDEX idx_pii_access_log_accessed_at ON pii_access_log(accessed_at);
+CREATE INDEX IF NOT EXISTS idx_pii_access_log_workspace ON pii_access_log(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_pii_access_log_user ON pii_access_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_pii_access_log_accessed_at ON pii_access_log(accessed_at);
 
 -- Function to log PII access
 CREATE OR REPLACE FUNCTION log_pii_access(
-  p_workspace_id UUID,
+  p_workspace_id TEXT,
   p_table_name TEXT,
   p_record_id UUID,
   p_field_name TEXT,

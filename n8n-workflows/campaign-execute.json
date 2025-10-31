@@ -1,0 +1,198 @@
+{
+  "name": "Campaign Execute - LinkedIn via Unipile",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "campaign-execute",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "campaign-execute"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract prospects from webhook payload\nconst prospects = $input.item.json.prospects || [];\nconst campaign = $input.item.json.campaign || {};\nconst messages = $input.item.json.messages || {};\n\nconsole.log(`📊 Processing ${prospects.length} prospects`);\n\n// Return each prospect as a separate item for processing\nreturn prospects.map(prospect => ({\n  json: {\n    prospect,\n    campaign,\n    messages\n  }\n}));"
+      },
+      "name": "Split Prospects",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://{{$env.UNIPILE_DSN}}/api/v1/users/{{$json.prospect.linkedin_url.split('/in/')[1].split('?')[0]}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{$env.UNIPILE_API_KEY}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Lookup LinkedIn Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{$env.UNIPILE_DSN}}/api/v1/users/invite",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{$env.UNIPILE_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"attendee_id\": \"{{$json.object.id}}\", \"text\": \"{{$json.messages.cr}}\"}",
+        "options": {}
+      },
+      "name": "Send LinkedIn Invitation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract message ID from Unipile response\nconst unipileResponse = $input.item.json;\nconst prospect = $node[\"Lookup LinkedIn Profile\"].json.prospect;\n\n// Try multiple locations for message ID\nconst messageId = \n  unipileResponse.object?.id ||\n  unipileResponse.id ||\n  unipileResponse.data?.id ||\n  unipileResponse.message_id ||\n  unipileResponse.invitation_id ||\n  `untracked_${Date.now()}_${prospect.id}`;\n\nconsole.log(`✅ ${prospect.first_name} ${prospect.last_name} - Message ID: ${messageId}`);\n\nreturn [{\n  json: {\n    prospect_id: prospect.id,\n    message_id: messageId,\n    status: 'connection_requested',\n    contacted_at: new Date().toISOString(),\n    unipile_response: JSON.stringify(unipileResponse)\n  }\n}];"
+      },
+      "name": "Extract Message ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.NEXT_PUBLIC_SUPABASE_URL}}/rest/v1/campaign_prospects?id=eq.{{$json.prospect_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\": \"{{$json.status}}\", \"contacted_at\": \"{{$json.contacted_at}}\", \"personalization_data\": {\"unipile_message_id\": \"{{$json.message_id}}\", \"unipile_response\": {{$json.unipile_response}}}}",
+        "options": {}
+      },
+      "name": "Update Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "console.log(`✅ SUCCESS - Database updated for prospect`);\nreturn $input.all();"
+      },
+      "name": "Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Error handler - log error and update prospect status\nconst error = $input.item.json.error || $input.item.json;\nconst prospect = $input.item.json.prospect || {};\n\nconsole.error(`❌ Error processing prospect ${prospect.id}:`, error);\n\n// Return error info to update database\nreturn [{\n  json: {\n    prospect_id: prospect.id,\n    status: 'failed',\n    error_message: error.message || JSON.stringify(error)\n  }\n}];"
+      },
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 500]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.NEXT_PUBLIC_SUPABASE_URL}}/rest/v1/campaign_prospects?id=eq.{{$json.prospect_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\": \"failed\", \"personalization_data\": {\"error\": \"{{$json.error_message}}\"}}",
+        "options": {}
+      },
+      "name": "Update Failed Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 500]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{"node": "Split Prospects", "type": "main", "index": 0}]]
+    },
+    "Split Prospects": {
+      "main": [[{"node": "Lookup LinkedIn Profile", "type": "main", "index": 0}]]
+    },
+    "Lookup LinkedIn Profile": {
+      "main": [[{"node": "Send LinkedIn Invitation", "type": "main", "index": 0}]],
+      "error": [[{"node": "Error Handler", "type": "main", "index": 0}]]
+    },
+    "Send LinkedIn Invitation": {
+      "main": [[{"node": "Extract Message ID", "type": "main", "index": 0}]],
+      "error": [[{"node": "Error Handler", "type": "main", "index": 0}]]
+    },
+    "Extract Message ID": {
+      "main": [[{"node": "Update Supabase", "type": "main", "index": 0}]]
+    },
+    "Update Supabase": {
+      "main": [[{"node": "Success", "type": "main", "index": 0}]],
+      "error": [[{"node": "Error Handler", "type": "main", "index": 0}]]
+    },
+    "Error Handler": {
+      "main": [[{"node": "Update Failed Status", "type": "main", "index": 0}]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

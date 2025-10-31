@@ -38,8 +38,7 @@ SET owner_id = (
       WHEN 'admin' THEN 2
       WHEN 'member' THEN 3
       ELSE 4
-    END,
-    wm.created_at ASC
+    END
   LIMIT 1
 )
 WHERE owner_id IS NULL;
@@ -86,7 +85,7 @@ SELECT
   wm.workspace_id,
   wm.user_id,
   wm.role,
-  wm.created_at,
+  NOW() as created_at,
   (wm.role = 'owner' OR wm.user_id = (SELECT owner_id FROM workspaces WHERE id = wm.workspace_id)) as is_owner
 FROM workspace_members wm
 WHERE wm.workspace_id IN (
@@ -109,6 +108,7 @@ GRANT SELECT ON workspace_membership TO authenticated;
 DROP POLICY IF EXISTS "Users access own workspaces" ON workspaces;
 DROP POLICY IF EXISTS "Workspace members access workspaces" ON workspaces;
 
+DROP POLICY IF EXISTS "Users access own personal workspaces" ON workspaces;
 CREATE POLICY "Users access own personal workspaces" ON workspaces
   FOR ALL TO authenticated
   USING (
@@ -118,6 +118,7 @@ CREATE POLICY "Users access own personal workspaces" ON workspaces
     workspace_type = 'personal' AND owner_id = auth.uid()
   );
 
+DROP POLICY IF EXISTS "Members access shared workspaces" ON workspaces;
 CREATE POLICY "Members access shared workspaces" ON workspaces
   FOR ALL TO authenticated
   USING (
@@ -132,6 +133,7 @@ CREATE POLICY "Members access shared workspaces" ON workspaces
   );
 
 -- Service role has full access
+DROP POLICY IF EXISTS "Service role full access workspaces" ON workspaces;
 CREATE POLICY "Service role full access workspaces" ON workspaces
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 
@@ -141,6 +143,7 @@ CREATE POLICY "Service role full access workspaces" ON workspaces
 
 DROP POLICY IF EXISTS "Users can access prospects in their workspace" ON workspace_prospects;
 
+DROP POLICY IF EXISTS "Users access personal workspace prospects" ON workspace_prospects;
 CREATE POLICY "Users access personal workspace prospects" ON workspace_prospects
   FOR ALL TO authenticated
   USING (
@@ -156,6 +159,7 @@ CREATE POLICY "Users access personal workspace prospects" ON workspace_prospects
     )
   );
 
+DROP POLICY IF EXISTS "Members access shared workspace prospects" ON workspace_prospects;
 CREATE POLICY "Members access shared workspace prospects" ON workspace_prospects
   FOR ALL TO authenticated
   USING (
@@ -176,6 +180,7 @@ CREATE POLICY "Members access shared workspace prospects" ON workspace_prospects
     )
   );
 
+DROP POLICY IF EXISTS "Service role prospects" ON workspace_prospects;
 CREATE POLICY "Service role prospects" ON workspace_prospects
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 
@@ -186,6 +191,7 @@ CREATE POLICY "Service role prospects" ON workspace_prospects
 DROP POLICY IF EXISTS "Authenticated members manage campaigns" ON campaigns;
 DROP POLICY IF EXISTS "Service role manages campaigns" ON campaigns;
 
+DROP POLICY IF EXISTS "Users access personal workspace campaigns" ON campaigns;
 CREATE POLICY "Users access personal workspace campaigns" ON campaigns
   FOR ALL TO authenticated
   USING (
@@ -201,6 +207,7 @@ CREATE POLICY "Users access personal workspace campaigns" ON campaigns
     )
   );
 
+DROP POLICY IF EXISTS "Members access shared workspace campaigns" ON campaigns;
 CREATE POLICY "Members access shared workspace campaigns" ON campaigns
   FOR ALL TO authenticated
   USING (
@@ -220,6 +227,7 @@ CREATE POLICY "Members access shared workspace campaigns" ON campaigns
     )
   );
 
+DROP POLICY IF EXISTS "Service role campaigns" ON campaigns;
 CREATE POLICY "Service role campaigns" ON campaigns
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 
@@ -229,6 +237,7 @@ CREATE POLICY "Service role campaigns" ON campaigns
 
 DROP POLICY IF EXISTS "Workspace members access knowledge base" ON knowledge_base;
 
+DROP POLICY IF EXISTS "Users access personal KB" ON knowledge_base;
 CREATE POLICY "Users access personal KB" ON knowledge_base
   FOR ALL TO authenticated
   USING (
@@ -244,6 +253,7 @@ CREATE POLICY "Users access personal KB" ON knowledge_base
     )
   );
 
+DROP POLICY IF EXISTS "Members access shared KB" ON knowledge_base;
 CREATE POLICY "Members access shared KB" ON knowledge_base
   FOR ALL TO authenticated
   USING (
@@ -263,6 +273,7 @@ CREATE POLICY "Members access shared KB" ON knowledge_base
     )
   );
 
+DROP POLICY IF EXISTS "Service role KB" ON knowledge_base;
 CREATE POLICY "Service role KB" ON knowledge_base
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 
@@ -273,7 +284,7 @@ CREATE POLICY "Service role KB" ON knowledge_base
 -- Function to check if user owns workspace (simple version)
 CREATE OR REPLACE FUNCTION user_owns_workspace(
   p_user_id UUID,
-  p_workspace_id UUID
+  p_workspace_id TEXT
 )
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -309,7 +320,7 @@ $$;
 -- Function to get user's workspaces (including personal)
 CREATE OR REPLACE FUNCTION get_user_workspaces(p_user_id UUID)
 RETURNS TABLE (
-  workspace_id UUID,
+  workspace_id TEXT,
   workspace_name TEXT,
   workspace_type TEXT,
   role TEXT,

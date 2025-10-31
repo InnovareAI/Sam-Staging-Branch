@@ -325,7 +325,7 @@ WHERE data_quality_score > 0;
 -- =====================================================================
 
 CREATE OR REPLACE FUNCTION update_prospect_quality_scores(
-  p_workspace_id TEXT DEFAULT NULL,
+  p_workspace_id UUID DEFAULT NULL,
   p_batch_size INTEGER DEFAULT 1000
 )
 RETURNS INTEGER

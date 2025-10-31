@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS gdpr_deletion_requests (
 ALTER TABLE gdpr_deletion_requests ENABLE ROW LEVEL SECURITY;
 
 -- RLS: Workspace members can see deletion requests for their workspace
+DROP POLICY IF EXISTS "Workspace members see deletion requests" ON gdpr_deletion_requests;
 CREATE POLICY "Workspace members see deletion requests" ON gdpr_deletion_requests
   FOR SELECT TO authenticated
   USING (
@@ -109,6 +110,7 @@ CREATE POLICY "Workspace members see deletion requests" ON gdpr_deletion_request
   );
 
 -- RLS: Only admins can create/update deletion requests
+DROP POLICY IF EXISTS "Workspace admins manage deletion requests" ON gdpr_deletion_requests;
 CREATE POLICY "Workspace admins manage deletion requests" ON gdpr_deletion_requests
   FOR ALL TO authenticated
   USING (
@@ -127,10 +129,10 @@ CREATE POLICY "Workspace admins manage deletion requests" ON gdpr_deletion_reque
   );
 
 -- Indexes
-CREATE INDEX idx_gdpr_deletion_requests_workspace ON gdpr_deletion_requests(workspace_id);
-CREATE INDEX idx_gdpr_deletion_requests_prospect ON gdpr_deletion_requests(prospect_id);
-CREATE INDEX idx_gdpr_deletion_requests_status ON gdpr_deletion_requests(status);
-CREATE INDEX idx_gdpr_deletion_requests_scheduled ON gdpr_deletion_requests(scheduled_execution_date)
+CREATE INDEX IF NOT EXISTS idx_gdpr_deletion_requests_workspace ON gdpr_deletion_requests(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_gdpr_deletion_requests_prospect ON gdpr_deletion_requests(prospect_id);
+CREATE INDEX IF NOT EXISTS idx_gdpr_deletion_requests_status ON gdpr_deletion_requests(status);
+CREATE INDEX IF NOT EXISTS idx_gdpr_deletion_requests_scheduled ON gdpr_deletion_requests(scheduled_execution_date)
   WHERE status = 'approved';
 
 -- =====================================================================
@@ -178,6 +180,7 @@ CREATE TABLE IF NOT EXISTS data_retention_policies (
 ALTER TABLE data_retention_policies ENABLE ROW LEVEL SECURITY;
 
 -- RLS: Workspace members can view retention policies
+DROP POLICY IF EXISTS "Workspace members view retention policies" ON data_retention_policies;
 CREATE POLICY "Workspace members view retention policies" ON data_retention_policies
   FOR SELECT TO authenticated
   USING (
@@ -188,6 +191,7 @@ CREATE POLICY "Workspace members view retention policies" ON data_retention_poli
   );
 
 -- RLS: Only admins can manage retention policies
+DROP POLICY IF EXISTS "Workspace admins manage retention policies" ON data_retention_policies;
 CREATE POLICY "Workspace admins manage retention policies" ON data_retention_policies
   FOR ALL TO authenticated
   USING (
@@ -217,7 +221,7 @@ RETURNS TIMESTAMPTZ
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  v_workspace_id UUID;
+  v_workspace_id TEXT;
   v_retention_days INTEGER;
   v_last_activity_date TIMESTAMPTZ;
   v_is_eu BOOLEAN;
@@ -379,7 +383,7 @@ $$;
 
 -- Function to create deletion request
 CREATE OR REPLACE FUNCTION create_gdpr_deletion_request(
-  p_workspace_id UUID,
+  p_workspace_id TEXT,
   p_prospect_id UUID,
   p_request_type TEXT DEFAULT 'right_to_be_forgotten',
   p_request_source TEXT DEFAULT 'prospect_request',
