@@ -233,28 +233,31 @@ export async function POST(request: NextRequest) {
     // Generate document ID
     const documentId = uuidv4();
 
-    // Store document metadata in Supabase
+    // Store document in knowledge_base table (NOT knowledge_base_documents)
     const { data: document, error: dbError } = await supabase
-      .from('knowledge_base_documents')
+      .from('knowledge_base')
       .insert({
         id: documentId,
         workspace_id: workspaceId,
-        section_id: section,
-        filename,
-        original_filename: filename,
-        file_type: mimeType || 'text/plain',
-        file_size: fileSize,
-        storage_path: `inline://${documentId}`,
-        extracted_content: extractedContent,
-        metadata: {
+        category: section, // section maps to category
+        subcategory: null,
+        title: filename,
+        content: extractedContent,
+        tags: [],
+        version: '1.0',
+        is_active: true,
+        source_attachment_id: null,
+        source_type: 'document_upload',
+        source_metadata: {
           upload_mode: uploadMode,
           source_url: uploadMode === 'url' ? url : null,
           mime_type: mimeType || 'text/plain',
-          status: 'extracted'
-        },
-        uploaded_by: userId
+          file_size: fileSize,
+          original_filename: filename,
+          uploaded_by: userId
+        }
       })
-      .select('id, workspace_id, section_id')
+      .select('id, workspace_id, category')
       .single();
 
     if (dbError) {
