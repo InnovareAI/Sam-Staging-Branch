@@ -4,7 +4,7 @@
  * Date: October 31, 2025
  */
 
-import { Options } from '@anthropic-ai/claude-agent-sdk';
+import type { Options } from '@anthropic-ai/claude-agent-sdk';
 
 /**
  * SAM AI Agent Configuration

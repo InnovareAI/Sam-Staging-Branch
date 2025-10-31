@@ -4,8 +4,8 @@
  * Date: October 31, 2025
  */
 
-import { query, Options, Query, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
-import { SAM_AGENT_CONFIG, SUB_AGENT_CONFIGS } from './sam-agent-config';
+import { query, type Options } from '@anthropic-ai/claude-agent-sdk';
+import { SAM_AGENT_CONFIG, SUB_AGENT_CONFIGS } from './sam-agent-config.ts';
 
 /**
  * SAM Agent Session
@@ -15,7 +15,7 @@ export class SAMAgentSession {
   private sessionId: string;
   private workspaceId: string;
   private config: Options;
-  private conversationHistory: SDKMessage[] = [];
+  private conversationHistory: Array<{ role: string; content: string; timestamp: string }> = [];
 
   constructor(workspaceId: string, sessionId?: string) {
     this.workspaceId = workspaceId;
@@ -40,40 +40,36 @@ Current Workspace Context:
   async *chat(userMessage: string): AsyncGenerator<string, void, unknown> {
     console.log(`💬 SAM Agent (${this.sessionId}): Processing message`);
 
-    // Create query with current config
-    const queryResult: Query = query(userMessage, this.config);
+    // Create query with correct API signature
+    const queryResult = query({
+      prompt: userMessage,
+      options: this.config
+    });
 
     let fullResponse = '';
 
     try {
       // Stream responses from Claude
       for await (const message of queryResult) {
-        if (message.type === 'text') {
-          fullResponse += message.content;
-          yield message.content;
-        } else if (message.type === 'tool_use') {
-          console.log(`🔧 SAM Agent using tool: ${message.toolName}`);
-          // Tool execution is handled automatically by the SDK
-        } else if (message.type === 'error') {
-          console.error(`❌ SAM Agent error:`, message.error);
-          throw new Error(`SAM Agent error: ${message.error}`);
+        // Agent SDK streams text directly, not in structured message objects
+        if (typeof message === 'string') {
+          fullResponse += message;
+          yield message;
         }
       }
 
-      // Store in conversation history
+      // Store in conversation history (simple format)
       this.conversationHistory.push({
-        type: 'text',
-        content: userMessage,
         role: 'user',
+        content: userMessage,
         timestamp: new Date().toISOString()
-      } as SDKMessage);
+      } as any);
 
       this.conversationHistory.push({
-        type: 'text',
-        content: fullResponse,
         role: 'assistant',
+        content: fullResponse,
         timestamp: new Date().toISOString()
-      } as SDKMessage);
+      } as any);
 
       console.log(`✅ SAM Agent response complete (${fullResponse.length} chars)`);
     } catch (error) {
@@ -85,7 +81,7 @@ Current Workspace Context:
   /**
    * Get conversation history for this session
    */
-  getHistory(): SDKMessage[] {
+  getHistory() {
     return this.conversationHistory;
   }
 
@@ -135,16 +131,17 @@ Current Workspace: ${workspaceId}`,
   async execute(task: string): Promise<string> {
     console.log(`🤖 Sub-Agent [${this.agentType}]: Starting task`);
 
-    const queryResult: Query = query(task, this.config);
+    const queryResult = query({
+      prompt: task,
+      options: this.config
+    });
 
     let fullResponse = '';
 
     try {
       for await (const message of queryResult) {
-        if (message.type === 'text') {
-          fullResponse += message.content;
-        } else if (message.type === 'tool_use') {
-          console.log(`🔧 Sub-Agent [${this.agentType}] using tool: ${message.toolName}`);
+        if (typeof message === 'string') {
+          fullResponse += message;
         }
       }
 

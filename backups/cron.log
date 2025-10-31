@@ -2629,3 +2629,92 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main 57bfc082] 🔄 Auto-backup: auto-backup-20251031_180000
+ Committer: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 59 files changed, 13964 insertions(+), 50 deletions(-)
+ create mode 100644 .claude/agents/campaign-creator.md
+ create mode 100644 .claude/agents/data-enricher.md
+ create mode 100644 .claude/agents/email-writer.md
+ create mode 100644 .claude/agents/linkedin-strategist.md
+ create mode 100644 .claude/agents/prospect-researcher.md
+ create mode 100644 DEPLOYMENT_CHECKLIST_OCT_31.md
+ create mode 100644 MIGRATION_FILES_SUMMARY.txt
+ create mode 100644 app/api/prospects/enrich/route.ts
+ create mode 100644 app/api/sam/agent-chat/route.ts
+ create mode 100644 docs/BRIGHTDATA_API_CONFIGURATION.md
+ create mode 100644 docs/BRIGHTDATA_CRITICAL_FIELDS_OCT_31_2025.md
+ create mode 100644 docs/BRIGHTDATA_ENRICHMENT_WORKFLOW_OCT_31_2025.md
+ create mode 100644 docs/BRIGHTDATA_LEVERAGE_STRATEGY.md
+ create mode 100644 docs/CAMPAIGN_QUEUE_MONITORING.md
+ create mode 100644 docs/COMPANY_DATA_FIX_OPTIONS.md
+ create mode 100644 docs/COMPANY_DATA_INVESTIGATION_COMPLETE.md
+ create mode 100644 docs/DATA_FIELD_ANALYSIS_OCT_31_2025.md
+ create mode 100644 docs/DEBUG_COMPANY_DATA_ROOT_CAUSE.md
+ create mode 100644 docs/FIELD_IMPLEMENTATION_SUMMARY_OCT_31_2025.md
+ create mode 100644 docs/FINAL_IMPLEMENTATION_SUMMARY_OCT_31_2025.md
+ create mode 100644 docs/FIX_CLIENT_CAMPAIGN_NOW.md
+ create mode 100644 docs/IMPLEMENTATION_COMPLETE_OCT_31_2025.md
+ create mode 100644 docs/LINKEDIN_ACCOUNT_FIX_OCT_31_2025.md
+ create mode 100644 docs/LINKEDIN_ACCOUNT_TYPES_OCT_31_2025.md
+ create mode 100644 docs/LINKEDIN_HUMANIZATION_SUMMARY.md
+ create mode 100644 docs/LINKEDIN_TIERED_SEARCH_FIX_OCT_31_2025.md
+ create mode 100644 docs/PROSPECT_STATUS_UI_SPEC.md
+ create mode 100644 docs/URGENT_BAD_COMPANY_DATA.md
+ create mode 100644 docs/URGENT_FIX_CLIENT_CAMPAIGN.md
+ create mode 100644 lib/agents/sam-agent-config.ts
+ create mode 100644 lib/agents/sam-agent-sdk.ts
+ create mode 100755 scripts/js/analyze-bad-company-data.mjs
+ create mode 100644 scripts/js/apply-migration-direct.mjs
+ create mode 100755 scripts/js/apply-schema-cleanup.mjs
+ create mode 100644 scripts/js/check-approval-data-sample.mjs
+ create mode 100755 scripts/js/check-sales-nav-accounts.mjs
+ create mode 100644 scripts/js/debug-unipile-profile-structure.mjs
+ create mode 100755 scripts/js/fix-bad-company-from-approval-data.mjs
+ create mode 100755 scripts/js/fix-company-data-from-linkedin.mjs
+ create mode 100755 scripts/js/fix-stuck-queued-prospects.mjs
+ create mode 100755 scripts/js/pause-campaign-urgent.mjs
+ create mode 100644 scripts/js/rescrape-with-brightdata-mcp.mjs
+ create mode 100644 scripts/js/scrape-with-brightdata-proxy.mjs
+ create mode 100644 scripts/js/test-agent-sdk.mjs
+ create mode 100644 scripts/js/test-brightdata-direct.mjs
+ create mode 100644 scripts/js/test-brightdata-scrape-sample.mjs
+ create mode 100755 scripts/js/view-campaign-queue.mjs
+ create mode 100755 scripts/shell/apply-schema-cleanup.sh
+ create mode 100755 scripts/shell/migrate-with-password.sh
+ create mode 100755 scripts/shell/run-migration.sh
+ create mode 100644 sql/migrations/20251031_add_industry_to_workspace_prospects.sql
+ create mode 100644 sql/migrations/20251031_cleanup_campaign_prospects.sql
+ create mode 100644 sql/views/campaign_queue_view.sql
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251031_180000[0m
+[0;32m📅 Timestamp: Fri Oct 31 18:00:01 PST 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+
