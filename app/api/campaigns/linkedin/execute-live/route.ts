@@ -35,7 +35,8 @@ interface LinkedInAccount {
 export async function POST(req: NextRequest) {
   try {
     // Check for internal cron trigger (bypass user auth for cron jobs)
-    const isInternalTrigger = req.headers.get('x-internal-trigger') === 'cron-pending-prospects';
+    const internalTriggerValue = req.headers.get('x-internal-trigger');
+    const isInternalTrigger = internalTriggerValue === 'cron-pending-prospects' || internalTriggerValue === 'n8n-scheduler';
 
     // Use service role client for cron (no cookies), regular client for users
     const supabase = isInternalTrigger
