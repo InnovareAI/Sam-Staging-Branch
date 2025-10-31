@@ -56,11 +56,12 @@ export async function GET(req: NextRequest) {
 
       // CRITICAL FIX: Count LinkedIn connection requests from campaign_prospects
       // LinkedIn campaigns update campaign_prospects, not campaign_messages
+      // Include: connection_requested (sent), queued_in_n8n (queued), contacted (legacy)
       const { count: linkedinSent } = await supabase
         .from('campaign_prospects')
         .select('*', { count: 'exact', head: true })
         .eq('campaign_id', campaign.id)
-        .eq('status', 'connection_requested');
+        .in('status', ['connection_requested', 'queued_in_n8n', 'contacted']);
 
       // Get message stats from campaign_messages (for email campaigns)
       const { data: messages } = await supabase
