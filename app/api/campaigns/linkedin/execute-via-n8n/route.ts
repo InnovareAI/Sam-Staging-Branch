@@ -578,28 +578,29 @@ function buildCampaignData(campaign: any, prospects: any[]) {
 
 function calculateEngagementScore(prospect: any): number {
   let score = 50; // Base score
-  
-  if (prospect.linkedin_id) score += 20; // Has LinkedIn connection
+
+  if (prospect.linkedin_user_id || prospect.linkedin_url) score += 20; // Has LinkedIn connection
   if (prospect.email) score += 15; // Has email
-  if (prospect.job_title?.toLowerCase().includes('vp') || prospect.job_title?.toLowerCase().includes('director')) score += 10;
-  if (prospect.company) score += 5;
-  
+  const jobTitle = prospect.title || prospect.job_title;
+  if (jobTitle?.toLowerCase().includes('vp') || jobTitle?.toLowerCase().includes('director')) score += 10;
+  if (prospect.company_name || prospect.company) score += 5;
+
   return Math.min(score, 100);
 }
 
 function buildPersonalizationData(prospect: any) {
   return {
     company_info: {
-      name: prospect.company,
+      name: prospect.company_name || prospect.company,
       industry: prospect.industry,
       location: prospect.location
     },
     role_info: {
-      title: prospect.job_title,
-      seniority_level: determineSeniorityLevel(prospect.job_title)
+      title: prospect.title || prospect.job_title,
+      seniority_level: determineSeniorityLevel(prospect.title || prospect.job_title)
     },
     contact_preferences: {
-      preferred_channel: prospect.linkedin_id ? 'linkedin' : 'email',
+      preferred_channel: prospect.linkedin_user_id || prospect.linkedin_url ? 'linkedin' : 'email',
       time_zone: prospect.location ? getTimezoneFromLocation(prospect.location) : 'UTC'
     }
   };
@@ -730,22 +731,18 @@ export async function POST(req: NextRequest) {
         *,
         campaign_prospects (
           id,
-          prospect_id,
+          first_name,
+          last_name,
+          email,
+          company_name,
+          title,
+          linkedin_url,
+          linkedin_user_id,
+          location,
+          industry,
           status,
-          sequence_step,
-          invitation_sent_at,
-          workspace_prospects (
-            id,
-            first_name,
-            last_name,
-            company_name,
-            job_title,
-            linkedin_profile_url,
-            linkedin_user_id,
-            email_address,
-            location,
-            industry
-          )
+          contacted_at,
+          personalization_data
         )
       `)
       .eq('id', campaignId)
@@ -779,8 +776,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Get prospects ready for processing
+    // campaign_prospects table stores prospect data directly (no join needed)
     const pendingProspects = campaign.campaign_prospects.filter(
-      (cp: any) => cp.status === 'pending' && cp.workspace_prospects
+      (cp: any) => cp.status === 'pending' && (cp.linkedin_url || cp.email)
     );
 
     if (pendingProspects.length === 0) {
