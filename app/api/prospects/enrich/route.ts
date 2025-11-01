@@ -401,35 +401,53 @@ async function enrichWithBrightData(
   prospects: Array<{ linkedin_url: string; [key: string]: any }>
 ): Promise<BrightDataEnrichmentResult[]> {
   try {
+    console.log('📞 Calling BrightData scraper API...');
+    console.log(`📊 Enriching ${prospects.length} prospects:`, prospects.map(p => p.linkedin_url));
+
+    const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/leads/brightdata-scraper`;
+    console.log(`🔗 API URL: ${apiUrl}`);
+
+    const requestBody = {
+      action: 'enrich_linkedin_profiles',
+      linkedin_urls: prospects.map(p => p.linkedin_url),
+      include_contact_info: true,
+      include_company_info: true
+    };
+
+    console.log('📤 Request body:', JSON.stringify(requestBody, null, 2));
+
     // Call BrightData scraper API
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/leads/brightdata-scraper`, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'enrich_linkedin_profiles',
-        linkedin_urls: prospects.map(p => p.linkedin_url),
-        include_contact_info: true,
-        include_company_info: true
-      })
+      body: JSON.stringify(requestBody)
     });
 
+    console.log(`📥 Response status: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
-      console.error('BrightData API error:', response.status);
+      const errorText = await response.text();
+      console.error('❌ BrightData API error:', response.status, errorText);
       return prospects.map(p => ({
         linkedin_url: p.linkedin_url,
-        verification_status: 'failed' as const
+        verification_status: 'failed' as const,
+        error: `API error: ${response.status}`
       }));
     }
 
     const data = await response.json();
+    console.log('📦 BrightData response:', JSON.stringify(data, null, 2));
 
     if (!data.success) {
-      console.error('BrightData enrichment failed:', data.error);
+      console.error('❌ BrightData enrichment failed:', data.error);
       return prospects.map(p => ({
         linkedin_url: p.linkedin_url,
-        verification_status: 'failed' as const
+        verification_status: 'failed' as const,
+        error: data.error
       }));
     }
+
+    console.log(`✅ BrightData enrichment successful: ${data.enriched_profiles?.length || 0} profiles enriched`);
 
     // Map BrightData response to enrichment results
     return data.enriched_profiles || prospects.map(p => ({
@@ -438,10 +456,12 @@ async function enrichWithBrightData(
     }));
 
   } catch (error) {
-    console.error('BrightData enrichment error:', error);
+    console.error('❌ BrightData enrichment error:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return prospects.map(p => ({
       linkedin_url: p.linkedin_url,
-      verification_status: 'failed' as const
+      verification_status: 'failed' as const,
+      error: error instanceof Error ? error.message : 'Unknown error'
     }));
   }
 }
