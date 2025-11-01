@@ -934,75 +934,39 @@ export async function POST(
       }
     }
 
+    // DISABLED: Sequence generation now only in dedicated modal
+    // Chat window is for: onboarding, general questions, lead/prospect research
     const sequenceIntent = detectSequenceIntent(content)
 
     if (sequenceIntent) {
-      if (!completedDiscoverySession) {
-        const { data: assistantMessage, error: assistantError } = await supabase
-          .from('sam_conversation_messages')
-          .insert({
-            thread_id: resolvedParams.threadId,
-            user_id: user.id,
-            role: 'assistant',
-            content: 'I need the ICP discovery details before I can draft the sequence. Want to spend two minutes on that now?',
-            message_order: nextOrder + 1,
-            message_metadata: { sequence: false }
-          })
-          .select()
-          .single()
-
-        if (assistantError) {
-          console.error('Failed to save discovery reminder message:', assistantError)
-          return NextResponse.json({ success: false, error: 'Failed to respond' }, { status: 500 })
-        }
-
-        return NextResponse.json({
-          success: true,
-          userMessage,
-          samMessage: assistantMessage,
-          sequenceGenerated: false
-        })
-      }
-
-      const sequence = generateLinkedInSequence(completedDiscoverySession.discovery_payload)
-      const formattedSequence = formatSequence(sequence)
-
+      // Redirect to campaign modal instead of generating in chat
       const { data: assistantMessage, error: assistantError } = await supabase
         .from('sam_conversation_messages')
         .insert({
           thread_id: resolvedParams.threadId,
           user_id: user.id,
           role: 'assistant',
-          content: formattedSequence,
+          content: 'I can help you create messaging sequences, but let\'s do that in the Campaign Hub where you can customize and manage them properly.\n\n👉 Click the "Campaign Hub" button in the sidebar to create a new campaign with customized sequences.\n\nIn this chat, I\'m here for:\n• Onboarding and getting to know your business\n• Answering questions about your strategy\n• Researching specific leads and prospects\n• General advice and consultation\n\nWhat would you like help with?',
           message_order: nextOrder + 1,
           message_metadata: {
-            sequence: true,
-            persona: sequence.personaKey,
-            blueprint: sequence.blueprint.code
+            sequence_redirect: true,
+            redirect_to: 'campaign_hub'
           }
         })
         .select()
         .single()
 
       if (assistantError) {
-        console.error('Failed to save generated sequence message:', assistantError)
-        return NextResponse.json({ success: false, error: 'Failed to generate sequence' }, { status: 500 })
+        console.error('Failed to save sequence redirect message:', assistantError)
+        return NextResponse.json({ success: false, error: 'Failed to respond' }, { status: 500 })
       }
-
-      await supabase
-        .from('sam_conversation_threads')
-        .update({
-          current_discovery_stage: 'sequence_generated',
-          discovery_progress: 100
-        })
-        .eq('id', resolvedParams.threadId)
 
       return NextResponse.json({
         success: true,
         userMessage,
         samMessage: assistantMessage,
-        sequenceGenerated: true,
-        summary: sequence.summary
+        sequenceGenerated: false,
+        redirectToCampaignHub: true
       })
     }
 
@@ -1108,18 +1072,34 @@ RESPONSE GUIDELINES
 - **CRITICAL: Keep ALL responses to a maximum of 6 lines across 2 paragraphs. Be concise and impactful.**
 - Format responses as 2 short paragraphs maximum (3 lines each)
 - Vary your responses: sometimes start with affirmation ("Got it!"), sometimes dive right in, sometimes reflect back what you heard
-- Recognize shortcuts: '#clear' (reset chat), '#icp' (ICP research), '#messaging' (draft sequences), '#test-linkedin' (test LinkedIn integration)
+- Recognize shortcuts: '#clear' (reset chat), '#icp' (ICP research), '#test-linkedin' (test LinkedIn integration)
 - **Throughout interview: Casually remind users they can upload docs instead of typing** (e.g., "BTW—if you've got your ICP doc handy, just upload it in the KB tab. Way faster than typing!")
 - Never mention internal tech (MCP, n8n, vendor names) unless explicitly asked
 - Every response must fit within 6 lines total when displayed
+
+🚫 CRITICAL BOUNDARIES - WHAT THIS CHAT IS FOR
+This chat window is ONLY for:
+✅ Onboarding new users (getting to know their business)
+✅ Answering general questions about strategy and campaigns
+✅ Researching specific leads and prospects
+✅ Providing consultation and advice
+
+This chat is NOT for:
+❌ Creating messaging sequences (redirect to Campaign Hub)
+❌ Generating campaign copy (redirect to Campaign Hub)
+❌ Building outreach templates (redirect to Campaign Hub)
+❌ Writing LinkedIn messages (redirect to Campaign Hub)
+
+**If user requests sequence/campaign generation:**
+"I can help you create messaging sequences, but let's do that in the Campaign Hub where you can customize and manage them properly. Click 'Campaign Hub' in the sidebar to get started. What else can I help with here?"
 
 YOUR WORKFLOW (present naturally, not as a checklist)
 1. **Upload-first approach**: Show them the KB checklist, ask them to upload what they have, then only fill gaps with questions
 2. Get to know them: Learn their name, role, company, and goals. Understand their ICP, then show real prospect examples to validate
 3. Build knowledge: Notice what's missing, ask for it conversationally, and reference what they've shared
 4. Validate prospects: Share 5-7 examples with quick "why they fit" explanations. Ask for feedback
-5. Create messaging: Help pick channels (LinkedIn, email, both). Draft copy that sounds like them, remind about approval steps
-6. Execute & follow through: Confirm approvals, outline next actions, stay available for adjustments
+5. Research & consult: Answer questions, research leads, provide strategic advice
+6. Redirect campaign work: For messaging/sequences, direct to Campaign Hub
 
 KNOWLEDGE BASE AWARENESS
 ${kbCompleteness ? `
