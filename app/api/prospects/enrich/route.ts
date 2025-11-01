@@ -100,14 +100,14 @@ export async function POST(request: NextRequest) {
           is_campaign_prospect: true
         }));
       } else {
-        // Fall back to workspace_prospects
+        // Try workspace_prospects
         const { data: prospects } = await supabase
           .from('workspace_prospects')
           .select('*')
           .in('id', prospectIds)
           .eq('workspace_id', workspaceId);
 
-        if (prospects) {
+        if (prospects && prospects.length > 0) {
           prospectsToEnrich = prospects.map(p => ({
             id: p.id,
             linkedin_url: p.linkedin_profile_url,
@@ -117,8 +117,31 @@ export async function POST(request: NextRequest) {
             first_name: p.first_name,
             last_name: p.last_name,
             location: p.location,
+            table: 'workspace_prospects',
             is_campaign_prospect: false
           }));
+        } else {
+          // Try prospect_approval_data (for prospects in approval workflow)
+          const { data: approvalProspects } = await supabase
+            .from('prospect_approval_data')
+            .select('*')
+            .in('prospect_id', prospectIds);
+
+          if (approvalProspects) {
+            prospectsToEnrich = approvalProspects.map(p => ({
+              id: p.prospect_id,
+              approval_id: p.id,
+              linkedin_url: p.contact?.linkedin_url,
+              company_name: p.company?.name,
+              industry: typeof p.company?.industry === 'string' ? p.company.industry : (p.company?.industry?.[0] || null),
+              email: p.contact?.email,
+              first_name: p.name?.split(' ')[0],
+              last_name: p.name?.split(' ').slice(1).join(' '),
+              location: p.location,
+              table: 'prospect_approval_data',
+              is_campaign_prospect: false
+            }));
+          }
         }
       }
     } else if (linkedInUrls) {
@@ -232,10 +255,31 @@ export async function POST(request: NextRequest) {
           .eq('prospect_id', update.prospectId);
       }
     } else {
-      // Check if these are campaign prospects or workspace prospects
-      const isCampaignProspect = prospectsToEnrich.some(p => p.is_campaign_prospect);
+      // Determine which table to update based on prospect type
+      const tableType = prospectsToEnrich[0]?.table;
 
-      if (isCampaignProspect) {
+      if (tableType === 'prospect_approval_data') {
+        // Update prospect_approval_data
+        for (const update of updates) {
+          const prospect = prospectsToEnrich.find(p => p.id === update.prospectId);
+          await supabase
+            .from('prospect_approval_data')
+            .update({
+              company: {
+                name: update.data.company_name,
+                industry: update.data.industry,
+                website: update.data.company_domain || ''
+              },
+              contact: {
+                email: update.data.email_address,
+                linkedin_url: prospect?.linkedin_url
+              },
+              location: update.data.location,
+              enrichment_data: update.data.enrichment_data
+            })
+            .eq('prospect_id', update.prospectId);
+        }
+      } else if (tableType === 'campaign_prospects' || prospectsToEnrich.some(p => p.is_campaign_prospect)) {
         // Update campaign_prospects
         for (const update of updates) {
           await supabase
