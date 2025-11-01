@@ -1805,12 +1805,8 @@ Would you like me to adjust these or create more variations?`
 
       // Step 3: Auto-execute via correct endpoint based on campaign type
       if (totalProspectsWithIds > 0 || campaign.campaign_type === 'connector') {
-        // Route to correct endpoint based on campaign type
-        let executeEndpoint = '/api/campaigns/linkedin/execute-direct'; // Default for messenger
-
-        if (campaign.campaign_type === 'connector') {
-          executeEndpoint = '/api/campaigns/linkedin/execute-live'; // Use execute-live for connection requests
-        }
+        // ALL campaigns now execute via N8N workflow (no direct API)
+        const executeEndpoint = '/api/campaigns/linkedin/execute-via-n8n';
 
         const executeResponse = await fetch(executeEndpoint, {
           method: 'POST',
@@ -4376,9 +4372,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       // Update prospects count to include synced IDs
       const totalProspectsWithIds = uploadResult.prospects_with_linkedin_ids + syncedCount;
 
-      // Step 3: Execute directly via Unipile (bypassing N8N for testing)
+      // Step 3: Execute via N8N workflow
       if (totalProspectsWithIds > 0) {
-        const executeResponse = await fetch('/api/campaigns/linkedin/execute-direct', {
+        const executeResponse = await fetch('/api/campaigns/linkedin/execute-via-n8n', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -4428,9 +4424,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               if (syncData.stats?.campaign_prospects_resolved > 0) {
                 toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved and ready!\n\n📊 ${mappedProspects.length} prospects uploaded\n🔗 ${syncData.stats.campaign_prospects_resolved} LinkedIn IDs auto-resolved\n🚀 Campaign is ready for launch!`);
 
-                // Auto-launch the campaign now that IDs are resolved
+                // Auto-launch the campaign via N8N workflow
                 try {
-                  const launchResponse = await fetch('/api/campaigns/linkedin/execute-direct', {
+                  const launchResponse = await fetch('/api/campaigns/linkedin/execute-via-n8n', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -6268,12 +6264,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                           // If activating, also execute the campaign
                           if (newStatus === 'active') {
                             try {
-                              // Determine execution endpoint based on campaign type
-                              let executeEndpoint = '/api/campaigns/linkedin/execute-direct'; // Default for messenger
+                              // ALL LinkedIn campaigns now execute via N8N workflow
+                              let executeEndpoint = '/api/campaigns/linkedin/execute-via-n8n';
 
-                              if (selectedCampaign.campaign_type === 'connector') {
-                                executeEndpoint = '/api/campaigns/linkedin/execute-live'; // Use execute-live for LinkedIn connection requests
-                              } else if (selectedCampaign.campaign_type === 'email') {
+                              if (selectedCampaign.campaign_type === 'email') {
                                 executeEndpoint = '/api/campaigns/email/execute';
                               }
 
