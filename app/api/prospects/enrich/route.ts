@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
+// Configure this API route to have maximum timeout
+export const maxDuration = 60; // 60 seconds (max for Pro plan)
+export const dynamic = 'force-dynamic';
+
 /**
  * BrightData Prospect Enrichment API
  * Enriches prospects with missing mandatory fields (company, industry, email)

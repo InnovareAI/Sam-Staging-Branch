@@ -29,6 +29,9 @@
 [functions."*"]
   body_size_limit = "10mb"
 
+# Note: Next.js API routes have maxDuration configured in the route file
+# See app/api/prospects/enrich/route.ts: export const maxDuration = 60
+
 # Scheduled function: Execute campaigns every 2 minutes
 [functions."scheduled-campaign-execution"]
   schedule = "*/2 * * * *"
