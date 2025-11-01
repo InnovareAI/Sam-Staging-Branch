@@ -11,6 +11,7 @@ interface EnrichmentRequest {
   prospectIds?: string[];    // Enrich specific prospects by ID
   linkedInUrls?: string[];   // Enrich by LinkedIn URLs
   autoEnrich?: boolean;      // Automatically enrich all 'unavailable' fields
+  workspaceId?: string;      // Workspace ID (optional, will be looked up if not provided)
 }
 
 interface BrightDataEnrichmentResult {
@@ -31,7 +32,7 @@ interface BrightDataEnrichmentResult {
 export async function POST(request: NextRequest) {
   try {
     const body: EnrichmentRequest = await request.json();
-    const { sessionId, prospectIds, linkedInUrls, autoEnrich = true } = body;
+    const { sessionId, prospectIds, linkedInUrls, autoEnrich = true, workspaceId: providedWorkspaceId } = body;
 
     const supabase = await createSupabaseRouteClient();
 
@@ -43,18 +44,50 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
 
-    // Get user's workspace
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single();
+    // Get workspace ID - either from request or look it up
+    let workspaceId = providedWorkspaceId;
 
-    const workspaceId = userProfile?.current_workspace_id;
+    if (!workspaceId) {
+      // Fallback: Try to get from user profile
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('current_workspace_id')
+        .eq('id', user.id)
+        .single();
+
+      workspaceId = userProfile?.current_workspace_id;
+    }
+
+    if (!workspaceId) {
+      // Last resort: Get any workspace the user is a member of
+      const { data: membership } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
+
+      workspaceId = membership?.workspace_id;
+    }
+
     if (!workspaceId) {
       return NextResponse.json({
-        error: 'No workspace found'
+        error: 'No workspace found for user'
       }, { status: 400 });
+    }
+
+    // Verify user has access to this workspace
+    const { data: member } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!member) {
+      return NextResponse.json({
+        error: 'Not a member of this workspace'
+      }, { status: 403 });
     }
 
     // Get prospects to enrich

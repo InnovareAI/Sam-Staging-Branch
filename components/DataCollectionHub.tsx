@@ -1418,9 +1418,10 @@ export default function DataCollectionHub({
 
 
             {/* Enrich Selected Prospects - BrightData enrichment for missing data */}
-            {selectedProspectIds.size > 0 && (
+            {selectedProspectIds.size > 0 && workspaceId && (
               <EnrichProspectsButton
                 prospectIds={Array.from(selectedProspectIds)}
+                workspaceId={workspaceId}
                 onEnrichmentComplete={() => {
                   // Refresh the prospects list after enrichment
                   refetchApprovalSessions();

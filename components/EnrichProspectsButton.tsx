@@ -7,6 +7,7 @@ import { toastSuccess, toastError, toastInfo } from '@/lib/toast';
 
 interface EnrichProspectsButtonProps {
   prospectIds: string[];
+  workspaceId: string;
   onEnrichmentComplete?: () => void;
   variant?: 'default' | 'outline' | 'ghost';
   size?: 'default' | 'sm' | 'lg' | 'icon';
@@ -21,6 +22,7 @@ interface EnrichProspectsButtonProps {
  */
 export default function EnrichProspectsButton({
   prospectIds,
+  workspaceId,
   onEnrichmentComplete,
   variant = 'outline',
   size = 'sm',
@@ -46,6 +48,7 @@ export default function EnrichProspectsButton({
         },
         body: JSON.stringify({
           prospectIds,
+          workspaceId,
           autoEnrich: true
         })
       });
