@@ -584,27 +584,26 @@ async function enrichLinkedInProfiles(req: NextRequest, user: any) {
       console.log(`🧹 Cleaned URL: ${cleanUrl}`);
 
       // Use BrightData Web Unlocker API
-      const brightdataCustomerId = process.env.BRIGHT_DATA_CUSTOMER_ID || 'hl_8aca120e';
-      const brightdataPassword = process.env.BRIGHT_DATA_PASSWORD || 'vokteG-4zibcy-juwrux';
+      const brightdataApiToken = process.env.BRIGHTDATA_API_TOKEN || '61813293-6532-4e16-af76-9803cc043afa';
+      const brightdataZone = process.env.BRIGHTDATA_ZONE || 'web_unlocker1';
 
-      // BrightData Web Unlocker endpoint
-      const webUnlockerUrl = 'https://brd.superproxy.io:22225';
+      console.log(`🔗 Using BrightData Web Unlocker API`);
+      console.log(`📍 Zone: ${brightdataZone}`);
 
-      // Basic auth for BrightData
-      const auth = Buffer.from(`${brightdataCustomerId}:${brightdataPassword}`).toString('base64');
+      // BrightData Web Unlocker API endpoint
+      const apiUrl = 'https://api.brightdata.com/request';
 
-      console.log(`🔗 Using BrightData Web Unlocker`);
-
-      // Scrape LinkedIn profile via BrightData Web Unlocker
-      const scrapeResponse = await fetch(webUnlockerUrl, {
+      // Make request to BrightData Web Unlocker
+      const scrapeResponse = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Basic ${auth}`,
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${brightdataApiToken}`
         },
         body: JSON.stringify({
+          zone: brightdataZone,
           url: cleanUrl,
-          format: 'raw' // Get raw HTML
+          format: 'raw'
         })
       });
 
