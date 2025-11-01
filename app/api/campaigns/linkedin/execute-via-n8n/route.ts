@@ -802,11 +802,12 @@ export async function POST(req: NextRequest) {
       console.log('Prospect status breakdown:', statusCounts);
     }
 
+    // Accept both 'pending' and 'queued_in_n8n' statuses for processing
     const pendingProspects = campaign.campaign_prospects.filter(
-      (cp: any) => cp.status === 'pending' && (cp.linkedin_url || cp.email)
+      (cp: any) => ['pending', 'queued_in_n8n'].includes(cp.status) && (cp.linkedin_url || cp.email)
     );
 
-    console.log(`✅ Found ${pendingProspects.length} prospects with status='pending'`);
+    console.log(`✅ Found ${pendingProspects.length} prospects with status='pending' or 'queued_in_n8n'`);
 
     if (pendingProspects.length === 0) {
       return NextResponse.json({
@@ -829,19 +830,20 @@ export async function POST(req: NextRequest) {
       tierLimits.linkedin_daily_limit
     );
 
+    // Map prospects directly from campaign_prospects (no join to workspace_prospects)
     const prospectsToProcess = pendingProspects
       .slice(0, dailyLimit)
       .map((cp: any) => ({
-        id: cp.workspace_prospects.id,
-        first_name: cp.workspace_prospects.first_name,
-        last_name: cp.workspace_prospects.last_name,
-        company: cp.workspace_prospects.company_name,
-        job_title: cp.workspace_prospects.job_title,
-        linkedin_url: cp.workspace_prospects.linkedin_profile_url,
-        linkedin_id: cp.workspace_prospects.linkedin_user_id,
-        email: cp.workspace_prospects.email_address,
-        location: cp.workspace_prospects.location,
-        industry: cp.workspace_prospects.industry
+        id: cp.id,
+        first_name: cp.first_name,
+        last_name: cp.last_name,
+        company: cp.company_name,
+        job_title: cp.title,
+        linkedin_url: cp.linkedin_url,
+        linkedin_id: cp.linkedin_user_id,
+        email: cp.email,
+        location: cp.location,
+        industry: cp.industry
       }));
 
     console.log(`📋 Processing ${prospectsToProcess.length} prospects (daily limit: ${dailyLimit})`);
