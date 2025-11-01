@@ -33,7 +33,7 @@ function log(emoji, message, color = colors.reset) {
 async function getTestProspect() {
   log('🔍', 'Finding test prospect with LinkedIn URL...', colors.blue);
 
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/workspace_prospects?select=id,first_name,last_name,linkedin_url,company_name,location,industry&linkedin_url=not.is.null&limit=1`, {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/workspace_prospects?select=id,first_name,last_name,linkedin_profile_url,company_name,location,industry&linkedin_profile_url=not.is.null&limit=1`, {
     headers: {
       'apikey': SUPABASE_KEY,
       'Authorization': `Bearer ${SUPABASE_KEY}`
@@ -48,7 +48,7 @@ async function getTestProspect() {
 
   const prospect = prospects[0];
   log('✅', `Found prospect: ${prospect.first_name} ${prospect.last_name}`, colors.green);
-  log('📍', `LinkedIn: ${prospect.linkedin_url}`, colors.cyan);
+  log('📍', `LinkedIn: ${prospect.linkedin_profile_url}`, colors.cyan);
   log('🏢', `Current company: ${prospect.company_name || 'Not set'}`, colors.cyan);
 
   return prospect;
@@ -155,9 +155,8 @@ async function showEnrichedData(prospectId) {
   Company:      ${prospect.company_name || 'N/A'}
   Location:     ${prospect.location || 'N/A'}
   Industry:     ${prospect.industry || 'N/A'}
-  LinkedIn:     ${prospect.linkedin_url}
-  Email:        ${prospect.email || 'N/A'}
-  Phone:        ${prospect.phone_number || 'N/A'}
+  LinkedIn:     ${prospect.linkedin_profile_url}
+  Email:        ${prospect.email_address || 'N/A'}
   `);
   log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', '', colors.cyan);
 
