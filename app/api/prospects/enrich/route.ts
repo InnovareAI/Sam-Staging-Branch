@@ -450,41 +450,127 @@ async function enrichSingleProspectWithMCP(linkedinUrl: string): Promise<BrightD
 }
 
 /**
- * Enrich a single prospect using Direct API (paid)
+ * Enrich a single prospect using Direct BrightData API (paid)
+ *
+ * CRITICAL FIX: Call BrightData directly instead of internal API to avoid auth issues
  */
 async function enrichSingleProspectWithAPI(linkedinUrl: string): Promise<BrightDataEnrichmentResult> {
-  const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/leads/brightdata-scraper`;
+  try {
+    console.log(`🔍 Enriching directly via BrightData API: ${linkedinUrl}`);
 
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action: 'enrich_linkedin_profiles',
-      linkedin_urls: [linkedinUrl],
-      include_contact_info: true,
-      include_company_info: true
-    })
-  });
+    // Clean LinkedIn URL - remove query parameters
+    const cleanUrl = linkedinUrl.split('?')[0];
 
-  if (!response.ok) {
+    // BrightData API credentials
+    const brightdataApiToken = process.env.BRIGHTDATA_API_TOKEN || '61813293-6532-4e16-af76-9803cc043afa';
+    const brightdataZone = process.env.BRIGHTDATA_ZONE || 'linkedin_enrichment';
+
+    // Call BrightData Web Unlocker API directly
+    const response = await fetch('https://api.brightdata.com/request', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${brightdataApiToken}`
+      },
+      body: JSON.stringify({
+        zone: brightdataZone,
+        url: cleanUrl,
+        format: 'raw'
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ BrightData API error: ${response.status} - ${errorText}`);
+      return {
+        linkedin_url: linkedinUrl,
+        verification_status: 'failed' as const,
+        error: `BrightData API error: ${response.status}`
+      };
+    }
+
+    const html = await response.text();
+    console.log(`📄 Got HTML response: ${html.length} bytes`);
+
+    // Convert HTML to markdown for parsing
+    const markdown = convertLinkedInHtmlToMarkdown(html);
+
+    if (!markdown) {
+      return {
+        linkedin_url: linkedinUrl,
+        verification_status: 'failed' as const,
+        error: 'No content extracted from LinkedIn page'
+      };
+    }
+
+    // Parse the markdown to extract profile data
+    const enrichedData = parseLinkedInMarkdown(markdown, linkedinUrl);
+
+    console.log(`✅ Enriched ${linkedinUrl}: ${enrichedData.company_name || 'No company'}`);
+
+    return {
+      linkedin_url: linkedinUrl,
+      verification_status: 'verified' as const,
+      ...enrichedData
+    };
+
+  } catch (error) {
+    console.error(`❌ Error enriching ${linkedinUrl}:`, error);
     return {
       linkedin_url: linkedinUrl,
       verification_status: 'failed' as const,
-      error: `API error: ${response.status}`
+      error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
+}
 
-  const data = await response.json();
+/**
+ * Convert LinkedIn HTML to markdown-like text
+ */
+function convertLinkedInHtmlToMarkdown(html: string): string {
+  try {
+    // Remove script and style tags
+    let text = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
 
-  if (!data.success || !data.enriched_profiles?.[0]) {
-    return {
-      linkedin_url: linkedinUrl,
-      verification_status: 'failed' as const,
-      error: data.error || 'No profile data returned'
-    };
+    // Extract JSON-LD data if available (LinkedIn embeds structured data)
+    const jsonLdMatch = text.match(/<script type="application\/ld\+json">(.*?)<\/script>/s);
+    if (jsonLdMatch) {
+      try {
+        const jsonData = JSON.parse(jsonLdMatch[1]);
+        // LinkedIn Profile JSON-LD contains useful data
+        if (jsonData['@type'] === 'ProfilePage' || jsonData['@type'] === 'Person') {
+          return JSON.stringify(jsonData, null, 2);
+        }
+      } catch (e) {
+        console.log('Could not parse JSON-LD data');
+      }
+    }
+
+    // Extract meta tags (LinkedIn uses these extensively)
+    const metaTags: Record<string, string> = {};
+    const metaMatches = text.matchAll(/<meta\s+(?:property|name)="([^"]+)"\s+content="([^"]+)"/g);
+    for (const match of metaMatches) {
+      metaTags[match[1]] = match[2];
+    }
+
+    // Build markdown from meta tags
+    const markdown = [];
+    if (metaTags['og:title']) markdown.push(`# ${metaTags['og:title']}`);
+    if (metaTags['og:description']) markdown.push(`\n${metaTags['og:description']}`);
+    if (metaTags['description']) markdown.push(`\n${metaTags['description']}`);
+
+    // Try to extract from page title
+    const titleMatch = text.match(/<title>([^<]+)<\/title>/i);
+    if (titleMatch && !metaTags['og:title']) {
+      markdown.push(`# ${titleMatch[1]}`);
+    }
+
+    return markdown.join('\n') || text.substring(0, 5000); // Fallback to raw text
+  } catch (error) {
+    console.error('Error converting HTML to markdown:', error);
+    return '';
   }
-
-  return data.enriched_profiles[0];
 }
 
 /**
@@ -565,45 +651,17 @@ async function enrichWithBrightData(
           if (useMCPFallback) {
             const result = await enrichSingleProspectWithMCP(prospect.linkedin_url);
             if (result.verification_status === 'verified') {
-              console.log(`✅ Enriched: ${result.company_name || 'Unknown'} (${result.company_name ? 'MCP FREE' : 'API paid'})`);
+              console.log(`✅ Enriched: ${result.company_name || 'Unknown'} (MCP FREE)`);
             }
             return result;
           }
 
-          // Direct API call (original implementation)
-          const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'enrich_linkedin_profiles',
-              linkedin_urls: [prospect.linkedin_url],
-              include_contact_info: true,
-              include_company_info: true
-            })
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`❌ Failed for ${prospect.linkedin_url}: ${response.status}`);
-            return {
-              linkedin_url: prospect.linkedin_url,
-              verification_status: 'failed' as const,
-              error: `API error: ${response.status}`
-            };
+          // Direct BrightData API call (FIXED: no longer calls internal endpoint)
+          const result = await enrichSingleProspectWithAPI(prospect.linkedin_url);
+          if (result.verification_status === 'verified') {
+            console.log(`✅ Enriched: ${result.company_name || 'Unknown'} (Direct API)`);
           }
-
-          const data = await response.json();
-
-          if (!data.success || !data.enriched_profiles?.[0]) {
-            return {
-              linkedin_url: prospect.linkedin_url,
-              verification_status: 'failed' as const,
-              error: data.error || 'No profile data returned'
-            };
-          }
-
-          console.log(`✅ Enriched: ${data.enriched_profiles[0].company_name || 'Unknown'}`);
-          return data.enriched_profiles[0];
+          return result;
 
         } catch (error) {
           console.error(`❌ Error enriching ${prospect.linkedin_url}:`, error instanceof Error ? error.message : 'Unknown');
