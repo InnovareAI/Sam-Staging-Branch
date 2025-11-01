@@ -96,28 +96,32 @@ export async function POST(req: NextRequest) {
     switch (action) {
       case 'scrape_prospects':
         return await scrapeProspects(search_params, user, use_premium_proxies, geo_location);
-      
+
       case 'scrape_company_employees':
         return await scrapeCompanyEmployees(search_params, user);
-      
+
       case 'scrape_and_import':
         return await scrapeAndImport(search_params, campaign_id, user, supabase);
-      
+
       case 'verify_contact_info':
         return await verifyContactInfo(search_params, user);
-      
+
       case 'get_scraping_capabilities':
         return await getScrapingCapabilities();
-      
+
+      case 'enrich_linkedin_profiles':
+        return await enrichLinkedInProfiles(req, user);
+
       default:
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: 'Invalid action',
           available_actions: [
             'scrape_prospects',
             'scrape_company_employees',
             'scrape_and_import',
             'verify_contact_info',
-            'get_scraping_capabilities'
+            'get_scraping_capabilities',
+            'enrich_linkedin_profiles'
           ]
         }, { status: 400 });
     }
@@ -553,7 +557,174 @@ export async function GET(req: NextRequest) {
   }
 }
 
+/**
+ * Enrich LinkedIn profiles with company and contact data
+ */
+async function enrichLinkedInProfiles(req: NextRequest, user: any) {
+  const body = await req.json();
+  const { linkedin_urls, include_contact_info, include_company_info } = body;
+
+  if (!linkedin_urls || !Array.isArray(linkedin_urls)) {
+    return NextResponse.json({
+      success: false,
+      error: 'linkedin_urls array is required'
+    }, { status: 400 });
+  }
+
+  console.log(`🔍 Enriching ${linkedin_urls.length} LinkedIn profiles...`);
+
+  const enrichedProfiles = [];
+
+  for (const linkedinUrl of linkedin_urls) {
+    try {
+      // Call BrightData MCP to scrape the LinkedIn profile
+      const scrapeResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/mcp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          toolName: 'brightdata_scrape_as_markdown',
+          arguments: { url: linkedinUrl },
+          server: 'brightdata'
+        })
+      });
+
+      if (!scrapeResponse.ok) {
+        console.error(`❌ Failed to scrape ${linkedinUrl}: ${scrapeResponse.status}`);
+        enrichedProfiles.push({
+          linkedin_url: linkedinUrl,
+          verification_status: 'failed' as const,
+          error: 'BrightData scraping failed'
+        });
+        continue;
+      }
+
+      const scrapeData = await scrapeResponse.json();
+
+      if (!scrapeData.success || scrapeData.isError) {
+        console.error(`❌ BrightData error for ${linkedinUrl}:`, scrapeData.error);
+        enrichedProfiles.push({
+          linkedin_url: linkedinUrl,
+          verification_status: 'failed' as const,
+          error: scrapeData.error
+        });
+        continue;
+      }
+
+      // Parse the scraped markdown to extract profile data
+      const markdown = scrapeData.result?.markdown || '';
+      const metadata = scrapeData.result?.metadata || {};
+
+      // Extract company name, job title, location, etc. from markdown
+      const enrichedData = parseLinkedInMarkdown(markdown, linkedinUrl);
+
+      enrichedProfiles.push({
+        linkedin_url: linkedinUrl,
+        verification_status: 'verified' as const,
+        ...enrichedData
+      });
+
+      console.log(`✅ Enriched ${linkedinUrl}:`, enrichedData.company_name);
+
+    } catch (error) {
+      console.error(`❌ Error enriching ${linkedinUrl}:`, error);
+      enrichedProfiles.push({
+        linkedin_url: linkedinUrl,
+        verification_status: 'failed' as const,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  const successCount = enrichedProfiles.filter(p => p.verification_status === 'verified').length;
+
+  return NextResponse.json({
+    success: true,
+    action: 'enrich_linkedin_profiles',
+    enriched_profiles: enrichedProfiles,
+    summary: {
+      total: linkedin_urls.length,
+      successful: successCount,
+      failed: linkedin_urls.length - successCount
+    }
+  });
+}
+
 // Helper Functions
+
+/**
+ * Parse LinkedIn profile markdown to extract structured data
+ */
+function parseLinkedInMarkdown(markdown: string, linkedinUrl: string): {
+  company_name?: string;
+  company_website?: string;
+  company_linkedin_url?: string;
+  job_title?: string;
+  location?: string;
+  industry?: string;
+  email?: string;
+  phone?: string;
+} {
+  const result: any = {};
+
+  try {
+    // Extract job title (usually in the first heading or bold text)
+    const titleMatch = markdown.match(/##?\s*([^\n]+)\s*at\s*([^\n]+)/i) ||
+                      markdown.match(/\*\*([^*]+)\s*at\s*([^*]+)\*\*/i);
+    if (titleMatch) {
+      result.job_title = titleMatch[1].trim();
+      result.company_name = titleMatch[2].trim();
+    }
+
+    // Extract company name from "Current: X at Y" pattern
+    const currentMatch = markdown.match(/Current[:\s]+[^at]+at\s+([^\n|•]+)/i);
+    if (currentMatch && !result.company_name) {
+      result.company_name = currentMatch[1].trim();
+    }
+
+    // Extract location
+    const locationMatch = markdown.match(/(?:Location|Based in|From)[:\s]+([^\n|•]+)/i) ||
+                         markdown.match(/([A-Z][a-z]+(?:,\s*[A-Z]{2})?(?:,\s*[A-Z][a-z]+)?)\s*$/m);
+    if (locationMatch) {
+      result.location = locationMatch[1].trim();
+    }
+
+    // Extract industry
+    const industryMatch = markdown.match(/Industry[:\s]+([^\n|•]+)/i);
+    if (industryMatch) {
+      result.industry = industryMatch[1].trim();
+    }
+
+    // Extract company LinkedIn URL (if profile mentions company page)
+    const companyLinkedInMatch = markdown.match(/linkedin\.com\/company\/([^/\s)]+)/i);
+    if (companyLinkedInMatch) {
+      result.company_linkedin_url = `https://linkedin.com/company/${companyLinkedInMatch[1]}`;
+    }
+
+    // Extract email (if visible on profile)
+    const emailMatch = markdown.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+    if (emailMatch) {
+      result.email = emailMatch[1];
+    }
+
+    // Extract phone (if visible)
+    const phoneMatch = markdown.match(/(\+?[\d\s()-]{10,})/);
+    if (phoneMatch) {
+      result.phone = phoneMatch[1].trim();
+    }
+
+    console.log('📊 Parsed LinkedIn data:', {
+      url: linkedinUrl,
+      company: result.company_name,
+      title: result.job_title,
+      location: result.location
+    });
+
+  } catch (error) {
+    console.error('Error parsing LinkedIn markdown:', error);
+  }
+
+  return result;
+}
 
 /**
  * Build LinkedIn-specific search query from search criteria
