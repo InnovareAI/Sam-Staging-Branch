@@ -660,16 +660,18 @@ export async function POST(req: NextRequest) {
     console.log(`🚀 V1 Campaign Orchestration: Launching ${executionType} campaign for workspace ${workspaceId}`);
 
     // Step 1: Get workspace tier configuration
+    console.log('📊 Step 1: Fetching workspace tier...');
     const tier = await getWorkspaceTier(supabase, workspaceId);
     if (!tier) {
+      console.error('❌ Workspace tier not found');
       return NextResponse.json({ error: 'Workspace tier configuration not found' }, { status: 400 });
     }
-
-    console.log(`📊 Workspace tier: ${tier.tier_type} (${tier.tier_status})`);
+    console.log(`✅ Workspace tier: ${tier.tier_type} (${tier.tier_status})`);
 
     // Step 2: Get workspace integrations based on tier
+    console.log('🔌 Step 2: Fetching workspace integrations...');
     const integrations = await getWorkspaceIntegrations(supabase, workspaceId, tier.tier_type);
-    console.log(`🔌 Integrations: Unipile=${!!integrations.unipile_config}, ReachInbox=${!!integrations.reachinbox_config}`);
+    console.log(`✅ Integrations: Unipile=${!!integrations.unipile_config}, ReachInbox=${!!integrations.reachinbox_config}`);
 
     // Step 3: Get current usage and validate limits
     const currentUsage = await getWorkspaceUsage(supabase, workspaceId);
@@ -1011,10 +1013,15 @@ export async function POST(req: NextRequest) {
     }
 
   } catch (error: any) {
-    console.error('V1 Campaign Orchestration error:', error);
+    console.error('❌ V1 Campaign Orchestration error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', JSON.stringify(error, null, 2));
+
     return NextResponse.json({
       error: 'V1 Campaign Orchestration failed',
       details: error.message,
+      error_type: error.name,
+      stack: error.stack,
       timestamp: new Date().toISOString(),
       support_contact: 'support@innovareai.com'
     }, { status: 500 });
