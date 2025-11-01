@@ -80,23 +80,46 @@ export async function POST(request: NextRequest) {
         }));
       }
     } else if (prospectIds) {
-      // Enrich specific prospects from workspace_prospects
-      const { data: prospects } = await supabase
-        .from('workspace_prospects')
+      // Try campaign_prospects first (for prospects in campaigns)
+      const { data: campaignProspects } = await supabase
+        .from('campaign_prospects')
         .select('*')
         .in('id', prospectIds)
         .eq('workspace_id', workspaceId);
 
-      if (prospects) {
-        prospectsToEnrich = prospects.map(p => ({
+      if (campaignProspects && campaignProspects.length > 0) {
+        prospectsToEnrich = campaignProspects.map(p => ({
           id: p.id,
-          linkedin_url: p.linkedin_profile_url,
+          linkedin_url: p.linkedin_url,
           company_name: p.company_name,
           industry: p.industry,
-          email: p.email_address,
+          email: p.email,
           first_name: p.first_name,
-          last_name: p.last_name
+          last_name: p.last_name,
+          location: p.location,
+          is_campaign_prospect: true
         }));
+      } else {
+        // Fall back to workspace_prospects
+        const { data: prospects } = await supabase
+          .from('workspace_prospects')
+          .select('*')
+          .in('id', prospectIds)
+          .eq('workspace_id', workspaceId);
+
+        if (prospects) {
+          prospectsToEnrich = prospects.map(p => ({
+            id: p.id,
+            linkedin_url: p.linkedin_profile_url,
+            company_name: p.company_name,
+            industry: p.industry,
+            email: p.email_address,
+            first_name: p.first_name,
+            last_name: p.last_name,
+            location: p.location,
+            is_campaign_prospect: false
+          }));
+        }
       }
     } else if (linkedInUrls) {
       // Enrich by LinkedIn URLs directly
@@ -198,7 +221,7 @@ export async function POST(request: NextRequest) {
             company: {
               name: update.data.company_name,
               industry: update.data.industry,
-              website: update.data.enrichment_data.company_website || ''
+              website: update.data.company_domain || ''
             },
             contact: {
               email: update.data.email_address,
@@ -209,13 +232,38 @@ export async function POST(request: NextRequest) {
           .eq('prospect_id', update.prospectId);
       }
     } else {
-      // Update workspace_prospects
-      for (const update of updates) {
-        await supabase
-          .from('workspace_prospects')
-          .update(update.data)
-          .eq('id', update.prospectId)
-          .eq('workspace_id', workspaceId);
+      // Check if these are campaign prospects or workspace prospects
+      const isCampaignProspect = prospectsToEnrich.some(p => p.is_campaign_prospect);
+
+      if (isCampaignProspect) {
+        // Update campaign_prospects
+        for (const update of updates) {
+          await supabase
+            .from('campaign_prospects')
+            .update({
+              email: update.data.email_address,
+              company_name: update.data.company_name,
+              industry: update.data.industry,
+              location: update.data.location,
+              personalization_data: {
+                ...prospectsToEnrich.find(p => p.id === update.prospectId)?.personalization_data,
+                enrichment_data: update.data.enrichment_data,
+                company_domain: update.data.company_domain,
+                company_linkedin_url: update.data.company_linkedin_url
+              }
+            })
+            .eq('id', update.prospectId)
+            .eq('workspace_id', workspaceId);
+        }
+      } else {
+        // Update workspace_prospects
+        for (const update of updates) {
+          await supabase
+            .from('workspace_prospects')
+            .update(update.data)
+            .eq('id', update.prospectId)
+            .eq('workspace_id', workspaceId);
+        }
       }
     }
 

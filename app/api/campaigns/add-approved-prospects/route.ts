@@ -197,12 +197,53 @@ export async function POST(request: NextRequest) {
       })));
     }
 
+    // AUTO-ENRICHMENT: Enrich prospects with missing company/location data via BrightData
+    const needsEnrichment = insertedProspects.filter(p =>
+      p.linkedin_url && (
+        !p.company_name ||
+        p.company_name === 'unavailable' ||
+        !p.location ||
+        p.location === 'unavailable'
+      )
+    );
+
+    if (needsEnrichment.length > 0) {
+      console.log(`🔍 Auto-enriching ${needsEnrichment.length} prospects with BrightData...`);
+
+      // Call enrichment API asynchronously (don't block the response)
+      fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/prospects/enrich`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': request.headers.get('cookie') || ''
+        },
+        body: JSON.stringify({
+          prospectIds: needsEnrichment.map(p => p.id),
+          autoEnrich: true
+        })
+      })
+      .then(async (res) => {
+        if (res.ok) {
+          const enrichmentData = await res.json();
+          console.log(`✅ Auto-enrichment completed: ${enrichmentData.enriched_count} prospects enriched`);
+        } else {
+          console.error('⚠️ Auto-enrichment failed:', res.status);
+        }
+      })
+      .catch((err) => {
+        console.error('⚠️ Auto-enrichment error:', err.message);
+        // Non-fatal - prospects are already added, enrichment is bonus
+      });
+    }
+
     return NextResponse.json({
       success: true,
       message: `Added ${insertedProspects.length} prospects to campaign`,
       added_count: insertedProspects.length,
       with_linkedin: prospectsWithLinkedIn.length,
       without_linkedin: prospectsWithoutLinkedIn.length,
+      auto_enrichment_triggered: needsEnrichment.length > 0,
+      prospects_to_enrich: needsEnrichment.length,
       prospects: insertedProspects
     })
 
