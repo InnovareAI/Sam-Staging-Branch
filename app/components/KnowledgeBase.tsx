@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import SAMOnboarding from './SAMOnboarding';
 import KnowledgeBaseAnalytics from './KnowledgeBaseAnalytics';
+import ICPConfigEditable from './ICPConfigEditable';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
@@ -2892,11 +2893,38 @@ const KnowledgeBase: React.FC = () => {
         )}
 
         {activeSection === 'icp' && (
-          <ICPConfiguration
-            onBack={() => setActiveSection('overview')}
-            onProfilesUpdated={setIcpProfiles}
-            onRefresh={loadIcpProfiles}
-          />
+          <>
+            {Object.keys(icpProfiles).length === 0 ? (
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-12 text-center">
+                <Target size={48} className="mx-auto text-gray-500 mb-4" />
+                <h3 className="text-xl font-medium text-white mb-2">No ICP Profiles Yet</h3>
+                <p className="text-gray-400 mb-6">Create your first Ideal Customer Profile to get started</p>
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+                >
+                  <Plus className="inline mr-2" size={18} />
+                  Go to Overview to Create ICP
+                </button>
+              </div>
+            ) : (
+              <ICPConfigEditable
+                profile={Object.values(icpProfiles)[0]}
+                onUpdate={async (updates) => {
+                  const icpId = Object.keys(icpProfiles)[0];
+                  const response = await fetch(`/api/knowledge-base/icps/${icpId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updates)
+                  });
+                  if (response.ok) {
+                    await loadIcpProfiles();
+                  }
+                }}
+                onBack={() => setActiveSection('overview')}
+              />
+            )}
+          </>
         )}
         
         {activeSection === 'products' && (
