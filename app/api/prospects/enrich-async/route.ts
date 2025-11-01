@@ -106,20 +106,31 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Created enrichment job: ${job.id}`);
 
-    // Trigger background worker (via Edge Function or separate endpoint)
-    // For now, we'll have a polling worker that picks up pending jobs
+    // Trigger N8N enrichment workflow
+    const n8nWebhookUrl = process.env.N8N_ENRICHMENT_WEBHOOK_URL ||
+      'https://innovareai.app.n8n.cloud/webhook/prospect-enrichment';
+
     try {
-      // Fire and forget - trigger worker but don't wait
-      fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/prospects/enrich-worker`, {
+      console.log(`🔄 Triggering N8N enrichment workflow for job ${job.id}`);
+
+      // Fire and forget - N8N will process asynchronously
+      fetch(n8nWebhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId: job.id })
+        body: JSON.stringify({
+          job_id: job.id,
+          workspace_id: workspaceId,
+          prospect_ids: finalProspectIds,
+          supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+          supabase_service_key: process.env.SUPABASE_SERVICE_ROLE_KEY,
+          brightdata_api_token: process.env.BRIGHTDATA_API_TOKEN,
+          brightdata_zone: process.env.BRIGHTDATA_ZONE
+        })
       }).catch(err => {
-        console.warn('Worker trigger failed (will be picked up by cron):', err.message);
+        console.warn('⚠️ N8N trigger failed (workflow may need to be activated):', err.message);
       });
     } catch (e) {
-      // Worker will pick it up via cron if trigger fails
-      console.warn('Could not trigger worker, job will be picked up by scheduled worker');
+      console.warn('⚠️ Could not trigger N8N workflow:', e);
     }
 
     return NextResponse.json({
