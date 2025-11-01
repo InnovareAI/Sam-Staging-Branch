@@ -588,33 +588,86 @@ function convertLinkedInHtmlToMarkdown(html: string): string {
 
 /**
  * Parse LinkedIn markdown/text content to extract fields
+ * ENHANCED: More robust parsing with multiple pattern matching strategies
  */
 function parseLinkedInMarkdown(content: string, linkedinUrl: string): Partial<BrightDataEnrichmentResult> {
   const result: Partial<BrightDataEnrichmentResult> = {};
 
-  // Extract name and title from patterns like "John Doe - CEO at Company"
-  const titleMatch = content.match(/([^-]+)\s*-\s*([^|]+)(?:\s*\|\s*LinkedIn)?/i);
-  if (titleMatch) {
-    const titlePart = titleMatch[2].trim();
+  try {
+    // Strategy 1: Extract from "Name - Title at Company | LinkedIn" pattern
+    const titleMatch = content.match(/([^-]+)\s*-\s*([^|]+)(?:\s*\|\s*LinkedIn)?/i);
+    if (titleMatch) {
+      const titlePart = titleMatch[2].trim();
 
-    // Extract job title and company from "Title at Company"
-    const jobCompanyMatch = titlePart.match(/(.+?)\s+at\s+(.+)/i);
-    if (jobCompanyMatch) {
-      result.job_title = jobCompanyMatch[1].trim();
-      result.company_name = jobCompanyMatch[2].trim();
+      // Extract job title and company from "Title at Company"
+      const jobCompanyMatch = titlePart.match(/(.+?)\s+at\s+(.+)/i);
+      if (jobCompanyMatch) {
+        result.job_title = jobCompanyMatch[1].trim();
+        result.company_name = jobCompanyMatch[2].trim();
+      }
     }
-  }
 
-  // Extract location
-  const locationMatch = content.match(/location[:\s]+([^\n]+)/i);
-  if (locationMatch) {
-    result.location = locationMatch[1].trim();
-  }
+    // Strategy 2: Extract from markdown headers "## Title at Company"
+    if (!result.company_name) {
+      const headerMatch = content.match(/##?\s*([^\n]+)\s*at\s*([^\n]+)/i) ||
+                          content.match(/\*\*([^*]+)\s*at\s*([^*]+)\*\*/i);
+      if (headerMatch) {
+        result.job_title = headerMatch[1].trim();
+        result.company_name = headerMatch[2].trim();
+      }
+    }
 
-  // Extract industry
-  const industryMatch = content.match(/industry[:\s]+([^\n]+)/i);
-  if (industryMatch) {
-    result.industry = industryMatch[1].trim();
+    // Strategy 3: Extract from "Current: Title at Company" pattern
+    if (!result.company_name) {
+      const currentMatch = content.match(/Current[:\s]+[^at]+at\s+([^\n|•]+)/i);
+      if (currentMatch) {
+        result.company_name = currentMatch[1].trim();
+      }
+    }
+
+    // Extract location with multiple patterns
+    const locationMatch = content.match(/(?:Location|Based in|From)[:\s]+([^\n|•]+)/i) ||
+                         content.match(/location[:\s]+([^\n]+)/i) ||
+                         content.match(/([A-Z][a-z]+(?:,\s*[A-Z]{2})?(?:,\s*[A-Z][a-z]+)?)\s*$/m);
+    if (locationMatch) {
+      result.location = locationMatch[1].trim();
+    }
+
+    // Extract industry
+    const industryMatch = content.match(/Industry[:\s]+([^\n|•]+)/i) ||
+                         content.match(/industry[:\s]+([^\n]+)/i);
+    if (industryMatch) {
+      result.industry = industryMatch[1].trim();
+    }
+
+    // Extract company LinkedIn URL
+    const companyLinkedInMatch = content.match(/linkedin\.com\/company\/([^/\s)]+)/i);
+    if (companyLinkedInMatch) {
+      result.company_linkedin_url = `https://linkedin.com/company/${companyLinkedInMatch[1]}`;
+    }
+
+    // Extract email if visible
+    const emailMatch = content.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+    if (emailMatch) {
+      result.email = emailMatch[1];
+    }
+
+    // Extract phone if visible
+    const phoneMatch = content.match(/(\+?[\d\s()-]{10,})/);
+    if (phoneMatch) {
+      result.phone = phoneMatch[1].trim();
+    }
+
+    console.log('📊 Parsed LinkedIn data:', {
+      url: linkedinUrl,
+      company: result.company_name || 'NOT FOUND',
+      title: result.job_title || 'NOT FOUND',
+      location: result.location || 'NOT FOUND',
+      industry: result.industry || 'NOT FOUND'
+    });
+
+  } catch (error) {
+    console.error('Error parsing LinkedIn markdown:', error);
   }
 
   return result;
