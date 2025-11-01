@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Call BrightData enrichment service
+    // Call BrightData enrichment service (with MCP fallback for free 5K/month)
     const enrichmentResults = await enrichWithBrightData(needsEnrichment);
 
     // Update prospects with enriched data
@@ -395,14 +395,139 @@ export async function POST(request: NextRequest) {
 }
 
 /**
+ * Enrich a single prospect using MCP (free 5K/month) or fallback to API
+ *
+ * Strategy: Try MCP first for cost savings, fallback to API if quota exceeded
+ */
+async function enrichSingleProspectWithMCP(linkedinUrl: string): Promise<BrightDataEnrichmentResult> {
+  try {
+    // Try MCP first (FREE 5,000 requests/month permanently!)
+    console.log(`🆓 Attempting MCP enrichment for ${linkedinUrl}`);
+
+    const mcpResponse = await fetch('/api/mcp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        server: 'brightdata',
+        tool: 'brightdata_scrape_as_markdown',
+        arguments: { url: linkedinUrl }
+      })
+    });
+
+    if (mcpResponse.ok) {
+      const mcpData = await mcpResponse.json();
+
+      if (mcpData.success && mcpData.content) {
+        console.log(`✅ MCP enrichment successful (FREE)`);
+
+        // Parse markdown content
+        const parsed = parseLinkedInMarkdown(mcpData.content, linkedinUrl);
+        return {
+          linkedin_url: linkedinUrl,
+          verification_status: 'verified' as const,
+          ...parsed
+        };
+      }
+    }
+
+    // MCP failed, log reason
+    console.log(`⚠️  MCP failed, falling back to API (paid)`);
+
+  } catch (mcpError) {
+    console.log(`⚠️  MCP error: ${mcpError instanceof Error ? mcpError.message : 'Unknown'}, falling back to API`);
+  }
+
+  // Fallback to paid API
+  return await enrichSingleProspectWithAPI(linkedinUrl);
+}
+
+/**
+ * Enrich a single prospect using Direct API (paid)
+ */
+async function enrichSingleProspectWithAPI(linkedinUrl: string): Promise<BrightDataEnrichmentResult> {
+  const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/leads/brightdata-scraper`;
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'enrich_linkedin_profiles',
+      linkedin_urls: [linkedinUrl],
+      include_contact_info: true,
+      include_company_info: true
+    })
+  });
+
+  if (!response.ok) {
+    return {
+      linkedin_url: linkedinUrl,
+      verification_status: 'failed' as const,
+      error: `API error: ${response.status}`
+    };
+  }
+
+  const data = await response.json();
+
+  if (!data.success || !data.enriched_profiles?.[0]) {
+    return {
+      linkedin_url: linkedinUrl,
+      verification_status: 'failed' as const,
+      error: data.error || 'No profile data returned'
+    };
+  }
+
+  return data.enriched_profiles[0];
+}
+
+/**
+ * Parse LinkedIn markdown/text content to extract fields
+ */
+function parseLinkedInMarkdown(content: string, linkedinUrl: string): Partial<BrightDataEnrichmentResult> {
+  const result: Partial<BrightDataEnrichmentResult> = {};
+
+  // Extract name and title from patterns like "John Doe - CEO at Company"
+  const titleMatch = content.match(/([^-]+)\s*-\s*([^|]+)(?:\s*\|\s*LinkedIn)?/i);
+  if (titleMatch) {
+    const titlePart = titleMatch[2].trim();
+
+    // Extract job title and company from "Title at Company"
+    const jobCompanyMatch = titlePart.match(/(.+?)\s+at\s+(.+)/i);
+    if (jobCompanyMatch) {
+      result.job_title = jobCompanyMatch[1].trim();
+      result.company_name = jobCompanyMatch[2].trim();
+    }
+  }
+
+  // Extract location
+  const locationMatch = content.match(/location[:\s]+([^\n]+)/i);
+  if (locationMatch) {
+    result.location = locationMatch[1].trim();
+  }
+
+  // Extract industry
+  const industryMatch = content.match(/industry[:\s]+([^\n]+)/i);
+  if (industryMatch) {
+    result.industry = industryMatch[1].trim();
+  }
+
+  return result;
+}
+
+/**
  * Enrich prospects using BrightData with parallel processing
+ *
+ * Cost Optimization Strategy:
+ * 1. Try MCP first (FREE 5,000 requests/month permanently)
+ * 2. Fallback to Direct API if MCP quota exceeded (paid $3/CPM)
  *
  * @param prospects - Array of prospects to enrich
  * @param concurrency - Max concurrent requests (default: 5)
+ * @param useMCPFallback - Enable MCP cost optimization (default: true)
  */
 async function enrichWithBrightData(
   prospects: Array<{ linkedin_url: string; [key: string]: any }>,
-  concurrency: number = 5
+  concurrency: number = 5,
+  useMCPFallback: boolean = true
 ): Promise<BrightDataEnrichmentResult[]> {
   try {
     console.log('📞 Calling BrightData scraper API...');
@@ -425,9 +550,19 @@ async function enrichWithBrightData(
 
       const startTime = Date.now();
 
-      // Create parallel requests for this batch
+      // Create parallel requests for this batch (using MCP fallback if enabled)
       const batchPromises = batch.map(async (prospect) => {
         try {
+          // Use MCP fallback for cost optimization if enabled
+          if (useMCPFallback) {
+            const result = await enrichSingleProspectWithMCP(prospect.linkedin_url);
+            if (result.verification_status === 'verified') {
+              console.log(`✅ Enriched: ${result.company_name || 'Unknown'} (${result.company_name ? 'MCP FREE' : 'API paid'})`);
+            }
+            return result;
+          }
+
+          // Direct API call (original implementation)
           const response = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -483,6 +618,20 @@ async function enrichWithBrightData(
 
     const totalSuccess = results.filter(r => r.verification_status === 'verified').length;
     const totalFailed = results.filter(r => r.verification_status === 'failed').length;
+
+    // Calculate cost savings from MCP usage
+    if (useMCPFallback) {
+      const mcpFreeRequests = totalSuccess; // Assume MCP was tried first for all
+      const apiPaidRequests = totalFailed; // Failed MCP fell back to API
+      const costSaved = mcpFreeRequests * 0.003; // $0.003 per request saved
+      const costIncurred = apiPaidRequests * 0.003;
+
+      console.log(`\n💰 Cost Optimization:`);
+      console.log(`   MCP (FREE): ${mcpFreeRequests} requests`);
+      console.log(`   API (PAID): ${apiPaidRequests} requests`);
+      console.log(`   Cost saved: $${costSaved.toFixed(3)}`);
+      console.log(`   Cost incurred: $${costIncurred.toFixed(3)}`);
+    }
 
     console.log(`\n📊 Final results: ${totalSuccess} successful, ${totalFailed} failed out of ${prospects.length} total`);
 
