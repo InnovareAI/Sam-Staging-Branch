@@ -122,12 +122,20 @@ export async function POST(request: NextRequest) {
           }));
         } else {
           // Try prospect_approval_data (for prospects in approval workflow)
-          const { data: approvalProspects } = await supabase
+          console.log('🔍 Checking prospect_approval_data table for IDs:', prospectIds);
+
+          const { data: approvalProspects, error: approvalError } = await supabase
             .from('prospect_approval_data')
             .select('*')
             .in('prospect_id', prospectIds);
 
-          if (approvalProspects) {
+          if (approvalError) {
+            console.error('❌ Error querying prospect_approval_data:', approvalError);
+          }
+
+          console.log(`📊 Found ${approvalProspects?.length || 0} prospects in prospect_approval_data`);
+
+          if (approvalProspects && approvalProspects.length > 0) {
             prospectsToEnrich = approvalProspects.map(p => ({
               id: p.prospect_id,
               approval_id: p.id,
@@ -141,6 +149,9 @@ export async function POST(request: NextRequest) {
               table: 'prospect_approval_data',
               is_campaign_prospect: false
             }));
+            console.log('✅ Mapped approval prospects for enrichment');
+          } else {
+            console.warn('⚠️ No prospects found in any table for IDs:', prospectIds);
           }
         }
       }
@@ -154,9 +165,19 @@ export async function POST(request: NextRequest) {
       }));
     }
 
+    console.log(`🔍 Enrichment request: prospectIds=${prospectIds?.length || 0}, sessionId=${sessionId}, linkedInUrls=${linkedInUrls?.length || 0}`);
+    console.log(`📊 Found ${prospectsToEnrich.length} prospects to enrich`);
+
     if (prospectsToEnrich.length === 0) {
+      console.error('❌ No prospects found to enrich. Check table queries.');
       return NextResponse.json({
-        error: 'No prospects to enrich'
+        error: 'No prospects to enrich',
+        debug: {
+          prospectIds,
+          sessionId,
+          workspaceId,
+          checkedTables: ['campaign_prospects', 'workspace_prospects', 'prospect_approval_data']
+        }
       }, { status: 400 });
     }
 
@@ -330,10 +351,12 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Enrichment error:', error);
+    console.error('❌ Enrichment error:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return NextResponse.json({
       error: 'Failed to enrich prospects',
-      details: error instanceof Error ? error.message : String(error)
+      details: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
     }, { status: 500 });
   }
 }
