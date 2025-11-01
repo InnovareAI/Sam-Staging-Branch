@@ -152,8 +152,8 @@ export async function POST(request: NextRequest) {
 
     // Fetch document metadata to ensure workspace context exists
     const { data: documentRecord, error: documentError } = await supabase
-      .from('knowledge_base_documents')
-      .select('workspace_id, section_id')
+      .from('knowledge_base')
+      .select('workspace_id, category, source_metadata')
       .eq('id', documentId)
       .single();
 
@@ -162,25 +162,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Document not found or missing workspace context' }, { status: 404 });
     }
 
-    const resolvedSection = section || documentRecord.section_id;
+    const resolvedSection = section || documentRecord.category;
 
     // Process content with Claude Sonnet 4.5
     const analysis = await processWithClaude(content, resolvedSection, filename);
 
     // Update document with AI analysis results
     const { data: updatedDocument, error: updateError } = await supabase
-      .from('knowledge_base_documents')
+      .from('knowledge_base')
       .update({
         tags: analysis.tags,
-        categories: analysis.categories,
-        content_type: analysis.content_type,
-        key_insights: analysis.key_insights,
-        summary: analysis.summary,
-        relevance_score: analysis.relevance_score,
-        suggested_section: analysis.suggested_section,
-        ai_metadata: analysis.metadata,
-        status: 'processed',
-        processed_at: new Date().toISOString()
+        source_metadata: {
+          ...documentRecord.source_metadata,
+          ai_analysis: {
+            categories: analysis.categories,
+            content_type: analysis.content_type,
+            key_insights: analysis.key_insights,
+            summary: analysis.summary,
+            relevance_score: analysis.relevance_score,
+            suggested_section: analysis.suggested_section,
+            metadata: analysis.metadata,
+            processed_at: new Date().toISOString()
+          }
+        }
       })
       .eq('id', documentId)
       .select()
