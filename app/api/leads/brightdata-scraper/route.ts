@@ -581,11 +581,17 @@ async function enrichLinkedInProfiles(req: NextRequest, user: any) {
       const brightdataToken = process.env.BRIGHTDATA_MCP_TOKEN ||
         'e81e9ea14a70da562e17d99abe8dad29df66ad0e57b1fc7df0db866c48fa2a42';
 
-      // Call BrightData MCP SSE endpoint
-      const scrapeResponse = await fetch(`https://mcp.brightdata.com/sse?token=${brightdataToken}`, {
+      // Call BrightData MCP HTTP endpoint (not SSE)
+      // SSE is for streaming, we need the HTTP endpoint for request/response
+      const scrapeResponse = await fetch(`https://mcp.brightdata.com/mcp?token=${brightdataToken}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: Date.now(),
           method: 'tools/call',
           params: {
             name: 'brightdata_scrape_as_markdown',
@@ -608,15 +614,27 @@ async function enrichLinkedInProfiles(req: NextRequest, user: any) {
       const scrapeData = await scrapeResponse.json();
       console.log('🔍 BrightData MCP Response:', JSON.stringify(scrapeData, null, 2));
 
-      // Extract markdown from MCP response
+      // Handle MCP JSON-RPC response
       let markdown = '';
-      if (scrapeData.content && Array.isArray(scrapeData.content)) {
-        // MCP response format: { content: [{ type: 'text', text: '...' }] }
-        const textContent = scrapeData.content.find((c: any) => c.type === 'text');
+
+      if (scrapeData.error) {
+        console.error(`❌ BrightData MCP error for ${linkedinUrl}:`, scrapeData.error);
+        enrichedProfiles.push({
+          linkedin_url: linkedinUrl,
+          verification_status: 'failed' as const,
+          error: scrapeData.error.message || 'MCP error'
+        });
+        continue;
+      }
+
+      // Extract markdown from MCP JSON-RPC result
+      if (scrapeData.result?.content && Array.isArray(scrapeData.result.content)) {
+        // MCP response format: { result: { content: [{ type: 'text', text: '...' }] } }
+        const textContent = scrapeData.result.content.find((c: any) => c.type === 'text');
         markdown = textContent?.text || '';
-      } else if (scrapeData.result?.markdown) {
-        // Fallback format
-        markdown = scrapeData.result.markdown;
+      } else if (scrapeData.result?.text) {
+        // Alternative format
+        markdown = scrapeData.result.text;
       }
 
       if (!markdown) {
