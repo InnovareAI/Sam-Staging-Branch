@@ -262,8 +262,24 @@ export async function POST(request: NextRequest) {
 
     if (dbError) {
       console.error('Database error:', dbError);
-      return NextResponse.json({ error: 'Failed to store document' }, { status: 500 });
+      console.error('Database error details:', JSON.stringify(dbError, null, 2));
+      return NextResponse.json({
+        error: 'Failed to store document',
+        details: dbError.message || dbError.toString(),
+        code: dbError.code
+      }, { status: 500 });
     }
+
+    // Verify document was actually created
+    if (!document || !document.id) {
+      console.error('Document was not created - no data returned from INSERT');
+      return NextResponse.json({
+        error: 'Document creation failed - no data returned',
+        details: 'INSERT succeeded but no document ID returned'
+      }, { status: 500 });
+    }
+
+    console.log('[Upload] Document created successfully:', document.id);
 
     return NextResponse.json({
       documentId,
