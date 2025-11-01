@@ -222,22 +222,45 @@ async function getWorkspaceTier(supabase: any, workspaceId: string): Promise<Wor
 
 async function getWorkspaceIntegrations(supabase: any, workspaceId: string, tierType: string): Promise<WorkspaceIntegrations> {
   const integrations: WorkspaceIntegrations = {};
-  
-  // Get Unipile integration (all tiers)
-  const { data: unipileData } = await supabase
-    .from('workspace_unipile_integrations')
+
+  // Get workspace accounts (LinkedIn and email) from workspace_accounts table
+  const { data: workspaceAccounts } = await supabase
+    .from('workspace_accounts')
     .select('*')
     .eq('workspace_id', workspaceId)
-    .single();
-  
-  if (unipileData) {
+    .eq('is_active', true);
+
+  if (workspaceAccounts && workspaceAccounts.length > 0) {
+    // Separate LinkedIn and email accounts
+    const linkedinAccounts = workspaceAccounts.filter((acc: any) => acc.account_type === 'linkedin');
+    const emailAccounts = workspaceAccounts.filter((acc: any) => acc.account_type === 'email');
+
+    // Build individual account objects for N8N workflow
+    const linkedinAccountsFormatted = linkedinAccounts.map((acc: any) => ({
+      id: acc.id,
+      unipile_account_id: acc.unipile_account_id,
+      account_name: acc.account_name,
+      status: acc.connection_status,
+      is_active: acc.is_active,
+      daily_limit: acc.daily_message_limit || 20,
+      messages_sent_today: acc.messages_sent_today || 0
+    }));
+
+    const emailAccountsFormatted = emailAccounts.map((acc: any) => ({
+      id: acc.id,
+      unipile_account_id: acc.unipile_account_id,
+      account_name: acc.account_name,
+      status: acc.connection_status,
+      is_active: acc.is_active
+    }));
+
     integrations.unipile_config = {
-      instance_url: unipileData.unipile_instance_url,
-      linkedin_accounts: unipileData.linkedin_accounts || [],
-      email_accounts: unipileData.email_accounts || [],
-      rate_limits: unipileData.rate_limits || {},
-      current_usage: unipileData.current_usage || {},
-      oauth_status: unipileData.oauth_status || 'pending'
+      instance_url: process.env.UNIPILE_DSN || '',
+      linkedin_accounts: linkedinAccountsFormatted,
+      email_accounts: emailAccountsFormatted,
+      rate_limits: {},
+      current_usage: {},
+      oauth_status: 'connected'
     };
   }
   
