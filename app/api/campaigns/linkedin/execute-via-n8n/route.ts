@@ -720,6 +720,10 @@ export async function POST(req: NextRequest) {
     const approverEmail = userProfile?.email || user.email;
 
     // Step 5: Get campaign details with full prospect data
+    console.log('📋 Step 5: Fetching campaign details...');
+    console.log(`   Campaign ID: ${campaignId}`);
+    console.log(`   Workspace ID: ${workspaceId}`);
+
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
       .select(`
@@ -749,8 +753,16 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (campaignError || !campaign) {
-      return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
+      console.error('❌ Campaign query failed:', campaignError);
+      return NextResponse.json({
+        error: 'Campaign not found',
+        details: campaignError?.message || 'Campaign does not exist or you do not have access',
+        campaign_id: campaignId,
+        workspace_id: workspaceId
+      }, { status: 404 });
     }
+
+    console.log(`✅ Found campaign: ${campaign.name} (status: ${campaign.status})`);
 
     // Validate campaign is active
     if (campaign.status !== 'active') {
