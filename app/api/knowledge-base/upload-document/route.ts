@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -138,8 +139,9 @@ async function extractContentFromURL(url: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
+    // Use user-context client for auth and workspace lookup
+    const userSupabase = await createSupabaseRouteClient();
+    const { data: { session }, error: authError } = await userSupabase.auth.getSession();
 
     if (authError || !session?.user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
@@ -148,7 +150,7 @@ export async function POST(request: NextRequest) {
     const userId = session.user.id;
 
     // Try to get workspace from user profile first
-    const { data: userProfile } = await supabase
+    const { data: userProfile } = await userSupabase
       .from('users')
       .select('current_workspace_id')
       .eq('id', userId)
@@ -158,7 +160,7 @@ export async function POST(request: NextRequest) {
 
     // If no workspace in profile, check workspace_members
     if (!workspaceId) {
-      const { data: membership } = await supabase
+      const { data: membership } = await userSupabase
         .from('workspace_members')
         .select('workspace_id')
         .eq('user_id', userId)
@@ -173,7 +175,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Ensure KB sections are initialized for this workspace
-    const { error: rpcError } = await supabase.rpc('initialize_knowledge_base_sections', {
+    const { error: rpcError } = await userSupabase.rpc('initialize_knowledge_base_sections', {
       p_workspace_id: workspaceId
     });
 
@@ -181,6 +183,12 @@ export async function POST(request: NextRequest) {
       console.error('RPC initialize_knowledge_base_sections error:', rpcError);
       // Continue anyway - sections might already exist
     }
+
+    // Create service-role client for database writes (bypasses RLS)
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
