@@ -240,8 +240,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Call BrightData enrichment service (with MCP fallback for free 5K/month)
-    const enrichmentResults = await enrichWithBrightData(needsEnrichment);
+    // Call BrightData enrichment service
+    // Note: MCP fallback disabled until BrightData MCP server is properly configured
+    // Using Direct API (linkedin_enrichment zone) which is verified working
+    const enrichmentResults = await enrichWithBrightData(needsEnrichment, 5, false);
 
     // Update prospects with enriched data
     let updatedCount = 0;
@@ -404,34 +406,40 @@ async function enrichSingleProspectWithMCP(linkedinUrl: string): Promise<BrightD
     // Try MCP first (FREE 5,000 requests/month permanently!)
     console.log(`🆓 Attempting MCP enrichment for ${linkedinUrl}`);
 
-    const mcpResponse = await fetch('/api/mcp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        server: 'brightdata',
-        tool: 'brightdata_scrape_as_markdown',
+    // Call MCP directly via registry (server-side, no auth needed)
+    const { mcpRegistry } = await import('@/lib/mcp/mcp-registry');
+
+    const mcpResult = await mcpRegistry.callTool({
+      method: 'tools/call',
+      params: {
+        name: 'brightdata_scrape_as_markdown',
         arguments: { url: linkedinUrl }
-      })
+      },
+      server: 'brightdata'
     });
 
-    if (mcpResponse.ok) {
-      const mcpData = await mcpResponse.json();
+    if (!mcpResult.isError && mcpResult.content) {
+      console.log(`✅ MCP enrichment successful (FREE)`);
 
-      if (mcpData.success && mcpData.content) {
-        console.log(`✅ MCP enrichment successful (FREE)`);
+      // Parse markdown content
+      const contentText = Array.isArray(mcpResult.content)
+        ? mcpResult.content.map(c => c.text).join('\n')
+        : mcpResult.content.text || mcpResult.content;
 
-        // Parse markdown content
-        const parsed = parseLinkedInMarkdown(mcpData.content, linkedinUrl);
-        return {
-          linkedin_url: linkedinUrl,
-          verification_status: 'verified' as const,
-          ...parsed
-        };
-      }
+      const parsed = parseLinkedInMarkdown(contentText, linkedinUrl);
+
+      return {
+        linkedin_url: linkedinUrl,
+        verification_status: 'verified' as const,
+        ...parsed
+      };
     }
 
     // MCP failed, log reason
-    console.log(`⚠️  MCP failed, falling back to API (paid)`);
+    console.log(`⚠️  MCP failed (${mcpResult.isError ? 'error' : 'no content'}), falling back to API (paid)`);
+    if (mcpResult.isError) {
+      console.log(`   Error details: ${JSON.stringify(mcpResult.content)}`);
+    }
 
   } catch (mcpError) {
     console.log(`⚠️  MCP error: ${mcpError instanceof Error ? mcpError.message : 'Unknown'}, falling back to API`);
