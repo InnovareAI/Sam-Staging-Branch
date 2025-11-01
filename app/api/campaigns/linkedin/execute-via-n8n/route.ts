@@ -767,13 +767,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate active campaigns limit
-    if (currentUsage.active_campaigns >= tier.max_campaigns) {
-      return NextResponse.json({ 
-        error: 'Maximum active campaigns limit exceeded',
-        current_active: currentUsage.active_campaigns,
-        limit: tier.max_campaigns
-      }, { status: 429 });
-    }
+    // TEMPORARILY DISABLED for testing - max_campaigns column doesn't exist in DB
+    // TODO: Add max_campaigns column to workspace_tiers table
+    // if (currentUsage.active_campaigns >= tier.max_campaigns) {
+    //   return NextResponse.json({
+    //     error: 'Maximum active campaigns limit exceeded',
+    //     current_active: currentUsage.active_campaigns,
+    //     limit: tier.max_campaigns
+    //   }, { status: 429 });
+    // }
 
     // Get prospects ready for processing
     // campaign_prospects table stores prospect data directly (no join needed)
