@@ -328,7 +328,7 @@
       "credentials": {
         "supabaseApi": {
           "url": "={{ $('Parse Job Data').item.json.supabase_url }}",
-          "serviceRole": "="{{ $('Parse Job Data').item.json.supabase_key }}"
+          "serviceRole": "={{ $('Parse Job Data').item.json.supabase_key }}"
         }
       },
       "notes": "Mark enrichment job as completed"
