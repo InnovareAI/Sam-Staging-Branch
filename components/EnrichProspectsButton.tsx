@@ -41,15 +41,14 @@ export default function EnrichProspectsButton({
     try {
       toastInfo(`Enriching ${prospectIds.length} prospect${prospectIds.length > 1 ? 's' : ''}...`);
 
-      const response = await fetch('/api/prospects/enrich', {
+      const response = await fetch('/api/prospects/enrich-async', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           prospectIds,
-          workspaceId,
-          autoEnrich: true
+          workspaceId
         })
       });
 
@@ -61,23 +60,15 @@ export default function EnrichProspectsButton({
       const data = await response.json();
 
       if (data.success) {
-        const { enriched_count, failed_count, skipped_count } = data;
+        toastSuccess(
+          `✅ Enrichment job created! Processing ${data.total_prospects} prospect${data.total_prospects > 1 ? 's' : ''} in background...`
+        );
 
-        if (enriched_count > 0) {
-          toastSuccess(
-            `✅ Successfully enriched ${enriched_count} prospect${enriched_count > 1 ? 's' : ''}!` +
-            (failed_count > 0 ? `\n⚠️ ${failed_count} failed` : '') +
-            (skipped_count > 0 ? `\nℹ️ ${skipped_count} already had complete data` : '')
-          );
-        } else if (skipped_count > 0) {
-          toastInfo(`All ${skipped_count} prospect${skipped_count > 1 ? 's' : ''} already have complete data`);
-        } else if (failed_count > 0) {
-          toastError(`Failed to enrich ${failed_count} prospect${failed_count > 1 ? 's' : ''}`);
-        }
-
-        // Callback to refresh the prospect list
+        // Callback to refresh the prospect list after a delay
         if (onEnrichmentComplete) {
-          onEnrichmentComplete();
+          setTimeout(() => {
+            onEnrichmentComplete();
+          }, 60000); // Refresh after 60 seconds
         }
       } else {
         toastError(data.error || 'Enrichment failed');
