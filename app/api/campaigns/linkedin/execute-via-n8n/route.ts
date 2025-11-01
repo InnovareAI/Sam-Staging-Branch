@@ -779,14 +779,34 @@ export async function POST(req: NextRequest) {
 
     // Get prospects ready for processing
     // campaign_prospects table stores prospect data directly (no join needed)
+    console.log(`📊 Total prospects in campaign: ${campaign.campaign_prospects?.length || 0}`);
+
+    // Debug: Show all prospect statuses
+    if (campaign.campaign_prospects) {
+      const statusCounts: any = {};
+      campaign.campaign_prospects.forEach((cp: any) => {
+        statusCounts[cp.status] = (statusCounts[cp.status] || 0) + 1;
+      });
+      console.log('Prospect status breakdown:', statusCounts);
+    }
+
     const pendingProspects = campaign.campaign_prospects.filter(
       (cp: any) => cp.status === 'pending' && (cp.linkedin_url || cp.email)
     );
 
+    console.log(`✅ Found ${pendingProspects.length} prospects with status='pending'`);
+
     if (pendingProspects.length === 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: 'No pending prospects to contact',
-        processed: 0 
+        processed: 0,
+        debug: {
+          total_prospects: campaign.campaign_prospects?.length || 0,
+          status_breakdown: campaign.campaign_prospects?.reduce((acc: any, cp: any) => {
+            acc[cp.status] = (acc[cp.status] || 0) + 1;
+            return acc;
+          }, {})
+        }
       });
     }
 
