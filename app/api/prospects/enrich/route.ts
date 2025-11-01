@@ -44,6 +44,15 @@ export async function POST(request: NextRequest) {
 
     const { sessionId, prospectIds, linkedInUrls, autoEnrich = true, workspaceId: providedWorkspaceId } = body;
 
+    console.log('⏱️ Starting enrichment request at:', new Date().toISOString());
+    console.log('📊 Request params:', { sessionId, prospectCount: prospectIds?.length, linkedInUrls: linkedInUrls?.length });
+
+    // CRITICAL: Netlify functions timeout at 10-26 seconds
+    // BrightData takes ~35-40 seconds per prospect
+    // Solution: Only process 1 prospect synchronously to avoid timeout
+    // TODO: Implement background queue for multi-prospect enrichment
+    const MAX_SYNC_PROSPECTS = 1;
+
     const supabase = await createSupabaseRouteClient();
 
     // Get current user
@@ -250,10 +259,23 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // WORKAROUND FOR NETLIFY TIMEOUT:
+    // Only process first prospect to stay under timeout limit
+    // User needs to run enrichment multiple times for multiple prospects
+    const prospectsToProcess = needsEnrichment.slice(0, MAX_SYNC_PROSPECTS);
+    const queuedProspects = needsEnrichment.slice(MAX_SYNC_PROSPECTS);
+
+    if (queuedProspects.length > 0) {
+      console.log(`⚠️ Queueing ${queuedProspects.length} prospects (Netlify timeout limit)`);
+    }
+
+    console.log(`⏱️ Processing ${prospectsToProcess.length} prospect(s) synchronously...`);
+
     // Call BrightData enrichment service
     // Note: MCP fallback disabled until BrightData MCP server is properly configured
     // Using Direct API (linkedin_enrichment zone) which is verified working
-    const enrichmentResults = await enrichWithBrightData(needsEnrichment, 5, false);
+    // Concurrency = 1 to reduce processing time and stay under timeout
+    const enrichmentResults = await enrichWithBrightData(prospectsToProcess, 1, false);
 
     // Update prospects with enriched data
     let updatedCount = 0;
@@ -384,6 +406,7 @@ export async function POST(request: NextRequest) {
       enriched_count: updatedCount,
       failed_count: failedCount,
       skipped_count: prospectsToEnrich.length - needsEnrichment.length,
+      queued_count: queuedProspects.length,
       total_cost: totalCost,
       cost_per_prospect: 0.01,
       enrichment_details: enrichmentResults.map(r => ({
@@ -392,10 +415,14 @@ export async function POST(request: NextRequest) {
         fields_enriched: Object.keys(r).filter(k =>
           k !== 'linkedin_url' && k !== 'verification_status' && r[k as keyof typeof r]
         )
-      }))
+      })),
+      ...(queuedProspects.length > 0 && {
+        message: `⚠️ Processed ${updatedCount} prospect(s). ${queuedProspects.length} more need enrichment - click "Enrich" again to continue.`
+      })
     };
 
     console.log('📤 Sending enrichment response:', JSON.stringify(responseData, null, 2));
+    console.log(`⏱️ Total enrichment time: ${((Date.now() - Date.now()) / 1000).toFixed(1)}s`);
 
     return NextResponse.json(responseData);
 
