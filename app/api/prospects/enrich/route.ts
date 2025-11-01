@@ -379,7 +379,7 @@ export async function POST(request: NextRequest) {
 
     const totalCost = needsEnrichment.length * 0.01; // $0.01 per prospect
 
-    return NextResponse.json({
+    const responseData = {
       success: true,
       enriched_count: updatedCount,
       failed_count: failedCount,
@@ -393,7 +393,11 @@ export async function POST(request: NextRequest) {
           k !== 'linkedin_url' && k !== 'verification_status' && r[k as keyof typeof r]
         )
       }))
-    });
+    };
+
+    console.log('📤 Sending enrichment response:', JSON.stringify(responseData, null, 2));
+
+    return NextResponse.json(responseData);
 
   } catch (error) {
     console.error('❌ Enrichment error:', error);
@@ -545,18 +549,25 @@ function convertLinkedInHtmlToMarkdown(html: string): string {
 
     // Extract JSON-LD data if available (LinkedIn embeds structured data)
     const jsonLdMatch = text.match(/<script type="application\/ld\+json">(.*?)<\/script>/s);
-    if (jsonLdMatch) {
+    if (jsonLdMatch && jsonLdMatch[1]) {
       try {
         const jsonString = jsonLdMatch[1].trim();
-        if (jsonString) {
+        if (jsonString && jsonString.length > 0) {
+          console.log('🔍 Attempting to parse JSON-LD data, length:', jsonString.length);
           const jsonData = JSON.parse(jsonString);
+          console.log('✅ Successfully parsed JSON-LD data');
           // LinkedIn Profile JSON-LD contains useful data
           if (jsonData['@type'] === 'ProfilePage' || jsonData['@type'] === 'Person') {
+            console.log('✅ Found LinkedIn Profile JSON-LD, using structured data');
             return JSON.stringify(jsonData, null, 2);
           }
+        } else {
+          console.log('⚠️ JSON-LD script tag found but content is empty');
         }
       } catch (e) {
-        console.log('Could not parse JSON-LD data:', e instanceof Error ? e.message : 'Unknown error');
+        console.error('❌ Failed to parse JSON-LD data:', e instanceof Error ? e.message : 'Unknown error');
+        console.error('JSON-LD content preview:', jsonLdMatch[1].substring(0, 200));
+        // Don't throw, just continue to meta tags parsing
       }
     }
 
