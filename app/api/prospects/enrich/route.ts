@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
 /**
  * BrightData Prospect Enrichment API
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     const body: EnrichmentRequest = await request.json();
     const { sessionId, prospectIds, linkedInUrls, autoEnrich = true } = body;
 
-    const supabase = createClient();
+    const supabase = await createSupabaseRouteClient();
 
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
