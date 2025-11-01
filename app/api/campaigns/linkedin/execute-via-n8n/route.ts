@@ -195,7 +195,7 @@ async function getWorkspaceTier(supabase: any, workspaceId: string): Promise<Wor
     .select('*')
     .eq('workspace_id', workspaceId)
     .single();
-  
+
   if (error || !data) {
     console.error('Error fetching workspace tier:', error);
     // Return default Startup tier if not found
@@ -216,8 +216,25 @@ async function getWorkspaceTier(supabase: any, workspaceId: string): Promise<Wor
       }
     };
   }
-  
-  return data;
+
+  // Map database fields to expected interface
+  // Database has 'tier' field, not 'tier_type'
+  return {
+    workspace_id: data.workspace_id,
+    tier_type: data.tier || data.tier_type || 'startup',
+    tier_status: data.tier_status || 'active',
+    monthly_email_limit: data.monthly_email_limit || 200,
+    monthly_linkedin_limit: data.monthly_linkedin_limit || 50,
+    max_campaigns: data.max_campaigns || 5,
+    billing_info: data.billing_info || {},
+    tier_features: data.tier_features || {
+      unipile_only: true,
+      reachinbox_enabled: false,
+      advanced_hitl: false,
+      custom_workflows: false,
+      advanced_analytics: false
+    }
+  };
 }
 
 async function getWorkspaceIntegrations(supabase: any, workspaceId: string, tierType: string): Promise<WorkspaceIntegrations> {
