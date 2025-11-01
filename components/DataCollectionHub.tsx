@@ -1424,7 +1424,7 @@ export default function DataCollectionHub({
                 workspaceId={workspaceId}
                 onEnrichmentComplete={() => {
                   // Refresh the prospects list after enrichment
-                  refetchApprovalSessions();
+                  refetch();
                 }}
                 variant="outline"
                 size="sm"
