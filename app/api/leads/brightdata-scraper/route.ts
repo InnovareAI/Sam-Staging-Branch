@@ -577,87 +577,67 @@ async function enrichLinkedInProfiles(req: NextRequest, user: any) {
 
   for (const linkedinUrl of linkedin_urls) {
     try {
-      // Get BrightData MCP token from .mcp.json configuration
-      const brightdataToken = process.env.BRIGHTDATA_MCP_TOKEN ||
-        'e81e9ea14a70da562e17d99abe8dad29df66ad0e57b1fc7df0db866c48fa2a42';
-
       console.log(`🔍 Attempting to scrape: ${linkedinUrl}`);
-      console.log(`🔍 Using BrightData MCP token: ${brightdataToken.substring(0, 10)}...`);
 
-      const requestBody = {
-        jsonrpc: '2.0',
-        id: Date.now(),
-        method: 'tools/call',
-        params: {
-          name: 'brightdata_scrape_as_markdown',
-          arguments: { url: linkedinUrl }
-        }
-      };
+      // Clean LinkedIn URL - remove query parameters that might cause issues
+      const cleanUrl = linkedinUrl.split('?')[0];
+      console.log(`🧹 Cleaned URL: ${cleanUrl}`);
 
-      console.log('🔍 BrightData MCP Request:', JSON.stringify(requestBody, null, 2));
+      // Use BrightData Web Unlocker API
+      const brightdataCustomerId = process.env.BRIGHT_DATA_CUSTOMER_ID || 'hl_8aca120e';
+      const brightdataPassword = process.env.BRIGHT_DATA_PASSWORD || 'vokteG-4zibcy-juwrux';
 
-      // Call BrightData MCP HTTP endpoint (not SSE)
-      // SSE is for streaming, we need the HTTP endpoint for request/response
-      const scrapeResponse = await fetch(`https://mcp.brightdata.com/mcp?token=${brightdataToken}`, {
+      // BrightData Web Unlocker endpoint
+      const webUnlockerUrl = 'https://brd.superproxy.io:22225';
+
+      // Basic auth for BrightData
+      const auth = Buffer.from(`${brightdataCustomerId}:${brightdataPassword}`).toString('base64');
+
+      console.log(`🔗 Using BrightData Web Unlocker`);
+
+      // Scrape LinkedIn profile via BrightData Web Unlocker
+      const scrapeResponse = await fetch(webUnlockerUrl, {
         method: 'POST',
         headers: {
+          'Authorization': `Basic ${auth}`,
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify({
+          url: cleanUrl,
+          format: 'raw' // Get raw HTML
+        })
       });
 
       console.log(`🔍 BrightData Response Status: ${scrapeResponse.status} ${scrapeResponse.statusText}`);
-      console.log(`🔍 BrightData Response Headers:`, Object.fromEntries(scrapeResponse.headers.entries()));
 
       if (!scrapeResponse.ok) {
         const errorText = await scrapeResponse.text();
-        console.error(`❌ Failed to scrape ${linkedinUrl}: ${scrapeResponse.status} - ${errorText}`);
+        console.error(`❌ Failed to scrape ${cleanUrl}: ${scrapeResponse.status} - ${errorText}`);
         enrichedProfiles.push({
           linkedin_url: linkedinUrl,
           verification_status: 'failed' as const,
-          error: `BrightData scraping failed: ${scrapeResponse.status} - ${errorText}`
+          error: `BrightData scraping failed: ${scrapeResponse.status}`
         });
         continue;
       }
 
-      const scrapeData = await scrapeResponse.json();
-      console.log('🔍 BrightData MCP Response:', JSON.stringify(scrapeData, null, 2));
+      const html = await scrapeResponse.text();
+      console.log(`📄 Got HTML response: ${html.length} bytes`);
 
-      // Handle MCP JSON-RPC response
-      let markdown = '';
-
-      if (scrapeData.error) {
-        console.error(`❌ BrightData MCP error for ${linkedinUrl}:`, scrapeData.error);
-        enrichedProfiles.push({
-          linkedin_url: linkedinUrl,
-          verification_status: 'failed' as const,
-          error: scrapeData.error.message || 'MCP error'
-        });
-        continue;
-      }
-
-      // Extract markdown from MCP JSON-RPC result
-      if (scrapeData.result?.content && Array.isArray(scrapeData.result.content)) {
-        // MCP response format: { result: { content: [{ type: 'text', text: '...' }] } }
-        const textContent = scrapeData.result.content.find((c: any) => c.type === 'text');
-        markdown = textContent?.text || '';
-      } else if (scrapeData.result?.text) {
-        // Alternative format
-        markdown = scrapeData.result.text;
-      }
+      // Parse HTML to extract profile data
+      const markdown = convertLinkedInHtmlToMarkdown(html);
 
       if (!markdown) {
-        console.error(`❌ No markdown content for ${linkedinUrl}`);
+        console.error(`❌ No content extracted for ${cleanUrl}`);
         enrichedProfiles.push({
           linkedin_url: linkedinUrl,
           verification_status: 'failed' as const,
-          error: 'No markdown content returned'
+          error: 'No content extracted from HTML'
         });
         continue;
       }
 
-      const metadata = scrapeData.result?.metadata || {};
+      const metadata = {};
 
       // Extract company name, job title, location, etc. from markdown
       const enrichedData = parseLinkedInMarkdown(markdown, linkedinUrl);
@@ -695,6 +675,55 @@ async function enrichLinkedInProfiles(req: NextRequest, user: any) {
 }
 
 // Helper Functions
+
+/**
+ * Convert LinkedIn HTML to markdown-like text
+ */
+function convertLinkedInHtmlToMarkdown(html: string): string {
+  try {
+    // Remove script and style tags
+    let text = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+
+    // Extract JSON-LD data if available (LinkedIn embeds structured data)
+    const jsonLdMatch = text.match(/<script type="application\/ld\+json">(.*?)<\/script>/s);
+    if (jsonLdMatch) {
+      try {
+        const jsonData = JSON.parse(jsonLdMatch[1]);
+        // LinkedIn Profile JSON-LD contains useful data
+        if (jsonData['@type'] === 'ProfilePage' || jsonData['@type'] === 'Person') {
+          return JSON.stringify(jsonData, null, 2);
+        }
+      } catch (e) {
+        console.log('Could not parse JSON-LD data');
+      }
+    }
+
+    // Extract meta tags (LinkedIn uses these extensively)
+    const metaTags: Record<string, string> = {};
+    const metaMatches = text.matchAll(/<meta\s+(?:property|name)="([^"]+)"\s+content="([^"]+)"/g);
+    for (const match of metaMatches) {
+      metaTags[match[1]] = match[2];
+    }
+
+    // Build markdown from meta tags
+    const markdown = [];
+    if (metaTags['og:title']) markdown.push(`# ${metaTags['og:title']}`);
+    if (metaTags['og:description']) markdown.push(`\n${metaTags['og:description']}`);
+    if (metaTags['description']) markdown.push(`\n${metaTags['description']}`);
+
+    // Try to extract from page title
+    const titleMatch = text.match(/<title>([^<]+)<\/title>/i);
+    if (titleMatch && !metaTags['og:title']) {
+      markdown.push(`# ${titleMatch[1]}`);
+    }
+
+    return markdown.join('\n') || text.substring(0, 5000); // Fallback to raw text
+  } catch (error) {
+    console.error('Error converting HTML to markdown:', error);
+    return '';
+  }
+}
 
 /**
  * Parse LinkedIn profile markdown to extract structured data
