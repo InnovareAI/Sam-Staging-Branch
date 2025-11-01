@@ -2525,7 +2525,7 @@ function detectSequenceIntent(content: string): boolean {
 
 function formatSequence(sequence: ReturnType<typeof generateLinkedInSequence>): string {
   const lines: string[] = []
-  lines.push(`Here’s the 8-touch LinkedIn sequence targeting ${sequence.blueprint.industry} (${sequence.personaKey}).`)
+  lines.push(`Here's the 8-touch LinkedIn sequence targeting ${sequence.blueprint.industry} (${sequence.personaKey}).`)
   lines.push(`Summary: ${sequence.summary}`)
   lines.push('')
 
@@ -2539,6 +2539,71 @@ function formatSequence(sequence: ReturnType<typeof generateLinkedInSequence>): 
   })
 
   lines.push(`Recommended CTA: ${sequence.recommendedCTA}`)
-  lines.push('When you’re ready I can tighten any step or adapt it for email.')
-  return lines.join('\n')
+  lines.push('When you are ready I can tighten any step or adapt it for email.')
+  return lines.join('\\n')
+}
+
+/**
+ * Check for KB items needing validation and send SAM message if found
+ */
+async function checkForValidationNeeded(workspaceId: string, userId: string, threadId: string) {
+  try {
+    // Fetch items needing validation
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/kb/validate?workspace_id=${workspaceId}&threshold=0.8`,
+      {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+
+    if (!response.ok) return;
+
+    const data = await response.json();
+
+    // If items need validation, send SAM message proactively
+    if (data.success && data.items && data.items.length > 0) {
+      const criticalItems = data.items.filter((item: any) => item.priority_score >= 0.8);
+
+      // Only notify about critical items
+      if (criticalItems.length > 0) {
+        const supabaseAdmin = createSupabaseAdminClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        // Get next message order
+        const { data: messages } = await supabaseAdmin
+          .from('sam_messages')
+          .select('message_order')
+          .eq('thread_id', threadId)
+          .order('message_order', { ascending: false })
+          .limit(1);
+
+        const nextOrder = (messages?.[0]?.message_order ?? 0) + 1;
+
+        // Create SAM message suggesting validation
+        const messageContent = `📊 Hey, I noticed ${criticalItems.length} knowledge base ${criticalItems.length === 1 ? 'item' : 'items'} that could use your review. ${criticalItems.length === 1 ? 'It has' : 'They have'} low confidence scores and might need validation or correction.\n\nWant to review ${criticalItems.length === 1 ? 'it' : 'them'} now? Go to Settings → Knowledge to validate.`;
+
+        await supabaseAdmin
+          .from('sam_messages')
+          .insert({
+            thread_id: threadId,
+            role: 'assistant',
+            content: messageContent,
+            message_order: nextOrder,
+            metadata: {
+              type: 'validation_suggestion',
+              items_count: criticalItems.length,
+              critical_count: criticalItems.length
+            }
+          });
+
+        console.log(`📋 SAM suggested validation for ${criticalItems.length} critical KB items`);
+      }
+    }
+  } catch (error) {
+    console.error('❌ Validation check error:', error);
+    // Don't throw - this is non-blocking
+  }
 }

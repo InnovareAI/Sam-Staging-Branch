@@ -2877,3 +2877,76 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main c67cee2f] 🔄 Auto-backup: auto-backup-20251101_120001
+ Committer: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 43 files changed, 13938 insertions(+), 21 deletions(-)
+ create mode 100644 HANDOVER_N8N_NOV1_2025.md
+ create mode 100644 N8N_COMPLETE_WORKFLOW_GUIDE.md
+ create mode 100644 N8N_DYNAMIC_TIMING_COMPLETE.md
+ create mode 100644 N8N_FILES_SUMMARY.md
+ create mode 100644 N8N_FINAL_SUMMARY.md
+ create mode 100644 N8N_FIX_SUMMARY.md
+ create mode 100644 N8N_IMPLEMENTATION_COMPLETE.md
+ create mode 100644 N8N_INDEX.md
+ create mode 100644 N8N_QUICK_REFERENCE.md
+ create mode 100644 N8N_READY_FOR_TESTING.md
+ create mode 100644 N8N_REPLY_STOP_DEPLOYMENT_GUIDE.md
+ create mode 100644 N8N_REPLY_STOP_IMPLEMENTATION.md
+ create mode 100644 N8N_SEND_TIME_REQUIREMENTS.md
+ create mode 100644 N8N_SESSION_SUMMARY_NOV1.md
+ create mode 100644 N8N_STANDARD_FUNNEL.md
+ create mode 100644 N8N_STANDARD_FUNNEL_COMPLETE.md
+ create mode 100644 N8N_TIMING_UPDATE.md
+ create mode 100644 N8N_WORKFLOW_TESTING_GUIDE.md
+ create mode 100644 app/api/kb/validate/route.ts
+ create mode 100644 app/api/kb/versions/route.ts
+ create mode 100644 app/api/knowledge-base/completion/route.ts
+ create mode 100644 components/KBValidationPanel.tsx
+ create mode 100644 docs/BIDIRECTIONAL_KB_DESIGN.md
+ create mode 100644 lib/kb-completion-tracker.ts
+ create mode 100644 lib/kb-confidence-calculator.ts
+ create mode 100644 lib/kb-extraction-service.ts
+ create mode 100644 lib/kb-health-scorer.ts
+ create mode 100644 lib/realtime-kb-updater.ts
+ create mode 100644 lib/search-intent-detector.ts
+ create mode 100644 n8n-workflows/campaign-execute-complete-with-reply-stop.json
+ create mode 100644 n8n-workflows/campaign-execute-complete.json
+ create mode 100644 n8n-workflows/send-time-validator.js
+ create mode 100755 scripts/js/add-reply-stop-nodes.mjs
+ create mode 100755 scripts/js/test-bidirectional-kb.mjs
+ create mode 100755 scripts/js/test-phase2-realtime-kb.mjs
+ create mode 100644 supabase/migrations/20251101000001_kb_confidence_scores.sql
+ create mode 100644 supabase/migrations/20251101000002_kb_versioning.sql
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251101_120001[0m
+[0;32m📅 Timestamp: Sat Nov  1 12:00:08 PST 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+

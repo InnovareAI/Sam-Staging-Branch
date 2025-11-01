@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase-browser';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 interface KBItemToValidate {
   kb_item_id: string;
@@ -39,7 +39,7 @@ export default function KBValidationPanel({
   const [correctionValue, setCorrectionValue] = useState<any>({});
   const [correctionReason, setCorrectionReason] = useState('');
 
-  const supabase = createClient();
+  const supabase = createClientComponentClient();
 
   // Fetch items needing validation
   useEffect(() => {
