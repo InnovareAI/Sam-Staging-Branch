@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/app/lib/supabase/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 // N8N Workflow configuration - n8n Cloud URL
 const N8N_MASTER_FUNNEL_WEBHOOK = process.env.N8N_CAMPAIGN_WEBHOOK_URL || 'https://innovareai.app.n8n.cloud/webhook/campaign-execute';
@@ -626,8 +627,24 @@ function getTimezoneFromLocation(location: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient();
-    
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
     // Get user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
