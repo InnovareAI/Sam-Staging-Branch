@@ -106,14 +106,55 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Created enrichment job: ${job.id}`);
 
-    // Trigger N8N enrichment workflow
-    const n8nWebhookUrl = process.env.N8N_ENRICHMENT_WEBHOOK_URL ||
-      'https://innovareai.app.n8n.cloud/webhook/prospect-enrichment';
-
+    // Trigger N8N enrichment workflow via MCP
     try {
-      console.log(`🔄 Triggering N8N enrichment workflow for job ${job.id}`);
+      console.log(`🔄 Triggering N8N enrichment workflow via MCP for job ${job.id}`);
 
-      // Fire and forget - N8N will process asynchronously
+      // Import N8N MCP client
+      const { N8NMCPServer } = await import('@/lib/mcp/n8n-mcp');
+
+      const n8nMCP = new N8NMCPServer({
+        baseUrl: process.env.N8N_API_URL || 'https://innovareai.app.n8n.cloud',
+        apiKey: process.env.N8N_API_KEY || '',
+        organizationId: process.env.N8N_ORGANIZATION_ID || '',
+        userId: user.id
+      });
+
+      // Find the enrichment workflow by name or ID
+      const workflowId = process.env.N8N_ENRICHMENT_WORKFLOW_ID || 'prospect-enrichment';
+
+      // Execute workflow via MCP
+      const result = await n8nMCP.callTool({
+        params: {
+          name: 'n8n_execute_workflow',
+          arguments: {
+            workflow_id: workflowId,
+            input_data: {
+              job_id: job.id,
+              workspace_id: workspaceId,
+              prospect_ids: finalProspectIds,
+              supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+              supabase_service_key: process.env.SUPABASE_SERVICE_ROLE_KEY,
+              brightdata_api_token: process.env.BRIGHTDATA_API_TOKEN,
+              brightdata_zone: process.env.BRIGHTDATA_ZONE
+            }
+          }
+        }
+      });
+
+      if (result.isError) {
+        console.warn('⚠️ N8N MCP execution failed:', result.content[0].text);
+      } else {
+        const executionData = JSON.parse(result.content[0].text!);
+        console.log(`✅ N8N workflow triggered via MCP: ${executionData.execution_id}`);
+      }
+    } catch (e) {
+      console.warn('⚠️ Could not trigger N8N workflow via MCP:', e);
+
+      // Fallback to direct webhook call if MCP fails
+      const n8nWebhookUrl = process.env.N8N_ENRICHMENT_WEBHOOK_URL ||
+        'https://innovareai.app.n8n.cloud/webhook/prospect-enrichment';
+
       fetch(n8nWebhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -127,10 +168,8 @@ export async function POST(request: NextRequest) {
           brightdata_zone: process.env.BRIGHTDATA_ZONE
         })
       }).catch(err => {
-        console.warn('⚠️ N8N trigger failed (workflow may need to be activated):', err.message);
+        console.warn('⚠️ Fallback webhook also failed:', err.message);
       });
-    } catch (e) {
-      console.warn('⚠️ Could not trigger N8N workflow:', e);
     }
 
     return NextResponse.json({
