@@ -31,7 +31,17 @@ interface BrightDataEnrichmentResult {
 
 export async function POST(request: NextRequest) {
   try {
-    const body: EnrichmentRequest = await request.json();
+    let body: EnrichmentRequest;
+    try {
+      body = await request.json();
+    } catch (jsonError) {
+      console.error('❌ Failed to parse request body:', jsonError);
+      return NextResponse.json({
+        error: 'Invalid JSON in request body',
+        details: jsonError instanceof Error ? jsonError.message : 'Unexpected end of JSON input'
+      }, { status: 400 });
+    }
+
     const { sessionId, prospectIds, linkedInUrls, autoEnrich = true, workspaceId: providedWorkspaceId } = body;
 
     const supabase = await createSupabaseRouteClient();
@@ -537,13 +547,16 @@ function convertLinkedInHtmlToMarkdown(html: string): string {
     const jsonLdMatch = text.match(/<script type="application\/ld\+json">(.*?)<\/script>/s);
     if (jsonLdMatch) {
       try {
-        const jsonData = JSON.parse(jsonLdMatch[1]);
-        // LinkedIn Profile JSON-LD contains useful data
-        if (jsonData['@type'] === 'ProfilePage' || jsonData['@type'] === 'Person') {
-          return JSON.stringify(jsonData, null, 2);
+        const jsonString = jsonLdMatch[1].trim();
+        if (jsonString) {
+          const jsonData = JSON.parse(jsonString);
+          // LinkedIn Profile JSON-LD contains useful data
+          if (jsonData['@type'] === 'ProfilePage' || jsonData['@type'] === 'Person') {
+            return JSON.stringify(jsonData, null, 2);
+          }
         }
       } catch (e) {
-        console.log('Could not parse JSON-LD data');
+        console.log('Could not parse JSON-LD data:', e instanceof Error ? e.message : 'Unknown error');
       }
     }
 
