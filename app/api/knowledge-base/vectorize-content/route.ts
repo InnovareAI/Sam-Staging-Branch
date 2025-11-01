@@ -212,8 +212,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { data: documentRecord, error: documentError } = await supabase
-      .from('knowledge_base_documents')
-      .select('workspace_id, section_id, tags')
+      .from('knowledge_base')
+      .select('workspace_id, category, tags, source_metadata')
       .eq('id', documentId)
       .single();
 
@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
     }
 
     const workspaceId = documentRecord.workspace_id;
-    const sectionId = section || documentRecord.section_id;
+    const sectionId = section || documentRecord.category;
     const combinedTags = Array.from(new Set([...(documentRecord.tags || []), ...(tags || [])]));
 
     // Remove any previous vectors for this document to avoid duplicates
@@ -258,13 +258,18 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Update document status to completed
+    // Update document metadata with vectorization status
     const { error: statusError } = await supabase
-      .from('knowledge_base_documents')
+      .from('knowledge_base')
       .update({
-        status: 'vectorized',
-        vector_chunks: knowledgeEntries.length,
-        vectorized_at: new Date().toISOString()
+        source_metadata: {
+          ...documentRecord.source_metadata,
+          vectorization: {
+            status: 'completed',
+            vector_chunks: knowledgeEntries.length,
+            vectorized_at: new Date().toISOString()
+          }
+        }
       })
       .eq('id', documentId);
 
