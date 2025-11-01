@@ -577,41 +577,58 @@ async function enrichLinkedInProfiles(req: NextRequest, user: any) {
 
   for (const linkedinUrl of linkedin_urls) {
     try {
-      // Call BrightData MCP to scrape the LinkedIn profile
-      const scrapeResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/mcp`, {
+      // Get BrightData MCP token from .mcp.json configuration
+      const brightdataToken = process.env.BRIGHTDATA_MCP_TOKEN ||
+        'e81e9ea14a70da562e17d99abe8dad29df66ad0e57b1fc7df0db866c48fa2a42';
+
+      // Call BrightData MCP SSE endpoint
+      const scrapeResponse = await fetch(`https://mcp.brightdata.com/sse?token=${brightdataToken}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          toolName: 'brightdata_scrape_as_markdown',
-          arguments: { url: linkedinUrl },
-          server: 'brightdata'
+          method: 'tools/call',
+          params: {
+            name: 'brightdata_scrape_as_markdown',
+            arguments: { url: linkedinUrl }
+          }
         })
       });
 
       if (!scrapeResponse.ok) {
-        console.error(`❌ Failed to scrape ${linkedinUrl}: ${scrapeResponse.status}`);
+        const errorText = await scrapeResponse.text();
+        console.error(`❌ Failed to scrape ${linkedinUrl}: ${scrapeResponse.status} - ${errorText}`);
         enrichedProfiles.push({
           linkedin_url: linkedinUrl,
           verification_status: 'failed' as const,
-          error: 'BrightData scraping failed'
+          error: `BrightData scraping failed: ${scrapeResponse.status}`
         });
         continue;
       }
 
       const scrapeData = await scrapeResponse.json();
+      console.log('🔍 BrightData MCP Response:', JSON.stringify(scrapeData, null, 2));
 
-      if (!scrapeData.success || scrapeData.isError) {
-        console.error(`❌ BrightData error for ${linkedinUrl}:`, scrapeData.error);
+      // Extract markdown from MCP response
+      let markdown = '';
+      if (scrapeData.content && Array.isArray(scrapeData.content)) {
+        // MCP response format: { content: [{ type: 'text', text: '...' }] }
+        const textContent = scrapeData.content.find((c: any) => c.type === 'text');
+        markdown = textContent?.text || '';
+      } else if (scrapeData.result?.markdown) {
+        // Fallback format
+        markdown = scrapeData.result.markdown;
+      }
+
+      if (!markdown) {
+        console.error(`❌ No markdown content for ${linkedinUrl}`);
         enrichedProfiles.push({
           linkedin_url: linkedinUrl,
           verification_status: 'failed' as const,
-          error: scrapeData.error
+          error: 'No markdown content returned'
         });
         continue;
       }
 
-      // Parse the scraped markdown to extract profile data
-      const markdown = scrapeData.result?.markdown || '';
       const metadata = scrapeData.result?.metadata || {};
 
       // Extract company name, job title, location, etc. from markdown
