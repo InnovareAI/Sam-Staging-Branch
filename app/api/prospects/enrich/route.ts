@@ -395,65 +395,98 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Enrich prospects using BrightData
+ * Enrich prospects using BrightData with parallel processing
+ *
+ * @param prospects - Array of prospects to enrich
+ * @param concurrency - Max concurrent requests (default: 5)
  */
 async function enrichWithBrightData(
-  prospects: Array<{ linkedin_url: string; [key: string]: any }>
+  prospects: Array<{ linkedin_url: string; [key: string]: any }>,
+  concurrency: number = 5
 ): Promise<BrightDataEnrichmentResult[]> {
   try {
     console.log('📞 Calling BrightData scraper API...');
-    console.log(`📊 Enriching ${prospects.length} prospects:`, prospects.map(p => p.linkedin_url));
+    console.log(`📊 Enriching ${prospects.length} prospects with ${concurrency}x parallelism`);
+    console.log(`🚀 Estimated time: ${Math.ceil(prospects.length / concurrency) * 35}s (vs ${prospects.length * 35}s sequential)`);
 
     const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/leads/brightdata-scraper`;
-    console.log(`🔗 API URL: ${apiUrl}`);
 
-    const requestBody = {
-      action: 'enrich_linkedin_profiles',
-      linkedin_urls: prospects.map(p => p.linkedin_url),
-      include_contact_info: true,
-      include_company_info: true
-    };
+    // Split prospects into parallel batches
+    const results: BrightDataEnrichmentResult[] = [];
+    const errors: Array<{ prospect: any; error: string }> = [];
 
-    console.log('📤 Request body:', JSON.stringify(requestBody, null, 2));
+    // Process prospects in parallel batches
+    for (let i = 0; i < prospects.length; i += concurrency) {
+      const batch = prospects.slice(i, i + concurrency);
+      const batchNumber = Math.floor(i / concurrency) + 1;
+      const totalBatches = Math.ceil(prospects.length / concurrency);
 
-    // Call BrightData scraper API
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
-    });
+      console.log(`\n🔄 Processing batch ${batchNumber}/${totalBatches} (${batch.length} prospects)`);
 
-    console.log(`📥 Response status: ${response.status} ${response.statusText}`);
+      const startTime = Date.now();
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ BrightData API error:', response.status, errorText);
-      return prospects.map(p => ({
-        linkedin_url: p.linkedin_url,
-        verification_status: 'failed' as const,
-        error: `API error: ${response.status}`
-      }));
+      // Create parallel requests for this batch
+      const batchPromises = batch.map(async (prospect) => {
+        try {
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'enrich_linkedin_profiles',
+              linkedin_urls: [prospect.linkedin_url],
+              include_contact_info: true,
+              include_company_info: true
+            })
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`❌ Failed for ${prospect.linkedin_url}: ${response.status}`);
+            return {
+              linkedin_url: prospect.linkedin_url,
+              verification_status: 'failed' as const,
+              error: `API error: ${response.status}`
+            };
+          }
+
+          const data = await response.json();
+
+          if (!data.success || !data.enriched_profiles?.[0]) {
+            return {
+              linkedin_url: prospect.linkedin_url,
+              verification_status: 'failed' as const,
+              error: data.error || 'No profile data returned'
+            };
+          }
+
+          console.log(`✅ Enriched: ${data.enriched_profiles[0].company_name || 'Unknown'}`);
+          return data.enriched_profiles[0];
+
+        } catch (error) {
+          console.error(`❌ Error enriching ${prospect.linkedin_url}:`, error instanceof Error ? error.message : 'Unknown');
+          return {
+            linkedin_url: prospect.linkedin_url,
+            verification_status: 'failed' as const,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          };
+        }
+      });
+
+      // Wait for all parallel requests in this batch to complete
+      const batchResults = await Promise.all(batchPromises);
+      results.push(...batchResults);
+
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      const successCount = batchResults.filter(r => r.verification_status === 'verified').length;
+      console.log(`⏱️  Batch completed in ${elapsed}s (${successCount}/${batch.length} successful)`);
     }
 
-    const data = await response.json();
-    console.log('📦 BrightData response:', JSON.stringify(data, null, 2));
+    const totalSuccess = results.filter(r => r.verification_status === 'verified').length;
+    const totalFailed = results.filter(r => r.verification_status === 'failed').length;
 
-    if (!data.success) {
-      console.error('❌ BrightData enrichment failed:', data.error);
-      return prospects.map(p => ({
-        linkedin_url: p.linkedin_url,
-        verification_status: 'failed' as const,
-        error: data.error
-      }));
-    }
+    console.log(`\n📊 Final results: ${totalSuccess} successful, ${totalFailed} failed out of ${prospects.length} total`);
 
-    console.log(`✅ BrightData enrichment successful: ${data.enriched_profiles?.length || 0} profiles enriched`);
-
-    // Map BrightData response to enrichment results
-    return data.enriched_profiles || prospects.map(p => ({
-      linkedin_url: p.linkedin_url,
-      verification_status: 'unverified' as const
-    }));
+    return results;
 
   } catch (error) {
     console.error('❌ BrightData enrichment error:', error);
