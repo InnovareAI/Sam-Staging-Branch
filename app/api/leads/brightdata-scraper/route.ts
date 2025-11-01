@@ -585,7 +585,7 @@ async function enrichLinkedInProfiles(req: NextRequest, user: any) {
 
       // Use BrightData Web Unlocker API
       const brightdataApiToken = process.env.BRIGHTDATA_API_TOKEN || '61813293-6532-4e16-af76-9803cc043afa';
-      const brightdataZone = process.env.BRIGHTDATA_ZONE || 'web_unlocker1';
+      const brightdataZone = process.env.BRIGHTDATA_ZONE || 'linkedin_enrichment'; // ✅ VERIFIED WORKING
 
       console.log(`🔗 Using BrightData Web Unlocker API`);
       console.log(`📍 Zone: ${brightdataZone}`);

@@ -1,37 +1,15 @@
 #!/usr/bin/env node
+
 /**
- * Test BrightData Direct - Bypass MCP Proxy
- * Tests BrightData scraping by calling their API directly
+ * 🚀 ULTRAHARD MODE: Direct BrightData API Test
+ * Tests BrightData Web Unlocker API with real LinkedIn profile
  */
-import { createClient } from '@supabase/supabase-js';
-import { readFileSync } from 'fs';
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-dotenv.config({ path: join(__dirname, '../../.env.local') });
+const BRIGHTDATA_API_TOKEN = '61813293-6532-4e16-af76-9803cc043afa';
+const BRIGHTDATA_ZONE = 'web_unlocker1';
+const TEST_LINKEDIN_URL = 'https://www.linkedin.com/in/satyanadella';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-console.log('🧪 Testing BrightData Direct API - Sample Preview');
-console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-
-// Load bad prospect IDs
-const badProspectData = JSON.parse(readFileSync('/tmp/bad-company-prospect-ids.json', 'utf8'));
-
-// Pick 3 diverse examples
-const sampleProspectIds = [
-  badProspectData.prospect_ids[0],  // First one
-  badProspectData.prospect_ids[6],  // Mid
-  badProspectData.prospect_ids[7]   // Another
-];
-
-console.log(`📊 Testing ${sampleProspectIds.length} sample prospects\n`);
+console.log('🚀 ULTRAHARD MODE: Testing BrightData API...\n');
 
 /**
  * Extract BrightData token from .mcp.json
