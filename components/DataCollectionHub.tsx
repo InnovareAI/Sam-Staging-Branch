@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import ImportProspectsModal from '@/components/ImportProspectsModal'
 import { Checkbox } from '@/components/ui/checkbox'
+import EnrichProspectsButton from '@/components/EnrichProspectsButton'
 
 
 // LinkedIn Campaign Types
@@ -1415,6 +1416,20 @@ export default function DataCollectionHub({
                   </button>
                 )}
 
+
+            {/* Enrich Selected Prospects - BrightData enrichment for missing data */}
+            {selectedProspectIds.size > 0 && (
+              <EnrichProspectsButton
+                prospectIds={Array.from(selectedProspectIds)}
+                onEnrichmentComplete={() => {
+                  // Refresh the prospects list after enrichment
+                  refetchApprovalSessions();
+                }}
+                variant="outline"
+                size="sm"
+                className="border-green-600/50 hover:bg-green-600/10 text-green-400"
+              />
+            )}
 
             {/* Send Approved Prospects - Only sends approved prospects to Campaign Hub */}
             <Button
