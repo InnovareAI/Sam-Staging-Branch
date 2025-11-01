@@ -2794,3 +2794,86 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main c8315829] 🔄 Auto-backup: auto-backup-20251101_060000
+ Committer: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 41 files changed, 6430 insertions(+), 38 deletions(-)
+ create mode 100644 N8N_ISSUE_DIAGNOSIS_OCT_31.md
+ create mode 100644 N8N_WORKFLOW_SETUP_INSTRUCTIONS.md
+ create mode 100644 PIPELINE_BUILD_COMPLETE_OCT_31.md
+ create mode 100644 PRODUCTION_TEST_SUCCESS_OCT_31.md
+ create mode 100644 VERIFICATION_REPORT_OCT_31_2025.md
+ create mode 100644 docs/WORKSPACE_IDENTIFICATION_GUIDE.md
+ create mode 100644 docs/WORKSPACE_IDENTIFICATION_STRATEGY.md
+ create mode 100644 n8n-workflows/campaign-execute.json
+ create mode 100644 scripts/js/apply-via-supabase-client.mjs
+ create mode 100644 scripts/js/check-innovare-test.mjs
+ create mode 100755 scripts/js/check-michele-campaign.mjs
+ create mode 100755 scripts/js/check-recent-campaigns.mjs
+ create mode 100755 scripts/js/copy-user-prospects.mjs
+ create mode 100755 scripts/js/enrich-prospects-direct.mjs
+ create mode 100644 scripts/js/fix-n8n-workflow.mjs
+ create mode 100755 scripts/js/fix-stan-ownership.mjs
+ create mode 100755 scripts/js/migrate-samantha-kb.mjs
+ create mode 100644 scripts/js/run-migrations-via-api.mjs
+ create mode 100755 scripts/js/split-innovare-manual.mjs
+ create mode 100755 scripts/js/split-innovare-now.mjs
+ create mode 100644 scripts/js/split-innovare-workspace.mjs
+ create mode 100755 scripts/js/test-complete-pipeline.mjs
+ create mode 100755 scripts/js/test-kb-upload-all-workspaces.mjs
+ create mode 100755 scripts/js/test-n8n-webhook.mjs
+ create mode 100755 scripts/js/verify-migrations.mjs
+ create mode 100755 scripts/shell/apply-migrations-direct.sh
+ create mode 100755 scripts/shell/apply-migrations.sh
+ create mode 100644 scripts/shell/apply-security-migrations.sh
+ create mode 100755 scripts/shell/upload-n8n-workflow.sh
+ create mode 100644 supabase/.temp/storage-migration
+ create mode 100644 supabase/migrations/20251031000003_add_linkedin_url_validation.sql.bak
+ create mode 100644 supabase/migrations/20251031000006_workspace_split_utilities.sql
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251101_060000[0m
+[0;32m📅 Timestamp: Sat Nov  1 06:00:00 PST 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║          SAM AI - Automated Backup System             ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32mBackup started: Sat Nov  1 12:00:01 PST 2025[0m
+[0;32mBackup name: auto-backup-20251101_120001[0m
+
+[1;33m📦 Step 1: Backing up to Airtable...[0m
+
+/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/scripts/auto-backup.sh: line 76: node: command not found
+[0;31m❌ Airtable backup failed (non-critical)[0m
+
+[1;33m📝 Step 2: Creating Git snapshot...[0m
+

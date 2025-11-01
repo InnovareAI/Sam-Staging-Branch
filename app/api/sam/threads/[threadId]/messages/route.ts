@@ -30,6 +30,10 @@ import {
 import { INDUSTRY_BLUEPRINTS } from '@/lib/templates/industry-blueprints'
 import { llmRouter } from '@/lib/llm/llm-router'
 import { trackDocumentUsageServer } from '@/lib/knowledge-usage-tracker'
+import { detectSearchIntent, getICPAwareSearchPrompt } from '@/lib/search-intent-detector'
+import { calculateKBHealthScore, getCriticalGapsPrompt, formatKBHealthForSAM } from '@/lib/kb-health-scorer'
+import { updateKBRealtime, getKBProgressMessage } from '@/lib/realtime-kb-updater'
+import { needsValidation } from '@/lib/kb-confidence-calculator'
 
 // Helper function to call LLM via router (respects customer preferences)
 async function callLLMRouter(userId: string, messages: any[], systemPrompt: string) {
@@ -1919,7 +1923,88 @@ Let me ask 3-4 quick questions about your ideal customer and messaging to round 
 
 Keep responses conversational, max 6 lines, 2 paragraphs.`;
     }
-    
+
+    // ================================================================
+    // 🚀 BIDIRECTIONAL KB FEATURES (Nov 1, 2025)
+    // ================================================================
+
+    // Feature 1: KB Health Check - Handle /kb-health command
+    if (content.toLowerCase().trim() === '/kb-health') {
+      try {
+        const kbFeedbackResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/sam/kb-feedback`, {
+          method: 'GET',
+          headers: {
+            'Cookie': request.headers.get('cookie') || ''
+          }
+        });
+
+        if (kbFeedbackResponse.ok) {
+          const kbFeedback = await kbFeedbackResponse.json();
+          const health = calculateKBHealthScore(kbFeedback);
+          const healthMessage = formatKBHealthForSAM(health, kbFeedback.stats);
+
+          const { data: assistantMessage } = await supabase
+            .from('sam_conversation_messages')
+            .insert({
+              thread_id: resolvedParams.threadId,
+              user_id: user.id,
+              role: 'assistant',
+              content: healthMessage,
+              message_order: nextOrder + 1
+            })
+            .select()
+            .single();
+
+          return NextResponse.json({
+            success: true,
+            userMessage,
+            samMessage: assistantMessage
+          });
+        }
+      } catch (error) {
+        console.error('KB health check failed:', error);
+      }
+    }
+
+    // Feature 2: Search Intent Detection + KB Feedback Integration
+    try {
+      // Detect if user wants to search
+      const searchIntent = await detectSearchIntent(content, workspaceId);
+
+      // Get KB feedback for critical gap detection
+      const kbFeedbackResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/sam/kb-feedback`, {
+        method: 'GET',
+        headers: {
+          'Cookie': request.headers.get('cookie') || ''
+        }
+      });
+
+      if (kbFeedbackResponse.ok) {
+        const kbFeedback = await kbFeedbackResponse.json();
+
+        // Inject KB critical gaps if search intent detected
+        if (searchIntent.detected) {
+          const criticalGapsPrompt = getCriticalGapsPrompt(kbFeedback);
+          if (criticalGapsPrompt) {
+            systemPrompt += criticalGapsPrompt;
+          }
+
+          // Inject ICP-aware search prompt
+          const icpSearchPrompt = getICPAwareSearchPrompt(searchIntent);
+          if (icpSearchPrompt) {
+            systemPrompt += icpSearchPrompt;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Search intent detection failed:', error);
+      // Non-fatal - continue without enhanced features
+    }
+
+    // ================================================================
+    // END BIDIRECTIONAL KB FEATURES
+    // ================================================================
+
     // Always use AI for responses (even first message) to allow natural conversation
     {
       try {
@@ -2139,6 +2224,51 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         hint: samError.hint,
         code: samError.code
       }, { status: 500 })
+    }
+
+    // ================================================================
+    // 🚀 REAL-TIME KB UPDATES (Phase 2)
+    // ================================================================
+
+    // Update KB immediately if this was a Q&A exchange
+    const previousAssistantMessage = conversationHistory
+      .filter((m: any) => m.role === 'assistant')
+      .slice(-1)[0]?.content;
+
+    if (previousAssistantMessage && previousAssistantMessage.includes('?')) {
+      // This looks like SAM asked a question and user answered
+      updateKBRealtime(
+        workspaceId,
+        user.id,
+        previousAssistantMessage,
+        content,
+        activeDiscovery?.id
+      ).then(result => {
+        if (result.updated) {
+          console.log('✅ KB updated in real-time');
+          // Get progress message for next response
+          getKBProgressMessage(workspaceId).then(progress => {
+            if (progress) {
+              console.log(`📊 ${progress}`);
+            }
+          });
+        }
+      }).catch(error => {
+        console.error('❌ Real-time KB update failed:', error);
+        // Non-fatal - don't block conversation
+      });
+    }
+
+    // ================================================================
+    // END REAL-TIME KB UPDATES
+    // ================================================================
+
+    // Check for items needing validation and suggest proactively
+    if (workspaceId) {
+      checkForValidationNeeded(workspaceId, user.id, resolvedParams.threadId).catch(error => {
+        console.error('❌ Validation check failed:', error)
+        // Don't fail the main response
+      })
     }
 
     // Trigger knowledge extraction asynchronously (don't block response)

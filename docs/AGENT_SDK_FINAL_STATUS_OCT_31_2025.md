@@ -1,8 +1,10 @@
 # Claude Agent SDK - Final Status & Decision
 
-**Date:** October 31, 2025
+**Date:** October 31, 2025 (Updated: November 1, 2025)
 **Status:** ✅ Complete Infrastructure, ❌ Not Integrated into Production
-**Decision:** Keep as optional feature, maintain current LLM routing
+**Decision:** Keep OFF - Maintain current LLM routing system
+
+**GDPR Re-evaluation (Nov 1, 2025):** After reviewing Anthropic's GDPR compliance (DPA, 7-day retention, ZDR options), the decision remains: **Agent SDK stays OFF**. While GDPR concerns can be addressed, the fundamental issue is architectural: Agent SDK forces Claude-only conversations, eliminating customer LLM choice and increasing costs 10-30x.
 
 ---
 
@@ -54,19 +56,34 @@ docs/
 
 ## Why Not Deployed
 
-### 🚨 Critical Blocker: Customer LLM Choice
+### 🚨 Critical Blocker: Architectural Incompatibility
 
-**Problem:**
-- EU customers require ability to choose LLM providers (GDPR/data sovereignty)
-- Current system supports: OpenRouter, custom models, local deployments
-- Agent SDK only works with: Anthropic API, Bedrock, Vertex AI
-- **Cannot use Agent SDK with OpenRouter or customer-selected models**
+**The Core Problem:**
+Agent SDK **IS** the conversation engine. It's not a feature you can add alongside the LLM Router—it **replaces** it entirely.
+
+**What This Means:**
+- Current System: User talks to SAM → LLM Router → Customer's chosen LLM
+- Agent SDK System: User talks to SAM → **Claude Agent SDK only**
+- **No hybrid possible**: Can't have Agent SDK handle conversations while routing to Mistral/GPT/etc.
 
 **Customer Impact:**
-- ❌ Would force Anthropic API on all customers
-- ❌ Would break EU customer compliance requirements
-- ❌ Would remove cost optimization options
+- ❌ Would force Anthropic Claude on all conversations
+- ❌ Would eliminate customer LLM choice (competitive advantage)
+- ❌ Would break EU customers using Mistral (EU-hosted)
 - ❌ Would increase costs 10-30x for high-volume operations
+- ❌ Would require all EU customers to migrate to AWS Bedrock EU for GDPR compliance
+
+### ✅ GDPR Can Be Solved, But Doesn't Change the Decision
+
+**Nov 1, 2025 Update:**
+Anthropic now offers strong GDPR compliance:
+- ✅ Data Processing Addendum (DPA) available
+- ✅ No training on customer data (by default)
+- ✅ 7-day log retention (down from 30 days)
+- ✅ Zero-Data-Retention (ZDR) option for regulated industries
+- ✅ Can deploy via AWS Bedrock (Frankfurt) for EU data residency
+
+**However**, this doesn't solve the core issue: **Agent SDK eliminates customer LLM choice**, which is a strategic product advantage.
 
 ### 💰 Cost Comparison
 
@@ -443,6 +460,7 @@ Customers can select:
 **Availability:** ✅ Ready if Needed
 **Impact:** Zero (No Production Changes)
 
-**Last Updated:** October 31, 2025
-**Decision By:** Customer Requirements (EU LLM Choice)
+**Last Updated:** November 1, 2025
+**Decision By:** Product Strategy (Customer LLM Choice + Cost Optimization)
 **Technical Lead:** Claude AI (Sonnet 4.5)
+**GDPR Review:** Completed Nov 1, 2025 - GDPR compliance available but doesn't change architectural decision

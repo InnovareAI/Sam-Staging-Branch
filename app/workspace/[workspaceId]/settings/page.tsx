@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import LLMConfigModal from '@/components/LLMConfigModal'
 import EmailProvidersModal from '@/app/components/EmailProvidersModal'
+import KBValidationPanel from '@/components/KBValidationPanel'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import {
   Settings,
@@ -27,7 +28,8 @@ import {
   UserPlus,
   Clock,
   Trash2,
-  Loader2
+  Loader2,
+  Database
 } from 'lucide-react'
 
 export default function WorkspaceSettingsPage({ params }: { params: { workspaceId: string } }) {
@@ -192,10 +194,11 @@ export default function WorkspaceSettingsPage({ params }: { params: { workspaceI
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <TabsList className="grid w-full grid-cols-6 bg-white/70 backdrop-blur-sm border border-white/20 shadow-lg">
+            <TabsList className="grid w-full grid-cols-7 bg-white/70 backdrop-blur-sm border border-white/20 shadow-lg">
               {[
                 { id: 'general', icon: Settings, label: 'General' },
                 { id: 'team', icon: Users, label: 'Team' },
+                { id: 'knowledge', icon: Database, label: 'Knowledge' },
                 { id: 'integrations', icon: Zap, label: 'Integrations' },
                 { id: 'compliance', icon: Shield, label: 'Compliance' },
                 { id: 'billing', icon: CreditCard, label: 'Billing' },
@@ -481,6 +484,37 @@ export default function WorkspaceSettingsPage({ params }: { params: { workspaceI
                     </CardContent>
                   </Card>
                 )}
+              </motion.div>
+            </TabsContent>
+
+            {/* Knowledge Base Tab */}
+            <TabsContent value="knowledge" className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Database className="h-5 w-5 text-indigo-600" />
+                      Knowledge Base Validation
+                    </CardTitle>
+                    <CardDescription>
+                      Review and validate KB items with low confidence scores
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <KBValidationPanel
+                      workspaceId={params.workspaceId}
+                      threshold={0.8}
+                      onValidationComplete={() => {
+                        setInviteSuccess('KB item validated successfully!')
+                        setTimeout(() => setInviteSuccess(''), 3000)
+                      }}
+                    />
+                  </CardContent>
+                </Card>
               </motion.div>
             </TabsContent>
 

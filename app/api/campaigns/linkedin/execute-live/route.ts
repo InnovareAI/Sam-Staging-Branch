@@ -488,11 +488,14 @@ export async function POST(req: NextRequest) {
         prospects: n8nProspects,
         messages: messages,
         timing: {
-          fu1_delay_days: flowSettings.followup_wait_days || 2,
-          fu2_delay_days: flowSettings.followup_wait_days || 5,
-          fu3_delay_days: flowSettings.followup_wait_days || 7,
-          fu4_delay_days: flowSettings.followup_wait_days || 5,
-          gb_delay_days: flowSettings.followup_wait_days || 7
+          // Standard funnel timing (ALL workspaces):
+          // CR → 6h → FU1 → 3d → FU2 → 5d → FU3 → 5d → FU4 → 5d → FU5 → 5d → FU6
+          fu1_delay_hours: 6,   // FU1: 6 hours after CR
+          fu2_delay_days: 3,    // FU2: 3 days after FU1
+          fu3_delay_days: 5,    // FU3: 5 days after FU2
+          fu4_delay_days: 5,    // FU4: 5 days after FU3
+          fu5_delay_days: 5,    // FU5: 5 days after FU4
+          fu6_delay_days: 5     // FU6: 5 days after FU5 (final message)
         },
         supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL,
         supabase_service_key: process.env.SUPABASE_SERVICE_ROLE_KEY,
