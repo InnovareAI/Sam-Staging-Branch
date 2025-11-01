@@ -581,6 +581,21 @@ async function enrichLinkedInProfiles(req: NextRequest, user: any) {
       const brightdataToken = process.env.BRIGHTDATA_MCP_TOKEN ||
         'e81e9ea14a70da562e17d99abe8dad29df66ad0e57b1fc7df0db866c48fa2a42';
 
+      console.log(`🔍 Attempting to scrape: ${linkedinUrl}`);
+      console.log(`🔍 Using BrightData MCP token: ${brightdataToken.substring(0, 10)}...`);
+
+      const requestBody = {
+        jsonrpc: '2.0',
+        id: Date.now(),
+        method: 'tools/call',
+        params: {
+          name: 'brightdata_scrape_as_markdown',
+          arguments: { url: linkedinUrl }
+        }
+      };
+
+      console.log('🔍 BrightData MCP Request:', JSON.stringify(requestBody, null, 2));
+
       // Call BrightData MCP HTTP endpoint (not SSE)
       // SSE is for streaming, we need the HTTP endpoint for request/response
       const scrapeResponse = await fetch(`https://mcp.brightdata.com/mcp?token=${brightdataToken}`, {
@@ -589,16 +604,11 @@ async function enrichLinkedInProfiles(req: NextRequest, user: any) {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: Date.now(),
-          method: 'tools/call',
-          params: {
-            name: 'brightdata_scrape_as_markdown',
-            arguments: { url: linkedinUrl }
-          }
-        })
+        body: JSON.stringify(requestBody)
       });
+
+      console.log(`🔍 BrightData Response Status: ${scrapeResponse.status} ${scrapeResponse.statusText}`);
+      console.log(`🔍 BrightData Response Headers:`, Object.fromEntries(scrapeResponse.headers.entries()));
 
       if (!scrapeResponse.ok) {
         const errorText = await scrapeResponse.text();
@@ -606,7 +616,7 @@ async function enrichLinkedInProfiles(req: NextRequest, user: any) {
         enrichedProfiles.push({
           linkedin_url: linkedinUrl,
           verification_status: 'failed' as const,
-          error: `BrightData scraping failed: ${scrapeResponse.status}`
+          error: `BrightData scraping failed: ${scrapeResponse.status} - ${errorText}`
         });
         continue;
       }
