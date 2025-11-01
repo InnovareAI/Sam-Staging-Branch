@@ -47,11 +47,10 @@ export async function GET(request: NextRequest) {
     console.log('[KB Documents API] Fetching documents for workspace:', workspaceId);
 
     const { data: documents, error: docsError } = await supabase
-      .from('knowledge_base_documents')
-      .select('id, section_id, filename, summary, tags, vector_chunks, vectorized_at, processed_at, updated_at, metadata')
+      .from('knowledge_base')
+      .select('id, category, title, tags, source_metadata, created_at, updated_at')
       .eq('workspace_id', workspaceId)
-      // TODO: Add is_active column to knowledge_base_documents table, then uncomment:
-      // .eq('is_active', true)
+      .eq('is_active', true)
       .order('updated_at', { ascending: false })
       .limit(20);
 
@@ -80,36 +79,42 @@ export async function GET(request: NextRequest) {
 
     const merged = (documents || []).map((doc) => {
       try {
-        const metadata = typeof doc.metadata === 'string' ? JSON.parse(doc.metadata) : (doc.metadata || {});
-        const baseTitle = metadata?.displayTitle || doc.filename || 'Untitled Document';
-        const cleanedTitle = baseTitle
+        const sourceMetadata = typeof doc.source_metadata === 'string' ? JSON.parse(doc.source_metadata) : (doc.source_metadata || {});
+        const aiAnalysis = sourceMetadata.ai_analysis || {};
+        const vectorization = sourceMetadata.vectorization || {};
+
+        const cleanedTitle = doc.title
           .replace(/_/g, ' ')
           .replace(/-/g, ' ')
           .replace(/\.[^/.]+$/, '')
           .replace(/\s+/g, ' ')
           .trim()
           .replace(/\b\w/g, (char) => char.toUpperCase());
+
         const summary = summaryMap.get(doc.id);
+
         return {
           id: doc.id,
-          section: doc.section_id,
+          category: doc.category,
+          section: doc.category, // Map category to section for frontend compatibility
           title: cleanedTitle,
-          summary: summary?.quick_summary || doc.summary || '',
+          summary: summary?.quick_summary || aiAnalysis.summary || '',
           tags: summary?.tags || doc.tags || [],
-          vectorChunks: doc.vector_chunks || 0,
-          updatedAt: doc.updated_at || doc.processed_at || doc.vectorized_at,
-          metadata: metadata
+          vectorChunks: vectorization.vector_chunks || 0,
+          updatedAt: doc.updated_at,
+          metadata: sourceMetadata
         };
       } catch (err) {
         console.error('[KB Documents API] Error processing document:', doc.id, err);
         return {
           id: doc.id,
-          section: doc.section_id,
-          title: doc.filename || 'Untitled Document',
-          summary: doc.summary || '',
+          category: doc.category,
+          section: doc.category,
+          title: doc.title || 'Untitled Document',
+          summary: '',
           tags: doc.tags || [],
-          vectorChunks: doc.vector_chunks || 0,
-          updatedAt: doc.updated_at || doc.processed_at || doc.vectorized_at,
+          vectorChunks: 0,
+          updatedAt: doc.updated_at,
           metadata: {}
         };
       }
@@ -152,10 +157,10 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
     }
 
-    // Hard delete for now (TODO: implement soft delete with is_active column)
+    // Soft delete using is_active column
     const { error } = await supabase
-      .from('knowledge_base_documents')
-      .delete()
+      .from('knowledge_base')
+      .update({ is_active: false })
       .eq('id', id)
       .eq('workspace_id', workspaceId);
 
