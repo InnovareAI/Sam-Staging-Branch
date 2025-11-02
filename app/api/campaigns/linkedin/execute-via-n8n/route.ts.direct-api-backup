@@ -1,0 +1,367 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+
+/**
+ * LinkedIn Campaign Execution via Direct Unipile API
+ *
+ * Sends LinkedIn connection requests directly via Unipile API
+ * (N8N integration removed for simplicity - direct API is faster and more reliable)
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
+    const body = await request.json();
+    const { campaignId, workspaceId } = body;
+
+    console.log('🚀 Direct LinkedIn Campaign Execution');
+    console.log(`   Campaign ID: ${campaignId}`);
+    console.log(`   Workspace ID: ${workspaceId}`);
+
+    if (!campaignId || !workspaceId) {
+      return NextResponse.json(
+        { error: 'Missing required fields: campaignId, workspaceId' },
+        { status: 400 }
+      );
+    }
+
+    // Step 1: Authenticate user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Step 2: Verify workspace access
+    const { data: member } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!member) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Step 3: Get LinkedIn account from workspace_accounts
+    const { data: linkedinAccounts } = await supabase
+      .from('workspace_accounts')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .eq('account_type', 'linkedin')
+      .eq('is_active', true);
+
+    if (!linkedinAccounts || linkedinAccounts.length === 0) {
+      return NextResponse.json({
+        error: 'No active LinkedIn account found',
+        message: 'Please connect a LinkedIn account in Workspace Settings → Integrations'
+      }, { status: 400 });
+    }
+
+    const linkedinAccount = linkedinAccounts[0];
+    console.log(`✅ Using LinkedIn account: ${linkedinAccount.account_name}`);
+
+    // Step 4: Verify Unipile account is active
+    const unipileCheckUrl = `https://${process.env.UNIPILE_DSN}/api/v1/accounts/${linkedinAccount.unipile_account_id}`;
+    const unipileCheckResponse = await fetch(unipileCheckUrl, {
+      method: 'GET',
+      headers: {
+        'X-API-KEY': process.env.UNIPILE_API_KEY || '',
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!unipileCheckResponse.ok) {
+      return NextResponse.json({
+        error: 'LinkedIn account not accessible in Unipile',
+        message: 'Please reconnect your LinkedIn account in Settings'
+      }, { status: 400 });
+    }
+
+    const unipileAccountData = await unipileCheckResponse.json();
+    const activeSource = unipileAccountData.sources?.find((s: any) => s.status === 'OK');
+
+    if (!activeSource) {
+      return NextResponse.json({
+        error: 'LinkedIn session expired',
+        message: 'Please reconnect your LinkedIn account'
+      }, { status: 400 });
+    }
+
+    const unipileSourceId = activeSource.id;
+    console.log(`✅ Unipile source ID: ${unipileSourceId}`);
+
+    // Step 5: Get campaign and prospects
+    const { data: campaign } = await supabase
+      .from('campaigns')
+      .select(`
+        *,
+        campaign_prospects (
+          id,
+          first_name,
+          last_name,
+          email,
+          company_name,
+          title,
+          linkedin_url,
+          linkedin_user_id,
+          location,
+          industry,
+          status,
+          contacted_at,
+          personalization_data
+        )
+      `)
+      .eq('id', campaignId)
+      .eq('workspace_id', workspaceId)
+      .single();
+
+    if (!campaign) {
+      return NextResponse.json({
+        error: 'Campaign not found'
+      }, { status: 404 });
+    }
+
+    // Filter for pending or queued_in_n8n prospects
+    const pendingProspects = campaign.campaign_prospects?.filter(
+      (cp: any) => ['pending', 'queued_in_n8n'].includes(cp.status) && cp.linkedin_url
+    ) || [];
+
+    console.log(`📊 Found ${pendingProspects.length} prospects ready to contact`);
+
+    if (pendingProspects.length === 0) {
+      return NextResponse.json({
+        message: 'No pending prospects to contact',
+        processed: 0
+      });
+    }
+
+    // Step 6: Send connection requests via Unipile with humanized delays
+    const results = {
+      sent: 0,
+      failed: 0,
+      errors: [] as any[]
+    };
+
+    const messageTemplate = campaign.message_templates?.connection_request
+      || campaign.message_templates?.alternative_message
+      || 'Hi {first_name}, I would like to connect!';
+
+    // Helper function to add random delay (anti-bot behavior)
+    const randomDelay = (min: number, max: number) => {
+      const delay = Math.floor(Math.random() * (max - min + 1) + min);
+      return new Promise(resolve => setTimeout(resolve, delay));
+    };
+
+    for (let i = 0; i < pendingProspects.length; i++) {
+      const prospect = pendingProspects[i];
+
+      // Add random delay between requests (2-5 minutes) to avoid LinkedIn ban
+      if (i > 0) {
+        const delayMs = Math.floor(Math.random() * (5 * 60 * 1000 - 2 * 60 * 1000 + 1) + 2 * 60 * 1000);
+        const delayMinutes = Math.floor(delayMs / 60000);
+        console.log(`\n⏳ Waiting ${delayMinutes} minutes before next request (anti-spam)...`);
+        await randomDelay(delayMs, delayMs);
+      }
+      try {
+        console.log(`\n📤 Processing: ${prospect.first_name} ${prospect.last_name}`);
+        console.log(`   LinkedIn: ${prospect.linkedin_url}`);
+
+        // Step 6a: Get LinkedIn profile ID if not already cached
+        let linkedinProfileId = prospect.linkedin_user_id;
+
+        if (!linkedinProfileId) {
+          // Extract username from LinkedIn URL
+          const username = extractLinkedInUsername(prospect.linkedin_url);
+          if (!username) {
+            throw new Error('Invalid LinkedIn URL format');
+          }
+
+          console.log(`   Looking up profile: ${username}`);
+
+          // Lookup LinkedIn profile ID
+          const lookupUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/${username}?account_id=${linkedinAccount.unipile_account_id}&provider=LINKEDIN`;
+          const lookupResponse = await fetch(lookupUrl, {
+            method: 'GET',
+            headers: {
+              'X-API-KEY': process.env.UNIPILE_API_KEY || '',
+              'Accept': 'application/json'
+            }
+          });
+
+          if (!lookupResponse.ok) {
+            throw new Error(`Profile lookup failed: ${lookupResponse.statusText}`);
+          }
+
+          const profileData = await lookupResponse.json();
+          linkedinProfileId = profileData.id;
+
+          // Cache the LinkedIn ID
+          await supabase
+            .from('campaign_prospects')
+            .update({ linkedin_user_id: linkedinProfileId })
+            .eq('id', prospect.id);
+
+          console.log(`   ✅ Profile ID: ${linkedinProfileId}`);
+        }
+
+        // Step 6b: Personalize message
+        const personalizedMessage = messageTemplate
+          .replace(/\{first_name\}/g, prospect.first_name || 'there')
+          .replace(/\{last_name\}/g, prospect.last_name || '')
+          .replace(/\{company_name\}/g, prospect.company_name || '')
+          .replace(/\{title\}/g, prospect.title || '')
+          .replace(/\{industry\}/g, prospect.industry || '')
+          .replace(/\{location\}/g, prospect.location || '');
+
+        console.log(`   Message: ${personalizedMessage.substring(0, 50)}...`);
+
+        // Step 6c: Send connection request via Unipile
+        const inviteUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/invite`;
+        const inviteResponse = await fetch(inviteUrl, {
+          method: 'POST',
+          headers: {
+            'X-API-KEY': process.env.UNIPILE_API_KEY || '',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            account_id: linkedinAccount.unipile_account_id,
+            user_id: linkedinProfileId,
+            message: personalizedMessage
+          })
+        });
+
+        if (!inviteResponse.ok) {
+          const errorText = await inviteResponse.text();
+          throw new Error(`Unipile invite failed: ${inviteResponse.status} - ${errorText}`);
+        }
+
+        const inviteData = await inviteResponse.json();
+        console.log(`   ✅ Connection request sent`);
+
+        // Extract message ID from response (check multiple possible locations)
+        const unipileMessageId = inviteData.object?.id
+          || inviteData.id
+          || inviteData.data?.id
+          || inviteData.message_id
+          || inviteData.invitation_id
+          || `untracked_${Date.now()}_${prospect.id}`;
+
+        // Step 6d: Update prospect status
+        await supabase
+          .from('campaign_prospects')
+          .update({
+            status: 'connection_requested',
+            contacted_at: new Date().toISOString(),
+            personalization_data: {
+              ...prospect.personalization_data,
+              unipile_message_id: unipileMessageId,
+              unipile_account_id: linkedinAccount.unipile_account_id,
+              unipile_source_id: unipileSourceId,
+              sent_at: new Date().toISOString()
+            }
+          })
+          .eq('id', prospect.id);
+
+        results.sent++;
+
+      } catch (error) {
+        console.error(`   ❌ Failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+        results.failed++;
+        results.errors.push({
+          prospect: `${prospect.first_name} ${prospect.last_name}`,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+
+        // Mark as failed
+        await supabase
+          .from('campaign_prospects')
+          .update({ status: 'failed' })
+          .eq('id', prospect.id);
+      }
+    }
+
+    // Step 7: Update campaign status
+    await supabase
+      .from('campaigns')
+      .update({
+        status: 'active',
+        launched_at: new Date().toISOString()
+      })
+      .eq('id', campaignId);
+
+    console.log('\n🎉 Campaign execution completed!');
+    console.log(`📊 Sent: ${results.sent}, Failed: ${results.failed}`);
+
+    return NextResponse.json({
+      success: true,
+      message: `Campaign executed: ${results.sent} connection requests sent. ${results.failed} failed`,
+      sent: results.sent,
+      failed: results.failed,
+      errors: results.errors,
+      linkedin_account: linkedinAccount.account_name
+    });
+
+  } catch (error) {
+    console.error('Campaign execution error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        details: error instanceof Error ? error.stack : undefined
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// Helper function to extract LinkedIn username from URL
+function extractLinkedInUsername(linkedinUrl: string): string | null {
+  if (!linkedinUrl) return null;
+
+  try {
+    // Remove trailing slash
+    let url = linkedinUrl.trim().replace(/\/$/, '');
+
+    // If it's a full URL, extract the path
+    if (url.startsWith('http')) {
+      const urlObj = new URL(url);
+      url = urlObj.pathname;
+    }
+
+    // Extract username from /in/username pattern
+    const match = url.match(/\/in\/([^\/]+)/);
+    if (match && match[1]) {
+      return match[1];
+    }
+
+    // If no /in/ pattern, assume it's just the username
+    if (!url.includes('/')) {
+      return url;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error parsing LinkedIn URL:', error);
+    return null;
+  }
+}
