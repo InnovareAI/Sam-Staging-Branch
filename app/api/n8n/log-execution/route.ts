@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
         n8n_execution_id: n8n_execution_id,
         n8n_workflow_id: n8n_workflow_id,
         campaign_name: campaign_name || 'Unnamed Campaign',
-        campaign_type: campaign_type || 'linkedin',
+        campaign_type: campaign_type || 'linkedin_only',
         execution_config: execution_config || {},
         total_prospects: total_prospects || 0,
         processed_prospects: processed_prospects || 0,
