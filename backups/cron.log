@@ -3144,3 +3144,60 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main 26cb750a] 🔄 Auto-backup: auto-backup-20251103_180000
+ Committer: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 23 files changed, 6528 insertions(+)
+ create mode 100644 app/api/n8n/log-execution/route.ts
+ create mode 100644 docs/CORRECT-N8N-ACCESS-INSTRUCTIONS.md
+ create mode 100644 docs/DEEPAGENT-N8N-CAMPAIGN-WORKFLOW-UPDATES.md
+ create mode 100644 docs/EXECUTIVE-SUMMARY-N8N-WORKFLOW-UPDATE.md
+ create mode 100644 docs/FINAL-VERIFIED-WORKFLOW.md
+ create mode 100644 docs/N8N-EXECUTION-TRACKING-SETUP.md
+ create mode 100644 docs/N8N-WORKFLOW-SECURITY-AUDIT.md
+ create mode 100644 scripts/js/add-logging-to-workflow.mjs
+ create mode 100644 scripts/js/backfill-knowledge-vectors.mjs
+ create mode 100644 scripts/js/update-n8n-workflows.mjs
+ create mode 100644 sql/migrations/2025-11-03-CRITICAL-DATA-PERSISTENCE-FIXES.md
+ create mode 100644 sql/migrations/2025-11-03-DATABASE-CLEANUP-REPORT.md
+ create mode 100644 sql/migrations/2025-11-03-SESSION-SUMMARY-FINAL.md
+ create mode 100644 sql/migrations/2025-11-03-SESSION-SUMMARY.md
+ create mode 100644 sql/migrations/2025-11-03-add-workspace-id-to-critical-tables.sql
+ create mode 100644 sql/migrations/2025-11-03-enable-rls-on-unprotected-tables.sql
+ create mode 100644 sql/migrations/2025-11-03-fix-orphaned-sam-threads.sql
+ create mode 100644 sql/migrations/2025-11-03-fix-sam-conversation-messages.sql
+ create mode 100644 sql/migrations/2025-11-03-orphaned-tables-analysis.sql
+ create mode 100644 sql/migrations/2025-11-03-redundant-tables-analysis.sql
+ create mode 100644 sql/migrations/QUICK-START-DEPLOYMENT.md
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251103_180000[0m
+[0;32m📅 Timestamp: Mon Nov  3 18:00:00 PST 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+
