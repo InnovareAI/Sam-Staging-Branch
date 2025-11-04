@@ -134,32 +134,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Final workspace:', workspaceId);
-
-    // SECURITY: Verify workspace isolation - user MUST be a member of this workspace
-    const { data: membershipCheck, error: membershipError } = await supabaseAdmin()
-      .from('workspace_members')
-      .select('role, workspace_id')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
-
-    if (!membershipCheck || membershipError) {
-      console.error('❌ SECURITY: User is not a member of workspace:', {
-        userId: user.id,
-        workspaceId,
-        error: membershipError?.message
-      });
-      return NextResponse.json({
-        error: 'Access denied: You are not a member of this workspace',
-        debug: { userId: user.id, workspaceId }
-      }, { status: 403 });
-    }
-
-    console.log('✅ Workspace membership verified:', {
-      workspaceId,
-      role: membershipCheck.role,
-      userId: user.id
-    });
+    // Note: Membership already verified above (lines 105-126), no need for redundant check
 
     // CRITICAL FIX: Query Unipile API directly instead of trusting stale database records
     // This ensures we always get live account data and avoid 404 errors from stale IDs

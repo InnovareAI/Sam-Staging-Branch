@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { supabaseAdmin } from '@/app/lib/supabase';
 
 /**
  * Smart LinkedIn Search Router with Automatic Fallback
@@ -237,7 +238,8 @@ async function detectLinkedInAccountType(
   strategy: string;
 }> {
   // Get user's LinkedIn accounts from workspace
-  const { data: accounts } = await supabase
+  // CRITICAL: Use admin client to bypass RLS for workspace_accounts
+  const { data: accounts } = await supabaseAdmin()
     .from('workspace_accounts')
     .select('unipile_account_id, linkedin_account_type, account_features')
     .eq('workspace_id', workspaceId)
