@@ -177,7 +177,8 @@ export async function POST(request: NextRequest) {
     // Any workspace member can use any connected account in their workspace
     console.log(`🔍 Finding LinkedIn accounts for workspace ${workspaceId} (user: ${user.email})`);
 
-    const { data: userLinkedInAccounts, error: userAccountsError } = await supabase
+    // CRITICAL: Use admin client to bypass RLS for workspace_accounts
+    const { data: userLinkedInAccounts, error: userAccountsError } = await supabaseAdmin()
       .from('workspace_accounts')
       .select('unipile_account_id, account_name, user_id')
       .eq('workspace_id', workspaceId)
