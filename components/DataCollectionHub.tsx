@@ -1048,12 +1048,15 @@ export default function DataCollectionHub({
 
   // Bulk selection handlers
   const toggleSelectProspect = (prospectId: string) => {
+    console.log('🔘 Checkbox toggled for prospect:', prospectId);
     setSelectedProspectIds(prev => {
       const newSet = new Set(prev)
       if (newSet.has(prospectId)) {
         newSet.delete(prospectId)
+        console.log('✓ Deselected. New count:', newSet.size);
       } else {
         newSet.add(prospectId)
+        console.log('✓ Selected. New count:', newSet.size);
       }
       return newSet
     })
@@ -1431,6 +1434,19 @@ export default function DataCollectionHub({
                   </button>
                 )}
 
+
+            {/* DEBUG: Enrichment button visibility */}
+            {console.log('🔍 Enrichment Button Debug:', {
+              selectedCount: selectedProspectIds.size,
+              workspaceId: workspaceId,
+              shouldShow: selectedProspectIds.size > 0 && workspaceId,
+              selectedIds: Array.from(selectedProspectIds)
+            })}
+
+            {/* Temporary Debug UI - Remove after fixing */}
+            <div className="text-xs text-gray-400 p-2 bg-gray-900/50 rounded border border-yellow-500/30">
+              🔍 Enrichment Debug: Selected={selectedProspectIds.size} | WorkspaceId={workspaceId ? '✓' : '✗'}
+            </div>
 
             {/* Enrich Selected Prospects - BrightData enrichment for missing data */}
             {selectedProspectIds.size > 0 && workspaceId && (
