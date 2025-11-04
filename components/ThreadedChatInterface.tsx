@@ -416,6 +416,19 @@ export default function ThreadedChatInterface() {
       const result = await response.json()
 
       if (result.success && result.session) {
+        // Get workspace_id from current thread
+        let workspaceId = currentThread.workspace_id
+        if (!workspaceId) {
+          // Fetch thread data to get workspace_id
+          const threadResponse = await fetch('/api/sam/threads/' + currentThread.id)
+          const threadData = await threadResponse.json()
+          workspaceId = threadData.thread?.workspace_id
+        }
+
+        if (!workspaceId) {
+          throw new Error('No workspace context available. Please refresh and try again.')
+        }
+
         // Transform CSV data to ProspectData format
         const transformedProspects: ProspectData[] = result.session.processed_data.map((prospect: any, index: number) => ({
           id: `csv-${Date.now()}-${index}`,
@@ -440,7 +453,7 @@ export default function ThreadedChatInterface() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            workspace_id: currentThread.workspace_id || 'default',
+            workspace_id: workspaceId,
             name: campaignName,
             description: `CSV Upload: ${file.name}`,
             campaign_type: 'linkedin_only',
@@ -448,10 +461,16 @@ export default function ThreadedChatInterface() {
           })
         })
 
-        let campaign_id = null
-        if (campaignResponse.ok) {
-          const campaignResult = await campaignResponse.json()
-          campaign_id = campaignResult.campaign?.id
+        if (!campaignResponse.ok) {
+          const errorData = await campaignResponse.json().catch(() => ({ error: 'Unknown error' }))
+          throw new Error(`Failed to create campaign: ${errorData.error || campaignResponse.statusText}`)
+        }
+
+        const campaignResult = await campaignResponse.json()
+        const campaign_id = campaignResult.campaign?.id
+
+        if (!campaign_id) {
+          throw new Error('Campaign created but no ID returned')
         }
 
         // Store as last search results
@@ -943,6 +962,19 @@ export default function ThreadedChatInterface() {
 
     setIsSending(true)
     try {
+      // Get workspace_id from current thread
+      let workspaceId = currentThread.workspace_id
+      if (!workspaceId) {
+        // Fetch thread data to get workspace_id
+        const threadResponse = await fetch('/api/sam/threads/' + currentThread.id)
+        const threadData = await threadResponse.json()
+        workspaceId = threadData.thread?.workspace_id
+      }
+
+      if (!workspaceId) {
+        throw new Error('No workspace context available. Please refresh and try again.')
+      }
+
       const response = await fetch('/api/sam/mcp-tools', {
         method: 'POST',
         headers: {
@@ -950,7 +982,7 @@ export default function ThreadedChatInterface() {
         },
         body: JSON.stringify({
           input,
-          workspaceId: currentThread.workspace_id || 'default',
+          workspaceId: workspaceId,
           conversationContext: {
             threadId: currentThread.id,
             prospectName: currentThread.prospect_name,
@@ -1153,6 +1185,19 @@ export default function ThreadedChatInterface() {
       const result = await response.json()
 
       if (result.success && result.data.prospects) {
+        // Get workspace_id from current thread
+        let workspaceId = currentThread.workspace_id
+        if (!workspaceId) {
+          // Fetch thread data to get workspace_id
+          const threadResponse = await fetch('/api/sam/threads/' + currentThread.id)
+          const threadData = await threadResponse.json()
+          workspaceId = threadData.thread?.workspace_id
+        }
+
+        if (!workspaceId) {
+          throw new Error('No workspace context available. Please refresh and try again.')
+        }
+
         // Create campaign with pending_approval status
         const campaignResponse = await fetch('/api/campaigns', {
           method: 'POST',
@@ -1160,7 +1205,7 @@ export default function ThreadedChatInterface() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            workspace_id: currentThread.workspace_id || 'default',
+            workspace_id: workspaceId,
             name: campaignName,
             description: `Search: ${input}`,
             campaign_type: 'linkedin_only',
@@ -1168,12 +1213,17 @@ export default function ThreadedChatInterface() {
           })
         })
 
-        let campaign_id = null
-        let createdCampaign = null
-        if (campaignResponse.ok) {
-          const campaignResult = await campaignResponse.json()
-          createdCampaign = campaignResult.campaign
-          campaign_id = createdCampaign?.id
+        if (!campaignResponse.ok) {
+          const errorData = await campaignResponse.json().catch(() => ({ error: 'Unknown error' }))
+          throw new Error(`Failed to create campaign: ${errorData.error || campaignResponse.statusText}`)
+        }
+
+        const campaignResult = await campaignResponse.json()
+        const createdCampaign = campaignResult.campaign
+        const campaign_id = createdCampaign?.id
+
+        if (!campaign_id) {
+          throw new Error('Campaign created but no ID returned')
         }
 
         // Store prospect data for approval

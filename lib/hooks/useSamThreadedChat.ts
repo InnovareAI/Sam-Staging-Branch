@@ -20,11 +20,12 @@ export interface SamThreadMessage {
 export interface SamConversationThread {
   id: string;
   user_id: string;
+  workspace_id?: string;
   organization_id?: string;
   title: string;
   thread_type: 'prospect' | 'campaign' | 'general' | 'linkedin_research' | 'company_analysis';
   status: 'active' | 'archived' | 'completed';
-  
+
   // Thread context
   prospect_name?: string;
   prospect_company?: string;
