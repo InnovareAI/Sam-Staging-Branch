@@ -1079,7 +1079,7 @@ export default function Page() {
 
           const isAdmin = checkSuperAdmin(user.email || '');
           setIsSuperAdmin(isAdmin);
-          await loadWorkspaces(user.id, isAdmin);
+          await loadWorkspaces(user.id, isAdmin, user.email || session?.user?.email);
         } else {
           setSession(null);
         }
@@ -1120,11 +1120,11 @@ export default function Page() {
         
         setUser(session?.user || null);
         setSession(session); // Cache session for token optimization
-        
+
         if (session?.user) {
           const isAdmin = checkSuperAdmin(session.user.email || '');
           setIsSuperAdmin(isAdmin);
-          loadWorkspaces(session.user.id, isAdmin);
+          loadWorkspaces(session.user.id, isAdmin, session.user.email);
         }
         
         // Only set auth loading to false if this is not the initial session event
@@ -1879,28 +1879,20 @@ export default function Page() {
   };
 
   // Load all workspaces for super admin or user's own workspaces
-  const loadWorkspaces = async (userId: string, isAdmin?: boolean) => {
+  const loadWorkspaces = async (userId: string, isAdmin?: boolean, userEmail?: string) => {
     try {
-      console.log('🔄 loadWorkspaces called with userId:', userId, 'isAdmin:', isAdmin, 'isSuperAdmin:', isSuperAdmin);
+      console.log('🔄 loadWorkspaces called with userId:', userId, 'isAdmin:', isAdmin, 'userEmail:', userEmail);
       setWorkspacesLoading(true);
-      
-      // 🚨 SECURITY: Force strict tenant separation - only explicit super admins can see all workspaces
-      // Get email from Supabase session since user object may not have email
-      const { data: { session } } = await supabase.auth.getSession();
-      const userEmail = session?.user?.email?.toLowerCase() || user?.email?.toLowerCase() || '';
 
-      // CRITICAL FIX: If email is empty, wait for auth to complete
-      if (!userEmail && session?.user?.id) {
-        console.warn('⚠️ Email not loaded yet, retrying in 1s...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const { data: { session: retrySession } } = await supabase.auth.getSession();
-        const retryEmail = retrySession?.user?.email?.toLowerCase() || '';
-        if (retryEmail) {
-          console.log('✅ Email loaded on retry:', retryEmail);
-        }
+      // 🚨 SECURITY: Force strict tenant separation - only explicit super admins can see all workspaces
+      // Use passed email first (from auth state), fallback to fetching if not provided
+      let finalEmail = userEmail?.toLowerCase() || '';
+
+      if (!finalEmail) {
+        const { data: { session } } = await supabase.auth.getSession();
+        finalEmail = session?.user?.email?.toLowerCase() || user?.email?.toLowerCase() || '';
       }
 
-      const finalEmail = userEmail || session?.user?.email?.toLowerCase() || user?.email?.toLowerCase() || '';
       const isTrueSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(finalEmail);
       const shouldLoadAllWorkspaces = isTrueSuperAdmin && (isAdmin ?? isSuperAdmin);
 
