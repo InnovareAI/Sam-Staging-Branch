@@ -454,7 +454,7 @@ async function checkLinkedInAccountCapabilities(supabase: any, userId: string, w
     .select('*')
     .eq('workspace_id', workspaceId)
     .eq('user_id', userId)
-    .eq('provider', 'linkedin');
+    .eq('account_type', 'linkedin');
 
   if (!accounts || accounts.length === 0) {
     return {
