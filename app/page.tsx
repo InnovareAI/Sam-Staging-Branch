@@ -1888,11 +1888,24 @@ export default function Page() {
       // Get email from Supabase session since user object may not have email
       const { data: { session } } = await supabase.auth.getSession();
       const userEmail = session?.user?.email?.toLowerCase() || user?.email?.toLowerCase() || '';
-      const isTrueSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(userEmail);
+
+      // CRITICAL FIX: If email is empty, wait for auth to complete
+      if (!userEmail && session?.user?.id) {
+        console.warn('⚠️ Email not loaded yet, retrying in 1s...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const { data: { session: retrySession } } = await supabase.auth.getSession();
+        const retryEmail = retrySession?.user?.email?.toLowerCase() || '';
+        if (retryEmail) {
+          console.log('✅ Email loaded on retry:', retryEmail);
+        }
+      }
+
+      const finalEmail = userEmail || session?.user?.email?.toLowerCase() || user?.email?.toLowerCase() || '';
+      const isTrueSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(finalEmail);
       const shouldLoadAllWorkspaces = isTrueSuperAdmin && (isAdmin ?? isSuperAdmin);
-      
+
       console.log('🛡️ SECURITY CHECK:');
-      console.log('  - User email:', userEmail);
+      console.log('  - User email:', finalEmail);
       console.log('  - Is true super admin:', isTrueSuperAdmin);
       console.log('  - Should load all workspaces:', shouldLoadAllWorkspaces);
       
