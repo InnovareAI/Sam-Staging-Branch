@@ -153,64 +153,78 @@ async function fetchApprovalSessions(page: number = 1, limit: number = 50, statu
       return { prospects: [], pagination: { page: 1, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false, showing: 0 } }
     }
 
-    // For now, use first active session
-    // TODO: Support multiple sessions or session selector
-    let activeSession = data.sessions.find((s: any) => s.session_status === 'active')
-    if (!activeSession) {
-      console.warn('No active session found. Using most recent session instead.')
-      // Fallback to most recent session if no active session found
-      activeSession = data.sessions[0]
-      if (!activeSession) {
-        return { prospects: [], pagination: { page: 1, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false, showing: 0 } }
+    // CRITICAL FIX: Fetch prospects from ALL sessions, not just one
+    // This allows multiple searches to accumulate instead of replacing each other
+    const allProspects: ProspectData[] = []
+
+    for (const session of data.sessions) {
+      const prospectsResponse = await fetch(
+        `/api/prospect-approval/prospects?session_id=${session.id}&page=1&limit=1000&status=${statusFilter}`
+      )
+
+      if (prospectsResponse.ok) {
+        const prospectsData = await prospectsResponse.json()
+        if (prospectsData.success && prospectsData.prospects) {
+          const mappedProspects = prospectsData.prospects.map((p: any) => ({
+            id: p.prospect_id,
+            name: p.name,
+            title: p.title || '',
+            company: p.company?.name || '',
+            industry: p.company?.industry || '',
+            location: p.location || '',
+            email: p.contact?.email || '',
+            linkedinUrl: p.contact?.linkedin_url || '',
+            phone: p.contact?.phone || '',
+            connectionDegree: p.connection_degree ? `${p.connection_degree}${p.connection_degree === 1 ? 'st' : p.connection_degree === 2 ? 'nd' : 'rd'}` : undefined,
+            source: p.source || 'linkedin',
+            enrichmentScore: p.enrichment_score || 0,
+            confidence: (p.enrichment_score || 80) / 100,
+            approvalStatus: (p.approval_status || 'pending') as 'pending' | 'approved' | 'rejected',
+            campaignName: session.campaign_name || `Session-${session.id.slice(0, 8)}`,
+            campaignTag: session.campaign_tag || session.campaign_name || session.prospect_source || 'linkedin',
+            sessionId: session.id,
+            uploaded: false,
+            qualityScore: 0,
+            createdAt: p.created_at ? new Date(p.created_at) : session.created_at ? new Date(session.created_at) : new Date(),
+            researchedBy: session.user_email || session.user_name || 'Unknown',
+            researchedByInitials: session.user_initials || getInitials(session.user_email || session.user_name || 'U'),
+            linkedinUserId: p.linkedin_user_id || p.contact?.linkedin_user_id || undefined
+          }))
+
+          // Calculate quality scores
+          mappedProspects.forEach((p: ProspectData) => {
+            p.qualityScore = calculateQualityScore(p)
+          })
+
+          allProspects.push(...mappedProspects)
+        }
       }
     }
 
-    // Fetch prospects with pagination
-    const prospectsResponse = await fetch(
-      `/api/prospect-approval/prospects?session_id=${activeSession.id}&page=${page}&limit=${limit}&status=${statusFilter}`
-    )
+    // Sort by created date (newest first) and apply pagination
+    allProspects.sort((a, b) => {
+      const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0
+      const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0
+      return dateB - dateA
+    })
 
-    if (prospectsResponse.ok) {
-      const prospectsData = await prospectsResponse.json()
-      if (prospectsData.success && prospectsData.prospects) {
-            const mappedProspects = prospectsData.prospects.map((p: any) => ({
-              id: p.prospect_id,
-              name: p.name,
-              title: p.title || '',
-              company: p.company?.name || '',
-              industry: p.company?.industry || '',
-              location: p.location || '',
-              email: p.contact?.email || '',
-              linkedinUrl: p.contact?.linkedin_url || '',
-              phone: p.contact?.phone || '',
-              connectionDegree: p.connection_degree ? `${p.connection_degree}${p.connection_degree === 1 ? 'st' : p.connection_degree === 2 ? 'nd' : 'rd'}` : undefined,
-              source: p.source || 'linkedin',
-              enrichmentScore: p.enrichment_score || 0,
-              confidence: (p.enrichment_score || 80) / 100,
-              approvalStatus: (p.approval_status || 'pending') as 'pending' | 'approved' | 'rejected',
-              campaignName: activeSession.campaign_name || `Session-${activeSession.id.slice(0, 8)}`,
-              campaignTag: activeSession.campaign_tag || activeSession.campaign_name || activeSession.prospect_source || 'linkedin',
-              sessionId: activeSession.id,
-              uploaded: false,
-              qualityScore: 0,
-              createdAt: p.created_at ? new Date(p.created_at) : activeSession.created_at ? new Date(activeSession.created_at) : new Date(),
-              researchedBy: activeSession.user_email || activeSession.user_name || 'Unknown',
-              researchedByInitials: activeSession.user_initials || getInitials(activeSession.user_email || activeSession.user_name || 'U'),
-              linkedinUserId: p.linkedin_user_id || p.contact?.linkedin_user_id || undefined
-            }))
-            // Calculate quality scores
-            mappedProspects.forEach((p: ProspectData) => {
-              p.qualityScore = calculateQualityScore(p)
-            })
+    const totalProspects = allProspects.length
+    const startIndex = (page - 1) * limit
+    const endIndex = startIndex + limit
+    const paginatedProspects = allProspects.slice(startIndex, endIndex)
 
-            return {
-              prospects: mappedProspects,
-              pagination: prospectsData.pagination
-            }
-          }
-        }
-
-    return { prospects: [], pagination: { page: 1, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false, showing: 0 } }
+    return {
+      prospects: paginatedProspects,
+      pagination: {
+        page,
+        limit,
+        total: totalProspects,
+        totalPages: Math.ceil(totalProspects / limit),
+        hasNext: endIndex < totalProspects,
+        hasPrev: page > 1,
+        showing: paginatedProspects.length
+      }
+    }
   } catch (error) {
     console.error('Failed to fetch approval sessions:', error)
     return { prospects: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0, hasNext: false, hasPrev: false, showing: 0 } }
@@ -240,7 +254,8 @@ export default function DataCollectionHub({
   const { data, isLoading: isLoadingSessions, refetch } = useQuery({
     queryKey: ['approval-sessions', currentPage, pageSize, filterStatus],
     queryFn: () => fetchApprovalSessions(currentPage, pageSize, filterStatus),
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 0, // CRITICAL FIX: Always fetch fresh data (was 30 seconds)
+    refetchInterval: 5000, // CRITICAL FIX: Auto-refresh every 5 seconds to show new searches
     refetchOnWindowFocus: true, // Auto-refresh when tab becomes visible
     keepPreviousData: true, // Smooth page transitions
   })
