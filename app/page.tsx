@@ -190,8 +190,20 @@ export default function Page() {
 
   // Derive current workspace from selected ID
   const currentWorkspace = useMemo(() => {
-    if (!selectedWorkspaceId) return null;
-    return workspaces.find(ws => ws.id === selectedWorkspaceId) || null;
+    console.log('🔍 currentWorkspace Computation:', {
+      selectedWorkspaceId,
+      workspacesCount: workspaces.length,
+      workspaceIds: workspaces.map(ws => ws.id)
+    });
+
+    if (!selectedWorkspaceId) {
+      console.log('❌ No selectedWorkspaceId, returning null');
+      return null;
+    }
+
+    const found = workspaces.find(ws => ws.id === selectedWorkspaceId);
+    console.log('🔍 Found workspace:', found ? `Yes (${found.name})` : 'No');
+    return found || null;
   }, [selectedWorkspaceId, workspaces]);
 
   // LinkedIn connection state
@@ -1919,20 +1931,31 @@ export default function Page() {
           setWorkspaces(data.workspaces || []);
 
           // CRITICAL FIX: Use currentWorkspaceId from API response (bypasses RLS)
+          console.log('🔍 Workspace Selection Debug:', {
+            hasCurrentWorkspaceId: !!data.currentWorkspaceId,
+            currentWorkspaceId: data.currentWorkspaceId,
+            workspacesCount: data.workspaces?.length,
+            firstWorkspaceId: data.workspaces?.[0]?.id
+          });
+
           if (data.currentWorkspaceId) {
             const workspaceExists = data.workspaces?.some((ws: any) => ws.id === data.currentWorkspaceId);
             if (workspaceExists) {
               console.log('✅ Auto-selecting workspace from API:', data.currentWorkspaceId);
               setSelectedWorkspaceId(data.currentWorkspaceId);
+              console.log('✅ setSelectedWorkspaceId called with:', data.currentWorkspaceId);
             } else {
               console.log('⚠️ current_workspace_id not in loaded workspaces, using first');
               if (data.workspaces && data.workspaces.length > 0) {
+                console.log('✅ Using first workspace:', data.workspaces[0].id);
                 setSelectedWorkspaceId(data.workspaces[0].id);
               }
             }
           } else if (data.workspaces && data.workspaces.length > 0) {
-            console.log('ℹ️ No current_workspace_id, selecting first workspace');
+            console.log('ℹ️ No current_workspace_id, selecting first workspace:', data.workspaces[0].id);
             setSelectedWorkspaceId(data.workspaces[0].id);
+          } else {
+            console.log('❌ No workspaces available to select!');
           }
         } else {
           console.error('❌ Failed to fetch admin workspaces');
