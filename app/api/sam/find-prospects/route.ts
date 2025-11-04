@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { supabaseAdmin } from '@/app/lib/supabase';
 
 /**
  * Sam's Prospect Finding Interface
@@ -447,7 +448,8 @@ export async function GET(request: NextRequest) {
  */
 async function checkLinkedInAccountCapabilities(supabase: any, userId: string, workspaceId: string) {
   // Get user's LinkedIn accounts
-  const { data: accounts } = await supabase
+  // CRITICAL: Use admin client to bypass RLS for workspace_accounts
+  const { data: accounts } = await supabaseAdmin()
     .from('workspace_accounts')
     .select('*')
     .eq('workspace_id', workspaceId)
