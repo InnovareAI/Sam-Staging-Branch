@@ -1451,7 +1451,7 @@ export default function DataCollectionHub({
                 }}
                 variant="outline"
                 size="sm"
-                className="border-green-600/50 hover:bg-green-600/10 text-green-400"
+                className="border-purple-500/50 hover:bg-purple-500/10 text-purple-400 hover:text-purple-300 hover:border-purple-400/70"
               />
             )}
 
