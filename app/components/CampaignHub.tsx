@@ -4315,8 +4315,16 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       console.log('🔍 DEBUG: Campaign API Response:', {
         hasCampaign: !!campaignData.campaign,
         hasCampaignId: !!campaignData.campaign_id,
-        keys: Object.keys(campaignData)
+        hasError: !!campaignData.error,
+        keys: Object.keys(campaignData),
+        fullResponse: campaignData
       });
+
+      // Handle case where API returned an error despite 201 status
+      if (campaignData.error && !campaignData.campaign) {
+        console.warn('⚠️ API returned error with 201 status:', campaignData.error);
+        // Still try to recover using campaign_id if provided
+      }
 
       // Handle case where campaign was created but not returned
       let campaign = campaignData.campaign;
@@ -4423,6 +4431,13 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
       if (!uploadResponse.ok) {
         const errorData = await uploadResponse.json().catch(() => ({}));
+        console.error('❌ Upload prospects failed:', {
+          status: uploadResponse.status,
+          statusText: uploadResponse.statusText,
+          errorData,
+          campaign_id_sent: campaign.id,
+          campaign_object: campaign
+        });
         throw new Error(errorData.error || `Failed to upload prospects: ${uploadResponse.status}`);
       }
 
