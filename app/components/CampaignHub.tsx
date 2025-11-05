@@ -4268,6 +4268,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
   // Handle campaign approval and execution
   const handleApproveCampaign = async (finalCampaignData: any) => {
+    console.log('🚀 [FIX DEPLOYED] handleApproveCampaign called - v2 with null checks');
     try {
       const { _executionData } = finalCampaignData;
 
@@ -4311,7 +4312,42 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       }
 
       const campaignData = await campaignResponse.json();
-      const campaign = campaignData.campaign; // Extract nested campaign object
+      console.log('🔍 DEBUG: Campaign API Response:', {
+        hasCampaign: !!campaignData.campaign,
+        hasCampaignId: !!campaignData.campaign_id,
+        keys: Object.keys(campaignData)
+      });
+
+      // Handle case where campaign was created but not returned
+      let campaign = campaignData.campaign;
+
+      if (!campaign && campaignData.campaign_id) {
+        // Campaign was created but not returned - try to fetch it
+        console.log('⚠️ Campaign created but not returned, attempting to fetch:', campaignData.campaign_id);
+        try {
+          const fetchResponse = await fetch(`/api/campaigns/${campaignData.campaign_id}`);
+          if (fetchResponse.ok) {
+            const fetchData = await fetchResponse.json();
+            campaign = fetchData.campaign || fetchData;
+          }
+        } catch (fetchError) {
+          console.error('Failed to fetch campaign:', fetchError);
+        }
+
+        if (!campaign) {
+          throw new Error('Campaign created but could not be loaded. Please refresh the page and check your Campaigns list.');
+        }
+      }
+
+      if (!campaign) {
+        throw new Error('No campaign data returned from API');
+      }
+
+      console.log('✅ DEBUG: Campaign object verified:', {
+        id: campaign.id,
+        name: campaign.name,
+        hasId: !!campaign.id
+      });
 
       // Step 2: Upload prospects (with proper schema mapping)
       console.log('🔍 DEBUG: finalCampaignData.prospects BEFORE mapping:', JSON.stringify(finalCampaignData.prospects.slice(0, 2), null, 2));
