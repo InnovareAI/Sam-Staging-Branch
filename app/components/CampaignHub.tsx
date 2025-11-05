@@ -4170,11 +4170,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
   // REACT QUERY: Fetch all campaigns (active, inactive, archived)
   const { data: allCampaigns = [], isLoading: loadingAllCampaigns } = useQuery({
-    queryKey: ['campaigns', workspaceId],
+    queryKey: ['campaigns', actualWorkspaceId],
     queryFn: async () => {
-      if (!workspaceId) return [];
+      if (!actualWorkspaceId) return [];
 
-      const response = await fetch(`/api/campaigns?workspace_id=${workspaceId}`);
+      const response = await fetch(`/api/campaigns?workspace_id=${actualWorkspaceId}`);
       if (!response.ok) {
         console.error('Failed to load campaigns:', response.statusText);
         return [];
@@ -4183,7 +4183,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       const result = await response.json();
       return result.campaigns || [];
     },
-    enabled: (campaignFilter === 'active' || campaignFilter === 'inactive' || campaignFilter === 'archived') && !!workspaceId,
+    enabled: (campaignFilter === 'active' || campaignFilter === 'inactive' || campaignFilter === 'archived') && !!actualWorkspaceId,
     staleTime: 2 * 60 * 1000, // 2 minutes
     refetchOnWindowFocus: true,
   });
