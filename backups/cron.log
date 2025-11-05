@@ -3431,3 +3431,70 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main a7c008ad] 🔄 Auto-backup: auto-backup-20251106_060000
+ Committer: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 35 files changed, 10529 insertions(+), 86 deletions(-)
+ create mode 100644 app/components/CampaignHub.tsx.backup
+ create mode 100644 docs/SUPER_ADMIN_IMPLEMENTATION.md
+ create mode 100644 docs/WORKSPACE_ISOLATION_FIX.md
+ create mode 100644 scripts/add-test-prospect.mjs
+ create mode 100644 scripts/add-user-to-bll-workspace.mjs
+ create mode 100644 scripts/audit-all-memberships.mjs
+ create mode 100644 scripts/check-campaign-sequences.mjs
+ create mode 100644 scripts/check-membership-history.mjs
+ create mode 100644 scripts/check-prospects.mjs
+ create mode 100644 scripts/check-stan-all-data.mjs
+ create mode 100644 scripts/check-stan-campaigns.mjs
+ create mode 100644 scripts/check-stan-message-templates.mjs
+ create mode 100644 scripts/check-user-id.mjs
+ create mode 100644 scripts/check-user-workspace-view.mjs
+ create mode 100644 scripts/check-workspace-membership.mjs
+ create mode 100644 scripts/create-campaign-from-session.mjs
+ create mode 100644 scripts/create-test-session.mjs
+ create mode 100644 scripts/find-missing-ciso-prospects.mjs
+ create mode 100644 scripts/fix-rls-policy.mjs
+ create mode 100644 scripts/fix-workspace-members-rls.sql
+ create mode 100644 scripts/fix-workspace-membership.mjs
+ create mode 100644 scripts/generate-stan-recovery-report.mjs
+ create mode 100644 scripts/move-iai-campaigns.mjs
+ create mode 100644 scripts/recover-stan-prospects.mjs
+ create mode 100644 scripts/remove-incorrect-membership.mjs
+ create mode 100644 scripts/restore-stan-approvals.mjs
+ create mode 100644 scripts/simple-membership-check.mjs
+ create mode 100644 scripts/switch-workspace.mjs
+ create mode 100644 scripts/test-campaign-access.mjs
+ create mode 100644 scripts/test-campaign-launch.mjs
+ create mode 100644 scripts/verify-test-session.mjs
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251106_060000[0m
+[0;32m📅 Timestamp: Thu Nov  6 06:00:01 PST 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+
