@@ -4089,12 +4089,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
   // REACT QUERY: Fetch pending campaigns with caching - LAZY LOAD when tab is active
   const { data: pendingCampaignsFromDB = [], isLoading: loadingPendingFromDB } = useQuery({
-    queryKey: ['pendingCampaigns', workspaceId],
+    queryKey: ['pendingCampaigns', actualWorkspaceId],
     queryFn: async () => {
-      if (!workspaceId) return [];
+      if (!actualWorkspaceId) return [];
 
       // Use new optimized approved prospects API
-      const response = await fetch(`/api/prospect-approval/approved?workspace_id=${workspaceId}`);
+      const response = await fetch(`/api/prospect-approval/approved?workspace_id=${actualWorkspaceId}`);
       if (!response.ok) return [];
 
       const data = await response.json();
@@ -4153,11 +4153,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
   // REACT QUERY: Fetch draft campaigns with caching - LAZY LOAD when tab is active
   const { data: draftCampaigns = [], isLoading: loadingDrafts } = useQuery({
-    queryKey: ['draftCampaigns', workspaceId],
+    queryKey: ['draftCampaigns', actualWorkspaceId],
     queryFn: async () => {
-      if (!workspaceId) return [];
+      if (!actualWorkspaceId) return [];
 
-      const response = await fetch(`/api/campaigns/draft?workspaceId=${workspaceId}`);
+      const response = await fetch(`/api/campaigns/draft?workspaceId=${actualWorkspaceId}`);
       if (!response.ok) return [];
 
       const result = await response.json();
@@ -4714,17 +4714,17 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
   // REACT QUERY: Load approval messages
   const { data: approvalData, isLoading: loadingApproval, refetch: refetchApprovalMessages } = useQuery({
-    queryKey: ['approvalMessages', workspaceId],
+    queryKey: ['approvalMessages', actualWorkspaceId],
     queryFn: async () => {
-      // Return empty data if no workspaceId - prevents crash
-      if (!workspaceId) {
+      // Return empty data if no actualWorkspaceId - prevents crash
+      if (!actualWorkspaceId) {
         return {
           messages: { pending: [], approved: [], rejected: [] },
           counts: { pending: 0, approved: 0, rejected: 0, total: 0 }
         };
       }
 
-      const response = await fetch(`/api/campaigns/messages/approval?workspace_id=${workspaceId}`);
+      const response = await fetch(`/api/campaigns/messages/approval?workspace_id=${actualWorkspaceId}`);
 
       // Graceful error handling - don't crash the page
       if (!response.ok) {
