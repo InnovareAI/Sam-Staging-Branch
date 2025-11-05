@@ -245,39 +245,10 @@ export default function DataCollectionHub({
   const [loadingMessage, setLoadingMessage] = useState<string>('')
   const [workspaceCode, setWorkspaceCode] = useState<string>('CLI')
 
-  // CRITICAL FIX: Fetch workspace if not provided by parent
-  const [actualWorkspaceId, setActualWorkspaceId] = useState<string | null>(workspaceId || null)
-
-  // Auto-fetch workspace if not provided
-  useEffect(() => {
-    const fetchWorkspace = async () => {
-      if (actualWorkspaceId) return // Already have workspace
-
-      try {
-        const response = await fetch('/api/admin/workspaces')
-        if (response.ok) {
-          const data = await response.json()
-          // Use currentWorkspaceId or first workspace
-          const workspaceId = data.currentWorkspaceId || data.workspaces?.[0]?.id
-          if (workspaceId) {
-            console.log('✅ Fetched workspace for enrichment:', workspaceId)
-            setActualWorkspaceId(workspaceId)
-          }
-        }
-      } catch (error) {
-        console.error('❌ Failed to fetch workspace:', error)
-      }
-    }
-
-    fetchWorkspace()
-  }, [actualWorkspaceId])
-
-  // Update actualWorkspaceId when prop changes
-  useEffect(() => {
-    if (workspaceId) {
-      setActualWorkspaceId(workspaceId)
-    }
-  }, [workspaceId])
+  // Use hardcoded workspace ID as fallback if parent doesn't provide it
+  // TEMP FIX: Parent component not selecting workspace despite it being loaded
+  const FALLBACK_WORKSPACE_ID = 'babdcab8-1a78-4b2f-913e-6e9fd9821009' // InnovareAI workspace
+  const actualWorkspaceId = workspaceId || FALLBACK_WORKSPACE_ID
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
