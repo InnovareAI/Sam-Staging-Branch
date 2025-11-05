@@ -156,7 +156,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     },
     onSuccess: () => {
       // Invalidate and refetch campaigns
-      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
       toastSuccess('Campaign status updated');
     },
     onError: (error) => {
@@ -4618,7 +4618,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       setShowBuilder(false);
 
       // Invalidate caches to refresh campaign lists and counters
-      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
       queryClient.invalidateQueries({ queryKey: ['pendingCampaigns'] });
       onCampaignCreated?.();
 
@@ -4698,7 +4698,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         toastSuccess(`Campaign "${result.cloned_campaign.name}" cloned successfully!`);
         setShowCampaignCloning(false);
         // Invalidate and refetch
-        queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+        queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
         queryClient.invalidateQueries({ queryKey: ['campaignsForCloning'] });
       } else {
         const error = await response.json();
@@ -5277,7 +5277,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         });
 
         // Refresh campaigns list
-        queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+        queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
 
         // Close modal after successful save
         setTimeout(() => {
@@ -6368,8 +6368,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                           setSelectedCampaign({ ...selectedCampaign, status: newStatus });
 
                           // Refresh campaigns list
-                          queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-                          queryClient.invalidateQueries({ queryKey: ['pendingCampaigns'] });
+                          queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+                          queryClient.invalidateQueries({ queryKey: ['pendingCampaigns', actualWorkspaceId] });
 
                           toastSuccess(`Campaign status updated to ${newStatus}`);
 
@@ -6463,7 +6463,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                         setSelectedCampaign(null);
 
                         // Refresh campaigns list
-                        queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+                        queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
                         queryClient.invalidateQueries({ queryKey: ['pendingCampaigns'] });
                       } else {
                         const error = await response.json();
