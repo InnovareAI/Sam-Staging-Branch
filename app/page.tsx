@@ -185,7 +185,15 @@ export default function Page() {
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'card' | 'info'>('info');
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(() => {
+    // Initialize from localStorage on mount
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('selectedWorkspaceId');
+      console.log('🔍 [INIT] Loading selectedWorkspaceId from localStorage:', saved);
+      return saved;
+    }
+    return null;
+  });
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<'all' | 'innovareai' | '3cubed'>('all');
 
   // Derive current workspace from selected ID
@@ -205,6 +213,17 @@ export default function Page() {
     console.log('🔍 Found workspace:', found ? `Yes (${found.name})` : 'No');
     return found || null;
   }, [selectedWorkspaceId, workspaces]);
+
+  // Persist selectedWorkspaceId to localStorage
+  useEffect(() => {
+    if (selectedWorkspaceId) {
+      console.log('💾 [PERSIST] Saving selectedWorkspaceId to localStorage:', selectedWorkspaceId);
+      localStorage.setItem('selectedWorkspaceId', selectedWorkspaceId);
+    } else {
+      console.log('🗑️  [PERSIST] Removing selectedWorkspaceId from localStorage (null)');
+      localStorage.removeItem('selectedWorkspaceId');
+    }
+  }, [selectedWorkspaceId]);
 
   // LinkedIn connection state
   const [hasLinkedInConnection, setHasLinkedInConnection] = useState(false);
@@ -1976,6 +1995,8 @@ export default function Page() {
   // Load workspaces for current user only
   const loadUserWorkspaces = async (userId: string) => {
     try {
+      console.log('🔍 [WORKSPACE LOAD] Starting for user:', userId);
+
       // Get workspaces where user is owner
       const { data: ownedWorkspaces, error: ownedError } = await supabase
         .from('workspaces')
@@ -1986,6 +2007,7 @@ export default function Page() {
         console.error('❌ Error fetching owned workspaces:', ownedError);
         throw ownedError;
       }
+      console.log('✅ [WORKSPACE LOAD] Owned workspaces:', ownedWorkspaces?.length || 0, ownedWorkspaces);
 
       // Get workspaces where user is a member
       // Query memberships first (without join to avoid schema cache issues)
@@ -1998,11 +2020,13 @@ export default function Page() {
         console.error('❌ Error fetching member workspaces:', memberError);
         throw memberError;
       }
+      console.log('✅ [WORKSPACE LOAD] Memberships:', memberships?.length || 0, memberships);
 
       // Then fetch workspace details separately
       let memberWorkspaces: any[] = [];
       if (memberships && memberships.length > 0) {
         const workspaceIds = memberships.map(m => m.workspace_id);
+        console.log('🔍 [WORKSPACE LOAD] Fetching details for workspace IDs:', workspaceIds);
         const { data: workspaceData, error: workspaceError } = await supabase
           .from('workspaces')
           .select('*')
@@ -2012,6 +2036,7 @@ export default function Page() {
           console.error('❌ Error fetching workspace details:', workspaceError);
         } else {
           memberWorkspaces = workspaceData || [];
+          console.log('✅ [WORKSPACE LOAD] Member workspace details:', memberWorkspaces.length, memberWorkspaces);
         }
       }
 
@@ -2024,6 +2049,7 @@ export default function Page() {
           allWorkspaces.push(workspace);
         }
       });
+      console.log('📦 [WORKSPACE LOAD] Total combined workspaces:', allWorkspaces.length, allWorkspaces.map(w => ({ id: w.id, name: w.name })));
 
       // For each workspace, fetch pending invitations
       const workspacesWithInvitations = await Promise.all(
@@ -2065,13 +2091,18 @@ export default function Page() {
         })
       );
 
-      console.log('📊 User workspaces loaded:', workspacesWithInvitations.length, 'workspaces');
+      console.log('📊 [WORKSPACE LOAD] User workspaces loaded:', workspacesWithInvitations.length, 'workspaces');
+      console.log('📊 [WORKSPACE LOAD] Workspaces:', workspacesWithInvitations.map(w => ({ id: w.id, name: w.name })));
       setWorkspaces(workspacesWithInvitations);
 
       // CRITICAL FIX: Auto-select first workspace (user endpoint doesn't return current_workspace_id)
       if (workspacesWithInvitations.length > 0) {
-        console.log('✅ Auto-selecting first workspace:', workspacesWithInvitations[0].id);
-        setSelectedWorkspaceId(workspacesWithInvitations[0].id);
+        const firstWorkspaceId = workspacesWithInvitations[0].id;
+        console.log('✅ [WORKSPACE LOAD] Auto-selecting first workspace:', firstWorkspaceId, workspacesWithInvitations[0].name);
+        setSelectedWorkspaceId(firstWorkspaceId);
+        console.log('✅ [WORKSPACE LOAD] selectedWorkspaceId state updated to:', firstWorkspaceId);
+      } else {
+        console.warn('⚠️  [WORKSPACE LOAD] No workspaces found! User will have no workspace selected.');
       }
 
       // Check if user is workspace admin (owner or admin role in any workspace)

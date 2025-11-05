@@ -132,7 +132,12 @@ function getInitials(nameOrEmail: string): string {
 }
 
 // React Query function to fetch approval sessions with pagination
-async function fetchApprovalSessions(page: number = 1, limit: number = 50, statusFilter: string = 'all'): Promise<{
+async function fetchApprovalSessions(
+  page: number = 1,
+  limit: number = 50,
+  statusFilter: string = 'all',
+  workspaceId?: string | null
+): Promise<{
   prospects: ProspectData[]
   pagination: {
     page: number
@@ -145,13 +150,23 @@ async function fetchApprovalSessions(page: number = 1, limit: number = 50, statu
   }
 }> {
   try {
-    const response = await fetch('/api/prospect-approval/sessions/list')
+    const url = workspaceId
+      ? `/api/prospect-approval/sessions/list?workspace_id=${workspaceId}`
+      : '/api/prospect-approval/sessions/list';
+    const response = await fetch(url)
     if (!response.ok) throw new Error('Failed to fetch sessions')
 
     const data = await response.json()
     if (!data.success || !data.sessions || data.sessions.length === 0) {
       return { prospects: [], pagination: { page: 1, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false, showing: 0 } }
     }
+
+    // DEBUG: Log sessions to see campaign_name
+    console.log('🔍 [DATA APPROVAL] Sessions fetched:', data.sessions.map((s: any) => ({
+      id: s.id?.substring(0, 8),
+      campaign_name: s.campaign_name,
+      total_prospects: s.total_prospects
+    })));
 
     // CRITICAL FIX: Fetch prospects from ALL sessions, not just one
     // This allows multiple searches to accumulate instead of replacing each other
@@ -190,6 +205,9 @@ async function fetchApprovalSessions(page: number = 1, limit: number = 50, statu
             researchedByInitials: session.user_initials || getInitials(session.user_email || session.user_name || 'U'),
             linkedinUserId: p.linkedin_user_id || p.contact?.linkedin_user_id || undefined
           }))
+
+          // DEBUG: Log mapped prospects to verify campaignName
+          console.log(`📋 [DATA APPROVAL] Session ${session.id.substring(0, 8)} mapped ${mappedProspects.length} prospects with campaignName:`, mappedProspects[0]?.campaignName);
 
           // Calculate quality scores
           mappedProspects.forEach((p: ProspectData) => {
@@ -257,12 +275,13 @@ export default function DataCollectionHub({
 
   // REACT QUERY: Fetch and cache approval sessions with pagination
   const { data, isLoading: isLoadingSessions, refetch } = useQuery({
-    queryKey: ['approval-sessions', currentPage, pageSize, filterStatus],
-    queryFn: () => fetchApprovalSessions(currentPage, pageSize, filterStatus),
+    queryKey: ['approval-sessions', currentPage, pageSize, filterStatus, actualWorkspaceId],
+    queryFn: () => fetchApprovalSessions(currentPage, pageSize, filterStatus, actualWorkspaceId),
     staleTime: 10000, // Cache for 10 seconds (faster page loads)
     refetchInterval: 30000, // Auto-refresh every 30 seconds (was 5, too aggressive)
     refetchOnWindowFocus: true, // Auto-refresh when tab becomes visible
     keepPreviousData: true, // Smooth page transitions
+    enabled: !!actualWorkspaceId, // Only fetch when workspace ID is available
   })
 
   const serverProspects = data?.prospects || []

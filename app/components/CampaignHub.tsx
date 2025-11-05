@@ -1671,8 +1671,9 @@ Would you like me to adjust these or create more variations?`
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          workspace_id: workspaceId,
           name,
-          type: campaignType,
+          campaign_type: campaignType,
           connection_message: connectionMessage,
           alternative_message: alternativeMessage,
           follow_up_messages: followUpMessages.filter(msg => msg.trim())
@@ -1853,7 +1854,16 @@ Would you like me to adjust these or create more variations?`
 
     } catch (error: any) {
       console.error('Campaign creation error:', error);
-      toastError(`❌ Error creating campaign: ${error.message}`);
+
+      // Auto-save as draft when campaign creation fails
+      console.log('💾 Auto-saving campaign as draft due to error...');
+      try {
+        await saveDraft(true); // Force save with toast notification
+        toastError(`❌ Error creating campaign: ${error.message}. Draft saved.`);
+      } catch (draftError) {
+        console.error('Failed to save draft:', draftError);
+        toastError(`❌ Error creating campaign: ${error.message}`);
+      }
     }
   };
   
