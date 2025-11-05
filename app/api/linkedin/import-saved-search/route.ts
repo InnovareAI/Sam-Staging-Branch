@@ -77,8 +77,8 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Default target: 100 prospects, max 1000 (LinkedIn hard limit is 2500)
-    const targetProspects = Math.min(Math.max(target_count || 100, 25), 1000);
+    // Default target: 500 prospects, max 2500 (LinkedIn Sales Navigator limit)
+    const targetProspects = Math.min(Math.max(target_count || 500, 25), 2500);
     console.log(`🎯 Target: ${targetProspects} prospects`);
 
     // Detect if user provided a saved search reference URL (won't work with Unipile)
@@ -204,8 +204,8 @@ export async function POST(request: NextRequest) {
       ? `https://${UNIPILE_DSN}/api/v1/linkedin/search`
       : `https://${UNIPILE_DSN}.unipile.com:13443/api/v1/linkedin/search`;
 
-    // Fetch in batches until target reached (25 per batch, max 10 batches)
-    const batchSize = 25;
+    // Fetch in batches until target reached (50 per batch for faster import)
+    const batchSize = 50;
     const maxBatches = Math.ceil(targetProspects / batchSize);
     let prospects: any[] = [];
     let cursor: string | null = null;
@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
       };
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 seconds for better reliability
 
       try {
         const searchResponse = await fetch(`${searchUrl}?${params}`, {
@@ -286,7 +286,7 @@ export async function POST(request: NextRequest) {
         clearTimeout(timeoutId);
 
         if (error.name === 'AbortError') {
-          console.error(`❌ Batch ${batchCount} timed out after 25 seconds`);
+          console.error(`❌ Batch ${batchCount} timed out after 45 seconds`);
 
           // If we have some prospects, return partial success
           if (prospects.length > 0) {

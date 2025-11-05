@@ -2020,7 +2020,7 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
       const searchType = savedSearchUrl.includes('/sales/') ? 'Sales Navigator'
                        : savedSearchUrl.includes('/talent/') ? 'Recruiter'
                        : 'Classic LinkedIn'
-      console.log(`🔍 Detected ${searchType} search URL`)
+      console.log(`🔍 Detected ${searchType} search URL - using streaming import`)
 
       // Extract prospect count from user message (e.g., "150 startup CEOs", "find 200 prospects")
       const countMatch = content.match(/\b(\d+)\s*(prospects?|leads?|people|contacts?|CEOs?|founders?|profiles?)\b/i) ||
@@ -2030,49 +2030,18 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         console.log(`🎯 User requested ${targetCount} prospects`)
       }
 
-      try {
-        // Import prospects from saved search
-        const importPayload: any = {
-          saved_search_url: savedSearchUrl,
-          campaign_name: `LinkedIn Saved Search Import`
-        }
-        if (targetCount) {
-          importPayload.target_count = targetCount
-        }
+      // Use streaming import for better UX
+      // User will see prospects in ~45 seconds instead of waiting 8-10 minutes
+      const workspaceId = thread?.workspace_id || ''
+      const streamUrl = `/workspace/${workspaceId}/data-approval/import?url=${encodeURIComponent(savedSearchUrl)}&target=${targetCount || 2500}`
 
-        const importResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/import-saved-search`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Internal-Auth': 'true',
-            'X-User-Id': user.id,
-            'X-Workspace-Id': thread?.workspace_id || ''
-          },
-          body: JSON.stringify(importPayload)
-        })
-
-        const importData = await importResponse.json()
-
-        if (importData.success) {
-          aiResponse = `✅ **Imported ${importData.count} prospects** from your LinkedIn search!\n\n` +
-            `**Source:** ${searchType}\n` +
-            `**Campaign:** ${importData.campaign_name}\n` +
-            `**Next Step:** Head to the **Data Approval** tab to review and approve these prospects.\n\n` +
-            `📊 **Ready to review:** ${importData.count} prospects waiting for approval`
-        } else {
-          aiResponse = `❌ **Import Failed:** ${importData.error || 'Unable to import from LinkedIn search'}\n\n` +
-            `This could be because:\n` +
-            `- Your LinkedIn account isn't connected\n` +
-            `- The search URL is invalid or expired\n` +
-            `- You don't have access to this search (subscription required)\n\n` +
-            `Try a different search URL or create a new search instead!`
-        }
-      } catch (error) {
-        console.error('❌ Saved search import failed:', error)
-        aiResponse = `❌ **Technical Error:** Couldn't import the saved search.\n\n` +
-          `Error: ${error instanceof Error ? error.message : 'Unknown error'}\n\n` +
-          `Try again or paste search criteria instead!`
-      }
+      aiResponse = `🌊 **Starting LinkedIn Import...**\n\n` +
+        `**Source:** ${searchType}\n` +
+        `**Target:** ${targetCount || 2500} prospects (or all available)\n\n` +
+        `✨ **Great news!** Your prospects will start appearing in the **Data Approval** tab within **45 seconds**.\n\n` +
+        `💡 **You can start reviewing immediately** - no need to wait for all prospects!\n\n` +
+        `[→ Open Data Approval Tab](${streamUrl})\n\n` +
+        `The import continues in the background while you review. You'll see new prospects stream in every 30-45 seconds.`
     }
 
     // Check if SAM's AI response contains a search trigger and execute it
