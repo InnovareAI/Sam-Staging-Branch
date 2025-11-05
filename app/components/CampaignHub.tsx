@@ -4329,6 +4329,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           if (fetchResponse.ok) {
             const fetchData = await fetchResponse.json();
             campaign = fetchData.campaign || fetchData;
+
+            // CRITICAL FIX: campaign_performance_summary uses campaign_id instead of id
+            // Normalize to always have id field
+            if (campaign && !campaign.id && campaign.campaign_id) {
+              campaign.id = campaign.campaign_id;
+            }
           }
         } catch (fetchError) {
           console.error('Failed to fetch campaign:', fetchError);
@@ -4337,6 +4343,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         if (!campaign) {
           throw new Error('Campaign created but could not be loaded. Please refresh the page and check your Campaigns list.');
         }
+      }
+
+      // CRITICAL: Normalize campaign_id to id field (some endpoints use campaign_id)
+      if (campaign && !campaign.id && campaign.campaign_id) {
+        campaign.id = campaign.campaign_id;
       }
 
       if (!campaign) {
@@ -4380,6 +4391,16 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
         return mapped;
       });
+
+      // CRITICAL: Verify campaign.id exists before uploading prospects
+      if (!campaign.id) {
+        console.error('❌ CRITICAL: campaign.id is undefined!', {
+          campaign,
+          campaignKeys: Object.keys(campaign || {}),
+          campaignData
+        });
+        throw new Error('Campaign ID is missing. Cannot upload prospects.');
+      }
 
       console.log('🔍 DEBUG: About to send to /api/campaigns/upload-prospects:', {
         campaign_id: campaign.id,
