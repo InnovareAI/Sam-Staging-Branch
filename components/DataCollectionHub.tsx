@@ -288,8 +288,8 @@ export default function DataCollectionHub({
   const { data, isLoading: isLoadingSessions, refetch } = useQuery({
     queryKey: ['approval-sessions', currentPage, pageSize, filterStatus],
     queryFn: () => fetchApprovalSessions(currentPage, pageSize, filterStatus),
-    staleTime: 0, // CRITICAL FIX: Always fetch fresh data (was 30 seconds)
-    refetchInterval: 5000, // CRITICAL FIX: Auto-refresh every 5 seconds to show new searches
+    staleTime: 10000, // Cache for 10 seconds (faster page loads)
+    refetchInterval: 30000, // Auto-refresh every 30 seconds (was 5, too aggressive)
     refetchOnWindowFocus: true, // Auto-refresh when tab becomes visible
     keepPreviousData: true, // Smooth page transitions
   })
