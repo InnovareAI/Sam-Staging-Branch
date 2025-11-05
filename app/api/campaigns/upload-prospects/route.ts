@@ -19,6 +19,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { campaign_id, prospects } = body;
 
+    console.log('📥 Upload prospects request:', {
+      campaign_id,
+      prospect_count: prospects?.length,
+      user_id: user.id,
+      user_email: user.email
+    });
+
     if (!campaign_id) {
       return NextResponse.json({ error: 'campaign_id is required' }, { status: 400 });
     }
@@ -28,14 +35,34 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify campaign exists and user has access
+    console.log('🔍 Checking campaign access:', { campaign_id, user_id: user.id });
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
       .select('id, name, workspace_id')
       .eq('id', campaign_id)
       .single();
 
+    console.log('📊 Campaign query result:', {
+      found: !!campaign,
+      error: campaignError ? {
+        message: campaignError.message,
+        code: campaignError.code,
+        details: campaignError.details,
+        hint: campaignError.hint
+      } : null,
+      campaign: campaign ? { id: campaign.id, name: campaign.name, workspace_id: campaign.workspace_id } : null
+    });
+
     if (campaignError || !campaign) {
-      return NextResponse.json({ error: 'Campaign not found or access denied' }, { status: 404 });
+      console.error('❌ Campaign not found or access denied:', {
+        campaign_id,
+        user_id: user.id,
+        error: campaignError
+      });
+      return NextResponse.json({
+        error: 'Campaign not found or access denied',
+        details: campaignError ? campaignError.message : 'Campaign not found'
+      }, { status: 404 });
     }
 
     // Verify user has access to this workspace
