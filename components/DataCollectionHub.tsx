@@ -1469,16 +1469,8 @@ export default function DataCollectionHub({
                 )}
 
 
-            {/* DEBUG: Show enrichment button state */}
-            {console.log('🔍 Enrichment Button State:', {
-              selectedCount: selectedProspectIds.size,
-              actualWorkspaceId: actualWorkspaceId,
-              propWorkspaceId: workspaceId,
-              shouldShow: selectedProspectIds.size > 0 && actualWorkspaceId
-            })}
-
             {/* Enrich Selected Prospects - BrightData enrichment for missing data */}
-            {selectedProspectIds.size > 0 && actualWorkspaceId ? (
+            {selectedProspectIds.size > 0 && actualWorkspaceId && (
               <EnrichProspectsButton
                 prospectIds={Array.from(selectedProspectIds)}
                 workspaceId={actualWorkspaceId}
@@ -1490,11 +1482,7 @@ export default function DataCollectionHub({
                 size="sm"
                 className="border-green-600/50 hover:bg-green-600/10 text-green-400"
               />
-            ) : selectedProspectIds.size > 0 ? (
-              <div className="text-xs text-yellow-400 border border-yellow-500/30 bg-yellow-500/10 px-3 py-1.5 rounded">
-                ⚠️ Loading workspace... (selected: {selectedProspectIds.size})
-              </div>
-            ) : null}
+            )}
 
             {/* Send Approved Prospects - Only sends approved prospects to Campaign Hub */}
             <Button
