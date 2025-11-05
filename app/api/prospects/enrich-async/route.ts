@@ -97,10 +97,14 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (jobError || !job) {
-      console.error('Failed to create enrichment job:', jobError);
+      console.error('❌ Failed to create enrichment job:', jobError);
+      console.error('Full error:', JSON.stringify(jobError, null, 2));
       return NextResponse.json({
+        success: false,
         error: 'Failed to create enrichment job',
-        details: jobError?.message
+        details: jobError?.message || 'Unknown error',
+        code: jobError?.code,
+        hint: jobError?.hint
       }, { status: 500 });
     }
 

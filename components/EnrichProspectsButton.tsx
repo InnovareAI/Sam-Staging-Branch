@@ -55,7 +55,13 @@ export default function EnrichProspectsButton({
       if (!response.ok) {
         const errorData = await response.json();
         console.error('❌ Enrichment API Error:', errorData);
-        throw new Error(errorData.error || errorData.details || 'Enrichment failed');
+        const errorMsg = [
+          errorData.error,
+          errorData.details,
+          errorData.hint,
+          errorData.code
+        ].filter(Boolean).join(' | ');
+        throw new Error(errorMsg || 'Enrichment failed');
       }
 
       const data = await response.json();
