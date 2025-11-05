@@ -245,6 +245,38 @@ export default function DataCollectionHub({
   const [loadingMessage, setLoadingMessage] = useState<string>('')
   const [workspaceCode, setWorkspaceCode] = useState<string>('CLI')
 
+  // CRITICAL FIX: Fetch workspace if not provided by parent
+  const [actualWorkspaceId, setActualWorkspaceId] = useState<string | null>(workspaceId || null)
+
+  // Auto-fetch workspace if not provided
+  useEffect(() => {
+    const fetchWorkspace = async () => {
+      if (actualWorkspaceId) return // Already have workspace
+
+      try {
+        const response = await fetch('/api/workspaces/current')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.workspace?.id) {
+            console.log('✅ Fetched workspace for enrichment:', data.workspace.id)
+            setActualWorkspaceId(data.workspace.id)
+          }
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch workspace:', error)
+      }
+    }
+
+    fetchWorkspace()
+  }, [actualWorkspaceId])
+
+  // Update actualWorkspaceId when prop changes
+  useEffect(() => {
+    if (workspaceId) {
+      setActualWorkspaceId(workspaceId)
+    }
+  }, [workspaceId])
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(50)
@@ -1435,24 +1467,11 @@ export default function DataCollectionHub({
                 )}
 
 
-            {/* DEBUG: Enrichment button visibility */}
-            {console.log('🔍 Enrichment Button Debug:', {
-              selectedCount: selectedProspectIds.size,
-              workspaceId: workspaceId,
-              shouldShow: selectedProspectIds.size > 0 && workspaceId,
-              selectedIds: Array.from(selectedProspectIds)
-            })}
-
-            {/* Temporary Debug UI - Remove after fixing */}
-            <div className="text-xs text-gray-400 p-2 bg-gray-900/50 rounded border border-yellow-500/30">
-              🔍 Enrichment Debug: Selected={selectedProspectIds.size} | WorkspaceId={workspaceId ? '✓' : '✗'}
-            </div>
-
             {/* Enrich Selected Prospects - BrightData enrichment for missing data */}
-            {selectedProspectIds.size > 0 && workspaceId && (
+            {selectedProspectIds.size > 0 && actualWorkspaceId && (
               <EnrichProspectsButton
                 prospectIds={Array.from(selectedProspectIds)}
-                workspaceId={workspaceId}
+                workspaceId={actualWorkspaceId}
                 onEnrichmentComplete={() => {
                   // Refresh the prospects list after enrichment
                   refetch();
