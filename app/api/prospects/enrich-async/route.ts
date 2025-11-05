@@ -159,21 +159,31 @@ export async function POST(request: NextRequest) {
       const n8nWebhookUrl = process.env.N8N_ENRICHMENT_WEBHOOK_URL ||
         'https://innovareai.app.n8n.cloud/webhook/prospect-enrichment';
 
-      fetch(n8nWebhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          job_id: job.id,
-          workspace_id: workspaceId,
-          prospect_ids: finalProspectIds,
-          supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-          supabase_service_key: process.env.SUPABASE_SERVICE_ROLE_KEY,
-          brightdata_api_token: process.env.BRIGHTDATA_API_TOKEN,
-          brightdata_zone: process.env.BRIGHTDATA_ZONE
-        })
-      }).catch(err => {
-        console.warn('⚠️ Fallback webhook also failed:', err.message);
-      });
+      console.log(`📞 Calling N8N webhook: ${n8nWebhookUrl}`);
+
+      try {
+        const webhookResponse = await fetch(n8nWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            job_id: job.id,
+            workspace_id: workspaceId,
+            prospect_ids: finalProspectIds,
+            supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+            supabase_service_key: process.env.SUPABASE_SERVICE_ROLE_KEY,
+            brightdata_api_token: process.env.BRIGHTDATA_API_TOKEN,
+            brightdata_zone: process.env.BRIGHTDATA_ZONE
+          })
+        });
+
+        if (webhookResponse.ok) {
+          console.log('✅ N8N webhook triggered successfully');
+        } else {
+          console.error('❌ N8N webhook failed:', webhookResponse.status, await webhookResponse.text());
+        }
+      } catch (err) {
+        console.error('⚠️ Fallback webhook also failed:', err);
+      }
     }
 
     return NextResponse.json({
