@@ -1446,8 +1446,9 @@ export default function DataCollectionHub({
                 prospectIds={Array.from(selectedProspectIds)}
                 workspaceId={actualWorkspaceId}
                 onEnrichmentComplete={() => {
-                  // Refresh the prospects list after enrichment
-                  refetch();
+                  // Clear selections so user knows enrichment started
+                  setSelectedProspectIds(new Set());
+                  // Refresh will happen automatically via 30s interval
                 }}
                 variant="outline"
                 size="sm"

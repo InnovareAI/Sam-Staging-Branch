@@ -62,14 +62,12 @@ export default function EnrichProspectsButton({
 
       if (data.success) {
         toastSuccess(
-          `✅ Enrichment job created! Processing ${data.total_prospects} prospect${data.total_prospects > 1 ? 's' : ''} in background...`
+          `✅ Enrichment started for ${data.total_prospects} prospect${data.total_prospects > 1 ? 's' : ''}! Updates will appear automatically.`
         );
 
-        // Callback to refresh the prospect list after a delay
+        // Call callback immediately to clear selections
         if (onEnrichmentComplete) {
-          setTimeout(() => {
-            onEnrichmentComplete();
-          }, 60000); // Refresh after 60 seconds
+          onEnrichmentComplete();
         }
       } else {
         toastError(data.error || 'Enrichment failed');
