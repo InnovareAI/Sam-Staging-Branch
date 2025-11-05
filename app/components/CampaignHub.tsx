@@ -6391,7 +6391,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                 credentials: 'include', // Include cookies for Supabase auth
                                 body: JSON.stringify({
                                   campaignId: selectedCampaign.id,
-                                  workspaceId: workspaceId,
+                                  workspaceId: actualWorkspaceId,
                                   maxProspects: 1  // Limit to 1 prospect per batch to prevent timeout
                                 })
                               });
