@@ -71,28 +71,38 @@ function getCampaignTypeLabel(type: string): string {
 function CampaignList({ workspaceId }: { workspaceId: string }) {
   const queryClient = useQueryClient();
 
+  // TEMP FIX: Use fallback workspace ID if parent doesn't provide it
+  const FALLBACK_WORKSPACE_ID = '014509ba-226e-43ee-ba58-ab5f20d2ed08'; // Stan's workspace (Blaze Life Labs)
+  const actualWorkspaceId = workspaceId || FALLBACK_WORKSPACE_ID;
+
+  console.log('🏢 [CAMPAIGN HUB] Workspace ID being used:', actualWorkspaceId, 'from prop:', workspaceId);
+
   // REACT QUERY: Fetch and cache campaigns
   const { data: campaigns = [], isLoading: loading, refetch } = useQuery({
-    queryKey: ['campaigns', workspaceId],
+    queryKey: ['campaigns', actualWorkspaceId],
     queryFn: async () => {
       // Return empty if no workspaceId
-      if (!workspaceId) {
+      if (!actualWorkspaceId) {
         console.warn('CampaignList: No workspaceId provided');
         return [];
       }
 
-      const response = await fetch(`/api/campaigns?workspace_id=${workspaceId}`);
+      console.log('📡 [CAMPAIGN HUB] Fetching campaigns for workspace:', actualWorkspaceId);
+
+      const response = await fetch(`/api/campaigns?workspace_id=${actualWorkspaceId}`);
 
       if (!response.ok) {
-        console.error('Failed to load campaigns:', response.statusText);
+        console.error('❌ [CAMPAIGN HUB] Failed to load campaigns:', response.statusText);
         // Return empty array on error - no fake data
         return [];
       }
 
       const data = await response.json();
-      return data.campaigns || [];
+      const campaigns = data.campaigns || [];
+      console.log(`✅ [CAMPAIGN HUB] Fetched ${campaigns.length} campaigns:`, campaigns.map((c: any) => ({ name: c.name, status: c.status })));
+      return campaigns;
     },
-    enabled: !!workspaceId, // Only fetch if workspaceId is available
+    enabled: !!actualWorkspaceId, // Only fetch if workspaceId is available
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
   });
@@ -1666,12 +1676,24 @@ Would you like me to adjust these or create more variations?`
 
     // Fallback: if no approval callback, proceed with old flow
     try {
+      // TEMP FIX: Add fallback workspace ID
+      const FALLBACK_WORKSPACE_ID = '014509ba-226e-43ee-ba58-ab5f20d2ed08';
+      const actualWorkspaceId = workspaceId || FALLBACK_WORKSPACE_ID;
+
+      console.log('🚀 [CAMPAIGN CREATE] About to create campaign with:', {
+        workspace_id: actualWorkspaceId,
+        name,
+        campaign_type: campaignType,
+        workspaceId_prop: workspaceId,
+        using_fallback: !workspaceId
+      });
+
       // Step 1: Create campaign
       const campaignResponse = await fetch('/api/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          workspace_id: workspaceId,
+          workspace_id: actualWorkspaceId,
           name,
           campaign_type: campaignType,
           connection_message: connectionMessage,
@@ -1698,7 +1720,7 @@ Would you like me to adjust these or create more variations?`
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             campaign_id: campaign.id,
-            workspace_id: workspaceId,
+            workspace_id: actualWorkspaceId,
             prospect_ids: initialProspects.map(p => p.prospect_id)  // FIXED: Use prospect_id not id
           })
         });
@@ -4001,6 +4023,12 @@ interface CampaignHubProps {
 }
 
 const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects, onCampaignCreated }) => {
+  // TEMP FIX: Use fallback workspace ID if parent doesn't provide it
+  const FALLBACK_WORKSPACE_ID = '014509ba-226e-43ee-ba58-ab5f20d2ed08'; // Stan's workspace (Blaze Life Labs)
+  const actualWorkspaceId = workspaceId || FALLBACK_WORKSPACE_ID;
+
+  console.log('🏢 [CAMPAIGN HUB MAIN] Workspace ID being used:', actualWorkspaceId, 'from prop:', workspaceId);
+
   const [showBuilder, setShowBuilder] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showFullFeatures, setShowFullFeatures] = useState(false);
@@ -4014,14 +4042,14 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
   // Fetch workspace data to get client_code
   const { data: workspaceData } = useQuery({
-    queryKey: ['workspace', workspaceId],
+    queryKey: ['workspace', actualWorkspaceId],
     queryFn: async () => {
-      if (!workspaceId) return null;
+      if (!actualWorkspaceId) return null;
       const supabase = createClientComponentClient();
       const { data, error } = await supabase
         .from('workspaces')
         .select('id, name, client_code')
-        .eq('id', workspaceId)
+        .eq('id', actualWorkspaceId)
         .single();
       if (error) {
         console.error('Failed to fetch workspace:', error);
@@ -4029,7 +4057,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       }
       return data;
     },
-    enabled: !!workspaceId
+    enabled: !!actualWorkspaceId
   });
 
   // Auto-open pending approvals toggle (stored in localStorage)
@@ -4250,11 +4278,13 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       const sessionId = finalCampaignData.prospects?.[0]?.sessionId || initialProspects?.[0]?.sessionId;
 
       // Step 1: Create campaign with 'inactive' status (ready to activate)
+      console.log('🎯 [APPROVE CAMPAIGN] Creating campaign with workspace_id:', actualWorkspaceId);
+
       const campaignResponse = await fetch('/api/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          workspace_id: workspaceId,
+          workspace_id: actualWorkspaceId,
           name: finalCampaignData.name,
           campaign_type: approvedCampaignType,
           status: 'inactive', // Approved campaigns go to Inactive tab, user activates to send
@@ -5273,7 +5303,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         {showApprovalScreen && campaignDataForApproval && (
           <CampaignApprovalScreen
             campaignData={campaignDataForApproval}
-            workspaceId={workspaceId}
+            workspaceId={actualWorkspaceId}
             onApprove={async (finalCampaignData) => {
               // Execute campaign creation and N8N trigger
               await handleApproveCampaign(finalCampaignData);
@@ -5310,7 +5340,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   setCampaignDataForApproval(campaignData);
                   setShowApprovalScreen(true);
                 }}
-                workspaceId={workspaceId}
+                workspaceId={actualWorkspaceId}
                 clientCode={workspaceData?.client_code || null}
               />
             </div>
