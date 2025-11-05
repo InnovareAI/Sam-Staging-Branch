@@ -802,12 +802,12 @@ export async function POST(req: NextRequest) {
       console.log('Prospect status breakdown:', statusCounts);
     }
 
-    // Accept both 'pending' and 'queued_in_n8n' statuses for processing
+    // Accept 'pending', 'approved', 'ready_to_message', and 'queued_in_n8n' statuses for processing
     const pendingProspects = campaign.campaign_prospects.filter(
-      (cp: any) => ['pending', 'queued_in_n8n'].includes(cp.status) && (cp.linkedin_url || cp.email)
+      (cp: any) => ['pending', 'approved', 'ready_to_message', 'queued_in_n8n'].includes(cp.status) && (cp.linkedin_url || cp.email)
     );
 
-    console.log(`✅ Found ${pendingProspects.length} prospects with status='pending' or 'queued_in_n8n'`);
+    console.log(`✅ Found ${pendingProspects.length} prospects ready for processing`);
 
     if (pendingProspects.length === 0) {
       return NextResponse.json({
