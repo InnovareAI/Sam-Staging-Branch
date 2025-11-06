@@ -4306,7 +4306,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           workspace_id: actualWorkspaceId,
           name: finalCampaignData.name,
           campaign_type: approvedCampaignType,
-          status: 'active', // Set to active so it can execute immediately via n8n
+          status: 'inactive', // Start as inactive - user must manually activate
           session_id: sessionId, // CRITICAL: Pass session_id to auto-transfer approved prospects
           message_templates: {
             connection_request: finalCampaignData.messages.connection_request,
@@ -4509,34 +4509,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       // Update prospects count to include synced IDs
       const totalProspectsWithIds = uploadResult.prospects_with_linkedin_ids + syncedCount;
 
-      // Step 3: AUTOMATED EXECUTION - Execute campaign automatically for ALL approved campaigns
-      // No user action needed - n8n execution happens immediately after approval
-      if (mappedProspects.length > 0) {
-        try {
-          const executeResponse = await fetch('/api/campaigns/linkedin/execute-via-n8n', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              campaignId: campaign.id,
-              workspaceId: actualWorkspaceId
-            })
-          });
-
-          if (executeResponse.ok) {
-            const syncMessage = syncedCount > 0
-              ? `\n🔗 ${syncedCount} LinkedIn IDs auto-resolved from message history`
-              : '';
-            toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${mappedProspects.length} prospects uploaded${syncMessage}\n🚀 Your campaign is now live and messages will be sent according to your schedule`);
-          } else {
-            const errorData = await executeResponse.json();
-            toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Launch failed: ${errorData.error || 'Unknown error'}\n💡 Check campaign dashboard for details`);
-          }
-        } catch (executeError) {
-          console.error('Campaign execution error:', executeError);
-          toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Failed to launch campaign\n💡 You can manually launch from campaign dashboard`);
-        }
-      }
-      // Old conditional execution logic removed - now executes automatically above
+      // Campaign created successfully - user must manually activate from dashboard
+      const syncMessage = syncedCount > 0
+        ? `\n🔗 ${syncedCount} LinkedIn IDs auto-resolved from message history`
+        : '';
+      toastSuccess(`✅ Campaign "${finalCampaignData.name}" created successfully!\n\n📊 ${mappedProspects.length} prospects uploaded${syncMessage}\n\n💡 Go to the Inactive tab and click "Activate" to launch your campaign`)
 
       // Save user's timezone preference to their profile (for future campaigns)
       if (finalCampaignData.timezone) {
@@ -4573,6 +4550,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       setShowApprovalScreen(false);
       setCampaignDataForApproval(null);
       setShowBuilder(false);
+
+      // Switch to Inactive tab to show newly created campaign
+      setCampaignFilter('inactive');
 
       // Invalidate caches to refresh campaign lists and counters
       queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
