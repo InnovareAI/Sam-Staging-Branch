@@ -4484,117 +4484,34 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       // Update prospects count to include synced IDs
       const totalProspectsWithIds = uploadResult.prospects_with_linkedin_ids + syncedCount;
 
-      // Step 3: Execute via N8N workflow
-      if (totalProspectsWithIds > 0) {
-        const executeResponse = await fetch('/api/campaigns/linkedin/execute-via-n8n', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            campaignId: campaign.id,
-            workspaceId: workspaceId
-          })
-        });
-
-        if (executeResponse.ok) {
-          const syncMessage = syncedCount > 0
-            ? `\n🔗 ${syncedCount} LinkedIn IDs auto-resolved from message history`
-            : '';
-          toastError(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${mappedProspects.length} prospects uploaded${syncMessage}\n🚀 Campaign sent to N8N for execution`);
-        } else {
-          toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Manual launch required from campaign dashboard`);
-        }
-      } else {
-        // Calculate connection degrees for approval prospects
-        const approvalProspectDegrees = mappedProspects.map((p: any) => {
-          const degree = p.connection_degree || p.degree || 'unknown';
-          return degree.toLowerCase().includes('1st') ? '1st' :
-                 (degree.toLowerCase().includes('2nd') || degree.toLowerCase().includes('3rd')) ? '2nd/3rd' : 'unknown';
-        });
-        const approvalFirstDegree = approvalProspectDegrees.filter((d: string) => d === '1st').length;
-        const approvalSecondThird = approvalProspectDegrees.filter((d: string) => d === '2nd/3rd').length;
-        const hasOnly1stDegreeApproval = approvalFirstDegree > 0 && approvalSecondThird === 0;
-
-        // AUTOMATION: Auto-sync LinkedIn IDs ONLY for Messenger campaigns (1st degree)
-        // Connector campaigns (2nd/3rd degree) don't need internal IDs - they use public profile URLs
-        const needsLinkedInSync = totalProspectsWithIds === 0 && approvedCampaignType === 'messenger';
-
-        if (needsLinkedInSync) {
-          toastInfo('🔄 Auto-syncing LinkedIn IDs for 1st degree connections (Messenger campaign)...');
-
-          try {
-            const syncResponse = await fetch('/api/linkedin/sync-connections', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                workspaceId,
-                campaignId: campaign.id
-              })
-            });
-
-            if (syncResponse.ok) {
-              const syncData = await syncResponse.json();
-              if (syncData.stats?.campaign_prospects_resolved > 0) {
-                toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved and ready!\n\n📊 ${mappedProspects.length} prospects uploaded\n🔗 ${syncData.stats.campaign_prospects_resolved} LinkedIn IDs auto-resolved\n🚀 Campaign is ready for launch!`);
-
-                // Auto-launch the campaign via N8N workflow
-                try {
-                  const launchResponse = await fetch('/api/campaigns/linkedin/execute-via-n8n', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      campaignId: campaign.id,
-                      workspaceId: workspaceId
-                    })
-                  });
-
-                  if (launchResponse.ok) {
-                    toastSuccess(`🎉 Campaign launched successfully!`);
-                  }
-                } catch (launchError) {
-                  console.error('Auto-launch error:', launchError);
-                }
-              } else {
-                toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${mappedProspects.length} prospects uploaded\n⚠️ LinkedIn ID sync completed but no matches found\n\nℹ️ These prospects may not be in your LinkedIn connections yet. Connect with them first, then retry.`);
-              }
-            } else {
-              toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${mappedProspects.length} prospects uploaded\n⚠️ LinkedIn ID auto-sync failed - will retry automatically`);
-            }
-          } catch (syncError) {
-            console.error('Auto-sync error:', syncError);
-            toastError(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${mappedProspects.length} prospects uploaded\n⚠️ LinkedIn ID discovery in progress...`);
-          }
-        } else {
-          // No sync needed - either IDs already resolved OR it's a Connector campaign
-          // Open campaign settings modal to allow user to activate
-          toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved!\n\n📊 ${mappedProspects.length} prospects ready\n\n💡 Opening settings to activate...`);
-
-          // Open settings modal for the new campaign
-          setSelectedCampaign(campaign);
-
-          // Initialize editable settings from campaign data
-          const execPrefs = campaign.execution_preferences || {};
-          setEditedCampaignSettings({
-            name: campaign.name || '',
-            daily_connection_limit: execPrefs.daily_connection_limit || 15,
-            daily_follow_up_limit: execPrefs.daily_follow_up_limit || 20,
-            use_priority: execPrefs.use_priority !== false,
-            priority: execPrefs.priority || 'medium',
-            start_immediately: execPrefs.start_immediately !== false,
-            scheduled_start: execPrefs.scheduled_start || null,
-            timezone: campaign.timezone || 'America/New_York',
-            working_hours_start: campaign.working_hours_start || 7,
-            working_hours_end: campaign.working_hours_end || 18,
-            skip_weekends: campaign.skip_weekends !== false,
-            skip_holidays: campaign.skip_holidays !== false,
-            country_code: campaign.country_code || 'US',
-            allow_same_company: execPrefs.allow_same_company || false,
-            allow_duplicate_emails: execPrefs.allow_duplicate_emails || false,
-            skip_bounced_emails: execPrefs.skip_bounced_emails !== false
+      // Step 3: AUTOMATED EXECUTION - Execute campaign automatically for ALL approved campaigns
+      // No user action needed - n8n execution happens immediately after approval
+      if (mappedProspects.length > 0) {
+        try {
+          const executeResponse = await fetch('/api/campaigns/linkedin/execute-via-n8n', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              campaignId: campaign.id,
+              workspaceId: workspaceId
+            })
           });
 
-          setShowCampaignSettings(true);
+          if (executeResponse.ok) {
+            const syncMessage = syncedCount > 0
+              ? `\n🔗 ${syncedCount} LinkedIn IDs auto-resolved from message history`
+              : '';
+            toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${mappedProspects.length} prospects uploaded${syncMessage}\n🚀 Campaign sent to N8N for execution`);
+          } else {
+            const errorData = await executeResponse.json();
+            toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Execution failed: ${errorData.error || 'Unknown error'}\n💡 Check campaign dashboard for details`);
+          }
+        } catch (executeError) {
+          console.error('Campaign execution error:', executeError);
+          toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Execution failed to start\n💡 You can manually launch from campaign dashboard`);
         }
       }
+      // Old conditional execution logic removed - now executes automatically above
 
       // Mark approval session as completed if prospects came from approval flow
       const approvalSessionId = mappedProspects[0]?.sessionId || initialProspects?.[0]?.sessionId;
