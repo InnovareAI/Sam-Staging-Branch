@@ -5329,7 +5329,14 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       <div className="w-full space-y-8">
 
         {/* Campaign Approval Screen */}
-        {showApprovalScreen && campaignDataForApproval && (
+        {(() => {
+          console.log('🎯 [APPROVAL SCREEN RENDER CHECK]', {
+            showApprovalScreen,
+            hasCampaignData: !!campaignDataForApproval,
+            campaignName: campaignDataForApproval?.name,
+            willRender: showApprovalScreen && !!campaignDataForApproval
+          });
+          return showApprovalScreen && campaignDataForApproval ? (
           <CampaignApprovalScreen
             campaignData={campaignDataForApproval}
             workspaceId={actualWorkspaceId}
@@ -5349,7 +5356,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               toastError(`SAM help requested. Context: ${context}\n\nThis will open the main chat window with SAM ready to help you draft your message.`);
             }}
           />
-        )}
+        ) : null;
+        })()}
 
         {/* Campaign Builder Modal */}
         {showBuilder && !showApprovalScreen && (
@@ -5367,8 +5375,15 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 draftToLoad={selectedDraft}
                 onPrepareForApproval={(campaignData) => {
                   // Show approval screen
+                  console.log('🎯 [PREPARE FOR APPROVAL] Called with data:', {
+                    hasCampaignData: !!campaignData,
+                    campaignName: campaignData?.name,
+                    showBuilder,
+                    showApprovalScreen
+                  });
                   setCampaignDataForApproval(campaignData);
                   setShowApprovalScreen(true);
+                  console.log('🎯 [PREPARE FOR APPROVAL] State updated - approval screen should now show');
                 }}
                 workspaceId={actualWorkspaceId}
                 clientCode={workspaceData?.client_code || null}
