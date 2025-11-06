@@ -1,0 +1,155 @@
+🔍 RLS POLICY DIAGNOSTIC FOR workspace_members
+================================================================================
+
+📋 Run these SQL queries in Supabase SQL Editor:
+   https://supabase.com/dashboard → SQL Editor
+
+================================================================================
+
+-- QUERY 1: Check if RLS is enabled on workspace_members
+-- Expected: rls_enabled = true
+
+SELECT
+  schemaname,
+  tablename,
+  rowsecurity as rls_enabled
+FROM pg_tables
+WHERE tablename = 'workspace_members';
+
+================================================================================
+
+-- QUERY 2: List all RLS policies on workspace_members
+-- Expected: At least 1 policy for SELECT operations
+
+SELECT
+  schemaname,
+  tablename,
+  policyname,
+  permissive,
+  roles,
+  cmd,
+  qual as using_expression,
+  with_check
+FROM pg_policies
+WHERE tablename = 'workspace_members'
+ORDER BY policyname;
+
+================================================================================
+
+-- QUERY 3: Test if specific user can access their membership
+-- This simulates what happens when the API runs with user auth
+
+-- First, set the user context (replace with actual user ID)
+SELECT set_config('request.jwt.claims', '{"sub": "f6885ff3-deef-4781-8721-93011c990b1b"}', true);
+
+-- Now try to query workspace_members (simulates API call)
+SELECT
+  workspace_id,
+  user_id,
+  role,
+  status
+FROM workspace_members
+WHERE user_id = 'f6885ff3-deef-4781-8721-93011c990b1b'
+AND workspace_id = 'babdcab8-1a78-4b2f-913e-6e9fd9821009';
+
+-- If this returns empty, RLS is blocking the query!
+
+================================================================================
+
+❓ EXPECTED RESULTS:
+
+✅ If working correctly:
+   - Query 1: rls_enabled = true
+   - Query 2: Shows policy like "Users can view their workspace memberships"
+   - Query 3: Returns 1 row with role=owner, status=active
+
+❌ If broken:
+   - Query 1: rls_enabled = false (BAD - table not protected)
+   - Query 2: No policies found (BAD - no access rules)
+   - Query 3: Returns empty (BAD - RLS blocking valid access)
+
+================================================================================
+
+🔧 FIX: If RLS is blocking valid access, run these commands:
+
+================================================================================
+
+-- Enable RLS on workspace_members (if not already enabled)
+ALTER TABLE workspace_members ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing broken policies (if any)
+DROP POLICY IF EXISTS "Users can view their workspace memberships" ON workspace_members;
+DROP POLICY IF EXISTS "Users can view members of their workspaces" ON workspace_members;
+
+-- Create correct RLS policy for user access
+CREATE POLICY "Users can view their workspace memberships"
+ON workspace_members
+FOR SELECT
+TO authenticated
+USING (auth.uid() = user_id);
+
+-- Alternative: Allow users to see all members in their workspaces
+-- Uncomment if users need to see other members:
+/*
+CREATE POLICY "Users can view members of their workspaces"
+ON workspace_members
+FOR SELECT
+TO authenticated
+USING (
+  workspace_id IN (
+    SELECT workspace_id
+    FROM workspace_members
+    WHERE user_id = auth.uid()
+  )
+);
+*/
+
+-- Ensure service role has full access (for API operations)
+CREATE POLICY "Service role full access"
+ON workspace_members
+FOR ALL
+TO service_role
+USING (true)
+WITH CHECK (true);
+
+-- Verify policies were created
+SELECT policyname, cmd, roles
+FROM pg_policies
+WHERE tablename = 'workspace_members';
+
+================================================================================
+
+📝 NOTES:
+
+1. The API uses createRouteHandlerClient which includes user auth context
+2. When RLS is enabled, Supabase filters queries based on auth.uid()
+3. If no policy matches auth.uid() = user_id, the query returns empty
+4. Empty result causes: if (accessError || !workspaceAccess) → 403 Access Denied
+
+5. DATABASE DATA IS CORRECT (verified by audit)
+6. USER HAS VALID MEMBERSHIP (role=owner, status=active)
+7. PROBLEM IS RLS POLICY, NOT DATA INTEGRITY
+
+================================================================================
+
+🎯 ROOT CAUSE:
+
+The workspace_members table either:
+   a) Has RLS enabled but NO policies (blocking all access)
+   b) Has a broken/incorrect policy that doesn't match auth.uid()
+   c) Has a policy that only works for service_role, not authenticated users
+
+When user tl@innovareai.com tries to create a campaign:
+   1. API checks workspace access via workspace_members query
+   2. RLS policy filters the query based on auth.uid()
+   3. Policy doesn't return the row (even though it exists)
+   4. API sees empty result and returns "Access denied to workspace"
+
+================================================================================
+
+✅ SOLUTION:
+
+Run the FIX SQL above in Supabase SQL Editor
+This will create the correct RLS policy allowing users to see their memberships
+
+================================================================================
