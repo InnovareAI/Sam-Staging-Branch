@@ -4526,14 +4526,14 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             const syncMessage = syncedCount > 0
               ? `\n🔗 ${syncedCount} LinkedIn IDs auto-resolved from message history`
               : '';
-            toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${mappedProspects.length} prospects uploaded${syncMessage}\n🚀 Campaign sent to N8N for execution`);
+            toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${mappedProspects.length} prospects uploaded${syncMessage}\n🚀 Your campaign is now live and messages will be sent according to your schedule`);
           } else {
             const errorData = await executeResponse.json();
-            toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Execution failed: ${errorData.error || 'Unknown error'}\n💡 Check campaign dashboard for details`);
+            toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Launch failed: ${errorData.error || 'Unknown error'}\n💡 Check campaign dashboard for details`);
           }
         } catch (executeError) {
           console.error('Campaign execution error:', executeError);
-          toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Execution failed to start\n💡 You can manually launch from campaign dashboard`);
+          toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Failed to launch campaign\n💡 You can manually launch from campaign dashboard`);
         }
       }
       // Old conditional execution logic removed - now executes automatically above
