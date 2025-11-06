@@ -4306,7 +4306,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           workspace_id: actualWorkspaceId,
           name: finalCampaignData.name,
           campaign_type: approvedCampaignType,
-          status: 'inactive', // Approved campaigns go to Inactive tab, user activates to send
+          status: 'active', // Set to active so it can execute immediately via n8n
           session_id: sessionId, // CRITICAL: Pass session_id to auto-transfer approved prospects
           message_templates: {
             connection_request: finalCampaignData.messages.connection_request,
