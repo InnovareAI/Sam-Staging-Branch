@@ -445,14 +445,22 @@ function buildMasterFunnelPayload(
     require_reply_approval: true
   };
   
-  // Build execution preferences
+  // Build execution preferences with timing rules
+  // N8N enforces these timing rules when actually sending messages
   const executionPreferences = {
     immediate_execution: false, // Always require HITL approval
     batch_size: determineBatchSize(tier, prospectsToProcess.length),
     execution_pace: tier.tier_type === 'enterprise' ? 'aggressive' : 'moderate',
     hitl_approval_required: true,
-    fallback_strategy: channelPreferences.email_enabled && channelPreferences.linkedin_enabled ? 'both_channels' : 
-                       channelPreferences.linkedin_enabled ? 'linkedin_only' : 'email_only'
+    fallback_strategy: channelPreferences.email_enabled && channelPreferences.linkedin_enabled ? 'both_channels' :
+                       channelPreferences.linkedin_enabled ? 'linkedin_only' : 'email_only',
+    // Timing rules - N8N controls when messages actually get sent
+    working_hours_start: campaign.working_hours_start || 7,  // Default 7am
+    working_hours_end: campaign.working_hours_end || 18,     // Default 6pm
+    skip_weekends: campaign.skip_weekends !== false,         // Default true
+    skip_holidays: campaign.skip_holidays !== false,         // Default true
+    timezone: campaign.timezone || 'America/New_York',       // Campaign timezone
+    country_code: campaign.country_code || 'US'              // For holiday detection
   };
   
   return {

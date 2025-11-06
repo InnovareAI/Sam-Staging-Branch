@@ -522,7 +522,17 @@ export default function CampaignApprovalScreen({
           </button>
 
           <div className="text-center">
-            <div className="text-sm text-gray-400 mb-1">Ready to launch?</div>
+            <div className="text-sm text-gray-400 mb-2">Using default timing: 7am-6pm ET, skip weekends/holidays</div>
+            <button
+              onClick={() => {
+                // TODO: Show timing preferences modal/dropdown
+                alert('Timing customization coming soon! For now, defaults will be used (7am-6pm ET, skip weekends/holidays). You can change these after campaign creation in Campaign Settings.');
+              }}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm flex items-center gap-2 mx-auto transition-colors"
+            >
+              <Clock size={16} />
+              Customize Sending Settings
+            </button>
           </div>
 
           <button
