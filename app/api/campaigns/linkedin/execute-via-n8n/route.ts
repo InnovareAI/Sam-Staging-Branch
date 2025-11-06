@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 // N8N Workflow configuration - FIXED workflow webhook
@@ -676,7 +677,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify user has access to this workspace
-    const { data: member } = await supabase
+    // Use service role to bypass RLS for membership check (proven fix from Nov 6)
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data: member } = await supabaseAdmin
       .from('workspace_members')
       .select('role')
       .eq('workspace_id', workspaceId)

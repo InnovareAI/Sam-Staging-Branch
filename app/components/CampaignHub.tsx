@@ -72,7 +72,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   const queryClient = useQueryClient();
 
   // TEMP FIX: Use fallback workspace ID if parent doesn't provide it
-  const FALLBACK_WORKSPACE_ID = '014509ba-226e-43ee-ba58-ab5f20d2ed08'; // Stan's workspace (Blaze Life Labs)
+  const FALLBACK_WORKSPACE_ID = 'babdcab8-1a78-4b2f-913e-6e9fd9821009'; // InnovareAI Workspace
   const actualWorkspaceId = workspaceId || FALLBACK_WORKSPACE_ID;
 
   console.log('🏢 [CAMPAIGN HUB] Workspace ID being used:', actualWorkspaceId, 'from prop:', workspaceId);
@@ -4024,7 +4024,7 @@ interface CampaignHubProps {
 
 const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects, onCampaignCreated }) => {
   // TEMP FIX: Use fallback workspace ID if parent doesn't provide it
-  const FALLBACK_WORKSPACE_ID = '014509ba-226e-43ee-ba58-ab5f20d2ed08'; // Stan's workspace (Blaze Life Labs)
+  const FALLBACK_WORKSPACE_ID = 'babdcab8-1a78-4b2f-913e-6e9fd9821009'; // InnovareAI Workspace
   const actualWorkspaceId = workspaceId || FALLBACK_WORKSPACE_ID;
 
   console.log('🏢 [CAMPAIGN HUB MAIN] Workspace ID being used:', actualWorkspaceId, 'from prop:', workspaceId);
