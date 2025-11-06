@@ -21,6 +21,7 @@ interface CampaignApprovalScreenProps {
     };
   };
   workspaceId: string;
+  userTimezone?: string | null; // User's saved timezone preference from profile
   onApprove: (finalCampaignData: any) => void;
   onReject: () => void;
   onRequestSAMHelp: (context: string) => void;
@@ -29,6 +30,7 @@ interface CampaignApprovalScreenProps {
 export default function CampaignApprovalScreen({
   campaignData,
   workspaceId,
+  userTimezone,
   onApprove,
   onReject,
   onRequestSAMHelp
@@ -46,6 +48,9 @@ export default function CampaignApprovalScreen({
   // Timing controls for flow_settings
   const [connectionWait, setConnectionWait] = useState(36); // hours (12-96)
   const [followupWait, setFollowupWait] = useState(5);      // days (1-30)
+
+  // Timezone selection (uses saved preference or defaults to ET)
+  const [selectedTimezone, setSelectedTimezone] = useState(userTimezone || 'America/New_York');
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -147,6 +152,7 @@ export default function CampaignApprovalScreen({
       ...campaignData,
       messages,
       flow_settings, // Add flow_settings for N8N
+      timezone: selectedTimezone, // User-selected timezone (will be saved to user profile)
       approvedAt: new Date().toISOString(),
       status: 'approved'
     };
@@ -521,18 +527,37 @@ export default function CampaignApprovalScreen({
             Reject & Edit
           </button>
 
-          <div className="text-center">
-            <div className="text-sm text-gray-400 mb-2">Using default timing: 7am-6pm ET, skip weekends/holidays</div>
-            <button
-              onClick={() => {
-                // TODO: Show timing preferences modal/dropdown
-                alert('Timing customization coming soon! For now, defaults will be used (7am-6pm ET, skip weekends/holidays). You can change these after campaign creation in Campaign Settings.');
-              }}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm flex items-center gap-2 mx-auto transition-colors"
-            >
-              <Clock size={16} />
-              Customize Sending Settings
-            </button>
+          <div className="text-center flex-1 max-w-md">
+            <div className="text-sm text-gray-400 mb-3">Campaign sending schedule</div>
+
+            {/* Timezone Selector */}
+            <div className="mb-3">
+              <label className="text-xs text-gray-400 block mb-1">Timezone</label>
+              <select
+                value={selectedTimezone}
+                onChange={(e) => setSelectedTimezone(e.target.value)}
+                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+              >
+                <option value="America/New_York">Eastern Time (ET)</option>
+                <option value="America/Chicago">Central Time (CT)</option>
+                <option value="America/Denver">Mountain Time (MT)</option>
+                <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                <option value="America/Phoenix">Arizona (MST)</option>
+                <option value="America/Anchorage">Alaska (AKT)</option>
+                <option value="Pacific/Honolulu">Hawaii (HST)</option>
+                <option value="Europe/London">London (GMT/BST)</option>
+                <option value="Europe/Paris">Paris (CET/CEST)</option>
+                <option value="Europe/Berlin">Berlin (CET/CEST)</option>
+                <option value="Asia/Dubai">Dubai (GST)</option>
+                <option value="Asia/Singapore">Singapore (SGT)</option>
+                <option value="Asia/Tokyo">Tokyo (JST)</option>
+                <option value="Australia/Sydney">Sydney (AEDT)</option>
+              </select>
+            </div>
+
+            <div className="text-xs text-gray-400">
+              Messages send: 7am-6pm, skip weekends/holidays
+            </div>
           </div>
 
           <button

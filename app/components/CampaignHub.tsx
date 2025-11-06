@@ -4040,6 +4040,24 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
   const queryClient = useQueryClient();
 
+  // Fetch user's saved timezone preference
+  const [userTimezone, setUserTimezone] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserTimezone = async () => {
+      try {
+        const response = await fetch('/api/user/get-timezone');
+        if (response.ok) {
+          const data = await response.json();
+          setUserTimezone(data.timezone);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user timezone:', error);
+      }
+    };
+    fetchUserTimezone();
+  }, []);
+
   // Fetch workspace data to get client_code
   const { data: workspaceData } = useQuery({
     queryKey: ['workspace', actualWorkspaceId],
@@ -4303,8 +4321,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           },
           // Include message timing/cadence for dynamic N8N scheduling
           message_delays: finalCampaignData.message_delays || _executionData?.message_delays || ['2-3 days', '3-5 days', '5-7 days', '1 week', '2 weeks'],
-          // Timing preferences - global defaults (user can override in campaign settings)
-          timezone: 'America/New_York',
+          // Timing preferences - use user-selected timezone from approval modal
+          timezone: finalCampaignData.timezone || 'America/New_York',
           working_hours_start: 7,  // 7am
           working_hours_end: 18,   // 6pm
           skip_weekends: true,     // Don't send on weekends
@@ -4519,6 +4537,21 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         }
       }
       // Old conditional execution logic removed - now executes automatically above
+
+      // Save user's timezone preference to their profile (for future campaigns)
+      if (finalCampaignData.timezone) {
+        try {
+          await fetch('/api/user/update-timezone', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ timezone: finalCampaignData.timezone })
+          });
+          console.log(`✅ Saved timezone preference: ${finalCampaignData.timezone}`);
+        } catch (timezoneError) {
+          console.error('Failed to save timezone preference:', timezoneError);
+          // Don't throw - campaign was created successfully
+        }
+      }
 
       // Mark approval session as completed if prospects came from approval flow
       const approvalSessionId = mappedProspects[0]?.sessionId || initialProspects?.[0]?.sessionId;
@@ -5300,6 +5333,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           <CampaignApprovalScreen
             campaignData={campaignDataForApproval}
             workspaceId={actualWorkspaceId}
+            userTimezone={userTimezone}
             onApprove={async (finalCampaignData) => {
               // Execute campaign creation and N8N trigger
               await handleApproveCampaign(finalCampaignData);
