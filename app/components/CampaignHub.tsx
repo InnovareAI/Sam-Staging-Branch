@@ -4518,7 +4518,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               campaignId: campaign.id,
-              workspaceId: workspaceId
+              workspaceId: actualWorkspaceId
             })
           });
 
