@@ -1,91 +1,61 @@
+require('dotenv').config({ path: '.env.local' });
 const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(
-  'https://latxadqrvrrrcvkktrog.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdHhhZHFydnJycmN2a2t0cm9nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MjY5OTk4NiwiZXhwIjoyMDY4Mjc1OTg2fQ.nCcqwHSwGtqatcMmb1uanGxsL4DbD8woPwezMAE41OQ'
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-(async () => {
+async function checkCampaignProspects() {
   const workspaceId = 'babdcab8-1a78-4b2f-913e-6e9fd9821009';
-
-  console.log('🔍 CHECKING APPROVED PROSPECTS → CAMPAIGN PIPELINE\n');
-
-  // Get approved prospects from last 24h
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  const { data: approvedProspects } = await supabase
-    .from('prospect_approval_data')
-    .select('id, session_id, approval_status, contact, created_at')
+  
+  console.log('\n🔍 CHECKING CAMPAIGN PROSPECTS\n');
+  
+  const { data: campaigns } = await supabase
+    .from('campaigns')
+    .select('id, name, created_at')
     .eq('workspace_id', workspaceId)
-    .eq('approval_status', 'approved')
-    .gte('created_at', yesterday.toISOString())
-    .order('created_at', { ascending: false });
-
-  console.log(`✅ Approved Prospects (last 24h): ${approvedProspects.length}\n`);
-
-  // For each approved prospect, check if they're in campaign_prospects
-  for (const prospect of approvedProspects) {
-    const contact = typeof prospect.contact === 'string' ? JSON.parse(prospect.contact) : prospect.contact;
-    const name = [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'NO NAME';
-    const linkedinUrl = contact.linkedInUrl || contact.linkedin_url || 'NO URL';
-
-    console.log(`  ${name}`);
-    console.log(`    LinkedIn: ${linkedinUrl}`);
-    console.log(`    Approved: ${new Date(prospect.created_at).toLocaleString()}`);
-    console.log(`    Prospect ID: ${prospect.id}`);
-
-    // Check if this prospect is in campaign_prospects
-    const { data: campaignProspects, error } = await supabase
-      .from('campaign_prospects')
-      .select('id, campaign_id, status, created_at, campaigns!inner(name)')
-      .or(`prospect_id.eq.${prospect.id},linkedin_url.eq.${linkedinUrl}`)
-      .limit(5);
-
-    if (error) {
-      console.log(`    ❌ Error checking campaigns: ${error.message}`);
-    } else if (!campaignProspects || campaignProspects.length === 0) {
-      console.log(`    ⚠️  NOT in any campaign`);
-    } else {
-      console.log(`    ✅ In ${campaignProspects.length} campaign(s):`);
-      campaignProspects.forEach(cp => {
-        console.log(`       - ${cp.campaigns.name} (status: ${cp.status})`);
-      });
-    }
-    console.log('');
+    .order('created_at', { ascending: false })
+    .limit(1);
+    
+  if (!campaigns || campaigns.length === 0) {
+    console.log('❌ No campaigns found');
+    return;
   }
-
-  // Also check all campaign_prospects created in last 24h
-  const { data: recentCampaignProspects, error: cpError } = await supabase
+  
+  const campaign = campaigns[0];
+  console.log('📋 Most recent campaign:', campaign.name);
+  console.log('   ID:', campaign.id);
+  console.log('   Created:', campaign.created_at, '\n');
+  
+  const { data: prospects } = await supabase
     .from('campaign_prospects')
-    .select('id, first_name, last_name, status, created_at, campaigns!inner(name, workspace_id)')
-    .eq('campaigns.workspace_id', workspaceId)
-    .gte('created_at', yesterday.toISOString())
-    .order('created_at', { ascending: false });
-
-  if (cpError) {
-    console.log(`\n❌ Error fetching recent campaign prospects: ${cpError.message}`);
-  } else {
-    console.log(`\n📋 Campaign Prospects Created (last 24h): ${recentCampaignProspects.length}\n`);
-
-    if (recentCampaignProspects.length > 0) {
-      const byCampaign = {};
-      recentCampaignProspects.forEach(cp => {
-        const campaignName = cp.campaigns?.name || 'Unknown';
-        if (!byCampaign[campaignName]) {
-          byCampaign[campaignName] = [];
-        }
-        byCampaign[campaignName].push(cp);
-      });
-
-      Object.entries(byCampaign).forEach(([campaignName, prospects]) => {
-        console.log(`  ${campaignName}: ${prospects.length} prospects`);
-        prospects.forEach((p, i) => {
-          const name = [p.first_name, p.last_name].filter(Boolean).join(' ') || 'NO NAME';
-          console.log(`    ${i + 1}. ${name} (${p.status})`);
-        });
-        console.log('');
-      });
-    }
+    .select('id, first_name, last_name, status, linkedin_url, contacted_at')
+    .eq('campaign_id', campaign.id);
+    
+  const prospectCount = prospects ? prospects.length : 0;
+  console.log('📊 Total prospects:', prospectCount, '\n');
+  
+  if (prospectCount === 0) {
+    console.log('⚠️  NO PROSPECTS IN CAMPAIGN!\n');
+    return;
   }
-})();
+  
+  const statusCounts = {};
+  prospects.forEach(p => {
+    statusCounts[p.status] = (statusCounts[p.status] || 0) + 1;
+  });
+  
+  console.log('Status breakdown:');
+  Object.entries(statusCounts).forEach(([status, count]) => {
+    console.log('  -', status + ':', count);
+  });
+  
+  console.log('\nSample prospects:');
+  prospects.slice(0, 3).forEach(p => {
+    console.log('  -', p.first_name, p.last_name, '(' + p.status + ')');
+    console.log('    LinkedIn:', p.linkedin_url || 'MISSING');
+  });
+}
+
+checkCampaignProspects().catch(console.error);
