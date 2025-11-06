@@ -4087,13 +4087,13 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     return true;
   });
 
-  // Don't auto-open builder - show Pending Approval section instead
-  // Users will click "Draft Messages" to open builder for each campaign
-  // useEffect(() => {
-  //   if (initialProspects && initialProspects.length > 0) {
-  //     setShowBuilder(true);
-  //   }
-  // }, [initialProspects]);
+  // Auto-open builder when initialProspects are passed (from prospect approval flow)
+  // This will trigger the approval modal to show automatically
+  useEffect(() => {
+    if (initialProspects && initialProspects.length > 0) {
+      setShowBuilder(true);
+    }
+  }, [initialProspects]);
 
   // Save auto-open preference to localStorage
   useEffect(() => {
@@ -4306,7 +4306,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           workspace_id: actualWorkspaceId,
           name: finalCampaignData.name,
           campaign_type: approvedCampaignType,
-          status: 'inactive', // Start as inactive - user must manually activate
+          status: 'active', // Set to active after user approves in modal so it can execute immediately
           session_id: sessionId, // CRITICAL: Pass session_id to auto-transfer approved prospects
           message_templates: {
             connection_request: finalCampaignData.messages.connection_request,
