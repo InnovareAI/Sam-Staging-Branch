@@ -913,7 +913,7 @@ export async function POST(req: NextRequest) {
       },
       supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL,
       supabase_service_key: process.env.SUPABASE_SERVICE_ROLE_KEY,
-      unipile_dsn: process.env.UNIPILE_DSN,
+      unipile_dsn: `https://${process.env.UNIPILE_DSN}`,
       unipile_api_key: process.env.UNIPILE_API_KEY
     };
 
