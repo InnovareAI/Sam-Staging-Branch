@@ -4321,12 +4321,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           },
           // Include message timing/cadence for dynamic N8N scheduling
           message_delays: finalCampaignData.message_delays || _executionData?.message_delays || ['2-3 days', '3-5 days', '5-7 days', '1 week', '2 weeks'],
-          // Timing preferences - use user-selected timezone from approval modal
+          // Timing preferences - use user-selected values from approval modal
           timezone: finalCampaignData.timezone || 'America/New_York',
-          working_hours_start: 7,  // 7am
-          working_hours_end: 18,   // 6pm
-          skip_weekends: true,     // Don't send on weekends
-          skip_holidays: true,     // Don't send on holidays
+          working_hours_start: finalCampaignData.working_hours_start ?? 7,
+          working_hours_end: finalCampaignData.working_hours_end ?? 18,
+          skip_weekends: finalCampaignData.skip_weekends ?? true,
+          skip_holidays: finalCampaignData.skip_holidays ?? true,
           country_code: 'US'       // For holiday calendar
         })
       });

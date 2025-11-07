@@ -52,6 +52,12 @@ export default function CampaignApprovalScreen({
   // Timezone selection (uses saved preference or defaults to ET)
   const [selectedTimezone, setSelectedTimezone] = useState(userTimezone || 'America/New_York');
 
+  // Business hours and holiday settings
+  const [workingHoursStart, setWorkingHoursStart] = useState(7);  // 7am
+  const [workingHoursEnd, setWorkingHoursEnd] = useState(18);    // 6pm
+  const [skipWeekends, setSkipWeekends] = useState(true);
+  const [skipHolidays, setSkipHolidays] = useState(true);
+
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
@@ -153,6 +159,10 @@ export default function CampaignApprovalScreen({
       messages,
       flow_settings, // Add flow_settings for N8N
       timezone: selectedTimezone, // User-selected timezone (will be saved to user profile)
+      working_hours_start: workingHoursStart,
+      working_hours_end: workingHoursEnd,
+      skip_weekends: skipWeekends,
+      skip_holidays: skipHolidays,
       approvedAt: new Date().toISOString(),
       status: 'approved'
     };
@@ -555,8 +565,56 @@ export default function CampaignApprovalScreen({
               </select>
             </div>
 
-            <div className="text-xs text-gray-400">
-              Messages send: 7am-6pm, skip weekends/holidays
+            {/* Business Hours */}
+            <div className="mb-3">
+              <label className="text-xs text-gray-400 block mb-1">Business Hours</label>
+              <div className="flex gap-2 items-center">
+                <select
+                  value={workingHoursStart}
+                  onChange={(e) => setWorkingHoursStart(parseInt(e.target.value))}
+                  className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>
+                      {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-gray-400 text-sm">to</span>
+                <select
+                  value={workingHoursEnd}
+                  onChange={(e) => setWorkingHoursEnd(parseInt(e.target.value))}
+                  className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>
+                      {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Skip Weekends/Holidays */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={skipWeekends}
+                  onChange={(e) => setSkipWeekends(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                Skip weekends
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={skipHolidays}
+                  onChange={(e) => setSkipHolidays(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                Skip public holidays
+              </label>
             </div>
           </div>
 
