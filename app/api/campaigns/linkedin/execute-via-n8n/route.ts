@@ -916,6 +916,7 @@ export async function POST(req: NextRequest) {
     // Step 9: Send to N8N webhook
     try {
       console.log(`🚀 Sending to N8N webhook: ${N8N_MASTER_FUNNEL_WEBHOOK}`);
+      console.log(`📦 N8N Payload:`, JSON.stringify(n8nPayload, null, 2));
 
       const n8nResponse = await fetch(N8N_MASTER_FUNNEL_WEBHOOK, {
         method: 'POST',
@@ -925,12 +926,16 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify(n8nPayload)
       });
 
+      console.log(`📡 N8N Response Status: ${n8nResponse.status} ${n8nResponse.statusText}`);
+
       if (!n8nResponse.ok) {
+        const errorText = await n8nResponse.text();
+        console.error(`❌ N8N webhook failed:`, errorText);
         throw new Error(`N8N Master Funnel failed: ${n8nResponse.status} ${n8nResponse.statusText}`);
       }
 
       const n8nResult = await n8nResponse.json();
-      console.log(`✅ N8N Master Funnel response:`, n8nResult);
+      console.log(`✅ N8N Master Funnel response:`, JSON.stringify(n8nResult, null, 2));
 
       // Step 10: Update execution record with N8N response
       await supabase
