@@ -887,40 +887,53 @@ export async function POST(req: NextRequest) {
       console.log(`✅ HITL approval session created: ${hitlSession.id}`);
     }
 
-    // Step 8: Build V1 Master Funnel payload with full sophistication
-    const masterFunnelPayload = buildMasterFunnelPayload(
-      campaignId,
-      workspaceId,
-      tier,
-      integrations,
-      currentUsage,
-      campaign,
-      prospectsToProcess,
-      executionType,
-      approverEmail
-    );
+    // Step 8: Build simple N8N payload (matches workflow expectations)
+    const n8nPayload = {
+      workspaceId: workspaceId,
+      campaignId: campaignId,
+      unipileAccountId: integrations.unipile_config?.linkedin_accounts[0] || '',
+      prospects: prospectsToProcess.map((p: any) => ({
+        id: p.id,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        linkedin_url: p.linkedin_url,
+        linkedin_user_id: p.linkedin_id,
+        company_name: p.company,
+        title: p.job_title
+      })),
+      messages: {
+        connection_request: campaign.connection_message || campaign.message_templates?.connection_request || ''
+      },
+      timing: {
+        fu1_delay_days: 2,
+        fu2_delay_days: 5,
+        fu3_delay_days: 7,
+        fu4_delay_days: 5,
+        gb_delay_days: 7
+      },
+      supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      supabase_service_key: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      unipile_dsn: process.env.UNIPILE_DSN,
+      unipile_api_key: process.env.UNIPILE_API_KEY
+    };
 
-    console.log(`🎯 Master Funnel Payload:`, {
-      workspace_tier: masterFunnelPayload.workspace_tier,
-      channel_preferences: masterFunnelPayload.channel_preferences,
-      execution_preferences: masterFunnelPayload.execution_preferences,
-      hitl_approval_required: masterFunnelPayload.execution_preferences.hitl_approval_required
+    console.log(`🎯 N8N Payload:`, {
+      workspaceId: n8nPayload.workspaceId,
+      campaignId: n8nPayload.campaignId,
+      prospectCount: n8nPayload.prospects.length,
+      hasUnipileConfig: !!n8nPayload.unipileAccountId
     });
 
-    // Step 9: Execute N8N Master Funnel with V1 sophistication
+    // Step 9: Send to N8N webhook
     try {
-      console.log(`🚀 Sending to N8N Master Funnel: ${N8N_MASTER_FUNNEL_WEBHOOK}`);
+      console.log(`🚀 Sending to N8N webhook: ${N8N_MASTER_FUNNEL_WEBHOOK}`);
 
       const n8nResponse = await fetch(N8N_MASTER_FUNNEL_WEBHOOK, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.N8N_API_KEY || ''}`,
-          'X-SAM-Workspace-ID': workspaceId,
-          'X-SAM-Campaign-ID': campaignId,
-          'X-SAM-Execution-ID': executionRecord.n8n_execution_id
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(masterFunnelPayload)
+        body: JSON.stringify(n8nPayload)
       });
 
       if (!n8nResponse.ok) {
