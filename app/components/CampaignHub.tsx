@@ -4087,13 +4087,13 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     return true;
   });
 
-  // Auto-open builder when initialProspects are passed (from prospect approval flow)
-  // This will trigger the approval modal to show automatically
-  useEffect(() => {
-    if (initialProspects && initialProspects.length > 0) {
-      setShowBuilder(true);
-    }
-  }, [initialProspects]);
+  // Don't auto-open builder - show Pending Approval section instead
+  // Users will click "Draft Messages" to open builder for each campaign
+  // useEffect(() => {
+  //   if (initialProspects && initialProspects.length > 0) {
+  //     setShowBuilder(true);
+  //   }
+  // }, [initialProspects]);
 
   // Save auto-open preference to localStorage
   useEffect(() => {
@@ -4509,11 +4509,34 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       // Update prospects count to include synced IDs
       const totalProspectsWithIds = uploadResult.prospects_with_linkedin_ids + syncedCount;
 
-      // Campaign created successfully - user must manually activate from dashboard
-      const syncMessage = syncedCount > 0
-        ? `\n🔗 ${syncedCount} LinkedIn IDs auto-resolved from message history`
-        : '';
-      toastSuccess(`✅ Campaign "${finalCampaignData.name}" created successfully!\n\n📊 ${mappedProspects.length} prospects uploaded${syncMessage}\n\n💡 Go to the Inactive tab and click "Activate" to launch your campaign`)
+      // Step 3: AUTOMATED EXECUTION - Execute campaign automatically for ALL approved campaigns
+      // No user action needed - n8n execution happens immediately after approval
+      if (mappedProspects.length > 0) {
+        try {
+          const executeResponse = await fetch('/api/campaigns/linkedin/execute-via-n8n', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              campaignId: campaign.id,
+              workspaceId: actualWorkspaceId
+            })
+          });
+
+          if (executeResponse.ok) {
+            const syncMessage = syncedCount > 0
+              ? `\n🔗 ${syncedCount} LinkedIn IDs auto-resolved from message history`
+              : '';
+            toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${mappedProspects.length} prospects uploaded${syncMessage}\n🚀 Your campaign is now live and messages will be sent according to your schedule`);
+          } else {
+            const errorData = await executeResponse.json();
+            toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Launch failed: ${errorData.error || 'Unknown error'}\n💡 Check campaign dashboard for details`);
+          }
+        } catch (executeError) {
+          console.error('Campaign execution error:', executeError);
+          toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Failed to launch campaign\n💡 You can manually launch from campaign dashboard`);
+        }
+      }
+      // Old conditional execution logic removed - now executes automatically above
 
       // Save user's timezone preference to their profile (for future campaigns)
       if (finalCampaignData.timezone) {
@@ -4550,9 +4573,6 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       setShowApprovalScreen(false);
       setCampaignDataForApproval(null);
       setShowBuilder(false);
-
-      // Switch to Inactive tab to show newly created campaign
-      setCampaignFilter('inactive');
 
       // Invalidate caches to refresh campaign lists and counters
       queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
@@ -5309,14 +5329,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       <div className="w-full space-y-8">
 
         {/* Campaign Approval Screen */}
-        {(() => {
-          console.log('🎯 [APPROVAL SCREEN RENDER CHECK]', {
-            showApprovalScreen,
-            hasCampaignData: !!campaignDataForApproval,
-            campaignName: campaignDataForApproval?.name,
-            willRender: showApprovalScreen && !!campaignDataForApproval
-          });
-          return showApprovalScreen && campaignDataForApproval ? (
+        {showApprovalScreen && campaignDataForApproval && (
           <CampaignApprovalScreen
             campaignData={campaignDataForApproval}
             workspaceId={actualWorkspaceId}
@@ -5336,8 +5349,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               toastError(`SAM help requested. Context: ${context}\n\nThis will open the main chat window with SAM ready to help you draft your message.`);
             }}
           />
-        ) : null;
-        })()}
+        )}
 
         {/* Campaign Builder Modal */}
         {showBuilder && !showApprovalScreen && (
@@ -5354,16 +5366,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 initialProspects={selectedCampaignProspects || initialProspects}
                 draftToLoad={selectedDraft}
                 onPrepareForApproval={(campaignData) => {
-                  // Show approval screen
-                  console.log('🎯 [PREPARE FOR APPROVAL] Called with data:', {
-                    hasCampaignData: !!campaignData,
-                    campaignName: campaignData?.name,
-                    showBuilder,
-                    showApprovalScreen
-                  });
                   setCampaignDataForApproval(campaignData);
                   setShowApprovalScreen(true);
-                  console.log('🎯 [PREPARE FOR APPROVAL] State updated - approval screen should now show');
                 }}
                 workspaceId={actualWorkspaceId}
                 clientCode={workspaceData?.client_code || null}
