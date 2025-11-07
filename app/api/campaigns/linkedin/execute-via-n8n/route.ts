@@ -3,8 +3,8 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
-// N8N Workflow configuration - FIXED workflow webhook
-const N8N_MASTER_FUNNEL_WEBHOOK = process.env.N8N_CAMPAIGN_WEBHOOK_URL || 'https://innovareai.app.n8n.cloud/webhook/campaign-execute-fixed';
+// N8N Workflow configuration - Use self-hosted N8N
+const N8N_MASTER_FUNNEL_WEBHOOK = process.env.N8N_CAMPAIGN_WEBHOOK_URL || 'https://workflows.innovareai.com/webhook/campaign-execute';
 
 // HITL Email configuration for approval system
 const HITL_EMAIL_CONFIG = {
