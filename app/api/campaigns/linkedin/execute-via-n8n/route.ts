@@ -344,7 +344,13 @@ async function getWorkspaceUsage(supabase: any, workspaceId: string): Promise<an
 async function createN8nCampaignExecution(supabase: any, workspaceId: string, campaignId: string, config: any): Promise<any> {
   const executionId = `n8n_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-  const { data, error } = await supabase
+  // Use service role client to bypass PostgREST schema cache
+  const serviceSupabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data, error } = await serviceSupabase
     .from('n8n_campaign_executions')
     .insert({
       workspace_id: workspaceId,
