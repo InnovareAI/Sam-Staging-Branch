@@ -745,6 +745,12 @@ export async function POST(req: NextRequest) {
       .from('campaigns')
       .select(`
         *,
+        linkedin_account:workspace_accounts!linkedin_account_id (
+          id,
+          account_name,
+          unipile_account_id,
+          is_active
+        ),
         campaign_prospects (
           id,
           first_name,
@@ -780,6 +786,46 @@ export async function POST(req: NextRequest) {
     // Validate campaign is active
     if (campaign.status !== 'active') {
       return NextResponse.json({ error: 'Campaign is not active' }, { status: 400 });
+    }
+
+    // Step 5.5: Determine which LinkedIn account to use
+    let selectedLinkedInAccount: any = null;
+
+    if (campaign.linkedin_account) {
+      // Campaign has a specific LinkedIn account assigned
+      selectedLinkedInAccount = campaign.linkedin_account;
+      console.log(`✅ Using campaign's LinkedIn account: ${selectedLinkedInAccount.account_name} (${selectedLinkedInAccount.unipile_account_id})`);
+
+      // Validate the account is active
+      if (!selectedLinkedInAccount.is_active) {
+        return NextResponse.json({
+          error: 'Campaign LinkedIn account is not active',
+          account_name: selectedLinkedInAccount.account_name,
+          message: 'Please reconnect the LinkedIn account or select a different account for this campaign'
+        }, { status: 400 });
+      }
+    } else {
+      // No specific account assigned - use workspace default (first active account)
+      const linkedInAccounts = integrations.unipile_config?.linkedin_accounts || [];
+
+      if (linkedInAccounts.length === 0) {
+        return NextResponse.json({
+          error: 'No LinkedIn accounts available',
+          message: 'Please connect a LinkedIn account in workspace settings'
+        }, { status: 400 });
+      }
+
+      selectedLinkedInAccount = linkedInAccounts[0];
+      console.log(`⚠️  WARNING: Campaign has no LinkedIn account specified. Using workspace default: ${selectedLinkedInAccount.account_name} (${selectedLinkedInAccount.unipile_account_id})`);
+      console.log(`   To fix this, edit the campaign and select a specific LinkedIn account.`);
+    }
+
+    // Validate we have a selected account
+    if (!selectedLinkedInAccount || !selectedLinkedInAccount.unipile_account_id) {
+      return NextResponse.json({
+        error: 'Invalid LinkedIn account configuration',
+        message: 'Unable to determine which LinkedIn account to use for this campaign'
+      }, { status: 500 });
     }
 
     // Validate active campaigns limit
@@ -880,7 +926,7 @@ export async function POST(req: NextRequest) {
     const n8nPayload = {
       workspaceId: workspaceId,
       campaignId: campaignId,
-      unipileAccountId: integrations.unipile_config?.linkedin_accounts[0]?.unipile_account_id || '',
+      unipileAccountId: selectedLinkedInAccount.unipile_account_id,
       prospects: prospectsToProcess.map((p: any) => ({
         id: p.id,
         first_name: p.first_name,
@@ -909,8 +955,9 @@ export async function POST(req: NextRequest) {
     console.log(`🎯 N8N Payload:`, {
       workspaceId: n8nPayload.workspaceId,
       campaignId: n8nPayload.campaignId,
-      prospectCount: n8nPayload.prospects.length,
-      hasUnipileConfig: !!n8nPayload.unipileAccountId
+      linkedInAccount: selectedLinkedInAccount.account_name,
+      unipileAccountId: n8nPayload.unipileAccountId,
+      prospectCount: n8nPayload.prospects.length
     });
 
     // Step 9: Send to N8N webhook

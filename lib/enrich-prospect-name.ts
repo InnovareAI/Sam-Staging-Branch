@@ -134,17 +134,18 @@ export async function enrichProspectName(
     }
 
     const profileData = await response.json();
-    const displayName = profileData.display_name || '';
-    const nameParts = displayName.trim().split(/\s+/);
 
-    let firstName = currentFirstName || '';
-    let lastName = currentLastName || '';
+    // Unipile returns first_name and last_name directly (not display_name!)
+    const firstName = profileData.first_name || currentFirstName || '';
+    const lastName = profileData.last_name || currentLastName || '';
 
-    if (nameParts.length >= 2) {
-      firstName = nameParts[0];
-      lastName = nameParts.slice(1).join(' ');
-    } else if (nameParts.length === 1) {
-      firstName = nameParts[0];
+    if (!firstName && !lastName) {
+      console.warn(`⚠️ No name data in Unipile profile for ${linkedinUsername}`);
+      return {
+        firstName: currentFirstName || '',
+        lastName: currentLastName || '',
+        enriched: false
+      };
     }
 
     console.log(`✅ Enriched name: ${firstName} ${lastName}`);
