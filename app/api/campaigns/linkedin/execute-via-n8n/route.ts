@@ -361,17 +361,16 @@ async function createN8nCampaignExecution(supabase: any, workspaceId: string, ca
     .single();
 
   if (error) {
-    console.error('Error creating N8N execution record:', error);
-    console.warn('Table n8n_campaign_executions may not exist - using mock record');
+    console.error('❌ Error creating N8N execution record:', {
+      error: error,
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint
+    });
 
-    // Return a mock execution record if table doesn't exist
-    return {
-      id: `mock_${Date.now()}`,
-      n8n_execution_id: executionId,
-      workspace_id: workspaceId,
-      campaign_name: config.campaign_name,
-      execution_status: 'initializing'
-    };
+    // THROW ERROR instead of returning mock - we need to see what's failing
+    throw new Error(`Failed to create n8n_campaign_executions record: ${error.message}. Code: ${error.code}. Details: ${JSON.stringify(error.details)}`);
   }
 
   return data;
