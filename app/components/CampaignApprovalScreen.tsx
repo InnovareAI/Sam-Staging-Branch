@@ -52,11 +52,11 @@ export default function CampaignApprovalScreen({
   // Timezone selection (uses saved preference or defaults to ET)
   const [selectedTimezone, setSelectedTimezone] = useState(userTimezone || 'America/New_York');
 
-  // Business hours and holiday settings
-  const [workingHoursStart, setWorkingHoursStart] = useState(7);  // 7am
-  const [workingHoursEnd, setWorkingHoursEnd] = useState(18);    // 6pm
-  const [skipWeekends, setSkipWeekends] = useState(true);
-  const [skipHolidays, setSkipHolidays] = useState(true);
+  // Business hours and holiday settings - DISABLED FOR TESTING
+  const [workingHoursStart, setWorkingHoursStart] = useState(0);   // 12am (no restriction)
+  const [workingHoursEnd, setWorkingHoursEnd] = useState(23);     // 11pm (no restriction)
+  const [skipWeekends, setSkipWeekends] = useState(false);        // Allow weekends
+  const [skipHolidays, setSkipHolidays] = useState(false);        // Allow holidays
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
