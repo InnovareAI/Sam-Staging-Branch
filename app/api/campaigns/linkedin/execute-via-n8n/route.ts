@@ -880,7 +880,7 @@ export async function POST(req: NextRequest) {
     const n8nPayload = {
       workspaceId: workspaceId,
       campaignId: campaignId,
-      unipileAccountId: integrations.unipile_config?.linkedin_accounts[0] || '',
+      unipileAccountId: integrations.unipile_config?.linkedin_accounts[0]?.unipile_account_id || '',
       prospects: prospectsToProcess.map((p: any) => ({
         id: p.id,
         first_name: p.first_name,
