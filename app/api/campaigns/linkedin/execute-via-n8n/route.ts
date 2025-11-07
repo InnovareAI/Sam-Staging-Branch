@@ -947,7 +947,7 @@ export async function POST(req: NextRequest) {
       await supabase
         .from('n8n_campaign_executions')
         .update({
-          execution_status: 'hitl_approval_pending',
+          execution_status: 'executing',
           n8n_execution_id: n8nResult.execution_id || executionRecord.n8n_execution_id,
           started_at: new Date().toISOString(),
           channel_specific_metrics: {
@@ -958,26 +958,26 @@ export async function POST(req: NextRequest) {
             responses_received: 0,
             emails_sent: 0,
             linkedin_sent: 0,
-            hitl_approval_sessions: hitlSession ? [hitlSession.id] : []
+            hitl_approval_sessions: []
           }
         })
         .eq('id', executionRecord.id);
 
-      // Step 11: Update campaign prospects to 'hitl_approval' status
+      // Step 11: Update campaign prospects to 'queued_in_n8n' status (N8N will send immediately)
       for (const prospect of prospectsToProcess) {
         await supabase.rpc('update_campaign_prospect_status', {
           p_campaign_id: campaignId,
           p_prospect_id: prospect.id,
-          p_status: 'hitl_approval',
+          p_status: 'queued_in_n8n',
           p_n8n_execution_id: executionRecord.n8n_execution_id
         });
       }
 
-      // Step 12: Update campaign status
+      // Step 12: Update campaign status to active (executing)
       await supabase
         .from('campaigns')
         .update({
-          status: 'hitl_approval_pending',
+          status: 'active',
           last_executed_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
