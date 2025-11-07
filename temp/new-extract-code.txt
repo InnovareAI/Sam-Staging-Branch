@@ -1,0 +1,21 @@
+// Extract and validate campaign data
+const webhookData = $input.all()[0].json;
+
+// CRITICAL FIX: Get unipileAccountId from top level (new format) or nested path (old format)
+const unipileAccountId = webhookData.unipileAccountId ||
+  webhookData.workspace_config?.integration_config?.linkedin_accounts?.[0]?.unipile_account_id;
+
+if (!unipileAccountId) {
+  throw new Error('Missing unipileAccountId in webhook data. Check payload format.');
+}
+
+return [{
+  json: {
+    campaign_id: webhookData.campaign_id || webhookData.campaignId,
+    workspace_id: webhookData.workspace_id || webhookData.workspaceId,
+    prospects: webhookData.prospects || webhookData.campaign_data?.prospects || [],
+    messages: webhookData.campaign_data?.message_templates || {},
+    unipile_account_id: unipileAccountId,
+    total_prospects: (webhookData.prospects || webhookData.campaign_data?.prospects || []).length
+  }
+}];

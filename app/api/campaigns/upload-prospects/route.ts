@@ -100,6 +100,7 @@ export async function POST(req: NextRequest) {
     let updated_count = 0;
     let error_count = 0;
     const errors = [];
+    const failedUploads = [];
 
     // Process each prospect
     for (let i = 0; i < prospects.length; i++) {

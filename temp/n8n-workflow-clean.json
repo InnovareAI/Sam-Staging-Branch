@@ -1,0 +1,284 @@
+{
+  "name": "SAM Campaign Execution - FIXED (ACTIVE)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "campaign-execute-fixed",
+        "options": {}
+      },
+      "id": "webhook-1",
+      "name": "Campaign Execute Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        304
+      ],
+      "webhookId": "1600e2af-7318-4df7-abb3-f1ee1d072cf5"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and validate campaign data\nconst webhookData = $input.all()[0].json;\n\n// CRITICAL FIX: Get unipileAccountId from top level (new format) or nested path (old format)\nconst unipileAccountId = webhookData.unipileAccountId ||\n  webhookData.workspace_config?.integration_config?.linkedin_accounts?.[0]?.unipile_account_id;\n\nif (!unipileAccountId) {\n  throw new Error('Missing unipileAccountId in webhook data. Check payload format.');\n}\n\nreturn [{\n  json: {\n    campaign_id: webhookData.campaign_id || webhookData.campaignId,\n    workspace_id: webhookData.workspace_id || webhookData.workspaceId,\n    prospects: webhookData.prospects || webhookData.campaign_data?.prospects || [],\n    messages: webhookData.campaign_data?.message_templates || {},\n    unipile_account_id: unipileAccountId,\n    total_prospects: (webhookData.prospects || webhookData.campaign_data?.prospects || []).length\n  }\n}];"
+      },
+      "id": "extract-data",
+      "name": "Extract Campaign Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "split-prospects",
+      "name": "Process Each Prospect",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        688,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://{{ $env.UNIPILE_DSN }}/api/v1/users/{{ $json.linkedin_url.split('/in/')[1].replace('/', '') }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "account_id",
+              "value": "={{ $node['Extract Campaign Data'].json.unipile_account_id }}"
+            },
+            {
+              "name": "provider",
+              "value": "LINKEDIN"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "lookup-profile",
+      "name": "Get LinkedIn Profile ID",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        912,
+        304
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{ $env.UNIPILE_DSN }}/api/v1/users/invite",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"account_id\": \"{{ $node['Extract Campaign Data'].json.unipile_account_id }}\",\n  \"user_id\": \"{{ $node['Get LinkedIn Profile ID'].json.object?.id || $node['Get LinkedIn Profile ID'].json.id }}\",\n  \"message\": \"{{ $node['Extract Campaign Data'].json.messages.connection_request.replace('{first_name}', $json.first_name).replace('{company_name}', $json.company).replace('{title}', $json.job_title) }}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "send-cr",
+      "name": "Send Connection Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1120,
+        304
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.meet-sam.com/api/campaigns/update-contacted",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"campaignId\": \"{{ $node['Extract Campaign Data'].json.campaign_id }}\",\n  \"prospectId\": \"{{ $json.id }}\",\n  \"status\": \"connection_requested\",\n  \"unipileMessageId\": \"{{ $node['Send Connection Request'].json.object?.id || $node['Send Connection Request'].json.id || 'untracked_' + Date.now() }}\",\n  \"contactedAt\": \"{{ $now.toISO() }}\"\n}",
+        "options": {}
+      },
+      "id": "update-status",
+      "name": "Update Prospect Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1344,
+        304
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "amount": "={{ Math.floor(Math.random() * (5 - 2 + 1) + 2) }}",
+        "unit": "minutes"
+      },
+      "id": "delay",
+      "name": "Random Delay (2-5 min)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        1568,
+        304
+      ],
+      "webhookId": "e97d1203-89ef-483a-bdfc-d6108a706e17"
+    },
+    {
+      "parameters": {},
+      "id": "loop-back",
+      "name": "Loop Back",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        304
+      ]
+    }
+  ],
+  "connections": {
+    "Campaign Execute Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Campaign Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Campaign Data": {
+      "main": [
+        [
+          {
+            "node": "Process Each Prospect",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Each Prospect": {
+      "main": [
+        [
+          {
+            "node": "Get LinkedIn Profile ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get LinkedIn Profile ID": {
+      "main": [
+        [
+          {
+            "node": "Send Connection Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Connection Request": {
+      "main": [
+        [
+          {
+            "node": "Update Prospect Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Prospect Status": {
+      "main": [
+        [
+          {
+            "node": "Random Delay (2-5 min)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Random Delay (2-5 min)": {
+      "main": [
+        [
+          {
+            "node": "Loop Back",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Back": {
+      "main": [
+        [
+          {
+            "node": "Process Each Prospect",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null
+}

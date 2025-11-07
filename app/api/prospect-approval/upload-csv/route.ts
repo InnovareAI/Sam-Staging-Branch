@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create approval session
-    const { data: session, error: sessionError } = await supabase
+    const { data: session, error: sessionError} = await supabase
       .from('prospect_approval_sessions')
       .insert({
         workspace_id: workspaceId,
@@ -194,7 +194,10 @@ export async function POST(request: NextRequest) {
         prospect_source: source,
         total_prospects: prospects.length,
         pending_count: prospects.length,
-        session_status: 'active'
+        approved_count: 0,
+        rejected_count: 0,
+        status: 'active',
+        batch_number: 1
       })
       .select()
       .single();
@@ -224,17 +227,58 @@ export async function POST(request: NextRequest) {
       .insert(approvalData);
 
     if (dataError) {
-      console.error('Error saving prospects:', dataError);
+      console.error('CSV Upload - Error saving prospects:', dataError);
+      console.error('   Message:', dataError.message);
+      console.error('   Code:', dataError.code);
+      console.error('   Details:', dataError.details);
+
       // Rollback session
       await supabase.from('prospect_approval_sessions').delete().eq('id', session.id);
       return NextResponse.json({ success: false, error: dataError.message }, { status: 500 });
     }
 
+    // Verify prospects were inserted by checking count in database
+    const { count: verifyCount } = await supabase
+      .from('prospect_approval_data')
+      .select('*', { count: 'exact', head: true })
+      .eq('session_id', session.id);
+
+    const expectedCount = prospects.length;
+
+    console.log('CSV Upload - Insert verification:', {
+      expected: expectedCount,
+      verified: verifyCount,
+      match: verifyCount === expectedCount,
+      session_id: session.id
+    });
+
+    if (verifyCount !== expectedCount) {
+      console.error(`❌ CSV Upload - Insert count mismatch!`);
+      console.error(`   Expected: ${expectedCount}`);
+      console.error(`   Verified: ${verifyCount}`);
+      console.error(`   Session ID: ${session.id}`);
+      console.error(`   ROLLING BACK - This will delete all data!`);
+
+      // Rollback session and any partial data
+      await supabase.from('prospect_approval_data').delete().eq('session_id', session.id);
+      await supabase.from('prospect_approval_sessions').delete().eq('id', session.id);
+
+      return NextResponse.json({
+        success: false,
+        error: `Failed to insert all prospects: ${verifyCount}/${expectedCount} inserted`,
+        details: 'Database insert verification failed. Check server logs for details.'
+      }, { status: 500 });
+    }
+
+    console.log(`✅ CSV Upload - Successfully inserted ${verifyCount} prospects`);
+
     return NextResponse.json({
       success: true,
       session_id: session.id,
+      workspace_id: workspaceId,
       count: prospects.length,
-      campaign_name: campaignName
+      campaign_name: campaignName,
+      message: `Successfully uploaded ${prospects.length} prospects. Go to Prospect Approval to review.`
     });
 
   } catch (error) {
