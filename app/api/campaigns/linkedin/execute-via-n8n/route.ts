@@ -1001,60 +1001,13 @@ export async function POST(req: NextRequest) {
         workspace_tier: tier.tier_type,
         execution_type: executionType,
         prospects_processing: prospectsToProcess.length,
-        
-        // Channel Configuration
-        channels_enabled: {
-          linkedin: masterFunnelPayload.channel_preferences.linkedin_enabled,
-          email: masterFunnelPayload.channel_preferences.email_enabled,
-          primary_channel: masterFunnelPayload.channel_preferences.primary_channel
-        },
-        
-        // HITL Configuration
-        hitl_approval: {
-          required: true,
-          method: masterFunnelPayload.hitl_config.approval_method,
-          approver_email: masterFunnelPayload.hitl_config.approver_email,
-          timeout_hours: masterFunnelPayload.hitl_config.approval_timeout_hours
-        },
-        
-        // Timing Estimates
-        estimated_times: estimatedTimes,
-        
-        // Integration Status
-        integrations: {
-          unipile_available: !!integrations.unipile_config,
-          reachinbox_available: !!integrations.reachinbox_config,
-          linkedin_accounts: integrations.unipile_config?.linkedin_accounts.length || 0,
-          email_accounts: (integrations.unipile_config?.email_accounts.length || 0) + 
-                          (integrations.reachinbox_config?.email_accounts.length || 0)
-        },
-        
-        // Rate Limits
-        rate_limits: {
-          daily_limits: masterFunnelPayload.workspace_config.rate_limits,
-          monthly_usage: masterFunnelPayload.workspace_config.tier_limits.current_usage
-        },
-        
-        // Monitoring
-        monitoring: {
-          n8n_workflow_url: `https://innovareai.app.n8n.cloud/workflow/2bmFPN5t2y6A4Rx2`,
-          status_webhook: masterFunnelPayload.webhook_config.status_update_url,
-          completion_webhook: masterFunnelPayload.webhook_config.completion_notification_url
-        },
-        
-        // Next Steps
-        next_steps: [
-          `HITL approval email sent to ${approverEmail}`,
-          'Campaign will start after message approval',
-          'Real-time status updates via webhooks',
-          `Estimated completion: ${estimatedTimes.approval_to_completion}`
-        ]
+        execution_id: executionRecord.id
       });
 
     } catch (n8nError: any) {
       console.error('N8N Master Funnel execution failed:', n8nError);
 
-      // Update execution record with sophisticated error handling
+      // Update execution record with error
       await supabase
         .from('n8n_campaign_executions')
         .update({
@@ -1062,44 +1015,20 @@ export async function POST(req: NextRequest) {
           error_details: {
             error_type: 'n8n_execution_failure',
             error_message: n8nError.message,
-            error_timestamp: new Date().toISOString(),
-            workspace_tier: tier.tier_type,
-            execution_type: executionType,
-            fallback_strategy: masterFunnelPayload.execution_preferences.fallback_strategy
+            error_timestamp: new Date().toISOString()
           },
           completed_at: new Date().toISOString()
         })
         .eq('id', executionRecord.id);
 
-      // Return sophisticated error response with fallback options
+      // Return error response
       return NextResponse.json({
-        error: 'N8N Master Funnel execution failed',
+        error: 'V1 Campaign Orchestration failed',
         details: n8nError.message,
-        
-        // Error Context
-        error_context: {
-          workspace_tier: tier.tier_type,
-          execution_type: executionType,
-          prospects_count: prospectsToProcess.length,
-          error_timestamp: new Date().toISOString()
-        },
-        
-        // Fallback Options
-        fallback_options: {
-          available: true,
-          strategy: masterFunnelPayload.execution_preferences.fallback_strategy,
-          direct_execution_available: tier.tier_features.unipile_only,
-          retry_recommended: true
-        },
-        
-        // Execution Record
-        execution_id: executionRecord.id,
-        
-        // Support Information
-        support: {
-          contact: 'support@innovareai.com',
-          debug_id: executionRecord.n8n_execution_id
-        }
+        error_type: n8nError.name,
+        stack: n8nError.stack,
+        timestamp: new Date().toISOString(),
+        support_contact: 'support@innovareai.com'
       }, { status: 500 });
     }
 
