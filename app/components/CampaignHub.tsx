@@ -1677,7 +1677,7 @@ Would you like me to adjust these or create more variations?`
     // Fallback: if no approval callback, proceed with old flow
     try {
       // TEMP FIX: Add fallback workspace ID
-      const FALLBACK_WORKSPACE_ID = '014509ba-226e-43ee-ba58-ab5f20d2ed08';
+      const FALLBACK_WORKSPACE_ID = 'babdcab8-1a78-4b2f-913e-6e9fd9821009'; // InnovareAI Workspace
       const actualWorkspaceId = workspaceId || FALLBACK_WORKSPACE_ID;
 
       console.log('🚀 [CAMPAIGN CREATE] About to create campaign with:', {
