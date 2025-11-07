@@ -38,26 +38,34 @@ export async function GET(request: NextRequest) {
       }, { status: 401 });
     }
 
-    // CRITICAL FIX: Use admin client to bypass RLS when querying users table
-    const adminClient = supabaseAdmin();
-    const { data: userProfile } = await adminClient
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single();
+    // Get workspace_id from query param or user profile
+    const { searchParams } = new URL(request.url);
+    let workspaceId = searchParams.get('workspace_id');
 
-    let workspaceId = userProfile?.current_workspace_id;
+    console.log('🔍 Workspace ID from query param:', workspaceId);
 
-    // Fallback: get first workspace from memberships
+    // If no workspace_id provided, get from user profile
     if (!workspaceId) {
-      const { data: membership } = await supabase
-        .from('workspace_members')
-        .select('workspace_id')
-        .eq('user_id', user.id)
-        .limit(1)
-        .maybeSingle();
+      const adminClient = supabaseAdmin();
+      const { data: userProfile } = await adminClient
+        .from('users')
+        .select('current_workspace_id')
+        .eq('id', user.id)
+        .single();
 
-      workspaceId = membership?.workspace_id;
+      workspaceId = userProfile?.current_workspace_id;
+
+      // Fallback: get first workspace from memberships
+      if (!workspaceId) {
+        const { data: membership } = await supabase
+          .from('workspace_members')
+          .select('workspace_id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .maybeSingle();
+
+        workspaceId = membership?.workspace_id;
+      }
     }
 
     if (!workspaceId) {
