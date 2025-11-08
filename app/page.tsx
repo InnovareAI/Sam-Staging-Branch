@@ -2000,7 +2000,7 @@ export default function Page() {
       // Get workspaces where user is owner
       const { data: ownedWorkspaces, error: ownedError } = await supabase
         .from('workspaces')
-        .select('*')
+        .select('id, name, client_code, organization_id, created_at, owner_id')
         .eq('owner_id', userId);
 
       if (ownedError) {
@@ -2029,7 +2029,7 @@ export default function Page() {
         console.log('🔍 [WORKSPACE LOAD] Fetching details for workspace IDs:', workspaceIds);
         const { data: workspaceData, error: workspaceError } = await supabase
           .from('workspaces')
-          .select('*')
+          .select('id, name, client_code, organization_id, created_at')
           .in('id', workspaceIds);
 
         if (workspaceError) {
