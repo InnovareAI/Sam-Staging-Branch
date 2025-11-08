@@ -54,21 +54,19 @@ export async function POST(request: NextRequest) {
     // ========================================================================
     const { data: members, error: membersError } = await supabase
       .from('workspace_members')
-      .select(`
-        id,
-        workspace_id,
-        user_id,
-        role,
-        status,
-        created_at,
-        workspaces (name),
-        users:user_id (email)
-      `)
+      .select('*')
       .order('created_at', { ascending: false })
 
     if (membersError) {
       results.checks.members = { error: membersError.message }
     } else {
+      // Get user emails separately
+      const { data: users } = await supabase.auth.admin.listUsers()
+      const userEmailMap: Record<string, string> = {}
+      users.users.forEach((user: any) => {
+        userEmailMap[user.id] = user.email || 'unknown'
+      })
+
       // Group by workspace
       const membersByWorkspace: Record<string, any[]> = {}
       members.forEach((member: any) => {
@@ -76,9 +74,11 @@ export async function POST(request: NextRequest) {
         if (!membersByWorkspace[workspaceId]) {
           membersByWorkspace[workspaceId] = []
         }
+        const workspaceName = workspaces?.find((w: any) => w.id === workspaceId)?.name || 'Unknown'
         membersByWorkspace[workspaceId].push({
+          workspace_name: workspaceName,
           user_id: member.user_id,
-          email: member.users?.email || 'unknown',
+          email: userEmailMap[member.user_id] || 'unknown',
           role: member.role,
           status: member.status,
           joined_at: member.created_at
@@ -96,6 +96,12 @@ export async function POST(request: NextRequest) {
     // CHECK 3: Multi-workspace Users
     // ========================================================================
     if (members && !membersError) {
+      const { data: users } = await supabase.auth.admin.listUsers()
+      const userEmailMap: Record<string, string> = {}
+      users.users.forEach((user: any) => {
+        userEmailMap[user.id] = user.email || 'unknown'
+      })
+
       const userWorkspaceCount: Record<string, Set<string>> = {}
       members.forEach((member: any) => {
         const userId = member.user_id
@@ -108,12 +114,14 @@ export async function POST(request: NextRequest) {
       const multiWorkspaceUsers = Object.entries(userWorkspaceCount)
         .filter(([_, workspaceSet]) => workspaceSet.size > 1)
         .map(([userId, workspaceSet]) => {
-          const userMember = members.find((m: any) => m.user_id === userId)
           return {
             user_id: userId,
-            email: userMember?.users?.email || 'unknown',
+            email: userEmailMap[userId] || 'unknown',
             workspace_count: workspaceSet.size,
-            workspaces: Array.from(workspaceSet)
+            workspaces: Array.from(workspaceSet).map(wsId => ({
+              id: wsId,
+              name: workspaces?.find((w: any) => w.id === wsId)?.name || 'Unknown'
+            }))
           }
         })
 
@@ -257,7 +265,7 @@ export async function POST(request: NextRequest) {
     // ========================================================================
     const { data: approvalSessions, error: approvalError } = await supabase
       .from('prospect_approval_sessions')
-      .select('id, workspace_id, created_by, created_at')
+      .select('id, workspace_id, created_at')
 
     if (approvalError) {
       results.checks.approval_sessions = { error: approvalError.message }
