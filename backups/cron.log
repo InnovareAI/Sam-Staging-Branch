@@ -3772,3 +3772,88 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main d0414ad5] 🔄 Auto-backup: auto-backup-20251108_120000
+ Committer: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 51 files changed, 4609 insertions(+)
+ create mode 100644 temp/COMPLETE-WORKSPACE-SPLIT-FIXED.sql
+ create mode 100644 temp/COMPLETE-WORKSPACE-SPLIT.sql
+ create mode 100644 temp/WORKSPACE-SPLIT-FINAL.sql
+ create mode 100644 temp/WORKSPACE-SPLIT-SUCCESS-SUMMARY.md
+ create mode 100644 temp/add-ia5-jennifer.cjs
+ create mode 100644 temp/check-all-memberships.cjs
+ create mode 100644 temp/check-campaign-isolation.cjs
+ create mode 100644 temp/check-campaign-ownership.cjs
+ create mode 100644 temp/check-innovare-accounts.cjs
+ create mode 100644 temp/check-linkedin-accounts.cjs
+ create mode 100644 temp/check-other-workspaces.cjs
+ create mode 100644 temp/check-team-workspaces.cjs
+ create mode 100644 temp/check-what-went-wrong.cjs
+ create mode 100644 temp/check-workspace-members-schema.cjs
+ create mode 100644 temp/create-admin-service-accounts.cjs
+ create mode 100644 temp/enrich-companies-brightdata.cjs
+ create mode 100644 temp/extract-companies-better.cjs
+ create mode 100644 temp/find-25-pending.cjs
+ create mode 100644 temp/find-bll-approved-leads.cjs
+ create mode 100644 temp/find-bll-prospects.cjs
+ create mode 100644 temp/fix-bll-companies.cjs
+ create mode 100644 temp/fix-user-workspace.cjs
+ create mode 100644 temp/funnel-workflow.json
+ create mode 100644 temp/get-approved.cjs
+ create mode 100644 temp/get-bll-25.cjs
+ create mode 100755 temp/get-funnel-workflow.sh
+ create mode 100644 temp/inspect-approval-schema.cjs
+ create mode 100644 temp/investigate-stan-prospects.cjs
+ create mode 100644 temp/migrate-bll-prospects-to-db.cjs
+ create mode 100644 temp/restore-workspace-members.cjs
+ create mode 100644 temp/show-all-memberships.cjs
+ create mode 100644 temp/show-all-prospects.cjs
+ create mode 100644 temp/show-current-members.cjs
+ create mode 100644 temp/show-prospect-batches.cjs
+ create mode 100644 temp/show-prospect-details.cjs
+ create mode 100644 temp/split-innovare-isolated.cjs
+ create mode 100644 temp/split-innovare-manual.cjs
+ create mode 100644 temp/split-sendingcell-manual.cjs
+ create mode 100644 temp/split-sendingcell-v2.cjs
+ create mode 100644 temp/split-sendingcell.cjs
+ create mode 100644 temp/test-brightdata-auth.cjs
+ mode change 100644 => 100755 temp/test-live-api.sh
+ create mode 100755 temp/test-live-debug.sh
+ create mode 100644 temp/update-campaign-handler.cjs
+ create mode 100644 temp/update-personalization.cjs
+ create mode 100644 temp/updated-campaign-handler.js
+ create mode 100644 temp/verify-and-enrich-bll.cjs
+ create mode 100644 temp/verify-split-complete.cjs
+ create mode 100644 temp/verify-workspaces.cjs
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251108_120000[0m
+[0;32m📅 Timestamp: Sat Nov  8 12:00:00 PST 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+

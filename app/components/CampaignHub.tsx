@@ -71,9 +71,8 @@ function getCampaignTypeLabel(type: string): string {
 function CampaignList({ workspaceId }: { workspaceId: string }) {
   const queryClient = useQueryClient();
 
-  // TEMP FIX: Use fallback workspace ID if parent doesn't provide it
-  const FALLBACK_WORKSPACE_ID = 'babdcab8-1a78-4b2f-913e-6e9fd9821009'; // InnovareAI Workspace
-  const actualWorkspaceId = workspaceId || FALLBACK_WORKSPACE_ID;
+  // Use workspaceId from props - no fallback to prevent loading wrong workspace data
+  const actualWorkspaceId = workspaceId;
 
   console.log('🏢 [CAMPAIGN HUB] Workspace ID being used:', actualWorkspaceId, 'from prop:', workspaceId);
 
@@ -1676,9 +1675,8 @@ Would you like me to adjust these or create more variations?`
 
     // Fallback: if no approval callback, proceed with old flow
     try {
-      // TEMP FIX: Add fallback workspace ID
-      const FALLBACK_WORKSPACE_ID = 'babdcab8-1a78-4b2f-913e-6e9fd9821009'; // InnovareAI Workspace
-      const actualWorkspaceId = workspaceId || FALLBACK_WORKSPACE_ID;
+      // Use workspaceId from props - no fallback to prevent creating campaigns in wrong workspace
+      const actualWorkspaceId = workspaceId;
 
       console.log('🚀 [CAMPAIGN CREATE] About to create campaign with:', {
         workspace_id: actualWorkspaceId,
@@ -4023,9 +4021,8 @@ interface CampaignHubProps {
 }
 
 const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects, onCampaignCreated }) => {
-  // TEMP FIX: Use fallback workspace ID if parent doesn't provide it
-  const FALLBACK_WORKSPACE_ID = 'babdcab8-1a78-4b2f-913e-6e9fd9821009'; // InnovareAI Workspace
-  const actualWorkspaceId = workspaceId || FALLBACK_WORKSPACE_ID;
+  // Use workspaceId from props - no fallback to prevent loading wrong workspace data
+  const actualWorkspaceId = workspaceId;
 
   console.log('🏢 [CAMPAIGN HUB MAIN] Workspace ID being used:', actualWorkspaceId, 'from prop:', workspaceId);
 
