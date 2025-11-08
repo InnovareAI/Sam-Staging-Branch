@@ -1995,65 +1995,19 @@ export default function Page() {
   // Load workspaces for current user only
   const loadUserWorkspaces = async (userId: string) => {
     try {
-      console.log('🔍 [WORKSPACE LOAD] Starting for user:', userId);
+      console.log('🔍 [WORKSPACE LOAD] Fetching via API for user:', userId);
 
-      // Get workspaces where user is owner
-      const { data: ownedWorkspaces, error: ownedError } = await supabase
-        .from('workspaces')
-        .select('id, name, client_code, organization_id, created_at, owner_id')
-        .eq('owner_id', userId);
-
-      if (ownedError) {
-        console.error('❌ Error fetching owned workspaces:', ownedError);
-        throw ownedError;
-      }
-      console.log('✅ [WORKSPACE LOAD] Owned workspaces:', ownedWorkspaces?.length || 0, ownedWorkspaces);
-
-      // Get workspaces where user is a member
-      // Query memberships first (without join to avoid schema cache issues)
-      const { data: memberships, error: memberError } = await supabase
-        .from('workspace_members')
-        .select('workspace_id')
-        .eq('user_id', userId);
-
-      if (memberError) {
-        console.error('❌ Error fetching member workspaces:', memberError);
-        throw memberError;
-      }
-      console.log('✅ [WORKSPACE LOAD] Memberships:', memberships?.length || 0, memberships);
-
-      // Then fetch workspace details separately
-      let memberWorkspaces: any[] = [];
-      if (memberships && memberships.length > 0) {
-        const workspaceIds = memberships.map(m => m.workspace_id);
-        console.log('🔍 [WORKSPACE LOAD] Fetching details for workspace IDs:', workspaceIds);
-        const { data: workspaceData, error: workspaceError } = await supabase
-          .from('workspaces')
-          .select('id, name, client_code, organization_id, created_at')
-          .in('id', workspaceIds);
-
-        if (workspaceError) {
-          console.error('❌ Error fetching workspace details:', workspaceError);
-        } else {
-          memberWorkspaces = workspaceData || [];
-          console.log('✅ [WORKSPACE LOAD] Member workspace details:', memberWorkspaces.length, memberWorkspaces);
-        }
+      const response = await fetch('/api/workspace/list');
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`);
       }
 
-      // Combine and deduplicate workspaces
-      const allWorkspaces = [...(ownedWorkspaces || [])];
-
-      // Add member workspaces that aren't already included
-      memberWorkspaces?.forEach((workspace: any) => {
-        if (!allWorkspaces.find((ws: any) => ws.id === workspace.id)) {
-          allWorkspaces.push(workspace);
-        }
-      });
-      console.log('📦 [WORKSPACE LOAD] Total combined workspaces:', allWorkspaces.length, allWorkspaces.map(w => ({ id: w.id, name: w.name })));
+      const { workspaces: apiWorkspaces, current } = await response.json();
+      console.log(`✅ [WORKSPACE LOAD] API returned ${apiWorkspaces.length} workspaces`);
 
       // For each workspace, fetch pending invitations
       const workspacesWithInvitations = await Promise.all(
-        allWorkspaces.map(async (workspace) => {
+        apiWorkspaces.map(async (workspace: any) => {
           // Fetch pending invitations
           const { data: invitationsData, error: invitationsError } = await supabase
             .from('workspace_invitations')
@@ -2073,7 +2027,7 @@ export default function Page() {
           // Determine company based on workspace name
           let company = 'InnovareAI'; // default
           let companyColor = 'bg-blue-600';
-          
+
           if (workspace.name.toLowerCase().includes('3cubed') || workspace.name === '3cubed' ||
               workspace.name.toLowerCase().includes('sendingcell') ||
               workspace.name.toLowerCase().includes('wt') || workspace.name.toLowerCase().includes('matchmaker')) {
@@ -2095,8 +2049,11 @@ export default function Page() {
       console.log('📊 [WORKSPACE LOAD] Workspaces:', workspacesWithInvitations.map(w => ({ id: w.id, name: w.name })));
       setWorkspaces(workspacesWithInvitations);
 
-      // CRITICAL FIX: Auto-select first workspace (user endpoint doesn't return current_workspace_id)
-      if (workspacesWithInvitations.length > 0) {
+      // Use current workspace from API if available, otherwise auto-select first
+      if (current && !selectedWorkspaceId) {
+        console.log('✅ [WORKSPACE LOAD] Using API current workspace:', current.id, current.name);
+        setSelectedWorkspaceId(current.id);
+      } else if (workspacesWithInvitations.length > 0 && !selectedWorkspaceId) {
         const firstWorkspaceId = workspacesWithInvitations[0].id;
         console.log('✅ [WORKSPACE LOAD] Auto-selecting first workspace:', firstWorkspaceId, workspacesWithInvitations[0].name);
         setSelectedWorkspaceId(firstWorkspaceId);
@@ -2106,11 +2063,11 @@ export default function Page() {
       }
 
       // Check if user is workspace admin (owner or admin role in any workspace)
-      const isOwner = allWorkspaces.some(ws => ws.owner_id === userId);
-      const isAdminMember = memberWorkspaces?.some((member: any) => member.role === 'admin');
+      const isOwner = apiWorkspaces.some((ws: any) => ws.owner_id === userId);
+      const isAdminMember = apiWorkspaces.some((ws: any) => ws.role === 'admin');
       setIsWorkspaceAdmin(isOwner || isAdminMember || false);
     } catch (error) {
-      console.error('Error loading user workspaces:', error);
+      console.error('❌ [WORKSPACE LOAD] API error:', error);
       setWorkspaces([]);
     }
   };
