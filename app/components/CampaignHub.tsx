@@ -79,6 +79,9 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   const [selectedCampaignForMessages, setSelectedCampaignForMessages] = useState<any>(null);
   const [showProspectsModal, setShowProspectsModal] = useState(false);
   const [selectedCampaignForProspects, setSelectedCampaignForProspects] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [campaignToEdit, setCampaignToEdit] = useState<any>(null);
+  const [editFormData, setEditFormData] = useState<any>({});
 
   console.log('🏢 [CAMPAIGN HUB] Workspace ID being used:', actualWorkspaceId, 'from prop:', workspaceId);
 
@@ -179,9 +182,47 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     toastError(`Analytics for campaign ${campaignId} - Coming soon!`);
   };
 
-  const editCampaign = (campaignId: string) => {
-    // TODO: Open edit modal or navigate to edit view
-    toastError(`Edit campaign ${campaignId} - Coming soon!`);
+  const editCampaign = (campaign: any) => {
+    // Check if campaign has sent messages
+    if (campaign.sent > 0) {
+      toastError('Cannot edit campaign that has already sent messages');
+      return;
+    }
+
+    setCampaignToEdit(campaign);
+    setEditFormData({
+      name: campaign.name || '',
+      connection_message: campaign.connection_message || '',
+      alternative_message: campaign.alternative_message || '',
+      follow_up_messages: campaign.follow_up_messages || []
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveCampaignEdit = async () => {
+    if (!campaignToEdit) return;
+
+    try {
+      const response = await fetch(`/api/campaigns/${campaignToEdit.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editFormData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update campaign');
+      }
+
+      toastSuccess('Campaign updated successfully!');
+      setShowEditModal(false);
+      setCampaignToEdit(null);
+
+      // Refresh campaigns list
+      queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+    } catch (error) {
+      console.error('Error updating campaign:', error);
+      toastError('Failed to update campaign');
+    }
   };
 
   // Handler for viewing message preview
@@ -326,11 +367,12 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                   <BarChart3 size={16} />
                 </Button>
                 <Button
-                  onClick={() => editCampaign(c.id)}
+                  onClick={() => editCampaign(c)}
                   variant="ghost"
                   size="icon"
                   className="text-purple-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
-                  title="Edit campaign"
+                  title={c.sent > 0 ? "Cannot edit (messages sent)" : "Edit campaign"}
+                  disabled={c.sent > 0}
                 >
                   <Edit size={16} />
                 </Button>
@@ -477,6 +519,124 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                 className="bg-purple-600 hover:bg-purple-700"
               >
                 Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Edit Campaign Modal */}
+      {showEditModal && campaignToEdit && (
+        <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-purple-500">
+            <DialogHeader>
+              <DialogTitle className="text-2xl text-white flex items-center gap-2">
+                <Edit className="text-purple-400" size={24} />
+                Edit Campaign: {campaignToEdit.name}
+              </DialogTitle>
+              <DialogDescription className="text-gray-400">
+                Update campaign messages and settings
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6 mt-4">
+              {/* Campaign Name */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Campaign Name</Label>
+                <Input
+                  value={editFormData.name || ''}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  className="bg-gray-800 border-gray-700 text-white"
+                  placeholder="Campaign name"
+                />
+              </div>
+
+              {/* Connection Message */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Connection Request Message</Label>
+                <Textarea
+                  value={editFormData.connection_message || ''}
+                  onChange={(e) => setEditFormData({ ...editFormData, connection_message: e.target.value })}
+                  className="bg-gray-800 border-gray-700 text-white min-h-[120px]"
+                  placeholder="Hi {{firstName}}, I noticed..."
+                />
+                <p className="text-xs text-gray-500 mt-1">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</p>
+              </div>
+
+              {/* Alternative Message */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Alternative Message (Optional)</Label>
+                <Textarea
+                  value={editFormData.alternative_message || ''}
+                  onChange={(e) => setEditFormData({ ...editFormData, alternative_message: e.target.value })}
+                  className="bg-gray-800 border-gray-700 text-white min-h-[120px]"
+                  placeholder="Alternative message if already connected..."
+                />
+              </div>
+
+              {/* Follow-up Messages */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Follow-up Messages</Label>
+                <div className="space-y-3">
+                  {(editFormData.follow_up_messages || []).map((msg: any, index: number) => (
+                    <div key={index} className="bg-gray-800/50 border border-gray-700 rounded p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-400">Follow-up #{index + 1}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const updated = [...editFormData.follow_up_messages];
+                            updated.splice(index, 1);
+                            setEditFormData({ ...editFormData, follow_up_messages: updated });
+                          }}
+                          className="text-red-400 hover:text-red-300 h-6"
+                        >
+                          <X size={14} />
+                        </Button>
+                      </div>
+                      <Textarea
+                        value={typeof msg === 'string' ? msg : (msg.message || msg.content || '')}
+                        onChange={(e) => {
+                          const updated = [...editFormData.follow_up_messages];
+                          updated[index] = typeof msg === 'string' ? e.target.value : { ...msg, message: e.target.value };
+                          setEditFormData({ ...editFormData, follow_up_messages: updated });
+                        }}
+                        className="bg-gray-900 border-gray-700 text-white min-h-[80px]"
+                      />
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditFormData({
+                        ...editFormData,
+                        follow_up_messages: [...(editFormData.follow_up_messages || []), '']
+                      });
+                    }}
+                    className="border-purple-500 text-purple-400 hover:bg-purple-500/10"
+                  >
+                    <Plus size={14} className="mr-1" />
+                    Add Follow-up
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="mt-6 gap-2">
+              <Button
+                onClick={() => setShowEditModal(false)}
+                variant="outline"
+                className="border-gray-600 text-gray-300"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveCampaignEdit}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                Save Changes
               </Button>
             </DialogFooter>
           </DialogContent>
