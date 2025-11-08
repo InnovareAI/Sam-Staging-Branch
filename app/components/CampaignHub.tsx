@@ -74,6 +74,12 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   // Use workspaceId from props - no fallback to prevent loading wrong workspace data
   const actualWorkspaceId = workspaceId;
 
+  // State for modals
+  const [showMessagePreview, setShowMessagePreview] = useState(false);
+  const [selectedCampaignForMessages, setSelectedCampaignForMessages] = useState<any>(null);
+  const [showProspectsModal, setShowProspectsModal] = useState(false);
+  const [selectedCampaignForProspects, setSelectedCampaignForProspects] = useState<string | null>(null);
+
   console.log('🏢 [CAMPAIGN HUB] Workspace ID being used:', actualWorkspaceId, 'from prop:', workspaceId);
 
   // REACT QUERY: Fetch and cache campaigns
@@ -177,6 +183,33 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     // TODO: Open edit modal or navigate to edit view
     toastError(`Edit campaign ${campaignId} - Coming soon!`);
   };
+
+  // Handler for viewing message preview
+  const viewMessages = (campaign: any) => {
+    setSelectedCampaignForMessages(campaign);
+    setShowMessagePreview(true);
+  };
+
+  // Handler for viewing prospects
+  const viewProspects = (campaignId: string) => {
+    setSelectedCampaignForProspects(campaignId);
+    setShowProspectsModal(true);
+  };
+
+  // REACT QUERY: Load campaign prospects
+  const { data: campaignProspects = [], isLoading: loadingProspects } = useQuery({
+    queryKey: ['campaignProspects', selectedCampaignForProspects],
+    queryFn: async () => {
+      if (!selectedCampaignForProspects) return [];
+      const response = await fetch(`/api/campaigns/${selectedCampaignForProspects}/prospects`);
+      if (!response.ok) throw new Error('Failed to load campaign prospects');
+      const result = await response.json();
+      return result.prospects || [];
+    },
+    enabled: !!selectedCampaignForProspects && showProspectsModal,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'text-green-400 bg-green-900/20 border-green-500';
@@ -266,6 +299,24 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                   </Button>
                 )}
                 <Button
+                  onClick={() => viewMessages(c)}
+                  variant="ghost"
+                  size="icon"
+                  className="text-cyan-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
+                  title="View messages"
+                >
+                  <Eye size={16} />
+                </Button>
+                <Button
+                  onClick={() => viewProspects(c.id)}
+                  variant="ghost"
+                  size="icon"
+                  className="text-orange-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
+                  title="View prospects"
+                >
+                  <Users size={16} />
+                </Button>
+                <Button
                   onClick={() => showCampaignAnalytics(c.id)}
                   variant="ghost"
                   size="icon"
@@ -316,6 +367,212 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
         </Card>
         </motion.div>
       ))}
+
+      {/* Message Preview Modal */}
+      {showMessagePreview && selectedCampaignForMessages && (
+        <Dialog open={showMessagePreview} onOpenChange={setShowMessagePreview}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-purple-500">
+            <DialogHeader>
+              <DialogTitle className="text-2xl text-white flex items-center gap-2">
+                <Eye className="text-purple-400" size={24} />
+                Message Preview: {selectedCampaignForMessages.name}
+              </DialogTitle>
+              <DialogDescription className="text-gray-400">
+                Review all messages that will be sent in this campaign
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6 mt-4">
+              {/* Connection Message */}
+              {selectedCampaignForMessages.connection_message && (
+                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-purple-400 mb-3 flex items-center gap-2">
+                    <MessageCircle size={18} />
+                    Connection Request Message
+                  </h3>
+                  <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                    <p className="text-gray-200 whitespace-pre-wrap">{selectedCampaignForMessages.connection_message}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Alternative Message */}
+              {selectedCampaignForMessages.alternative_message && (
+                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center gap-2">
+                    <MessageSquare size={18} />
+                    Alternative Message
+                  </h3>
+                  <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                    <p className="text-gray-200 whitespace-pre-wrap">{selectedCampaignForMessages.alternative_message}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Follow-up Messages */}
+              {selectedCampaignForMessages.follow_up_messages && selectedCampaignForMessages.follow_up_messages.length > 0 && (
+                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-green-400 mb-3 flex items-center gap-2">
+                    <Send size={18} />
+                    Follow-up Messages ({selectedCampaignForMessages.follow_up_messages.length})
+                  </h3>
+                  <div className="space-y-4">
+                    {selectedCampaignForMessages.follow_up_messages.map((msg: any, index: number) => (
+                      <div key={index} className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-400">Follow-up #{index + 1}</span>
+                          {msg.delay_days && (
+                            <Badge className="bg-blue-900/20 text-blue-400 border-blue-500">
+                              Delay: {msg.delay_days} days
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-gray-200 whitespace-pre-wrap">{msg.message || msg.content || msg}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Message Templates */}
+              {selectedCampaignForMessages.message_templates && selectedCampaignForMessages.message_templates.length > 0 && (
+                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-yellow-400 mb-3 flex items-center gap-2">
+                    <FileText size={18} />
+                    Message Templates ({selectedCampaignForMessages.message_templates.length})
+                  </h3>
+                  <div className="space-y-4">
+                    {selectedCampaignForMessages.message_templates.map((template: any, index: number) => (
+                      <div key={index} className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-400">Template #{index + 1}</span>
+                          {template.type && (
+                            <Badge className="bg-yellow-900/20 text-yellow-400 border-yellow-500">
+                              {template.type}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-gray-200 whitespace-pre-wrap">{template.content || template.message || template}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* No Messages */}
+              {!selectedCampaignForMessages.connection_message &&
+               !selectedCampaignForMessages.alternative_message &&
+               (!selectedCampaignForMessages.follow_up_messages || selectedCampaignForMessages.follow_up_messages.length === 0) &&
+               (!selectedCampaignForMessages.message_templates || selectedCampaignForMessages.message_templates.length === 0) && (
+                <div className="text-center py-8 text-gray-400">
+                  <AlertCircle size={48} className="mx-auto mb-4 text-gray-600" />
+                  <p>No messages configured for this campaign</p>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="mt-6">
+              <Button
+                onClick={() => setShowMessagePreview(false)}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Prospects Modal */}
+      {showProspectsModal && selectedCampaignForProspects && (
+        <Dialog open={showProspectsModal} onOpenChange={setShowProspectsModal}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-gray-900 border-purple-500">
+            <DialogHeader>
+              <DialogTitle className="text-2xl text-white flex items-center gap-2">
+                <Users className="text-orange-400" size={24} />
+                Campaign Prospects
+              </DialogTitle>
+              <DialogDescription className="text-gray-400">
+                {loadingProspects ? 'Loading prospects...' : `${campaignProspects.length} prospects in this campaign`}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-4">
+              {loadingProspects ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="animate-spin text-purple-400" size={48} />
+                </div>
+              ) : campaignProspects.length > 0 ? (
+                <div className="border border-gray-700 rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-800 border-gray-700">
+                        <TableHead className="text-gray-300">Name</TableHead>
+                        <TableHead className="text-gray-300">Title</TableHead>
+                        <TableHead className="text-gray-300">Company</TableHead>
+                        <TableHead className="text-gray-300">Status</TableHead>
+                        <TableHead className="text-gray-300">LinkedIn</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {campaignProspects.map((prospect: any) => (
+                        <TableRow key={prospect.id} className="border-gray-700 hover:bg-gray-800/50">
+                          <TableCell className="text-white">
+                            {prospect.first_name} {prospect.last_name}
+                          </TableCell>
+                          <TableCell className="text-gray-300">{prospect.title || '-'}</TableCell>
+                          <TableCell className="text-gray-300">{prospect.company || '-'}</TableCell>
+                          <TableCell>
+                            <Badge
+                              className={
+                                prospect.status === 'connection_requested' ? 'bg-green-900/20 text-green-400 border-green-500' :
+                                prospect.status === 'approved' ? 'bg-blue-900/20 text-blue-400 border-blue-500' :
+                                prospect.status === 'pending' ? 'bg-yellow-900/20 text-yellow-400 border-yellow-500' :
+                                'bg-gray-900/20 text-gray-400 border-gray-500'
+                              }
+                            >
+                              {prospect.status || 'unknown'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {prospect.linkedin_url ? (
+                              <a
+                                href={prospect.linkedin_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                              >
+                                <Link size={14} />
+                                View
+                              </a>
+                            ) : (
+                              <span className="text-gray-600">-</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-400">
+                  <Users size={48} className="mx-auto mb-4 text-gray-600" />
+                  <p>No prospects found for this campaign</p>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="mt-6">
+              <Button
+                onClick={() => setShowProspectsModal(false)}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
