@@ -24,15 +24,13 @@ export async function GET(request: NextRequest) {
     }
 
     // 1. Find user ID for tl@innovareai.com
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id, email, created_at')
-      .eq('email', 'tl@innovareai.com')
-      .single()
+    const { data: authData, error: authError } = await supabase.auth.admin.listUsers()
+
+    const user = authData?.users.find(u => u.email === 'tl@innovareai.com')
 
     results.queries.user = {
-      data: user,
-      error: userError?.message
+      data: user ? { id: user.id, email: user.email, created_at: user.created_at } : null,
+      error: authError?.message || (!user ? 'User not found in auth.users' : undefined)
     }
 
     if (!user) {
