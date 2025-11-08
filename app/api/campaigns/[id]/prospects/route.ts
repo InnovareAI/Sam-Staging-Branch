@@ -32,25 +32,10 @@ export async function GET(
     }
 
     // Build query for campaign prospects
+    // Note: campaign_prospects has all prospect data directly (first_name, last_name, etc.)
     let query = supabase
       .from('campaign_prospects')
-      .select(`
-        *,
-        workspace_prospects (
-          id,
-          email_address,
-          linkedin_profile_url,
-          full_name,
-          first_name,
-          last_name,
-          job_title,
-          company_name,
-          location,
-          prospect_status,
-          contact_count,
-          last_contacted_at
-        )
-      `)
+      .select('*')
       .eq('campaign_id', campaignId);
 
     if (status) {
@@ -63,10 +48,16 @@ export async function GET(
 
     if (error) {
       console.error('Failed to fetch campaign prospects:', error);
-      return NextResponse.json({ 
-        error: 'Failed to fetch campaign prospects' 
+      return NextResponse.json({
+        error: 'Failed to fetch campaign prospects'
       }, { status: 500 });
     }
+
+    // Map company_name to company for frontend compatibility
+    const mappedProspects = (prospects || []).map(p => ({
+      ...p,
+      company: p.company_name || p.company || null
+    }));
 
     // Get total count
     const { count, error: countError } = await supabase
@@ -74,8 +65,8 @@ export async function GET(
       .select('*', { count: 'exact', head: true })
       .eq('campaign_id', campaignId);
 
-    return NextResponse.json({ 
-      prospects: prospects || [],
+    return NextResponse.json({
+      prospects: mappedProspects,
       total: count || 0,
       limit,
       offset
