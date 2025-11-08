@@ -119,21 +119,6 @@ export async function POST(request: NextRequest) {
 
     const userId = members[0].user_id;
 
-    // Get next batch number for this user/workspace
-    const { data: existingSessions } = await supabase
-      .from('prospect_approval_sessions')
-      .select('batch_number')
-      .eq('user_id', userId)
-      .eq('workspace_id', workspace_id)
-      .order('batch_number', { ascending: false })
-      .limit(1);
-
-    const nextBatchNumber = existingSessions && existingSessions.length > 0
-      ? (existingSessions[0].batch_number + 1)
-      : 1;
-
-    console.log('Upload Prospects - Creating session with batch_number:', nextBatchNumber);
-
     // Create approval session
     const { data: session, error: sessionError } = await supabase
       .from('prospect_approval_sessions')
@@ -148,7 +133,7 @@ export async function POST(request: NextRequest) {
         approved_count: 0,
         rejected_count: 0,
         status: 'active',
-        batch_number: nextBatchNumber,
+        batch_number: 1,
         created_at: new Date().toISOString()
       })
       .select()
