@@ -6150,15 +6150,53 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                         <div className="text-gray-400 text-sm">{(Number(campaign.response_rate) || 0).toFixed(1)}%</div>
                       </td>
                       <td className="px-6 py-4">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCampaignAction(campaign.id);
-                          }}
-                          className="text-gray-400 hover:text-white transition-colors"
-                        >
-                          <Settings size={20} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              viewMessages(campaign);
+                            }}
+                            className="text-cyan-400 hover:text-cyan-300 transition-colors"
+                            title="View messages"
+                          >
+                            <Eye size={18} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              viewProspects(campaign.id);
+                            }}
+                            className="text-orange-400 hover:text-orange-300 transition-colors"
+                            title="View prospects"
+                          >
+                            <Users size={18} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              editCampaign(campaign);
+                            }}
+                            className={`transition-colors ${
+                              campaign.sent > 0
+                                ? 'text-gray-600 cursor-not-allowed'
+                                : 'text-purple-400 hover:text-purple-300'
+                            }`}
+                            title={campaign.sent > 0 ? "Cannot edit (messages sent)" : "Edit campaign"}
+                            disabled={campaign.sent > 0}
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCampaignAction(campaign.id);
+                            }}
+                            className="text-gray-400 hover:text-white transition-colors"
+                            title="Campaign settings"
+                          >
+                            <Settings size={18} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
