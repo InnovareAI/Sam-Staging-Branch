@@ -5129,6 +5129,15 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     return true;
   });
 
+  // DEBUG: Log campaign data
+  console.log('🔍 CampaignHub Debug:', {
+    campaignFilter,
+    allCampaignsCount: allCampaigns.length,
+    filteredCampaignsCount: filteredCampaigns.length,
+    loadingAllCampaigns,
+    allCampaignsData: allCampaigns.map(c => ({ id: c.id, name: c.name, status: c.status }))
+  });
+
   // Calculate counts for each tab
   const activeCampaignsCount = allCampaigns.filter((c: any) => c.status === 'active' || c.status === 'paused').length;
   const inactiveCampaignsCount = allCampaigns.filter((c: any) => c.status === 'inactive' || c.status === 'scheduled').length;
