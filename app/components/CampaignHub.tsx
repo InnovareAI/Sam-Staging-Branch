@@ -4103,7 +4103,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   }, [autoOpenApprovals]);
 
   // Campaign filter state
-  const [campaignFilter, setCampaignFilter] = useState<'active' | 'inactive' | 'archived' | 'pending' | 'draft'>('active');
+  const [campaignFilter, setCampaignFilter] = useState<'active' | 'inactive' | 'archived' | 'completed' | 'pending' | 'draft'>('active');
 
   // REACT QUERY: Fetch pending campaigns with caching - LAZY LOAD when tab is active
   const { data: pendingCampaignsFromDB = [], isLoading: loadingPendingFromDB } = useQuery({
@@ -4201,7 +4201,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       const result = await response.json();
       return result.campaigns || [];
     },
-    enabled: (campaignFilter === 'active' || campaignFilter === 'inactive' || campaignFilter === 'archived') && !!actualWorkspaceId,
+    enabled: (campaignFilter === 'active' || campaignFilter === 'inactive' || campaignFilter === 'archived' || campaignFilter === 'completed') && !!actualWorkspaceId,
     staleTime: 2 * 60 * 1000, // 2 minutes
     refetchOnWindowFocus: true,
   });
