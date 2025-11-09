@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, ChevronDown, ChevronUp, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star, Plus } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star, Plus, CheckSquare } from 'lucide-react';
 import { toastError, toastSuccess } from '@/lib/toast';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
