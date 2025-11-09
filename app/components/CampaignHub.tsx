@@ -227,12 +227,14 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
 
   // Handler for viewing message preview
   const viewMessages = (campaign: any) => {
+    console.log('📧 View Messages clicked:', campaign);
     setSelectedCampaignForMessages(campaign);
     setShowMessagePreview(true);
   };
 
   // Handler for viewing prospects
   const viewProspects = (campaignId: string) => {
+    console.log('👥 View Prospects clicked:', campaignId);
     setSelectedCampaignForProspects(campaignId);
     setShowProspectsModal(true);
   };
