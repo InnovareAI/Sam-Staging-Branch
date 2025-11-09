@@ -84,6 +84,9 @@ export async function GET() {
     // Fetch workspace details separately
     const workspaceIds = (memberships || []).map(m => m.workspace_id)
 
+    console.log('[workspace/list] CRITICAL DEBUG - Workspace IDs to filter by:', workspaceIds)
+    console.log('[workspace/list] Number of workspace IDs:', workspaceIds.length)
+
     if (workspaceIds.length === 0) {
       console.log('[workspace/list] No workspace memberships found')
       return NextResponse.json({ workspaces: [], current: null })
@@ -93,6 +96,9 @@ export async function GET() {
       .from('workspaces')
       .select('id, name')
       .in('id', workspaceIds)
+
+    console.log('[workspace/list] CRITICAL DEBUG - Workspaces returned from DB:', workspaceData?.length)
+    console.log('[workspace/list] CRITICAL DEBUG - Workspace names returned:', workspaceData?.map(w => w.name))
 
     if (workspaceError) {
       console.error('[workspace/list] Error fetching workspaces:', workspaceError)
