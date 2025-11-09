@@ -95,7 +95,26 @@ export async function middleware(request: NextRequest) {
       }
 
       // Check if user is a member of InnovareAI workspace
-      const { data: membership, error: memberError } = await supabase
+      // CRITICAL: Use service role to bypass RLS for middleware auth check
+      const supabaseAdmin = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+          cookies: {
+            getAll() {
+              return request.cookies.getAll();
+            },
+            setAll(cookiesToSet) {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                request.cookies.set(name, value);
+                response.cookies.set(name, value, options);
+              });
+            }
+          }
+        }
+      );
+
+      const { data: membership, error: memberError } = await supabaseAdmin
         .from('workspace_members')
         .select('role, status')
         .eq('workspace_id', INNOVARE_AI_WORKSPACE_ID)
