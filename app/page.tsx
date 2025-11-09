@@ -225,6 +225,15 @@ export default function Page() {
     }
   }, [selectedWorkspaceId]);
 
+  // Auto-select first workspace if none selected and workspaces loaded
+  useEffect(() => {
+    if (!selectedWorkspaceId && workspaces.length > 0 && !workspacesLoading) {
+      const firstWorkspace = workspaces[0];
+      console.log('🔄 [AUTO-SELECT] No workspace selected, auto-selecting first:', firstWorkspace.name, firstWorkspace.id);
+      setSelectedWorkspaceId(firstWorkspace.id);
+    }
+  }, [selectedWorkspaceId, workspaces, workspacesLoading]);
+
   // LinkedIn connection state
   const [hasLinkedInConnection, setHasLinkedInConnection] = useState(false);
   const [linkedInLoading, setLinkedInLoading] = useState(false);
