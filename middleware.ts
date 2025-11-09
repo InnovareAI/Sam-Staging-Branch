@@ -14,7 +14,9 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // AUTOMATIC COOKIE CLEANUP: Detect corrupted cookies before processing
+  // TEMPORARY: Disable aggressive cookie cleanup to debug issue
+  // TODO: Re-enable once we verify cookie format is correct
+  /*
   const allCookies = request.cookies.getAll();
   const corruptedCookies = detectCorruptedCookiesInRequest(allCookies);
 
@@ -30,6 +32,7 @@ export async function middleware(request: NextRequest) {
 
     return response;
   }
+  */
 
   // CRITICAL: Create Supabase client with middleware cookie handling
   let supabase;

@@ -23,54 +23,11 @@ export function createClient() {
       return browserClient;
     }
 
-    // Helper to check if a cookie value is corrupted
-    function isCookieCorrupted(value: string): boolean {
-      if (!value) return false;
-      // Detect patterns of corrupted cookies
-      return value.includes('base64-{') ||
-             value.includes('base64-eyJ') ||
-             value === 'undefined' ||
-             value === 'null' ||
-             value.includes('[object Object]');
-    }
-
-    // Create new singleton instance with CUSTOM cookie handlers
-    // This filters out corrupted cookies BEFORE Supabase tries to parse them
+    // Create new singleton instance - let Supabase SSR handle everything
     browserClient = createBrowserSupabaseClient(
       supabaseUrl,
       supabaseAnonKey,
       {
-        cookies: {
-          getAll() {
-            const cookies = document.cookie.split(';').map(cookie => {
-              const [name, ...v] = cookie.trim().split('=');
-              const value = v.join('=');
-              return { name, value };
-            });
-
-            // Filter out corrupted Supabase cookies
-            return cookies.filter(cookie => {
-              if (cookie.name.startsWith('sb-') && isCookieCorrupted(cookie.value)) {
-                console.warn(`[Browser Client] Removing corrupted cookie: ${cookie.name}`);
-                // Delete the corrupted cookie
-                document.cookie = `${cookie.name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-                return false; // Exclude from list
-              }
-              return true; // Keep valid cookies
-            });
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              let cookie = `${name}=${value}`;
-              if (options?.path) cookie += `; path=${options.path}`;
-              if (options?.maxAge) cookie += `; max-age=${options.maxAge}`;
-              if (options?.domain) cookie += `; domain=${options.domain}`;
-              if (options?.sameSite) cookie += `; samesite=${options.sameSite}`;
-              if (options?.secure) cookie += '; secure';
-              document.cookie = cookie;
-            });
-          }
-        },
         cookieOptions: {
           // CRITICAL: These settings must match server-side configuration
           global: {
