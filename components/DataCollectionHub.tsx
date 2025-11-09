@@ -379,8 +379,8 @@ export default function DataCollectionHub({
         return
       }
 
-      // Check workspace ID is available
-      if (!workspaceId) {
+      // Check workspace ID is available (use actualWorkspaceId which has fallback)
+      if (!actualWorkspaceId) {
         toastError('No workspace selected')
         return
       }
@@ -389,13 +389,14 @@ export default function DataCollectionHub({
       formData.append('file', file)
       formData.append('campaign_name', `${today}-${workspaceCode}-CSV Upload`)
       formData.append('source', 'csv-upload')
-      formData.append('workspace_id', workspaceId)
+      formData.append('workspace_id', actualWorkspaceId)
 
       console.log('CSV upload request:', {
         fileName: file.name,
         fileSize: file.size,
         campaignName: `${today}-${workspaceCode}-CSV Upload`,
-        workspaceId,
+        workspaceId: actualWorkspaceId,
+        workspaceIdFromProp: workspaceId,
         hasSession: !!userSession
       })
 
@@ -480,6 +481,7 @@ export default function DataCollectionHub({
             campaign_name: `${today}-${workspaceCode}-Pasted Data`,
             campaign_tag: 'paste-import',
             source: 'paste-import',
+            workspace_id: actualWorkspaceId,
             prospects
           })
         })
