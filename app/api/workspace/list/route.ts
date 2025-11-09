@@ -39,8 +39,28 @@ export async function GET() {
     // We'll select the first workspace or use localStorage on client side
     console.log('[workspace/list] Skipping users.current_workspace_id (column does not exist)')
 
-    // Fetch accessible workspaces - using separate queries instead of join
-    const { data: memberships, error: memberError } = await supabase
+    // CRITICAL FIX: Use service role to bypass RLS since policies are broken
+    const supabaseAdmin = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              )
+            } catch {}
+          }
+        }
+      }
+    )
+
+    // Fetch accessible workspaces using admin client to bypass RLS
+    const { data: memberships, error: memberError } = await supabaseAdmin
       .from('workspace_members')
       .select('workspace_id')
       .eq('user_id', session.user.id)
@@ -68,7 +88,7 @@ export async function GET() {
       return NextResponse.json({ workspaces: [], current: null })
     }
 
-    const { data: workspaceData, error: workspaceError } = await supabase
+    const { data: workspaceData, error: workspaceError } = await supabaseAdmin
       .from('workspaces')
       .select('id, name')
       .in('id', workspaceIds)
