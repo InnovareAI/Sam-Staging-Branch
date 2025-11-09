@@ -263,12 +263,11 @@ export default function DataCollectionHub({
   const [loadingMessage, setLoadingMessage] = useState<string>('')
   const [workspaceCode, setWorkspaceCode] = useState<string>('CLI')
 
-  // Use hardcoded workspace ID as fallback if parent doesn't provide it
-  // TEMP FIX: Parent component not selecting workspace despite it being loaded
-  const FALLBACK_WORKSPACE_ID = 'babdcab8-1a78-4b2f-913e-6e9fd9821009' // InnovareAI Workspace
-  const actualWorkspaceId = workspaceId || FALLBACK_WORKSPACE_ID
+  // Use workspace ID from parent - NO FALLBACK for security
+  // Users can only upload to their own workspace
+  const actualWorkspaceId = workspaceId
 
-  console.log('🔍 [DATA APPROVAL] Workspace ID being used:', actualWorkspaceId, 'from prop:', workspaceId)
+  console.log('🔍 [DATA APPROVAL] Workspace ID from parent:', workspaceId)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -379,9 +378,10 @@ export default function DataCollectionHub({
         return
       }
 
-      // Check workspace ID is available (use actualWorkspaceId which has fallback)
+      // Check workspace ID is available - users can only upload to their own workspace
       if (!actualWorkspaceId) {
-        toastError('No workspace selected')
+        toastError('No workspace selected. Please select your workspace from the top menu.')
+        console.error('CSV Upload blocked: No workspace ID available')
         return
       }
 
@@ -437,6 +437,13 @@ export default function DataCollectionHub({
   const handlePasteData = async () => {
     if (!pasteText.trim()) {
       toastError('Please paste some prospect data first')
+      return
+    }
+
+    // Check workspace ID is available
+    if (!actualWorkspaceId) {
+      toastError('No workspace selected. Please select your workspace from the top menu.')
+      console.error('Paste Upload blocked: No workspace ID available')
       return
     }
 

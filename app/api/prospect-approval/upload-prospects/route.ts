@@ -51,48 +51,79 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'No prospects provided' }, { status: 400 });
     }
 
-    // Try to get workspace_id from authenticated user if not provided
-    if (!workspace_id) {
-      const cookieStore = await cookies();
-      const authClient = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            getAll() {
-              return cookieStore.getAll();
-            },
-            setAll(cookiesToSet) {
-              cookiesToSet.forEach(({ name, value, options }) => {
-                cookieStore.set(name, value, options);
-              });
-            }
+    // Get authenticated user and validate workspace access
+    const cookieStore = await cookies();
+    const authClient = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
           }
         }
-      );
-
-      const { data: { user } } = await authClient.auth.getUser();
-
-      if (user) {
-        // Get user's workspace
-        const { data: userData } = await supabase
-          .from('users')
-          .select('current_workspace_id')
-          .eq('id', user.id)
-          .single();
-
-        workspace_id = userData?.current_workspace_id;
-
-        console.log('✅ Got workspace from authenticated user:', workspace_id);
       }
+    );
+
+    const { data: { user } } = await authClient.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 });
+    }
+
+    // Try to get workspace_id from request or user's current workspace
+    if (!workspace_id) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('current_workspace_id')
+        .eq('id', user.id)
+        .single();
+
+      workspace_id = userData?.current_workspace_id;
+      console.log('✅ Got workspace from authenticated user:', workspace_id);
     }
 
     if (!workspace_id) {
       return NextResponse.json({
         success: false,
-        error: 'workspace_id is required (or authenticate to use your current workspace)'
+        error: 'No workspace selected. Please select your workspace.'
       }, { status: 400 });
     }
+
+    // Verify user has access to this workspace
+    const { data: memberCheck, error: memberError } = await supabase
+      .from('workspace_members')
+      .select('id, role')
+      .eq('workspace_id', workspace_id)
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .single();
+
+    if (memberError || !memberCheck) {
+      console.error('Paste Upload - User not authorized for workspace:', {
+        userId: user.id,
+        workspaceId: workspace_id,
+        error: memberError?.message
+      });
+      return NextResponse.json({
+        success: false,
+        error: 'You do not have access to this workspace'
+      }, { status: 403 });
+    }
+
+    console.log('Paste Upload - Workspace access verified:', {
+      userId: user.id,
+      workspaceId: workspace_id,
+      role: memberCheck.role
+    });
 
     // Get workspace to verify it exists
     const { data: workspace, error: wsError } = await supabase
@@ -106,18 +137,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Workspace not found' }, { status: 404 });
     }
 
-    // Get a user from this workspace for the session
-    const { data: members } = await supabase
-      .from('workspace_members')
-      .select('user_id')
-      .eq('workspace_id', workspace_id)
-      .limit(1);
-
-    if (!members || members.length === 0) {
-      return NextResponse.json({ success: false, error: 'No workspace members found' }, { status: 400 });
-    }
-
-    const userId = members[0].user_id;
+    // Use the authenticated user's ID for the session
+    const userId = user.id;
 
     // Create approval session
     const { data: session, error: sessionError } = await supabase

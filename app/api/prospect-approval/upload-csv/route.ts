@@ -48,6 +48,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'No workspace ID provided' }, { status: 400 });
     }
 
+    // Verify user has access to this workspace
+    const { data: memberCheck, error: memberError } = await supabase
+      .from('workspace_members')
+      .select('id, role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .single();
+
+    if (memberError || !memberCheck) {
+      console.error('CSV Upload - User not authorized for workspace:', {
+        userId: user.id,
+        workspaceId,
+        error: memberError?.message
+      });
+      return NextResponse.json({
+        success: false,
+        error: 'You do not have access to this workspace'
+      }, { status: 403 });
+    }
+
+    console.log('CSV Upload - Workspace access verified:', {
+      userId: user.id,
+      workspaceId,
+      role: memberCheck.role
+    });
+
     if (!file) {
       return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 });
     }
