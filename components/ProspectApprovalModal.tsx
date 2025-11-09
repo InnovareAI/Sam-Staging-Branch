@@ -296,14 +296,25 @@ export default function ProspectApprovalModal({
             )}
           </div>
 
-          <button
-            onClick={exportData}
-            disabled={prospects.length - dismissedProspects.size === 0}
-            className="flex items-center space-x-2 px-4 py-2 bg-primary/20 hover:bg-primary/30 disabled:bg-surface-highlight disabled:cursor-not-allowed text-primary disabled:text-muted-foreground rounded-lg transition-colors text-sm font-medium border border-primary/40 disabled:border-border/60"
-          >
-            <Download size={16} />
-            <span>Export CSV</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleApproveAll}
+              disabled={prospects.length - dismissedProspects.size === 0}
+              className="flex items-center space-x-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 disabled:bg-surface-highlight disabled:cursor-not-allowed text-green-400 disabled:text-muted-foreground rounded-lg transition-colors text-sm font-medium border border-green-500/40 disabled:border-border/60"
+            >
+              <CheckSquare size={16} />
+              <span>Auto-Approve All ({prospects.length - dismissedProspects.size})</span>
+            </button>
+
+            <button
+              onClick={exportData}
+              disabled={prospects.length - dismissedProspects.size === 0}
+              className="flex items-center space-x-2 px-4 py-2 bg-primary/20 hover:bg-primary/30 disabled:bg-surface-highlight disabled:cursor-not-allowed text-primary disabled:text-muted-foreground rounded-lg transition-colors text-sm font-medium border border-primary/40 disabled:border-border/60"
+            >
+              <Download size={16} />
+              <span>Export CSV</span>
+            </button>
+          </div>
         </div>
       </div>
 
