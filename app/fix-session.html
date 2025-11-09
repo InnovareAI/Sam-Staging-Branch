@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Fixing Session...</title>
+  <style>
+    body {
+      font-family: system-ui;
+      max-width: 600px;
+      margin: 100px auto;
+      padding: 20px;
+      text-align: center;
+    }
+    .status { font-size: 18px; margin: 20px 0; }
+    .success { color: green; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <h1>🔧 Fixing Your Session</h1>
+  <div id="status" class="status">Checking cookies...</div>
+
+  <script>
+    async function fixCookies() {
+      const statusDiv = document.getElementById('status');
+      let fixed = false;
+
+      try {
+        // Get all cookies
+        const cookies = document.cookie.split(';');
+
+        for (const cookie of cookies) {
+          const [nameRaw, ...valueParts] = cookie.split('=');
+          const name = nameRaw?.trim();
+          const value = valueParts.join('=');
+
+          // Check if this is a Supabase auth cookie with base64- prefix
+          if (name && name.startsWith('sb-') && value && value.startsWith('base64-')) {
+            statusDiv.innerHTML = `Found corrupted cookie: ${name}<br>Fixing...`;
+
+            // Strip the base64- prefix
+            const correctedValue = value.substring(7); // Remove "base64-"
+
+            // Set corrected cookie
+            document.cookie = `${name}=${correctedValue}; path=/; max-age=${60*60*24*7}; secure; samesite=lax`;
+
+            fixed = true;
+            console.log(`✅ Fixed cookie: ${name}`);
+          }
+        }
+
+        if (fixed) {
+          statusDiv.innerHTML = '<div class="success">✅ Session fixed!<br><br>Redirecting to app...</div>';
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 2000);
+        } else {
+          statusDiv.innerHTML = '<div class="success">✅ Session looks good!<br><br>Redirecting to app...</div>';
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1000);
+        }
+      } catch (error) {
+        statusDiv.innerHTML = `<div class="error">❌ Error: ${error.message}<br><br>Redirecting to signin...</div>`;
+        setTimeout(() => {
+          window.location.href = '/signin';
+        }, 2000);
+      }
+    }
+
+    // Run on page load
+    fixCookies();
+  </script>
+</body>
+</html>
