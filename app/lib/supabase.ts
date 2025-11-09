@@ -41,7 +41,9 @@ export function createClient() {
           persistSession: true,        // Enable 7-day session persistence
           autoRefreshToken: true,       // Auto-refresh before token expires
           detectSessionInUrl: true,     // Required for magic links & OAuth
-          storageKey: 'sb-auth-token',  // Cookie storage key
+          // CRITICAL: storageKey must match the cookie name set by server
+          // Server sets: sb-{project-ref}-auth-token
+          // Do NOT override - let Supabase SSR auto-generate the correct key
           flowType: 'pkce'             // PKCE flow for better security
         }
       }
