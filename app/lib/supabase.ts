@@ -26,22 +26,6 @@ export function createClient() {
 
   // Only use cookie-based auth in browser
   if (typeof window !== 'undefined') {
-    // Clean corrupted localStorage (but leave cookies alone - they work despite warnings)
-    try {
-      const storageKeys = Object.keys(localStorage);
-      storageKeys.forEach(key => {
-        if (key.includes('supabase') || key.includes('sb-')) {
-          const value = localStorage.getItem(key);
-          if (value && value.startsWith('base64-')) {
-            console.log(`🔧 Removing corrupted localStorage: ${key}`);
-            localStorage.removeItem(key);
-          }
-        }
-      });
-    } catch (e) {
-      console.warn('Could not clean storage:', e);
-    }
-
     return createBrowserSupabaseClient(
       supabaseUrl,
       supabaseAnonKey,
