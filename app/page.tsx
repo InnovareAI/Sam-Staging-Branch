@@ -1947,7 +1947,9 @@ export default function Page() {
       }
 
       const isTrueSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(finalEmail);
-      const shouldLoadAllWorkspaces = isTrueSuperAdmin && (isAdmin ?? isSuperAdmin);
+      // 🚨 CRITICAL SECURITY: Enforce strict workspace isolation - NEVER load all workspaces
+      // Users should ONLY see workspaces they are explicitly members of
+      const shouldLoadAllWorkspaces = false; // DISABLED: isTrueSuperAdmin && (isAdmin ?? isSuperAdmin);
 
       console.log('🛡️ SECURITY CHECK:');
       console.log('  - User email:', finalEmail);
