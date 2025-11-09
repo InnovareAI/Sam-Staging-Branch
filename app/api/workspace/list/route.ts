@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+// Cache bust: 2025-11-09-v2
 export async function GET() {
   try {
     const cookieStore = await cookies()
