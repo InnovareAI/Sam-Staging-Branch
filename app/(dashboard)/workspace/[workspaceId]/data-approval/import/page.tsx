@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import LinkedInImportStream from '@/app/components/LinkedInImportStream';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/app/lib/supabase';
 
 interface PageProps {
   params: Promise<{
@@ -28,7 +28,7 @@ export default function LinkedInImportPage({ params }: PageProps) {
   useEffect(() => {
     async function initAuth() {
       try {
-        const supabase = createClientComponentClient();
+        const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {

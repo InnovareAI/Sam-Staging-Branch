@@ -3,7 +3,7 @@
 import React from 'react';
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/app/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users,
@@ -4477,7 +4477,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     queryKey: ['workspace', actualWorkspaceId],
     queryFn: async () => {
       if (!actualWorkspaceId) return null;
-      const supabase = createClientComponentClient();
+      const supabase = createClient();
       const { data, error } = await supabase
         .from('workspaces')
         .select('id, name, client_code')

@@ -3,7 +3,7 @@
 // FORCE REBUILD - Oct 8 2025 12:47 PM - Netlify cache issue workaround
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { SimpleTileCard } from '@/components/TileCard';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/app/lib/supabase';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSamThreadedChat } from '@/lib/hooks/useSamThreadedChat';
@@ -100,7 +100,7 @@ const AnimatedMessage = ({ content }: { content: string; animate?: boolean }) =>
 
 export default function Page() {
   // Initialize Supabase client
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const router = useRouter();
 
   // Initialize confirm modal hook
