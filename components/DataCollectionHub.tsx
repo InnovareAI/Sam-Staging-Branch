@@ -1512,6 +1512,30 @@ export default function DataCollectionHub({
                   </button>
                 )}
 
+                {/* Auto-Approve All Pending - Quick bulk approve without modal */}
+                <Button
+                  onClick={() => {
+                    const pendingProspects = prospectData.filter(p => p.approvalStatus === 'pending')
+                    if (pendingProspects.length === 0) {
+                      toastError('No pending prospects to approve')
+                      return
+                    }
+
+                    // Auto-approve all pending prospects
+                    setProspectData(prev => prev.map(p =>
+                      p.approvalStatus === 'pending'
+                        ? { ...p, approvalStatus: 'approved' as const }
+                        : p
+                    ))
+                    toastSuccess(`✅ Auto-approved ${pendingProspects.length} prospects`)
+                  }}
+                  disabled={prospectData.filter(p => p.approvalStatus === 'pending').length === 0}
+                  size="sm"
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500"
+                >
+                  <CheckSquare className="w-3.5 h-3.5" />
+                  <span>Auto-Approve All ({prospectData.filter(p => p.approvalStatus === 'pending').length})</span>
+                </Button>
 
             {/* Enrich Selected Prospects - BrightData enrichment for missing data */}
             {selectedProspectIds.size > 0 && actualWorkspaceId && (
