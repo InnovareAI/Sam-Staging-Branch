@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/app/lib/supabase'
 import { requireAdmin } from '@/lib/security/route-auth';
@@ -156,7 +156,26 @@ export async function GET(request: NextRequest) {
 
     // CRITICAL FIX: Get user's current_workspace_id to enable auto-selection
     const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
+            } catch {
+              // Cookie setting can fail in API route context
+            }
+          }
+        }
+      }
+    );
     const { data: { user } } = await supabase.auth.getUser();
 
     let currentWorkspaceId = null;
@@ -194,8 +213,27 @@ export async function POST(request: NextRequest) {
   if (authError) return authError;
   try {
     const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
+            } catch {
+              // Cookie setting can fail in API route context
+            }
+          }
+        }
+      }
+    )
+
     const { data: { session }, error: authError } = await supabase.auth.getSession()
     if (authError || !session) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })

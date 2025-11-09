@@ -9,58 +9,41 @@ function getSupabaseConfig() {
   return { supabaseUrl, supabaseAnonKey, supabaseServiceKey };
 }
 
-// Utility to clean cookie values - ONLY clean if truly corrupted
-// Valid cookies with base64- prefix should be kept as-is
-function cleanCookieValue(value: string): string {
-  if (!value) return value;
+// Singleton browser client to prevent multiple GoTrueClient instances
+let browserClient: ReturnType<typeof createBrowserSupabaseClient> | null = null;
 
-  // IMPORTANT: base64- prefix is NOT always corruption
-  // Only "clean" if the value is malformed and can't be used
-  // In most cases, we should return the value as-is
-  return value;
-}
-
-// Browser client - use @supabase/ssr createBrowserClient
+// Browser client - use @supabase/ssr createBrowserClient with minimal configuration
 export function createClient() {
   const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
 
   // Only use cookie-based auth in browser
   if (typeof window !== 'undefined') {
-    return createBrowserSupabaseClient(
+    // Return existing singleton instance if available
+    if (browserClient) {
+      return browserClient;
+    }
+
+    // Create new singleton instance with MINIMAL custom configuration
+    // Let @supabase/ssr handle cookie encoding, PKCE flow, and session management
+    browserClient = createBrowserSupabaseClient(
       supabaseUrl,
       supabaseAnonKey,
       {
-        cookies: {
-          getAll() {
-            return document.cookie.split(';').map(cookie => {
-              const [name, ...v] = cookie.trim().split('=');
-              const value = cleanCookieValue(v.join('='));
-              return { name, value };
-            });
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              // Write cookies as-is - don't modify the value
-              // Supabase knows how to handle its own cookie format
-              let cookie = `${name}=${value}`;
-              if (options?.path) cookie += `; path=${options.path}`;
-              if (options?.maxAge) cookie += `; max-age=${options.maxAge}`;
-              if (options?.domain) cookie += `; domain=${options.domain}`;
-              if (options?.sameSite) cookie += `; samesite=${options.sameSite}`;
-              if (options?.secure) cookie += '; secure';
-              document.cookie = cookie;
-            });
-          }
-        },
         cookieOptions: {
+          // CRITICAL: These settings must match server-side configuration
+          // secure MUST be true in production to match server cookies
           global: {
-            secure: process.env.NODE_ENV === 'production',
+            secure: true, // Always true - HTTPS required for Supabase auth
             sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60 // 7 days
+            maxAge: 60 * 60 * 24 * 7 // 7 days in seconds
           }
         }
+        // DO NOT override cookies.getAll/setAll - let @supabase/ssr handle it
+        // DO NOT add custom auth options - @supabase/ssr configures PKCE flow automatically
       }
     );
+
+    return browserClient;
   }
 
   // Server-side: return basic client (no auth needed for server components importing this)
@@ -83,8 +66,58 @@ export function supabaseAdmin() {
   });
 }
 
-// Server-side route helper - export for routes that need it
+// Server-side route helper - properly configured createServerClient
 export { createServerClient } from '@supabase/ssr';
+
+/**
+ * Create a properly configured Supabase server client for API routes
+ * This ensures consistent cookie handling across all server-side code
+ *
+ * @example
+ * import { createServerSupabaseClient } from '@/app/lib/supabase';
+ *
+ * export async function GET() {
+ *   const supabase = await createServerSupabaseClient();
+ *   const { data, error } = await supabase.auth.getUser();
+ * }
+ */
+export async function createServerSupabaseClient() {
+  const { cookies } = await import('next/headers');
+  const { createServerClient } = await import('@supabase/ssr');
+
+  const cookieStore = await cookies();
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
+
+  return createServerClient(
+    supabaseUrl,
+    supabaseAnonKey,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // Cookie setting can fail in middleware/API route context
+            // This is expected and safe to ignore
+          }
+        }
+      },
+      cookieOptions: {
+        // CRITICAL: Must match browser client configuration
+        global: {
+          secure: true, // Always true for HTTPS
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 7 // 7 days in seconds
+        }
+      }
+    }
+  );
+}
 
 // Legacy exports for backward compatibility
 let _supabase: any = null;

@@ -28,6 +28,14 @@ export async function middleware(request: NextRequest) {
             response.cookies.set(name, value, options);
           });
         }
+      },
+      cookieOptions: {
+        // CRITICAL: Must match browser and server client configuration
+        global: {
+          secure: true, // Always true for HTTPS
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 7 // 7 days in seconds
+        }
       }
     }
   );

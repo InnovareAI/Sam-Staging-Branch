@@ -1,4 +1,4 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -9,7 +9,34 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function requireAuth(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
+            } catch {
+              // Cookie setting can fail in middleware/API route context
+            }
+          }
+        },
+        cookieOptions: {
+          // CRITICAL: Must match browser client configuration
+          global: {
+            secure: true, // Always true for HTTPS
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7 // 7 days in seconds
+          }
+        }
+      }
+    );
 
     const { data: { session }, error } = await supabase.auth.getSession();
 
@@ -67,11 +94,37 @@ export async function requireAdmin(request: NextRequest) {
     }
 
     // For non-super admins, check workspace membership
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const cookieStore2 = await cookies();
+    const supabase2 = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore2.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore2.set(name, value, options)
+              );
+            } catch {
+              // Cookie setting can fail in middleware/API route context
+            }
+          }
+        },
+        cookieOptions: {
+          global: {
+            secure: true,
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7
+          }
+        }
+      }
+    );
 
     // Check if user has admin role in any workspace
-    const { data: memberships } = await supabase
+    const { data: memberships } = await supabase2
       .from('workspace_members')
       .select('role')
       .eq('user_id', user!.id)
@@ -125,7 +178,33 @@ export async function requireWorkspaceAccess(
 
   try {
     const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
+            } catch {
+              // Cookie setting can fail in middleware/API route context
+            }
+          }
+        },
+        cookieOptions: {
+          global: {
+            secure: true,
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7
+          }
+        }
+      }
+    );
 
     const { data: membership } = await supabase
       .from('workspace_members')
