@@ -81,10 +81,20 @@ function SignInForm() {
 
       if (data.user && data.session) {
         console.log('✅ Sign in successful:', data.user.id);
+        console.log('📦 Session data:', {
+          access_token: data.session.access_token?.substring(0, 20) + '...',
+          refresh_token: data.session.refresh_token?.substring(0, 20) + '...',
+          expires_at: new Date(data.session.expires_at! * 1000).toLocaleString()
+        });
+
+        // Check cookies immediately after signin
+        console.log('🍪 Cookies after signin:', document.cookie);
+
         setSuccess('Sign in successful! Redirecting...');
 
         // Force full page reload to ensure session is established
         setTimeout(() => {
+          console.log('🔄 Redirecting to home...');
           window.location.href = '/';
         }, 1000);
       } else {
