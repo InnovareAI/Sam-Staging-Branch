@@ -52,6 +52,21 @@ export async function requireAdmin(request: NextRequest) {
   if (error) return { error, user: null, session: null, isAdmin: false };
 
   try {
+    // CRITICAL: Check for super admin emails FIRST (before workspace membership check)
+    // Super admins don't need workspace membership to access admin routes
+    const SUPER_ADMIN_EMAILS = ['tl@innovareai.com', 'cl@innovareai.com'];
+    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(user!.email || '');
+
+    if (isSuperAdmin) {
+      return {
+        error: null,
+        user,
+        session,
+        isAdmin: true
+      };
+    }
+
+    // For non-super admins, check workspace membership
     const cookieStore = await cookies();
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
