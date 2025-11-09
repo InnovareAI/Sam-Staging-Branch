@@ -9,9 +9,22 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = await createSupabaseRouteClient();
 
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const campaignId = searchParams.get('campaign_id');
     const campaignName = searchParams.get('campaign_name');
+
+    // Get workspace_id from URL params or user metadata
+    const workspaceId = searchParams.get('workspace_id') || user.user_metadata.workspace_id;
+
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Workspace ID required' }, { status: 400 });
+    }
 
     if (!campaignId && !campaignName) {
       return NextResponse.json({
@@ -21,11 +34,12 @@ export async function GET(req: NextRequest) {
 
     let campaign;
 
-    // Find campaign by name or ID
+    // Find campaign by name or ID, filtered by workspace
     if (campaignName) {
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
+        .eq('workspace_id', workspaceId)
         .ilike('name', `%${campaignName}%`)
         .limit(1)
         .single();
@@ -33,7 +47,9 @@ export async function GET(req: NextRequest) {
       if (error) {
         return NextResponse.json({
           error: 'Campaign not found',
-          details: error.message
+          details: error.message,
+          workspace_id: workspaceId,
+          searched_name: campaignName
         }, { status: 404 });
       }
       campaign = data;
@@ -41,13 +57,16 @@ export async function GET(req: NextRequest) {
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
+        .eq('workspace_id', workspaceId)
         .eq('id', campaignId)
         .single();
 
       if (error) {
         return NextResponse.json({
           error: 'Campaign not found',
-          details: error.message
+          details: error.message,
+          workspace_id: workspaceId,
+          searched_id: campaignId
         }, { status: 404 });
       }
       campaign = data;
