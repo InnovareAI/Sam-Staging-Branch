@@ -114,28 +114,10 @@ export async function GET(request: NextRequest) {
     // Calculate offset for pagination
     const offset = (page - 1) * limit
 
-    // Build query with pagination and filters
-    let query = supabase
-      .from('prospect_approval_data')
-      .select('*', { count: 'exact' })
-      .eq('session_id', sessionId)
-
-    // Apply status filter if specified
-    if (status && status !== 'all') {
-      query = query.eq('approval_status', status)
-    }
-
-    // Apply sorting and pagination
-    const { data: prospectsRaw, error, count } = await query
-      .order(sortBy, { ascending: sortOrder === 'asc' })
-      .range(offset, offset + limit - 1)
-
-    if (error) throw error
-
-    // Get all decisions for this session to get decision metadata
+    // Get all decisions for this session first
     const { data: decisions } = await supabase
       .from('prospect_approval_decisions')
-      .select('prospect_id, reason, decided_by, decided_at')
+      .select('prospect_id, decision, reason, decided_by, decided_at')
       .eq('session_id', sessionId)
 
     // Create a map of decisions by prospect_id for fast lookup
@@ -143,26 +125,47 @@ export async function GET(request: NextRequest) {
       (decisions || []).map(d => [d.prospect_id, d])
     )
 
+    // Build query - get ALL prospects first, we'll filter by status after joining decisions
+    let query = supabase
+      .from('prospect_approval_data')
+      .select('*', { count: 'exact' })
+      .eq('session_id', sessionId)
+
+    // Apply sorting
+    const { data: prospectsRaw, error } = await query
+      .order(sortBy, { ascending: sortOrder === 'asc' })
+
+    if (error) throw error
+
     // Merge prospects with their decision metadata
-    // IMPORTANT: Prioritize decision from prospect_approval_decisions table over approval_status
-    // because approval_status in prospect_approval_data may not be updated due to RLS/constraints
-    const prospects = (prospectsRaw || []).map((p: any) => {
+    // CRITICAL: prospect_approval_data does NOT have approval_status column
+    // We must get status from prospect_approval_decisions table
+    let prospects = (prospectsRaw || []).map((p: any) => {
       const decision = decisionsMap.get(p.prospect_id)
       return {
         ...p,
-        // Use decision from prospect_approval_decisions if it exists, fallback to approval_status
-        approval_status: decision?.decision || p.approval_status || 'pending',
+        // Get status from decision, default to 'pending' if no decision exists
+        approval_status: decision?.decision || 'pending',
         decision_reason: decision?.reason || null,
         decided_by: decision?.decided_by || null,
         decided_at: decision?.decided_at || null
       }
     })
 
-    const totalPages = Math.ceil((count || 0) / limit)
+    // NOW apply status filter after merging (can't filter on non-existent column before)
+    if (status && status !== 'all') {
+      prospects = prospects.filter(p => p.approval_status === status)
+    }
+
+    // Apply pagination AFTER filtering
+    const totalCount = prospects.length
+    prospects = prospects.slice(offset, offset + limit)
+
+    const totalPages = Math.ceil(totalCount / limit)
     const hasNext = page < totalPages
     const hasPrev = page > 1
 
-    console.log(`✅ Loaded ${prospects.length} prospects (page ${page}/${totalPages}) for session ${sessionId}`)
+    console.log(`✅ Loaded ${prospects.length} prospects (page ${page}/${totalPages}, ${totalCount} total after filtering) for session ${sessionId}`)
 
     return NextResponse.json({
       success: true,
@@ -170,7 +173,7 @@ export async function GET(request: NextRequest) {
       pagination: {
         page,
         limit,
-        total: count || 0,
+        total: totalCount,
         totalPages,
         hasNext,
         hasPrev,
