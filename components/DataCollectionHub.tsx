@@ -1567,6 +1567,7 @@ export default function DataCollectionHub({
             <Upload className="w-4 h-4 mr-2" />
             Import Prospects
           </Button>
+        </div>
       </div>
 
       {/* Campaign Selector with Latest Search Toggle */}
