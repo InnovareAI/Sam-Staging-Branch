@@ -18,34 +18,6 @@ export function createClient() {
 
   // Only use cookie-based auth in browser
   if (typeof window !== 'undefined') {
-    // AUTOMATIC COOKIE FIX: Strip base64- prefix from corrupted cookies (one-time migration)
-    if (!browserClient) {
-      const cookies = document.cookie.split(';');
-      let fixed = false;
-
-      for (const cookie of cookies) {
-        const [nameRaw, ...valueParts] = cookie.split('=');
-        const name = nameRaw?.trim();
-        const value = valueParts.join('=');
-
-        // Check if this is a Supabase auth cookie with base64- prefix (from old auth helper)
-        if (name && name.startsWith('sb-') && value && value.startsWith('base64-')) {
-          // Strip the base64- prefix
-          const correctedValue = value.substring(7);
-
-          // Set corrected cookie
-          document.cookie = `${name}=${correctedValue}; path=/; max-age=${60*60*24*7}; secure; samesite=lax`;
-
-          fixed = true;
-          console.log(`✅ Fixed corrupted cookie: ${name} (removed base64- prefix)`);
-        }
-      }
-
-      if (fixed) {
-        console.log('✅ Cookie migration complete - session restored');
-      }
-    }
-
     // Return existing singleton instance if available
     if (browserClient) {
       return browserClient;
