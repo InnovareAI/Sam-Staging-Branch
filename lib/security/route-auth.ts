@@ -10,32 +10,9 @@ import { detectCorruptedCookiesInRequest, clearAllAuthCookies } from '@/lib/auth
 export async function requireAuth(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const allCookies = cookieStore.getAll();
 
-    // AUTOMATIC COOKIE CLEANUP: Detect corrupted cookies before creating Supabase client
-    const corruptedCookies = detectCorruptedCookiesInRequest(allCookies);
-
-    if (corruptedCookies.length > 0) {
-      console.warn('[Route Auth] Detected corrupted cookies - clearing and returning 401 for re-auth');
-
-      // Create response with cleared cookies
-      const response = NextResponse.json(
-        {
-          error: 'Authentication required',
-          message: 'Your session has expired. Please sign in again.'
-        },
-        { status: 401 }
-      );
-
-      // Clear all auth cookies to force clean re-auth
-      clearAllAuthCookies(response);
-
-      return {
-        error: response,
-        user: null,
-        session: null
-      };
-    }
+    // DISABLED: Cookie cleanup was breaking fresh signin cookies
+    // Let Supabase SSR handle all cookie operations natively
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
