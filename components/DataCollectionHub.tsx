@@ -262,12 +262,25 @@ export default function DataCollectionHub({
   const [loading, setLoading] = useState(false)
   const [loadingMessage, setLoadingMessage] = useState<string>('')
   const [workspaceCode, setWorkspaceCode] = useState<string>('CLI')
+  const [showWorkspaceWarning, setShowWorkspaceWarning] = useState(false)
 
   // Use workspace ID from parent - NO FALLBACK for security
   // Users can only upload to their own workspace
   const actualWorkspaceId = workspaceId
 
   console.log('🔍 [DATA APPROVAL] Workspace ID from parent:', workspaceId)
+
+  // Show warning if no workspace after 2 seconds
+  useEffect(() => {
+    if (!actualWorkspaceId) {
+      const timer = setTimeout(() => {
+        setShowWorkspaceWarning(true)
+      }, 2000)
+      return () => clearTimeout(timer)
+    } else {
+      setShowWorkspaceWarning(false)
+    }
+  }, [actualWorkspaceId])
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -1434,6 +1447,41 @@ export default function DataCollectionHub({
               {/* Loading message */}
               <p className="text-white text-lg font-medium">{loadingMessage}</p>
               <p className="text-gray-400 text-sm">Please wait...</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Workspace Warning Banner */}
+      {showWorkspaceWarning && !actualWorkspaceId && (
+        <div className="max-w-[1400px] mx-auto mb-6">
+          <div className="bg-yellow-500/10 border-2 border-yellow-500/50 rounded-lg p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0">
+                <svg className="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-yellow-400 font-semibold text-lg mb-2">No Workspace Selected</h3>
+                <p className="text-yellow-200 mb-4">
+                  You need to select a workspace before uploading prospects. Look for the workspace selector at the top of the page.
+                </p>
+                <div className="bg-yellow-900/30 border border-yellow-700/50 rounded p-4 mb-4">
+                  <p className="text-yellow-100 font-mono text-sm">
+                    <strong>Debug Info:</strong><br/>
+                    Workspace ID: {actualWorkspaceId || 'null'}<br/>
+                    Session: {userSession ? '✓ Logged in' : '✗ Not logged in'}<br/>
+                    Check browser console (F12) for more details.
+                  </p>
+                </div>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  Refresh Page
+                </button>
+              </div>
             </div>
           </div>
         </div>
