@@ -27,7 +27,13 @@ export async function GET() {
       }
     )
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) return NextResponse.json({ workspaces: [] })
+
+    console.log('[workspace/list] Session user:', session?.user?.id, session?.user?.email)
+
+    if (!session?.user) {
+      console.log('[workspace/list] No session, returning empty')
+      return NextResponse.json({ workspaces: [] })
+    }
 
     // Fetch current workspace
     const { data: user } = await supabase
@@ -36,12 +42,21 @@ export async function GET() {
       .eq('id', session.user.id)
       .single()
 
+    console.log('[workspace/list] User current_workspace_id:', user?.current_workspace_id)
+
     // Fetch accessible workspaces - using separate queries instead of join
     const { data: memberships, error: memberError } = await supabase
       .from('workspace_members')
       .select('workspace_id')
       .eq('user_id', session.user.id)
       .eq('status', 'active')
+
+    console.log('[workspace/list] Query result:', {
+      memberships,
+      memberError,
+      userId: session.user.id,
+      membershipCount: memberships?.length || 0
+    })
 
     if (memberError) {
       console.error('[workspace/list] Error fetching memberships:', memberError)
