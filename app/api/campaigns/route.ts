@@ -169,11 +169,32 @@ export async function POST(req: NextRequest) {
       console.log(`📦 Auto-transferring approved prospects from session ${session_id} to campaign ${campaignId}`);
 
       // Get approved prospects from the session
-      const { data: approvedProspects } = await supabase
+      // First get approved prospect IDs from decisions table
+      const { data: decisions } = await supabase
+        .from('prospect_approval_decisions')
+        .select('prospect_id')
+        .eq('session_id', session_id)
+        .eq('decision', 'approved');
+
+      if (!decisions || decisions.length === 0) {
+        console.log('⚠️  No approved decisions found for session:', session_id);
+        // Continue to get prospects data
+      }
+
+      const approvedProspectIds = decisions?.map(d => d.prospect_id) || [];
+
+      // Get the prospect data for approved prospects
+      let query = supabase
         .from('prospect_approval_data')
         .select('*')
-        .eq('session_id', session_id)
-        .eq('approval_status', 'approved');
+        .eq('session_id', session_id);
+
+      // If we have approved IDs, filter by them, otherwise get all (for backwards compatibility)
+      if (approvedProspectIds.length > 0) {
+        query = query.in('prospect_id', approvedProspectIds);
+      }
+
+      const { data: approvedProspects } = await query;
 
       if (approvedProspects && approvedProspects.length > 0) {
         // Get LinkedIn account for prospect ownership

@@ -1514,20 +1514,39 @@ export default function DataCollectionHub({
 
                 {/* Auto-Approve All Pending - Quick bulk approve without modal */}
                 <Button
-                  onClick={() => {
+                  onClick={async () => {
                     const pendingProspects = prospectData.filter(p => p.approvalStatus === 'pending')
                     if (pendingProspects.length === 0) {
                       toastError('No pending prospects to approve')
                       return
                     }
 
-                    // Auto-approve all pending prospects
+                    // Update UI first
                     setProspectData(prev => prev.map(p =>
                       p.approvalStatus === 'pending'
                         ? { ...p, approvalStatus: 'approved' as const }
                         : p
                     ))
                     toastSuccess(`✅ Auto-approved ${pendingProspects.length} prospects`)
+
+                    // Save all approval decisions to database
+                    for (const prospect of pendingProspects) {
+                      if (prospect.sessionId) {
+                        try {
+                          await fetch('/api/prospect-approval/decisions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              session_id: prospect.sessionId,
+                              prospect_id: prospect.id,
+                              decision: 'approved'
+                            })
+                          })
+                        } catch (error) {
+                          console.error('Error approving prospect:', prospect.id, error)
+                        }
+                      }
+                    }
                   }}
                   disabled={prospectData.filter(p => p.approvalStatus === 'pending').length === 0}
                   size="sm"
