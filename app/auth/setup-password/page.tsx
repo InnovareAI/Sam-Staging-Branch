@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Lock, Eye, EyeOff, CheckCircle, XCircle, Loader2 } from 'lucide-react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@/app/lib/supabase'
 
 /**
  * Password Setup Page
@@ -17,7 +17,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
  */
 export default function SetupPasswordPage() {
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const supabase = createClient()
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')

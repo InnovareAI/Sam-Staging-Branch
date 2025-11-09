@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import LLMConfigModal from '@/components/LLMConfigModal'
 import EmailProvidersModal from '@/app/components/EmailProvidersModal'
 import KBValidationPanel from '@/components/KBValidationPanel'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@/app/lib/supabase'
 import {
   Settings,
   Building2,
@@ -86,7 +86,7 @@ export default function WorkspaceSettingsPage({ params }: { params: { workspaceI
 
   const loadTeamData = async () => {
     setLoadingMembers(true)
-    const supabase = createClientComponentClient()
+    const supabase = createClient()
 
     try {
       // Load workspace members
@@ -123,7 +123,7 @@ export default function WorkspaceSettingsPage({ params }: { params: { workspaceI
     setInviteSuccess('')
 
     try {
-      const supabase = createClientComponentClient()
+      const supabase = createClient()
       const { data: { session } } = await supabase.auth.getSession()
 
       const response = await fetch('/api/workspace/invite', {

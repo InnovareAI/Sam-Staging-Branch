@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, MessageCircle, Save, Loader2, Mail, CheckCircle, AlertCircle } from 'lucide-react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/app/lib/supabase';
 
 interface ReplyAgentModalProps {
   isOpen: boolean;
@@ -43,7 +43,7 @@ export default function ReplyAgentModal({ isOpen, onClose, workspaceId }: ReplyA
   const loadConfig = async () => {
     setLoading(true);
     try {
-      const supabase = createClientComponentClient();
+      const supabase = createClient();
 
       // Load reply agent config
       const { data, error } = await supabase
@@ -80,7 +80,7 @@ export default function ReplyAgentModal({ isOpen, onClose, workspaceId }: ReplyA
     setSaveMessage('');
 
     try {
-      const supabase = createClientComponentClient();
+      const supabase = createClient();
 
       const { error } = await supabase
         .from('workspace_reply_agent_config')

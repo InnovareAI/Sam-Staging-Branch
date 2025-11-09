@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Settings, Building2, Brain, Mail, Save, Loader2, MessageCircle } from 'lucide-react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/app/lib/supabase';
 import LLMConfigModal from '@/components/LLMConfigModal';
 import EmailProvidersModal from '@/app/components/EmailProvidersModal';
 import ReplyAgentModal from '@/app/components/ReplyAgentModal';
@@ -41,7 +41,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
     setSaveMessage('');
 
     try {
-      const supabase = createClientComponentClient();
+      const supabase = createClient();
       const { error } = await supabase
         .from('workspaces')
         .update({ name: name.trim() })

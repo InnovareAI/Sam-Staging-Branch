@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, Mail, Linkedin, MessageSquare, Users, Target, Eye, Database, Filter, Clock, Activity, ArrowUpRight } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/app/lib/supabase';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -157,7 +157,7 @@ const Analytics: React.FC = () => {
   const [campaignKPIs, setCampaignKPIs] = useState<{ totalProspects: number; totalMessages: number; totalReplies: number; totalInfoRequests: number; totalMeetings: number }>({ totalProspects: 0, totalMessages: 0, totalReplies: 0, totalInfoRequests: 0, totalMeetings: 0 });
   const [campaignsData, setCampaignsData] = useState<any[]>([]);
 
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
 
   // Get current workspace on component mount
   useEffect(() => {

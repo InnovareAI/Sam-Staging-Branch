@@ -1,7 +1,7 @@
 'use client';
 
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/app/lib/supabase';
 import { useState, useEffect } from 'react';
 import { Settings, Building2, UserCheck, Globe, Plus, Mail, Users, Trash2 } from 'lucide-react';
 import LocationIndicator from '@/components/LocationIndicator';
@@ -28,7 +28,7 @@ interface WorkspaceMember {
 }
 
 export default function SettingsPage() {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [user, setUser] = useState<any>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);

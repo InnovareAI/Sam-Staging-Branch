@@ -2,11 +2,11 @@
 
 import { CheckCircle, Clock, Eye, MessageSquare, Play, Plus, Search, Users, XCircle } from 'lucide-react';
 import { toastError } from '@/lib/toast';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/app/lib/supabase';
 import { useState, useEffect } from 'react';
 
 export default function CampaignsPage() {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   
