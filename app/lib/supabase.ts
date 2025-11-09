@@ -78,6 +78,14 @@ export function createClient() {
             sameSite: 'lax',
             maxAge: 60 * 60 * 24 * 7 // 7 days in seconds
           }
+        },
+        auth: {
+          // CRITICAL: Session persistence configuration
+          persistSession: true,        // Enable 7-day session persistence
+          autoRefreshToken: true,       // Auto-refresh before token expires
+          detectSessionInUrl: true,     // Required for magic links & OAuth
+          storageKey: 'sb-auth-token',  // Cookie storage key
+          flowType: 'pkce'             // PKCE flow for better security
         }
       }
     );
