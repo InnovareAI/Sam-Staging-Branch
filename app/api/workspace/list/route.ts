@@ -35,14 +35,9 @@ export async function GET() {
       return NextResponse.json({ workspaces: [] })
     }
 
-    // Fetch current workspace
-    const { data: user } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', session.user.id)
-      .single()
-
-    console.log('[workspace/list] User current_workspace_id:', user?.current_workspace_id)
+    // Note: users table doesn't have current_workspace_id
+    // We'll select the first workspace or use localStorage on client side
+    console.log('[workspace/list] Skipping users.current_workspace_id (column does not exist)')
 
     // Fetch accessible workspaces - using separate queries instead of join
     const { data: memberships, error: memberError } = await supabase
@@ -84,7 +79,8 @@ export async function GET() {
     }
 
     const workspaces = workspaceData || []
-    const current = workspaces.find(w => w.id === user?.current_workspace_id) || workspaces[0] || null
+    // Default to first workspace since users table doesn't have current_workspace_id
+    const current = workspaces[0] || null
 
     console.log('[workspace/list] Returning:', { workspaceCount: workspaces.length, current })
 
