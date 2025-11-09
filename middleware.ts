@@ -65,13 +65,9 @@ export async function middleware(request: NextRequest) {
   } catch (clientError) {
     console.error('[Middleware] Failed to create Supabase client - likely cookie parsing error:', clientError);
 
-    // Clear cookies and redirect to signin
-    const loginUrl = new URL('/signin', request.url);
-    loginUrl.searchParams.set('message', 'Authentication error. Please sign in again.');
-
-    response = NextResponse.redirect(loginUrl);
-    clearAllAuthCookies(response);
-
+    // Just let the request through - don't clear cookies
+    // Let individual pages handle auth
+    console.warn('[Middleware] Allowing request through despite client creation error');
     return response;
   }
 
@@ -87,16 +83,14 @@ export async function middleware(request: NextRequest) {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
 
       if (authError || !user) {
-        // Not authenticated - redirect to login with cleared cookies
+        // Not authenticated - redirect to login WITHOUT clearing cookies
+        // Let the user try to sign in again with existing cookies
         console.warn('[Middleware] Auth error on admin route:', authError?.message);
         const loginUrl = new URL('/', request.url);
         loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
 
         response = NextResponse.redirect(loginUrl);
-        // Clear cookies if auth failed (might be corrupted)
-        if (authError) {
-          clearAllAuthCookies(response);
-        }
+        // DO NOT clear cookies - this was causing constant logouts
         return response;
       }
 
@@ -125,10 +119,9 @@ export async function middleware(request: NextRequest) {
 
     } catch (error) {
       console.error('[Middleware] Auth middleware error:', error);
-      // On error, clear cookies and redirect to login for safety
+      // DO NOT clear cookies - just redirect to home
       const loginUrl = new URL('/', request.url);
       response = NextResponse.redirect(loginUrl);
-      clearAllAuthCookies(response);
       return response;
     }
   }
