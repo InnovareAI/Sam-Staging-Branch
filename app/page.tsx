@@ -2012,41 +2012,9 @@ export default function Page() {
             setSelectedWorkspaceId(data.workspaces[0].id);
           } else {
             console.log('❌ No workspaces available to select!');
-
-            // CRITICAL: Admin with 0 workspaces indicates corrupted session
-            if (userId && (!data.workspaces || data.workspaces.length === 0)) {
-              console.error('🚨 [SESSION RECOVERY] Admin user has 0 workspaces - corrupted session detected');
-              console.log('🔄 [SESSION RECOVERY] Clearing corrupted session and forcing re-authentication...');
-
-              try {
-                localStorage.clear();
-                await supabase.auth.signOut();
-                alert('Your session has expired or become corrupted. Please sign in again to continue.');
-                window.location.reload();
-              } catch (cleanupError) {
-                console.error('Error during session recovery:', cleanupError);
-                window.location.reload();
-              }
-              return;
-            }
           }
         } else {
           console.error('❌ Failed to fetch admin workspaces');
-
-          // If response is 401, session is corrupted
-          if (response.status === 401 && userId) {
-            console.error('🚨 [SESSION RECOVERY] 401 error - corrupted session detected');
-            try {
-              localStorage.clear();
-              await supabase.auth.signOut();
-              alert('Your session has expired. Please sign in again.');
-              window.location.reload();
-            } catch (cleanupError) {
-              window.location.reload();
-            }
-            return;
-          }
-
           // Fall back to regular user workspaces
           await loadUserWorkspaces(userId);
         }
@@ -2143,40 +2111,6 @@ export default function Page() {
           console.log('✅ [WORKSPACE LOAD] selectedWorkspaceId state updated to:', firstWorkspaceId);
         } else {
           console.warn('⚠️  [WORKSPACE LOAD] No workspaces found! User will have no workspace selected.');
-
-          // CRITICAL: If user is authenticated but has 0 workspaces, session may be corrupted
-          // This can happen from malformed cookies or stale session data
-          // Auto-recover by clearing session and forcing re-authentication
-          if (apiWorkspaces.length === 0 && userId) {
-            console.error('🚨 [SESSION RECOVERY] Authenticated user has 0 workspaces - corrupted session detected');
-            console.log('🔄 [SESSION RECOVERY] Clearing corrupted session data and forcing re-authentication...');
-
-            // Clear all potentially corrupted auth data
-            try {
-              localStorage.removeItem('selectedWorkspaceId');
-              // Clear Supabase auth tokens
-              Object.keys(localStorage).forEach(key => {
-                if (key.includes('supabase') || key.includes('sb-')) {
-                  localStorage.removeItem(key);
-                }
-              });
-
-              // Sign out to clear server-side session
-              await supabase.auth.signOut();
-
-              // Show user-friendly message
-              alert('Your session has expired or become corrupted. Please sign in again to continue.');
-
-              // Reload page to reset everything
-              window.location.reload();
-            } catch (cleanupError) {
-              console.error('Error during session recovery:', cleanupError);
-              // Force reload even if cleanup fails
-              window.location.reload();
-            }
-
-            return; // Don't proceed with workspace setup
-          }
         }
       }
 
@@ -2186,21 +2120,6 @@ export default function Page() {
       setIsWorkspaceAdmin(isOwner || isAdminMember || false);
     } catch (error) {
       console.error('❌ [WORKSPACE LOAD] API error:', error);
-
-      // If API error AND user is authenticated, might be corrupted session
-      if (userId && error instanceof Error && (error.message.includes('401') || error.message.includes('403'))) {
-        console.error('🚨 [SESSION RECOVERY] Auth error detected - forcing session reset');
-        try {
-          localStorage.clear();
-          await supabase.auth.signOut();
-          alert('Your session has expired. Please sign in again.');
-          window.location.reload();
-        } catch (cleanupError) {
-          window.location.reload();
-        }
-        return;
-      }
-
       setWorkspaces([]);
     }
   };
