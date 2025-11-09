@@ -4454,6 +4454,15 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const [selectedCampaignProspects, setSelectedCampaignProspects] = useState<any[] | null>(null);
   const [selectedDraft, setSelectedDraft] = useState<any>(null);
 
+  // Modal states for campaign actions
+  const [showMessagePreview, setShowMessagePreview] = useState(false);
+  const [selectedCampaignForMessages, setSelectedCampaignForMessages] = useState<any>(null);
+  const [showProspectsModal, setShowProspectsModal] = useState(false);
+  const [selectedCampaignForProspects, setSelectedCampaignForProspects] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [campaignToEdit, setCampaignToEdit] = useState<any>(null);
+  const [editFormData, setEditFormData] = useState<any>({});
+
   const queryClient = useQueryClient();
 
   // Fetch user's saved timezone preference
@@ -4699,6 +4708,70 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     require_message_approval: false
   });
   const [settingsChanged, setSettingsChanged] = useState(false);
+
+  // Handler for viewing message preview
+  const viewMessages = (campaign: any) => {
+    console.log('📧 View Messages clicked:', campaign);
+    setSelectedCampaignForMessages(campaign);
+    setShowMessagePreview(true);
+  };
+
+  // Handler for viewing prospects
+  const viewProspects = (campaignId: string) => {
+    console.log('👥 View Prospects clicked:', campaignId);
+    setSelectedCampaignForProspects(campaignId);
+    setShowProspectsModal(true);
+  };
+
+  // Handler for editing campaign
+  const editCampaign = (campaign: any) => {
+    console.log('✏️ Edit Campaign clicked:', campaign);
+    if (campaign.sent > 0) {
+      toastError('Cannot edit campaign that has already sent messages');
+      return;
+    }
+
+    setCampaignToEdit(campaign);
+    setEditFormData({
+      name: campaign.name || '',
+      connection_message: campaign.connection_message || '',
+      alternative_message: campaign.alternative_message || '',
+      follow_up_messages: campaign.follow_up_messages || []
+    });
+    setShowEditModal(true);
+  };
+
+  // Handler for saving campaign edits
+  const handleSaveCampaignEdit = async () => {
+    if (!campaignToEdit) return;
+
+    try {
+      const response = await fetch(`/api/campaigns/${campaignToEdit.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editFormData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update campaign');
+      }
+
+      toastSuccess('Campaign updated successfully!');
+      setShowEditModal(false);
+      setCampaignToEdit(null);
+
+      // Refresh campaigns list
+      queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+    } catch (error) {
+      console.error('Error updating campaign:', error);
+      toastError('Failed to update campaign');
+    }
+  };
+
+  // Handler for analytics (coming soon)
+  const showCampaignAnalytics = (campaignId: string) => {
+    toastInfo(`Analytics for campaign ${campaignId} - Coming soon!`);
+  };
 
   // Handle campaign approval and execution
   const handleApproveCampaign = async (finalCampaignData: any) => {
