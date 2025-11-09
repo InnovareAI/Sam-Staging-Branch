@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
       'linkedin': 'linkedinUrl',
       'linkedin url': 'linkedinUrl',
       'linkedin profile': 'linkedinUrl',
+      'profile url': 'linkedinUrl',
       'phone': 'phone',
       'location': 'location',
       'city': 'location',

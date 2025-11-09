@@ -343,14 +343,9 @@ export default function DataCollectionHub({
   const [isUploadingCsv, setIsUploadingCsv] = useState(false)
   const [isProcessingPaste, setIsProcessingPaste] = useState(false)
   const [isProcessingUrl, setIsProcessingUrl] = useState(false)
-  const [showImportModal, setShowImportModal] = useState(false)
-  const [importInitialTab, setImportInitialTab] = useState<'url' | 'paste'>('url')
-  const csvFileInputRef = useRef<HTMLInputElement>(null)
-
-  // Quick Add LinkedIn URL state
-  const [showQuickAdd, setShowQuickAdd] = useState(false)
-  const [quickAddUrl, setQuickAddUrl] = useState('')
   const [isAddingQuickProspect, setIsAddingQuickProspect] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importInitialTab, setImportInitialTab] = useState<'url' | 'paste' | 'csv' | 'quick-add'>('url')
 
   // Update campaign name
   const updateCampaignName = async (sessionId: string, newCampaignName: string) => {
@@ -1562,105 +1557,16 @@ export default function DataCollectionHub({
         <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Add Prospects</h3>
         <div className="flex items-center space-x-2">
           {/* CSV Upload */}
-          <input
-            ref={csvFileInputRef}
-            type="file"
-            accept=".csv"
-            onChange={handleCsvUpload}
-            className="hidden"
-          />
-          <Button
-            variant="outline"
-            size="default"
-            onClick={() => csvFileInputRef.current?.click()}
-            disabled={isUploadingCsv}
-            className="border-gray-600 hover:bg-gray-700/50 hover:border-purple-500/50"
-          >
-            <Upload className="w-4 h-4 mr-2" />
-            {isUploadingCsv ? 'Uploading...' : 'CSV Upload'}
-          </Button>
-
-          {/* Copy/Paste Text - Opens modal */}
-          <Button
-            variant="outline"
-            size="default"
-            onClick={() => { setImportInitialTab('paste'); setShowImportModal(true); }}
-            disabled={isProcessingPaste}
-            className="border-gray-600 hover:bg-gray-700/50 hover:border-purple-500/50"
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Copy & Paste
-          </Button>
-
-          {/* LinkedIn Search URL - Opens modal for Sales Navigator */}
+          {/* Unified Import Prospects Button */}
           <Button
             variant="default"
             size="default"
             onClick={() => { setImportInitialTab('url'); setShowImportModal(true); }}
-            disabled={isProcessingUrl}
             className="bg-purple-600 hover:bg-purple-700"
           >
-            <Link className="w-4 h-4 mr-2" />
-            LinkedIn URL
+            <Upload className="w-4 h-4 mr-2" />
+            Import Prospects
           </Button>
-
-          {/* Quick Add Single Profile */}
-          <Button
-            variant="outline"
-            size="default"
-            onClick={() => setShowQuickAdd(!showQuickAdd)}
-            disabled={isAddingQuickProspect}
-            className="border-gray-600 hover:bg-gray-700/50 hover:border-purple-500/50"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Quick Add
-          </Button>
-        </div>
-
-        {/* Quick Add URL Input - Inline */}
-        {showQuickAdd && (
-          <div className="mt-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
-            <h4 className="text-white font-medium mb-3 text-sm">Quick Add Single Profile</h4>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="https://linkedin.com/in/username"
-                value={quickAddUrl}
-                onChange={(e) => setQuickAddUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !isAddingQuickProspect) {
-                    handleQuickAddProspect()
-                  }
-                }}
-                className="flex-1 px-3 py-2 bg-gray-900 border border-gray-600 text-white placeholder-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                disabled={isAddingQuickProspect}
-              />
-              <Button
-                onClick={handleQuickAddProspect}
-                disabled={!quickAddUrl.trim() || isAddingQuickProspect}
-                className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600"
-              >
-                {isAddingQuickProspect ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Adding...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add
-                  </>
-                )}
-              </Button>
-            </div>
-            <p className="text-gray-400 text-xs mt-2">
-              Paste a LinkedIn profile URL and we'll automatically detect if they're a 1st degree connection
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Campaign Selector with Latest Search Toggle */}
@@ -2063,6 +1969,10 @@ export default function DataCollectionHub({
         initialTab={importInitialTab}
         isProcessingPaste={isProcessingPaste}
         isProcessingUrl={isProcessingUrl}
+        isProcessingCsv={isUploadingCsv}
+        isProcessingQuickAdd={isAddingQuickProspect}
+        onCsvUpload={handleCsvUpload}
+        onQuickAdd={handleQuickAddProspect}
         onPaste={async (text: string) => {
           setIsProcessingPaste(true)
           try {
