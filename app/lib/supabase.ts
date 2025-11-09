@@ -23,23 +23,62 @@ export function createClient() {
       return browserClient;
     }
 
-    // Create new singleton instance with MINIMAL custom configuration
-    // Let @supabase/ssr handle cookie encoding, PKCE flow, and session management
+    // Helper to check if a cookie value is corrupted
+    function isCookieCorrupted(value: string): boolean {
+      if (!value) return false;
+      // Detect patterns of corrupted cookies
+      return value.includes('base64-{') ||
+             value.includes('base64-eyJ') ||
+             value === 'undefined' ||
+             value === 'null' ||
+             value.includes('[object Object]');
+    }
+
+    // Create new singleton instance with CUSTOM cookie handlers
+    // This filters out corrupted cookies BEFORE Supabase tries to parse them
     browserClient = createBrowserSupabaseClient(
       supabaseUrl,
       supabaseAnonKey,
       {
+        cookies: {
+          getAll() {
+            const cookies = document.cookie.split(';').map(cookie => {
+              const [name, ...v] = cookie.trim().split('=');
+              const value = v.join('=');
+              return { name, value };
+            });
+
+            // Filter out corrupted Supabase cookies
+            return cookies.filter(cookie => {
+              if (cookie.name.startsWith('sb-') && isCookieCorrupted(cookie.value)) {
+                console.warn(`[Browser Client] Removing corrupted cookie: ${cookie.name}`);
+                // Delete the corrupted cookie
+                document.cookie = `${cookie.name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+                return false; // Exclude from list
+              }
+              return true; // Keep valid cookies
+            });
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              let cookie = `${name}=${value}`;
+              if (options?.path) cookie += `; path=${options.path}`;
+              if (options?.maxAge) cookie += `; max-age=${options.maxAge}`;
+              if (options?.domain) cookie += `; domain=${options.domain}`;
+              if (options?.sameSite) cookie += `; samesite=${options.sameSite}`;
+              if (options?.secure) cookie += '; secure';
+              document.cookie = cookie;
+            });
+          }
+        },
         cookieOptions: {
           // CRITICAL: These settings must match server-side configuration
-          // secure MUST be true in production to match server cookies
           global: {
             secure: true, // Always true - HTTPS required for Supabase auth
             sameSite: 'lax',
             maxAge: 60 * 60 * 24 * 7 // 7 days in seconds
           }
         }
-        // DO NOT override cookies.getAll/setAll - let @supabase/ssr handle it
-        // DO NOT add custom auth options - @supabase/ssr configures PKCE flow automatically
       }
     );
 
@@ -87,6 +126,10 @@ export async function createServerSupabaseClient() {
 
   const cookieStore = await cookies();
   const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
+
+  // Note: Cookie cleanup is handled in middleware and route-auth helpers
+  // This function creates a clean client for API routes
+  // If you're using requireAuth(), cookie cleanup is automatic
 
   return createServerClient(
     supabaseUrl,

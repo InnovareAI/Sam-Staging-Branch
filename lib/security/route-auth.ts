@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
+import { detectCorruptedCookiesInRequest, clearAllAuthCookies } from '@/lib/auth/cookie-cleanup';
 
 /**
  * Authentication Helper for API Routes
@@ -9,6 +10,33 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function requireAuth(request: NextRequest) {
   try {
     const cookieStore = await cookies();
+    const allCookies = cookieStore.getAll();
+
+    // AUTOMATIC COOKIE CLEANUP: Detect corrupted cookies before creating Supabase client
+    const corruptedCookies = detectCorruptedCookiesInRequest(allCookies);
+
+    if (corruptedCookies.length > 0) {
+      console.warn('[Route Auth] Detected corrupted cookies - clearing and returning 401 for re-auth');
+
+      // Create response with cleared cookies
+      const response = NextResponse.json(
+        {
+          error: 'Authentication required',
+          message: 'Your session has expired. Please sign in again.'
+        },
+        { status: 401 }
+      );
+
+      // Clear all auth cookies to force clean re-auth
+      clearAllAuthCookies(response);
+
+      return {
+        error: response,
+        user: null,
+        session: null
+      };
+    }
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -57,12 +85,21 @@ export async function requireAuth(request: NextRequest) {
       session
     };
   } catch (error) {
-    console.error('Auth check failed:', error);
+    console.error('[Route Auth] Auth check failed:', error);
+
+    // If cookie parsing fails, clear all cookies and return 401
+    const response = NextResponse.json(
+      {
+        error: 'Authentication failed',
+        message: 'Your session is invalid. Please sign in again.'
+      },
+      { status: 401 }
+    );
+
+    clearAllAuthCookies(response);
+
     return {
-      error: NextResponse.json(
-        { error: 'Authentication failed' },
-        { status: 401 }
-      ),
+      error: response,
       user: null,
       session: null
     };

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie Cleanup Test - SAM AI</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+        button {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #4f46e5;
+        }
+        button.danger {
+            background: #ef4444;
+        }
+        button.danger:hover {
+            background: #dc2626;
+        }
+        button.success {
+            background: #10b981;
+        }
+        button.success:hover {
+            background: #059669;
+        }
+        .log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin-top: 15px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .cookie-list {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍪 Cookie Cleanup Test</h1>
+        <p class="subtitle">Test automatic detection and cleanup of corrupted authentication cookies</p>
+
+        <div class="test-section">
+            <h2>1. Create Corrupted Cookies</h2>
+            <p>Simulate the corrupted cookie state that users experienced:</p>
+            <button onclick="createCorruptedCookies()">Create Corrupted Cookies</button>
+            <button onclick="showCurrentCookies()">Show Current Cookies</button>
+        </div>
+
+        <div class="test-section">
+            <h2>2. Test Client-Side Cleanup</h2>
+            <p>This simulates what happens when a user loads the app with corrupted cookies:</p>
+            <button class="success" onclick="testClientSideCleanup()">Run Client-Side Cleanup</button>
+        </div>
+
+        <div class="test-section">
+            <h2>3. Test App Navigation</h2>
+            <p>Navigate to the app to see if cookies are automatically cleaned:</p>
+            <button onclick="navigateToApp()">Navigate to App</button>
+            <button onclick="navigateToSignin()">Navigate to Sign In</button>
+        </div>
+
+        <div class="test-section">
+            <h2>4. Clean Up</h2>
+            <p>Clear all test cookies:</p>
+            <button class="danger" onclick="clearAllCookies()">Clear All Cookies</button>
+        </div>
+
+        <div id="status"></div>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        // Get app URL from current location
+        const APP_URL = window.location.origin;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+            logDiv.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function showStatus(message, type = 'success') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+        }
+
+        function createCorruptedCookies() {
+            log('Creating corrupted cookies...', 'warning');
+
+            // Create different types of corrupted cookies
+            const corruptedCookies = [
+                { name: 'sb-latxadqrvrrrcvkktrog-auth-token', value: 'base64-{"invalid":"json"}' },
+                { name: 'sb-latxadqrvrrrcvkktrog-auth-token.0', value: 'base64-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9' },
+                { name: 'sb-latxadqrvrrrcvkktrog-auth-token-code-verifier', value: 'undefined' },
+                { name: 'sb-latxadqrvrrrcvkktrog-auth-token.1', value: '[object Object]' }
+            ];
+
+            corruptedCookies.forEach(({ name, value }) => {
+                document.cookie = `${name}=${value}; path=/; max-age=3600`;
+                log(`Created corrupted cookie: ${name} = ${value.substring(0, 30)}...`, 'warning');
+            });
+
+            showStatus('Created 4 corrupted cookies. These would normally cause authentication to fail.', 'warning');
+            showCurrentCookies();
+        }
+
+        function showCurrentCookies() {
+            log('Current cookies:', 'info');
+            const cookies = document.cookie.split(';');
+
+            if (cookies.length === 0 || (cookies.length === 1 && cookies[0] === '')) {
+                log('  No cookies found', 'info');
+                showStatus('No cookies in browser', 'success');
+                return;
+            }
+
+            const supabaseCookies = cookies.filter(c => c.includes('sb-'));
+
+            if (supabaseCookies.length === 0) {
+                log('  No Supabase cookies found', 'info');
+            } else {
+                supabaseCookies.forEach(cookie => {
+                    const [name, value] = cookie.split('=').map(s => s.trim());
+                    log(`  ${name}: ${value.substring(0, 50)}${value.length > 50 ? '...' : ''}`, 'info');
+                });
+            }
+
+            const cookieDiv = document.createElement('div');
+            cookieDiv.className = 'cookie-list';
+            cookieDiv.textContent = supabaseCookies.length > 0
+                ? `Found ${supabaseCookies.length} Supabase cookie(s)`
+                : 'No Supabase cookies';
+            document.getElementById('status').appendChild(cookieDiv);
+        }
+
+        function testClientSideCleanup() {
+            log('Testing client-side cookie cleanup...', 'info');
+
+            // This simulates the cleanup code from app/lib/supabase.ts
+            const CORRUPTED_PATTERNS = [
+                /^base64-\{/,
+                /^base64-eyJ/,
+                /^undefined$/,
+                /^null$/,
+                /^\[object Object\]$/
+            ];
+
+            function isCorrupted(value) {
+                return CORRUPTED_PATTERNS.some(pattern => pattern.test(value));
+            }
+
+            const cookies = document.cookie.split(';');
+            let cleanedCount = 0;
+
+            cookies.forEach(cookie => {
+                const [nameWithSpaces, value] = cookie.split('=');
+                const name = nameWithSpaces?.trim();
+
+                if (!name || !value) return;
+
+                if (name.startsWith('sb-') && isCorrupted(value)) {
+                    log(`  Cleaning corrupted cookie: ${name}`, 'success');
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+                    cleanedCount++;
+                }
+            });
+
+            if (cleanedCount > 0) {
+                log(`✅ Cleaned ${cleanedCount} corrupted cookie(s)`, 'success');
+                showStatus(`Successfully cleaned ${cleanedCount} corrupted cookie(s). User can now sign in.`, 'success');
+            } else {
+                log('ℹ️ No corrupted cookies found', 'info');
+                showStatus('No corrupted cookies found. All cookies are valid.', 'success');
+            }
+
+            // Show remaining cookies
+            setTimeout(() => {
+                showCurrentCookies();
+            }, 100);
+        }
+
+        function clearAllCookies() {
+            log('Clearing all cookies...', 'warning');
+
+            const cookies = document.cookie.split(';');
+            let count = 0;
+
+            cookies.forEach(cookie => {
+                const name = cookie.split('=')[0].trim();
+                if (name) {
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+                    count++;
+                }
+            });
+
+            log(`Cleared ${count} cookie(s)`, 'success');
+            showStatus(`Cleared all ${count} cookies`, 'success');
+
+            setTimeout(() => {
+                showCurrentCookies();
+            }, 100);
+        }
+
+        function navigateToApp() {
+            log('Navigating to app home...', 'info');
+            log('Check the browser console and network tab for cookie cleanup logs', 'info');
+            setTimeout(() => {
+                window.location.href = APP_URL + '/';
+            }, 1000);
+        }
+
+        function navigateToSignin() {
+            log('Navigating to sign in page...', 'info');
+            log('Check the browser console and network tab for cookie cleanup logs', 'info');
+            setTimeout(() => {
+                window.location.href = APP_URL + '/signin';
+            }, 1000);
+        }
+
+        // Auto-show cookies on load
+        window.addEventListener('load', () => {
+            log('Cookie Cleanup Test Tool loaded', 'success');
+            log(`App URL: ${APP_URL}`, 'info');
+            showCurrentCookies();
+        });
+    </script>
+</body>
+</html>

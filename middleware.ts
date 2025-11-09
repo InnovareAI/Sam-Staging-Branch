@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { detectCorruptedCookiesInRequest, clearAllAuthCookies } from '@/lib/auth/cookie-cleanup';
 
 // InnovareAI workspace ID - only members of this workspace can access /admin routes
 const INNOVARE_AI_WORKSPACE_ID = 'babdcab8-1a78-4b2f-913e-6e9fd9821009';
@@ -13,32 +14,63 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // AUTOMATIC COOKIE CLEANUP: Detect corrupted cookies before processing
+  const allCookies = request.cookies.getAll();
+  const corruptedCookies = detectCorruptedCookiesInRequest(allCookies);
+
+  if (corruptedCookies.length > 0) {
+    console.warn('[Middleware] Detected corrupted cookies - clearing and redirecting to signin');
+
+    // Redirect to signin with cleared cookies
+    const loginUrl = new URL('/signin', request.url);
+    loginUrl.searchParams.set('message', 'Your session has expired. Please sign in again.');
+
+    response = NextResponse.redirect(loginUrl);
+    clearAllAuthCookies(response);
+
+    return response;
+  }
+
   // CRITICAL: Create Supabase client with middleware cookie handling
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
+  let supabase;
+  try {
+    supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              request.cookies.set(name, value);
+              response.cookies.set(name, value, options);
+            });
+          }
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value);
-            response.cookies.set(name, value, options);
-          });
-        }
-      },
-      cookieOptions: {
-        // CRITICAL: Must match browser and server client configuration
-        global: {
-          secure: true, // Always true for HTTPS
-          sameSite: 'lax',
-          maxAge: 60 * 60 * 24 * 7 // 7 days in seconds
+        cookieOptions: {
+          // CRITICAL: Must match browser and server client configuration
+          global: {
+            secure: true, // Always true for HTTPS
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7 // 7 days in seconds
+          }
         }
       }
-    }
-  );
+    );
+  } catch (clientError) {
+    console.error('[Middleware] Failed to create Supabase client - likely cookie parsing error:', clientError);
+
+    // Clear cookies and redirect to signin
+    const loginUrl = new URL('/signin', request.url);
+    loginUrl.searchParams.set('message', 'Authentication error. Please sign in again.');
+
+    response = NextResponse.redirect(loginUrl);
+    clearAllAuthCookies(response);
+
+    return response;
+  }
 
   // Check if this is an admin route
   if (request.nextUrl.pathname.startsWith('/admin')) {
@@ -46,16 +78,23 @@ export async function middleware(request: NextRequest) {
     if (request.nextUrl.pathname === '/admin/superadmin' || request.nextUrl.pathname === '/admin/superadmin-modern') {
       return response;
     }
-    
+
     try {
       // Get user from session
       const { data: { user }, error: authError } = await supabase.auth.getUser();
 
       if (authError || !user) {
-        // Not authenticated - redirect to login
+        // Not authenticated - redirect to login with cleared cookies
+        console.warn('[Middleware] Auth error on admin route:', authError?.message);
         const loginUrl = new URL('/', request.url);
         loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
-        return NextResponse.redirect(loginUrl);
+
+        response = NextResponse.redirect(loginUrl);
+        // Clear cookies if auth failed (might be corrupted)
+        if (authError) {
+          clearAllAuthCookies(response);
+        }
+        return response;
       }
 
       // Check if user is a member of InnovareAI workspace
@@ -82,10 +121,12 @@ export async function middleware(request: NextRequest) {
       }
 
     } catch (error) {
-      console.error('Auth middleware error:', error);
-      // On error, redirect to login for safety
+      console.error('[Middleware] Auth middleware error:', error);
+      // On error, clear cookies and redirect to login for safety
       const loginUrl = new URL('/', request.url);
-      return NextResponse.redirect(loginUrl);
+      response = NextResponse.redirect(loginUrl);
+      clearAllAuthCookies(response);
+      return response;
     }
   }
 

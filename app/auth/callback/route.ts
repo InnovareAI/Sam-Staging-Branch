@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { AutoIPAssignmentService } from '@/lib/services/auto-ip-assignment';
+import { detectCorruptedCookiesInRequest, clearAllAuthCookies } from '@/lib/auth/cookie-cleanup';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -11,6 +12,14 @@ export async function GET(request: NextRequest) {
   const error = requestUrl.searchParams.get('error');
   const errorDescription = requestUrl.searchParams.get('error_description');
 
+  // AUTOMATIC COOKIE CLEANUP: Clear any corrupted cookies before processing callback
+  const allCookies = request.cookies.getAll();
+  const corruptedCookies = detectCorruptedCookiesInRequest(allCookies);
+
+  if (corruptedCookies.length > 0) {
+    console.warn('[Auth Callback] Detected corrupted cookies - clearing before processing');
+    // Continue processing but log the issue (cookies will be replaced by new session)
+  }
 
   // Handle authentication errors
   if (error) {
@@ -18,15 +27,20 @@ export async function GET(request: NextRequest) {
 
     if (error === 'access_denied' && errorDescription?.includes('expired')) {
       // Password reset link expired - redirect to signin with message
-      return NextResponse.redirect(
+      const response = NextResponse.redirect(
         new URL('/signin?error=reset_expired&message=' + encodeURIComponent('Your password reset link has expired. Please request a new one.'), request.url)
       );
+      // Clear cookies on error
+      clearAllAuthCookies(response);
+      return response;
     }
 
-    // Redirect all other auth errors to signin
-    return NextResponse.redirect(
+    // Redirect all other auth errors to signin with cleared cookies
+    const response = NextResponse.redirect(
       new URL('/signin?error=' + error, request.url)
     );
+    clearAllAuthCookies(response);
+    return response;
   }
 
   if (code) {
@@ -67,10 +81,13 @@ export async function GET(request: NextRequest) {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
       if (error) {
-        console.error('Auth callback error:', error);
-        return NextResponse.redirect(
-          new URL('/signin?error=callback_error', request.url)
+        console.error('[Auth Callback] Code exchange error:', error);
+        const response = NextResponse.redirect(
+          new URL('/signin?error=callback_error&message=' + encodeURIComponent('Authentication failed. Please try signing in again.'), request.url)
         );
+        // Clear cookies on error
+        clearAllAuthCookies(response);
+        return response;
       }
 
       if (data.user) {
@@ -227,13 +244,19 @@ export async function GET(request: NextRequest) {
       // Redirect to the main app
       return NextResponse.redirect(new URL('/', request.url));
     } catch (error) {
-      console.error('Callback processing error:', error);
-      return NextResponse.redirect(
-        new URL('/signin?error=callback_processing_error', request.url)
+      console.error('[Auth Callback] Callback processing error:', error);
+      const response = NextResponse.redirect(
+        new URL('/signin?error=callback_processing_error&message=' + encodeURIComponent('Something went wrong. Please try signing in again.'), request.url)
       );
+      // Clear cookies on error
+      clearAllAuthCookies(response);
+      return response;
     }
   }
 
   // If no code provided, redirect to signin
-  return NextResponse.redirect(new URL('/signin', request.url));
+  const response = NextResponse.redirect(new URL('/signin', request.url));
+  // Clear any stale cookies
+  clearAllAuthCookies(response);
+  return response;
 }

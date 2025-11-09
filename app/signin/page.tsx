@@ -15,15 +15,22 @@ function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Check for error messages in URL params
+  // Check for error and info messages in URL params
   useEffect(() => {
     const errorParam = searchParams.get('error');
     const messageParam = searchParams.get('message');
 
-    if (errorParam === 'reset_expired' && messageParam) {
+    if (messageParam && !errorParam) {
+      // Info message (not an error)
+      setSuccess(decodeURIComponent(messageParam));
+    } else if (errorParam === 'reset_expired' && messageParam) {
       setError(decodeURIComponent(messageParam));
       setForgotPasswordMode(true);
+    } else if (messageParam) {
+      // Error with custom message
+      setError(decodeURIComponent(messageParam));
     } else if (errorParam) {
+      // Generic error
       setError('Authentication error. Please try again.');
     }
   }, [searchParams]);
