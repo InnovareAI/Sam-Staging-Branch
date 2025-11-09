@@ -1971,6 +1971,21 @@ export default function Page() {
           console.log('📋 Workspace names:', data.workspaces?.map((w: any) => w.name) || []);
           setWorkspaces(data.workspaces || []);
 
+          // Validate current selectedWorkspaceId - if it doesn't exist in loaded workspaces, clear it
+          let workspaceToSelect = selectedWorkspaceId;
+          if (selectedWorkspaceId) {
+            const workspaceExists = data.workspaces?.some((ws: any) => ws.id === selectedWorkspaceId);
+            if (!workspaceExists) {
+              console.log('⚠️  [ADMIN LOAD] Selected workspace ID not found in loaded workspaces, clearing:', selectedWorkspaceId);
+              localStorage.removeItem('selectedWorkspaceId');
+              workspaceToSelect = null;
+            } else {
+              console.log('✅ [ADMIN LOAD] Selected workspace is valid:', selectedWorkspaceId);
+              // Keep the current selection - don't override with API current workspace
+              return;
+            }
+          }
+
           // CRITICAL FIX: Use currentWorkspaceId from API response (bypasses RLS)
           console.log('🔍 Workspace Selection Debug:', {
             hasCurrentWorkspaceId: !!data.currentWorkspaceId,
@@ -2071,17 +2086,32 @@ export default function Page() {
       console.log('📊 [WORKSPACE LOAD] Workspaces:', workspacesWithInvitations.map(w => ({ id: w.id, name: w.name })));
       setWorkspaces(workspacesWithInvitations);
 
+      // Validate current selectedWorkspaceId - if it doesn't exist in loaded workspaces, clear it
+      let workspaceToSelect = selectedWorkspaceId;
+      if (selectedWorkspaceId) {
+        const workspaceExists = workspacesWithInvitations.some(ws => ws.id === selectedWorkspaceId);
+        if (!workspaceExists) {
+          console.log('⚠️  [WORKSPACE LOAD] Selected workspace ID not found in loaded workspaces, clearing:', selectedWorkspaceId);
+          localStorage.removeItem('selectedWorkspaceId');
+          workspaceToSelect = null;
+        } else {
+          console.log('✅ [WORKSPACE LOAD] Selected workspace is valid:', selectedWorkspaceId);
+        }
+      }
+
       // Use current workspace from API if available, otherwise auto-select first
-      if (current && !selectedWorkspaceId) {
-        console.log('✅ [WORKSPACE LOAD] Using API current workspace:', current.id, current.name);
-        setSelectedWorkspaceId(current.id);
-      } else if (workspacesWithInvitations.length > 0 && !selectedWorkspaceId) {
-        const firstWorkspaceId = workspacesWithInvitations[0].id;
-        console.log('✅ [WORKSPACE LOAD] Auto-selecting first workspace:', firstWorkspaceId, workspacesWithInvitations[0].name);
-        setSelectedWorkspaceId(firstWorkspaceId);
-        console.log('✅ [WORKSPACE LOAD] selectedWorkspaceId state updated to:', firstWorkspaceId);
-      } else {
-        console.warn('⚠️  [WORKSPACE LOAD] No workspaces found! User will have no workspace selected.');
+      if (!workspaceToSelect) {
+        if (current) {
+          console.log('✅ [WORKSPACE LOAD] Using API current workspace:', current.id, current.name);
+          setSelectedWorkspaceId(current.id);
+        } else if (workspacesWithInvitations.length > 0) {
+          const firstWorkspaceId = workspacesWithInvitations[0].id;
+          console.log('✅ [WORKSPACE LOAD] Auto-selecting first workspace:', firstWorkspaceId, workspacesWithInvitations[0].name);
+          setSelectedWorkspaceId(firstWorkspaceId);
+          console.log('✅ [WORKSPACE LOAD] selectedWorkspaceId state updated to:', firstWorkspaceId);
+        } else {
+          console.warn('⚠️  [WORKSPACE LOAD] No workspaces found! User will have no workspace selected.');
+        }
       }
 
       // Check if user is workspace admin (owner or admin role in any workspace)
