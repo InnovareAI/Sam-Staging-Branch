@@ -12,7 +12,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const POSTMARK_API_KEY = Deno.env.get('POSTMARK_SERVER_TOKEN')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const ALERT_EMAIL = Deno.env.get('ALERT_EMAIL') || 'tl@innovareai.com'
+const ALERT_EMAILS = 'tl@innovareai.com,cl@innovareai.com'
 
 interface CronJobResult {
   job_name: string
@@ -71,8 +71,8 @@ serve(async (req) => {
         'X-Postmark-Server-Token': POSTMARK_API_KEY,
       },
       body: JSON.stringify({
-        From: 'sam-health@innovareai.com',
-        To: ALERT_EMAIL,
+        From: 'Sam <sam-health@innovareai.com>',
+        To: ALERT_EMAILS,
         Subject: `${statusEmoji} SAM Daily Health Report - ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
         HtmlBody: htmlBody,
         TextBody: textBody,

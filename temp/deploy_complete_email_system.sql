@@ -1,11 +1,15 @@
 -- ============================================================================
--- Add Daily Email Report Cron Job
+-- COMPLETE DAILY EMAIL SYSTEM DEPLOYMENT
 -- ============================================================================
--- Purpose: Trigger Edge Function to send daily health report email
--- Schedule: 7:00 AM UTC daily (after all health checks complete)
+-- Purpose: Enable http extension and deploy daily email cron job
 -- ============================================================================
 
--- Create function to call Edge Function
+-- STEP 1: Enable http extension (required for Edge Function calls)
+-- ============================================================================
+CREATE EXTENSION IF NOT EXISTS http;
+
+-- STEP 2: Create function to send daily health report email
+-- ============================================================================
 CREATE OR REPLACE FUNCTION send_daily_health_report_email()
 RETURNS void
 LANGUAGE plpgsql
@@ -15,12 +19,10 @@ DECLARE
   v_function_url TEXT;
   v_response TEXT;
 BEGIN
-  -- Get Supabase project URL from environment
-  -- Project reference: latxadqrvrrrcvkktrog
+  -- Edge Function URL
   v_function_url := 'https://latxadqrvrrrcvkktrog.supabase.co/functions/v1/send-daily-health-report';
 
   -- Call the Edge Function using http extension
-  -- Note: Requires http extension to be enabled
   SELECT content::text INTO v_response
   FROM http_post(
     v_function_url,
@@ -52,14 +54,16 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
--- Schedule: Run daily at 7:00 AM UTC (after all health checks)
+-- STEP 3: Schedule daily email at 7:00 AM UTC
+-- ============================================================================
 SELECT cron.schedule(
   'daily-email-report',
   '0 7 * * *',
   'SELECT send_daily_health_report_email();'
 );
 
--- Verify the cron job was created
+-- STEP 4: Verify deployment
+-- ============================================================================
 SELECT
   '✅ Daily email report cron job scheduled' AS status,
   jobid,
