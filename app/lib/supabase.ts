@@ -53,26 +53,11 @@ export function createClient() {
           }
         },
         cookieOptions: {
-          // Force cookies to be used as primary storage
-          // This prevents localStorage corruption issues
           global: {
-            secure: true,
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            // 7-day session persistence
-            maxAge: 7 * 24 * 60 * 60 // 7 days in seconds
+            maxAge: 7 * 24 * 60 * 60 // 7 days
           }
-        },
-        auth: {
-          // Enable session persistence
-          persistSession: true,
-          // Auto-refresh tokens before expiry
-          autoRefreshToken: true,
-          // Detect session in URL (for magic links, OAuth callbacks)
-          detectSessionInUrl: true,
-          // Storage key for session data
-          storageKey: 'sb-session',
-          // Flow type for PKCE (more secure)
-          flowType: 'pkce'
         }
       }
     );
