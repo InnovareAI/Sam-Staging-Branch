@@ -87,7 +87,20 @@ export async function GET() {
     const current = workspaces.find(w => w.id === user?.current_workspace_id) || workspaces[0] || null
 
     console.log('[workspace/list] Returning:', { workspaceCount: workspaces.length, current })
-    return NextResponse.json({ workspaces, current })
+
+    // TEMPORARY DEBUG: Return full debug info in response
+    return NextResponse.json({
+      workspaces,
+      current,
+      debug: {
+        userId: session.user.id,
+        userEmail: session.user.email,
+        membershipCount: memberships?.length || 0,
+        memberError: memberError?.message || null,
+        workspaceIds,
+        rawMemberships: memberships
+      }
+    })
   } catch (e) {
     console.error('[workspace/list] Exception:', e)
     return NextResponse.json({ workspaces: [], error: String(e) })
