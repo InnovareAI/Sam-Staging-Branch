@@ -214,6 +214,19 @@ export default function Page() {
     return found || null;
   }, [selectedWorkspaceId, workspaces]);
 
+  // Validate workspace ID from localStorage and clear if invalid
+  useEffect(() => {
+    if (selectedWorkspaceId && workspaces.length > 0 && !workspacesLoading) {
+      const workspaceExists = workspaces.some(ws => ws.id === selectedWorkspaceId);
+      if (!workspaceExists) {
+        console.log('⚠️ [VALIDATION] Selected workspace ID not found in available workspaces, clearing:', selectedWorkspaceId);
+        console.log('📋 [VALIDATION] Available workspaces:', workspaces.map(w => ({ id: w.id, name: w.name })));
+        setSelectedWorkspaceId(null);
+        localStorage.removeItem('selectedWorkspaceId');
+      }
+    }
+  }, [selectedWorkspaceId, workspaces, workspacesLoading]);
+
   // Persist selectedWorkspaceId to localStorage
   useEffect(() => {
     if (selectedWorkspaceId) {
