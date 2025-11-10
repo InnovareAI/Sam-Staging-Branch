@@ -26,6 +26,7 @@ import AuditTrail from '@/app/components/AuditTrail';
 import DataCollectionHub from '@/components/DataCollectionHub';
 import CampaignHub from '@/app/components/CampaignHub';
 import AIConfiguration from '@/app/components/AIConfiguration';
+import CommentingCampaignModal from '@/app/components/CommentingCampaignModal';
 import { ManageSubscriptionModal } from '@/app/components/ManageSubscriptionModal';
 import SuperAdminPage from '@/app/admin/superadmin/page';
 import {
@@ -177,6 +178,9 @@ export default function Page() {
   // Authentication modal state
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
+
+  // Commenting Agent modal state
+  const [showCommentingCampaignModal, setShowCommentingCampaignModal] = useState(false);
 
   // User management state
   const [showManageUsers, setShowManageUsers] = useState(false);
@@ -2972,7 +2976,10 @@ export default function Page() {
                   <h1 className="text-3xl font-bold text-white mb-2">Commenting Agent</h1>
                   <p className="text-gray-400">Automated LinkedIn engagement with anti-bot detection</p>
                 </div>
-                <button className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
+                <button
+                  onClick={() => setShowCommentingCampaignModal(true)}
+                  className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                >
                   <Plus size={20} />
                   New Campaign
                 </button>
@@ -3064,7 +3071,10 @@ export default function Page() {
                     <Target size={32} className="text-gray-500" />
                   </div>
                   <p className="text-gray-400 mb-4">No campaigns created yet</p>
-                  <button className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto">
+                  <button
+                    onClick={() => setShowCommentingCampaignModal(true)}
+                    className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto"
+                  >
                     <Plus size={20} />
                     Create Your First Campaign
                   </button>
@@ -4804,6 +4814,15 @@ export default function Page() {
           />
         );
       })()}
+
+      {/* Commenting Campaign Modal */}
+      {showCommentingCampaignModal && selectedWorkspaceId && (
+        <CommentingCampaignModal
+          isOpen={showCommentingCampaignModal}
+          onClose={() => setShowCommentingCampaignModal(false)}
+          workspaceId={selectedWorkspaceId}
+        />
+      )}
 
       {/* Custom Notification Modal */}
       {notification && (
