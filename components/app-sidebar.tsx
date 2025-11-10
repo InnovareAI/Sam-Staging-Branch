@@ -14,6 +14,7 @@ import {
   Brain,
   Linkedin,
   Mail,
+  MessageSquare,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -98,6 +99,31 @@ const data = {
       ],
     },
     {
+      title: "Commenting Agent",
+      url: "/commenting-agent",
+      icon: MessageSquare,
+      badge: "NEW",
+      requiresFeature: "commenting_agent_enabled", // Feature flag
+      items: [
+        {
+          title: "Dashboard",
+          url: "/commenting-agent",
+        },
+        {
+          title: "Campaigns",
+          url: "/commenting-agent/campaigns",
+        },
+        {
+          title: "Approve Comments",
+          url: "/commenting-agent/approve",
+        },
+        {
+          title: "Analytics",
+          url: "/commenting-agent/analytics",
+        },
+      ],
+    },
+    {
       title: "Knowledge Base",
       url: "/knowledge-base",
       icon: FileText,
@@ -153,20 +179,35 @@ const data = {
   ],
 }
 
-export function AppSidebar({ 
+export function AppSidebar({
   user,
   workspaces,
   isSuperAdmin,
-  ...props 
+  enabledFeatures,
+  ...props
 }: React.ComponentProps<typeof Sidebar> & {
   user?: { name: string; email: string; avatar?: string } | null;
   workspaces?: { name: string; logo: React.ElementType; plan: string }[];
   isSuperAdmin?: boolean;
+  enabledFeatures?: Record<string, boolean>;
 }) {
+  // Filter navigation items based on enabled features
+  const filterNavItems = (items: typeof data.navMain) => {
+    return items.filter(item => {
+      // Check if item requires a feature
+      if ('requiresFeature' in item && item.requiresFeature) {
+        const featureKey = item.requiresFeature as string;
+        return enabledFeatures?.[featureKey] === true;
+      }
+      return true; // Show item if no feature requirement
+    });
+  };
+
   const sidebarData = {
     ...data,
     user: user || data.user,
     teams: workspaces || data.teams,
+    navMain: filterNavItems(data.navMain),
   }
 
   return (
