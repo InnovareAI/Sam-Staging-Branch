@@ -317,7 +317,6 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
             <div className="flex items-center gap-2 mb-4">
               <Shield size={20} className="text-green-400" />
               <h3 className="text-lg font-semibold text-white">Anti-Bot Detection</h3>
-              <span className="text-xs px-2 py-1 bg-green-600/30 text-green-400 rounded-full">Our Differentiator</span>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
