@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { CheckCircle, XCircle, Edit3, ThumbsUp, MessageCircle, Eye, Clock, TrendingUp, ChevronRight, Sparkles, Filter, CheckSquare, Hash, Search, User as UserIcon } from 'lucide-react';
+import { CheckCircle, XCircle, Edit3, ThumbsUp, MessageCircle, Eye, Clock, TrendingUp, ChevronRight, Sparkles, Filter, CheckSquare, Hash, Search, User as UserIcon, ArrowLeft } from 'lucide-react';
 
 interface CommentApprovalWorkflowProps {
   workspaceId: string;
+  onBack?: () => void;
 }
 
 interface PendingComment {
@@ -26,7 +27,7 @@ interface PendingComment {
   scheduledPostTime?: string;
 }
 
-export default function CommentApprovalWorkflow({ workspaceId }: CommentApprovalWorkflowProps) {
+export default function CommentApprovalWorkflow({ workspaceId, onBack }: CommentApprovalWorkflowProps) {
   const [pendingComments, setPendingComments] = useState<PendingComment[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -256,11 +257,22 @@ export default function CommentApprovalWorkflow({ workspaceId }: CommentApproval
       {/* Header */}
       <div className="bg-gray-800 border-b border-gray-700 p-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Approve Comments</h1>
-            <p className="text-sm text-gray-400 mt-1">
-              {filteredComments.length} pending · Use ↑↓ arrows to navigate, Space to approve, X to reject
-            </p>
+          <div className="flex items-center gap-4">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors text-gray-400 hover:text-white"
+                title="Back to Dashboard"
+              >
+                <ArrowLeft size={24} />
+              </button>
+            )}
+            <div>
+              <h1 className="text-2xl font-bold text-white">Approve Comments</h1>
+              <p className="text-sm text-gray-400 mt-1">
+                {filteredComments.length} pending · Use ↑↓ arrows to navigate, Space to approve, X to reject
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             {/* Filter */}

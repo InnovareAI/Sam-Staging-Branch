@@ -27,6 +27,7 @@ import DataCollectionHub from '@/components/DataCollectionHub';
 import CampaignHub from '@/app/components/CampaignHub';
 import AIConfiguration from '@/app/components/AIConfiguration';
 import CommentingCampaignModal from '@/app/components/CommentingCampaignModal';
+import CommentApprovalWorkflow from '@/app/components/CommentApprovalWorkflow';
 import { ManageSubscriptionModal } from '@/app/components/ManageSubscriptionModal';
 import SuperAdminPage from '@/app/admin/superadmin/page';
 import {
@@ -181,6 +182,7 @@ export default function Page() {
 
   // Commenting Agent modal state
   const [showCommentingCampaignModal, setShowCommentingCampaignModal] = useState(false);
+  const [commentingAgentView, setCommentingAgentView] = useState<'dashboard' | 'approve'>('dashboard');
 
   // User management state
   const [showManageUsers, setShowManageUsers] = useState(false);
@@ -2968,22 +2970,28 @@ export default function Page() {
             </div>
           </div>
         ) : activeMenuItem === 'commenting-agent' ? (
-          <div className="min-h-screen p-8 bg-gray-900">
-            <div className="max-w-[1400px] mx-auto space-y-6">
-              {/* Header */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold text-white mb-2">Commenting Agent</h1>
-                  <p className="text-gray-400">Automated LinkedIn engagement with anti-bot detection</p>
+          commentingAgentView === 'approve' && selectedWorkspaceId ? (
+            <CommentApprovalWorkflow
+              workspaceId={selectedWorkspaceId}
+              onBack={() => setCommentingAgentView('dashboard')}
+            />
+          ) : (
+            <div className="min-h-screen p-8 bg-gray-900">
+              <div className="max-w-[1400px] mx-auto space-y-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold text-white mb-2">Commenting Agent</h1>
+                    <p className="text-gray-400">Automated LinkedIn engagement with anti-bot detection</p>
+                  </div>
+                  <button
+                    onClick={() => setShowCommentingCampaignModal(true)}
+                    className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                  >
+                    <Plus size={20} />
+                    New Campaign
+                  </button>
                 </div>
-                <button
-                  onClick={() => setShowCommentingCampaignModal(true)}
-                  className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                >
-                  <Plus size={20} />
-                  New Campaign
-                </button>
-              </div>
 
               {/* Stats Overview */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -3037,9 +3045,18 @@ export default function Page() {
                         <p className="text-sm text-gray-400">Review and approve comments before posting</p>
                       </div>
                     </div>
-                    <span className="px-3 py-1 bg-yellow-600/20 text-yellow-400 rounded-full text-sm font-medium">
-                      0 pending
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="px-3 py-1 bg-yellow-600/20 text-yellow-400 rounded-full text-sm font-medium">
+                        0 pending
+                      </span>
+                      <button
+                        onClick={() => setCommentingAgentView('approve')}
+                        className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                      >
+                        <Eye size={16} />
+                        View Approval Workflow
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className="p-8 text-center">
@@ -3111,6 +3128,7 @@ export default function Page() {
               </div>
             </div>
           </div>
+          )
         ) : activeMenuItem === 'analytics' ? (
           <Analytics />
         ) : activeMenuItem === 'audit' ? (
