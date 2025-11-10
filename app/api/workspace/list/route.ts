@@ -94,7 +94,7 @@ export async function GET() {
 
     const { data: workspaceData, error: workspaceError } = await supabaseAdmin
       .from('workspaces')
-      .select('id, name')
+      .select('id, name, commenting_agent_enabled')
       .in('id', workspaceIds)
 
     console.log('[workspace/list] CRITICAL DEBUG - Workspaces returned from DB:', workspaceData?.length)
