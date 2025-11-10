@@ -344,13 +344,12 @@ async function getWorkspaceUsage(supabase: any, workspaceId: string): Promise<an
 async function createN8nCampaignExecution(supabase: any, workspaceId: string, campaignId: string, config: any): Promise<any> {
   const executionId = `n8n_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-  // TEMP FIX: Just return a mock record until schema cache issue is resolved
-  // The campaign will still trigger N8N, we just won't track it in the database yet
-  console.log('⚠️ WARNING: Using mock execution record due to schema cache issue');
+  console.log('📝 Creating N8N campaign execution record in database...');
 
-  const mockData = {
+  const executionData = {
     id: executionId,
     workspace_id: workspaceId,
+    campaign_id: campaignId,
     campaign_name: config.campaign_name || `Campaign ${campaignId}`,
     campaign_type: config.campaign_type,
     campaign_config: config,
@@ -363,7 +362,21 @@ async function createN8nCampaignExecution(supabase: any, workspaceId: string, ca
     created_at: new Date().toISOString()
   };
 
-  return mockData;
+  const { data, error } = await supabase
+    .from('n8n_campaign_executions')
+    .insert(executionData)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('❌ Error creating N8N execution record:', error);
+    // Return the data anyway so campaign can continue, but log the error
+    console.warn('⚠️ Campaign will continue but execution may not be tracked properly');
+    return executionData;
+  }
+
+  console.log('✅ N8N execution record created:', data.id);
+  return data;
 }
 
 async function initializeHitlApprovalSession(supabase: any, workspaceId: string, campaignExecutionId: string, config: any): Promise<any> {
