@@ -81,6 +81,36 @@ export async function POST(request: NextRequest) {
 
     // Parse CSV file
     const text = await file.text();
+
+    // Helper function to parse CSV line properly (handles quoted fields)
+    function parseCSVLine(line: string): string[] {
+      const result: string[] = [];
+      let current = '';
+      let inQuotes = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+
+        if (char === '"') {
+          // Handle escaped quotes ("")
+          if (inQuotes && line[i + 1] === '"') {
+            current += '"';
+            i++; // Skip next quote
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+
+      result.push(current.trim());
+      return result;
+    }
+
     const lines = text.trim().split('\n');
 
     console.log('CSV Parsing - File info:', {
@@ -95,8 +125,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'CSV file is empty or invalid' }, { status: 400 });
     }
 
-    // Parse header
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    // Parse header using proper CSV parser
+    const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
     console.log('CSV Parsing - Detected headers:', headers);
 
     // Map common header names
@@ -131,14 +161,14 @@ export async function POST(request: NextRequest) {
     const skippedRows: any[] = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim());
+      const values = parseCSVLine(lines[i]);
 
       // Log first row details
       if (i === 1) {
         console.log('CSV Parsing - First data row:', {
           rowIndex: i,
           rawLine: lines[i].substring(0, 200),
-          splitValues: values,
+          parsedValues: values,
           valueCount: values.length,
           headerCount: headers.length
         });
@@ -161,7 +191,9 @@ export async function POST(request: NextRequest) {
           prospect,
           hasName: !!prospect.name,
           hasFirstName: !!prospect.firstName,
-          hasLastName: !!prospect.lastName
+          hasLastName: !!prospect.lastName,
+          hasLinkedinUrl: !!prospect.linkedinUrl,
+          linkedinUrlValue: prospect.linkedinUrl || 'EMPTY/NULL'
         });
       }
 
