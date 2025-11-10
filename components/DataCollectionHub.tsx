@@ -374,8 +374,7 @@ export default function DataCollectionHub({
   }
 
   // Handle CSV file upload - SAVES TO DATABASE
-  const handleCsvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+  const handleCsvUpload = async (file: File) => {
     if (!file) return
 
     setIsUploadingCsv(true)
