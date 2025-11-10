@@ -212,6 +212,8 @@ export default function Page() {
 
     const found = workspaces.find(ws => ws.id === selectedWorkspaceId);
     console.log('🔍 Found workspace:', found ? `Yes (${found.name})` : 'No');
+    console.log('🔍 Workspace fields:', found ? Object.keys(found) : 'N/A');
+    console.log('🔍 commenting_agent_enabled:', found?.commenting_agent_enabled);
     return found || null;
   }, [selectedWorkspaceId, workspaces]);
 
@@ -3000,13 +3002,6 @@ export default function Page() {
                         <span>Anti-bot detection with smart timing</span>
                       </li>
                     </ul>
-                  </div>
-
-                  <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4">
-                    <p className="text-blue-200 text-sm">
-                      <strong>Cost-Effective:</strong> Using tiered AI strategy costs only ~$0.09/month for 30 comments per day.
-                      That's 80x cheaper than using Sonnet for everything!
-                    </p>
                   </div>
                 </div>
               </div>
