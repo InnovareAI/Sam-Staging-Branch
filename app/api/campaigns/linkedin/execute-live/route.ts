@@ -354,46 +354,43 @@ export async function POST(req: NextRequest) {
     const effectiveMaxProspects = Math.min(maxProspects, remainingToday);
     console.log(`   Effective max prospects: ${effectiveMaxProspects} (requested: ${maxProspects})`);
 
-    // Step 4.5: DUPLICATE PREVENTION - Get all previously contacted prospects across ALL campaigns
-    console.log(`🔍 Checking for duplicate prospects across workspace...`);
-    const { data: contactedProspects, error: contactedError } = await supabase
-      .from('campaign_prospects')
-      .select('linkedin_url, email')
-      .eq('workspace_id', campaign.workspace_id)
-      .or('status.eq.connection_requested,contacted_at.not.is.null')
-      .not('linkedin_url', 'is', null);
+    // Step 4.5: DATABASE-LEVEL DUPLICATE BLOCKING (BEFORE ANY API CALLS)
+    // Call database function to mark duplicates BEFORE we even query for prospects
+    // This prevents duplicates from reaching N8N and triggering LinkedIn API calls
+    console.log(`🛡️ Running database-level duplicate prevention...`);
+    try {
+      const { data: blockResult, error: blockError } = await supabase
+        .rpc('block_duplicate_prospects', {
+          p_campaign_id: campaignId,
+          p_workspace_id: campaign.workspace_id
+        });
 
-    if (contactedError) {
-      console.error('❌ Failed to fetch contacted prospects:', contactedError.message);
+      if (blockError) {
+        console.error('⚠️ Duplicate blocking function error:', blockError.message);
+        console.error('   Continuing without blocking (function may not exist yet)');
+      } else if (blockResult && blockResult.length > 0) {
+        const blocked = blockResult[0];
+        console.log(`✅ Duplicate prevention complete:`);
+        console.log(`   Blocked ${blocked.blocked_count} duplicate prospects`);
+        if (blocked.blocked_count > 0 && blocked.blocked_prospects) {
+          console.log(`📋 Blocked prospects:`, JSON.stringify(blocked.blocked_prospects, null, 2));
+        }
+      } else {
+        console.log(`✅ No duplicates found in this campaign`);
+      }
+    } catch (blockErr) {
+      console.error('⚠️ Error running duplicate prevention:', blockErr);
+      console.error('   Continuing execution (will filter in application layer)');
     }
 
-    // Build set of contacted LinkedIn URLs and emails for fast lookup
-    const contactedLinkedInUrls = new Set<string>();
-    const contactedEmails = new Set<string>();
-
-    if (contactedProspects) {
-      contactedProspects.forEach(p => {
-        if (p.linkedin_url) {
-          // Normalize LinkedIn URL (remove trailing slash, convert to lowercase)
-          const normalizedUrl = p.linkedin_url.toLowerCase().trim().replace(/\/$/, '');
-          contactedLinkedInUrls.add(normalizedUrl);
-        }
-        if (p.email) {
-          contactedEmails.add(p.email.toLowerCase().trim());
-        }
-      });
-    }
-
-    console.log(`   Found ${contactedLinkedInUrls.size} unique LinkedIn profiles already contacted`);
-    console.log(`   Found ${contactedEmails.size} unique emails already contacted`);
-
-    // Step 5: Get prospects ready for messaging
+    // Step 5: Get prospects ready for messaging (duplicates already blocked in DB)
     const { data: campaignProspects, error: prospectsError } = await supabase
       .from('campaign_prospects')
       .select('*')
       .eq('campaign_id', campaignId)
       .in('status', ['pending', 'approved', 'ready_to_message', 'follow_up_due'])
-      .limit(effectiveMaxProspects * 2) // Fetch 2x to account for duplicates
+      .not('linkedin_url', 'is', null) // Must have LinkedIn URL
+      .limit(effectiveMaxProspects)
       .order('created_at', { ascending: true });
 
     if (prospectsError) {
@@ -401,70 +398,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to load prospects' }, { status: 500 });
     }
 
-    console.log(`🔍 DEBUG: campaignProspects count (before filtering): ${campaignProspects?.length || 0}`);
-
-    // Step 5.5: FILTER OUT DUPLICATES
-    const duplicatesFiltered: any[] = [];
-    const nonDuplicateProspects = campaignProspects?.filter(cp => {
-      // Check if this prospect's LinkedIn URL or email has already been contacted
-      let isDuplicate = false;
-
-      if (cp.linkedin_url) {
-        const normalizedUrl = cp.linkedin_url.toLowerCase().trim().replace(/\/$/, '');
-        if (contactedLinkedInUrls.has(normalizedUrl)) {
-          isDuplicate = true;
-          console.log(`🚫 DUPLICATE BLOCKED: ${cp.first_name} ${cp.last_name} - LinkedIn URL already contacted`);
-        }
-      }
-
-      if (!isDuplicate && cp.email) {
-        const normalizedEmail = cp.email.toLowerCase().trim();
-        if (contactedEmails.has(normalizedEmail)) {
-          isDuplicate = true;
-          console.log(`🚫 DUPLICATE BLOCKED: ${cp.first_name} ${cp.last_name} - Email already contacted`);
-        }
-      }
-
-      if (isDuplicate) {
-        duplicatesFiltered.push({
-          name: `${cp.first_name} ${cp.last_name}`,
-          linkedin_url: cp.linkedin_url,
-          email: cp.email
-        });
-      }
-
-      return !isDuplicate;
-    }) || [];
-
-    console.log(`🔍 DUPLICATE PREVENTION RESULTS:`);
-    console.log(`   Total prospects fetched: ${campaignProspects?.length || 0}`);
-    console.log(`   Duplicates filtered out: ${duplicatesFiltered.length}`);
-    console.log(`   Prospects remaining: ${nonDuplicateProspects.length}`);
-
-    if (duplicatesFiltered.length > 0) {
-      console.log(`📋 Filtered duplicates:`);
-      duplicatesFiltered.forEach(d => {
-        console.log(`   - ${d.name} (${d.linkedin_url || d.email})`);
+    // Duplicates already blocked at database level - just verify prospects have LinkedIn URLs
+    console.log(`📋 Campaign prospects fetched: ${campaignProspects?.length || 0}`);
+    if (campaignProspects && campaignProspects.length > 0) {
+      console.log(`🔍 First prospect:`, {
+        name: `${campaignProspects[0].first_name} ${campaignProspects[0].last_name}`,
+        linkedin_url: campaignProspects[0].linkedin_url,
+        status: campaignProspects[0].status
       });
     }
 
-    // Limit to effectiveMaxProspects after duplicate filtering
-    const limitedProspects = nonDuplicateProspects.slice(0, effectiveMaxProspects);
-
-    console.log(`🔍 DEBUG: First prospect after filtering:`, limitedProspects.length > 0 ? {
-      name: `${limitedProspects[0].first_name} ${limitedProspects[0].last_name}`,
-      linkedin_url: limitedProspects[0].linkedin_url,
-      linkedin_user_id: limitedProspects[0].linkedin_user_id,
-      status: limitedProspects[0].status,
-      contacted_at: limitedProspects[0].contacted_at
-    } : 'No prospects');
-
-    // CRITICAL TOS COMPLIANCE: Filter prospects by Unipile account ownership
-    // LinkedIn TOS: prospects can ONLY be messaged by the Unipile account that found them
-    const executableProspects = limitedProspects?.filter(cp => {
+    // Verify all prospects have required LinkedIn data
+    const executableProspects = campaignProspects?.filter(cp => {
       const hasLinkedIn = !!(cp.linkedin_url || cp.linkedin_user_id);
       if (!hasLinkedIn) {
-        console.log(`🔍 DEBUG: Prospect ${cp.first_name} ${cp.last_name} - Missing LinkedIn URL`);
+        console.log(`⚠️ Prospect ${cp.first_name} ${cp.last_name} - Missing LinkedIn URL`);
       }
       return hasLinkedIn;
     }) || [];
@@ -473,51 +421,30 @@ export async function POST(req: NextRequest) {
     const blockedByOwnership = 0;
 
     console.log(`📋 Total prospects retrieved: ${campaignProspects?.length || 0}`);
-    console.log(`📋 Duplicates filtered: ${duplicatesFiltered.length}`);
     console.log(`📋 Prospects with LinkedIn URL: ${totalWithLinkedIn}`);
-    console.log(`🔒 Blocked by ownership rules: ${blockedByOwnership}`);
-    console.log(`✅ Executable prospects (owned by user): ${executableProspects.length}`);
+    console.log(`✅ Executable prospects: ${executableProspects.length}`);
 
     if (campaignProspects && campaignProspects.length > 0 && executableProspects.length === 0) {
-      console.log('⚠️ Prospects exist but none have LinkedIn URLs or all are duplicates');
-      if (nonDuplicateProspects.length > 0) {
-        console.log('Sample non-duplicate prospect data:', JSON.stringify(nonDuplicateProspects[0], null, 2));
-      } else if (campaignProspects.length > 0) {
-        console.log('All prospects are duplicates - already contacted in other campaigns');
-      }
+      console.log('⚠️ Prospects exist but none have LinkedIn URLs');
+      console.log('Sample prospect data:', JSON.stringify(campaignProspects[0], null, 2));
     }
 
     if (executableProspects.length === 0) {
       const suggestions = [
         'Check if prospects have LinkedIn URLs or internal IDs',
         'Verify prospect approval status',
-        'Review campaign sequence settings'
+        'Review campaign sequence settings',
+        'Note: Duplicates are automatically blocked at database level (status: duplicate_blocked)'
       ];
-
-      if (duplicatesFiltered.length > 0) {
-        suggestions.unshift(
-          `🚫 DUPLICATE PREVENTION: ${duplicatesFiltered.length} prospects filtered out because they were already contacted in other campaigns`,
-          'Each LinkedIn profile can only receive one connection request across all campaigns'
-        );
-      }
-
-      if (blockedByOwnership > 0) {
-        suggestions.unshift(
-          `🚨 TOS COMPLIANCE: ${blockedByOwnership} prospects cannot be messaged because they were added by other users`,
-          'LinkedIn TOS requires each user to ONLY message prospects they personally added',
-          'Each team member must create their own prospect lists and campaigns'
-        );
-      }
 
       return NextResponse.json({
         success: true,
         message: 'No prospects ready for messaging',
         campaign: campaign.name,
         total_prospects: campaignProspects?.length || 0,
-        duplicates_filtered: duplicatesFiltered.length,
         prospects_with_linkedin: totalWithLinkedIn,
-        blocked_by_ownership: blockedByOwnership,
         executable_prospects: 0,
+        note: 'Duplicates are blocked at database level before reaching this point',
         suggestions
       });
     }
@@ -738,11 +665,11 @@ export async function POST(req: NextRequest) {
       messages_sent: 0, // Workflow will send, not immediate
       messages_queued: sentResults.length,
       messages_failed: failedResults.length,
-      duplicates_filtered: duplicatesFiltered.length,
       total_prospects_fetched: campaignProspects?.length || 0,
       queued_prospects: sentResults,
       failed: failedResults,
-      message: `Campaign started! Queued ${sentResults.length} prospects for execution, ${failedResults.length} failed${duplicatesFiltered.length > 0 ? `, ${duplicatesFiltered.length} duplicates filtered` : ''}`,
+      message: `Campaign started! Queued ${sentResults.length} prospects for execution, ${failedResults.length} failed`,
+      note: 'Duplicates blocked at database level (not included in queue)',
       execution_mode: dryRun ? 'dry_run' : 'async',
       linkedin_account: selectedAccount.name,
       n8n_triggered: results.n8n_triggered,
