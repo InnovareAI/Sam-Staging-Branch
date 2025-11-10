@@ -53,9 +53,11 @@ import {
   Megaphone,
   MessageCircle,
   Paperclip,
+  Plus,
   Send,
   Settings,
   Shield,
+  Sparkles,
   Target,
   ThumbsDown,
   ThumbsUp,
@@ -69,7 +71,8 @@ import {
   Grid3x3,
   FileText,
   Search,
-  MessageSquare
+  MessageSquare,
+  CheckCircle
 } from 'lucide-react';
 
 const USER_PROXY_SENTINEL = '__USER_PROXY__';
@@ -2961,47 +2964,138 @@ export default function Page() {
             </div>
           </div>
         ) : activeMenuItem === 'commenting-agent' ? (
-          <div className="min-h-screen p-8">
-            <div className="max-w-[1400px] mx-auto">
-              <div className="bg-gradient-to-br from-pink-900/30 to-purple-900/30 rounded-lg border border-pink-700/50 p-8">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 bg-pink-600 rounded-full flex items-center justify-center">
-                    <MessageSquare size={32} className="text-white" />
+          <div className="min-h-screen p-8 bg-gray-900">
+            <div className="max-w-[1400px] mx-auto space-y-6">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-3xl font-bold text-white mb-2">Commenting Agent</h1>
+                  <p className="text-gray-400">Automated LinkedIn engagement with anti-bot detection</p>
+                </div>
+                <button className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
+                  <Plus size={20} />
+                  New Campaign
+                </button>
+              </div>
+
+              {/* Stats Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-400 text-sm">Active Campaigns</span>
+                    <Target size={20} className="text-blue-400" />
                   </div>
-                  <div>
-                    <h1 className="text-3xl font-bold text-white">LinkedIn Commenting Agent</h1>
-                    <p className="text-pink-200">Automated engagement system powered by Haiku 4.5</p>
-                  </div>
+                  <div className="text-3xl font-bold text-white">0</div>
+                  <div className="text-xs text-gray-500 mt-1">No campaigns running</div>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="bg-gray-800/50 rounded-lg p-6">
-                    <h3 className="text-xl font-semibold text-white mb-4">Coming Soon</h3>
-                    <p className="text-gray-300 mb-4">
-                      The Commenting Agent is now activated for your workspace! The full interface is being built and will include:
-                    </p>
-                    <ul className="space-y-2 text-gray-300">
-                      <li className="flex items-center gap-2">
-                        <MessageSquare size={16} className="text-pink-400" />
-                        <span>Campaign builder with 3 targeting modes (hashtags, keywords, profiles)</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <MessageSquare size={16} className="text-pink-400" />
-                        <span>AI-powered comment generation with Haiku 4.5</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <MessageSquare size={16} className="text-pink-400" />
-                        <span>HITL approval workflow for comment review</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <MessageSquare size={16} className="text-pink-400" />
-                        <span>Engagement analytics and conversion tracking</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <MessageSquare size={16} className="text-pink-400" />
-                        <span>Anti-bot detection with smart timing</span>
-                      </li>
-                    </ul>
+                <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-400 text-sm">Pending Approvals</span>
+                    <Clock size={20} className="text-yellow-400" />
+                  </div>
+                  <div className="text-3xl font-bold text-white">0</div>
+                  <div className="text-xs text-gray-500 mt-1">Comments awaiting review</div>
+                </div>
+
+                <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-400 text-sm">Posted Today</span>
+                    <MessageSquare size={20} className="text-green-400" />
+                  </div>
+                  <div className="text-3xl font-bold text-white">0</div>
+                  <div className="text-xs text-gray-500 mt-1">0 / 30 daily limit</div>
+                </div>
+
+                <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-400 text-sm">Engagement Rate</span>
+                    <TrendingUp size={20} className="text-pink-400" />
+                  </div>
+                  <div className="text-3xl font-bold text-white">--</div>
+                  <div className="text-xs text-gray-500 mt-1">No data yet</div>
+                </div>
+              </div>
+
+              {/* Pending Approvals - Most Important */}
+              <div className="bg-gray-800 rounded-lg border border-gray-700">
+                <div className="p-6 border-b border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-yellow-600/20 rounded-lg flex items-center justify-center">
+                        <Clock size={20} className="text-yellow-400" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-semibold text-white">Pending Approvals</h2>
+                        <p className="text-sm text-gray-400">Review and approve comments before posting</p>
+                      </div>
+                    </div>
+                    <span className="px-3 py-1 bg-yellow-600/20 text-yellow-400 rounded-full text-sm font-medium">
+                      0 pending
+                    </span>
+                  </div>
+                </div>
+                <div className="p-8 text-center">
+                  <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle size={32} className="text-gray-500" />
+                  </div>
+                  <p className="text-gray-400 mb-2">No comments awaiting approval</p>
+                  <p className="text-sm text-gray-500">Create a campaign to start discovering posts to comment on</p>
+                </div>
+              </div>
+
+              {/* Active Campaigns */}
+              <div className="bg-gray-800 rounded-lg border border-gray-700">
+                <div className="p-6 border-b border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-pink-600/20 rounded-lg flex items-center justify-center">
+                        <Target size={20} className="text-pink-400" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-semibold text-white">Active Campaigns</h2>
+                        <p className="text-sm text-gray-400">Manage your commenting campaigns</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-8 text-center">
+                  <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Target size={32} className="text-gray-500" />
+                  </div>
+                  <p className="text-gray-400 mb-4">No campaigns created yet</p>
+                  <button className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto">
+                    <Plus size={20} />
+                    Create Your First Campaign
+                  </button>
+                  <p className="text-sm text-gray-500 mt-4">
+                    Choose from 3 targeting modes: Hashtags, Keywords, or Profiles
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick Tips */}
+              <div className="bg-gradient-to-br from-blue-900/30 to-purple-900/30 rounded-lg border border-blue-700/50 p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Sparkles size={20} className="text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-2">How it works</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <div className="text-pink-400 font-medium mb-1">1. Create Campaign</div>
+                        <div className="text-gray-300">Target posts by hashtag (#SaaS), keyword ("sales automation"), or specific profiles</div>
+                      </div>
+                      <div>
+                        <div className="text-pink-400 font-medium mb-1">2. AI Discovers Posts</div>
+                        <div className="text-gray-300">Haiku 4.5 finds relevant posts, waits for organic engagement (2+ comments, 5+ likes) to avoid bot detection</div>
+                      </div>
+                      <div>
+                        <div className="text-pink-400 font-medium mb-1">3. Approve & Post</div>
+                        <div className="text-gray-300">Review AI-generated comments, approve the ones you like, and post with smart timing (20+ min delays)</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
