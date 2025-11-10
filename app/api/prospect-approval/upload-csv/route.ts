@@ -211,6 +211,21 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Find the next available batch number for this user/workspace
+    const { data: existingSessions } = await supabase
+      .from('prospect_approval_sessions')
+      .select('batch_number')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .order('batch_number', { ascending: false })
+      .limit(1);
+
+    const nextBatchNumber = existingSessions && existingSessions.length > 0
+      ? (existingSessions[0].batch_number || 0) + 1
+      : 1;
+
+    console.log('CSV Upload - Creating session with batch_number:', nextBatchNumber);
+
     // Create approval session
     const { data: session, error: sessionError} = await supabase
       .from('prospect_approval_sessions')
@@ -225,7 +240,7 @@ export async function POST(request: NextRequest) {
         approved_count: 0,
         rejected_count: 0,
         status: 'active',
-        batch_number: 1
+        batch_number: nextBatchNumber
       })
       .select()
       .single();
