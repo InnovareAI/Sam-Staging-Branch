@@ -183,6 +183,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   };
 
   const editCampaign = (campaign: any) => {
+    console.log('🎯 Edit campaign clicked:', campaign.id);
     // Check if campaign has sent messages
     if (campaign.sent > 0) {
       toastError('Cannot edit campaign that has already sent messages');
