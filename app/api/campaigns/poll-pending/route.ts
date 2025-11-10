@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
           campaign_id: campaignId,
           campaign_name: campaign.name,
           workspace_id: campaign.workspace_id,
-          unipile_dsn: process.env.UNIPILE_DSN || '',
+          unipile_dsn: `https://${process.env.UNIPILE_DSN}` || '',
           unipile_api_key: process.env.UNIPILE_API_KEY || '',
           unipile_account_id: account.unipile_account_id,
           prospects: []

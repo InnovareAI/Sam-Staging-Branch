@@ -259,7 +259,11 @@ export async function POST(req: NextRequest) {
 
     // Step 4: Generate daily random sending pattern (anti-bot detection)
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const todaySeed = parseInt(today.replace(/-/g, '')); // Use date as seed for reproducibility
+    const dateSeed = parseInt(today.replace(/-/g, '')); // Use date as base seed
+    // Add campaign ID and current timestamp to ensure unique pattern each execution
+    const campaignSeed = campaignId.split('-').map(s => parseInt(s, 16) || 0).reduce((a, b) => a + b, 0);
+    const timeSeed = Date.now() % 10000; // Last 4 digits of timestamp for uniqueness
+    const todaySeed = dateSeed + campaignSeed + timeSeed; // Unique seed per execution
 
     // Generate random daily pattern using date as seed
     function generateDailyPattern(seed: number, maxSends: number = 20) {
@@ -270,16 +274,41 @@ export async function POST(req: NextRequest) {
         return rng / 233280;
       };
 
-      // Random number of sends today (3-maxSends)
-      const sendsToday = Math.floor(random() * (maxSends - 3) + 3);
+      // Always send all messages (no random reduction)
+      const sendsToday = maxSends;
       const intervals: number[] = [];
 
+      // Distribute sends across working hours (9 AM - 6 PM = 540 minutes)
+      const workingMinutes = 540;
+      let timeRemaining = workingMinutes;
+
+      // Create bursts and pauses: 40% bursts (2-5 per hour), 30% moderate (1 per hour), 30% pauses (0 per hour)
       for (let i = 0; i < sendsToday - 1; i++) {
-        // 60% chance short burst (1-30min), 40% chance long pause (30-120min)
-        const interval = random() < 0.6
-          ? Math.floor(random() * 30 + 1)
-          : Math.floor(random() * 90 + 30);
+        const roll = random();
+        let interval;
+
+        if (roll < 0.40) {
+          // BURST: 2-5 messages per hour (12-30 min intervals)
+          interval = Math.floor(random() * 18 + 12); // 12-30 min
+        } else if (roll < 0.70) {
+          // MODERATE: ~1 message per hour (30-60 min intervals)
+          interval = Math.floor(random() * 30 + 30); // 30-60 min
+        } else {
+          // PAUSE: Long quiet period (60-120 min intervals)
+          interval = Math.floor(random() * 60 + 60); // 60-120 min
+        }
+
         intervals.push(interval);
+        timeRemaining -= interval;
+      }
+
+      // If we've exceeded working hours, compress intervals proportionally
+      const totalTime = intervals.reduce((a, b) => a + b, 0);
+      if (totalTime > workingMinutes) {
+        const compressionFactor = workingMinutes / totalTime;
+        for (let i = 0; i < intervals.length; i++) {
+          intervals[i] = Math.max(1, Math.floor(intervals[i] * compressionFactor));
+        }
       }
 
       return { sendsToday, intervals };
@@ -305,6 +334,7 @@ export async function POST(req: NextRequest) {
     console.log(`   Date: ${today}`);
     console.log(`   Sent today: ${todaysCount}/${DAILY_CR_LIMIT}`);
     console.log(`   Remaining: ${remainingToday}`);
+    console.log(`   Pattern seed: ${todaySeed} (unique per execution)`);
     console.log(`   Today's pattern: ${dailyPattern.sendsToday} sends with intervals: ${dailyPattern.intervals.slice(0, 5).join(', ')}... minutes`);
 
     if (remainingToday === 0) {
@@ -499,7 +529,7 @@ export async function POST(req: NextRequest) {
         },
         supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL,
         supabase_service_key: process.env.SUPABASE_SERVICE_ROLE_KEY,
-        unipile_dsn: process.env.UNIPILE_DSN,
+        unipile_dsn: `https://${process.env.UNIPILE_DSN}`,
         unipile_api_key: process.env.UNIPILE_API_KEY
       };
 
