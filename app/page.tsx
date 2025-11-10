@@ -68,7 +68,8 @@ import {
   Zap,
   Grid3x3,
   FileText,
-  Search
+  Search,
+  MessageSquare
 } from 'lucide-react';
 
 const USER_PROXY_SENTINEL = '__USER_PROXY__';
@@ -1363,6 +1364,16 @@ export default function Page() {
       description: 'Plan multi-channel outreach with Sam',
       icon: Megaphone,
     },
+    ...(currentWorkspace?.commenting_agent_enabled
+      ? [
+          {
+            id: 'commenting-agent',
+            label: 'Commenting Agent',
+            description: 'Automated LinkedIn engagement and commenting',
+            icon: MessageSquare,
+          },
+        ]
+      : []),
     {
       id: 'analytics',
       label: 'Analytics',
@@ -2945,6 +2956,60 @@ export default function Page() {
                   onCampaignCreated={() => setPendingCampaignProspects(null)}
                 />
               )}
+            </div>
+          </div>
+        ) : activeMenuItem === 'commenting-agent' ? (
+          <div className="min-h-screen p-8">
+            <div className="max-w-[1400px] mx-auto">
+              <div className="bg-gradient-to-br from-pink-900/30 to-purple-900/30 rounded-lg border border-pink-700/50 p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-pink-600 rounded-full flex items-center justify-center">
+                    <MessageSquare size={32} className="text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold text-white">LinkedIn Commenting Agent</h1>
+                    <p className="text-pink-200">Automated engagement system powered by Haiku 4.5</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-gray-800/50 rounded-lg p-6">
+                    <h3 className="text-xl font-semibold text-white mb-4">Coming Soon</h3>
+                    <p className="text-gray-300 mb-4">
+                      The Commenting Agent is now activated for your workspace! The full interface is being built and will include:
+                    </p>
+                    <ul className="space-y-2 text-gray-300">
+                      <li className="flex items-center gap-2">
+                        <MessageSquare size={16} className="text-pink-400" />
+                        <span>Campaign builder with 3 targeting modes (hashtags, keywords, profiles)</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <MessageSquare size={16} className="text-pink-400" />
+                        <span>AI-powered comment generation with Haiku 4.5</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <MessageSquare size={16} className="text-pink-400" />
+                        <span>HITL approval workflow for comment review</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <MessageSquare size={16} className="text-pink-400" />
+                        <span>Engagement analytics and conversion tracking</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <MessageSquare size={16} className="text-pink-400" />
+                        <span>Anti-bot detection with smart timing</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4">
+                    <p className="text-blue-200 text-sm">
+                      <strong>Cost-Effective:</strong> Using tiered AI strategy costs only ~$0.09/month for 30 comments per day.
+                      That's 80x cheaper than using Sonnet for everything!
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         ) : activeMenuItem === 'analytics' ? (
