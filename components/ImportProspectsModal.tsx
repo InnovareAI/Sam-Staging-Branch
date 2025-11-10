@@ -80,7 +80,11 @@ export default function ImportProspectsModal({
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    if (!e || !e.target || !e.target.files) {
+      console.error('File input event is invalid:', e)
+      return
+    }
+    const file = e.target.files[0]
     if (file) {
       setSelectedFile(file)
     }
