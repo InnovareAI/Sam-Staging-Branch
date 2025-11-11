@@ -5600,8 +5600,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
   // Filter campaigns based on selected tab
   const filteredCampaigns = allCampaigns.filter((c: any) => {
-    if (campaignFilter === 'active') return c.status === 'active' || c.status === 'paused';
-    if (campaignFilter === 'inactive') return c.status === 'inactive' || c.status === 'scheduled'; // Show campaigns ready to activate (inactive and scheduled)
+    if (campaignFilter === 'active') return c.status === 'active';
+    if (campaignFilter === 'inactive') return c.status === 'paused' || c.status === 'inactive' || c.status === 'scheduled'; // Paused campaigns moved to inactive
     if (campaignFilter === 'completed') return c.status === 'completed' || c.status === 'archived'; // Campaigns that finished their sequence
     return true;
   });
@@ -5616,8 +5616,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   });
 
   // Calculate counts for each tab
-  const activeCampaignsCount = allCampaigns.filter((c: any) => c.status === 'active' || c.status === 'paused').length;
-  const inactiveCampaignsCount = allCampaigns.filter((c: any) => c.status === 'inactive' || c.status === 'scheduled').length;
+  const activeCampaignsCount = allCampaigns.filter((c: any) => c.status === 'active').length;
+  const inactiveCampaignsCount = allCampaigns.filter((c: any) => c.status === 'paused' || c.status === 'inactive' || c.status === 'scheduled').length;
   const completedCampaignsCount = allCampaigns.filter((c: any) => c.status === 'completed' || c.status === 'archived').length;
 
   // Handle campaign action menu (open settings)
