@@ -137,10 +137,27 @@ export function detectVagueCriteria(message: string): {
  */
 function hasSpecificIndustry(message: string): boolean {
   const specificIndustries = [
-    'saas', 'fintech', 'healthtech', 'edtech', 'martech', 'proptech',
-    'ecommerce', 'e-commerce', 'manufacturing', 'healthcare', 'finance',
-    'real estate', 'insurance', 'legal', 'consulting', 'agency',
-    'logistics', 'supply chain', 'retail', 'hospitality', 'construction'
+    // Tech verticals
+    'saas', 'b2b saas', 'b2c saas', 'fintech', 'healthtech', 'edtech', 'martech', 'proptech',
+    'insurtech', 'legaltech', 'regtech', 'hrtech', 'adtech', 'cleantech', 'agritech',
+    'cybersecurity', 'ai', 'artificial intelligence', 'machine learning', 'blockchain',
+    'web3', 'crypto', 'devtools', 'infrastructure', 'cloud', 'data analytics',
+
+    // Traditional industries
+    'ecommerce', 'e-commerce', 'd2c', 'dtc', 'marketplace', 'consumer goods',
+    'manufacturing', 'automotive', 'aerospace', 'industrial',
+    'healthcare', 'medical devices', 'biotech', 'pharmaceuticals', 'life sciences',
+    'finance', 'banking', 'wealth management', 'payments', 'finserv',
+    'real estate', 'commercial real estate', 'residential real estate',
+    'insurance', 'legal services', 'professional services',
+    'consulting', 'agency', 'creative agency', 'marketing agency',
+    'logistics', 'supply chain', 'transportation', 'shipping',
+    'retail', 'hospitality', 'restaurants', 'food and beverage',
+    'construction', 'architecture', 'engineering',
+    'energy', 'oil and gas', 'renewable energy', 'utilities',
+    'telecommunications', 'media', 'entertainment', 'gaming',
+    'education', 'higher education', 'k-12',
+    'nonprofit', 'government', 'public sector'
   ];
   const lowerMessage = message.toLowerCase();
   return specificIndustries.some(industry => lowerMessage.includes(industry));
@@ -151,10 +168,48 @@ function hasSpecificIndustry(message: string): boolean {
  */
 function hasSpecificRole(message: string): boolean {
   const specificRoles = [
-    'vp sales', 'vp marketing', 'vp engineering', 'cto', 'cfo', 'cmo', 'coo',
-    'head of sales', 'head of marketing', 'sales director', 'marketing director',
-    'revenue operations', 'revops', 'growth marketing', 'demand generation',
-    'product manager', 'engineering manager'
+    // C-Suite
+    'cto', 'chief technology officer', 'cfo', 'chief financial officer',
+    'cmo', 'chief marketing officer', 'coo', 'chief operating officer',
+    'cro', 'chief revenue officer', 'cso', 'chief sales officer',
+    'cpo', 'chief product officer', 'chro', 'chief human resources',
+    'ciso', 'chief information security',
+
+    // VP/SVP Level
+    'vp sales', 'vp of sales', 'vice president sales', 'svp sales',
+    'vp marketing', 'vp of marketing', 'vice president marketing', 'svp marketing',
+    'vp engineering', 'vp of engineering', 'vice president engineering',
+    'vp product', 'vp of product', 'vice president product',
+    'vp operations', 'vp of operations', 'vice president operations',
+    'vp finance', 'vp of finance', 'vice president finance',
+    'vp customer success', 'vp of customer success',
+    'vp revenue', 'vp of revenue', 'vice president revenue',
+
+    // Director Level
+    'director of sales', 'sales director', 'director sales development',
+    'director of marketing', 'marketing director', 'director demand generation',
+    'director of engineering', 'engineering director', 'director of product',
+    'director of operations', 'operations director', 'director of finance',
+    'director of customer success', 'director of revenue operations',
+
+    // Head Of
+    'head of sales', 'head of marketing', 'head of growth', 'head of revenue',
+    'head of product', 'head of engineering', 'head of operations',
+    'head of customer success', 'head of finance', 'head of people',
+    'head of business development', 'head of partnerships',
+
+    // Specialized Roles
+    'revenue operations', 'revops', 'revenue ops manager', 'revops director',
+    'growth marketing', 'growth marketing manager', 'growth lead',
+    'demand generation', 'demand gen manager', 'demand gen director',
+    'sales development', 'sdr manager', 'bdr manager',
+    'account executive', 'enterprise sales', 'sales manager',
+    'product manager', 'senior product manager', 'product lead',
+    'engineering manager', 'software engineering manager', 'tech lead',
+    'customer success manager', 'csm', 'customer success director',
+    'marketing operations', 'marketing ops', 'campaign manager',
+    'business development', 'bd manager', 'partnerships manager',
+    'sales enablement', 'sales operations', 'sales ops manager'
   ];
   const lowerMessage = message.toLowerCase();
   return specificRoles.some(role => lowerMessage.includes(role));
@@ -313,31 +368,33 @@ export function generateQualificationQuestions(intent: SearchIntent): string {
 
   // Build context-aware questions
   if (vagueTerms.includes('tech') || vagueTerms.includes('technology') || vagueTerms.includes('startup')) {
-    questions.push("**What type of tech/startup?** (e.g., SaaS, FinTech, HealthTech, eCommerce, AI/ML, etc.)");
+    questions.push("**1. What specific type of tech company?**\n   Examples: B2B SaaS, FinTech, HealthTech, eCommerce, AI/ML, Cybersecurity, DevTools, Marketplace, etc.");
   }
 
-  if (missingCriteria.includes('specific_industry')) {
-    questions.push("**What specific industry?** (e.g., B2B SaaS, Healthcare, Real Estate, Financial Services, etc.)");
+  if (missingCriteria.includes('specific_industry') && questions.length === 0) {
+    questions.push("**1. What industry are they in?**\n   Examples: B2B SaaS, Healthcare, Real Estate, Finance, Manufacturing, Legal, Consulting, etc.");
   }
 
   if (vagueTerms.includes('ceo') || vagueTerms.includes('founder') || missingCriteria.includes('specific_role')) {
-    questions.push("**What specific role/function?** (e.g., VP Sales, Head of Marketing, CFO, CRO, etc.)");
+    const questionNum = questions.length + 1;
+    questions.push(`**${questionNum}. What's their specific role or function?**\n   Examples: VP Sales, Head of Marketing, CRO, CFO, VP Engineering, Director of Growth, RevOps, etc.`);
   }
 
   if (missingCriteria.includes('company_size') || vagueTerms.includes('startup') || vagueTerms.includes('small')) {
-    questions.push("**What company size?** (e.g., 1-10, 10-50, 50-200, 200+ employees)");
+    const questionNum = questions.length + 1;
+    questions.push(`**${questionNum}. What company size range works best?**\n   Examples: 1-10 (early startup), 10-50 (growth stage), 50-200 (scaling), 200-1000 (mid-market), 1000+ (enterprise)`);
   }
 
   if (missingCriteria.includes('funding_stage')) {
-    questions.push("**What funding stage?** (e.g., Seed, Series A/B/C, Bootstrapped, Profitable)");
+    const questionNum = questions.length + 1;
+    questions.push(`**${questionNum}. What funding stage?**\n   Examples: Pre-Seed, Seed, Series A, Series B/C, Bootstrapped, Profitable, Public`);
   }
 
-  // Always add these for better targeting
-  if (!questions.some(q => q.includes('company size'))) {
-    questions.push("**Any company size preference?** (helps narrow down results)");
-  }
+  // Add location if not already specified
+  const questionNum = questions.length + 1;
+  questions.push(`**${questionNum}. Any location preference?**\n   Examples: US-based, Bay Area, NYC, Remote-first, Europe, Global (leave blank if no preference)`);
 
-  return questions.join('\n');
+  return questions.join('\n\n');
 }
 
 /**
@@ -358,15 +415,18 @@ Vague terms: ${intent.vagueTerms?.join(', ') || 'multiple'}
 Missing criteria: ${intent.missingCriteria?.join(', ') || 'multiple'}
 
 RESPONSE TEMPLATE:
-"I can help you find prospects, but let's niche down your search to get better, more targeted results. Broad searches like 'tech startup CEOs' usually return thousands of random profiles.
+"I can definitely help you find prospects! But let's get more specific so we can find the *right* people instead of just a random list.
 
-Let me ask a few quick questions to narrow this down:
+Broad searches like 'tech CEOs' or 'startup founders' usually return 1000s of profiles that don't fit your actual target market. The more specific we are, the better your results (and response rates) will be.
+
+Quick questions to dial this in:
 
 ${questions}
 
-This will help me find highly relevant prospects who actually match what you're looking for."
+Once I have these details, I'll pull a highly targeted list of prospects who actually match your ICP."
 
-DO NOT proceed with search until user provides specific answers.`;
+DO NOT proceed with search until user provides specific answers.
+AFTER user answers, confirm the refined criteria before searching.`;
 
     case 'icp_search':
       return `\n**ICP-AWARE SEARCH DETECTED**
