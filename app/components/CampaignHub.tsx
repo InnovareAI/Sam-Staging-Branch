@@ -379,55 +379,59 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                     <Play size={16} />
                   </Button>
                 )}
-                <Button
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    e.preventDefault();
+                    console.log('🔵 Eye button clicked!', c.id);
                     viewMessages(c);
                   }}
-                  variant="ghost"
-                  size="icon"
-                  className="text-cyan-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
+                  className="p-2 rounded-md text-cyan-400 hover:bg-gray-700 hover:text-white transition-colors"
                   title="View messages"
+                  type="button"
                 >
                   <Eye size={16} />
-                </Button>
-                <Button
+                </button>
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    e.preventDefault();
+                    console.log('🟠 Users button clicked!', c.id);
                     viewProspects(c.id);
                   }}
-                  variant="ghost"
-                  size="icon"
-                  className="text-orange-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
+                  className="p-2 rounded-md text-orange-400 hover:bg-gray-700 hover:text-white transition-colors"
                   title="View prospects"
+                  type="button"
                 >
                   <Users size={16} />
-                </Button>
-                <Button
+                </button>
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    e.preventDefault();
+                    console.log('🔷 Analytics button clicked!', c.id);
                     showCampaignAnalytics(c.id);
                   }}
-                  variant="ghost"
-                  size="icon"
-                  className="text-blue-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
+                  className="p-2 rounded-md text-blue-400 hover:bg-gray-700 hover:text-white transition-colors"
                   title="View analytics"
+                  type="button"
                 >
                   <BarChart3 size={16} />
-                </Button>
-                <Button
+                </button>
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    e.preventDefault();
+                    console.log('🟣 Edit button clicked!', c.id);
                     editCampaign(c);
                   }}
-                  variant="ghost"
-                  size="icon"
-                  className="text-purple-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
+                  className="p-2 rounded-md text-purple-400 hover:bg-gray-700 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={c.sent > 0 ? "Cannot edit (messages sent)" : "Edit campaign"}
                   disabled={c.sent > 0}
+                  type="button"
                 >
                   <Edit size={16} />
-                </Button>
+                </button>
               </div>
             </div>
           </CardHeader>
