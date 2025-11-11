@@ -104,6 +104,8 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
           timezone: timezone,
         };
 
+        console.log('📤 Creating monitor:', monitor);
+
         const response = await fetch('/api/linkedin-commenting/monitors', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -111,11 +113,24 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
         });
 
         if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to create monitor');
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to create monitor');
+          } else {
+            const text = await response.text();
+            console.error('Non-JSON error response:', text);
+            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+          }
         }
 
-        return response.json();
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          return response.json();
+        } else {
+          console.warn('Response is not JSON, returning empty object');
+          return {};
+        }
       });
 
       await Promise.all(monitorPromises);
