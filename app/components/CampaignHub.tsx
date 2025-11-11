@@ -38,7 +38,8 @@ import {
   Grid3x3,
   AlertTriangle,
   Loader2,
-  Link
+  Link,
+  Archive
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -5778,6 +5779,38 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     }
   };
 
+  // Handler for archiving campaign
+  const archiveCampaign = async (campaignId: string, campaignName: string) => {
+    try {
+      // Confirm before archiving
+      const confirmed = window.confirm(
+        `Archive campaign "${campaignName}"?\n\nThis will move the campaign to the Completed tab. You can still view it later.`
+      );
+
+      if (!confirmed) return;
+
+      console.log(`📦 Archiving campaign ${campaignId}`);
+
+      const response = await fetch(`/api/campaigns/${campaignId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'archived' })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to archive campaign');
+      }
+
+      toastSuccess('Campaign archived successfully');
+
+      // Refresh campaigns list
+      queryClient.invalidateQueries({ queryKey: ['campaigns', workspaceId] });
+    } catch (error) {
+      console.error('Error archiving campaign:', error);
+      toastError('Failed to archive campaign');
+    }
+  };
+
   // Handle campaign setting changes
   const handleCampaignSettingChange = (field: string, value: any) => {
     setEditedCampaignSettings((prev: any) => ({
@@ -6387,6 +6420,16 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                             title={campaign.status === 'active' ? 'Pause campaign' : 'Resume campaign'}
                           >
                             {campaign.status === 'active' ? <Pause size={18} /> : <Play size={18} />}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              archiveCampaign(campaign.id, campaign.name);
+                            }}
+                            className="text-red-400 hover:text-red-300 transition-colors"
+                            title="Archive campaign"
+                          >
+                            <Archive size={18} />
                           </button>
                           <button
                             onClick={(e) => {
