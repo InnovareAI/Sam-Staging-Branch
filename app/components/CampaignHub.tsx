@@ -4696,6 +4696,13 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const [showCampaignProspects, setShowCampaignProspects] = useState(false);
   const [selectedCampaignForProspects, setSelectedCampaignForProspects] = useState<string | null>(null);
 
+  // State for message preview and edit modals - matching CampaignList component
+  const [showMessagePreview, setShowMessagePreview] = useState(false);
+  const [selectedCampaignForMessages, setSelectedCampaignForMessages] = useState<any>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [campaignToEdit, setCampaignToEdit] = useState<any>(null);
+  const [editFormData, setEditFormData] = useState<any>({});
+
   // Editable campaign settings state
   const [editedCampaignSettings, setEditedCampaignSettings] = useState<any>({
     name: '',
@@ -5644,6 +5651,104 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     }
 
     setShowCampaignSettings(true);
+  };
+
+  // Handler for viewing message preview
+  const viewMessages = (campaign: any) => {
+    console.log('📧 View Messages clicked:', campaign);
+
+    // Check if campaign has messages
+    const hasMessages = campaign.connection_message || campaign.alternative_message ||
+                       (campaign.follow_up_messages && campaign.follow_up_messages.length > 0);
+
+    if (!hasMessages) {
+      toastWarning('This campaign has no messages configured yet');
+      return;
+    }
+
+    setSelectedCampaignForMessages(campaign);
+    setShowMessagePreview(true);
+  };
+
+  // Handler for viewing prospects
+  const viewProspects = (campaignId: string) => {
+    console.log('👥 View Prospects clicked:', campaignId);
+
+    if (!campaignId) {
+      toastError('Invalid campaign ID');
+      return;
+    }
+
+    setSelectedCampaignForProspects(campaignId);
+    setShowCampaignProspects(true);
+  };
+
+  // Handler for showing campaign analytics
+  const showCampaignAnalytics = (campaignId: string) => {
+    console.log('📊 Analytics clicked:', campaignId);
+    // TODO: Open analytics modal or navigate to analytics view
+    toastInfo(`Analytics for campaign ${campaignId} - Coming soon!`);
+  };
+
+  // Handler for editing campaign
+  const editCampaign = (campaign: any) => {
+    console.log('🎯 Edit campaign clicked:', campaign);
+
+    // Validate campaign data
+    if (!campaign || !campaign.id) {
+      toastError('Invalid campaign data');
+      return;
+    }
+
+    // Check if campaign has sent messages
+    if (campaign.sent && campaign.sent > 0) {
+      toastError('Cannot edit campaign that has already sent messages');
+      return;
+    }
+
+    // Check if campaign is active
+    if (campaign.status === 'active') {
+      toastWarning('Cannot edit an active campaign. Pause it first.');
+      return;
+    }
+
+    console.log('✅ Opening edit modal for campaign:', campaign.id);
+
+    setCampaignToEdit(campaign);
+    setEditFormData({
+      name: campaign.name || '',
+      connection_message: campaign.connection_message || '',
+      alternative_message: campaign.alternative_message || '',
+      follow_up_messages: campaign.follow_up_messages || []
+    });
+    setShowEditModal(true);
+  };
+
+  // Handler for saving campaign edits
+  const handleSaveCampaignEdit = async () => {
+    if (!campaignToEdit) return;
+
+    try {
+      const response = await fetch(`/api/campaigns/${campaignToEdit.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editFormData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update campaign');
+      }
+
+      toastSuccess('Campaign updated successfully!');
+      setShowEditModal(false);
+      setCampaignToEdit(null);
+
+      // Refresh campaigns list
+      queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+    } catch (error) {
+      console.error('Error updating campaign:', error);
+      toastError('Failed to update campaign');
+    }
   };
 
   // Handle campaign setting changes
@@ -7619,6 +7724,225 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Message Preview Modal */}
+      {showMessagePreview && selectedCampaignForMessages && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowMessagePreview(false)}>
+          <div className="bg-gray-900 border border-purple-500 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-gray-900 border-b border-gray-700 p-6 z-10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl text-white flex items-center gap-2">
+                    <Eye className="text-purple-400" size={24} />
+                    Message Preview: {selectedCampaignForMessages.name}
+                  </h2>
+                  <p className="text-gray-400 text-sm mt-1">Review all messages that will be sent in this campaign</p>
+                </div>
+                <button
+                  onClick={() => setShowMessagePreview(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Connection Message */}
+              {selectedCampaignForMessages.connection_message && (
+                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-purple-400 mb-3 flex items-center gap-2">
+                    <MessageCircle size={18} />
+                    Connection Request Message
+                  </h3>
+                  <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                    <p className="text-gray-200 whitespace-pre-wrap">{selectedCampaignForMessages.connection_message}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Alternative Message */}
+              {selectedCampaignForMessages.alternative_message && (
+                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center gap-2">
+                    <MessageSquare size={18} />
+                    Alternative Message
+                  </h3>
+                  <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                    <p className="text-gray-200 whitespace-pre-wrap">{selectedCampaignForMessages.alternative_message}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Follow-up Messages */}
+              {selectedCampaignForMessages.follow_up_messages && selectedCampaignForMessages.follow_up_messages.length > 0 && (
+                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-green-400 mb-3 flex items-center gap-2">
+                    <Send size={18} />
+                    Follow-up Messages ({selectedCampaignForMessages.follow_up_messages.length})
+                  </h3>
+                  <div className="space-y-4">
+                    {selectedCampaignForMessages.follow_up_messages.map((msg: any, index: number) => (
+                      <div key={index} className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-400">Follow-up #{index + 1}</span>
+                          {msg.delay_days && (
+                            <span className="bg-blue-900/20 text-blue-400 border border-blue-500 px-2 py-1 rounded text-xs">
+                              Delay: {msg.delay_days} days
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-gray-200 whitespace-pre-wrap">{msg.message || msg.content || msg}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* No Messages */}
+              {!selectedCampaignForMessages.connection_message &&
+               !selectedCampaignForMessages.alternative_message &&
+               (!selectedCampaignForMessages.follow_up_messages || selectedCampaignForMessages.follow_up_messages.length === 0) && (
+                <div className="text-center py-8 text-gray-400">
+                  <AlertCircle size={48} className="mx-auto mb-4 text-gray-600" />
+                  <p>No messages configured for this campaign</p>
+                </div>
+              )}
+            </div>
+
+            <div className="sticky bottom-0 bg-gray-900 border-t border-gray-700 p-6">
+              <Button
+                onClick={() => setShowMessagePreview(false)}
+                className="bg-purple-600 hover:bg-purple-700 w-full"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Campaign Modal */}
+      {showEditModal && campaignToEdit && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowEditModal(false)}>
+          <div className="bg-gray-900 border border-purple-500 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-gray-900 border-b border-gray-700 p-6 z-10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl text-white flex items-center gap-2">
+                    <Edit className="text-purple-400" size={24} />
+                    Edit Campaign: {campaignToEdit.name}
+                  </h2>
+                  <p className="text-gray-400 text-sm mt-1">Update campaign messages and settings</p>
+                </div>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Campaign Name */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Campaign Name</Label>
+                <Input
+                  value={editFormData.name || ''}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  className="bg-gray-800 border-gray-700 text-white"
+                  placeholder="Campaign name"
+                />
+              </div>
+
+              {/* Connection Message */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Connection Request Message</Label>
+                <Textarea
+                  value={editFormData.connection_message || ''}
+                  onChange={(e) => setEditFormData({ ...editFormData, connection_message: e.target.value })}
+                  className="bg-gray-800 border-gray-700 text-white min-h-[120px]"
+                  placeholder="Hi {{firstName}}, I noticed..."
+                />
+                <p className="text-xs text-gray-500 mt-1">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</p>
+              </div>
+
+              {/* Alternative Message */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Alternative Message (Optional)</Label>
+                <Textarea
+                  value={editFormData.alternative_message || ''}
+                  onChange={(e) => setEditFormData({ ...editFormData, alternative_message: e.target.value })}
+                  className="bg-gray-800 border-gray-700 text-white min-h-[120px]"
+                  placeholder="Alternative message if already connected..."
+                />
+              </div>
+
+              {/* Follow-up Messages */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Follow-up Messages</Label>
+                <div className="space-y-3">
+                  {(editFormData.follow_up_messages || []).map((msg: any, index: number) => (
+                    <div key={index} className="bg-gray-800/50 border border-gray-700 rounded p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-400">Follow-up #{index + 1}</span>
+                        <button
+                          onClick={() => {
+                            const updated = [...editFormData.follow_up_messages];
+                            updated.splice(index, 1);
+                            setEditFormData({ ...editFormData, follow_up_messages: updated });
+                          }}
+                          className="text-red-400 hover:text-red-300 text-sm"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <Textarea
+                        value={typeof msg === 'string' ? msg : (msg.message || msg.content || '')}
+                        onChange={(e) => {
+                          const updated = [...editFormData.follow_up_messages];
+                          updated[index] = typeof msg === 'string' ? e.target.value : { ...msg, message: e.target.value };
+                          setEditFormData({ ...editFormData, follow_up_messages: updated });
+                        }}
+                        className="bg-gray-900 border-gray-700 text-white min-h-[80px]"
+                      />
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const updated = [...(editFormData.follow_up_messages || []), ''];
+                      setEditFormData({ ...editFormData, follow_up_messages: updated });
+                    }}
+                    className="w-full border-gray-700 text-gray-300 hover:bg-gray-800"
+                  >
+                    <Plus size={16} className="mr-2" />
+                    Add Follow-up Message
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 bg-gray-900 border-t border-gray-700 p-6 flex gap-3">
+              <Button
+                onClick={() => setShowEditModal(false)}
+                variant="outline"
+                className="flex-1 border-gray-700 text-gray-300 hover:bg-gray-800"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveCampaignEdit}
+                className="flex-1 bg-purple-600 hover:bg-purple-700"
+              >
+                Save Changes
+              </Button>
             </div>
           </div>
         </div>
