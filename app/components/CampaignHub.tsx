@@ -541,25 +541,25 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                 </div>
               )}
 
-              {/* Message Templates */}
-              {selectedCampaignForMessages.message_templates && selectedCampaignForMessages.message_templates.length > 0 && (
+              {/* Message Templates (JSONB object) */}
+              {selectedCampaignForMessages.message_templates && typeof selectedCampaignForMessages.message_templates === 'object' && Object.keys(selectedCampaignForMessages.message_templates).length > 0 && (
                 <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-yellow-400 mb-3 flex items-center gap-2">
                     <FileText size={18} />
-                    Message Templates ({selectedCampaignForMessages.message_templates.length})
+                    Message Templates ({Object.keys(selectedCampaignForMessages.message_templates).length})
                   </h3>
                   <div className="space-y-4">
-                    {selectedCampaignForMessages.message_templates.map((template: any, index: number) => (
-                      <div key={index} className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                    {Object.entries(selectedCampaignForMessages.message_templates).map(([key, value]: [string, any], index: number) => (
+                      <div key={key} className="bg-gray-900/50 border border-gray-700 rounded p-4">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-gray-400">Template #{index + 1}</span>
-                          {template.type && (
+                          <span className="text-sm font-medium text-gray-400">{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                          {value?.type && (
                             <Badge className="bg-yellow-900/20 text-yellow-400 border-yellow-500">
-                              {template.type}
+                              {value.type}
                             </Badge>
                           )}
                         </div>
-                        <p className="text-gray-200 whitespace-pre-wrap">{template.content || template.message || template}</p>
+                        <p className="text-gray-200 whitespace-pre-wrap">{typeof value === 'string' ? value : (value?.content || value?.message || JSON.stringify(value, null, 2))}</p>
                       </div>
                     ))}
                   </div>
@@ -570,7 +570,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
               {!selectedCampaignForMessages.connection_message &&
                !selectedCampaignForMessages.alternative_message &&
                (!selectedCampaignForMessages.follow_up_messages || selectedCampaignForMessages.follow_up_messages.length === 0) &&
-               (!selectedCampaignForMessages.message_templates || selectedCampaignForMessages.message_templates.length === 0) && (
+               (!selectedCampaignForMessages.message_templates || typeof selectedCampaignForMessages.message_templates !== 'object' || Object.keys(selectedCampaignForMessages.message_templates).length === 0) && (
                 <div className="text-center py-8 text-gray-400">
                   <AlertCircle size={48} className="mx-auto mb-4 text-gray-600" />
                   <p>No messages configured for this campaign</p>
