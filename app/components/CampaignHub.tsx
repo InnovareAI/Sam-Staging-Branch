@@ -487,92 +487,84 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
             </DialogHeader>
 
             <div className="space-y-6 mt-4">
-              {/* Connection Message */}
-              {selectedCampaignForMessages.connection_message && (
+              {/* Connection Request Message - check both direct field and message_templates */}
+              {(selectedCampaignForMessages.connection_message || selectedCampaignForMessages.message_templates?.connection_request) && (
                 <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-purple-400 mb-3 flex items-center gap-2">
                     <MessageCircle size={18} />
                     Connection Request Message
                   </h3>
                   <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
-                    <p className="text-gray-200 whitespace-pre-wrap">{selectedCampaignForMessages.connection_message}</p>
+                    <p className="text-gray-200 whitespace-pre-wrap">
+                      {selectedCampaignForMessages.connection_message || selectedCampaignForMessages.message_templates?.connection_request}
+                    </p>
                   </div>
                 </div>
               )}
 
-              {/* Alternative Message */}
-              {selectedCampaignForMessages.alternative_message && (
+              {/* Alternative Message - check both direct field and message_templates */}
+              {(selectedCampaignForMessages.alternative_message || selectedCampaignForMessages.message_templates?.alternative_message) && (
                 <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center gap-2">
                     <MessageSquare size={18} />
                     Alternative Message
                   </h3>
                   <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
-                    <p className="text-gray-200 whitespace-pre-wrap">{selectedCampaignForMessages.alternative_message}</p>
+                    <p className="text-gray-200 whitespace-pre-wrap">
+                      {selectedCampaignForMessages.alternative_message || selectedCampaignForMessages.message_templates?.alternative_message}
+                    </p>
                   </div>
                 </div>
               )}
 
-              {/* Follow-up Messages */}
-              {selectedCampaignForMessages.follow_up_messages && selectedCampaignForMessages.follow_up_messages.length > 0 && (
-                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-green-400 mb-3 flex items-center gap-2">
-                    <Send size={18} />
-                    Follow-up Messages ({selectedCampaignForMessages.follow_up_messages.length})
-                  </h3>
-                  <div className="space-y-4">
-                    {selectedCampaignForMessages.follow_up_messages.map((msg: any, index: number) => (
-                      <div key={index} className="bg-gray-900/50 border border-gray-700 rounded p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-gray-400">Follow-up #{index + 1}</span>
-                          {msg.delay_days && (
-                            <Badge className="bg-blue-900/20 text-blue-400 border-blue-500">
-                              Delay: {msg.delay_days} days
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-gray-200 whitespace-pre-wrap">{msg.message || msg.content || msg}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Follow-up Messages - check both direct field and message_templates */}
+              {(() => {
+                const followUps = selectedCampaignForMessages.follow_up_messages?.length > 0
+                  ? selectedCampaignForMessages.follow_up_messages
+                  : selectedCampaignForMessages.message_templates?.follow_up_messages;
 
-              {/* Message Templates (JSONB object) */}
-              {selectedCampaignForMessages.message_templates && typeof selectedCampaignForMessages.message_templates === 'object' && Object.keys(selectedCampaignForMessages.message_templates).length > 0 && (
-                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-yellow-400 mb-3 flex items-center gap-2">
-                    <FileText size={18} />
-                    Message Templates ({Object.keys(selectedCampaignForMessages.message_templates).length})
-                  </h3>
-                  <div className="space-y-4">
-                    {Object.entries(selectedCampaignForMessages.message_templates).map(([key, value]: [string, any], index: number) => (
-                      <div key={key} className="bg-gray-900/50 border border-gray-700 rounded p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-gray-400">{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
-                          {value?.type && (
-                            <Badge className="bg-yellow-900/20 text-yellow-400 border-yellow-500">
-                              {value.type}
-                            </Badge>
-                          )}
+                return followUps && followUps.length > 0 && (
+                  <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-green-400 mb-3 flex items-center gap-2">
+                      <Send size={18} />
+                      Follow-up Messages ({followUps.length})
+                    </h3>
+                    <div className="space-y-4">
+                      {followUps.map((msg: any, index: number) => (
+                        <div key={index} className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-400">Follow-up #{index + 1}</span>
+                            {msg.delay_days && (
+                              <Badge className="bg-blue-900/20 text-blue-400 border-blue-500">
+                                Delay: {msg.delay_days} days
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-gray-200 whitespace-pre-wrap">{typeof msg === 'string' ? msg : (msg.message || msg.content || msg)}</p>
                         </div>
-                        <p className="text-gray-200 whitespace-pre-wrap">{typeof value === 'string' ? value : (value?.content || value?.message || JSON.stringify(value, null, 2))}</p>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* No Messages */}
-              {!selectedCampaignForMessages.connection_message &&
-               !selectedCampaignForMessages.alternative_message &&
-               (!selectedCampaignForMessages.follow_up_messages || selectedCampaignForMessages.follow_up_messages.length === 0) &&
-               (!selectedCampaignForMessages.message_templates || typeof selectedCampaignForMessages.message_templates !== 'object' || Object.keys(selectedCampaignForMessages.message_templates).length === 0) && (
-                <div className="text-center py-8 text-gray-400">
-                  <AlertCircle size={48} className="mx-auto mb-4 text-gray-600" />
-                  <p>No messages configured for this campaign</p>
-                </div>
-              )}
+              {(() => {
+                const hasDirectMessages = selectedCampaignForMessages.connection_message ||
+                                         selectedCampaignForMessages.alternative_message ||
+                                         (selectedCampaignForMessages.follow_up_messages?.length > 0);
+
+                const hasTemplateMessages = selectedCampaignForMessages.message_templates?.connection_request ||
+                                           selectedCampaignForMessages.message_templates?.alternative_message ||
+                                           (selectedCampaignForMessages.message_templates?.follow_up_messages?.length > 0);
+
+                return !hasDirectMessages && !hasTemplateMessages && (
+                  <div className="text-center py-8 text-gray-400">
+                    <AlertCircle size={48} className="mx-auto mb-4 text-gray-600" />
+                    <p>No messages configured for this campaign</p>
+                  </div>
+                );
+              })()}
             </div>
 
             <DialogFooter className="mt-6">
