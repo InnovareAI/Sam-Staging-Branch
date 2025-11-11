@@ -338,7 +338,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
           }}
         >
         <Card
-          className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm border-gray-700 hover:border-purple-500/50 hover:bg-gradient-to-br hover:from-purple-600/20 hover:to-purple-900/20 shadow-xl hover:shadow-purple-500/20 group cursor-pointer transition-all duration-300"
+          className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm border-gray-700 hover:border-purple-500/50 hover:bg-gradient-to-br hover:from-purple-600/20 hover:to-purple-900/20 shadow-xl hover:shadow-purple-500/20 group transition-all duration-300"
         >
           <CardHeader>
             <div className="flex justify-between items-start">
@@ -351,10 +351,13 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                   {c.status}
                 </Badge>
               </div>
-              <div className="flex gap-2 ml-4">
+              <div className="flex gap-2 ml-4 relative z-10">
                 {c.status === 'active' ? (
                   <Button
-                    onClick={() => toggleCampaignStatus(c.id, c.status)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleCampaignStatus(c.id, c.status);
+                    }}
                     variant="ghost"
                     size="icon"
                     className="text-yellow-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
@@ -364,7 +367,10 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                   </Button>
                 ) : (
                   <Button
-                    onClick={() => toggleCampaignStatus(c.id, c.status)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleCampaignStatus(c.id, c.status);
+                    }}
                     variant="ghost"
                     size="icon"
                     className="text-green-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
@@ -374,7 +380,10 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                   </Button>
                 )}
                 <Button
-                  onClick={() => viewMessages(c)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    viewMessages(c);
+                  }}
                   variant="ghost"
                   size="icon"
                   className="text-cyan-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
@@ -383,7 +392,10 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                   <Eye size={16} />
                 </Button>
                 <Button
-                  onClick={() => viewProspects(c.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    viewProspects(c.id);
+                  }}
                   variant="ghost"
                   size="icon"
                   className="text-orange-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
@@ -392,7 +404,10 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                   <Users size={16} />
                 </Button>
                 <Button
-                  onClick={() => showCampaignAnalytics(c.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showCampaignAnalytics(c.id);
+                  }}
                   variant="ghost"
                   size="icon"
                   className="text-blue-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
@@ -401,7 +416,10 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                   <BarChart3 size={16} />
                 </Button>
                 <Button
-                  onClick={() => editCampaign(c)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    editCampaign(c);
+                  }}
                   variant="ghost"
                   size="icon"
                   className="text-purple-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
