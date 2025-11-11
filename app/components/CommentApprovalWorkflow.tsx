@@ -501,7 +501,7 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
                 )}
 
                 <div className="text-xs text-gray-400 mt-3">
-                  {selectedComment.generatedComment.length} characters · Generated with Haiku 4.5
+                  {selectedComment.generatedComment.length} characters · Generated with SAM AI
                 </div>
               </div>
 

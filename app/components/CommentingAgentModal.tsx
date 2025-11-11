@@ -138,7 +138,7 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
                   <div>
                     <h3 className="text-lg font-semibold text-white mb-2">Smart LinkedIn Commenting</h3>
                     <p className="text-gray-300 text-sm leading-relaxed mb-4">
-                      Automatically discover and comment on LinkedIn posts using Haiku 4.5 AI. Build relationships
+                      Automatically discover and comment on LinkedIn posts using SAM AI. Build relationships
                       and generate leads by engaging with your target audience where they're already active.
                     </p>
                     <div className="grid grid-cols-2 gap-4">
@@ -152,7 +152,7 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
                       </div>
                       <div className="flex items-center gap-2 text-sm">
                         <MessageSquare size={16} className="text-pink-400" />
-                        <span className="text-gray-300">Haiku-optimized</span>
+                        <span className="text-gray-300">SAM-powered</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
                         <Clock size={16} className="text-pink-400" />
@@ -220,7 +220,7 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
                   {[
                     'New "Commenting Agent" tab appears in sidebar',
                     'Create campaigns targeting hashtags, keywords, or profiles',
-                    'AI generates contextual comments using Haiku 4.5',
+                    'SAM generates contextual comments using AI',
                     'Smart anti-bot detection prevents spam flags',
                     'Approve comments before posting (HITL workflow)',
                     'Track engagement and convert commenters to prospects',
@@ -251,7 +251,7 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
                   </li>
                   <li className="flex gap-2">
                     <span className="text-pink-400 font-medium">4.</span>
-                    <span>Generates contextual comment using Haiku 4.5 (tiered strategy: 50% templates, 40% light AI, 10% full AI)</span>
+                    <span>SAM generates contextual comments (tiered strategy: 50% templates, 40% light AI, 10% full AI)</span>
                   </li>
                   <li className="flex gap-2">
                     <span className="text-pink-400 font-medium">5.</span>
@@ -272,11 +272,11 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
               <div className="p-4 bg-blue-900/20 border border-blue-700/50 rounded-lg">
                 <h4 className="text-blue-200 font-medium mb-2 flex items-center gap-2">
                   <Sparkles size={16} />
-                  Cost-Effective with Haiku 4.5
+                  Cost-Effective with SAM AI
                 </h4>
                 <p className="text-blue-300/80 text-sm leading-relaxed">
                   Using tiered AI strategy: ~$0.09/month for 30 comments per day per workspace.
-                  That's 80x cheaper than using Sonnet for everything. Templates are free,
+                  That's 80x cheaper than using premium AI for everything. Templates are free,
                   light AI costs $0.0001/comment, full AI costs $0.0005/comment.
                 </p>
               </div>
