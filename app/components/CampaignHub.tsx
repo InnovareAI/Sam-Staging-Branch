@@ -183,12 +183,27 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   };
 
   const editCampaign = (campaign: any) => {
-    console.log('🎯 Edit campaign clicked:', campaign.id);
+    console.log('🎯 Edit campaign clicked:', campaign);
+
+    // Validate campaign data
+    if (!campaign || !campaign.id) {
+      toastError('Invalid campaign data');
+      return;
+    }
+
     // Check if campaign has sent messages
-    if (campaign.sent > 0) {
+    if (campaign.sent && campaign.sent > 0) {
       toastError('Cannot edit campaign that has already sent messages');
       return;
     }
+
+    // Check if campaign is active
+    if (campaign.status === 'active') {
+      toastWarning('Cannot edit an active campaign. Pause it first.');
+      return;
+    }
+
+    console.log('✅ Opening edit modal for campaign:', campaign.id);
 
     setCampaignToEdit(campaign);
     setEditFormData({
@@ -229,6 +244,16 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   // Handler for viewing message preview
   const viewMessages = (campaign: any) => {
     console.log('📧 View Messages clicked:', campaign);
+
+    // Check if campaign has messages
+    const hasMessages = campaign.connection_message || campaign.alternative_message ||
+                       (campaign.follow_up_messages && campaign.follow_up_messages.length > 0);
+
+    if (!hasMessages) {
+      toastWarning('This campaign has no messages configured yet');
+      return;
+    }
+
     setSelectedCampaignForMessages(campaign);
     setShowMessagePreview(true);
   };
@@ -236,6 +261,12 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   // Handler for viewing prospects
   const viewProspects = (campaignId: string) => {
     console.log('👥 View Prospects clicked:', campaignId);
+
+    if (!campaignId) {
+      toastError('Invalid campaign ID');
+      return;
+    }
+
     setSelectedCampaignForProspects(campaignId);
     setShowProspectsModal(true);
   };
