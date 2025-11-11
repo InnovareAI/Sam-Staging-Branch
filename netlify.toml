@@ -1,9 +1,10 @@
 [build]
-  command = "rm -rf .next && npm run build"
+  command = "rm -rf .next && rm -rf node_modules/.cache && npm run build"
   publish = ".next"
 
 [build.environment]
   NODE_VERSION = "20"
+  NETLIFY_NEXT_PLUGIN_SKIP_CACHE = "true"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
