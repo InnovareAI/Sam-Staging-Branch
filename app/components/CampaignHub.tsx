@@ -245,10 +245,18 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   // Handler for viewing message preview
   const viewMessages = (campaign: any) => {
     console.log('📧 View Messages clicked:', campaign);
+    console.log('📧 Campaign message data:', {
+      connection_message: campaign.connection_message,
+      alternative_message: campaign.alternative_message,
+      follow_up_messages: campaign.follow_up_messages,
+      message_templates: campaign.message_templates
+    });
 
-    // Check if campaign has messages
-    const hasMessages = campaign.connection_message || campaign.alternative_message ||
-                       (campaign.follow_up_messages && campaign.follow_up_messages.length > 0);
+    // Check if campaign has messages (check message_templates JSONB field too)
+    const hasMessages = campaign.connection_message ||
+                       campaign.alternative_message ||
+                       (campaign.follow_up_messages && campaign.follow_up_messages.length > 0) ||
+                       (campaign.message_templates && Object.keys(campaign.message_templates).length > 0);
 
     if (!hasMessages) {
       toastWarning('This campaign has no messages configured yet');
@@ -5657,10 +5665,18 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   // Handler for viewing message preview
   const viewMessages = (campaign: any) => {
     console.log('📧 View Messages clicked:', campaign);
+    console.log('📧 Campaign message data:', {
+      connection_message: campaign.connection_message,
+      alternative_message: campaign.alternative_message,
+      follow_up_messages: campaign.follow_up_messages,
+      message_templates: campaign.message_templates
+    });
 
-    // Check if campaign has messages
-    const hasMessages = campaign.connection_message || campaign.alternative_message ||
-                       (campaign.follow_up_messages && campaign.follow_up_messages.length > 0);
+    // Check if campaign has messages (check message_templates JSONB field too)
+    const hasMessages = campaign.connection_message ||
+                       campaign.alternative_message ||
+                       (campaign.follow_up_messages && campaign.follow_up_messages.length > 0) ||
+                       (campaign.message_templates && Object.keys(campaign.message_templates).length > 0);
 
     if (!hasMessages) {
       toastWarning('This campaign has no messages configured yet');
