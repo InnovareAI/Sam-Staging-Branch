@@ -177,6 +177,55 @@ export async function POST(
         }, { status: 400 });
       }
 
+      // CRITICAL: Check if any prospects are already in active campaigns
+      const linkedinUrls = prospects
+        .map(p => p.linkedin_url || p.linkedin_profile_url || p.contact?.linkedin_url)
+        .filter(Boolean)
+        .map(url => url.toLowerCase().trim().replace(/\/$/, ''))
+
+      const emails = prospects
+        .map(p => p.email)
+        .filter(Boolean)
+        .map(email => email.toLowerCase().trim())
+
+      if (linkedinUrls.length > 0 || emails.length > 0) {
+        const { data: existingProspects } = await supabase
+          .from('campaign_prospects')
+          .select(`
+            id,
+            first_name,
+            last_name,
+            linkedin_url,
+            email,
+            status,
+            campaign_id,
+            campaigns!inner(name, status)
+          `)
+          .eq('workspace_id', campaign.workspace_id)
+          .neq('campaign_id', campaignId)
+          .in('status', ['pending', 'approved', 'ready_to_message', 'queued_in_n8n', 'connection_requested', 'connected', 'messaging'])
+          .or(`linkedin_url.in.(${linkedinUrls.length > 0 ? linkedinUrls.map(u => `"${u}"`).join(',') : '""'}),email.in.(${emails.length > 0 ? emails.map(e => `"${e}"`).join(',') : '""'})`)
+
+        const conflictingProspects = (existingProspects || []).filter(p => {
+          return p.campaigns?.status === 'active' || p.campaigns?.status === 'draft'
+        })
+
+        if (conflictingProspects.length > 0) {
+          const conflictDetails = conflictingProspects.map(p => ({
+            name: `${p.first_name} ${p.last_name}`,
+            linkedin_url: p.linkedin_url,
+            current_campaign: p.campaigns?.name || 'Unknown',
+            status: p.status
+          }))
+
+          return NextResponse.json({
+            error: 'campaign_conflict',
+            message: `${conflictingProspects.length} prospect(s) are already in active campaigns. Remove them from existing campaigns before adding to this one.`,
+            conflicts: conflictDetails
+          }, { status: 409 })
+        }
+      }
+
       // Insert prospects directly into campaign_prospects
       const campaignProspects = prospects.map(prospect => ({
         campaign_id: campaignId,

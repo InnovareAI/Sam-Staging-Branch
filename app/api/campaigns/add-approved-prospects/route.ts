@@ -79,6 +79,67 @@ export async function POST(request: NextRequest) {
       }, { status: 404 })
     }
 
+    // CRITICAL: Check if any prospects are already in active campaigns
+    // This prevents the same person from receiving conflicting messages from multiple campaigns
+    const linkedinUrls = validProspects
+      .map(p => p.contact?.linkedin_url || p.linkedin_url)
+      .filter(Boolean)
+      .map(url => url.toLowerCase().trim().replace(/\/$/, ''))
+
+    const emails = validProspects
+      .map(p => p.contact?.email)
+      .filter(Boolean)
+      .map(email => email.toLowerCase().trim())
+
+    // Find prospects already in active campaigns (sequence not completed)
+    const { data: existingProspects, error: checkError } = await supabase
+      .from('campaign_prospects')
+      .select(`
+        id,
+        first_name,
+        last_name,
+        linkedin_url,
+        email,
+        status,
+        campaign_id,
+        campaigns!inner(name, status)
+      `)
+      .eq('workspace_id', workspace_id)
+      .neq('campaign_id', campaign_id) // Different campaign
+      .in('status', ['pending', 'approved', 'ready_to_message', 'queued_in_n8n', 'connection_requested', 'connected', 'messaging'])
+      .or(`linkedin_url.in.(${linkedinUrls.length > 0 ? linkedinUrls.map(u => `"${u}"`).join(',') : '""'}),email.in.(${emails.length > 0 ? emails.map(e => `"${e}"`).join(',') : '""'})`)
+
+    if (checkError) {
+      console.error('Error checking for duplicate prospects:', checkError)
+      // Continue anyway - don't block the entire operation
+    }
+
+    const conflictingProspects = (existingProspects || []).filter(p => {
+      // Only block if the prospect is in an ACTIVE campaign (not completed/archived)
+      return p.campaigns?.status === 'active' || p.campaigns?.status === 'draft'
+    })
+
+    if (conflictingProspects.length > 0) {
+      const conflictDetails = conflictingProspects.map(p => ({
+        name: `${p.first_name} ${p.last_name}`,
+        linkedin_url: p.linkedin_url,
+        current_campaign: p.campaigns?.name || 'Unknown',
+        status: p.status
+      }))
+
+      console.warn('⚠️ Campaign conflict detected:', {
+        count: conflictingProspects.length,
+        conflicts: conflictDetails
+      })
+
+      return NextResponse.json({
+        success: false,
+        error: 'campaign_conflict',
+        message: `${conflictingProspects.length} prospect(s) are already in active campaigns. Remove them from existing campaigns before adding to this one.`,
+        conflicts: conflictDetails
+      }, { status: 409 })
+    }
+
     // Get campaign and its LinkedIn account to set prospect ownership
     const { data: campaign } = await supabase
       .from('campaigns')
