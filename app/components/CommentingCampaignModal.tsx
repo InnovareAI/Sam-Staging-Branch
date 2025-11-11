@@ -39,6 +39,9 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
   // Advanced Settings
   const [tagAuthors, setTagAuthors] = useState(true);
   const [blacklistedProfiles, setBlacklistedProfiles] = useState('');
+  const [monitorComments, setMonitorComments] = useState(false);
+  const [replyToComments, setReplyToComments] = useState(false);
+  const [timezone, setTimezone] = useState('America/New_York');
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -85,6 +88,9 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
       advanced: {
         tagAuthors,
         blacklistedProfiles: blacklistedProfiles.split(',').map(p => p.trim()).filter(Boolean),
+        monitorComments,
+        replyToComments,
+        timezone,
       },
     });
 
@@ -434,6 +440,63 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
                     rows={2}
                     className="w-full px-4 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
                   />
+                </div>
+
+                {/* Monitor Comments */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-white font-medium text-sm">Monitor Comments on Posts</div>
+                    <div className="text-gray-400 text-xs">Track individual comments to find reply opportunities</div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={monitorComments}
+                      onChange={(e) => setMonitorComments(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600"></div>
+                  </label>
+                </div>
+
+                {/* Reply to Comments */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-white font-medium text-sm">Reply to High-Engagement Comments</div>
+                    <div className="text-gray-400 text-xs">Generate replies to comments on posts (requires monitoring)</div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={replyToComments}
+                      onChange={(e) => setReplyToComments(e.target.checked)}
+                      disabled={!monitorComments}
+                      className="sr-only peer"
+                    />
+                    <div className={`w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600 ${!monitorComments ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
+                  </label>
+                </div>
+
+                {/* Timezone */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Timezone for Scheduling</label>
+                  <select
+                    value={timezone}
+                    onChange={(e) => setTimezone(e.target.value)}
+                    className="w-full px-4 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  >
+                    <option value="America/New_York">Eastern Time (ET)</option>
+                    <option value="America/Chicago">Central Time (CT)</option>
+                    <option value="America/Denver">Mountain Time (MT)</option>
+                    <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                    <option value="Europe/London">London (GMT)</option>
+                    <option value="Europe/Paris">Paris (CET)</option>
+                    <option value="Europe/Berlin">Berlin (CET)</option>
+                    <option value="Asia/Tokyo">Tokyo (JST)</option>
+                    <option value="Asia/Shanghai">Shanghai (CST)</option>
+                    <option value="Asia/Dubai">Dubai (GST)</option>
+                    <option value="Australia/Sydney">Sydney (AEDT)</option>
+                  </select>
                 </div>
               </div>
             )}

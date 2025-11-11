@@ -105,8 +105,25 @@ export async function POST(request: NextRequest) {
 
     console.log('📤 Posting to Unipile:', {
       url: unipileUrl,
-      post_id: comment.post_social_id
+      post_id: comment.post_social_id,
+      is_reply: comment.is_comment_reply || false,
+      reply_to: comment.reply_to_comment_id || null
     });
+
+    // Build request payload
+    const unipilePayload: any = {
+      account_id: workspaceAccount.unipile_account_id,
+      text: comment.comment_text
+    };
+
+    // If this is a reply to another comment, add in_reply_to parameter
+    if (comment.is_comment_reply && comment.reply_to_comment_id) {
+      unipilePayload.in_reply_to = comment.reply_to_comment_id;
+      console.log('🔗 Adding nested reply parameter:', {
+        in_reply_to: comment.reply_to_comment_id,
+        replying_to_author: comment.reply_to_author_name
+      });
+    }
 
     const unipileResponse = await fetch(unipileUrl, {
       method: 'POST',
@@ -114,10 +131,7 @@ export async function POST(request: NextRequest) {
         'X-API-KEY': workspaceAccount.unipile_api_key,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        account_id: workspaceAccount.unipile_account_id,
-        text: comment.comment_text
-      })
+      body: JSON.stringify(unipilePayload)
     });
 
     if (!unipileResponse.ok) {
@@ -178,6 +192,9 @@ export async function POST(request: NextRequest) {
         comment_linkedin_id: commentLinkedInId,
         comment_text: comment.comment_text,
         posted_by_account_id: workspaceAccount.unipile_account_id,
+        is_comment_reply: comment.is_comment_reply || false,
+        replied_to_comment_id: comment.reply_to_comment_id || null,
+        replied_to_author_name: comment.reply_to_author_name || null,
         metadata: {
           confidence_score: comment.confidence_score,
           approval_status: comment.approval_status,
