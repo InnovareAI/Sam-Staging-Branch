@@ -5751,6 +5751,33 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     }
   };
 
+  // Handler for toggling campaign status (pause/resume)
+  const toggleCampaignStatus = async (campaignId: string, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === 'active' ? 'paused' : 'active';
+
+      console.log(`🔄 Toggling campaign ${campaignId} from ${currentStatus} to ${newStatus}`);
+
+      const response = await fetch(`/api/campaigns/${campaignId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update campaign status');
+      }
+
+      toastSuccess(`Campaign ${newStatus === 'active' ? 'resumed' : 'paused'} successfully`);
+
+      // Refresh campaigns list
+      queryClient.invalidateQueries({ queryKey: ['campaigns', workspaceId] });
+    } catch (error) {
+      console.error('Error toggling campaign status:', error);
+      toastError('Failed to update campaign status');
+    }
+  };
+
   // Handle campaign setting changes
   const handleCampaignSettingChange = (field: string, value: any) => {
     setEditedCampaignSettings((prev: any) => ({
@@ -6346,6 +6373,20 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                             disabled={campaign.sent > 0}
                           >
                             <Edit size={18} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleCampaignStatus(campaign.id, campaign.status);
+                            }}
+                            className={`transition-colors ${
+                              campaign.status === 'active'
+                                ? 'text-yellow-400 hover:text-yellow-300'
+                                : 'text-green-400 hover:text-green-300'
+                            }`}
+                            title={campaign.status === 'active' ? 'Pause campaign' : 'Resume campaign'}
+                          >
+                            {campaign.status === 'active' ? <Pause size={18} /> : <Play size={18} />}
                           </button>
                           <button
                             onClick={(e) => {
