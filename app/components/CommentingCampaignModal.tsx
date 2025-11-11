@@ -70,7 +70,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
 
       // Create a monitor for each target
       const monitorPromises = validTargets.map(async (target) => {
-        const monitor = {
+        const monitor: any = {
           workspace_id: workspaceId,
           monitor_type: targetingMode,
           target_value: target.trim(),
@@ -94,15 +94,28 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
             },
             tag_authors: tagAuthors,
             blacklisted_profiles: blacklistedProfiles.split(',').map(p => p.trim()).filter(Boolean),
+            // Store these in metadata until migration is run
+            monitor_comments: monitorComments,
+            reply_to_comments: replyToComments,
+            timezone: timezone,
           },
           is_active: true,
           priority: 1,
           check_frequency_minutes: 30,
           min_engagement_threshold: minPostReactions,
-          monitor_comments: monitorComments,
-          reply_to_comments: replyToComments,
-          timezone: timezone,
         };
+
+        // Add new columns if migration has been run (they'll be ignored if columns don't exist)
+        // This allows backward compatibility
+        if (monitorComments !== undefined) {
+          monitor.monitor_comments = monitorComments;
+        }
+        if (replyToComments !== undefined) {
+          monitor.reply_to_comments = replyToComments;
+        }
+        if (timezone) {
+          monitor.timezone = timezone;
+        }
 
         console.log('📤 Creating monitor:', monitor);
 
