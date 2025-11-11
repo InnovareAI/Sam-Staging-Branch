@@ -64,40 +64,73 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
 
   const handleCreate = async () => {
     setSaving(true);
-    // TODO: Implement API call to create campaign
-    console.log('Creating campaign:', {
-      campaignName,
-      targetingMode,
-      targets: targets.filter(t => t.trim()),
-      prompt: {
-        tone,
-        formality,
-        commentLength,
-        questionFrequency,
-        customInstructions,
-        useKnowledgeBase,
-      },
-      antiBotDetection: {
-        minExistingComments,
-        minPostReactions,
-        minPostAgeMinutes,
-        maxPostAgeHours,
-        dailyLimit,
-        minDelayMinutes,
-      },
-      advanced: {
-        tagAuthors,
-        blacklistedProfiles: blacklistedProfiles.split(',').map(p => p.trim()).filter(Boolean),
-        monitorComments,
-        replyToComments,
-        timezone,
-      },
-    });
 
-    setTimeout(() => {
-      setSaving(false);
+    try {
+      const validTargets = targets.filter(t => t.trim());
+
+      // Create a monitor for each target
+      const monitorPromises = validTargets.map(async (target) => {
+        const monitor = {
+          workspace_id: workspaceId,
+          monitor_type: targetingMode,
+          target_value: target.trim(),
+          target_metadata: {
+            campaign_name: campaignName,
+            prompt_config: {
+              tone,
+              formality,
+              commentLength,
+              questionFrequency,
+              customInstructions,
+              useKnowledgeBase,
+            },
+            anti_bot_detection: {
+              min_existing_comments: minExistingComments,
+              min_post_reactions: minPostReactions,
+              min_post_age_minutes: minPostAgeMinutes,
+              max_post_age_hours: maxPostAgeHours,
+              daily_limit: dailyLimit,
+              min_delay_minutes: minDelayMinutes,
+            },
+            tag_authors: tagAuthors,
+            blacklisted_profiles: blacklistedProfiles.split(',').map(p => p.trim()).filter(Boolean),
+          },
+          is_active: true,
+          priority: 1,
+          check_frequency_minutes: 30,
+          min_engagement_threshold: minPostReactions,
+          monitor_comments: monitorComments,
+          reply_to_comments: replyToComments,
+          timezone: timezone,
+        };
+
+        const response = await fetch('/api/linkedin-commenting/monitors', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(monitor),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to create monitor');
+        }
+
+        return response.json();
+      });
+
+      await Promise.all(monitorPromises);
+
+      console.log('✅ Campaign created successfully with', validTargets.length, 'monitors');
       onClose();
-    }, 1000);
+
+      // Refresh the page to show new campaigns
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to create campaign:', error);
+      alert('Failed to create campaign: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!isOpen) return null;

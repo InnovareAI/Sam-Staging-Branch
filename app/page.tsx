@@ -74,7 +74,8 @@ import {
   FileText,
   Search,
   MessageSquare,
-  CheckCircle
+  CheckCircle,
+  Hash
 } from 'lucide-react';
 
 const USER_PROXY_SENTINEL = '__USER_PROXY__';
@@ -183,6 +184,8 @@ export default function Page() {
   // Commenting Agent modal state
   const [showCommentingCampaignModal, setShowCommentingCampaignModal] = useState(false);
   const [commentingAgentView, setCommentingAgentView] = useState<'dashboard' | 'approve'>('dashboard');
+  const [commentingCampaigns, setCommentingCampaigns] = useState<any[]>([]);
+  const [commentingCampaignsLoading, setCommentingCampaignsLoading] = useState(false);
 
   // User management state
   const [showManageUsers, setShowManageUsers] = useState(false);
@@ -367,7 +370,29 @@ export default function Page() {
       return () => clearInterval(interval);
     }
   }, [isSuperAdmin]);
-  
+
+  // Load commenting campaigns when workspace changes or commenting agent view is active
+  useEffect(() => {
+    const loadCommentingCampaigns = async () => {
+      if (!selectedWorkspaceId || activeMenuItem !== 'commenting-agent') return;
+
+      setCommentingCampaignsLoading(true);
+      try {
+        const response = await fetch(`/api/linkedin-commenting/monitors?workspace_id=${selectedWorkspaceId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setCommentingCampaigns(data.monitors || []);
+        }
+      } catch (error) {
+        console.error('Failed to load commenting campaigns:', error);
+      } finally {
+        setCommentingCampaignsLoading(false);
+      }
+    };
+
+    loadCommentingCampaigns();
+  }, [selectedWorkspaceId, activeMenuItem]);
+
   // Load proxy info when proxy modal opens
   useEffect(() => {
     const loadProxyInfo = async () => {
@@ -3000,8 +3025,8 @@ export default function Page() {
                     <span className="text-gray-400 text-sm">Active Campaigns</span>
                     <Target size={20} className="text-blue-400" />
                   </div>
-                  <div className="text-3xl font-bold text-white">0</div>
-                  <div className="text-xs text-gray-500 mt-1">No campaigns running</div>
+                  <div className="text-3xl font-bold text-white">{commentingCampaigns.filter(c => c.is_active).length}</div>
+                  <div className="text-xs text-gray-500 mt-1">{commentingCampaigns.filter(c => c.is_active).length === 0 ? 'No campaigns running' : `${commentingCampaigns.length} total`}</div>
                 </div>
 
                 <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
@@ -3083,22 +3108,73 @@ export default function Page() {
                     </div>
                   </div>
                 </div>
-                <div className="p-8 text-center">
-                  <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Target size={32} className="text-gray-500" />
+                {commentingCampaignsLoading ? (
+                  <div className="p-8 text-center">
+                    <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Clock size={32} className="text-gray-500 animate-spin" />
+                    </div>
+                    <p className="text-gray-400">Loading campaigns...</p>
                   </div>
-                  <p className="text-gray-400 mb-4">No campaigns created yet</p>
-                  <button
-                    onClick={() => setShowCommentingCampaignModal(true)}
-                    className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto"
-                  >
-                    <Plus size={20} />
-                    Create Your First Campaign
-                  </button>
-                  <p className="text-sm text-gray-500 mt-4">
-                    Choose from 3 targeting modes: Hashtags, Keywords, or Profiles
-                  </p>
-                </div>
+                ) : commentingCampaigns.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Target size={32} className="text-gray-500" />
+                    </div>
+                    <p className="text-gray-400 mb-4">No campaigns created yet</p>
+                    <button
+                      onClick={() => setShowCommentingCampaignModal(true)}
+                      className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto"
+                    >
+                      <Plus size={20} />
+                      Create Your First Campaign
+                    </button>
+                    <p className="text-sm text-gray-500 mt-4">
+                      Choose from 3 targeting modes: Hashtags, Keywords, or Profiles
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-6 space-y-4">
+                    {commentingCampaigns.map((campaign) => (
+                      <div key={campaign.id} className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                                campaign.monitor_type === 'hashtag' ? 'bg-blue-600/20' :
+                                campaign.monitor_type === 'keyword' ? 'bg-green-600/20' :
+                                'bg-purple-600/20'
+                              }`}>
+                                {campaign.monitor_type === 'hashtag' ? <Hash size={16} className="text-blue-400" /> :
+                                 campaign.monitor_type === 'keyword' ? <Search size={16} className="text-green-400" /> :
+                                 <User size={16} className="text-purple-400" />}
+                              </div>
+                              <div>
+                                <h3 className="text-white font-medium">{campaign.target_metadata?.campaign_name || campaign.target_value}</h3>
+                                <p className="text-sm text-gray-400">
+                                  {campaign.monitor_type}: <span className="text-pink-400">{campaign.target_value}</span>
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs text-gray-400">
+                              <span>Posts: {campaign.posts_discovered_count || 0}</span>
+                              <span>Priority: {campaign.priority}/5</span>
+                              <span>Check: Every {campaign.check_frequency_minutes}min</span>
+                              {campaign.monitor_comments && <span className="text-blue-400">• Monitoring comments</span>}
+                              {campaign.reply_to_comments && <span className="text-green-400">• Replying to comments</span>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              campaign.is_active ? 'bg-green-600/20 text-green-400' : 'bg-gray-600/20 text-gray-400'
+                            }`}>
+                              {campaign.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Quick Tips */}
