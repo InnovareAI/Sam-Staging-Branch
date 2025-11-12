@@ -676,6 +676,84 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                   </Button>
                 </div>
               </div>
+
+              {/* Messaging Cadence */}
+              <div>
+                <Label className="text-gray-300 mb-3 block flex items-center gap-2">
+                  <Clock size={18} className="text-purple-400" />
+                  Messaging Cadence (Days Between Follow-ups)
+                </Label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-xs text-gray-400 mb-1 block">FU1 Delay</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={editFormData.timing?.fu1_delay_days || 2}
+                      onChange={(e) => setEditFormData({
+                        ...editFormData,
+                        timing: { ...(editFormData.timing || {}), fu1_delay_days: parseInt(e.target.value) }
+                      })}
+                      className="bg-gray-800 border-gray-700 text-white"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-400 mb-1 block">FU2 Delay</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={editFormData.timing?.fu2_delay_days || 5}
+                      onChange={(e) => setEditFormData({
+                        ...editFormData,
+                        timing: { ...(editFormData.timing || {}), fu2_delay_days: parseInt(e.target.value) }
+                      })}
+                      className="bg-gray-800 border-gray-700 text-white"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-400 mb-1 block">FU3 Delay</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={editFormData.timing?.fu3_delay_days || 7}
+                      onChange={(e) => setEditFormData({
+                        ...editFormData,
+                        timing: { ...(editFormData.timing || {}), fu3_delay_days: parseInt(e.target.value) }
+                      })}
+                      className="bg-gray-800 border-gray-700 text-white"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-400 mb-1 block">FU4 Delay</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={editFormData.timing?.fu4_delay_days || 5}
+                      onChange={(e) => setEditFormData({
+                        ...editFormData,
+                        timing: { ...(editFormData.timing || {}), fu4_delay_days: parseInt(e.target.value) }
+                      })}
+                      className="bg-gray-800 border-gray-700 text-white"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-400 mb-1 block">Goodbye Delay</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={editFormData.timing?.gb_delay_days || 7}
+                      onChange={(e) => setEditFormData({
+                        ...editFormData,
+                        timing: { ...(editFormData.timing || {}), gb_delay_days: parseInt(e.target.value) }
+                      })}
+                      className="bg-gray-800 border-gray-700 text-white"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Number of days to wait between each follow-up message
+                </p>
+              </div>
             </div>
 
             <DialogFooter className="mt-6 gap-2">
