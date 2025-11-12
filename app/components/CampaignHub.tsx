@@ -39,7 +39,8 @@ import {
   AlertTriangle,
   Loader2,
   Link,
-  Archive
+  Archive,
+  Trash2
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -83,6 +84,10 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [campaignToEdit, setCampaignToEdit] = useState<any>(null);
   const [editFormData, setEditFormData] = useState<any>({});
+
+  // Multi-select state
+  const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
 
   console.log('🏢 [CAMPAIGN HUB] Workspace ID being used:', actualWorkspaceId, 'from prop:', workspaceId);
 
@@ -275,6 +280,94 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
 
     setSelectedCampaignForProspects(campaignId);
     setShowProspectsModal(true);
+  };
+
+  // Multi-select handlers
+  const toggleCampaignSelection = (campaignId: string) => {
+    setSelectedCampaigns(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(campaignId)) {
+        newSet.delete(campaignId);
+      } else {
+        newSet.add(campaignId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = (campaigns: any[]) => {
+    if (selectedCampaigns.size === campaigns.length) {
+      setSelectedCampaigns(new Set());
+    } else {
+      setSelectedCampaigns(new Set(campaigns.map(c => c.id)));
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedCampaigns(new Set());
+    setIsMultiSelectMode(false);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedCampaigns.size === 0) return;
+
+    const confirmDelete = confirm(`Delete ${selectedCampaigns.size} campaign(s)? This cannot be undone.`);
+    if (!confirmDelete) return;
+
+    try {
+      await Promise.all(
+        Array.from(selectedCampaigns).map(campaignId =>
+          fetch(`/api/campaigns/${campaignId}`, { method: 'DELETE' })
+        )
+      );
+      toastSuccess(`Deleted ${selectedCampaigns.size} campaign(s)`);
+      clearSelection();
+      refetch();
+    } catch (error) {
+      toastError('Failed to delete some campaigns');
+    }
+  };
+
+  const handleBulkPause = async () => {
+    if (selectedCampaigns.size === 0) return;
+
+    try {
+      await Promise.all(
+        Array.from(selectedCampaigns).map(campaignId =>
+          fetch(`/api/campaigns/${campaignId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'paused' })
+          })
+        )
+      );
+      toastSuccess(`Paused ${selectedCampaigns.size} campaign(s)`);
+      clearSelection();
+      refetch();
+    } catch (error) {
+      toastError('Failed to pause some campaigns');
+    }
+  };
+
+  const handleBulkResume = async () => {
+    if (selectedCampaigns.size === 0) return;
+
+    try {
+      await Promise.all(
+        Array.from(selectedCampaigns).map(campaignId =>
+          fetch(`/api/campaigns/${campaignId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'active' })
+          })
+        )
+      );
+      toastSuccess(`Resumed ${selectedCampaigns.size} campaign(s)`);
+      clearSelection();
+      refetch();
+    } catch (error) {
+      toastError('Failed to resume some campaigns');
+    }
   };
 
   // REACT QUERY: Load campaign prospects
@@ -6409,9 +6502,55 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             ) : (
               /* Campaign Table */
               <div className="overflow-x-auto">
+                {/* Bulk Action Bar */}
+                {selectedCampaigns.size > 0 && (
+                  <div className="bg-purple-900/20 border-b border-purple-500/30 px-6 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <span className="text-white font-medium">{selectedCampaigns.size} campaign(s) selected</span>
+                      <button
+                        onClick={clearSelection}
+                        className="text-gray-400 hover:text-white text-sm"
+                      >
+                        Clear selection
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleBulkPause}
+                        className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white rounded text-sm flex items-center gap-1"
+                      >
+                        <Pause size={14} />
+                        Pause
+                      </button>
+                      <button
+                        onClick={handleBulkResume}
+                        className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-sm flex items-center gap-1"
+                      >
+                        <Play size={14} />
+                        Resume
+                      </button>
+                      <button
+                        onClick={handleBulkDelete}
+                        className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm flex items-center gap-1"
+                      >
+                        <Trash2 size={14} />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <table className="w-full">
                 <thead className="bg-gray-750">
                   <tr className="text-left text-gray-400 text-xs uppercase">
+                    <th className="px-6 py-3 font-medium w-12">
+                      <input
+                        type="checkbox"
+                        checked={filteredCampaigns.length > 0 && selectedCampaigns.size === filteredCampaigns.length}
+                        onChange={() => toggleSelectAll(filteredCampaigns)}
+                        className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500"
+                      />
+                    </th>
                     <th className="px-6 py-3 font-medium">Campaign</th>
                     <th className="px-6 py-3 font-medium">Type</th>
                     <th className="px-6 py-3 font-medium">Contacted</th>
@@ -6424,10 +6563,23 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   {filteredCampaigns.map((campaign: any) => (
                     <tr
                       key={campaign.id}
-                      onClick={() => handleCampaignAction(campaign.id)}
-                      className="border-t border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer"
+                      className={`border-t border-gray-700 hover:bg-gray-750 transition-colors ${selectedCampaigns.has(campaign.id) ? 'bg-purple-900/10' : ''}`}
                     >
                       <td className="px-6 py-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedCampaigns.has(campaign.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            toggleCampaignSelection(campaign.id);
+                          }}
+                          className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500"
+                        />
+                      </td>
+                      <td
+                        className="px-6 py-4 cursor-pointer"
+                        onClick={() => handleCampaignAction(campaign.id)}
+                      >
                         <div className="flex items-center gap-3">
                           <div className="w-2 h-2 rounded-full bg-purple-500"></div>
                           <div>
