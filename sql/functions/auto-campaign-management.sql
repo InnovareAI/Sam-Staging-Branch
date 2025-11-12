@@ -6,7 +6,9 @@
 
 -- Function 1: Auto-retry rate limited prospects
 -- Runs every 5 minutes via cron
--- Finds prospects that were rate limited >30 min ago and resets them to pending
+-- Handles two types of rate limits:
+--   - rate_limited_cr: LinkedIn CR rate limit (24 hour wait)
+--   - rate_limited_message: Messenger rate limit (1 hour wait)
 CREATE OR REPLACE FUNCTION auto_retry_rate_limited_prospects()
 RETURNS TABLE(
   reset_count INTEGER,
@@ -18,15 +20,21 @@ DECLARE
   v_reset_count INTEGER;
   v_campaign_ids UUID[];
 BEGIN
-  -- Reset prospects that were rate limited more than 30 minutes ago
+  -- Reset prospects based on rate limit type
   WITH updated AS (
     UPDATE campaign_prospects
     SET
       status = 'pending',
       updated_at = NOW()
     WHERE
-      status = 'rate_limited'
-      AND updated_at < NOW() - INTERVAL '30 minutes'
+      -- CR rate limits: 24 hour wait (resets next day)
+      (status = 'rate_limited_cr' AND updated_at < NOW() - INTERVAL '24 hours')
+      OR
+      -- Messenger rate limits: 1 hour wait
+      (status = 'rate_limited_message' AND updated_at < NOW() - INTERVAL '1 hour')
+      OR
+      -- Legacy rate_limited status: default to 24 hours for safety
+      (status = 'rate_limited' AND updated_at < NOW() - INTERVAL '24 hours')
     RETURNING id, campaign_id
   )
   SELECT
@@ -166,7 +174,7 @@ $$;
 
 -- Function 4: Auto-resume campaigns after rate limits clear
 -- Runs every 15 minutes via cron
--- Resumes paused campaigns if no rate limit issues in last 30 min
+-- Resumes paused campaigns when safe based on rate limit type
 CREATE OR REPLACE FUNCTION auto_resume_after_rate_limits()
 RETURNS TABLE(
   resumed_count INTEGER,
@@ -179,21 +187,31 @@ DECLARE
   v_campaign_names TEXT[];
 BEGIN
   -- Find campaigns that were auto-paused and can be resumed
-  -- (No rate_limited prospects in last 30 minutes)
   WITH safe_campaigns AS (
     SELECT DISTINCT c.id, c.name
     FROM campaigns c
     WHERE
       c.status = 'paused'
-      AND c.updated_at > NOW() - INTERVAL '24 hours'  -- Recently paused
+      AND c.updated_at > NOW() - INTERVAL '7 days'  -- Recently paused (within a week)
+      -- No CR rate limits in last 24 hours
       AND NOT EXISTS (
         SELECT 1
         FROM campaign_prospects cp
         WHERE
           cp.campaign_id = c.id
-          AND cp.status = 'rate_limited'
-          AND cp.updated_at > NOW() - INTERVAL '30 minutes'
+          AND cp.status IN ('rate_limited_cr', 'rate_limited')
+          AND cp.updated_at > NOW() - INTERVAL '24 hours'
       )
+      -- No messenger rate limits in last 1 hour
+      AND NOT EXISTS (
+        SELECT 1
+        FROM campaign_prospects cp
+        WHERE
+          cp.campaign_id = c.id
+          AND cp.status = 'rate_limited_message'
+          AND cp.updated_at > NOW() - INTERVAL '1 hour'
+      )
+      -- Has pending prospects to send
       AND EXISTS (
         SELECT 1
         FROM campaign_prospects cp
@@ -237,16 +255,19 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   RETURN QUERY
-  -- Rate limited prospects
+  -- Rate limited prospects (all types)
   SELECT
     'rate_limited_prospects'::TEXT,
     COUNT(*)::INTEGER,
     JSONB_BUILD_OBJECT(
+      'cr_rate_limits', (SELECT COUNT(*) FROM campaign_prospects WHERE status = 'rate_limited_cr'),
+      'message_rate_limits', (SELECT COUNT(*) FROM campaign_prospects WHERE status = 'rate_limited_message'),
+      'legacy_rate_limits', (SELECT COUNT(*) FROM campaign_prospects WHERE status = 'rate_limited'),
       'oldest', MIN(updated_at),
       'newest', MAX(updated_at)
     )
   FROM campaign_prospects
-  WHERE status = 'rate_limited'
+  WHERE status IN ('rate_limited', 'rate_limited_cr', 'rate_limited_message')
 
   UNION ALL
 
@@ -299,7 +320,7 @@ GRANT EXECUTE ON FUNCTION get_automation_health() TO authenticated;
 
 -- Add comments
 COMMENT ON FUNCTION auto_retry_rate_limited_prospects() IS
-  'Automatically retries prospects that were rate limited >30 min ago';
+  'Automatically retries rate limited prospects: CRs after 24 hours, messages after 1 hour';
 
 COMMENT ON FUNCTION auto_cleanup_stale_executions() IS
   'Resets prospects stuck in queued_in_n8n for >2 hours';
@@ -308,7 +329,7 @@ COMMENT ON FUNCTION auto_pause_failing_campaigns() IS
   'Pauses campaigns with >50% failure rate in last 24 hours';
 
 COMMENT ON FUNCTION auto_resume_after_rate_limits() IS
-  'Resumes paused campaigns after rate limits clear';
+  'Resumes paused campaigns after 24 hour rate limit period';
 
 COMMENT ON FUNCTION get_automation_health() IS
   'Returns metrics about automation system health';

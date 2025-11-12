@@ -137,18 +137,37 @@ function classifyError(error: any): string {
 async function handleRateLimit(supabase: any, payload: N8NErrorPayload) {
   if (!payload.prospectId) return;
 
-  console.log(`⏸️ Rate limit detected - marking prospect ${payload.prospectId} as rate_limited`);
+  // Determine if this is a CR (connection request) or messenger rate limit
+  const isConnectionRequest = payload.nodeName?.includes('Send CR') ||
+                               payload.nodeName?.includes('Connection Request');
 
-  // Update prospect status to rate_limited
-  await supabase
-    .from('campaign_prospects')
-    .update({
-      status: 'rate_limited',
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', payload.prospectId);
+  if (isConnectionRequest) {
+    // CR rate limits = 24 hour wait (resets next day)
+    console.log(`⏸️ CR rate limit detected - marking prospect ${payload.prospectId} as rate_limited_cr`);
 
-  // The auto_retry_rate_limited_prospects() function will retry after 30 min
+    await supabase
+      .from('campaign_prospects')
+      .update({
+        status: 'rate_limited_cr',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', payload.prospectId);
+
+    // The auto_retry_rate_limited_prospects() will retry after 24 hours
+  } else {
+    // Messenger rate limits = shorter wait (1 hour)
+    console.log(`⏸️ Messenger rate limit detected - marking prospect ${payload.prospectId} as rate_limited_message`);
+
+    await supabase
+      .from('campaign_prospects')
+      .update({
+        status: 'rate_limited_message',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', payload.prospectId);
+
+    // Auto-retry will happen after 1 hour for messenger
+  }
 }
 
 // Handle account not found error
@@ -241,7 +260,7 @@ async function logError(supabase: any, payload: N8NErrorPayload, errorType: stri
 
 function getActionDescription(errorType: string): string {
   const actions: Record<string, string> = {
-    rate_limit: 'Marked as rate_limited, will retry after 30 minutes',
+    rate_limit: 'Marked as rate_limited (CRs: 24hr, Messages: 1hr retry)',
     account_not_found: 'Paused campaign, marked prospect as account_error',
     invalid_data: 'Marked prospect as failed (won\'t retry)',
     temporary_error: 'Marked for retry in next cleanup cycle',

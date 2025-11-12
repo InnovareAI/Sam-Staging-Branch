@@ -4406,3 +4406,108 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main 44739b14] 🔄 Auto-backup: auto-backup-20251112_120000
+ Committer: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 71 files changed, 8123 insertions(+)
+ create mode 100644 temp/AUTOMATION_PLAN.md
+ create mode 100644 temp/DELETE_NY_COMPLETE.sql
+ create mode 100644 temp/DELETE_NY_USER.sql
+ create mode 100644 temp/DELETE_NY_USER_CASCADE.sql
+ create mode 100644 temp/DELETE_NY_USER_FINAL.sql
+ create mode 100644 temp/DEPLOYMENT_STATUS.md
+ create mode 100644 temp/FIX_SUMMARY.md
+ create mode 100644 temp/MANUAL_DELETE_USER.md
+ create mode 100644 temp/N8N_SETUP_STEPS.md
+ create mode 100644 temp/N8N_SIGNATURE_FIX_INSTRUCTIONS.md
+ create mode 100644 temp/ORCHESTRATOR_FIX_INSTRUCTIONS.md
+ create mode 100644 temp/URGENT_FIX.md
+ create mode 100755 temp/auto-deploy-complete.mjs
+ create mode 100644 temp/campaigns-to-resume.json
+ create mode 100644 temp/check-active-executions.mjs
+ create mode 100644 temp/check-all-fk-references.mjs
+ create mode 100755 temp/check-bll-ciso-campaign-details.mjs
+ create mode 100644 temp/check-campaign-types.mjs
+ create mode 100644 temp/check-campaign-visibility.mjs
+ create mode 100755 temp/check-charissa-campaigns.mjs
+ create mode 100644 temp/check-charissa-ia4-campaigns.mjs
+ create mode 100644 temp/check-execution-details.mjs
+ create mode 100644 temp/check-mich-account.mjs
+ create mode 100644 temp/check-michelle-campaign-status.mjs
+ create mode 100755 temp/check-michelle-unipile-account.mjs
+ create mode 100644 temp/check-n8n-error-handling.mjs
+ create mode 100644 temp/check-n8n-executions.mjs
+ create mode 100644 temp/check-noriko.mjs
+ create mode 100644 temp/check-orchestrator-config.mjs
+ create mode 100644 temp/check-prospect-status-during-wait.mjs
+ create mode 100755 temp/check-stan-campaigns.mjs
+ create mode 100755 temp/check-stan-rejected-leads.mjs
+ create mode 100755 temp/check-unipile-account.mjs
+ create mode 100644 temp/check-user-references.mjs
+ create mode 100644 temp/check-wait-time-details.mjs
+ create mode 100644 temp/check-waiting-executions.mjs
+ create mode 100755 temp/check-workflow-status.mjs
+ create mode 100644 temp/configure-n8n-api.mjs
+ create mode 100644 temp/deactivate-orchestrator.mjs
+ create mode 100644 temp/delete-3cubed-workspace.mjs
+ create mode 100644 temp/delete-noriko-user.mjs
+ create mode 100644 temp/delete-user-sql.mjs
+ create mode 100644 temp/deploy-cron.sql
+ create mode 100644 temp/deploy-functions.sql
+ create mode 100644 temp/diagnose-n8n-workflow.mjs
+ create mode 100644 temp/examine-workflow.mjs
+ create mode 100644 temp/execute-campaign-proper.mjs
+ create mode 100644 temp/find-3cubed-noriko.mjs
+ create mode 100644 temp/find-charissa.mjs
+ create mode 100644 temp/find-correct-workflow.mjs
+ create mode 100755 temp/fix-orchestrator-response-mode.mjs
+ create mode 100644 temp/get-execution-error.mjs
+ create mode 100644 temp/get-full-orchestrator-error.mjs
+ create mode 100644 temp/get-orchestrator-error.mjs
+ create mode 100644 temp/latest-execution.json
+ create mode 100644 temp/list-all-users.mjs
+ create mode 100644 temp/list-all-workspaces.mjs
+ create mode 100755 temp/manual-execute-workflow.mjs
+ create mode 100644 temp/orchestrator-error.json
+ create mode 100644 temp/orchestrator-exec-full.json
+ create mode 100644 temp/orchestrator-full.json
+ create mode 100644 temp/orchestrator-workflow.json
+ create mode 100755 temp/pause-all-active-campaigns.mjs
+ create mode 100755 temp/pause-and-reset-michelle.mjs
+ create mode 100755 temp/reset-charissa-prospects.mjs
+ create mode 100755 temp/resume-campaigns.mjs
+ create mode 100755 temp/retry-campaign.mjs
+ create mode 100644 temp/send-messages-directly.mjs
+ create mode 100644 temp/workflow-campaign-execute.json
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251112_120000[0m
+[0;32m📅 Timestamp: Wed Nov 12 12:00:01 PST 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+
