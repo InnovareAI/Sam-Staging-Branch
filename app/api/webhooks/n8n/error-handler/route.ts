@@ -23,6 +23,7 @@ interface N8NErrorPayload {
   };
   prospectId?: string;
   campaignId?: string;
+  unipileAccountId?: string;
   timestamp: string;
 }
 
@@ -143,12 +144,13 @@ async function handleRateLimit(supabase: any, payload: N8NErrorPayload) {
 
   if (isConnectionRequest) {
     // CR rate limits = 24 hour wait (resets next day)
-    console.log(`⏸️ CR rate limit detected - marking prospect ${payload.prospectId} as rate_limited_cr`);
+    console.log(`⏸️ CR rate limit detected - marking prospect ${payload.prospectId} as rate_limited_cr (account: ${payload.unipileAccountId})`);
 
     await supabase
       .from('campaign_prospects')
       .update({
         status: 'rate_limited_cr',
+        unipile_account_id: payload.unipileAccountId || null,
         updated_at: new Date().toISOString()
       })
       .eq('id', payload.prospectId);
@@ -156,12 +158,13 @@ async function handleRateLimit(supabase: any, payload: N8NErrorPayload) {
     // The auto_retry_rate_limited_prospects() will retry after 24 hours
   } else {
     // Messenger rate limits = shorter wait (1 hour)
-    console.log(`⏸️ Messenger rate limit detected - marking prospect ${payload.prospectId} as rate_limited_message`);
+    console.log(`⏸️ Messenger rate limit detected - marking prospect ${payload.prospectId} as rate_limited_message (account: ${payload.unipileAccountId})`);
 
     await supabase
       .from('campaign_prospects')
       .update({
         status: 'rate_limited_message',
+        unipile_account_id: payload.unipileAccountId || null,
         updated_at: new Date().toISOString()
       })
       .eq('id', payload.prospectId);
