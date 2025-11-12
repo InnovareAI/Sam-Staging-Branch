@@ -28,15 +28,20 @@ export async function GET(
       .single();
 
     if (campaignError || !campaign) {
+      console.error('Campaign not found:', campaignError);
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
     }
 
+    console.log('📊 Fetching prospects for campaign:', campaignId, 'workspace:', campaign.workspace_id);
+
     // Build query for campaign prospects
     // Note: campaign_prospects has all prospect data directly (first_name, last_name, etc.)
+    // IMPORTANT: Include workspace_id to ensure RLS policies work correctly
     let query = supabase
       .from('campaign_prospects')
       .select('*')
-      .eq('campaign_id', campaignId);
+      .eq('campaign_id', campaignId)
+      .eq('workspace_id', campaign.workspace_id);
 
     if (status) {
       query = query.eq('status', status);
@@ -47,11 +52,14 @@ export async function GET(
       .range(offset, offset + limit - 1);
 
     if (error) {
-      console.error('Failed to fetch campaign prospects:', error);
+      console.error('❌ Failed to fetch campaign prospects:', error);
       return NextResponse.json({
-        error: 'Failed to fetch campaign prospects'
+        error: 'Failed to fetch campaign prospects',
+        details: error.message
       }, { status: 500 });
     }
+
+    console.log('✅ Found', prospects?.length || 0, 'prospects for campaign', campaignId);
 
     // Map company_name to company for frontend compatibility
     const mappedProspects = (prospects || []).map(p => ({
