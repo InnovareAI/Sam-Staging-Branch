@@ -5,7 +5,7 @@
  * Handles rate limits, Unipile errors, and other failures
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -29,7 +29,7 @@ interface N8NErrorPayload {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createSupabaseRouteClient();
     const payload: N8NErrorPayload = await request.json();
 
     console.log('🚨 N8N Error Handler:', {
