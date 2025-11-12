@@ -1,0 +1,37 @@
+{
+  "paused_at": "2025-11-12T01:56:23.085Z",
+  "campaign_ids": [
+    "5bb3ac9c-eac3-475b-b2a5-5f939edace34",
+    "ae3083a6-97c3-4953-91c7-28d9ab45ddbc",
+    "35415fff-a230-48c6-ae91-e8f170cd3232",
+    "0578a41b-37b6-42ea-a4f5-18cc5eded9c1",
+    "e8833a4e-44bb-41f5-a636-340baf8bb240"
+  ],
+  "campaigns": [
+    {
+      "id": "5bb3ac9c-eac3-475b-b2a5-5f939edace34",
+      "name": "Test 1",
+      "workspace": "IA4"
+    },
+    {
+      "id": "ae3083a6-97c3-4953-91c7-28d9ab45ddbc",
+      "name": "Test- Irish",
+      "workspace": "IA3"
+    },
+    {
+      "id": "35415fff-a230-48c6-ae91-e8f170cd3232",
+      "name": "Cha Canada Campaign",
+      "workspace": "IA4"
+    },
+    {
+      "id": "0578a41b-37b6-42ea-a4f5-18cc5eded9c1",
+      "name": "20251108-XXX-Outreach Campaign",
+      "workspace": "Blue Label Labs"
+    },
+    {
+      "id": "e8833a4e-44bb-41f5-a636-340baf8bb240",
+      "name": "20251108-XXX-Outreach Campaign",
+      "workspace": "Blue Label Labs"
+    }
+  ]
+}

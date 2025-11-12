@@ -1,0 +1,1198 @@
+{
+  "updatedAt": "2025-11-02T08:09:16.109Z",
+  "createdAt": "2025-11-02T08:09:16.109Z",
+  "id": "dsJ40aZYDOtSC1F7",
+  "name": "Campaign Execute - LinkedIn via Unipile (Complete)",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "campaign-execute",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -2400,
+        144
+      ],
+      "webhookId": "campaign-execute",
+      "id": "d086e751-f559-48bd-b96e-acba3709dc7e"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract prospects from webhook payload\nconst prospects = $input.item.json.prospects || [];\nconst campaign = $input.item.json.campaign || {};\nconst messages = $input.item.json.messages || {};\n\n// Standard funnel timing (ALL workspaces use same timing)\n// CR → 6h → FU1 → 3d → FU2 → 5d → FU3 → 5d → FU4 → 5d → FU5 → 5d → FU6\nconst timing = $input.item.json.timing || {\n  fu1_delay_hours: 6,    // FU1: 6 hours after CR\n  fu2_delay_days: 3,     // FU2: 3 days after FU1\n  fu3_delay_days: 5,     // FU3: 5 days after FU2\n  fu4_delay_days: 5,     // FU4: 5 days after FU3\n  fu5_delay_days: 5,     // FU5: 5 days after FU4\n  fu6_delay_days: 5      // FU6: 5 days after FU5 (final message)\n};\n\nconsole.log(`📊 Processing ${prospects.length} prospects for campaign: ${campaign.name}`);\nconsole.log(`⏱️ Standard Funnel: CR → 6h → FU1 → 3d → FU2 → 5d → FU3/4/5/6`);\n\n// Return each prospect as a separate item for processing\nreturn prospects.map(prospect => ({\n  json: {\n    prospect,\n    campaign,\n    messages,\n    timing\n  }\n}));"
+      },
+      "name": "Split Prospects",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2208,
+        144
+      ],
+      "id": "af928e93-f51c-4d45-b604-ca0e9b2d4d73"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract LinkedIn username from URL\nconst linkedinUrl = $input.item.json.prospect.linkedin_url;\n\nif (!linkedinUrl) {\n  throw new Error(`No LinkedIn URL for prospect ${$input.item.json.prospect.id}`);\n}\n\nconst username = linkedinUrl.split('/in/')[1]?.split('?')[0]?.replace('/', '');\n\nif (!username) {\n  throw new Error('Invalid LinkedIn URL: ' + linkedinUrl);\n}\n\nconsole.log(`📝 Extracted username: ${username}`);\n\nreturn [{\n  json: {\n    ...$input.item.json,\n    linkedin_username: username\n  }\n}];"
+      },
+      "name": "Extract Username",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2000,
+        144
+      ],
+      "id": "40ec751e-bb7c-4fa9-8ead-f43f3a5172d4"
+    },
+    {
+      "parameters": {
+        "url": "=https://{{$env.UNIPILE_DSN}}/api/v1/users/{{$json.linkedin_username}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{$env.UNIPILE_API_KEY}}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Lookup LinkedIn Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -1808,
+        144
+      ],
+      "id": "6c446565-ec49-49f6-9798-a0338c8dd0e7"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Personalize connection request message\nconst message = $input.item.json.messages.cr || $input.item.json.messages.connection_request;\nconst prospect = $input.item.json.prospect;\nconst profileData = $input.item.json;\n\nif (!message) {\n  throw new Error('No connection request message configured');\n}\n\nconst personalized = message\n  .replace(/\\{\\{?first_name\\}?\\}/gi, prospect.first_name || '')\n  .replace(/\\{\\{?last_name\\}?\\}/gi, prospect.last_name || '')\n  .replace(/\\{\\{?company_name\\}?\\}/gi, prospect.company_name || prospect.company || '')\n  .replace(/\\{\\{?title\\}?\\}/gi, prospect.title || prospect.job_title || '');\n\n// Truncate to 300 characters (LinkedIn limit)\nconst truncated = personalized.substring(0, 300);\n\nconsole.log(`✍️ Personalized CR for ${prospect.first_name} ${prospect.last_name}`);\n\nreturn [{\n  json: {\n    ...profileData,\n    personalizedMessage: truncated,\n    provider_id: profileData.object?.id || profileData.id\n  }\n}];"
+      },
+      "name": "Personalize CR",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1600,
+        144
+      ],
+      "id": "52e4ccb5-dbca-426b-bd04-bdfd32e86742"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{$env.UNIPILE_DSN}}/api/v1/users/invite",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{$env.UNIPILE_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"attendee_id\": \"{{$json.provider_id}}\", \"text\": \"{{$json.personalizedMessage}}\"}",
+        "options": {}
+      },
+      "name": "Send Connection Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -1408,
+        144
+      ],
+      "id": "99554a77-b0f6-4615-a62e-d43a9488380f"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract message/invitation ID\nconst unipileResponse = $input.item.json;\nconst prospect = $node['Extract Username'].json.prospect;\n\nconst messageId = \n  unipileResponse.object?.id ||\n  unipileResponse.id ||\n  unipileResponse.data?.id ||\n  unipileResponse.message_id ||\n  unipileResponse.invitation_id ||\n  `untracked_${Date.now()}_${prospect.id}`;\n\nconsole.log(`✅ CR sent to ${prospect.first_name} ${prospect.last_name} - Message ID: ${messageId}`);\n\nreturn [{\n  json: {\n    prospect_id: prospect.id,\n    provider_id: $node['Personalize CR'].json.provider_id,\n    message_id: messageId,\n    status: 'connection_requested',\n    contacted_at: new Date().toISOString(),\n    unipile_response: JSON.stringify(unipileResponse),\n    prospect: prospect,\n    campaign: $node['Extract Username'].json.campaign,\n    messages: $node['Extract Username'].json.messages\n  }\n}];"
+      },
+      "name": "Extract Message ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        144
+      ],
+      "id": "88f8b475-1b79-4acc-a04e-0be26c7b2eb3"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.NEXT_PUBLIC_SUPABASE_URL}}/rest/v1/campaign_prospects?id=eq.{{$json.prospect_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\": \"connection_requested\", \"contacted_at\": \"{{$json.contacted_at}}\", \"personalization_data\": {\"unipile_message_id\": \"{{$json.message_id}}\", \"provider_id\": \"{{$json.provider_id}}\", \"unipile_response\": {{$json.unipile_response}}}}",
+        "options": {}
+      },
+      "name": "Update Status CR Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -1008,
+        144
+      ],
+      "id": "ca3180b7-9ecb-4336-9b6a-231c17db42fb"
+    },
+    {
+      "parameters": {
+        "amount": "={{$node['Split Prospects'].json.timing.fu1_delay_hours || 6}}"
+      },
+      "name": "Wait 6 Hours for FU1",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        144
+      ],
+      "webhookId": "wait-fu1",
+      "id": "98075e07-303a-4ab7-b635-88fa9762eeb0"
+    },
+    {
+      "parameters": {
+        "url": "=https://{{$env.UNIPILE_DSN}}/api/v1/users/{{$node['Extract Username'].json.linkedin_username}}/relations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{$env.UNIPILE_API_KEY}}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Check Connection via Unipile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -608,
+        144
+      ],
+      "id": "4c80a9b0-5152-48c8-b2be-8d0039fed11c"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check if prospect is in our connections list\nconst relations = $input.item.json.items || $input.item.json.data || [];\nconst prospectProviderId = $node['Extract Message ID'].json.provider_id;\n\n// Search for prospect in relations list\nconst isConnected = relations.some(relation => \n  relation.id === prospectProviderId || \n  relation.provider_id === prospectProviderId\n);\n\nconsole.log(`🔍 Connection check: ${isConnected ? 'CONNECTED' : 'NOT CONNECTED'}`);\nconsole.log(`   Looking for provider_id: ${prospectProviderId}`);\nconsole.log(`   Found ${relations.length} total relations`);\n\nreturn [{\n  json: {\n    ...$node['Extract Message ID'].json,\n    connection_accepted: isConnected\n  }\n}];"
+      },
+      "name": "Parse Connection Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        144
+      ],
+      "id": "64224442-d944-4090-aed0-3c221ed20a6f"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.connection_accepted}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Connection Accepted?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        144
+      ],
+      "id": "7c67585b-e025-44eb-af29-2ae822e21f09"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.NEXT_PUBLIC_SUPABASE_URL}}/rest/v1/campaign_prospects?id=eq.{{$node['Extract Message ID'].json.prospect_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\": \"connection_not_accepted\", \"personalization_data\": {\"connection_checked_at\": \"{{new Date().toISOString()}}\", \"sequence_ended_reason\": \"Connection not accepted after 6 hours\"}}",
+        "options": {}
+      },
+      "name": "Mark Not Accepted - End Sequence",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        0,
+        304
+      ],
+      "id": "0b066732-60f5-4544-aa13-312d08560e99"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Personalize Follow-Up 1\nconst message = $node['Extract Message ID'].json.messages.fu1 || $node['Extract Message ID'].json.messages.follow_up_1;\nconst prospect = $node['Extract Message ID'].json.prospect;\n\nif (!message) {\n  throw new Error('No FU1 message configured');\n}\n\nconst personalized = message\n  .replace(/\\{\\{?first_name\\}?\\}/gi, prospect.first_name || '')\n  .replace(/\\{\\{?last_name\\}?\\}/gi, prospect.last_name || '')\n  .replace(/\\{\\{?company_name\\}?\\}/gi, prospect.company_name || prospect.company || '')\n  .replace(/\\{\\{?title\\}?\\}/gi, prospect.title || prospect.job_title || '');\n\nconsole.log(`✍️ Personalized FU1 for ${prospect.first_name}`);\n\nreturn [{\n  json: {\n    ...$node['Extract Message ID'].json,\n    followUpMessage: personalized\n  }\n}];"
+      },
+      "name": "Personalize FU1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "7a15a06a-71c6-4c6e-89d6-19b18d282669"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{$env.UNIPILE_DSN}}/api/v1/messaging/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{$env.UNIPILE_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"provider_id\": \"{{$json.provider_id}}\", \"text\": \"{{$json.followUpMessage}}\"}",
+        "options": {}
+      },
+      "name": "Send FU1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "5a7974a9-65d6-4fa2-93e8-09ddb7cf3d6c"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.NEXT_PUBLIC_SUPABASE_URL}}/rest/v1/campaign_prospects?id=eq.{{$json.prospect_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\": \"follow_up_1_sent\", \"personalization_data\": {\"fu1_sent_at\": \"{{new Date().toISOString()}}\"}}",
+        "options": {}
+      },
+      "name": "Update FU1 Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "71d8f485-6ed7-4b09-9b31-bfaa02fbba69"
+    },
+    {
+      "parameters": {
+        "amount": "={{($node['Split Prospects'].json.timing.fu2_delay_days || 3) * 24}}"
+      },
+      "name": "Wait for FU2",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        400,
+        0
+      ],
+      "webhookId": "wait-fu2",
+      "id": "930a5504-df8d-432c-b4f3-2e53fff08d94"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Personalize Follow-Up 2\nconst message = $node['Extract Message ID'].json.messages.fu2 || $node['Extract Message ID'].json.messages.follow_up_2;\nconst prospect = $node['Extract Message ID'].json.prospect;\n\nif (!message) {\n  console.log('⚠️ No FU2 configured, ending sequence');\n  return [];\n}\n\nconst personalized = message\n  .replace(/\\{\\{?first_name\\}?\\}/gi, prospect.first_name || '')\n  .replace(/\\{\\{?last_name\\}?\\}/gi, prospect.last_name || '')\n  .replace(/\\{\\{?company_name\\}?\\}/gi, prospect.company_name || prospect.company || '')\n  .replace(/\\{\\{?title\\}?\\}/gi, prospect.title || prospect.job_title || '');\n\nreturn [{ json: { ...$input.item.json, followUpMessage: personalized } }];"
+      },
+      "name": "Personalize FU2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        0
+      ],
+      "id": "ffe7a568-8da9-4fa0-9651-ac6199fe439d"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{$env.UNIPILE_DSN}}/api/v1/messaging/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{$env.UNIPILE_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"provider_id\": \"{{$json.provider_id}}\", \"text\": \"{{$json.followUpMessage}}\"}",
+        "options": {}
+      },
+      "name": "Send FU2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        800,
+        0
+      ],
+      "id": "a83c9bdd-1b8e-45a3-a434-f7df757887d8"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.NEXT_PUBLIC_SUPABASE_URL}}/rest/v1/campaign_prospects?id=eq.{{$json.prospect_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\": \"follow_up_2_sent\", \"personalization_data\": {\"fu2_sent_at\": \"{{new Date().toISOString()}}\"}}",
+        "options": {}
+      },
+      "name": "Update FU2 Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1008,
+        0
+      ],
+      "id": "87e773d2-6cd7-441b-adca-888fbf3034ed"
+    },
+    {
+      "parameters": {
+        "amount": "={{($node['Split Prospects'].json.timing.fu3_delay_days || 5) * 24}}"
+      },
+      "name": "Wait for FU3",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        0
+      ],
+      "webhookId": "wait-fu3",
+      "id": "c56e458d-03cc-46b8-9b14-9913a4e3e19a"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Personalize Follow-Up 3\nconst message = $node['Extract Message ID'].json.messages.fu3 || $node['Extract Message ID'].json.messages.follow_up_3;\nconst prospect = $node['Extract Message ID'].json.prospect;\n\nif (!message) {\n  console.log('⚠️ No FU3 configured, ending sequence');\n  return [];\n}\n\nconst personalized = message\n  .replace(/\\{\\{?first_name\\}?\\}/gi, prospect.first_name || '')\n  .replace(/\\{\\{?last_name\\}?\\}/gi, prospect.last_name || '')\n  .replace(/\\{\\{?company_name\\}?\\}/gi, prospect.company_name || prospect.company || '')\n  .replace(/\\{\\{?title\\}?\\}/gi, prospect.title || prospect.job_title || '');\n\nreturn [{ json: { ...$input.item.json, followUpMessage: personalized } }];"
+      },
+      "name": "Personalize FU3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        0
+      ],
+      "id": "829da88f-8722-4d41-b25a-a930aeefeabf"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{$env.UNIPILE_DSN}}/api/v1/messaging/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{$env.UNIPILE_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"provider_id\": \"{{$json.provider_id}}\", \"text\": \"{{$json.followUpMessage}}\"}",
+        "options": {}
+      },
+      "name": "Send FU3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1600,
+        0
+      ],
+      "id": "1f8b66a0-9481-4b5d-aeb1-a93f6211babd"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.NEXT_PUBLIC_SUPABASE_URL}}/rest/v1/campaign_prospects?id=eq.{{$json.prospect_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\": \"follow_up_3_sent\", \"personalization_data\": {\"fu3_sent_at\": \"{{new Date().toISOString()}}\"}}",
+        "options": {}
+      },
+      "name": "Update FU3 Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1808,
+        0
+      ],
+      "id": "f5bdd6d3-2edd-4c87-901a-b83d783f1090"
+    },
+    {
+      "parameters": {
+        "amount": "={{($node['Split Prospects'].json.timing.fu4_delay_days || 5) * 24}}"
+      },
+      "name": "Wait for FU4",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        0
+      ],
+      "webhookId": "wait-fu4",
+      "id": "a5bd298f-71fd-4390-a71f-5413c9a87a9d"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Personalize Follow-Up 4\nconst message = $node['Extract Message ID'].json.messages.fu4 || $node['Extract Message ID'].json.messages.follow_up_4;\nconst prospect = $node['Extract Message ID'].json.prospect;\n\nif (!message) {\n  console.log('⚠️ No FU4 configured, ending sequence');\n  return [];\n}\n\nconst personalized = message\n  .replace(/\\{\\{?first_name\\}?\\}/gi, prospect.first_name || '')\n  .replace(/\\{\\{?last_name\\}?\\}/gi, prospect.last_name || '')\n  .replace(/\\{\\{?company_name\\}?\\}/gi, prospect.company_name || prospect.company || '')\n  .replace(/\\{\\{?title\\}?\\}/gi, prospect.title || prospect.job_title || '');\n\nreturn [{ json: { ...$input.item.json, followUpMessage: personalized } }];"
+      },
+      "name": "Personalize FU4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2208,
+        0
+      ],
+      "id": "0ecda4cc-1626-47e6-a35a-eedd2a71a85c"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{$env.UNIPILE_DSN}}/api/v1/messaging/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{$env.UNIPILE_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"provider_id\": \"{{$json.provider_id}}\", \"text\": \"{{$json.followUpMessage}}\"}",
+        "options": {}
+      },
+      "name": "Send FU4",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2400,
+        0
+      ],
+      "id": "0bd93210-845e-48b5-8298-e607dca0f918"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.NEXT_PUBLIC_SUPABASE_URL}}/rest/v1/campaign_prospects?id=eq.{{$json.prospect_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\": \"follow_up_4_sent\", \"personalization_data\": {\"fu4_sent_at\": \"{{new Date().toISOString()}}\"}}",
+        "options": {}
+      },
+      "name": "Update FU4 Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2608,
+        0
+      ],
+      "id": "60512716-4209-46df-be6f-99bba6dbd1bd"
+    },
+    {
+      "parameters": {
+        "amount": "={{($node['Split Prospects'].json.timing.fu5_delay_days || 5) * 24}}"
+      },
+      "name": "Wait for FU5",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        2800,
+        0
+      ],
+      "webhookId": "wait-fu5",
+      "id": "c66cee72-d33f-4bca-aac4-cc12f52f9715"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Personalize Follow-Up 5\nconst message = $node['Extract Message ID'].json.messages.fu5 || $node['Extract Message ID'].json.messages.follow_up_5;\nconst prospect = $node['Extract Message ID'].json.prospect;\n\nif (!message) {\n  console.log('⚠️ No FU5 configured, ending sequence');\n  return [];\n}\n\nconst personalized = message\n  .replace(/\\{\\{?first_name\\}?\\}/gi, prospect.first_name || '')\n  .replace(/\\{\\{?last_name\\}?\\}/gi, prospect.last_name || '')\n  .replace(/\\{\\{?company_name\\}?\\}/gi, prospect.company_name || prospect.company || '')\n  .replace(/\\{\\{?title\\}?\\}/gi, prospect.title || prospect.job_title || '');\n\nreturn [{ json: { ...$input.item.json, followUpMessage: personalized } }];"
+      },
+      "name": "Personalize FU5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3008,
+        0
+      ],
+      "id": "c7a6ecc9-5950-4ba2-8464-0942b352d609"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{$env.UNIPILE_DSN}}/api/v1/messaging/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{$env.UNIPILE_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"provider_id\": \"{{$json.provider_id}}\", \"text\": \"{{$json.followUpMessage}}\"}",
+        "options": {}
+      },
+      "name": "Send FU5",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3200,
+        0
+      ],
+      "id": "11edc6b3-7eee-4ad8-9219-d8971d3dd22f"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.NEXT_PUBLIC_SUPABASE_URL}}/rest/v1/campaign_prospects?id=eq.{{$json.prospect_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\": \"follow_up_5_sent\", \"personalization_data\": {\"fu5_sent_at\": \"{{new Date().toISOString()}}\"}}",
+        "options": {}
+      },
+      "name": "Update FU5 Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3408,
+        0
+      ],
+      "id": "a23f4fcb-cf04-4410-8d7c-0f8364e4194b"
+    },
+    {
+      "parameters": {
+        "amount": "={{($node['Split Prospects'].json.timing.fu6_delay_days || 5) * 24}}"
+      },
+      "name": "Wait for FU6",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        3600,
+        0
+      ],
+      "webhookId": "wait-fu6",
+      "id": "8b29cf7e-ab5e-4eab-bcec-88763d210db2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Personalize Follow-Up 6 (final message)\nconst message = $node['Extract Message ID'].json.messages.fu6 || $node['Extract Message ID'].json.messages.follow_up_6;\nconst prospect = $node['Extract Message ID'].json.prospect;\n\nif (!message) {\n  console.log('⚠️ No FU6 configured, ending sequence');\n  return [];\n}\n\nconst personalized = message\n  .replace(/\\{\\{?first_name\\}?\\}/gi, prospect.first_name || '')\n  .replace(/\\{\\{?last_name\\}?\\}/gi, prospect.last_name || '')\n  .replace(/\\{\\{?company_name\\}?\\}/gi, prospect.company_name || prospect.company || '')\n  .replace(/\\{\\{?title\\}?\\}/gi, prospect.title || prospect.job_title || '');\n\nreturn [{ json: { ...$input.item.json, followUpMessage: personalized } }];"
+      },
+      "name": "Personalize FU6",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3808,
+        0
+      ],
+      "id": "3dd49de2-b4a5-4b9e-af80-775d0290eb48"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{$env.UNIPILE_DSN}}/api/v1/messaging/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{$env.UNIPILE_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"provider_id\": \"{{$json.provider_id}}\", \"text\": \"{{$json.followUpMessage}}\"}",
+        "options": {}
+      },
+      "name": "Send FU6",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        4000,
+        0
+      ],
+      "id": "117594e4-a98b-4e8b-9723-abc6ebf753d3"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.NEXT_PUBLIC_SUPABASE_URL}}/rest/v1/campaign_prospects?id=eq.{{$json.prospect_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\": \"follow_up_6_sent\", \"personalization_data\": {\"fu6_sent_at\": \"{{new Date().toISOString()}}\", \"sequence_completed_at\": \"{{new Date().toISOString()}}\"}}",
+        "options": {}
+      },
+      "name": "Update FU6 Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        4208,
+        0
+      ],
+      "id": "f1ca994e-5b15-4485-a9e1-6a7c379c1511"
+    },
+    {
+      "parameters": {
+        "jsCode": "console.log('✅ Campaign sequence completed successfully');\nreturn $input.all();"
+      },
+      "name": "Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4400,
+        0
+      ],
+      "id": "89ebfa49-e6d6-4031-a6a9-a9a02553ec7d"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Error handler\nconst error = $input.item.json.error || $input.item.json;\nconst prospect = $input.item.json.prospect || {};\n\nconsole.error(`❌ Error in campaign for prospect ${prospect.id}:`, error);\n\nreturn [{\n  json: {\n    prospect_id: prospect.id,\n    status: 'failed',\n    error_message: error.message || JSON.stringify(error)\n  }\n}];"
+      },
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        400
+      ],
+      "id": "3f848213-c042-41c6-abcf-dd387d070fc0"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.NEXT_PUBLIC_SUPABASE_URL}}/rest/v1/campaign_prospects?id=eq.{{$json.prospect_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\": \"failed\", \"personalization_data\": {\"error\": \"{{$json.error_message}}\", \"failed_at\": \"{{new Date().toISOString()}}\"}}",
+        "options": {}
+      },
+      "name": "Update Failed Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -1008,
+        400
+      ],
+      "id": "a9bcd53c-1017-417e-b470-973475552785"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Split Prospects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Prospects": {
+      "main": [
+        [
+          {
+            "node": "Extract Username",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Username": {
+      "main": [
+        [
+          {
+            "node": "Lookup LinkedIn Profile",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup LinkedIn Profile": {
+      "main": [
+        [
+          {
+            "node": "Personalize CR",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Personalize CR": {
+      "main": [
+        [
+          {
+            "node": "Send Connection Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Connection Request": {
+      "main": [
+        [
+          {
+            "node": "Extract Message ID",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message ID": {
+      "main": [
+        [
+          {
+            "node": "Update Status CR Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Status CR Sent": {
+      "main": [
+        [
+          {
+            "node": "Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Connection Accepted?": {
+      "main": [
+        [
+          {
+            "node": "Personalize FU1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Personalize FU1": {
+      "main": [
+        [
+          {
+            "node": "Send FU1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send FU1": {
+      "main": [
+        [
+          {
+            "node": "Update FU1 Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Personalize FU2": {
+      "main": [
+        [
+          {
+            "node": "Send FU2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send FU2": {
+      "main": [
+        [
+          {
+            "node": "Update FU2 Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Personalize FU3": {
+      "main": [
+        [
+          {
+            "node": "Send FU3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send FU3": {
+      "main": [
+        [
+          {
+            "node": "Update FU3 Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Personalize FU4": {
+      "main": [
+        [
+          {
+            "node": "Send FU4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send FU4": {
+      "main": [
+        [
+          {
+            "node": "Update FU4 Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Personalize FU5": {
+      "main": [
+        [
+          {
+            "node": "Send FU5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send FU5": {
+      "main": [
+        [
+          {
+            "node": "Update FU5 Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Handler": {
+      "main": [
+        [
+          {
+            "node": "Update Failed Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "23d75095-c5d0-4c97-bd0b-e1ed52ac08c5",
+  "versionCounter": 1,
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-11-02T08:09:16.116Z",
+      "createdAt": "2025-11-02T08:09:16.116Z",
+      "role": "workflow:owner",
+      "workflowId": "dsJ40aZYDOtSC1F7",
+      "projectId": "E9Xq0Sqn9jUGEbhJ",
+      "project": {
+        "updatedAt": "2025-07-12T06:08:41.888Z",
+        "createdAt": "2025-07-12T06:02:59.801Z",
+        "id": "E9Xq0Sqn9jUGEbhJ",
+        "name": "Thorsten Linz <tl@innovareai.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "projectRelations": [
+          {
+            "updatedAt": "2025-07-12T06:02:59.801Z",
+            "createdAt": "2025-07-12T06:02:59.801Z",
+            "userId": "9c8841b7-d88f-4eac-afb9-77f989fc9916",
+            "projectId": "E9Xq0Sqn9jUGEbhJ",
+            "user": {
+              "updatedAt": "2025-11-11T23:50:44.000Z",
+              "createdAt": "2025-07-12T06:02:58.862Z",
+              "id": "9c8841b7-d88f-4eac-afb9-77f989fc9916",
+              "email": "tl@innovareai.com",
+              "firstName": "Thorsten",
+              "lastName": "Linz",
+              "personalizationAnswers": {
+                "version": "v4",
+                "personalization_survey_submitted_at": "2025-07-12T06:09:06.052Z",
+                "personalization_survey_n8n_version": "1.101.2",
+                "companySize": "<20",
+                "companyType": "saas",
+                "role": "business-owner",
+                "reportedSource": "google"
+              },
+              "settings": {
+                "userActivated": true,
+                "firstSuccessfulWorkflowId": "JHIOAOorkZSRmpA8",
+                "userActivatedAt": 1752382374010,
+                "easyAIWorkflowOnboarded": true,
+                "npsSurvey": {
+                  "responded": true,
+                  "lastShownAt": 1754499132724
+                }
+              },
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2025-11-12",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": []
+}
