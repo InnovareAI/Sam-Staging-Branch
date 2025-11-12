@@ -114,16 +114,23 @@ export async function POST(req: NextRequest) {
       const contact = prospect.contact || {};
       const linkedinUrl = contact.linkedin_url || contact.linkedinUrl || prospect.linkedin_url || null;
 
-      // Extract names from LinkedIn URL if missing
-      let firstName = contact.firstName || prospect.first_name || 'Unknown';
-      let lastName = contact.lastName || prospect.last_name || 'User';
+      // FIXED: Use prospect.name field and parse it properly
+      // prospect_approval_data has "name" field, NOT contact.firstName/lastName
+      const fullName = prospect.name || `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
 
-      if (linkedinUrl && (!contact.firstName || !contact.lastName)) {
-        const match = linkedinUrl.match(/\/in\/([^\/\?]+)/);
-        if (match) {
-          const urlName = match[1].split('-');
-          if (!contact.firstName && urlName.length > 0) firstName = urlName[0];
-          if (!contact.lastName && urlName.length > 1) lastName = urlName.slice(1).join('-');
+      // Parse the full name properly (remove titles, credentials, etc.)
+      let firstName = 'Unknown';
+      let lastName = 'User';
+
+      if (fullName && fullName.trim() !== '') {
+        // Split on first space: "Hyelim Kim" -> firstName: "Hyelim", lastName: "Kim"
+        const nameParts = fullName.trim().split(/\s+/);
+        if (nameParts.length >= 2) {
+          firstName = nameParts[0];
+          lastName = nameParts.slice(1).join(' ');
+        } else if (nameParts.length === 1) {
+          firstName = nameParts[0];
+          lastName = '';
         }
       }
 
