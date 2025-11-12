@@ -7916,66 +7916,84 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Connection Message */}
-              {selectedCampaignForMessages.connection_message && (
+              {/* Connection Message - check both direct field and message_templates */}
+              {(selectedCampaignForMessages.connection_message || selectedCampaignForMessages.message_templates?.connection_request) && (
                 <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-purple-400 mb-3 flex items-center gap-2">
                     <MessageCircle size={18} />
                     Connection Request Message
                   </h3>
                   <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
-                    <p className="text-gray-200 whitespace-pre-wrap">{selectedCampaignForMessages.connection_message}</p>
+                    <p className="text-gray-200 whitespace-pre-wrap">
+                      {selectedCampaignForMessages.connection_message || selectedCampaignForMessages.message_templates?.connection_request}
+                    </p>
                   </div>
                 </div>
               )}
 
-              {/* Alternative Message */}
-              {selectedCampaignForMessages.alternative_message && (
+              {/* Alternative Message - check both direct field and message_templates */}
+              {(selectedCampaignForMessages.alternative_message || selectedCampaignForMessages.message_templates?.alternative_message) && (
                 <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center gap-2">
                     <MessageSquare size={18} />
                     Alternative Message
                   </h3>
                   <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
-                    <p className="text-gray-200 whitespace-pre-wrap">{selectedCampaignForMessages.alternative_message}</p>
+                    <p className="text-gray-200 whitespace-pre-wrap">
+                      {selectedCampaignForMessages.alternative_message || selectedCampaignForMessages.message_templates?.alternative_message}
+                    </p>
                   </div>
                 </div>
               )}
 
-              {/* Follow-up Messages */}
-              {selectedCampaignForMessages.follow_up_messages && selectedCampaignForMessages.follow_up_messages.length > 0 && (
-                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-green-400 mb-3 flex items-center gap-2">
-                    <Send size={18} />
-                    Follow-up Messages ({selectedCampaignForMessages.follow_up_messages.length})
-                  </h3>
-                  <div className="space-y-4">
-                    {selectedCampaignForMessages.follow_up_messages.map((msg: any, index: number) => (
-                      <div key={index} className="bg-gray-900/50 border border-gray-700 rounded p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-gray-400">Follow-up #{index + 1}</span>
-                          {msg.delay_days && (
-                            <span className="bg-blue-900/20 text-blue-400 border border-blue-500 px-2 py-1 rounded text-xs">
-                              Delay: {msg.delay_days} days
-                            </span>
-                          )}
+              {/* Follow-up Messages - check both direct field and message_templates */}
+              {(() => {
+                const followUps = selectedCampaignForMessages.follow_up_messages?.length > 0
+                  ? selectedCampaignForMessages.follow_up_messages
+                  : selectedCampaignForMessages.message_templates?.follow_up_messages;
+
+                return followUps && followUps.length > 0 && (
+                  <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-green-400 mb-3 flex items-center gap-2">
+                      <Send size={18} />
+                      Follow-up Messages ({followUps.length})
+                    </h3>
+                    <div className="space-y-4">
+                      {followUps.map((msg: any, index: number) => (
+                        <div key={index} className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-400">Follow-up #{index + 1}</span>
+                            {msg.delay_days && (
+                              <span className="bg-blue-900/20 text-blue-400 border border-blue-500 px-2 py-1 rounded text-xs">
+                                Delay: {msg.delay_days} days
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-gray-200 whitespace-pre-wrap">{typeof msg === 'string' ? msg : (msg.message || msg.content || msg)}</p>
                         </div>
-                        <p className="text-gray-200 whitespace-pre-wrap">{msg.message || msg.content || msg}</p>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* No Messages */}
-              {!selectedCampaignForMessages.connection_message &&
-               !selectedCampaignForMessages.alternative_message &&
-               (!selectedCampaignForMessages.follow_up_messages || selectedCampaignForMessages.follow_up_messages.length === 0) && (
-                <div className="text-center py-8 text-gray-400">
-                  <AlertCircle size={48} className="mx-auto mb-4 text-gray-600" />
-                  <p>No messages configured for this campaign</p>
-                </div>
-              )}
+              {(() => {
+                const hasDirectMessages = selectedCampaignForMessages.connection_message ||
+                                         selectedCampaignForMessages.alternative_message ||
+                                         (selectedCampaignForMessages.follow_up_messages?.length > 0);
+
+                const hasTemplateMessages = selectedCampaignForMessages.message_templates?.connection_request ||
+                                           selectedCampaignForMessages.message_templates?.alternative_message ||
+                                           (selectedCampaignForMessages.message_templates?.follow_up_messages?.length > 0);
+
+                return !hasDirectMessages && !hasTemplateMessages && (
+                  <div className="text-center py-8 text-gray-400">
+                    <AlertCircle size={48} className="mx-auto mb-4 text-gray-600" />
+                    <p>No messages configured for this campaign</p>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="sticky bottom-0 bg-gray-900 border-t border-gray-700 p-6">
