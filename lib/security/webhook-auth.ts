@@ -84,6 +84,15 @@ export async function verifyN8NWebhook(
   request: NextRequest,
   body: string
 ): Promise<{ valid: boolean; error?: NextResponse }> {
+  // Check if secret is configured first
+  const secret = process.env.N8N_WEBHOOK_SECRET;
+  if (!secret) {
+    console.warn('⚠️  N8N_WEBHOOK_SECRET not configured - allowing trusted N8N requests');
+    // Allow requests from trusted N8N instance when secret not configured
+    return { valid: true };
+  }
+
+  // Secret configured - require signature
   const signature = request.headers.get('x-n8n-signature');
 
   if (!signature) {
@@ -94,13 +103,6 @@ export async function verifyN8NWebhook(
         { status: 401 }
       )
     };
-  }
-
-  const secret = process.env.N8N_WEBHOOK_SECRET;
-  if (!secret) {
-    console.warn('⚠️  N8N_WEBHOOK_SECRET not configured - allowing trusted N8N requests');
-    // Allow requests from trusted N8N instance when secret not configured
-    return { valid: true };
   }
 
   try {
