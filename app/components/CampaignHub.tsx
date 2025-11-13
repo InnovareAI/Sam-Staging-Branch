@@ -4677,6 +4677,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const [selectedCampaignProspects, setSelectedCampaignProspects] = useState<any[] | null>(null);
   const [selectedDraft, setSelectedDraft] = useState<any>(null);
 
+  // Multi-select state
+  const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+
   const queryClient = useQueryClient();
 
   // Fetch user's saved timezone preference
@@ -5981,6 +5985,102 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     } catch (error) {
       console.error('Error archiving campaign:', error);
       toastError('Failed to archive campaign');
+    }
+  };
+
+  // Multi-select handlers
+  const toggleCampaignSelection = (campaignId: string) => {
+    setSelectedCampaigns(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(campaignId)) {
+        newSet.delete(campaignId);
+      } else {
+        newSet.add(campaignId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = (campaigns: any[]) => {
+    if (selectedCampaigns.size === campaigns.length) {
+      setSelectedCampaigns(new Set());
+    } else {
+      setSelectedCampaigns(new Set(campaigns.map((c: any) => c.id)));
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedCampaigns(new Set());
+  };
+
+  const handleBulkPause = async () => {
+    if (selectedCampaigns.size === 0) return;
+
+    try {
+      await Promise.all(
+        Array.from(selectedCampaigns).map(campaignId =>
+          fetch(`/api/campaigns/${campaignId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'paused' })
+          })
+        )
+      );
+
+      toastSuccess(`Paused ${selectedCampaigns.size} campaign(s)`);
+      clearSelection();
+      queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+    } catch (error) {
+      console.error('Failed to pause campaigns:', error);
+      toastError('Failed to pause some campaigns');
+    }
+  };
+
+  const handleBulkResume = async () => {
+    if (selectedCampaigns.size === 0) return;
+
+    try {
+      await Promise.all(
+        Array.from(selectedCampaigns).map(campaignId =>
+          fetch(`/api/campaigns/${campaignId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'active' })
+          })
+        )
+      );
+
+      toastSuccess(`Resumed ${selectedCampaigns.size} campaign(s)`);
+      clearSelection();
+      queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+    } catch (error) {
+      console.error('Failed to resume campaigns:', error);
+      toastError('Failed to resume some campaigns');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedCampaigns.size === 0) return;
+
+    const confirmDelete = window.confirm(
+      `Delete ${selectedCampaigns.size} campaign(s)? This cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      await Promise.all(
+        Array.from(selectedCampaigns).map(campaignId =>
+          fetch(`/api/campaigns/${campaignId}`, { method: 'DELETE' })
+        )
+      );
+
+      toastSuccess(`Deleted ${selectedCampaigns.size} campaign(s)`);
+      clearSelection();
+      queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+    } catch (error) {
+      console.error('Failed to delete campaigns:', error);
+      toastError('Failed to delete some campaigns');
     }
   };
 
