@@ -115,7 +115,7 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
     setTimeout(() => setNotification(null), 5000);
   };
 
-  // Connect Google account via Unipile
+  // Connect Google account via Unipile - Open in popup like LinkedIn
   const connectGoogle = async () => {
     try {
       setIsConnecting(true);
@@ -130,8 +130,21 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
       const data = await response.json();
 
       if (data.success && (data.auth_url || data.url)) {
-        // Redirect to Unipile hosted auth with custom domain
-        window.location.href = data.auth_url || data.url;
+        // Open in popup window (matches LinkedIn flow)
+        const authWindow = window.open(
+          data.auth_url || data.url,
+          'unipile_hosted_auth',
+          'width=500,height=720,scrollbars=yes,resizable=yes'
+        );
+
+        if (!authWindow) {
+          // Popup blocked – fall back to redirecting the current tab
+          window.location.href = data.auth_url || data.url;
+        } else {
+          showNotification('success', 'Complete the Google login in the popup window');
+          // Start polling for connection
+          startPollingConnection('email');
+        }
       } else {
         throw new Error(data.error || 'Failed to initiate Google OAuth');
       }
@@ -142,7 +155,7 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
     }
   };
 
-  // Connect Microsoft account via Unipile
+  // Connect Microsoft account via Unipile - Open in popup like LinkedIn
   const connectMicrosoft = async () => {
     try {
       setIsConnecting(true);
@@ -157,8 +170,21 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
       const data = await response.json();
 
       if (data.success && (data.auth_url || data.url)) {
-        // Redirect to Unipile hosted auth with custom domain
-        window.location.href = data.auth_url || data.url;
+        // Open in popup window (matches LinkedIn flow)
+        const authWindow = window.open(
+          data.auth_url || data.url,
+          'unipile_hosted_auth',
+          'width=500,height=720,scrollbars=yes,resizable=yes'
+        );
+
+        if (!authWindow) {
+          // Popup blocked – fall back to redirecting the current tab
+          window.location.href = data.auth_url || data.url;
+        } else {
+          showNotification('success', 'Complete the Microsoft login in the popup window');
+          // Start polling for connection
+          startPollingConnection('email');
+        }
       } else {
         throw new Error(data.error || 'Failed to initiate Microsoft OAuth');
       }
@@ -167,6 +193,35 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
       showNotification('error', 'Failed to connect Microsoft account');
       setIsConnecting(false);
     }
+  };
+
+  // Poll for email connection (like LinkedIn modal)
+  const startPollingConnection = (accountType: 'email') => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/workspace-accounts/check?workspace_id=${localStorage.getItem('currentWorkspaceId')}`);
+        const data = await response.json();
+
+        if (data.success && data.email_connected) {
+          clearInterval(pollInterval);
+          showNotification('success', 'Email account connected successfully!');
+          setIsConnecting(false);
+          await fetchProviders(); // Refresh the list
+          // Optional: close modal after brief delay
+          setTimeout(() => {
+            onClose();
+          }, 1500);
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    // Stop polling after 5 minutes
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      setIsConnecting(false);
+    }, 300000);
   };
 
   // Add SMTP provider
