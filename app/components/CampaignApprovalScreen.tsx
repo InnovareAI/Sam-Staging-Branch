@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircle, ChevronDown, ChevronUp, Save, Upload, XCircle, Clock, Calendar, Mail, AlertCircle, Info } from 'lucide-react';
+import { CheckCircle, XCircle } from 'lucide-react';
 import { toastError, toastSuccess, toastInfo } from '@/lib/toast';
 import { UnipileModal } from '@/components/integrations/UnipileModal';
 import EmailProvidersModal from './EmailProvidersModal';
@@ -38,14 +38,6 @@ export default function CampaignApprovalScreen({
   onRequestSAMHelp
 }: CampaignApprovalScreenProps) {
   const [messages, setMessages] = useState(campaignData.messages || {});
-  const [savedTemplates, setSavedTemplates] = useState<any[]>([]);
-  const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [expandedSections, setExpandedSections] = useState({
-    timing: true,
-    messages: true,
-    templates: false
-  });
 
   // Channel type selection state
   const [channelType, setChannelType] = useState<'linkedin' | 'email'>(
@@ -73,10 +65,6 @@ export default function CampaignApprovalScreen({
   const [skipWeekends, setSkipWeekends] = useState(false);        // Allow weekends
   const [skipHolidays, setSkipHolidays] = useState(false);        // Allow holidays
 
-  const toggleSection = (section: keyof typeof expandedSections) => {
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
-  };
-
   // Check connected accounts on mount
   useEffect(() => {
     const checkConnectedAccounts = async () => {
@@ -97,35 +85,6 @@ export default function CampaignApprovalScreen({
 
     checkConnectedAccounts();
   }, [workspaceId]);
-
-  // Load saved templates on mount
-  useEffect(() => {
-    const loadTemplates = async () => {
-      try {
-        const response = await fetch(`/api/messaging-templates/list?workspace_id=${workspaceId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setSavedTemplates(data.templates || []);
-        }
-      } catch (error) {
-        console.error('Failed to load templates:', error);
-      }
-    };
-    loadTemplates();
-  }, [workspaceId]);
-
-  // Autosave on message changes
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      handleSaveTemplate(true); // silent autosave
-    }, 3000);
-
-    return () => clearTimeout(timeoutId);
-  }, [messages]);
-
-  const handleUploadTemplate = () => {
-    setShowTemplateLibrary(!showTemplateLibrary);
-  };
 
   // Handle channel type change with account validation
   const handleChannelTypeChange = (type: 'linkedin' | 'email') => {
@@ -176,45 +135,6 @@ export default function CampaignApprovalScreen({
       }
     } catch (error) {
       console.error('Failed to recheck accounts:', error);
-    }
-  };
-
-  const handleSaveTemplate = async (silent = false) => {
-    if (!messages.connection_request?.trim() && !messages.follow_up_1?.trim()) {
-      if (!silent) toastError('Add at least one message to save');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const response = await fetch('/api/messaging-templates/autosave', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workspace_id: workspaceId,
-          campaign_name: campaignData.name,
-          campaign_type: campaignData.type.toLowerCase(),
-          connection_message: messages.connection_request || '',
-          alternative_message: messages.follow_up_1 || '',
-          follow_up_messages: [
-            messages.follow_up_2 || '',
-            messages.follow_up_3 || '',
-            messages.follow_up_4 || '',
-            messages.follow_up_5 || ''
-          ].filter(m => m.trim())
-        })
-      });
-
-      if (response.ok) {
-        if (!silent) toastSuccess('Template saved!');
-      } else {
-        throw new Error('Failed to save');
-      }
-    } catch (error) {
-      console.error('Save error:', error);
-      if (!silent) toastError('Failed to save template');
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -383,36 +303,6 @@ export default function CampaignApprovalScreen({
               )}
             </div>
         </div>
-
-        {/* Template Library (OLD - kept for reference) */}
-        {false && savedTemplates.length > 0 && (
-          <div className="bg-gray-800 rounded-lg p-6 mb-6 border border-gray-700">
-            <div
-              className="flex items-center justify-between cursor-pointer mb-4"
-              onClick={() => toggleSection('templates')}
-            >
-              <h2 className="text-xl font-semibold text-white">Saved Templates</h2>
-              {expandedSections.templates ? <ChevronUp className="text-gray-400" /> : <ChevronDown className="text-gray-400" />}
-            </div>
-
-            {expandedSections.templates && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {savedTemplates.map((template, idx) => (
-                  <div key={idx} className="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 cursor-pointer">
-                    <h3 className="font-semibold text-white mb-2">{template.name}</h3>
-                    <div className="text-sm text-gray-400 mb-2">{template.type} Campaign</div>
-                    <button
-                      onClick={() => setMessages(template.messages)}
-                      className="text-purple-400 hover:text-purple-300 text-sm"
-                    >
-                      Load Template
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-4 bg-gray-800 rounded-lg p-6 border border-gray-700">
