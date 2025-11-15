@@ -3909,6 +3909,205 @@ Would you like me to adjust these or create more variations?`
         </div>
       )}
 
+      {/* Step 3: Message Templates (Email Campaign) */}
+      {currentStep === 3 && campaignType === 'email' && (
+        <div className="space-y-6">
+          {/* SAM Messaging Generation */}
+          <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
+            <div className="flex items-center mb-3">
+              <Zap className="text-purple-400 mr-2" size={20} />
+              <h4 className="text-white font-medium">SAM AI Email Sequence Generator</h4>
+            </div>
+            <p className="text-gray-300 text-sm mb-3">
+              Let SAM create personalized email sequences for your outreach campaign.
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-gray-700 hover:bg-gray-600 text-gray-300"
+                onClick={() => {
+                  setManualConnection('');
+                  setManualAlternative('');
+                  setManualFollowUps(['']);
+                  setShowManualTemplateModal(true);
+                }}
+              >
+                <Edit size={16} className="mr-1" />
+                Create Manually
+              </Button>
+              <Button
+                onClick={() => {
+                  setSamMessages([{
+                    role: 'assistant',
+                    content: `Hi! I'm SAM, and I'll help you create compelling email sequences for your cold email campaign "${name}".\n\n**Campaign Type:** Email Outreach\n\nI can see you have ${csvData.length} prospects with business emails. To create the best email sequence, tell me:\n\n1. What's your main goal with this campaign? (lead generation, partnerships, sales, etc.)\n2. What value can you offer these prospects?\n3. Any specific tone you'd like? (professional, casual, friendly, etc.)\n\nLet's create emails that get responses! 📧`
+                  }]);
+                  setShowSamGenerationModal(true);
+                }}
+                className="bg-purple-600 hover:bg-purple-700"
+                size="sm"
+              >
+                <Zap size={16} className="mr-1" />
+                Generate with SAM
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30"
+                onClick={openKBModal}
+              >
+                <Brain size={16} className="mr-1" />
+                Load from KB
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30"
+                onClick={() => setShowPasteModal(true)}
+              >
+                <Upload size={16} className="mr-1" />
+                Paste Template
+              </Button>
+            </div>
+          </div>
+
+          {/* Initial Email */}
+          <div className="space-y-2">
+            <Label htmlFor="email-initial" className="text-gray-400">
+              Initial Email
+            </Label>
+            <p className="text-xs text-gray-500">
+              First email sent to your prospects
+            </p>
+            <Textarea
+              id="email-initial"
+              className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+              rows={6}
+              value={alternativeMessage}
+              onChange={e => setAlternativeMessage(e.target.value)}
+              onFocus={(e) => {
+                setActiveField({type: 'alternative'});
+                setActiveTextarea(e.target as HTMLTextAreaElement);
+              }}
+              placeholder="Hi {{first_name}},&#10;&#10;I noticed you're at {{company_name}} and thought you might be interested in...&#10;&#10;Would love to connect!"
+            />
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-400">
+                Characters: {alternativeMessage.length}
+              </span>
+            </div>
+          </div>
+
+          {/* Email Follow-ups */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <Label className="text-gray-400">
+                Follow-up Emails ({followUpMessages.length})
+              </Label>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">
+              Automated follow-up sequence
+            </p>
+
+            {followUpMessages.map((message, index) => (
+              <div key={index} className="mb-4">
+                {/* Delay before this message */}
+                <div className="mb-3 flex items-center gap-2 bg-gray-800/50 border border-gray-600 rounded-lg p-3">
+                  <Clock size={16} className="text-purple-400 flex-shrink-0" />
+                  <span className="text-gray-400 text-sm">Wait</span>
+                  <select
+                    className="bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none flex-1 max-w-xs"
+                    value={(campaignSettings.message_delays || [])[index] || '2-3 days'}
+                    onChange={(e) => updateMessageDelay(index, e.target.value)}
+                  >
+                    <option value="1 day">1 day</option>
+                    <option value="2-3 days">2-3 days</option>
+                    <option value="3-5 days">3-5 days</option>
+                    <option value="5-7 days">5-7 days</option>
+                    <option value="1 week">1 week</option>
+                  </select>
+                  <span className="text-gray-400 text-sm">before sending</span>
+                </div>
+
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-gray-400">
+                    Follow-up Email {index + 1}
+                  </Label>
+                </div>
+                <Textarea
+                  className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+                  rows={4}
+                  value={message}
+                  onChange={e => updateFollowUpMessage(index, e.target.value)}
+                  onFocus={(e) => {
+                    setActiveField({type: 'followup', index});
+                    setActiveTextarea(e.target as HTMLTextAreaElement);
+                  }}
+                  placeholder={`Follow-up email ${index + 1}...`}
+                  data-followup-index={index}
+                />
+                {message.length > 0 && followUpMessages.length > 1 && (
+                  <div className="flex justify-between items-center mt-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 text-xs px-2 py-1"
+                      onClick={() => {
+                        if (confirm(`Remove Follow-up ${index + 1}?`)) {
+                          removeFollowUpMessage(index);
+                          toastSuccess(`Follow-up ${index + 1} removed`);
+                        }
+                      }}
+                    >
+                      <X size={12} className="mr-1" />
+                      Remove
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Add Follow-Up Button */}
+            <div className="mt-4">
+              <Button
+                onClick={addFollowUpMessage}
+                variant="secondary"
+                size="sm"
+                className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30"
+              >
+                <Plus size={16} className="mr-2" />
+                Add Follow-Up Email
+              </Button>
+              <p className="text-xs text-gray-500 mt-2">
+                Currently {followUpMessages.length} follow-up{followUpMessages.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+
+          {/* Personalization Placeholders */}
+          <div className="bg-gray-700 rounded-lg p-4">
+            <h4 className="text-white font-medium mb-3">Personalization Placeholders</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {placeholders.map((placeholder) => (
+                <Button
+                  key={placeholder.key}
+                  onClick={() => insertPlaceholder(placeholder.key)}
+                  variant="secondary"
+                  size="sm"
+                  className="text-xs bg-purple-600 hover:bg-purple-700 text-white"
+                  title={placeholder.description}
+                >
+                  {placeholder.key}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Click any placeholder to insert it into your email
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Navigation Buttons */}
       <div className="flex justify-between mt-8">
         <Button
