@@ -3509,12 +3509,15 @@ Would you like me to adjust these or create more variations?`
 
               return (
                 <div key={index} className="mb-4">
-                  {/* Delay before this message */}
-                  <div className="mb-3 flex items-center gap-2 bg-gray-800/50 border border-gray-600 rounded-lg p-3">
-                    <Clock size={16} className="text-purple-400 flex-shrink-0" />
-                    <span className="text-gray-400 text-sm">Wait</span>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-gray-400">
+                        {getMessageLabel()}
+                      </Label>
+                      <span className="text-xs text-gray-500">• Wait:</span>
+                    </div>
                     <select
-                      className="bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none flex-1 max-w-xs"
+                      className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
                       value={(campaignSettings.message_delays || [])[index] || '2-3 days'}
                       onChange={(e) => updateMessageDelay(index, e.target.value)}
                     >
@@ -3525,13 +3528,6 @@ Would you like me to adjust these or create more variations?`
                       <option value="1 week">1 week</option>
                       <option value="2 weeks">2 weeks</option>
                     </select>
-                    <span className="text-gray-400 text-sm">before sending</span>
-                  </div>
-
-                  <div className="flex items-center justify-between mb-2">
-                    <Label className="text-gray-400">
-                      {getMessageLabel()}
-                    </Label>
                   </div>
                   <Textarea
                     className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
@@ -3917,12 +3913,15 @@ Would you like me to adjust these or create more variations?`
 
               return (
                 <div key={index} className="mb-4">
-                  {/* Delay before this message */}
-                  <div className="mb-3 flex items-center gap-2 bg-gray-800/50 border border-gray-600 rounded-lg p-3">
-                    <Clock size={16} className="text-purple-400 flex-shrink-0" />
-                    <span className="text-gray-400 text-sm">Wait</span>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-gray-400">
+                        {getMessageLabel()}
+                      </Label>
+                      <span className="text-xs text-gray-500">• Wait:</span>
+                    </div>
                     <select
-                      className="bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none flex-1 max-w-xs"
+                      className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
                       value={(campaignSettings.message_delays || [])[index] || '2-3 days'}
                       onChange={(e) => updateMessageDelay(index, e.target.value)}
                     >
@@ -3933,13 +3932,6 @@ Would you like me to adjust these or create more variations?`
                       <option value="1 week">1 week</option>
                       <option value="2 weeks">2 weeks</option>
                     </select>
-                    <span className="text-gray-400 text-sm">before sending</span>
-                  </div>
-
-                  <div className="flex items-center justify-between mb-2">
-                    <Label className="text-gray-400">
-                      {getMessageLabel()}
-                    </Label>
                   </div>
                   <Textarea
                     className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
