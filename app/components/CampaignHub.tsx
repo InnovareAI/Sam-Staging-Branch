@@ -904,7 +904,7 @@ function CampaignBuilder({
 
     if (initialProspects && initialProspects.length > 0) {
       console.log('✅ Loading initialProspects into csvData:', initialProspects);
-      const headers = ['name', 'title', 'company', 'email', 'linkedin_url'];
+      const headers = ['name', 'title', 'company', 'email', 'linkedin_url', 'connection_degree'];
       setCsvHeaders(headers);
       setCsvData(initialProspects);
       setDataSource('approved'); // Set to approved mode for validation
