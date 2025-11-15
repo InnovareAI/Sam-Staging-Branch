@@ -2493,8 +2493,43 @@ Would you like me to adjust these or create more variations?`
             <label className="block text-sm font-medium text-gray-400 mb-3">
               Campaign Type
             </label>
+            {/* Connection Degree Detection Info */}
+            {connectionDegrees.total > 0 && (
+              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mb-4">
+                <p className="text-blue-300 text-sm">
+                  {hasOnly1stDegree && (
+                    <span>✓ All prospects are 1st degree connections - showing Messenger + Email options</span>
+                  )}
+                  {!hasOnly1stDegree && connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0 && (
+                    <span>✓ All prospects are 2nd/3rd degree - showing Connector + Email options</span>
+                  )}
+                  {connectionDegrees.firstDegree > 0 && connectionDegrees.secondThird > 0 && (
+                    <span>📊 Mixed connection degrees: {connectionDegrees.firstDegree} × 1st degree, {connectionDegrees.secondThird} × 2nd/3rd degree</span>
+                  )}
+                </p>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {campaignTypes.map((type) => {
+              {campaignTypes.filter(type => {
+                // Filter campaign types based on connection degree detection
+                if (connectionDegrees.total === 0) return true; // Show all if no prospects loaded
+
+                const firstDegreePercent = (connectionDegrees.firstDegree / connectionDegrees.total) * 100;
+                const secondThirdPercent = (connectionDegrees.secondThird / connectionDegrees.total) * 100;
+
+                // If 70%+ are 1st degree connections -> Show ONLY Messenger + Email
+                if (firstDegreePercent >= 70) {
+                  return type.value === 'messenger' || type.value === 'email';
+                }
+
+                // If 70%+ are 2nd/3rd degree connections -> Show ONLY Connector + Email
+                if (secondThirdPercent >= 70) {
+                  return type.value === 'connector' || type.value === 'email';
+                }
+
+                // Mixed or unknown -> Show all except multichannel (coming soon)
+                return type.value !== 'multichannel';
+              }).map((type) => {
                 const IconComponent = type.icon;
                 const isConnector = type.value === 'connector';
                 const isMessenger = type.value === 'messenger';
@@ -4171,11 +4206,19 @@ Would you like me to adjust these or create more variations?`
             </>
           )}
           <Button
-            onClick={onClose}
+            onClick={() => {
+              if (currentStep > 1) {
+                // Go back one step
+                setCurrentStep(currentStep - 1);
+              } else {
+                // On step 1, close the modal
+                onClose();
+              }
+            }}
             variant="secondary"
             className="bg-gray-700 hover:bg-gray-600 text-gray-300"
           >
-            Cancel
+            {currentStep > 1 ? 'Back' : 'Cancel'}
           </Button>
         </div>
       </div>
