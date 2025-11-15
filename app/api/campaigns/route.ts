@@ -153,14 +153,34 @@ export async function POST(req: NextRequest) {
       }, { status: 500 });
     }
 
-    // Update status to the requested value (default 'inactive')
+    // Update status AND flow_settings.messages from message_templates
+    // CRITICAL FIX: Copy messages from message_templates to flow_settings for N8N execution
+    const flowSettings = {
+      campaign_type: campaign_type === 'email' ? 'email' : 'linkedin_connection',
+      connection_wait_hours: 36,
+      followup_wait_days: 5,
+      message_wait_days: 5,
+      messages: {
+        connection_request: message_templates.connection_request || null,
+        follow_up_1: message_templates.alternative_message || message_templates.follow_up_messages?.[0] || null,
+        follow_up_2: message_templates.follow_up_messages?.[0] || null,
+        follow_up_3: message_templates.follow_up_messages?.[1] || null,
+        follow_up_4: message_templates.follow_up_messages?.[2] || null,
+        follow_up_5: message_templates.follow_up_messages?.[3] || null,
+        goodbye: message_templates.follow_up_messages?.[4] || null
+      }
+    };
+
     const { error: statusError } = await supabase
       .from('campaigns')
-      .update({ status })
+      .update({
+        status,
+        flow_settings: flowSettings
+      })
       .eq('id', campaignId);
 
     if (statusError) {
-      console.error('Failed to update campaign status:', statusError);
+      console.error('Failed to update campaign status and flow_settings:', statusError);
     }
 
     // AUTO-TRANSFER: If session_id provided, automatically transfer approved prospects
