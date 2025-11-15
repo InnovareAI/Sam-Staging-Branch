@@ -218,14 +218,21 @@ export async function POST(request: NextRequest) {
       reconnectAccountId = existingAccounts.length > 0 ? existingAccounts[0].unipile_account_id : null
     } else if (provider === 'GOOGLE' || provider === 'OUTLOOK' || !provider) {
       // Check for existing email accounts
-      const { data: emailAccounts } = await supabase
+      const { data: emailAccounts, error: emailQueryError } = await supabase
         .from('workspace_accounts')
         .select('unipile_account_id')
         .eq('workspace_id', workspaceId)
         .eq('account_type', 'email')
         .eq('connection_status', 'connected')
 
-      existingAccounts = emailAccounts || []
+      if (emailQueryError) {
+        console.error('❌ Error querying email accounts:', emailQueryError)
+        // Don't fail the flow, just assume no existing accounts
+        existingAccounts = []
+      } else {
+        existingAccounts = emailAccounts || []
+      }
+
       console.log(`📧 User has ${existingAccounts.length} existing email accounts`)
 
       // If user has existing email accounts, use reconnect flow
@@ -319,8 +326,9 @@ export async function POST(request: NextRequest) {
       if (provider) {
         hostedAuthPayload.providers = [provider.toUpperCase()]
       } else {
-        // Show provider selection screen with Google, Outlook, and SMTP
-        hostedAuthPayload.providers = ['GOOGLE', 'OUTLOOK', 'SMTP']
+        // Show provider selection screen with Google, Outlook, and MAIL (SMTP)
+        // Per Unipile API: Use 'MAIL' not 'SMTP' for generic email/SMTP providers
+        hostedAuthPayload.providers = ['GOOGLE', 'OUTLOOK', 'MAIL']
       }
     } else {
       hostedAuthPayload.reconnect_account = reconnectAccountId
