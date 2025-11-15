@@ -77,8 +77,6 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   const actualWorkspaceId = workspaceId;
 
   // State for modals
-  const [showMessagePreview, setShowMessagePreview] = useState(false);
-  const [selectedCampaignForMessages, setSelectedCampaignForMessages] = useState<any>(null);
   const [showProspectsModal, setShowProspectsModal] = useState(false);
   const [selectedCampaignForProspects, setSelectedCampaignForProspects] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -244,28 +242,6 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
       console.error('Error updating campaign:', error);
       toastError('Failed to update campaign');
     }
-  };
-
-  // Handler for viewing message preview
-  const viewMessages = (campaign: any) => {
-    console.log('📧 ========== VIEW MESSAGES DEBUG ==========');
-    console.log('📧 FULL CAMPAIGN OBJECT:', JSON.stringify(campaign, null, 2));
-    console.log('📧 Campaign ID:', campaign.id);
-    console.log('📧 Campaign Name:', campaign.name);
-    console.log('📧 Campaign Status:', campaign.status);
-    console.log('📧 Message Fields:', {
-      connection_message: campaign.connection_message,
-      alternative_message: campaign.alternative_message,
-      follow_up_messages: campaign.follow_up_messages,
-      message_templates: campaign.message_templates,
-      message_templates_type: typeof campaign.message_templates,
-      message_templates_keys: campaign.message_templates ? Object.keys(campaign.message_templates) : 'N/A'
-    });
-    console.log('📧 ========================================');
-
-    // FORCE OPEN - Remove the check temporarily to see the modal content
-    setSelectedCampaignForMessages(campaign);
-    setShowMessagePreview(true);
   };
 
   // Handler for viewing prospects
@@ -563,113 +539,6 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
         </Card>
         </motion.div>
       ))}
-
-      {/* Message Preview Modal */}
-      {showMessagePreview && selectedCampaignForMessages && (
-        <Dialog open={showMessagePreview} onOpenChange={setShowMessagePreview}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-purple-500">
-            <DialogHeader>
-              <DialogTitle className="text-2xl text-white flex items-center gap-2">
-                <Eye className="text-purple-400" size={24} />
-                Message Preview: {selectedCampaignForMessages.name}
-              </DialogTitle>
-              <DialogDescription className="text-gray-400">
-                Review all messages that will be sent in this campaign
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-6 mt-4">
-              {/* Connection Request Message - check both direct field and message_templates */}
-              {(selectedCampaignForMessages.connection_message || selectedCampaignForMessages.message_templates?.connection_request) && (
-                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-purple-400 mb-3 flex items-center gap-2">
-                    <MessageCircle size={18} />
-                    Connection Request Message
-                  </h3>
-                  <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
-                    <p className="text-gray-200 whitespace-pre-wrap">
-                      {selectedCampaignForMessages.connection_message || selectedCampaignForMessages.message_templates?.connection_request}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Alternative Message - check both direct field and message_templates */}
-              {(selectedCampaignForMessages.alternative_message || selectedCampaignForMessages.message_templates?.alternative_message) && (
-                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center gap-2">
-                    <MessageSquare size={18} />
-                    Alternative Message
-                  </h3>
-                  <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
-                    <p className="text-gray-200 whitespace-pre-wrap">
-                      {selectedCampaignForMessages.alternative_message || selectedCampaignForMessages.message_templates?.alternative_message}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Follow-up Messages - check both direct field and message_templates */}
-              {(() => {
-                const followUps = selectedCampaignForMessages.follow_up_messages?.length > 0
-                  ? selectedCampaignForMessages.follow_up_messages
-                  : selectedCampaignForMessages.message_templates?.follow_up_messages;
-
-                return followUps && followUps.length > 0 && (
-                  <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                    <h3 className="text-lg font-semibold text-green-400 mb-3 flex items-center gap-2">
-                      <Send size={18} />
-                      Follow-up Messages ({followUps.length})
-                    </h3>
-                    <div className="space-y-4">
-                      {followUps.map((msg: any, index: number) => (
-                        <div key={index} className="bg-gray-900/50 border border-gray-700 rounded p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-gray-400">Follow-up #{index + 1}</span>
-                            {msg.delay_days && (
-                              <Badge className="bg-blue-900/20 text-blue-400 border-blue-500">
-                                Delay: {msg.delay_days} days
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-gray-200 whitespace-pre-wrap">{typeof msg === 'string' ? msg : (msg.message || msg.content || msg)}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* No Messages */}
-              {(() => {
-                const hasDirectMessages = selectedCampaignForMessages.connection_message ||
-                                         selectedCampaignForMessages.alternative_message ||
-                                         (selectedCampaignForMessages.follow_up_messages?.length > 0);
-
-                const hasTemplateMessages = selectedCampaignForMessages.message_templates?.connection_request ||
-                                           selectedCampaignForMessages.message_templates?.alternative_message ||
-                                           (selectedCampaignForMessages.message_templates?.follow_up_messages?.length > 0);
-
-                return !hasDirectMessages && !hasTemplateMessages && (
-                  <div className="text-center py-8 text-gray-400">
-                    <AlertCircle size={48} className="mx-auto mb-4 text-gray-600" />
-                    <p>No messages configured for this campaign</p>
-                  </div>
-                );
-              })()}
-            </div>
-
-            <DialogFooter className="mt-6">
-              <Button
-                onClick={() => setShowMessagePreview(false)}
-                className="bg-purple-600 hover:bg-purple-700"
-              >
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
 
       {/* Edit Campaign Modal */}
       {showEditModal && campaignToEdit && (
@@ -5825,28 +5694,6 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     setShowCampaignSettings(true);
   };
 
-  // Handler for viewing message preview
-  const viewMessages = (campaign: any) => {
-    console.log('📧 ========== VIEW MESSAGES DEBUG ==========');
-    console.log('📧 FULL CAMPAIGN OBJECT:', JSON.stringify(campaign, null, 2));
-    console.log('📧 Campaign ID:', campaign.id);
-    console.log('📧 Campaign Name:', campaign.name);
-    console.log('📧 Campaign Status:', campaign.status);
-    console.log('📧 Message Fields:', {
-      connection_message: campaign.connection_message,
-      alternative_message: campaign.alternative_message,
-      follow_up_messages: campaign.follow_up_messages,
-      message_templates: campaign.message_templates,
-      message_templates_type: typeof campaign.message_templates,
-      message_templates_keys: campaign.message_templates ? Object.keys(campaign.message_templates) : 'N/A'
-    });
-    console.log('📧 ========================================');
-
-    // FORCE OPEN - Remove the check temporarily to see the modal content
-    setSelectedCampaignForMessages(campaign);
-    setShowMessagePreview(true);
-  };
-
   // Handler for viewing prospects
   const viewProspects = (campaignId: string) => {
     console.log('👥 View Prospects clicked:', campaignId);
@@ -6705,12 +6552,17 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              viewMessages(campaign);
+                              editCampaign(campaign);
                             }}
-                            className="text-cyan-400 hover:text-cyan-300 transition-colors"
-                            title="View messages"
+                            className={`transition-colors ${
+                              campaign.status === 'active'
+                                ? 'text-gray-600 cursor-not-allowed'
+                                : 'text-cyan-400 hover:text-cyan-300'
+                            }`}
+                            title={campaign.status === 'active' ? "Pause to view/edit" : "View/Edit campaign"}
+                            disabled={campaign.status === 'active'}
                           >
-                            <Eye size={18} />
+                            <Edit size={18} />
                           </button>
                           <button
                             onClick={(e) => {
@@ -6721,21 +6573,6 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                             title="View prospects"
                           >
                             <Users size={18} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              editCampaign(campaign);
-                            }}
-                            className={`transition-colors ${
-                              campaign.status === 'active'
-                                ? 'text-gray-600 cursor-not-allowed'
-                                : 'text-purple-400 hover:text-purple-300'
-                            }`}
-                            title={campaign.status === 'active' ? "Pause campaign to edit" : "Edit campaign"}
-                            disabled={campaign.status === 'active'}
-                          >
-                            <Edit size={18} />
                           </button>
                           <button
                             onClick={(e) => {
