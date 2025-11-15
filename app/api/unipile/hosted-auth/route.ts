@@ -307,7 +307,7 @@ export async function POST(request: NextRequest) {
         hostedAuthPayload.providers = [provider.toUpperCase()]
       } else {
         // Show provider selection screen with Google, Outlook, and SMTP options
-        hostedAuthPayload.providers = ['GOOGLE', 'OUTLOOK']
+        hostedAuthPayload.providers = ['GOOGLE', 'OUTLOOK', 'SMTP']
       }
     } else {
       hostedAuthPayload.reconnect_account = reconnectAccountId
