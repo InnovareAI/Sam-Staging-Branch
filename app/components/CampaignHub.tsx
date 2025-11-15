@@ -4178,38 +4178,31 @@ Would you like me to adjust these or create more variations?`
 
             {followUpMessages.map((message, index) => (
               <div key={index} className="mb-4">
-                {/* Delay before this message */}
-                <div className="mb-3 p-4 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-700/30 rounded-lg">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                      <Clock size={16} className="text-purple-400" />
-                      <span className="text-white text-sm font-medium">Delay before sending</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="0"
-                        className="w-16 bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
-                        defaultValue="3"
-                        placeholder="3"
-                      />
-                      <select
-                        className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                        value={(campaignSettings.message_delays || [])[index] || '2-3 days'}
-                        onChange={(e) => updateMessageDelay(index, e.target.value)}
-                      >
-                        <option value="hours">Hours</option>
-                        <option value="days">Days ⭐</option>
-                        <option value="weeks">Weeks</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
                 <div className="flex items-center justify-between mb-2">
-                  <Label className="text-gray-400">
-                    Follow-up Email {index + 1}
-                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-gray-400">
+                      Follow-up Email {index + 1}
+                    </Label>
+                    <span className="text-xs text-gray-500">• Send after:</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-16 bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
+                      defaultValue="3"
+                      placeholder="3"
+                    />
+                    <select
+                      className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                      value={(campaignSettings.message_delays || [])[index] || '2-3 days'}
+                      onChange={(e) => updateMessageDelay(index, e.target.value)}
+                    >
+                      <option value="hours">Hours</option>
+                      <option value="days">Days ⭐</option>
+                      <option value="weeks">Weeks</option>
+                    </select>
+                  </div>
                 </div>
                 <Textarea
                   className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
