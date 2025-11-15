@@ -5776,6 +5776,31 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         }
       }
 
+      // AUTO-SAVE: Save campaign messages as a reusable template
+      try {
+        await fetch('/api/messaging-templates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            workspace_id: actualWorkspaceId,
+            template_name: `${finalCampaignData.name} - Template`,
+            campaign_type: approvedCampaignType,
+            connection_message: finalCampaignData.messages.connection_request || '',
+            alternative_message: finalCampaignData.messages.follow_up_1 || '',
+            follow_up_messages: [
+              finalCampaignData.messages.follow_up_2,
+              finalCampaignData.messages.follow_up_3,
+              finalCampaignData.messages.follow_up_4,
+              finalCampaignData.messages.follow_up_5
+            ].filter(msg => msg?.trim())
+          })
+        });
+        console.log(`✅ Auto-saved campaign messages as template: "${finalCampaignData.name} - Template"`);
+      } catch (error) {
+        console.error('Failed to auto-save template:', error);
+        // Don't throw - campaign was created successfully
+      }
+
       // Reset and close approval screen
       setShowApprovalScreen(false);
       setCampaignDataForApproval(null);
