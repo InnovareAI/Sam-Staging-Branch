@@ -2460,8 +2460,13 @@ Would you like me to adjust these or create more variations?`
           <button
             onClick={() => {
               if (currentStep > 1) {
-                // Go back one step
-                setCurrentStep(currentStep - 1);
+                // If on Step 3 and we have initialProspects (meaning we skipped Step 2), go back to Step 1
+                if (currentStep === 3 && initialProspects && initialProspects.length > 0) {
+                  setCurrentStep(1);
+                } else {
+                  // Otherwise, go back one step
+                  setCurrentStep(currentStep - 1);
+                }
               } else {
                 // On step 1, close the modal
                 onClose();
@@ -4194,7 +4199,14 @@ Would you like me to adjust these or create more variations?`
       {/* Navigation Buttons */}
       <div className="flex justify-between mt-8">
         <Button
-          onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+          onClick={() => {
+            // If on Step 3 and we have initialProspects (meaning we skipped Step 2), go back to Step 1
+            if (currentStep === 3 && initialProspects && initialProspects.length > 0) {
+              setCurrentStep(1);
+            } else {
+              setCurrentStep(Math.max(1, currentStep - 1));
+            }
+          }}
           disabled={currentStep === 1}
           variant="secondary"
           className="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 text-gray-300"
