@@ -4199,6 +4199,15 @@ Would you like me to adjust these or create more variations?`
             <>
               <Button
                 onClick={() => {
+                  // Validate connection degree for LinkedIn campaigns before proceeding
+                  if (currentStep === 1 && (campaignType === 'connector' || campaignType === 'messenger')) {
+                    // Check if we have connection degree data
+                    if (!hasConnectionDegreeData && csvData.length > 0) {
+                      toastError('LinkedIn campaigns require connection degree data. Please add a "Connection Degree" column to your CSV with values like "1st", "2nd", or "3rd", then re-upload.');
+                      return;
+                    }
+                  }
+
                   // Skip Step 2 if prospects are already loaded from Data Approval
                   if (currentStep === 1 && initialProspects && initialProspects.length > 0) {
                     setCurrentStep(3); // Jump directly to messages
@@ -4215,7 +4224,14 @@ Would you like me to adjust these or create more variations?`
               </Button>
               {currentStep === 2 && (
                 <Button
-                  onClick={() => setCurrentStep(3)}
+                  onClick={() => {
+                    // Validate connection degree for LinkedIn campaigns
+                    if ((campaignType === 'connector' || campaignType === 'messenger') && !hasConnectionDegreeData) {
+                      toastError('LinkedIn campaigns require connection degree data. Cannot proceed without uploading prospects with connection degrees.');
+                      return;
+                    }
+                    setCurrentStep(3);
+                  }}
                   variant="secondary"
                   className="bg-gray-700 hover:bg-gray-600 text-gray-300"
                   title="Skip prospect data - you can add prospects later"
