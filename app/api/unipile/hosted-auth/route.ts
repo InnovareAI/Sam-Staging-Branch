@@ -184,8 +184,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { provider = 'LINKEDIN', type = 'API', redirect_url } = body
-    
+    const { provider, type = 'API', redirect_url } = body
+
     console.log('📋 Request body:', { provider, type, redirect_url })
     
     // Get user's profile country for proxy assignment
@@ -302,7 +302,13 @@ export async function POST(request: NextRequest) {
     }
     
     if (authType === 'create') {
-      hostedAuthPayload.providers = [provider.toUpperCase()]
+      // If provider is specified, use it. Otherwise, show Unipile's provider selection for email
+      if (provider) {
+        hostedAuthPayload.providers = [provider.toUpperCase()]
+      } else {
+        // Show provider selection screen with Google, Outlook, and SMTP options
+        hostedAuthPayload.providers = ['GOOGLE', 'OUTLOOK']
+      }
     } else {
       hostedAuthPayload.reconnect_account = reconnectAccountId
     }

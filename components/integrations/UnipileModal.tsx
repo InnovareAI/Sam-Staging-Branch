@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, ExternalLink, Loader2, CheckCircle, AlertCircle, Shield } from 'lucide-react';
 
 interface UnipileModalProps {
@@ -18,6 +18,63 @@ export function UnipileModal({ isOpen, onClose, provider = 'LINKEDIN' }: Unipile
   const [pollError, setPollError] = useState<string | null>(null);
   const [connectionComplete, setConnectionComplete] = useState(false);
 
+  // Define launchHostedAuth with useCallback so it can be used in useEffect
+  const launchHostedAuth = useCallback(async () => {
+    try {
+      setIsConnecting(true);
+      setError(null);
+      setSuccess(false);
+      setPollError(null);
+      setConnectionComplete(false);
+      setWaitingForConfirmation(false);
+      setPollingStatus(false);
+
+      const response = await fetch('/api/unipile/hosted-auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          provider: provider === 'LINKEDIN' ? 'LINKEDIN' : undefined // For email, don't specify provider to show selection
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `Failed with status ${response.status}`);
+      }
+
+      if (!data.success || !data.auth_url) {
+        throw new Error('Hosted auth link not returned.');
+      }
+
+      // Attempt to open the hosted wizard in a pop-up window first
+      const authWindow = window.open(
+        data.auth_url,
+        'unipile_hosted_auth',
+        'width=500,height=720,scrollbars=yes,resizable=yes'
+      );
+
+      if (!authWindow) {
+        // Popup blocked – fall back to redirecting the current tab
+        window.location.href = data.auth_url;
+      } else {
+        setSuccess(true);
+        setWaitingForConfirmation(true);
+        setPollingStatus(true);
+        setPollError(null);
+      }
+    } catch (err) {
+      console.error('Hosted auth launch failed:', err);
+      setError(err instanceof Error ? err.message : 'Unable to start Hosted Auth Wizard');
+      setWaitingForConfirmation(false);
+      setPollingStatus(false);
+    } finally {
+      setIsConnecting(false);
+    }
+  }, [provider]);
+
   useEffect(() => {
     if (!isOpen) {
       setIsConnecting(false);
@@ -27,8 +84,11 @@ export function UnipileModal({ isOpen, onClose, provider = 'LINKEDIN' }: Unipile
       setPollingStatus(false);
       setPollError(null);
       setConnectionComplete(false);
+    } else {
+      // Auto-launch the hosted auth wizard when modal opens
+      launchHostedAuth();
     }
-  }, [isOpen]);
+  }, [isOpen, launchHostedAuth]);
 
   useEffect(() => {
     if (!pollingStatus) return;
@@ -98,60 +158,6 @@ export function UnipileModal({ isOpen, onClose, provider = 'LINKEDIN' }: Unipile
   // Get display names for UI
   const providerName = provider === 'LINKEDIN' ? 'LinkedIn' : provider === 'GOOGLE' ? 'Google Email' : 'Outlook Email';
   const providerType = provider === 'LINKEDIN' ? 'LinkedIn' : 'Email';
-
-  const launchHostedAuth = async () => {
-    try {
-      setIsConnecting(true);
-      setError(null);
-      setSuccess(false);
-      setPollError(null);
-      setConnectionComplete(false);
-      setWaitingForConfirmation(false);
-      setPollingStatus(false);
-
-      const response = await fetch('/api/unipile/hosted-auth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ provider }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || `Failed with status ${response.status}`);
-      }
-
-      if (!data.success || !data.auth_url) {
-        throw new Error('Hosted auth link not returned.');
-      }
-
-      // Attempt to open the hosted wizard in a pop-up window first
-      const authWindow = window.open(
-        data.auth_url,
-        'linkedin_hosted_auth',
-        'width=500,height=720,scrollbars=yes,resizable=yes'
-      );
-
-      if (!authWindow) {
-        // Popup blocked – fall back to redirecting the current tab
-        window.location.href = data.auth_url;
-      } else {
-        setSuccess(true);
-        setWaitingForConfirmation(true);
-        setPollingStatus(true);
-        setPollError(null);
-      }
-    } catch (err) {
-      console.error('Hosted auth launch failed:', err);
-      setError(err instanceof Error ? err.message : 'Unable to start Hosted Auth Wizard');
-      setWaitingForConfirmation(false);
-      setPollingStatus(false);
-    } finally {
-      setIsConnecting(false);
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
