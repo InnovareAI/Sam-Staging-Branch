@@ -4178,14 +4178,24 @@ Would you like me to adjust these or create more variations?`
 
             {followUpMessages.map((message, index) => (
               <div key={index} className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-gray-400">
-                      Follow-up Email {index + 1}
-                    </Label>
-                    <span className="text-xs text-gray-500">• Send after:</span>
-                  </div>
-                  <div className="flex items-center gap-2">
+                <Label className="text-gray-400 mb-2 block">
+                  Follow-up Email {index + 1}
+                </Label>
+                <div className="flex gap-3">
+                  <Textarea
+                    className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+                    rows={4}
+                    value={message}
+                    onChange={e => updateFollowUpMessage(index, e.target.value)}
+                    onFocus={(e) => {
+                      setActiveField({type: 'followup', index});
+                      setActiveTextarea(e.target as HTMLTextAreaElement);
+                    }}
+                    placeholder={`Follow-up email ${index + 1}...`}
+                    data-followup-index={index}
+                  />
+                  <div className="flex flex-col gap-2 justify-center">
+                    <span className="text-xs text-gray-400 text-center">Send after</span>
                     <input
                       type="number"
                       min="0"
@@ -4194,28 +4204,16 @@ Would you like me to adjust these or create more variations?`
                       placeholder="3"
                     />
                     <select
-                      className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                      className="bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-xs font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
                       value={(campaignSettings.message_delays || [])[index] || '2-3 days'}
                       onChange={(e) => updateMessageDelay(index, e.target.value)}
                     >
                       <option value="hours">Hours</option>
-                      <option value="days">Days ⭐</option>
+                      <option value="days">Days</option>
                       <option value="weeks">Weeks</option>
                     </select>
                   </div>
                 </div>
-                <Textarea
-                  className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
-                  rows={4}
-                  value={message}
-                  onChange={e => updateFollowUpMessage(index, e.target.value)}
-                  onFocus={(e) => {
-                    setActiveField({type: 'followup', index});
-                    setActiveTextarea(e.target as HTMLTextAreaElement);
-                  }}
-                  placeholder={`Follow-up email ${index + 1}...`}
-                  data-followup-index={index}
-                />
                 {message.length > 0 && followUpMessages.length > 1 && (
                   <div className="flex justify-between items-center mt-2">
                     <Button
