@@ -299,11 +299,11 @@ export async function GET(request: NextRequest) {
       const errorMessage = error || 'Authentication failed'
       console.error('❌ Hosted auth failed:', errorMessage)
 
-      // Redirect to settings page with error
+      // Redirect to workspace page with error
       // Try to get workspace_id from user context, fallback to generic error page
       const workspaceId = parsedUserContext?.workspace_id
       const redirectUrl = workspaceId
-        ? `/workspace/${workspaceId}/settings?tab=integrations&error=${encodeURIComponent(errorMessage)}`
+        ? `/workspace/${workspaceId}?error=${encodeURIComponent(errorMessage)}`
         : `/?error=${encodeURIComponent(errorMessage)}`
       return NextResponse.redirect(new URL(redirectUrl, request.url))
     }
@@ -459,10 +459,10 @@ export async function GET(request: NextRequest) {
                 const redirectUrl = `/linkedin-integration?success=true&account_id=${accountId}`
                 return NextResponse.redirect(new URL(redirectUrl, request.url))
               } else if (accountType.includes('GOOGLE') || accountType.includes('OUTLOOK') || accountType === 'MESSAGING') {
-                // Redirect to settings page with email provider section
+                // Redirect to main workspace page after email connection
                 const providerName = accountType.includes('GOOGLE') ? 'google' :
                                      accountType.includes('OUTLOOK') ? 'microsoft' : 'email';
-                const redirectUrl = `/workspace/${targetWorkspaceId}/settings?tab=integrations&email_connected=true&provider=${providerName}&account_id=${accountId}`
+                const redirectUrl = `/workspace/${targetWorkspaceId}?email_connected=true&provider=${providerName}&account_id=${accountId}`
                 return NextResponse.redirect(new URL(redirectUrl, request.url))
               }
             }
@@ -473,16 +473,16 @@ export async function GET(request: NextRequest) {
           const workspaceId = parsedUserContext?.workspace_id
           const errorMessage = associationError instanceof Error ? associationError.message : 'Failed to store account association'
           const redirectUrl = workspaceId
-            ? `/workspace/${workspaceId}/settings?tab=integrations&error=account_connection_failed&message=${encodeURIComponent(errorMessage)}`
+            ? `/workspace/${workspaceId}?error=account_connection_failed&message=${encodeURIComponent(errorMessage)}`
             : `/?error=account_connection_failed&message=${encodeURIComponent(errorMessage)}`
           return NextResponse.redirect(new URL(redirectUrl, request.url))
         }
       }
 
-      // Default redirect to settings (works for any provider)
+      // Default redirect to workspace page (works for any provider)
       const workspaceId = parsedUserContext?.workspace_id
       const redirectUrl = workspaceId
-        ? `/workspace/${workspaceId}/settings?tab=integrations&success=true&account_id=${accountId}`
+        ? `/workspace/${workspaceId}?account_connected=true&account_id=${accountId}`
         : `/?success=true&account_id=${accountId}`
       return NextResponse.redirect(new URL(redirectUrl, request.url))
     }
