@@ -4,465 +4,292 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
-## 🎯 NEXT AGENT: START HERE (October 26, 2025)
+## 🎯 NEXT AGENT: START HERE (November 15, 2025)
 
-### 🚨 IMMEDIATE ACTION REQUIRED
+### 📋 12-WEEK FEATURE ROLLOUT PLAN
 
-**Status:** ✅ Critical fix deployed, awaiting verification
+**Full Plan:** See `SAM_FEATURE_ROLLOUT_PLAN.md` for complete details
 
-**What Just Happened:**
-1. Complete pipeline audit completed (Sam AI → LinkedIn messaging)
-2. Critical production bug fixed (Unipile message ID parsing)
-3. Comprehensive documentation created (90+ pages)
-4. Code deployed to production (awaiting Netlify build)
+**Target Completion:** February 2026 (12 weeks)
+**Total Features:** 39 items across 5 phases
 
-### 📋 YOUR PRIORITY TASKS
+---
 
-#### 1. ✅ VERIFY DEPLOYMENT (FIRST THING!)
+### 🚨 IMMEDIATE (This Week - P0 Critical)
 
+**Before any new development:**
+
+- [ ] **Upload updated N8N workflow** (1h)
+  - File: `/Users/tvonlinz/Downloads/SAM Master Campaign Orchestrator - UPDATED.json`
+  - Import to: https://workflows.innovareai.com
+  - Activate workflow after upload
+
+- [ ] **Fix N8N Docker environment variables** (1h)
+  - Add `UNIPILE_DSN=api6.unipile.com:13670` to docker-compose.yml
+  - Add `UNIPILE_API_KEY=...` to docker-compose.yml
+  - Restart N8N container
+
+- [ ] **Michelle reconnect LinkedIn to Unipile** (30m)
+  - Settings → Integrations → Disconnect → Reconnect
+  - Verify `connection_status = 'connected'`
+
+- [ ] **Resume paused campaigns** (30m)
+  - Michelle's 5 campaigns currently paused
+  - Set status to 'active'
+
+- [ ] **Remove redundant cron job** (1h)
+  - Delete `/api/cron/check-accepted-connections`
+
+---
+
+### 📅 PHASE 1: Fix Existing Features (Week 1-2)
+
+**Phase 1A: Campaign Hub Buttons (Week 1 - 20h)**
+
+- [ ] Fix "View Messages" button (4h)
+  - File: `components/CampaignHub.tsx` (lines 476-580)
+  - Modal shows CR, follow-ups, goodbye messages
+
+- [ ] Fix "View Prospects" button (4h)
+  - Display all prospects with status, contacted_at
+
+- [ ] Fix "Edit Campaign" button (6h)
+  - Editable campaign name and messages
+  - Save changes to database
+
+- [ ] Fix "Pause/Resume" button (4h)
+  - Toggle campaign status
+  - Update badge display
+
+- [ ] Test all buttons end-to-end (2h)
+
+**Phase 1B: LinkedIn Commenting Agent (Week 2 - 7h)**
+
+- [ ] Debug campaign creation error (4h)
+  - File: `/app/api/linkedin-commenting/monitors/route.ts`
+  - Get browser console logs OR Netlify function logs
+  - Likely: RLS policy issue or missing workspace membership
+  - Fix: Add user to workspace_members OR adjust RLS policy
+
+- [ ] Test end-to-end commenting workflow (3h)
+  - Create hashtag campaign
+  - Verify N8N discovers posts
+  - Check AI generates comments
+  - Confirm comments post to LinkedIn
+
+---
+
+### 📬 PHASE 2: Reply Agent HITL (Week 3-5)
+
+**Phase 2A: Reply Agent UI (Week 3-4 - 27h)**
+
+- [ ] Build `/replies/[replyId]` page (8h)
+- [ ] ProspectCard component (3h)
+- [ ] ReplyPreview component (3h)
+- [ ] DraftEditor component (4h)
+- [ ] ActionButtons component (3h)
+- [ ] Test approve flow (2h)
+- [ ] Test edit flow (2h)
+- [ ] Test refuse flow (2h)
+
+**Phase 2B: Infrastructure Setup (Week 5 - 9h)**
+
+- [ ] Setup Postmark MX records (2h)
+  - DNS: `sam.innovareai.com MX 10 inbound.postmarkapp.com`
+
+- [ ] Configure inbound webhook (1h)
+  - URL: `https://app.meet-sam.com/api/webhooks/postmark-inbound`
+
+- [ ] Test email reception (2h)
+- [ ] Test end-to-end workflow (4h)
+  - Reply → Draft → Approve → Send
+
+---
+
+### 💬 PHASE 3: SAM Email Conversations (Week 6-7)
+
+**Total Time: 19h**
+
+- [ ] Build SAM email conversation API (8h)
+  - File: `/api/webhooks/sam-email-conversation/route.ts`
+
+- [ ] Create conversations table migration (2h)
+  - Table: `sam_email_conversations`
+
+- [ ] Build conversation history (4h)
+
+- [ ] Setup hello@sam.innovareai.com (2h)
+  - Postmark inbound configuration
+
+- [ ] Test user → SAM conversation (3h)
+  - Simple query, follow-up, data query tests
+
+---
+
+### ⚙️ PHASE 4: Account Management (Week 8-9)
+
+**Total Time: 22h**
+
+- [ ] API: GET pending invitations (4h)
+  - Endpoint: `/api/linkedin/pending-invitations`
+
+- [ ] API: DELETE invitation (3h)
+  - Withdraw pending connection requests
+
+- [ ] API: GET InMail credits (3h)
+  - Check Sales Navigator credits
+
+- [ ] UI: Account health widget (6h)
+  - Show CR limits (daily/weekly)
+  - Pending invitations count
+  - Warning alerts
+
+- [ ] UI: Manage invitations modal (6h)
+  - Table of pending invitations
+  - Bulk withdraw stale invitations (>14 days)
+
+---
+
+### 🎯 PHASE 5: New Campaign Types (Week 10-12)
+
+**Total Time: 24h**
+
+- [ ] **Advanced Search (Week 10 - 14h)**
+  - API: Sales Navigator search (6h)
+  - UI: Advanced search tab (8h)
+
+- [ ] **Skill Endorsement (Week 11 - 14h)**
+  - API: Skill endorsement campaign (8h)
+  - UI: Endorsement campaign card (6h)
+
+- [ ] **InMail + Polish (Week 12 - 10h)**
+  - UI: InMail campaign card (6h)
+  - UI: Account status badges (4h)
+
+---
+
+### 📊 PROGRESS TRACKING
+
+**Week-by-Week Milestones:**
+
+| Week | Phase | Status |
+|------|-------|--------|
+| 0 | Immediate fixes | ⏳ Pending |
+| 1 | Campaign Hub buttons | ⏳ Pending |
+| 2 | Commenting agent | ⏳ Pending |
+| 3-4 | Reply Agent UI | ⏳ Pending |
+| 5 | Postmark setup | ⏳ Pending |
+| 6-7 | SAM Email | ⏳ Pending |
+| 8-9 | Account Mgmt | ⏳ Pending |
+| 10 | Advanced Search | ⏳ Pending |
+| 11 | Skill Endorsement | ⏳ Pending |
+| 12 | InMail + Polish | ⏳ Pending |
+
+**Current Sprint:** Week 0 (Immediate fixes)
+
+**Last Updated:** November 15, 2025
+
+---
+
+## 🔴 RECENT CRITICAL FIXES (Nov 10-13)
+
+### ✅ Resolved Issues
+
+1. **RLS Infinite Recursion** (Nov 10)
+   - Fixed workspace isolation (users were seeing all 12 workspaces)
+   - Changed `workspace_members` policies to direct checks
+   - Status: ✅ RESOLVED
+
+2. **CSV Upload Pipeline** (Nov 10)
+   - Fixed CSV upload, batch numbers, LinkedIn URL capture
+   - End-to-end working
+   - Remaining: N8N Docker needs `UNIPILE_DSN` env var
+
+3. **Prospect Name Extraction** (Nov 13)
+   - Fixed names showing as LinkedIn usernames
+   - Added validation library
+   - Status: ✅ RESOLVED
+
+4. **N8N Field Names** (Nov 13)
+   - Fixed camelCase vs snake_case mismatch
+   - Code updated, N8N workflows need manual update
+   - Status: ⚠️ Partially complete
+
+5. **Campaign Metrics** (Nov 12)
+   - Fixed dashboard showing 0 metrics
+   - Status: ✅ RESOLVED
+
+### 🔴 Open Issues
+
+1. **LinkedIn Commenting Agent** (Nov 11)
+   - Campaign creation failing with "Internal server error"
+   - Need browser console logs to diagnose
+   - Likely: RLS policy or workspace membership issue
+
+---
+
+## 📋 QUICK REFERENCE
+
+### Database
+- **Supabase URL:** https://latxadqrvrrrcvkktrog.supabase.co
+- **Workspace ID (InnovareAI):** `babdcab8-1a78-4b2f-913e-6e9fd9821009`
+
+### Production
+- **URL:** https://app.meet-sam.com
+- **Status:** ✅ FULLY OPERATIONAL
+- **Latest Deploy:** November 15, 2025
+
+### N8N
+- **URL:** https://workflows.innovareai.com
+- **Main Workflow ID:** `aVG6LC4ZFRMN7Bw6` (SAM Master Campaign Orchestrator)
+
+### Key Files
+- **Campaign Hub:** `app/components/CampaignHub.tsx`
+- **Commenting Agent:** `app/api/linkedin-commenting/monitors/route.ts`
+- **CSV Upload:** `app/api/prospect-approval/upload-csv/route.ts`
+
+---
+
+## 🚨 CRITICAL SAFETY RULES
+
+### Directory Restrictions
+**LOCKED TO:** `/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7`
+
+**NEVER ACCESS:**
+- ❌ `/Users/tvonlinz/Dev_Master/3cubed/` (killed this project before)
+- ❌ `/Users/tvonlinz/Dev_Master/SEO_Platform/` (killed this project before)
+- ❌ Any path without `Sam-New-Sep-7`
+
+**BEFORE EVERY FILE OPERATION:**
 ```bash
-# Check Netlify deployment status
-# Go to: https://app.netlify.com/sites/devin-next-gen-staging/deploys
-# Wait for "Published" status (2-5 minutes)
+pwd  # Must return: /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7
 ```
 
-**What to check:**
-- ✅ Build succeeded (green checkmark)
-- ✅ Deployed commit: `04acc08` or later
-- ✅ No build errors in logs
-
-#### 2. 🧪 TEST CAMPAIGN EXECUTION
-
-**Run a test campaign with 1 prospect:**
-
-```bash
-# Get active campaign ID
-curl -X GET \
-  "https://app.meet-sam.com/api/campaigns?workspace_id=YOUR_WORKSPACE_ID" \
-  -H "Cookie: YOUR_AUTH_COOKIE"
-
-# Execute campaign (DRY RUN first)
-curl -X POST \
-  "https://app.meet-sam.com/api/campaigns/linkedin/execute-live" \
-  -H "Content-Type: application/json" \
-  -H "Cookie: YOUR_AUTH_COOKIE" \
-  -d '{
-    "campaignId": "YOUR_CAMPAIGN_ID",
-    "maxProspects": 1,
-    "dryRun": true
-  }'
-
-# If dry run succeeds, run LIVE
-# Change dryRun: false
-```
-
-**Expected Results:**
-- ✅ HTTP 200 response (success)
-- ✅ `messages_sent: 1` in response
-- ✅ No error about "missing message ID"
-
-**If you see warnings about message ID:**
-- ⚠️ This is EXPECTED now (fixed behavior)
-- ⚠️ Check logs for: "Using fallback tracking ID"
-- ⚠️ This means invitation was sent but Unipile didn't return message ID
-
-#### 3. 📊 CHECK NETLIFY FUNCTION LOGS
-
-**Location:** https://app.netlify.com → Functions → Logs
-
-**Look for these log entries:**
-
-```
-✅ GOOD SIGNS:
-"✅ Unipile response:" (full JSON response logged)
-"✅ Got Unipile message ID: msg_abc123..." (real ID found)
-"✅ Prospect status updated to connection_requested"
-"✅ Connection request sent successfully"
-
-⚠️ ACCEPTABLE WARNINGS:
-"⚠️ WARNING: Cannot track message (no ID), but invitation may have been sent"
-"📝 Using fallback tracking ID: untracked_1234567890_uuid"
-(This means the fix is working - invitation sent despite missing ID)
-
-❌ BAD SIGNS (contact us if you see):
-"❌ Unipile API error"
-"❌ LinkedIn account not active"
-"❌ SEND ERROR for [prospect name]"
-```
-
-#### 4. 🔍 VERIFY IN DATABASE
-
-```sql
--- Check most recent campaign execution
-SELECT
-  id,
-  first_name,
-  last_name,
-  status,
-  contacted_at,
-  personalization_data->>'unipile_message_id' as message_id,
-  personalization_data->>'unipile_response' as raw_response
-FROM campaign_prospects
-WHERE campaign_id = 'YOUR_CAMPAIGN_ID'
-  AND contacted_at > NOW() - INTERVAL '1 hour'
-ORDER BY contacted_at DESC
-LIMIT 5;
-```
-
-**Expected:**
-- ✅ `status = 'connection_requested'`
-- ✅ `contacted_at` = recent timestamp
-- ✅ `message_id` = either real ID (msg_...) or fallback (untracked_...)
-- ⚠️ `raw_response` = full JSON if message ID was missing (for debugging)
-
-#### 5. ✅ VERIFY ON LINKEDIN
-
-**Manual Check:**
-1. Go to: https://linkedin.com
-2. Click: My Network → Manage → Sent
-3. Look for: Recent connection requests matching campaign prospects
-
-**Expected:** Connection requests visible for executed prospects
+### Multi-Tenant Safety
+- Always use `workspace_members` table (NOT `workspace_users` - doesn't exist)
+- Check RLS policies - they can silently block operations
+- Use service role key for admin operations
+- Test with regular user permissions, not just super admin
 
 ---
 
-### 🐛 KNOWN ISSUE: Unipile Message ID Location
-
-**Problem:**
-Unipile API returns success (HTTP 200) but message ID not at expected location in response.
-
-**Symptoms:**
-- Old code: Threw error "Unipile API returned success but no message ID"
-- New code: Warns but continues execution with fallback tracking
-
-**Fix Applied (Commit cebd433):**
-```typescript
-// Now checks 5 possible locations:
-const unipileMessageId =
-  unipileData.object?.id ||       // Original expected location
-  unipileData.id ||                // Alternative 1
-  unipileData.data?.id ||          // Alternative 2
-  unipileData.message_id ||        // Alternative 3
-  unipileData.invitation_id ||     // Alternative 4
-  null;
-
-// If not found, uses fallback and continues
-if (!unipileMessageId) {
-  const fallbackId = `untracked_${Date.now()}_${prospect.id}`;
-  // Stores full response in personalization_data for debugging
-}
-```
-
-**File:** `app/api/campaigns/linkedin/execute-live/route.ts` (lines 418-463)
-
-**Status:** ✅ Fixed and deployed
-
-**Next Steps:**
-1. ✅ Monitor logs to see which location has the message ID
-2. ⚠️ If always using fallback, contact Unipile support with captured response
-3. 📝 Update code to use correct location once confirmed
-
----
-
-### 📚 NEW DOCUMENTATION AVAILABLE
-
-**Complete Technical Docs:**
-- **File:** `/docs/technical/SAM_TO_LINKEDIN_DATA_PIPELINE.md`
-- **Size:** 90+ pages
-- **Covers:** All 5 pipeline stages, error handling, testing, performance
-
-**Quick Reference:**
-- **File:** `/docs/technical/PIPELINE_QUICK_REFERENCE.md`
-- **Purpose:** Fast lookup for common operations
-
-**Session Summary:**
-- **File:** `/SESSION_SUMMARY_2025-10-26.md`
-- **Contents:** Complete summary of what was done, why, and what to check
-
-**READ THESE FIRST** before making any changes to the pipeline!
-
----
-
-### 🔄 PIPELINE STATUS SUMMARY
-
-**5-Stage Pipeline: Sam AI → LinkedIn Messaging**
-
-```
-✅ Stage 1: Data Extraction (prospect_approval_data)
-   └─ LinkedIn URL stored in contact.linkedin_url (JSONB)
-
-✅ Stage 2: Prospect Approval (flattens linkedin_url)
-   └─ API: /api/prospect-approval/approved
-
-✅ Stage 3: Campaign Creation (campaign_prospects)
-   └─ API: /api/campaigns/add-approved-prospects
-
-✅ Stage 4: LinkedIn ID Sync (OPTIONAL)
-   └─ API: /api/campaigns/sync-linkedin-ids
-
-✅ Stage 5: Message Execution (Unipile → LinkedIn)
-   └─ API: /api/campaigns/linkedin/execute-live
-   └─ Status: FIXED - now handles missing message IDs
-```
-
-**Overall Status:** ✅ FULLY OPERATIONAL
-
----
-
-### ⚠️ WHAT TO WATCH FOR
-
-#### Issue 1: Fallback Tracking IDs in Production
-
-**Symptom:**
-All prospects getting `unipile_message_id` like: `untracked_1234567890_uuid`
-
-**Meaning:**
-Unipile not returning message ID in expected format
-
-**Action:**
-1. Check logs for full Unipile responses
-2. Look at `personalization_data.unipile_response` in database
-3. Share response structure with Unipile support
-4. Update code once correct location confirmed
-
-**Impact:**
-- ✅ Messages still sending correctly
-- ⚠️ Cannot track message status in Unipile
-- ⚠️ Analytics may be incomplete
-
-#### Issue 2: No Prospects Ready for Messaging
-
-**Symptom:**
-Campaign execution returns: "No prospects ready for messaging"
-
-**Common Causes:**
-1. Missing LinkedIn URLs in `campaign_prospects.linkedin_url`
-2. Wrong prospect status (not in: pending, approved, ready_to_message)
-3. All prospects already contacted
-
-**Debug:**
-```sql
--- Check for missing LinkedIn URLs
-SELECT COUNT(*)
-FROM campaign_prospects
-WHERE campaign_id = 'YOUR_CAMPAIGN_ID'
-  AND linkedin_url IS NULL;
-
--- Check prospect statuses
-SELECT status, COUNT(*)
-FROM campaign_prospects
-WHERE campaign_id = 'YOUR_CAMPAIGN_ID'
-GROUP BY status;
-```
-
-**Fix:**
-- Ensure SAM extraction includes `contact.linkedin_url`
-- Update prospect status to 'approved' or 'ready_to_message'
-
-#### Issue 3: LinkedIn Account Not Active
-
-**Symptom:**
-Error: "LinkedIn account not active" or "No active sources"
-
-**Cause:**
-LinkedIn session expired in Unipile
-
-**Fix:**
-1. Go to: Workspace Settings → Integrations
-2. Disconnect LinkedIn account
-3. Reconnect using OAuth
-4. Verify `workspace_accounts.unipile_account_id` populated
-
----
-
-### 🎯 NEXT DEVELOPMENT PRIORITIES
-
-#### Priority 1: Monitor & Verify (THIS WEEK)
-
-- [ ] Verify deployment successful
-- [ ] Test campaign execution (3-5 prospects)
-- [ ] Monitor logs for 24-48 hours
-- [ ] Confirm LinkedIn invitations actually sent
-- [ ] Check if message IDs being found or using fallback
-
-#### Priority 2: Resolve Message ID Tracking (IF NEEDED)
-
-**Only if all prospects using fallback IDs:**
-
-- [ ] Collect 5-10 Unipile response samples from logs
-- [ ] Contact Unipile support with samples
-- [ ] Ask: "What's the correct location for message/invitation ID?"
-- [ ] Update code with confirmed location
-- [ ] Remove fallback logic once confirmed
-
-#### Priority 3: Scale & Performance (NEXT SPRINT)
-
-- [ ] Implement multi-account rotation (bypass LinkedIn 100/week limit)
-- [ ] Add campaign analytics dashboard
-- [ ] Optimize batch processing (current: 1 prospect/batch)
-- [ ] Add retry logic for failed prospects
-- [ ] Implement smart prospect prioritization
-
-#### Priority 4: Monitoring & Alerting (FUTURE)
-
-- [ ] Set up error alerting (email/Slack)
-- [ ] Create campaign health dashboard
-- [ ] Track success metrics (sent, opened, replied)
-- [ ] Monitor LLM costs per campaign
-- [ ] Alert on rate limit approaching
-
----
-
-### 📁 KEY FILES TO KNOW
-
-**Pipeline Execution:**
-```
-app/api/campaigns/linkedin/execute-live/route.ts
-  └─ CRITICAL FIX applied here (lines 418-463)
-  └─ Handles Unipile message ID parsing
-  └─ Two-step process: Profile lookup → Send invitation
-```
-
-**Data Flow:**
-```
-app/api/prospect-approval/approved/route.ts
-  └─ Extracts linkedin_url from JSONB (line 114)
-
-app/api/campaigns/add-approved-prospects/route.ts
-  └─ Creates campaign_prospects records (line 94)
-
-app/api/campaigns/sync-linkedin-ids/route.ts
-  └─ Optional: Syncs LinkedIn internal IDs
-```
-
-**Documentation:**
-```
-/docs/technical/SAM_TO_LINKEDIN_DATA_PIPELINE.md
-  └─ Complete technical documentation
-
-/docs/technical/PIPELINE_QUICK_REFERENCE.md
-  └─ Quick reference guide
-
-/SESSION_SUMMARY_2025-10-26.md
-  └─ Summary of Oct 26 session
-```
-
----
-
-### 🔧 DEBUGGING TIPS
-
-#### View Recent Campaign Executions
-
-```sql
-SELECT
-  c.name as campaign_name,
-  cp.status,
-  COUNT(*) as count,
-  MAX(cp.contacted_at) as last_contacted
-FROM campaigns c
-JOIN campaign_prospects cp ON c.id = cp.campaign_id
-WHERE c.workspace_id = 'YOUR_WORKSPACE_ID'
-  AND cp.contacted_at > NOW() - INTERVAL '7 days'
-GROUP BY c.name, cp.status
-ORDER BY last_contacted DESC;
-```
-
-#### Check Unipile Account Health
-
-```bash
-curl -X GET \
-  "https://${UNIPILE_DSN}/api/v1/accounts/${UNIPILE_ACCOUNT_ID}" \
-  -H "X-API-KEY: ${UNIPILE_API_KEY}"
-```
-
-#### View Prospect Full Data
-
-```sql
-SELECT
-  id,
-  first_name,
-  last_name,
-  linkedin_url,
-  status,
-  contacted_at,
-  jsonb_pretty(personalization_data) as details
-FROM campaign_prospects
-WHERE id = 'PROSPECT_ID';
-```
-
----
-
-### 💬 COMMUNICATION WITH USER
-
-**Last Known Issue:**
-User reported: "Campaign executed: 0 connection requests sent. 1 failed: Unipile API returned success but no message ID"
-
-**Status:** ✅ FIXED in commit cebd433
-
-**What User Needs to Know:**
-1. ✅ Fix deployed to production
-2. ⏳ Awaiting Netlify build completion (2-5 min)
-3. 🧪 Ready to test campaign again
-4. ⚠️ May see warnings about fallback tracking IDs (this is OK)
-5. ✅ Messages will send even if tracking ID missing
-
-**When User Tests Next Campaign:**
-- Tell them: "Fixed! Campaign will no longer fail if message ID missing"
-- Ask them: "Check LinkedIn to confirm invitation was sent"
-- Request: "Share Netlify logs so we can see Unipile response structure"
-
----
-
-### 🚨 RED FLAGS (Escalate Immediately)
-
-**If you see ANY of these, STOP and ask user:**
-
-1. ❌ Campaign execution failing with HTTP 500 errors
-2. ❌ Multiple prospects showing status 'failed' or 'error'
-3. ❌ LinkedIn account keeps disconnecting (< 1 hour)
-4. ❌ Unipile API returning 401/403 (auth errors)
-5. ❌ Database errors on INSERT/UPDATE campaign_prospects
-6. ❌ LinkedIn invitations not appearing (confirmed on LinkedIn)
-
-**Do NOT:**
-- Don't assume messages sent if no confirmation
-- Don't ignore repeated errors (investigate)
-- Don't make schema changes without backup
-- Don't disable error logging to "fix" warnings
-
----
-
-### ✅ SESSION HANDOFF CHECKLIST
-
-**Before continuing work, verify:**
-
-- [ ] Read this section completely
-- [ ] Read `/SESSION_SUMMARY_2025-10-26.md`
-- [ ] Checked Netlify deployment status
-- [ ] Reviewed Netlify function logs
-- [ ] Tested campaign execution (dry run)
-- [ ] Verified database updates working
-- [ ] Read pipeline documentation (/docs/technical/)
-- [ ] Understand the Unipile message ID issue
-- [ ] Know where critical fix was applied (execute-live/route.ts)
-
-**Current Git State:**
-```
-Latest commits:
-- 04acc08: Session summary
-- cebd433: CRITICAL FIX (Unipile message ID)
-- 5aba99a: Documentation
-- 5bc95d3: Restore point
-```
-
-**Status:** ✅ All changes deployed, awaiting verification
-
----
-
-**Last Updated:** October 26, 2025, 8:30 PM
-**Updated By:** Claude AI (Sonnet 4.5)
-**Session:** Sam-LinkedIn Pipeline Audit & Fix
-**Next Agent:** Please complete verification tasks above ☝️
+## 📚 KEY DOCUMENTATION
+
+### Recent Handover Docs
+- **`SAM_FEATURE_ROLLOUT_PLAN.md`** - Complete 12-week plan (Nov 12)
+- **`HANDOVER_LINKEDIN_COMMENTING_AGENT.md`** - Commenting agent debug (Nov 11)
+- **`HANDOVER_CSV_PIPELINE_N8N_FIX.md`** - CSV pipeline fixes (Nov 10)
+- **`docs/RLS_INFINITE_RECURSION_FIX.md`** - RLS recursion fix (Nov 10)
+- **`docs/fixes/COMPLETE_FIX_SUMMARY.md`** - Recent fixes summary (Nov 13)
+
+### Technical Documentation
+- **`SAM_SYSTEM_TECHNICAL_OVERVIEW.md`** - System architecture (1083 lines)
+- **`README.md`** - Quick start and deployment guide
+- **`TODO.md`** - Current tasks (last updated Oct 20)
+
+### Onboarding
+- **`QUICK_START_GUIDE.md`** - 5-minute quick start
+- **`NEW_ASSISTANT_ONBOARDING.md`** - 30-minute detailed onboarding
 
 ---
 
@@ -505,54 +332,6 @@ pwd  # MUST return: /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7
 2. Check the file path contains `/Sam-New-Sep-7/`
 3. If unsure, ASK THE USER before proceeding
 4. NEVER assume a file location
-
-**Examples of SAFE operations:**
-```bash
-✅ pwd  # Shows /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7
-✅ Read /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/package.json
-✅ Edit /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/app/api/test.ts
-✅ ls app/components/  # Relative path within Sam-New-Sep-7
-```
-
-**Examples of FORBIDDEN operations:**
-```bash
-❌ cd /Users/tvonlinz/Dev_Master/3cubed/
-❌ Read /Users/tvonlinz/Dev_Master/3cubed/SEO_Platform/package.json
-❌ Edit ../../3cubed/file.ts
-❌ ls ~/Dev_Master/  # Lists other projects
-❌ ANY operation outside Sam-New-Sep-7
-```
-
-### ⚠️ IF YOU VIOLATE THIS RULE:
-
-**You have already killed 2 production projects. This is NON-NEGOTIABLE.**
-
-- Session will be immediately terminated
-- All work will be rejected
-- User will lose trust in AI assistance
-
-### 🔒 SAFETY CHECKLIST - USE THIS EVERY TIME:
-
-```
-Before ANY file operation, verify:
-□ Current directory is Sam-New-Sep-7 (run pwd)
-□ File path contains /Sam-New-Sep-7/
-□ Not using cd to navigate elsewhere
-□ Not using relative paths that go up (../)
-□ When in doubt, ASK before proceeding
-```
-
----
-
-## 🚨 NEW ASSISTANT ONBOARDING
-
-**If you are a new Claude instance, read these files in order:**
-
-1. **THIS SECTION ABOVE** - Directory safety (CRITICAL)
-2. **`QUICK_START_GUIDE.md`** - Essential 5-minute overview
-3. **`NEW_ASSISTANT_ONBOARDING.md`** - Complete 30-minute onboarding
-4. **This file** - Project architecture and development guidelines
-5. **`TODO.md`** - Current tasks and priorities
 
 ---
 
@@ -1038,161 +817,3 @@ cat .mcp.json | jq '.mcpServers'
 **Target**: $100M ARR by 2027
 - i told ya not to fuck with our users
 - outbound works
-
-Delivered
-t
-tl@innovareai.com
-🔄 Final Test - Reply to This
-—
-Oct 6, 6:44:37 PM
-Processed
-to:
-t
-tl@innovareai.com
-🔄 Final Test - Reply to This
-—
-Oct 6, 6:44:37 PM
-Delivered
-t
-tl@innovareai.com
-✅ SAM Inbound Email System - LIVE TEST
-system-test
-Oct 6, 6:32:28 PM
-Processed
-to:
-t
-tl@innovareai.com
-✅ SAM Inbound Email System - LIVE TEST
-system-test
-Oct 6, 6:32:28 PM
-Delivered
-t
-tl@innovareai.com
-🧪 Test SAM Inbound Email - Please Reply
-inbound-test
-Oct 6, 6:26:49 PM
-Processed
-to:
-t
-tl@innovareai.com
-🧪 Test SAM Inbound Email - Please Reply
-inbound-test
-Oct 6, 6:26:48 PM
-Delivered
-t
-tl@innovareai.com
-🔑 Reset Your SAM AI Password
-—
-Oct 6, 4:14:27 PM
-Processed
-to:
-t
-tl@innovareai.com
-🔑 Reset Your SAM AI Password
-—
-Oct 6, 4:14:27 PM
-Delivered
-t
-tl@innovareai.com
-🔑 Reset Your SAM AI Password
-—
-Oct 6, 4:13:31 PM
-Processed
-to:
-t
-tl@innovareai.com
-🔑 Reset Your SAM AI Password
-—
-Oct 6, 4:13:30 PM
-Delivered
-t
-tl@innovareai.com
-🔑 Reset Your SAM AI Password
-—
-Oct 6, 12:45:13 PM
-Processed
-to:
-t
-tl@innovareai.com
-🔑 Reset Your SAM AI Password
-—
-Oct 6, 12:45:12 PM
-Delivered
-t
-tl@innovareai.com
-🪄 Your SAM AI Magic Link
-—
-Oct 6, 12:45:00 PM
-Processed
-to:
-t
-tl@innovareai.com
-🪄 Your SAM AI Magic Link
-—
-Oct 6, 12:44:59 PM
-Delivered
-t
-tl@innovareai.com
-🔑 Reset Your SAM AI Password
-—
-Oct 6, 12:39:42 PM
-Processed
-to:
-t
-tl@innovareai.com
-🔑 Reset Your SAM AI Password
-—
-Oct 6, 12:39:42 PM
-Delivered
-t
-tl@innovareai.com
-🪄 Your SAM AI Magic Link
-—
-Oct 6, 12:39:28 PM
-Processed
-to:
-t
-tl@innovareai.com
-🪄 Your SAM AI Magic Link
-—
-Oct 6, 12:39:28 PM
-Delivered
-t
-tl@innovareai.com
-🪄 Your SAM AI Magic Link
-—
-Oct 6, 12:38:56 PM
-Processed
-to:
-t
-tl@innovareai.com
-🪄 Your SAM AI Magic Link
-—
-Oct 6, 12:38:56 PM
-Delivered
-t
-tl@innovareai.com
-🪄 Your SAM AI Magic Link
-—
-Oct 6, 12:38:40 PM
-Processed
-to:
-t
-tl@innovareai.com
-🪄 Your SAM AI Magic Link
-—
-Oct 6, 12:38:39 PM
-Delivered
-t
-tl@innovareai.com
-🪄 Your SAM AI Magic Link
-—
-Oct 6, 12:34:11 PM
-Processed
-to:
-t
-tl@innovareai.com
-🪄 Your SAM AI Magic Link
-—
-Oct 6, 12:34:10 PM
-Delivered
