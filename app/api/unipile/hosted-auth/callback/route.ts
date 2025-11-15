@@ -435,11 +435,11 @@ export async function GET(request: NextRequest) {
                 }
               }
               
-              // ATOMIC: Store LinkedIn account in both tables atomically using RPC function
+              // ATOMIC: Store account in both tables atomically using RPC function
               // This prevents silent failures and table drift
-              console.log(`🔗 Atomically associating account ${accountId} for user ${targetUserId} in workspace ${targetWorkspaceId}`)
+              console.log(`🔗 Atomically associating ${accountType} account ${accountId} for user ${targetUserId} in workspace ${targetWorkspaceId}`)
 
-              const { data: rpcResult, error: rpcError } = await supabase.rpc('associate_linkedin_account_atomic', {
+              const { data: rpcResult, error: rpcError } = await supabase.rpc('associate_account_atomic', {
                 p_user_id: targetUserId,
                 p_workspace_id: targetWorkspaceId,
                 p_unipile_account_id: accountId,
@@ -448,11 +448,11 @@ export async function GET(request: NextRequest) {
 
               if (rpcError) {
                 console.error(`❌ CRITICAL: Atomic account association failed:`, rpcError)
-                throw new Error(`Failed to associate LinkedIn account: ${rpcError.message}`)
+                throw new Error(`Failed to associate ${accountType} account: ${rpcError.message}`)
               }
 
               console.log(`✅ Atomic account association successful:`, rpcResult)
-              console.log(`✅ Account stored in both user_unipile_accounts AND workspace_accounts`)
+              console.log(`✅ ${accountType} account stored in both user_unipile_accounts AND workspace_accounts`)
 
               // Redirect based on account type
               if (accountType === 'LINKEDIN') {
