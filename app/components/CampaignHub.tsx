@@ -3589,74 +3589,88 @@ Would you like me to adjust these or create more variations?`
             </div>
           </div>
 
-          <div className="bg-gray-700 rounded-lg p-4">
-            <h4 className="text-white font-medium mb-3">Personalization Placeholders</h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          <div className="p-5 bg-gradient-to-br from-purple-900/20 to-blue-900/20 rounded-lg border border-purple-700/30">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+                <Sparkles size={16} className="text-white" />
+              </div>
+              <h4 className="text-white font-semibold">Personalization Placeholders</h4>
+            </div>
+            <p className="text-gray-300 text-sm mb-4">
+              Click to insert dynamic fields that auto-fill with prospect data
+            </p>
+            <div className="flex flex-wrap gap-2">
               {placeholders.map((placeholder) => (
-                <Button
+                <button
                   key={placeholder.key}
                   onClick={() => insertPlaceholder(placeholder.key)}
-                  variant="secondary"
-                  size="sm"
-                  className="text-xs bg-purple-600 hover:bg-purple-700 text-white"
+                  className="px-3 py-1.5 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/50 hover:border-purple-400 rounded-full text-purple-200 text-xs font-medium transition-all hover:scale-105 cursor-pointer"
                   title={placeholder.description}
                 >
                   {placeholder.key}
-                </Button>
+                </button>
               ))}
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Click any placeholder to insert it into your message
-            </p>
           </div>
 
           {/* Message Timing & Cadence */}
-          <div className="bg-gray-700 rounded-lg p-4">
-            <h4 className="text-white font-medium mb-3">Message Timing & Cadence</h4>
-            <p className="text-xs text-gray-500 mb-4">
+          <div className="p-5 bg-gradient-to-br from-purple-900/20 to-blue-900/20 rounded-lg border border-purple-700/30">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+                <Clock size={16} className="text-white" />
+              </div>
+              <h4 className="text-white font-semibold">Message Timing & Cadence</h4>
+            </div>
+            <p className="text-gray-300 text-sm mb-5">
               Configure delays between messages to optimize engagement
             </p>
-            <div className="space-y-4">
+            <div className="space-y-6">
               {/* Connection Request Delay */}
               <div>
-                <Label className="text-gray-400 text-sm mb-2 block">
+                <Label className="text-white text-sm mb-3 block font-medium">
                   Connection Request Delay
                 </Label>
-                <select
-                  className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                  value={campaignSettings.connection_request_delay || '1-3 hours'}
-                  onChange={(e) => setCampaignSettings({...campaignSettings, connection_request_delay: e.target.value})}
-                >
-                  <option value="immediate">Immediate</option>
-                  <option value="15-30 minutes">15-30 minutes</option>
-                  <option value="1-3 hours">1-3 hours (recommended)</option>
-                  <option value="3-6 hours">3-6 hours</option>
-                  <option value="6-12 hours">6-12 hours</option>
-                  <option value="12-24 hours">12-24 hours</option>
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
+                <div className="flex flex-wrap gap-2">
+                  {['immediate', '15-30 minutes', '1-3 hours', '3-6 hours', '6-12 hours', '12-24 hours'].map((delay) => (
+                    <button
+                      key={delay}
+                      onClick={() => setCampaignSettings({...campaignSettings, connection_request_delay: delay})}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        (campaignSettings.connection_request_delay || '1-3 hours') === delay
+                          ? 'bg-purple-600 text-white border-2 border-purple-400 shadow-lg'
+                          : 'bg-gray-700 text-gray-300 border-2 border-gray-600 hover:border-purple-500 hover:bg-gray-600'
+                      }`}
+                    >
+                      {delay === '1-3 hours' ? delay + ' ⭐' : delay}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
                   Time to wait between sending connection requests
                 </p>
               </div>
 
               {/* Follow-up Message Delay */}
               <div>
-                <Label className="text-gray-400 text-sm mb-2 block">
+                <Label className="text-white text-sm mb-3 block font-medium">
                   Follow-up Message Delay
                 </Label>
-                <select
-                  className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                  value={campaignSettings.follow_up_delay || '2-3 days'}
-                  onChange={(e) => setCampaignSettings({...campaignSettings, follow_up_delay: e.target.value})}
-                >
-                  <option value="1 day">1 day</option>
-                  <option value="2-3 days">2-3 days (recommended)</option>
-                  <option value="3-5 days">3-5 days</option>
-                  <option value="5-7 days">5-7 days</option>
-                  <option value="1 week">1 week</option>
-                  <option value="2 weeks">2 weeks</option>
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
+                <div className="flex flex-wrap gap-2">
+                  {['1 day', '2-3 days', '3-5 days', '5-7 days', '1 week', '2 weeks'].map((delay) => (
+                    <button
+                      key={delay}
+                      onClick={() => setCampaignSettings({...campaignSettings, follow_up_delay: delay})}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        (campaignSettings.follow_up_delay || '2-3 days') === delay
+                          ? 'bg-purple-600 text-white border-2 border-purple-400 shadow-lg'
+                          : 'bg-gray-700 text-gray-300 border-2 border-gray-600 hover:border-purple-500 hover:bg-gray-600'
+                      }`}
+                    >
+                      {delay === '2-3 days' ? delay + ' ⭐' : delay}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
                   Time to wait between follow-up messages after connection is accepted
                 </p>
               </div>
@@ -3969,25 +3983,28 @@ Would you like me to adjust these or create more variations?`
             </div>
           </div>
 
-          <div className="bg-gray-700 rounded-lg p-4">
-            <h4 className="text-white font-medium mb-3">Personalization Placeholders</h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          <div className="p-5 bg-gradient-to-br from-purple-900/20 to-blue-900/20 rounded-lg border border-purple-700/30">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+                <Sparkles size={16} className="text-white" />
+              </div>
+              <h4 className="text-white font-semibold">Personalization Placeholders</h4>
+            </div>
+            <p className="text-gray-300 text-sm mb-4">
+              Click to insert dynamic fields that auto-fill with prospect data
+            </p>
+            <div className="flex flex-wrap gap-2">
               {placeholders.map((placeholder) => (
-                <Button
+                <button
                   key={placeholder.key}
                   onClick={() => insertPlaceholder(placeholder.key)}
-                  variant="secondary"
-                  size="sm"
-                  className="text-xs bg-purple-600 hover:bg-purple-700 text-white"
+                  className="px-3 py-1.5 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/50 hover:border-purple-400 rounded-full text-purple-200 text-xs font-medium transition-all hover:scale-105 cursor-pointer"
                   title={placeholder.description}
                 >
                   {placeholder.key}
-                </Button>
+                </button>
               ))}
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Click any placeholder to insert it into your message
-            </p>
           </div>
 
           {/* Message Timing & Cadence */}
@@ -4148,21 +4165,26 @@ Would you like me to adjust these or create more variations?`
             {followUpMessages.map((message, index) => (
               <div key={index} className="mb-4">
                 {/* Delay before this message */}
-                <div className="mb-3 flex items-center gap-2 bg-gray-800/50 border border-gray-600 rounded-lg p-3">
-                  <Clock size={16} className="text-purple-400 flex-shrink-0" />
-                  <span className="text-gray-400 text-sm">Wait</span>
-                  <select
-                    className="bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none flex-1 max-w-xs"
-                    value={(campaignSettings.message_delays || [])[index] || '2-3 days'}
-                    onChange={(e) => updateMessageDelay(index, e.target.value)}
-                  >
-                    <option value="1 day">1 day</option>
-                    <option value="2-3 days">2-3 days</option>
-                    <option value="3-5 days">3-5 days</option>
-                    <option value="5-7 days">5-7 days</option>
-                    <option value="1 week">1 week</option>
-                  </select>
-                  <span className="text-gray-400 text-sm">before sending</span>
+                <div className="mb-3 p-4 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-700/30 rounded-lg">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Clock size={16} className="text-purple-400" />
+                    <span className="text-white text-sm font-medium">Delay before sending</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {['1 day', '2-3 days', '3-5 days', '5-7 days', '1 week'].map((delay) => (
+                      <button
+                        key={delay}
+                        onClick={() => updateMessageDelay(index, delay)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                          ((campaignSettings.message_delays || [])[index] || '2-3 days') === delay
+                            ? 'bg-purple-600 text-white border-2 border-purple-400 shadow-lg'
+                            : 'bg-gray-700 text-gray-300 border-2 border-gray-600 hover:border-purple-500 hover:bg-gray-600'
+                        }`}
+                      >
+                        {delay}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between mb-2">
