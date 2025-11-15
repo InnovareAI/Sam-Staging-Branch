@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircle, ChevronDown, ChevronUp, Save, Upload, XCircle, Clock, Calendar } from 'lucide-react';
+import { CheckCircle, ChevronDown, ChevronUp, Save, Upload, XCircle, Clock, Calendar, Mail, AlertCircle, Info } from 'lucide-react';
 import { toastError, toastSuccess, toastInfo } from '@/lib/toast';
+import { UnipileModal } from '@/components/integrations/UnipileModal';
+import EmailProvidersModal from './EmailProvidersModal';
 
 
 interface CampaignApprovalScreenProps {
@@ -45,6 +47,19 @@ export default function CampaignApprovalScreen({
     templates: false
   });
 
+  // Channel type selection state
+  const [channelType, setChannelType] = useState<'linkedin' | 'email'>(
+    campaignData.type === 'Email' ? 'email' : 'linkedin'
+  );
+
+  // Connection wizards state
+  const [showLinkedInWizard, setShowLinkedInWizard] = useState(false);
+  const [showEmailWizard, setShowEmailWizard] = useState(false);
+  const [connectedAccounts, setConnectedAccounts] = useState({
+    linkedin: false,
+    email: false
+  });
+
   // Timing controls for flow_settings
   const [connectionWait, setConnectionWait] = useState(36); // hours (12-96)
   const [followupWait, setFollowupWait] = useState(5);      // days (1-30)
@@ -61,6 +76,27 @@ export default function CampaignApprovalScreen({
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
+
+  // Check connected accounts on mount
+  useEffect(() => {
+    const checkConnectedAccounts = async () => {
+      try {
+        const response = await fetch(`/api/workspace-accounts/check?workspace_id=${workspaceId}`);
+        const data = await response.json();
+
+        if (data.success) {
+          setConnectedAccounts({
+            linkedin: data.linkedin_connected || false,
+            email: data.email_connected || false
+          });
+        }
+      } catch (error) {
+        console.error('Failed to check connected accounts:', error);
+      }
+    };
+
+    checkConnectedAccounts();
+  }, [workspaceId]);
 
   // Load saved templates on mount
   useEffect(() => {
@@ -89,6 +125,58 @@ export default function CampaignApprovalScreen({
 
   const handleUploadTemplate = () => {
     setShowTemplateLibrary(!showTemplateLibrary);
+  };
+
+  // Handle channel type change with account validation
+  const handleChannelTypeChange = (type: 'linkedin' | 'email') => {
+    // Check if account is connected
+    if (type === 'linkedin' && !connectedAccounts.linkedin) {
+      toastInfo('Please connect your LinkedIn account first');
+      setShowLinkedInWizard(true);
+      return;
+    }
+
+    if (type === 'email' && !connectedAccounts.email) {
+      toastInfo('Please connect your email account first');
+      setShowEmailWizard(true);
+      return;
+    }
+
+    // Account is connected, proceed
+    setChannelType(type);
+    toastSuccess(`Switched to ${type === 'linkedin' ? 'LinkedIn' : 'Email'} campaign`);
+  };
+
+  // Recheck accounts after wizard closes
+  const handleWizardClose = async () => {
+    setShowLinkedInWizard(false);
+    setShowEmailWizard(false);
+
+    // Recheck connected accounts
+    try {
+      const response = await fetch(`/api/workspace-accounts/check?workspace_id=${workspaceId}`);
+      const data = await response.json();
+
+      if (data.success) {
+        const newConnectedAccounts = {
+          linkedin: data.linkedin_connected || false,
+          email: data.email_connected || false
+        };
+        setConnectedAccounts(newConnectedAccounts);
+
+        // If account was just connected, switch to that channel
+        if (!connectedAccounts.linkedin && newConnectedAccounts.linkedin) {
+          setChannelType('linkedin');
+          toastSuccess('LinkedIn account connected! You can now create LinkedIn campaigns.');
+        }
+        if (!connectedAccounts.email && newConnectedAccounts.email) {
+          setChannelType('email');
+          toastSuccess('Email account connected! You can now create email campaigns.');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to recheck accounts:', error);
+    }
   };
 
   const handleSaveTemplate = async (silent = false) => {
@@ -188,8 +276,111 @@ export default function CampaignApprovalScreen({
               </div>
               <div className="h-6 w-px bg-gray-600"></div>
               <div>
-                <span className="text-gray-400 text-sm">Type:</span>
-                <span className="text-white font-semibold ml-2">{campaignData.type}</span>
+                <span className="text-gray-400 text-sm">Prospects:</span>
+                <span className="text-white font-semibold ml-2">{campaignData.prospects.length}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Channel Selection */}
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
+          <h3 className="text-lg font-semibold text-white mb-4">
+            Select Outreach Channel
+          </h3>
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* LinkedIn Option */}
+            <label className={`relative cursor-pointer border-2 rounded-lg p-4 transition-all ${
+              channelType === 'linkedin'
+                ? 'border-blue-500 bg-blue-500/10'
+                : 'border-gray-600 hover:border-gray-500'
+            }`}>
+              <input
+                type="radio"
+                name="channel"
+                value="linkedin"
+                checked={channelType === 'linkedin'}
+                onChange={() => handleChannelTypeChange('linkedin')}
+                className="sr-only"
+              />
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <div className="text-white font-medium">LinkedIn Outreach</div>
+                  <div className="text-gray-400 text-sm">Connection requests + follow-ups</div>
+                </div>
+                {channelType === 'linkedin' && (
+                  <div className="ml-auto">
+                    <CheckCircle className="text-blue-500" size={24} />
+                  </div>
+                )}
+              </div>
+              {!connectedAccounts.linkedin && (
+                <div className="absolute top-2 right-2">
+                  <span className="px-2 py-1 bg-yellow-600/20 text-yellow-400 text-xs rounded border border-yellow-500/40">
+                    Not Connected
+                  </span>
+                </div>
+              )}
+            </label>
+
+            {/* Email Option */}
+            <label className={`relative cursor-pointer border-2 rounded-lg p-4 transition-all ${
+              channelType === 'email'
+                ? 'border-green-500 bg-green-500/10'
+                : 'border-gray-600 hover:border-gray-500'
+            }`}>
+              <input
+                type="radio"
+                name="channel"
+                value="email"
+                checked={channelType === 'email'}
+                onChange={() => handleChannelTypeChange('email')}
+                className="sr-only"
+              />
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Mail className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-white font-medium">Email Outreach</div>
+                  <div className="text-gray-400 text-sm">Direct transactional emails</div>
+                </div>
+                {channelType === 'email' && (
+                  <div className="ml-auto">
+                    <CheckCircle className="text-green-500" size={24} />
+                  </div>
+                )}
+              </div>
+              {!connectedAccounts.email && (
+                <div className="absolute top-2 right-2">
+                  <span className="px-2 py-1 bg-yellow-600/20 text-yellow-400 text-xs rounded border border-yellow-500/40">
+                    Not Connected
+                  </span>
+                </div>
+              )}
+            </label>
+          </div>
+
+          {/* Helper text */}
+          <div className="mt-4 p-3 bg-gray-700/50 rounded border border-gray-600">
+            <div className="flex items-start gap-2">
+              <Info size={16} className="text-blue-400 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-gray-300">
+                {channelType === 'linkedin' ? (
+                  <>
+                    <strong>LinkedIn:</strong> Send connection requests, then follow-up messages after acceptance.
+                  </>
+                ) : (
+                  <>
+                    <strong>Email:</strong> Send direct emails to prospects. No connection requests needed.
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -627,6 +818,19 @@ export default function CampaignApprovalScreen({
           </button>
         </div>
       </div>
+
+      {/* LinkedIn Unipile Wizard */}
+      <UnipileModal
+        isOpen={showLinkedInWizard}
+        onClose={handleWizardClose}
+      />
+
+      {/* Email Providers Wizard */}
+      <EmailProvidersModal
+        isOpen={showEmailWizard}
+        onClose={handleWizardClose}
+        workspaceId={workspaceId}
+      />
     </div>
   );
 }
