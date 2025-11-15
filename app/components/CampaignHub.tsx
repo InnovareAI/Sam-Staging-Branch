@@ -1407,9 +1407,15 @@ function CampaignBuilder({
       icon: MessageSquare
     },
     {
-      value: 'builder',
-      label: 'Builder',
-      description: 'Custom campaign builder with advanced targeting',
+      value: 'email',
+      label: 'Email',
+      description: 'Send direct emails to prospects without LinkedIn connection requests',
+      icon: Mail
+    },
+    {
+      value: 'multichannel',
+      label: 'Multichannel',
+      description: 'Combine LinkedIn and email outreach in one campaign',
       icon: Settings
     }
   ];
