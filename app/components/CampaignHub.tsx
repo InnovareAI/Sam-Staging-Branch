@@ -55,6 +55,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import CampaignApprovalScreen from '@/app/components/CampaignApprovalScreen';
+import { UnipileModal } from '@/components/integrations/UnipileModal';
+import EmailProvidersModal from '@/app/components/EmailProvidersModal';
 
 // Helper function to get human-readable campaign type labels
 function getCampaignTypeLabel(type: string): string {
@@ -883,6 +885,37 @@ function CampaignBuilder({
   const [showPreview, setShowPreview] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+
+  // Account connection state
+  const [connectedAccounts, setConnectedAccounts] = useState({
+    linkedin: false,
+    email: false
+  });
+  const [showLinkedInWizard, setShowLinkedInWizard] = useState(false);
+  const [showEmailWizard, setShowEmailWizard] = useState(false);
+
+  // Check connected accounts on mount
+  useEffect(() => {
+    const checkConnectedAccounts = async () => {
+      try {
+        const response = await fetch(`/api/workspace-accounts/check?workspace_id=${workspaceId}`);
+        const data = await response.json();
+
+        if (data.success) {
+          setConnectedAccounts({
+            linkedin: data.linkedin_connected || false,
+            email: data.email_connected || false
+          });
+        }
+      } catch (error) {
+        console.error('Failed to check connected accounts:', error);
+      }
+    };
+
+    if (workspaceId) {
+      checkConnectedAccounts();
+    }
+  }, [workspaceId]);
 
   // Auto-populate CSV data when initialProspects are provided
   useEffect(() => {
@@ -2485,7 +2518,8 @@ Would you like me to adjust these or create more variations?`
                 const IconComponent = type.icon;
                 const isConnector = type.value === 'connector';
                 const isMessenger = type.value === 'messenger';
-                const isBuilder = type.value === 'builder';
+                const isMultichannel = type.value === 'multichannel';
+                const isEmail = type.value === 'email';
 
                 // Calculate percentages for stricter enforcement
                 const firstDegreePercent = connectionDegrees.total > 0
@@ -2500,10 +2534,34 @@ Would you like me to adjust these or create more variations?`
 
                 let isDisabled = false;
                 let disabledReason = '';
+                let needsConnection: 'linkedin' | 'email' | 'both' | null = null;
 
-                if (isBuilder) {
+                // Check account connections first
+                if ((isConnector || isMessenger) && !connectedAccounts.linkedin) {
                   isDisabled = true;
-                  disabledReason = '🚧 Coming Soon - Advanced features in development';
+                  disabledReason = 'LinkedIn account not connected';
+                  needsConnection = 'linkedin';
+                } else if (isEmail && !connectedAccounts.email) {
+                  isDisabled = true;
+                  disabledReason = 'Email account not connected';
+                  needsConnection = 'email';
+                } else if (isMultichannel) {
+                  if (!connectedAccounts.linkedin && !connectedAccounts.email) {
+                    isDisabled = true;
+                    disabledReason = 'LinkedIn and Email accounts not connected';
+                    needsConnection = 'both';
+                  } else if (!connectedAccounts.linkedin) {
+                    isDisabled = true;
+                    disabledReason = 'LinkedIn account not connected';
+                    needsConnection = 'linkedin';
+                  } else if (!connectedAccounts.email) {
+                    isDisabled = true;
+                    disabledReason = 'Email account not connected';
+                    needsConnection = 'email';
+                  } else {
+                    isDisabled = true;
+                    disabledReason = '🚧 Coming Soon - Advanced features in development';
+                  }
                 } else if (connectionDegrees.total > 0) {
                   // Disable Connector if prospects are predominantly 1st degree (70%+)
                   if (isConnector && (hasOnly1stDegree || firstDegreePercent >= 70)) {
@@ -2528,22 +2586,45 @@ Would you like me to adjust these or create more variations?`
                 return (
                   <div
                     key={type.value}
-                    onClick={() => !isDisabled && setCampaignType(type.value)}
+                    onClick={() => !isDisabled && !needsConnection && setCampaignType(type.value)}
                     className={`p-4 border rounded-lg transition-all ${
                       isDisabled
-                        ? 'border-gray-700 bg-gray-800 opacity-50 cursor-not-allowed'
+                        ? 'border-gray-700 bg-gray-800 opacity-50'
                         : campaignType === type.value
                         ? 'border-purple-500 bg-purple-600/20 cursor-pointer'
                         : 'border-gray-600 bg-gray-700 hover:border-gray-500 cursor-pointer'
-                    }`}
-                    title={isDisabled ? `Not available: ${disabledReason}` : ''}
+                    } ${needsConnection ? '' : isDisabled ? 'cursor-not-allowed' : ''}`}
+                    title={isDisabled && !needsConnection ? `Not available: ${disabledReason}` : ''}
                   >
                     <div className="flex items-center mb-2">
                       <IconComponent className="text-purple-400 mr-2" size={20} />
                       <h4 className="text-white font-medium">{type.label}</h4>
                     </div>
                     <p className="text-gray-400 text-sm">{type.description}</p>
-                    {isDisabled && (
+                    {isDisabled && needsConnection && (
+                      <div className="mt-3">
+                        <p className="text-yellow-400 text-xs mb-2">
+                          ⚠️ {disabledReason}
+                        </p>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (needsConnection === 'linkedin') {
+                              setShowLinkedInWizard(true);
+                            } else if (needsConnection === 'email') {
+                              setShowEmailWizard(true);
+                            } else if (needsConnection === 'both') {
+                              setShowLinkedInWizard(true);
+                            }
+                          }}
+                          className="w-full px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors flex items-center justify-center gap-1"
+                        >
+                          <Link size={12} />
+                          Connect {needsConnection === 'both' ? 'Accounts' : needsConnection === 'linkedin' ? 'LinkedIn' : 'Email'} Now
+                        </button>
+                      </div>
+                    )}
+                    {isDisabled && !needsConnection && (
                       <p className="text-red-400 text-xs mt-2">
                         ⚠️ Not available: {disabledReason}
                       </p>
@@ -8248,6 +8329,57 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           </div>
         </div>
       )}
+
+      {/* LinkedIn Unipile Wizard */}
+      <UnipileModal
+        isOpen={showLinkedInWizard}
+        onClose={() => {
+          setShowLinkedInWizard(false);
+          // Recheck accounts after closing
+          if (workspaceId) {
+            fetch(`/api/workspace-accounts/check?workspace_id=${workspaceId}`)
+              .then(res => res.json())
+              .then(data => {
+                if (data.success) {
+                  setConnectedAccounts({
+                    linkedin: data.linkedin_connected || false,
+                    email: data.email_connected || false
+                  });
+                  if (data.linkedin_connected) {
+                    toastSuccess('LinkedIn account connected! You can now create LinkedIn campaigns.');
+                  }
+                }
+              })
+              .catch(err => console.error('Failed to recheck accounts:', err));
+          }
+        }}
+      />
+
+      {/* Email Providers Wizard */}
+      <EmailProvidersModal
+        isOpen={showEmailWizard}
+        onClose={() => {
+          setShowEmailWizard(false);
+          // Recheck accounts after closing
+          if (workspaceId) {
+            fetch(`/api/workspace-accounts/check?workspace_id=${workspaceId}`)
+              .then(res => res.json())
+              .then(data => {
+                if (data.success) {
+                  setConnectedAccounts({
+                    linkedin: data.linkedin_connected || false,
+                    email: data.email_connected || false
+                  });
+                  if (data.email_connected) {
+                    toastSuccess('Email account connected! You can now create email campaigns.');
+                  }
+                }
+              })
+              .catch(err => console.error('Failed to recheck accounts:', err));
+          }
+        }}
+        workspaceId={workspaceId}
+      />
 
       </div>
     </div>
