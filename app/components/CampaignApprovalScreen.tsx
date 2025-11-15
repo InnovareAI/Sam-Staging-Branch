@@ -285,39 +285,12 @@ export default function CampaignApprovalScreen({
 
         {/* Messaging Sequence */}
         <div className="bg-gray-800 rounded-lg p-6 mb-6 border border-gray-700">
-          <div
-            className="flex items-center justify-between cursor-pointer mb-4"
-            onClick={() => toggleSection('messages')}
-          >
+          <div className="mb-4">
             <h2 className="text-xl font-semibold text-white">Messaging Sequence</h2>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleUploadTemplate();
-                }}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg flex items-center gap-2"
-              >
-                <Upload size={16} />
-                {showTemplateLibrary ? 'Hide Templates' : 'Load Template'}
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleSaveTemplate(false);
-                }}
-                disabled={isSaving}
-                className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white text-sm rounded-lg flex items-center gap-2"
-              >
-                <Save size={16} />
-                {isSaving ? 'Saving...' : 'Save Template'}
-              </button>
-              {expandedSections.messages ? <ChevronUp className="text-gray-400" /> : <ChevronDown className="text-gray-400" />}
-            </div>
+            <p className="text-gray-400 text-sm mt-1">Review your campaign messages before launching</p>
           </div>
 
-          {expandedSections.messages && (
-            <div className="space-y-4">
+          <div className="space-y-4">
               {/* Connection Request / Initial Email (only for Connector campaigns and Email) */}
               {(campaignData.campaignType === 'connector' || campaignData.type === 'Email') && (
                 <div className="bg-gray-700 rounded-lg p-4">
@@ -390,50 +363,6 @@ export default function CampaignApprovalScreen({
                 />
               </div>
             </div>
-          )}
-
-          {/* Template Library (shown when Upload clicked) */}
-          {showTemplateLibrary && savedTemplates.length > 0 && (
-            <div className="mt-4 p-4 bg-gray-700 rounded-lg border border-gray-600">
-              <h3 className="font-semibold text-white mb-3">Saved Templates ({savedTemplates.length})</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto">
-                {savedTemplates.map((template) => (
-                  <div
-                    key={template.id}
-                    className="bg-gray-600 rounded-lg p-3 hover:bg-gray-500 cursor-pointer transition-colors"
-                    onClick={() => {
-                      setMessages({
-                        connection_request: template.connection_message || '',
-                        follow_up_1: template.alternative_message || '',
-                        follow_up_2: template.follow_up_messages?.[0] || '',
-                        follow_up_3: template.follow_up_messages?.[1] || '',
-                        follow_up_4: template.follow_up_messages?.[2] || '',
-                        follow_up_5: template.follow_up_messages?.[3] || ''
-                      });
-                      setShowTemplateLibrary(false);
-                      toastSuccess('Template loaded!');
-                    }}
-                  >
-                    <div className="font-semibold text-white mb-1">{template.template_name?.replace('autosave_', '')}</div>
-                    <div className="text-xs text-gray-400">
-                      Updated: {new Date(template.updated_at).toLocaleDateString()}
-                    </div>
-                    {template.connection_message && (
-                      <div className="text-xs text-gray-300 mt-2 truncate">
-                        {template.connection_message.substring(0, 100)}...
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {showTemplateLibrary && savedTemplates.length === 0 && (
-            <div className="mt-4 p-4 bg-gray-700 rounded-lg border border-gray-600 text-center text-gray-400">
-              No saved templates yet. Save your first template using the "Save Template" button.
-            </div>
-          )}
         </div>
 
         {/* Template Library (OLD - kept for reference) */}
@@ -467,7 +396,7 @@ export default function CampaignApprovalScreen({
         )}
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div className="flex items-center justify-end gap-4 bg-gray-800 rounded-lg p-6 border border-gray-700">
           <button
             onClick={onReject}
             className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 transition-colors"
@@ -475,87 +404,6 @@ export default function CampaignApprovalScreen({
             <XCircle size={20} />
             Reject & Edit
           </button>
-
-          <div className="text-center flex-1 max-w-md">
-            <div className="text-sm text-gray-400 mb-3">Campaign sending schedule</div>
-
-            {/* Timezone Selector */}
-            <div className="mb-3">
-              <label className="text-xs text-gray-400 block mb-1">Timezone</label>
-              <select
-                value={selectedTimezone}
-                onChange={(e) => setSelectedTimezone(e.target.value)}
-                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
-              >
-                <option value="America/New_York">Eastern Time (ET)</option>
-                <option value="America/Chicago">Central Time (CT)</option>
-                <option value="America/Denver">Mountain Time (MT)</option>
-                <option value="America/Los_Angeles">Pacific Time (PT)</option>
-                <option value="America/Phoenix">Arizona (MST)</option>
-                <option value="America/Anchorage">Alaska (AKT)</option>
-                <option value="Pacific/Honolulu">Hawaii (HST)</option>
-                <option value="Europe/London">London (GMT/BST)</option>
-                <option value="Europe/Paris">Paris (CET/CEST)</option>
-                <option value="Europe/Berlin">Berlin (CET/CEST)</option>
-                <option value="Asia/Dubai">Dubai (GST)</option>
-                <option value="Asia/Singapore">Singapore (SGT)</option>
-                <option value="Asia/Tokyo">Tokyo (JST)</option>
-                <option value="Australia/Sydney">Sydney (AEDT)</option>
-              </select>
-            </div>
-
-            {/* Business Hours */}
-            <div className="mb-3">
-              <label className="text-xs text-gray-400 block mb-1">Business Hours</label>
-              <div className="flex gap-2 items-center">
-                <select
-                  value={workingHoursStart}
-                  onChange={(e) => setWorkingHoursStart(parseInt(e.target.value))}
-                  className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
-                >
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <option key={i} value={i}>
-                      {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-gray-400 text-sm">to</span>
-                <select
-                  value={workingHoursEnd}
-                  onChange={(e) => setWorkingHoursEnd(parseInt(e.target.value))}
-                  className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
-                >
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <option key={i} value={i}>
-                      {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Skip Weekends/Holidays */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={skipWeekends}
-                  onChange={(e) => setSkipWeekends(e.target.checked)}
-                  className="w-4 h-4"
-                />
-                Skip weekends
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={skipHolidays}
-                  onChange={(e) => setSkipHolidays(e.target.checked)}
-                  className="w-4 h-4"
-                />
-                Skip public holidays
-              </label>
-            </div>
-          </div>
 
           <button
             onClick={handleApprove}
