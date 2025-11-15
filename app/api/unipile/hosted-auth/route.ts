@@ -253,7 +253,8 @@ export async function POST(request: NextRequest) {
     const userContextPayload = {
       user_id: user.id,
       user_email: user.email,
-      workspace_id: workspaceId
+      workspace_id: workspaceId,
+      close_popup: 'true' // Signal to close popup after processing
     }
     const encodedContext = encodeURIComponent(JSON.stringify(userContextPayload))
     const successRedirectUrl = `${callbackUrl}?status=success&user_context=${encodedContext}`
