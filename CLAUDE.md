@@ -204,7 +204,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
-## 🔴 RECENT CRITICAL FIXES (Nov 10-13)
+## 🔴 RECENT CRITICAL FIXES (Nov 10-15)
 
 ### ✅ Resolved Issues
 
@@ -230,6 +230,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 5. **Campaign Metrics** (Nov 12)
    - Fixed dashboard showing 0 metrics
+   - Status: ✅ RESOLVED
+
+6. **N8N Campaign Execution - Prospect ID Field Structure** (Nov 15)
+   - Fixed "undefined, campaign_id: undefined [line 13, for item 0] (Missing required fields - prospect_id)"
+   - Root cause: API sent `prospect_id` but N8N expected `prospect.id`
+   - N8N Campaign Handler stores entire prospect object in `item.prospect`
+   - "Update Status - CR Sent" node accesses `$input.item.json.prospect.id`
+   - Fix: Changed payload from `{prospect_id: "...", id: "..."}` to `{id: "..."}`
+   - File: `/app/api/campaigns/linkedin/execute-via-n8n/route.ts` (lines 940-978)
+   - Commit: 5ca571b0
    - Status: ✅ RESOLVED
 
 ### 🔴 Open Issues
