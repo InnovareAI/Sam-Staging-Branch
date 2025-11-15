@@ -159,72 +159,22 @@ export function UnipileModal({ isOpen, onClose, provider = 'LINKEDIN' }: Unipile
   const providerName = provider === 'LINKEDIN' ? 'LinkedIn' : provider === 'GOOGLE' ? 'Google Email' : 'Outlook Email';
   const providerType = provider === 'LINKEDIN' ? 'LinkedIn' : 'Email';
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="relative mx-4 w-full max-w-xl overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-gray-900">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-800">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-blue-500">Unipile Integration</p>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Connect {providerName} via Hosted Auth</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-full p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-            aria-label="Close"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="space-y-6 px-6 py-5">
-          {error && (
-            <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-900/30 dark:text-red-200">
-              <AlertCircle size={16} />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {success && !error && (
-            <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-xs text-green-700 dark:border-green-900/40 dark:bg-green-900/30 dark:text-green-200">
-              <CheckCircle size={16} />
-              <span>Hosted Auth Wizard opened in a new window. Complete the {providerName} verification to finish linking.</span>
-            </div>
-          )}
-
-          {waitingForConfirmation && !connectionComplete && (
-            <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-700 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Waiting for {providerName} to confirm the connection. Keep the Hosted Auth window open until it completes.</span>
-            </div>
-          )}
-
-          {pollError && !connectionComplete && (
-            <div className="flex items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-xs text-yellow-700 dark:border-yellow-900/40 dark:bg-yellow-900/30 dark:text-yellow-200">
-              <AlertCircle size={16} />
-              <span>{pollError}. We will keep checking.</span>
-            </div>
-          )}
-
-          {connectionComplete && (
-            <div className="flex items-center gap-2 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-xs text-green-800 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-100">
-              <CheckCircle size={16} />
-              <span>{providerName} confirmed! Refreshing your workspace…</span>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-center border-t border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-800 dark:bg-gray-900/60">
-          <button
-            onClick={onClose}
-            className="text-sm font-medium text-gray-600 transition hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100"
-          >
-            {waitingForConfirmation && !connectionComplete ? 'Cancel & try later' : 'Close'}
+  // Don't render any modal UI - wizard opens directly in popup
+  // Only show a small status indicator if there's an error
+  if (error) {
+    return (
+      <div className="fixed bottom-4 right-4 z-50 max-w-md">
+        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 shadow-lg dark:border-red-900/50 dark:bg-red-900/30 dark:text-red-200">
+          <AlertCircle size={16} />
+          <span>{error}</span>
+          <button onClick={onClose} className="ml-2">
+            <X size={16} />
           </button>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // No UI shown - wizard opened directly
+  return null;
 }
