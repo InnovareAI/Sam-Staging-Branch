@@ -2109,7 +2109,7 @@ Would you like me to adjust these or create more variations?`
 
           if (!hasConnectionDegree) {
             console.warn('⚠️ CSV missing connection degree field - LinkedIn campaigns will be disabled');
-            toastInfo('CSV uploaded without LinkedIn connection degree data. You can only create Email campaigns with this data. For LinkedIn campaigns, export from Sales Navigator or use SAM Search.');
+            toastInfo('CSV missing connection degree column. To enable LinkedIn campaigns, add a column named "Connection Degree" or "Connection" with values like "1st", "2nd", or "3rd" for each prospect, then re-upload. Currently only Email campaigns are available.');
           }
 
           setCsvHeaders(headers);
@@ -2525,7 +2525,8 @@ Would you like me to adjust these or create more variations?`
                   {!hasConnectionDegreeData && (
                     <span>
                       ⚠️ <strong>No LinkedIn connection degree detected</strong> - Only Email campaigns available.
-                      For LinkedIn campaigns, export from Sales Navigator/LinkedIn Search or use SAM Search.
+                      <br />
+                      To enable LinkedIn campaigns: Add a column named <strong>"Connection Degree"</strong> or <strong>"Connection"</strong> to your CSV with values like "1st", "2nd", or "3rd", then re-upload.
                     </span>
                   )}
                   {hasConnectionDegreeData && hasOnly1stDegree && (
