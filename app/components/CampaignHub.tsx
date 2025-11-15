@@ -40,7 +40,9 @@ import {
   Loader2,
   Link,
   Archive,
-  Trash2
+  Trash2,
+  Sparkles,
+  Rocket
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -2451,10 +2453,16 @@ Would you like me to adjust these or create more variations?`
   return (
     <>
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center">
-          <Plus className="text-blue-400 mr-3" size={24} />
-          <h3 className="text-xl font-semibold text-white">New Campaign</h3>
+      {/* Header */}
+      <div className="flex items-center justify-between pb-6 border-b border-gray-700 mb-6">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center">
+            <Rocket size={20} className="text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-white">New Campaign</h2>
+            <p className="text-gray-400 text-sm">Multi-channel outreach automation</p>
+          </div>
         </div>
         {onClose && (
           <button
@@ -2472,14 +2480,14 @@ Would you like me to adjust these or create more variations?`
                 onClose();
               }
             }}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-400 hover:text-gray-300 transition-colors"
             title={currentStep > 1 ? 'Back' : 'Close'}
           >
             <X size={24} />
           </button>
         )}
       </div>
-      
+
       {/* Step Indicator */}
       <div className="flex items-center mb-8">
         {[1, 2, 3].map((step) => (
@@ -2508,6 +2516,40 @@ Would you like me to adjust these or create more variations?`
       {/* Step 1: Campaign Setup */}
       {currentStep === 1 && (
         <div className="space-y-6">
+          {/* Hero Section */}
+          <div className="p-6 bg-gradient-to-br from-purple-900/30 to-blue-900/30 rounded-lg border border-purple-700/50">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Sparkles size={24} className="text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-white mb-2">Launch Your Campaign</h3>
+                <p className="text-gray-300 text-sm leading-relaxed mb-4">
+                  Create intelligent, multi-channel outreach campaigns. SAM AI personalizes every message
+                  to maximize engagement and conversions.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2 text-sm">
+                    <TrendingUp size={16} className="text-purple-400" />
+                    <span className="text-gray-300">AI-powered personalization</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Users size={16} className="text-purple-400" />
+                    <span className="text-gray-300">Multi-channel reach</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Target size={16} className="text-purple-400" />
+                    <span className="text-gray-300">Smart targeting</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock size={16} className="text-purple-400" />
+                    <span className="text-gray-300">Automated follow-ups</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="campaign-name" className="text-gray-400">
               Campaign Name
@@ -2660,20 +2702,26 @@ Would you like me to adjust these or create more variations?`
                         setUserSelectedCampaignType(true); // Mark as manually selected
                       }
                     }}
-                    className={`p-4 border rounded-lg transition-all ${
+                    className={`p-5 border-2 rounded-lg transition-all ${
                       isDisabled
-                        ? 'border-gray-700 bg-gray-800 opacity-50'
+                        ? 'border-gray-700 bg-gray-800/50 opacity-50'
                         : campaignType === type.value
-                        ? 'border-purple-500 bg-purple-600/20 cursor-pointer'
-                        : 'border-gray-600 bg-gray-700 hover:border-gray-500 cursor-pointer'
+                        ? 'border-purple-500 bg-gradient-to-br from-purple-900/40 to-blue-900/40 cursor-pointer shadow-lg shadow-purple-500/20'
+                        : 'border-gray-600 bg-gray-700/50 hover:border-purple-400 hover:bg-gray-700 cursor-pointer'
                     } ${needsConnection ? '' : isDisabled ? 'cursor-not-allowed' : ''}`}
                     title={isDisabled && !needsConnection ? `Not available: ${disabledReason}` : ''}
                   >
-                    <div className="flex items-center mb-2">
-                      <IconComponent className="text-purple-400 mr-2" size={20} />
-                      <h4 className="text-white font-medium">{type.label}</h4>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                        campaignType === type.value
+                          ? 'bg-purple-600'
+                          : 'bg-gray-600'
+                      }`}>
+                        <IconComponent className="text-white" size={20} />
+                      </div>
+                      <h4 className="text-white font-semibold text-base">{type.label}</h4>
                     </div>
-                    <p className="text-gray-400 text-sm">{type.description}</p>
+                    <p className="text-gray-300 text-sm leading-relaxed">{type.description}</p>
                     {isDisabled && needsConnection && (
                       <div className="mt-3">
                         <p className="text-yellow-400 text-xs mb-2">
