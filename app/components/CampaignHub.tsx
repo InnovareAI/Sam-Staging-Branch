@@ -3630,27 +3630,23 @@ Would you like me to adjust these or create more variations?`
                 <Label className="text-white text-sm mb-3 block font-medium">
                   Connection Request Delay
                 </Label>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { value: 'immediate', label: 'Immediate' },
-                    { value: '15-30 minutes', label: '15-30 min' },
-                    { value: '1-3 hours', label: '1-3 hours ⭐' },
-                    { value: '3-6 hours', label: '3-6 hours' },
-                    { value: '6-12 hours', label: '6-12 hours' },
-                    { value: '12-24 hours', label: '12-24 hours' }
-                  ].map((delay) => (
-                    <button
-                      key={delay.value}
-                      onClick={() => setCampaignSettings({...campaignSettings, connection_request_delay: delay.value})}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                        (campaignSettings.connection_request_delay || '1-3 hours') === delay.value
-                          ? 'bg-purple-600 text-white border-2 border-purple-400 shadow-lg'
-                          : 'bg-gray-700 text-gray-300 border-2 border-gray-600 hover:border-purple-500 hover:bg-gray-600'
-                      }`}
-                    >
-                      {delay.label}
-                    </button>
-                  ))}
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="0"
+                    className="w-20 bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
+                    defaultValue="2"
+                    placeholder="2"
+                  />
+                  <select
+                    className="flex-1 bg-gray-700 border-2 border-gray-600 rounded-lg px-4 py-2 text-white font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                    value={campaignSettings.connection_request_delay || '1-3 hours'}
+                    onChange={(e) => setCampaignSettings({...campaignSettings, connection_request_delay: e.target.value})}
+                  >
+                    <option value="minutes">Minutes</option>
+                    <option value="hours">Hours ⭐</option>
+                    <option value="days">Days</option>
+                  </select>
                 </div>
                 <p className="text-xs text-gray-400 mt-2">
                   Time to wait between sending connection requests
@@ -3662,27 +3658,23 @@ Would you like me to adjust these or create more variations?`
                 <Label className="text-white text-sm mb-3 block font-medium">
                   Follow-up Message Delay
                 </Label>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { value: '1 day', label: '24 hours' },
-                    { value: '2-3 days', label: '2-3 days ⭐' },
-                    { value: '3-5 days', label: '3-5 days' },
-                    { value: '5-7 days', label: '5-7 days' },
-                    { value: '1 week', label: '7 days' },
-                    { value: '2 weeks', label: '14 days' }
-                  ].map((delay) => (
-                    <button
-                      key={delay.value}
-                      onClick={() => setCampaignSettings({...campaignSettings, follow_up_delay: delay.value})}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                        (campaignSettings.follow_up_delay || '2-3 days') === delay.value
-                          ? 'bg-purple-600 text-white border-2 border-purple-400 shadow-lg'
-                          : 'bg-gray-700 text-gray-300 border-2 border-gray-600 hover:border-purple-500 hover:bg-gray-600'
-                      }`}
-                    >
-                      {delay.label}
-                    </button>
-                  ))}
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="0"
+                    className="w-20 bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
+                    defaultValue="3"
+                    placeholder="3"
+                  />
+                  <select
+                    className="flex-1 bg-gray-700 border-2 border-gray-600 rounded-lg px-4 py-2 text-white font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                    value={campaignSettings.follow_up_delay || '2-3 days'}
+                    onChange={(e) => setCampaignSettings({...campaignSettings, follow_up_delay: e.target.value})}
+                  >
+                    <option value="hours">Hours</option>
+                    <option value="days">Days ⭐</option>
+                    <option value="weeks">Weeks</option>
+                  </select>
                 </div>
                 <p className="text-xs text-gray-400 mt-2">
                   Time to wait between follow-up messages after connection is accepted
@@ -4184,26 +4176,23 @@ Would you like me to adjust these or create more variations?`
                     <Clock size={16} className="text-purple-400" />
                     <span className="text-white text-sm font-medium">Delay before sending</span>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { value: '1 day', label: '24 hours' },
-                      { value: '2-3 days', label: '2-3 days' },
-                      { value: '3-5 days', label: '3-5 days' },
-                      { value: '5-7 days', label: '5-7 days' },
-                      { value: '1 week', label: '7 days' }
-                    ].map((delay) => (
-                      <button
-                        key={delay.value}
-                        onClick={() => updateMessageDelay(index, delay.value)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                          ((campaignSettings.message_delays || [])[index] || '2-3 days') === delay.value
-                            ? 'bg-purple-600 text-white border-2 border-purple-400 shadow-lg'
-                            : 'bg-gray-700 text-gray-300 border-2 border-gray-600 hover:border-purple-500 hover:bg-gray-600'
-                        }`}
-                      >
-                        {delay.label}
-                      </button>
-                    ))}
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-20 bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
+                      defaultValue="3"
+                      placeholder="3"
+                    />
+                    <select
+                      className="flex-1 bg-gray-700 border-2 border-gray-600 rounded-lg px-4 py-2 text-white font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                      value={(campaignSettings.message_delays || [])[index] || '2-3 days'}
+                      onChange={(e) => updateMessageDelay(index, e.target.value)}
+                    >
+                      <option value="hours">Hours</option>
+                      <option value="days">Days ⭐</option>
+                      <option value="weeks">Weeks</option>
+                    </select>
                   </div>
                 </div>
 
