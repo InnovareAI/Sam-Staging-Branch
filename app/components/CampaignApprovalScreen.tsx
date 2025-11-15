@@ -262,22 +262,52 @@ export default function CampaignApprovalScreen({
       <div className="max-w-6xl mx-auto p-6">
         {/* Header */}
         <div className="bg-gradient-to-r from-purple-900 to-blue-900 rounded-lg p-6 mb-6 border border-purple-700">
-          <h1 className="text-3xl font-bold text-white mb-2">Message Approval</h1>
-          <p className="text-gray-300">Review and finalize your campaign messaging before launch</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Campaign Summary & Approval</h1>
+          <p className="text-gray-300">Review all campaign details before launching</p>
         </div>
 
-        {/* Campaign Summary */}
-        <div className="bg-gray-800 rounded-lg p-4 mb-6 border border-gray-700">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <div>
-                <span className="text-gray-400 text-sm">Campaign:</span>
-                <span className="text-white font-semibold ml-2">{campaignData.name}</span>
+        {/* Campaign Overview */}
+        <div className="bg-gray-800 rounded-lg p-6 mb-6 border border-gray-700">
+          <h2 className="text-xl font-semibold text-white mb-4">Campaign Overview</h2>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <div className="text-gray-400 text-sm mb-1">Campaign Name</div>
+              <div className="text-white font-semibold">{campaignData.name}</div>
+            </div>
+            <div>
+              <div className="text-gray-400 text-sm mb-1">Campaign Type</div>
+              <div className="text-white font-semibold">{campaignData.type}</div>
+            </div>
+            <div>
+              <div className="text-gray-400 text-sm mb-1">Target Prospects</div>
+              <div className="text-white font-semibold">{campaignData.prospects.length} contacts</div>
+            </div>
+            <div>
+              <div className="text-gray-400 text-sm mb-1">Timezone</div>
+              <div className="text-white font-semibold">
+                {selectedTimezone === 'America/New_York' && 'Eastern Time (ET)'}
+                {selectedTimezone === 'America/Chicago' && 'Central Time (CT)'}
+                {selectedTimezone === 'America/Denver' && 'Mountain Time (MT)'}
+                {selectedTimezone === 'America/Los_Angeles' && 'Pacific Time (PT)'}
+                {selectedTimezone === 'Europe/London' && 'London (GMT/BST)'}
+                {!['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London'].includes(selectedTimezone) && selectedTimezone}
               </div>
-              <div className="h-6 w-px bg-gray-600"></div>
-              <div>
-                <span className="text-gray-400 text-sm">Prospects:</span>
-                <span className="text-white font-semibold ml-2">{campaignData.prospects.length}</span>
+            </div>
+            <div>
+              <div className="text-gray-400 text-sm mb-1">Business Hours</div>
+              <div className="text-white font-semibold">
+                {workingHoursStart === 0 ? '12 AM' : workingHoursStart < 12 ? `${workingHoursStart} AM` : workingHoursStart === 12 ? '12 PM' : `${workingHoursStart - 12} PM`}
+                {' - '}
+                {workingHoursEnd === 0 ? '12 AM' : workingHoursEnd < 12 ? `${workingHoursEnd} AM` : workingHoursEnd === 12 ? '12 PM' : `${workingHoursEnd - 12} PM`}
+              </div>
+            </div>
+            <div>
+              <div className="text-gray-400 text-sm mb-1">Schedule Preferences</div>
+              <div className="text-white font-semibold">
+                {skipWeekends && skipHolidays && 'Weekdays only, skip holidays'}
+                {skipWeekends && !skipHolidays && 'Weekdays only'}
+                {!skipWeekends && skipHolidays && 'All days, skip holidays'}
+                {!skipWeekends && !skipHolidays && 'All days'}
               </div>
             </div>
           </div>
@@ -285,83 +315,72 @@ export default function CampaignApprovalScreen({
 
         {/* Messaging Sequence */}
         <div className="bg-gray-800 rounded-lg p-6 mb-6 border border-gray-700">
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold text-white">Messaging Sequence</h2>
-            <p className="text-gray-400 text-sm mt-1">Review your campaign messages before launching</p>
-          </div>
+          <h2 className="text-xl font-semibold text-white mb-4">Messaging Sequence</h2>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
               {/* Connection Request / Initial Email (only for Connector campaigns and Email) */}
-              {(campaignData.campaignType === 'connector' || campaignData.type === 'Email') && (
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <h3 className="font-semibold text-white mb-3">
-                    {campaignData.type === 'Email' ? 'Initial Email' : 'Connection Request'}
-                  </h3>
-                  <textarea
-                    value={messages.connection_request || ''}
-                    onChange={(e) => setMessages({ ...messages, connection_request: e.target.value })}
-                    className="w-full bg-gray-600 border border-gray-500 rounded-lg p-3 text-white text-sm min-h-[100px]"
-                    placeholder={campaignData.type === 'Email' ? "Enter your initial email..." : "Enter your connection request message..."}
-                  />
+              {(campaignData.campaignType === 'connector' || campaignData.type === 'Email') && messages.connection_request && (
+                <div className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+                  <div className="text-purple-400 text-xs font-semibold mb-2">
+                    {campaignData.type === 'Email' ? 'INITIAL EMAIL' : 'CONNECTION REQUEST'}
+                  </div>
+                  <div className="text-white text-sm leading-relaxed whitespace-pre-wrap">
+                    {messages.connection_request}
+                  </div>
                 </div>
               )}
 
               {/* Follow-up 1 / Initial Message */}
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h3 className="font-semibold text-white mb-3">
-                  {campaignData.campaignType === 'messenger' ? 'Initial Message' : 'Follow-up Message 1'}
-                </h3>
-                <textarea
-                  value={messages.follow_up_1 || ''}
-                  onChange={(e) => setMessages({ ...messages, follow_up_1: e.target.value })}
-                  className="w-full bg-gray-600 border border-gray-500 rounded-lg p-3 text-white text-sm min-h-[100px]"
-                  placeholder={campaignData.campaignType === 'messenger' ? "Enter your initial message..." : "Enter your first follow-up message..."}
-                />
-              </div>
+              {messages.follow_up_1 && (
+                <div className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+                  <div className="text-purple-400 text-xs font-semibold mb-2">
+                    {campaignData.campaignType === 'messenger' ? 'INITIAL MESSAGE' : 'FOLLOW-UP MESSAGE 1'}
+                  </div>
+                  <div className="text-white text-sm leading-relaxed whitespace-pre-wrap">
+                    {messages.follow_up_1}
+                  </div>
+                </div>
+              )}
 
               {/* Follow-up 2 */}
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h3 className="font-semibold text-white mb-3">Follow-up Message 2</h3>
-                <textarea
-                  value={messages.follow_up_2 || ''}
-                  onChange={(e) => setMessages({ ...messages, follow_up_2: e.target.value })}
-                  className="w-full bg-gray-600 border border-gray-500 rounded-lg p-3 text-white text-sm min-h-[100px]"
-                  placeholder="Enter your second follow-up message..."
-                />
-              </div>
+              {messages.follow_up_2 && (
+                <div className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+                  <div className="text-purple-400 text-xs font-semibold mb-2">FOLLOW-UP MESSAGE 2</div>
+                  <div className="text-white text-sm leading-relaxed whitespace-pre-wrap">
+                    {messages.follow_up_2}
+                  </div>
+                </div>
+              )}
 
               {/* Follow-up 3 */}
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h3 className="font-semibold text-white mb-3">Follow-up Message 3</h3>
-                <textarea
-                  value={messages.follow_up_3 || ''}
-                  onChange={(e) => setMessages({ ...messages, follow_up_3: e.target.value })}
-                  className="w-full bg-gray-600 border border-gray-500 rounded-lg p-3 text-white text-sm min-h-[100px]"
-                  placeholder="Enter your third follow-up message..."
-                />
-              </div>
+              {messages.follow_up_3 && (
+                <div className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+                  <div className="text-purple-400 text-xs font-semibold mb-2">FOLLOW-UP MESSAGE 3</div>
+                  <div className="text-white text-sm leading-relaxed whitespace-pre-wrap">
+                    {messages.follow_up_3}
+                  </div>
+                </div>
+              )}
 
               {/* Follow-up 4 */}
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h3 className="font-semibold text-white mb-3">Follow-up Message 4</h3>
-                <textarea
-                  value={messages.follow_up_4 || ''}
-                  onChange={(e) => setMessages({ ...messages, follow_up_4: e.target.value })}
-                  className="w-full bg-gray-600 border border-gray-500 rounded-lg p-3 text-white text-sm min-h-[100px]"
-                  placeholder="Enter your fourth follow-up message..."
-                />
-              </div>
+              {messages.follow_up_4 && (
+                <div className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+                  <div className="text-purple-400 text-xs font-semibold mb-2">FOLLOW-UP MESSAGE 4</div>
+                  <div className="text-white text-sm leading-relaxed whitespace-pre-wrap">
+                    {messages.follow_up_4}
+                  </div>
+                </div>
+              )}
 
               {/* Follow-up 5 - Goodbye Message */}
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h3 className="font-semibold text-white mb-3">Follow-up Message 5 (Goodbye)</h3>
-                <textarea
-                  value={messages.follow_up_5 || ''}
-                  onChange={(e) => setMessages({ ...messages, follow_up_5: e.target.value })}
-                  className="w-full bg-gray-600 border border-gray-500 rounded-lg p-3 text-white text-sm min-h-[100px]"
-                  placeholder="Enter your goodbye message (polite closing)..."
-                />
-              </div>
+              {messages.follow_up_5 && (
+                <div className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+                  <div className="text-purple-400 text-xs font-semibold mb-2">FOLLOW-UP MESSAGE 5 (GOODBYE)</div>
+                  <div className="text-white text-sm leading-relaxed whitespace-pre-wrap">
+                    {messages.follow_up_5}
+                  </div>
+                </div>
+              )}
             </div>
         </div>
 
