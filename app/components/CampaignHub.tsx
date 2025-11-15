@@ -207,13 +207,26 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     }
 
     console.log('✅ Opening edit modal for campaign:', campaign.id);
+    console.log('📧 Campaign data:', {
+      direct_connection: campaign.connection_message,
+      template_connection: campaign.message_templates?.connection_request,
+      direct_alternative: campaign.alternative_message,
+      template_alternative: campaign.message_templates?.alternative_message,
+      direct_followups: campaign.follow_up_messages,
+      template_followups: campaign.message_templates?.follow_up_messages
+    });
 
     setCampaignToEdit(campaign);
+
+    // Load from message_templates if direct fields are empty
     setEditFormData({
       name: campaign.name || '',
-      connection_message: campaign.connection_message || '',
-      alternative_message: campaign.alternative_message || '',
-      follow_up_messages: campaign.follow_up_messages || []
+      connection_message: campaign.connection_message || campaign.message_templates?.connection_request || '',
+      alternative_message: campaign.alternative_message || campaign.message_templates?.alternative_message || '',
+      follow_up_messages: campaign.follow_up_messages?.length > 0
+        ? campaign.follow_up_messages
+        : (campaign.message_templates?.follow_up_messages || []),
+      timing: campaign.timing || {}
     });
     setShowEditModal(true);
   };
@@ -5736,13 +5749,26 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     }
 
     console.log('✅ Opening edit modal for campaign:', campaign.id);
+    console.log('📧 Campaign data:', {
+      direct_connection: campaign.connection_message,
+      template_connection: campaign.message_templates?.connection_request,
+      direct_alternative: campaign.alternative_message,
+      template_alternative: campaign.message_templates?.alternative_message,
+      direct_followups: campaign.follow_up_messages,
+      template_followups: campaign.message_templates?.follow_up_messages
+    });
 
     setCampaignToEdit(campaign);
+
+    // Load from message_templates if direct fields are empty
     setEditFormData({
       name: campaign.name || '',
-      connection_message: campaign.connection_message || '',
-      alternative_message: campaign.alternative_message || '',
-      follow_up_messages: campaign.follow_up_messages || []
+      connection_message: campaign.connection_message || campaign.message_templates?.connection_request || '',
+      alternative_message: campaign.alternative_message || campaign.message_templates?.alternative_message || '',
+      follow_up_messages: campaign.follow_up_messages?.length > 0
+        ? campaign.follow_up_messages
+        : (campaign.message_templates?.follow_up_messages || []),
+      timing: campaign.timing || {}
     });
     setShowEditModal(true);
   };
