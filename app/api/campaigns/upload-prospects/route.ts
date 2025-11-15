@@ -219,15 +219,25 @@ export async function POST(req: NextRequest) {
           }
         } else {
           // Insert new prospect
-          const { error: insertError } = await supabase
+          const { data: newProspect, error: insertError } = await supabase
             .from('campaign_prospects')
-            .insert(prospectData);
+            .insert(prospectData)
+            .select('id')
+            .single();
 
           if (insertError) {
             error_count++;
             errors.push({ index: i, error: insertError.message });
           } else {
             inserted_count++;
+
+            // Initialize execution state for this prospect
+            if (newProspect?.id) {
+              await supabase.rpc('initialize_execution_state', {
+                p_campaign_id: campaign_id,
+                p_prospect_id: newProspect.id
+              });
+            }
           }
         }
       } catch (error: any) {
