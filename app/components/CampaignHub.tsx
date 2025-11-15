@@ -2458,9 +2458,17 @@ Would you like me to adjust these or create more variations?`
         </div>
         {onClose && (
           <button
-            onClick={onClose}
+            onClick={() => {
+              if (currentStep > 1) {
+                // Go back one step
+                setCurrentStep(currentStep - 1);
+              } else {
+                // On step 1, close the modal
+                onClose();
+              }
+            }}
             className="text-gray-400 hover:text-white transition-colors"
-            title="Close"
+            title={currentStep > 1 ? 'Back' : 'Close'}
           >
             <X size={24} />
           </button>
