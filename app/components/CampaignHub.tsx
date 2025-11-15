@@ -852,7 +852,11 @@ function CampaignBuilder({
   draftToLoad,
   onPrepareForApproval,
   workspaceId,
-  clientCode
+  clientCode,
+  connectedAccounts,
+  setConnectedAccounts,
+  setShowLinkedInWizard,
+  setShowEmailWizard
 }: {
   onClose?: () => void;
   initialProspects?: any[] | null;
@@ -860,6 +864,10 @@ function CampaignBuilder({
   onPrepareForApproval?: (campaignData: any) => void;
   workspaceId?: string | null;
   clientCode?: string | null;
+  connectedAccounts: { linkedin: boolean; email: boolean };
+  setConnectedAccounts: (accounts: { linkedin: boolean; email: boolean }) => void;
+  setShowLinkedInWizard: (show: boolean) => void;
+  setShowEmailWizard: (show: boolean) => void;
 }) {
   // Generate default campaign name following search naming convention: YYYYMMDD-ClientCode-Description
   const generateDefaultCampaignName = () => {
@@ -885,37 +893,6 @@ function CampaignBuilder({
   const [showPreview, setShowPreview] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-
-  // Account connection state
-  const [connectedAccounts, setConnectedAccounts] = useState({
-    linkedin: false,
-    email: false
-  });
-  const [showLinkedInWizard, setShowLinkedInWizard] = useState(false);
-  const [showEmailWizard, setShowEmailWizard] = useState(false);
-
-  // Check connected accounts on mount
-  useEffect(() => {
-    const checkConnectedAccounts = async () => {
-      try {
-        const response = await fetch(`/api/workspace-accounts/check?workspace_id=${workspaceId}`);
-        const data = await response.json();
-
-        if (data.success) {
-          setConnectedAccounts({
-            linkedin: data.linkedin_connected || false,
-            email: data.email_connected || false
-          });
-        }
-      } catch (error) {
-        console.error('Failed to check connected accounts:', error);
-      }
-    };
-
-    if (workspaceId) {
-      checkConnectedAccounts();
-    }
-  }, [workspaceId]);
 
   // Auto-populate CSV data when initialProspects are provided
   useEffect(() => {
@@ -4649,6 +4626,37 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
 
+  // Account connection wizards state (for CampaignBuilder)
+  const [showLinkedInWizard, setShowLinkedInWizard] = useState(false);
+  const [showEmailWizard, setShowEmailWizard] = useState(false);
+  const [connectedAccounts, setConnectedAccounts] = useState({
+    linkedin: false,
+    email: false
+  });
+
+  // Check connected accounts on mount
+  useEffect(() => {
+    const checkConnectedAccounts = async () => {
+      try {
+        const response = await fetch(`/api/workspace-accounts/check?workspace_id=${actualWorkspaceId}`);
+        const data = await response.json();
+
+        if (data.success) {
+          setConnectedAccounts({
+            linkedin: data.linkedin_connected || false,
+            email: data.email_connected || false
+          });
+        }
+      } catch (error) {
+        console.error('Failed to check connected accounts:', error);
+      }
+    };
+
+    if (actualWorkspaceId) {
+      checkConnectedAccounts();
+    }
+  }, [actualWorkspaceId]);
+
   const queryClient = useQueryClient();
 
   // Fetch user's saved timezone preference
@@ -6246,6 +6254,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 }}
                 workspaceId={actualWorkspaceId}
                 clientCode={workspaceData?.client_code || null}
+                connectedAccounts={connectedAccounts}
+                setConnectedAccounts={setConnectedAccounts}
+                setShowLinkedInWizard={setShowLinkedInWizard}
+                setShowEmailWizard={setShowEmailWizard}
               />
             </div>
           </div>
