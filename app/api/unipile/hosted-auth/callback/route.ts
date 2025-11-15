@@ -459,62 +459,12 @@ export async function GET(request: NextRequest) {
                 const redirectUrl = `/linkedin-integration?success=true&account_id=${accountId}`
                 return NextResponse.redirect(new URL(redirectUrl, request.url))
               } else if (accountType.includes('GOOGLE') || accountType.includes('OUTLOOK') || accountType === 'MESSAGING' || accountType === 'MAIL') {
-                // For email connections, return HTML that closes the popup window
-                // The parent window's modal polling will detect the connection and handle the UI
-                return new NextResponse(`
-                  <!DOCTYPE html>
-                  <html>
-                    <head>
-                      <title>Email Connected</title>
-                      <style>
-                        body {
-                          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-                          display: flex;
-                          align-items: center;
-                          justify-content: center;
-                          height: 100vh;
-                          margin: 0;
-                          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                          color: white;
-                        }
-                        .container {
-                          text-align: center;
-                          padding: 2rem;
-                        }
-                        .success-icon {
-                          font-size: 4rem;
-                          margin-bottom: 1rem;
-                        }
-                        h1 {
-                          margin: 0 0 0.5rem 0;
-                          font-size: 1.5rem;
-                        }
-                        p {
-                          margin: 0;
-                          opacity: 0.9;
-                        }
-                      </style>
-                    </head>
-                    <body>
-                      <div class="container">
-                        <div class="success-icon">✓</div>
-                        <h1>Email Account Connected!</h1>
-                        <p>This window will close automatically...</p>
-                      </div>
-                      <script>
-                        // Close the popup window after a short delay
-                        setTimeout(() => {
-                          window.close();
-                        }, 1500);
-                      </script>
-                    </body>
-                  </html>
-                `, {
-                  status: 200,
-                  headers: {
-                    'Content-Type': 'text/html',
-                  },
-                })
+                // For email connections, redirect to workspace with success message
+                // Modal polling will detect the connection and close automatically
+                const providerName = accountType.includes('GOOGLE') ? 'google' :
+                                     accountType.includes('OUTLOOK') ? 'microsoft' : 'email';
+                const redirectUrl = `/workspace/${targetWorkspaceId}?email_connected=true&provider=${providerName}&account_id=${accountId}&close_popup=true`
+                return NextResponse.redirect(new URL(redirectUrl, request.url))
               }
             }
           }
