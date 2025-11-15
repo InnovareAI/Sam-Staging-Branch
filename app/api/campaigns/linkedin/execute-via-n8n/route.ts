@@ -937,13 +937,13 @@ export async function POST(req: NextRequest) {
 
     // Step 8: Build simple N8N payload (matches workflow expectations)
     // NOTE: N8N expects snake_case field names (campaign_id, not campaignId)
+    // CRITICAL: Each prospect object must have an 'id' field for N8N Update Status nodes
     const n8nPayload = {
       workspace_id: workspaceId,
       campaign_id: campaignId,
       unipile_account_id: selectedLinkedInAccount.unipile_account_id,
       prospects: prospectsToProcess.map((p: any) => ({
-        prospect_id: p.id,  // N8N expects prospect_id
-        id: p.id,           // Keep both for compatibility
+        id: p.id,           // CRITICAL: N8N expects prospect.id (not prospect_id)
         first_name: p.first_name,
         last_name: p.last_name,
         linkedin_url: p.linkedin_url,
@@ -973,7 +973,8 @@ export async function POST(req: NextRequest) {
       linkedInAccount: selectedLinkedInAccount.account_name,
       unipile_account_id: n8nPayload.unipile_account_id,
       prospectCount: n8nPayload.prospects.length,
-      first_prospect_id: n8nPayload.prospects[0]?.prospect_id
+      first_prospect_id: n8nPayload.prospects[0]?.id,
+      first_prospect_name: `${n8nPayload.prospects[0]?.first_name} ${n8nPayload.prospects[0]?.last_name}`
     });
 
     // Step 9: Send to N8N webhook
