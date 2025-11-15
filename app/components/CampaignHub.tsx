@@ -3627,58 +3627,66 @@ Would you like me to adjust these or create more variations?`
             <div className="space-y-6">
               {/* Connection Request Delay */}
               <div>
-                <Label className="text-white text-sm mb-3 block font-medium">
-                  Connection Request Delay
-                </Label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    min="0"
-                    className="w-20 bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
-                    defaultValue="2"
-                    placeholder="2"
-                  />
-                  <select
-                    className="flex-1 bg-gray-700 border-2 border-gray-600 rounded-lg px-4 py-2 text-white font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                    value={campaignSettings.connection_request_delay || '1-3 hours'}
-                    onChange={(e) => setCampaignSettings({...campaignSettings, connection_request_delay: e.target.value})}
-                  >
-                    <option value="minutes">Minutes</option>
-                    <option value="hours">Hours ⭐</option>
-                    <option value="days">Days</option>
-                  </select>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <Label className="text-white text-sm font-medium">
+                      Connection Request Delay
+                    </Label>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Time to wait between sending connection requests
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-16 bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
+                      defaultValue="2"
+                      placeholder="2"
+                    />
+                    <select
+                      className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                      value={campaignSettings.connection_request_delay || '1-3 hours'}
+                      onChange={(e) => setCampaignSettings({...campaignSettings, connection_request_delay: e.target.value})}
+                    >
+                      <option value="minutes">Minutes</option>
+                      <option value="hours">Hours ⭐</option>
+                      <option value="days">Days</option>
+                    </select>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-400 mt-2">
-                  Time to wait between sending connection requests
-                </p>
               </div>
 
               {/* Follow-up Message Delay */}
               <div>
-                <Label className="text-white text-sm mb-3 block font-medium">
-                  Follow-up Message Delay
-                </Label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    min="0"
-                    className="w-20 bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
-                    defaultValue="3"
-                    placeholder="3"
-                  />
-                  <select
-                    className="flex-1 bg-gray-700 border-2 border-gray-600 rounded-lg px-4 py-2 text-white font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                    value={campaignSettings.follow_up_delay || '2-3 days'}
-                    onChange={(e) => setCampaignSettings({...campaignSettings, follow_up_delay: e.target.value})}
-                  >
-                    <option value="hours">Hours</option>
-                    <option value="days">Days ⭐</option>
-                    <option value="weeks">Weeks</option>
-                  </select>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <Label className="text-white text-sm font-medium">
+                      Follow-up Message Delay
+                    </Label>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Time to wait between follow-up messages after connection is accepted
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-16 bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
+                      defaultValue="3"
+                      placeholder="3"
+                    />
+                    <select
+                      className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                      value={campaignSettings.follow_up_delay || '2-3 days'}
+                      onChange={(e) => setCampaignSettings({...campaignSettings, follow_up_delay: e.target.value})}
+                    >
+                      <option value="hours">Hours</option>
+                      <option value="days">Days ⭐</option>
+                      <option value="weeks">Weeks</option>
+                    </select>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-400 mt-2">
-                  Time to wait between follow-up messages after connection is accepted
-                </p>
               </div>
             </div>
           </div>
@@ -4172,27 +4180,29 @@ Would you like me to adjust these or create more variations?`
               <div key={index} className="mb-4">
                 {/* Delay before this message */}
                 <div className="mb-3 p-4 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-700/30 rounded-lg">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Clock size={16} className="text-purple-400" />
-                    <span className="text-white text-sm font-medium">Delay before sending</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="number"
-                      min="0"
-                      className="w-20 bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
-                      defaultValue="3"
-                      placeholder="3"
-                    />
-                    <select
-                      className="flex-1 bg-gray-700 border-2 border-gray-600 rounded-lg px-4 py-2 text-white font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                      value={(campaignSettings.message_delays || [])[index] || '2-3 days'}
-                      onChange={(e) => updateMessageDelay(index, e.target.value)}
-                    >
-                      <option value="hours">Hours</option>
-                      <option value="days">Days ⭐</option>
-                      <option value="weeks">Weeks</option>
-                    </select>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <Clock size={16} className="text-purple-400" />
+                      <span className="text-white text-sm font-medium">Delay before sending</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        className="w-16 bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
+                        defaultValue="3"
+                        placeholder="3"
+                      />
+                      <select
+                        className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                        value={(campaignSettings.message_delays || [])[index] || '2-3 days'}
+                        onChange={(e) => updateMessageDelay(index, e.target.value)}
+                      >
+                        <option value="hours">Hours</option>
+                        <option value="days">Days ⭐</option>
+                        <option value="weeks">Weeks</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
