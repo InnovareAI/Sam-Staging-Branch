@@ -203,21 +203,34 @@ export async function POST(request: NextRequest) {
       console.log('⚠️ Could not fetch user profile country:', error)
     }
     
-    // Check if user already has LinkedIn accounts to prevent duplicates (LinkedIn only)
+    // Check if user already has accounts to prevent duplicates
+    // Per Unipile support: Use "reconnect" flow for existing accounts to prevent duplicates
     let existingAccounts: any[] = []
     let authType = 'create'
     let reconnectAccountId = null
-    
+
     if (provider === 'LINKEDIN') {
       existingAccounts = await checkExistingLinkedInAccounts(user.id)
       console.log(`📊 User has ${existingAccounts.length} existing LinkedIn accounts`)
-      
+
       // If user has existing accounts, use reconnect flow instead of create
       authType = existingAccounts.length > 0 ? 'reconnect' : 'create'
       reconnectAccountId = existingAccounts.length > 0 ? existingAccounts[0].unipile_account_id : null
-    } else if (provider === 'GOOGLE' || provider === 'OUTLOOK') {
-      console.log(`📧 Email provider (${provider}) - using create flow for messaging`)
-      authType = 'create'
+    } else if (provider === 'GOOGLE' || provider === 'OUTLOOK' || !provider) {
+      // Check for existing email accounts
+      const { data: emailAccounts } = await supabase
+        .from('workspace_accounts')
+        .select('unipile_account_id')
+        .eq('workspace_id', workspaceId)
+        .eq('account_type', 'email')
+        .eq('connection_status', 'connected')
+
+      existingAccounts = emailAccounts || []
+      console.log(`📧 User has ${existingAccounts.length} existing email accounts`)
+
+      // If user has existing email accounts, use reconnect flow
+      authType = existingAccounts.length > 0 ? 'reconnect' : 'create'
+      reconnectAccountId = existingAccounts.length > 0 ? existingAccounts[0].unipile_account_id : null
     } else {
       console.log(`⚠️ Unknown provider (${provider}) - using create flow`)
       authType = 'create'
