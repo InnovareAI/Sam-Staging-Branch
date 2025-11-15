@@ -306,8 +306,9 @@ export async function POST(request: NextRequest) {
       if (provider) {
         hostedAuthPayload.providers = [provider.toUpperCase()]
       } else {
-        // Show provider selection screen with Google, Outlook, and SMTP options
-        hostedAuthPayload.providers = ['GOOGLE', 'OUTLOOK', 'SMTP']
+        // Show provider selection screen with Google and Outlook
+        // Note: SMTP configuration is handled separately by Unipile
+        hostedAuthPayload.providers = ['GOOGLE', 'OUTLOOK']
       }
     } else {
       hostedAuthPayload.reconnect_account = reconnectAccountId
