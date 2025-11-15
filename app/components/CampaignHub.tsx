@@ -5709,18 +5709,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       const totalProspectsWithIds = uploadResult.prospects_with_linkedin_ids + syncedCount;
 
       // Step 3: AUTOMATED EXECUTION - Execute campaign automatically for ALL approved campaigns
-      // No user action needed - execution happens immediately after approval
-      // Route to correct endpoint based on campaign type
+      // No user action needed - n8n execution happens immediately after approval
       if (mappedProspects.length > 0) {
         try {
-          // Determine execution endpoint based on campaign type
-          const executeEndpoint = campaignType === 'email'
-            ? '/api/campaigns/email/execute'
-            : '/api/campaigns/linkedin/execute-via-n8n';
-
-          console.log(`Executing ${campaignType} campaign via ${executeEndpoint}`);
-
-          const executeResponse = await fetch(executeEndpoint, {
+          const executeResponse = await fetch('/api/campaigns/linkedin/execute-via-n8n', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
