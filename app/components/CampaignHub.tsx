@@ -1177,6 +1177,11 @@ function CampaignBuilder({
   const [showPreviousMessagesModal, setShowPreviousMessagesModal] = useState(false);
   const [selectedPreviousCampaign, setSelectedPreviousCampaign] = useState<any>(null);
 
+  // Template Library state
+  const [showTemplateLibraryModal, setShowTemplateLibraryModal] = useState(false);
+  const [savedTemplates, setSavedTemplates] = useState<any[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+
   // Manual Template Creation Modal
   const [showManualTemplateModal, setShowManualTemplateModal] = useState(false);
   const [manualConnection, setManualConnection] = useState('');
@@ -2011,6 +2016,45 @@ Would you like me to adjust these or create more variations?`
     setShowPreviousMessagesModal(false);
     setSelectedPreviousCampaign(null);
     toastSuccess(`Messages from "${campaign.name || 'Untitled'}" applied to campaign!`);
+  };
+
+  // Template Library functions
+  useEffect(() => {
+    const loadTemplates = async () => {
+      if (!showTemplateLibraryModal || !workspaceId) return;
+
+      try {
+        const response = await fetch(`/api/messaging-templates?workspace_id=${workspaceId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setSavedTemplates(data.templates || []);
+        }
+      } catch (error) {
+        console.error('Failed to load templates:', error);
+        toastError('Failed to load saved templates');
+      }
+    };
+
+    loadTemplates();
+  }, [showTemplateLibraryModal, workspaceId]);
+
+  const applyTemplate = (template: any) => {
+    if (!template) return;
+
+    // Only set connection message for Connector campaigns
+    if (template.connection_message && campaignType === 'connector') {
+      setConnectionMessage(template.connection_message);
+    }
+    if (template.alternative_message) {
+      setAlternativeMessage(template.alternative_message);
+    }
+    if (template.follow_up_messages && template.follow_up_messages.length > 0) {
+      setFollowUpMessages(template.follow_up_messages);
+    }
+
+    setShowTemplateLibraryModal(false);
+    setSelectedTemplate(null);
+    toastSuccess(`Template "${template.template_name || 'Untitled'}" loaded successfully!`);
   };
 
   const handleQuickAddProspect = async () => {
@@ -3236,6 +3280,15 @@ Would you like me to adjust these or create more variations?`
               <Button
                 variant="secondary"
                 size="sm"
+                className="bg-pink-600/20 hover:bg-pink-600/30 text-pink-400 border border-pink-500/30"
+                onClick={() => setShowTemplateLibraryModal(true)}
+              >
+                <FileText size={16} className="mr-1" />
+                Load from Template
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
                 className="bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30"
                 onClick={() => setShowPasteModal(true)}
               >
@@ -4379,6 +4432,111 @@ Would you like me to adjust these or create more variations?`
         </div>
       </div>
     </div>
+
+      {/* Template Library Modal */}
+      {showTemplateLibraryModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                    <FileText size={24} className="text-pink-400" />
+                    Load from Template Library
+                  </h3>
+                  <p className="text-gray-400 text-sm mt-1">
+                    Select a saved template to load into your campaign
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowTemplateLibraryModal(false);
+                    setSelectedTemplate(null);
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 flex-1 overflow-y-auto">
+              {savedTemplates.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText size={48} className="mx-auto text-gray-600 mb-4" />
+                  <p className="text-gray-400 mb-2">No saved templates yet</p>
+                  <p className="text-gray-500 text-sm">Templates you save will appear here</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {savedTemplates.map((template) => (
+                    <div
+                      key={template.id}
+                      onClick={() => setSelectedTemplate(template)}
+                      className={`
+                        p-4 rounded-lg border-2 cursor-pointer transition-all
+                        ${selectedTemplate?.id === template.id
+                          ? 'border-pink-500 bg-pink-900/20'
+                          : 'border-gray-600 bg-gray-700/50 hover:border-pink-400 hover:bg-gray-700'
+                        }
+                      `}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="text-white font-semibold">
+                          {template.template_name?.replace('autosave_', '') || 'Untitled Template'}
+                        </h4>
+                        {selectedTemplate?.id === template.id && (
+                          <CheckCircle size={20} className="text-pink-400" />
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-400 mb-3">
+                        Updated: {new Date(template.updated_at).toLocaleDateString()}
+                      </div>
+                      {template.connection_message && (
+                        <div className="text-xs text-gray-300 truncate mb-1">
+                          <span className="text-gray-500">CR:</span> {template.connection_message.substring(0, 60)}...
+                        </div>
+                      )}
+                      {template.alternative_message && (
+                        <div className="text-xs text-gray-300 truncate">
+                          <span className="text-gray-500">Alt:</span> {template.alternative_message.substring(0, 60)}...
+                        </div>
+                      )}
+                      {template.follow_up_messages && template.follow_up_messages.length > 0 && (
+                        <div className="text-xs text-gray-400 mt-2">
+                          {template.follow_up_messages.length} follow-up message(s)
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-gray-700 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowTemplateLibraryModal(false);
+                  setSelectedTemplate(null);
+                }}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => applyTemplate(selectedTemplate)}
+                disabled={!selectedTemplate}
+                className="px-4 py-2 bg-pink-600 hover:bg-pink-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+              >
+                Load Template
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Paste Template Modal */}
       {showPasteModal && (
