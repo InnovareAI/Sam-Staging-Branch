@@ -37,6 +37,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Michelle's 5 campaigns currently paused
   - Set status to 'active'
 
+- [ ] **Test Edit Campaign modal** (1h)
+  - Verify message_templates data loads correctly
+  - Test with real campaign data from production
+  - Confirm all follow-up messages display
+
+- [ ] **Test View Prospects button** (30m)
+  - Verify prospects list displays correctly
+  - Check status and contacted_at fields
+
+- [ ] **Test Pause/Resume button** (30m)
+  - Toggle campaign status
+  - Verify badge updates correctly
+
 - [ ] **Remove redundant cron job** (1h)
   - Delete `/api/cron/check-accepted-connections`
 
