@@ -6,9 +6,10 @@ import { X, ExternalLink, Loader2, CheckCircle, AlertCircle, Shield } from 'luci
 interface UnipileModalProps {
   isOpen: boolean;
   onClose: () => void;
+  provider?: 'LINKEDIN' | 'GOOGLE' | 'OUTLOOK'; // Support LinkedIn and Email providers
 }
 
-export function UnipileModal({ isOpen, onClose }: UnipileModalProps) {
+export function UnipileModal({ isOpen, onClose, provider = 'LINKEDIN' }: UnipileModalProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -35,29 +36,35 @@ export function UnipileModal({ isOpen, onClose }: UnipileModalProps) {
     let active = true;
     const checkStatus = async () => {
       try {
-        const response = await fetch('/api/linkedin/status');
+        // Use workspace-accounts check endpoint for all providers
+        const response = await fetch(`/api/workspace-accounts/check?workspace_id=${localStorage.getItem('currentWorkspaceId')}`);
         if (!response.ok) {
           throw new Error(`Status check failed (${response.status})`);
         }
         const data = await response.json();
         console.log('🔄 Status polling response:', data);
         if (active) {
-          if (data.success && data.has_linkedin) {
-            console.log('✅ LinkedIn connection detected, completing modal');
+          const isConnected = provider === 'LINKEDIN'
+            ? data.linkedin_connected
+            : data.email_connected;
+
+          if (data.success && isConnected) {
+            console.log(`✅ ${provider} connection detected, completing modal`);
             setConnectionComplete(true);
             setPollingStatus(false);
             setWaitingForConfirmation(false);
             setPollError(null);
           } else {
-            console.log('⏳ Still waiting for LinkedIn connection...', { 
-              success: data.success, 
-              has_linkedin: data.has_linkedin 
+            console.log(`⏳ Still waiting for ${provider} connection...`, {
+              success: data.success,
+              linkedin_connected: data.linkedin_connected,
+              email_connected: data.email_connected
             });
           }
         }
       } catch (err) {
         if (active) {
-          setPollError(err instanceof Error ? err.message : 'Unable to verify LinkedIn status');
+          setPollError(err instanceof Error ? err.message : `Unable to verify ${provider} status`);
         }
       }
     };
@@ -88,6 +95,10 @@ export function UnipileModal({ isOpen, onClose }: UnipileModalProps) {
 
   if (!isOpen) return null;
 
+  // Get display names for UI
+  const providerName = provider === 'LINKEDIN' ? 'LinkedIn' : provider === 'GOOGLE' ? 'Google Email' : 'Outlook Email';
+  const providerType = provider === 'LINKEDIN' ? 'LinkedIn' : 'Email';
+
   const launchHostedAuth = async () => {
     try {
       setIsConnecting(true);
@@ -98,11 +109,12 @@ export function UnipileModal({ isOpen, onClose }: UnipileModalProps) {
       setWaitingForConfirmation(false);
       setPollingStatus(false);
 
-      const response = await fetch('/api/linkedin/hosted-auth', {
+      const response = await fetch('/api/unipile/hosted-auth', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ provider }),
       });
 
       const data = await response.json();
@@ -148,7 +160,7 @@ export function UnipileModal({ isOpen, onClose }: UnipileModalProps) {
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-800">
           <div>
             <p className="text-xs uppercase tracking-wide text-blue-500">Unipile Integration</p>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Connect LinkedIn via Hosted Auth</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Connect {providerName} via Hosted Auth</h2>
           </div>
           <button
             onClick={onClose}
@@ -167,7 +179,7 @@ export function UnipileModal({ isOpen, onClose }: UnipileModalProps) {
               Secure OAuth handled by Unipile
             </p>
             <p className="mt-1 text-xs text-blue-800/80 dark:text-blue-200/80">
-              We generate a temporary Hosted Auth Wizard link. Unipile manages the full LinkedIn authentication, including 2FA, captcha, and compliance requirements.
+              We generate a temporary Hosted Auth Wizard link. Unipile manages the full {providerName} authentication, including 2FA, captcha, and compliance requirements.
             </p>
           </div>
 
@@ -176,15 +188,15 @@ export function UnipileModal({ isOpen, onClose }: UnipileModalProps) {
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">What happens next?</h3>
               <ol className="mt-2 space-y-2 text-xs leading-5 text-gray-600 dark:text-gray-300">
                 <li>1. Click the button below to generate a secure Hosted Auth link.</li>
-                <li>2. Complete LinkedIn verification in the Unipile window (supports SMS, in-app approval, OTP).</li>
-                <li>3. Once finished, you’ll return to SAM AI and we’ll sync your LinkedIn account automatically.</li>
+                <li>2. Complete {providerName} verification in the Unipile window (supports SMS, in-app approval, OTP).</li>
+                <li>3. Once finished, you'll return to SAM AI and we'll sync your {providerType} account automatically.</li>
               </ol>
             </div>
 
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-xs text-gray-600 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-300">
               <p className="font-semibold text-gray-800 dark:text-gray-100">Need to reconnect?</p>
               <p>
-                The same Hosted Auth flow handles reconnecting when LinkedIn expires credentials. We’ll detect that automatically and re-use this wizard.
+                The same Hosted Auth flow handles reconnecting when {providerName} expires credentials. We'll detect that automatically and re-use this wizard.
               </p>
             </div>
           </div>
@@ -199,14 +211,14 @@ export function UnipileModal({ isOpen, onClose }: UnipileModalProps) {
           {success && !error && (
             <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-xs text-green-700 dark:border-green-900/40 dark:bg-green-900/30 dark:text-green-200">
               <CheckCircle size={16} />
-              <span>Hosted Auth Wizard opened in a new window. Complete the LinkedIn verification to finish linking.</span>
+              <span>Hosted Auth Wizard opened in a new window. Complete the {providerName} verification to finish linking.</span>
             </div>
           )}
 
           {waitingForConfirmation && !connectionComplete && (
             <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-700 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200">
               <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Waiting for LinkedIn to confirm the connection. Keep the Hosted Auth window open until it completes.</span>
+              <span>Waiting for {providerName} to confirm the connection. Keep the Hosted Auth window open until it completes.</span>
             </div>
           )}
 
@@ -220,7 +232,7 @@ export function UnipileModal({ isOpen, onClose }: UnipileModalProps) {
           {connectionComplete && (
             <div className="flex items-center gap-2 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-xs text-green-800 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-100">
               <CheckCircle size={16} />
-              <span>LinkedIn confirmed! Refreshing your workspace…</span>
+              <span>{providerName} confirmed! Refreshing your workspace…</span>
             </div>
           )}
         </div>

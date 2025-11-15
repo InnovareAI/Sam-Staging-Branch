@@ -56,7 +56,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import CampaignApprovalScreen from '@/app/components/CampaignApprovalScreen';
 import { UnipileModal } from '@/components/integrations/UnipileModal';
-import EmailProvidersModal from '@/app/components/EmailProvidersModal';
 
 // Helper function to get human-readable campaign type labels
 function getCampaignTypeLabel(type: string): string {
@@ -855,8 +854,8 @@ function CampaignBuilder({
   clientCode,
   connectedAccounts,
   setConnectedAccounts,
-  setShowLinkedInWizard,
-  setShowEmailWizard
+  setShowUnipileWizard,
+  setUnipileProvider
 }: {
   onClose?: () => void;
   initialProspects?: any[] | null;
@@ -866,8 +865,8 @@ function CampaignBuilder({
   clientCode?: string | null;
   connectedAccounts: { linkedin: boolean; email: boolean };
   setConnectedAccounts: (accounts: { linkedin: boolean; email: boolean }) => void;
-  setShowLinkedInWizard: (show: boolean) => void;
-  setShowEmailWizard: (show: boolean) => void;
+  setShowUnipileWizard: (show: boolean) => void;
+  setUnipileProvider: (provider: 'LINKEDIN' | 'GOOGLE' | 'OUTLOOK') => void;
 }) {
   // Generate default campaign name following search naming convention: YYYYMMDD-ClientCode-Description
   const generateDefaultCampaignName = () => {
@@ -2596,11 +2595,14 @@ Would you like me to adjust these or create more variations?`
                           onClick={(e) => {
                             e.stopPropagation();
                             if (needsConnection === 'linkedin') {
-                              setShowLinkedInWizard(true);
+                              setUnipileProvider('LINKEDIN');
+                              setShowUnipileWizard(true);
                             } else if (needsConnection === 'email') {
-                              setShowEmailWizard(true);
+                              setUnipileProvider('GOOGLE'); // Default to Google for email
+                              setShowUnipileWizard(true);
                             } else if (needsConnection === 'both') {
-                              setShowLinkedInWizard(true);
+                              setUnipileProvider('LINKEDIN');
+                              setShowUnipileWizard(true);
                             }
                           }}
                           className="w-full px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors flex items-center justify-center gap-1"
@@ -4650,8 +4652,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
 
   // Account connection wizards state (for CampaignBuilder)
-  const [showLinkedInWizard, setShowLinkedInWizard] = useState(false);
-  const [showEmailWizard, setShowEmailWizard] = useState(false);
+  const [showUnipileWizard, setShowUnipileWizard] = useState(false);
+  const [unipileProvider, setUnipileProvider] = useState<'LINKEDIN' | 'GOOGLE' | 'OUTLOOK'>('LINKEDIN');
   const [connectedAccounts, setConnectedAccounts] = useState({
     linkedin: false,
     email: false
@@ -6279,8 +6281,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 clientCode={workspaceData?.client_code || null}
                 connectedAccounts={connectedAccounts}
                 setConnectedAccounts={setConnectedAccounts}
-                setShowLinkedInWizard={setShowLinkedInWizard}
-                setShowEmailWizard={setShowEmailWizard}
+                setShowUnipileWizard={setShowUnipileWizard}
+                setUnipileProvider={setUnipileProvider}
               />
             </div>
           </div>
@@ -8365,11 +8367,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         </div>
       )}
 
-      {/* LinkedIn Unipile Wizard */}
+      {/* Unified Unipile Wizard (LinkedIn & Email) */}
       <UnipileModal
-        isOpen={showLinkedInWizard}
+        isOpen={showUnipileWizard}
+        provider={unipileProvider}
         onClose={() => {
-          setShowLinkedInWizard(false);
+          setShowUnipileWizard(false);
           // Recheck accounts after closing
           if (workspaceId) {
             fetch(`/api/workspace-accounts/check?workspace_id=${workspaceId}`)
@@ -8380,32 +8383,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                     linkedin: data.linkedin_connected || false,
                     email: data.email_connected || false
                   });
-                  if (data.linkedin_connected) {
+                  if (unipileProvider === 'LINKEDIN' && data.linkedin_connected) {
                     toastSuccess('LinkedIn account connected! You can now create LinkedIn campaigns.');
-                  }
-                }
-              })
-              .catch(err => console.error('Failed to recheck accounts:', err));
-          }
-        }}
-      />
-
-      {/* Email Providers Wizard */}
-      <EmailProvidersModal
-        isOpen={showEmailWizard}
-        onClose={() => {
-          setShowEmailWizard(false);
-          // Recheck accounts after closing
-          if (workspaceId) {
-            fetch(`/api/workspace-accounts/check?workspace_id=${workspaceId}`)
-              .then(res => res.json())
-              .then(data => {
-                if (data.success) {
-                  setConnectedAccounts({
-                    linkedin: data.linkedin_connected || false,
-                    email: data.email_connected || false
-                  });
-                  if (data.email_connected) {
+                  } else if ((unipileProvider === 'GOOGLE' || unipileProvider === 'OUTLOOK') && data.email_connected) {
                     toastSuccess('Email account connected! You can now create email campaigns.');
                   }
                 }
@@ -8413,7 +8393,6 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               .catch(err => console.error('Failed to recheck accounts:', err));
           }
         }}
-        workspaceId={workspaceId}
       />
 
       </div>
