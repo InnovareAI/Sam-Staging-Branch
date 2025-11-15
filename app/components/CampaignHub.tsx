@@ -3631,17 +3631,24 @@ Would you like me to adjust these or create more variations?`
                   Connection Request Delay
                 </Label>
                 <div className="flex flex-wrap gap-2">
-                  {['immediate', '15-30 minutes', '1-3 hours', '3-6 hours', '6-12 hours', '12-24 hours'].map((delay) => (
+                  {[
+                    { value: 'immediate', label: 'Immediate' },
+                    { value: '15-30 minutes', label: '15-30 min' },
+                    { value: '1-3 hours', label: '1-3 hours ⭐' },
+                    { value: '3-6 hours', label: '3-6 hours' },
+                    { value: '6-12 hours', label: '6-12 hours' },
+                    { value: '12-24 hours', label: '12-24 hours' }
+                  ].map((delay) => (
                     <button
-                      key={delay}
-                      onClick={() => setCampaignSettings({...campaignSettings, connection_request_delay: delay})}
+                      key={delay.value}
+                      onClick={() => setCampaignSettings({...campaignSettings, connection_request_delay: delay.value})}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                        (campaignSettings.connection_request_delay || '1-3 hours') === delay
+                        (campaignSettings.connection_request_delay || '1-3 hours') === delay.value
                           ? 'bg-purple-600 text-white border-2 border-purple-400 shadow-lg'
                           : 'bg-gray-700 text-gray-300 border-2 border-gray-600 hover:border-purple-500 hover:bg-gray-600'
                       }`}
                     >
-                      {delay === '1-3 hours' ? delay + ' ⭐' : delay}
+                      {delay.label}
                     </button>
                   ))}
                 </div>
@@ -3656,17 +3663,24 @@ Would you like me to adjust these or create more variations?`
                   Follow-up Message Delay
                 </Label>
                 <div className="flex flex-wrap gap-2">
-                  {['1 day', '2-3 days', '3-5 days', '5-7 days', '1 week', '2 weeks'].map((delay) => (
+                  {[
+                    { value: '1 day', label: '24 hours' },
+                    { value: '2-3 days', label: '2-3 days ⭐' },
+                    { value: '3-5 days', label: '3-5 days' },
+                    { value: '5-7 days', label: '5-7 days' },
+                    { value: '1 week', label: '7 days' },
+                    { value: '2 weeks', label: '14 days' }
+                  ].map((delay) => (
                     <button
-                      key={delay}
-                      onClick={() => setCampaignSettings({...campaignSettings, follow_up_delay: delay})}
+                      key={delay.value}
+                      onClick={() => setCampaignSettings({...campaignSettings, follow_up_delay: delay.value})}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                        (campaignSettings.follow_up_delay || '2-3 days') === delay
+                        (campaignSettings.follow_up_delay || '2-3 days') === delay.value
                           ? 'bg-purple-600 text-white border-2 border-purple-400 shadow-lg'
                           : 'bg-gray-700 text-gray-300 border-2 border-gray-600 hover:border-purple-500 hover:bg-gray-600'
                       }`}
                     >
-                      {delay === '2-3 days' ? delay + ' ⭐' : delay}
+                      {delay.label}
                     </button>
                   ))}
                 </div>
@@ -4171,17 +4185,23 @@ Would you like me to adjust these or create more variations?`
                     <span className="text-white text-sm font-medium">Delay before sending</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {['1 day', '2-3 days', '3-5 days', '5-7 days', '1 week'].map((delay) => (
+                    {[
+                      { value: '1 day', label: '24 hours' },
+                      { value: '2-3 days', label: '2-3 days' },
+                      { value: '3-5 days', label: '3-5 days' },
+                      { value: '5-7 days', label: '5-7 days' },
+                      { value: '1 week', label: '7 days' }
+                    ].map((delay) => (
                       <button
-                        key={delay}
-                        onClick={() => updateMessageDelay(index, delay)}
+                        key={delay.value}
+                        onClick={() => updateMessageDelay(index, delay.value)}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                          ((campaignSettings.message_delays || [])[index] || '2-3 days') === delay
+                          ((campaignSettings.message_delays || [])[index] || '2-3 days') === delay.value
                             ? 'bg-purple-600 text-white border-2 border-purple-400 shadow-lg'
                             : 'bg-gray-700 text-gray-300 border-2 border-gray-600 hover:border-purple-500 hover:bg-gray-600'
                         }`}
                       >
-                        {delay}
+                        {delay.label}
                       </button>
                     ))}
                   </div>
