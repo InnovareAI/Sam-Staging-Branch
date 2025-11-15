@@ -118,7 +118,8 @@ async function storeUserAccountAssociation(
         platform: unipileAccount.type,
         account_name: unipileAccount.name,
         account_email: connectionParams.email || connectionParams.username,
-        connection_status: 'active'
+        connection_status: 'active',
+        account_metadata: unipileAccount
       }
       
       const { data: fallbackResult, error: fallbackError } = await supabase
