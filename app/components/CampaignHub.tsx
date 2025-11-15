@@ -197,16 +197,15 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
       return;
     }
 
-    // Check if campaign has sent messages
-    if (campaign.sent && campaign.sent > 0) {
-      toastError('Cannot edit campaign that has already sent messages');
-      return;
-    }
-
-    // Check if campaign is active
+    // Check if campaign is active - must pause first
     if (campaign.status === 'active') {
       toastWarning('Cannot edit an active campaign. Pause it first.');
       return;
+    }
+
+    // If messages have been sent, show info but allow editing
+    if (campaign.sent && campaign.sent > 0) {
+      toastInfo(`⚠️ ${campaign.sent} messages already sent. Changes will only affect future messages.`);
     }
 
     console.log('✅ Opening edit modal for campaign:', campaign.id);
@@ -5878,16 +5877,15 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       return;
     }
 
-    // Check if campaign has sent messages
-    if (campaign.sent && campaign.sent > 0) {
-      toastError('Cannot edit campaign that has already sent messages');
-      return;
-    }
-
-    // Check if campaign is active
+    // Check if campaign is active - must pause first
     if (campaign.status === 'active') {
       toastWarning('Cannot edit an active campaign. Pause it first.');
       return;
+    }
+
+    // If messages have been sent, show info but allow editing
+    if (campaign.sent && campaign.sent > 0) {
+      toastInfo(`⚠️ ${campaign.sent} messages already sent. Changes will only affect future messages.`);
     }
 
     console.log('✅ Opening edit modal for campaign:', campaign.id);
@@ -6730,12 +6728,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                               editCampaign(campaign);
                             }}
                             className={`transition-colors ${
-                              campaign.sent > 0
+                              campaign.status === 'active'
                                 ? 'text-gray-600 cursor-not-allowed'
                                 : 'text-purple-400 hover:text-purple-300'
                             }`}
-                            title={campaign.sent > 0 ? "Cannot edit (messages sent)" : "Edit campaign"}
-                            disabled={campaign.sent > 0}
+                            title={campaign.status === 'active' ? "Pause campaign to edit" : "Edit campaign"}
+                            disabled={campaign.status === 'active'}
                           >
                             <Edit size={18} />
                           </button>
