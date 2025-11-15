@@ -459,11 +459,10 @@ export async function GET(request: NextRequest) {
                 const redirectUrl = `/linkedin-integration?success=true&account_id=${accountId}`
                 return NextResponse.redirect(new URL(redirectUrl, request.url))
               } else if (accountType.includes('GOOGLE') || accountType.includes('OUTLOOK') || accountType === 'MESSAGING' || accountType === 'MAIL') {
-                // For email connections, redirect to workspace with success message
-                // Modal polling will detect the connection and close automatically
+                // For email connections, redirect to auth success page that auto-closes popup
                 const providerName = accountType.includes('GOOGLE') ? 'google' :
                                      accountType.includes('OUTLOOK') ? 'microsoft' : 'email';
-                const redirectUrl = `/workspace/${targetWorkspaceId}?email_connected=true&provider=${providerName}&account_id=${accountId}&close_popup=true`
+                const redirectUrl = `/auth-success?close_popup=true&provider=${providerName}&account_id=${accountId}`
                 return NextResponse.redirect(new URL(redirectUrl, request.url))
               }
             }
