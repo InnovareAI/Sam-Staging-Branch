@@ -887,6 +887,7 @@ function CampaignBuilder({
 
   const [name, setName] = useState(getInitialCampaignName());
   const [campaignType, setCampaignType] = useState('connector');
+  const [userSelectedCampaignType, setUserSelectedCampaignType] = useState(false); // Track manual selection
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvData, setCsvData] = useState<any[]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
@@ -1373,13 +1374,16 @@ function CampaignBuilder({
 
   // Auto-select campaign type based on prospect connection degrees
   useEffect(() => {
+    // Only auto-select if user hasn't manually chosen a campaign type
+    if (userSelectedCampaignType) return;
+
     if (connectionDegrees.total === 0) return; // No prospects loaded yet
 
     // Calculate percentages
     const firstDegreePercent = (connectionDegrees.firstDegree / connectionDegrees.total) * 100;
     const secondThirdPercent = (connectionDegrees.secondThird / connectionDegrees.total) * 100;
 
-    // Auto-select campaign type based on majority
+    // Auto-select campaign type based on majority (only for LinkedIn campaigns)
     if (hasOnly1stDegree) {
       // All prospects are 1st degree → Messenger
       setCampaignType('messenger');
@@ -1398,7 +1402,7 @@ function CampaignBuilder({
       console.log(`🎯 Auto-selected CONNECTOR (${secondThirdPercent.toFixed(0)}% are 2nd/3rd degree)`);
     }
     // If mixed (no clear majority), keep current selection (default: connector)
-  }, [connectionDegrees.total, connectionDegrees.firstDegree, connectionDegrees.secondThird, hasOnly1stDegree]);
+  }, [connectionDegrees.total, connectionDegrees.firstDegree, connectionDegrees.secondThird, hasOnly1stDegree, userSelectedCampaignType]);
 
   // Campaign types are greyed out based on connection degrees, but user maintains control
   // Auto-selection happens when prospects are loaded, but user can override manually
@@ -2563,7 +2567,12 @@ Would you like me to adjust these or create more variations?`
                 return (
                   <div
                     key={type.value}
-                    onClick={() => !isDisabled && !needsConnection && setCampaignType(type.value)}
+                    onClick={() => {
+                      if (!isDisabled && !needsConnection) {
+                        setCampaignType(type.value);
+                        setUserSelectedCampaignType(true); // Mark as manually selected
+                      }
+                    }}
                     className={`p-4 border rounded-lg transition-all ${
                       isDisabled
                         ? 'border-gray-700 bg-gray-800 opacity-50'
@@ -2610,14 +2619,28 @@ Would you like me to adjust these or create more variations?`
                 );
               })}
             </div>
-            {connectionDegrees.total > 0 && (
+            {connectionDegrees.total > 0 && (campaignType === 'messenger' || campaignType === 'connector') && (
               <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mt-3">
                 <p className="text-blue-300 text-sm">
-                  <strong>Auto-selected:</strong> {campaignType === 'messenger' ? 'Messenger' : 'Connector'} campaign
+                  <strong>{userSelectedCampaignType ? 'Selected:' : 'Auto-selected:'}</strong> {campaignType === 'messenger' ? 'Messenger' : 'Connector'} campaign
                   {hasOnly1stDegree && ` (all ${connectionDegrees.firstDegree} prospects are 1st degree connections)`}
                   {connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0 && ` (all ${connectionDegrees.secondThird} prospects are 2nd/3rd degree connections)`}
                   {!hasOnly1stDegree && connectionDegrees.firstDegree > 0 && connectionDegrees.secondThird > 0 &&
                     ` (${Math.round((campaignType === 'messenger' ? connectionDegrees.firstDegree : connectionDegrees.secondThird) / connectionDegrees.total * 100)}% match)`}
+                </p>
+              </div>
+            )}
+            {campaignType === 'email' && (
+              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mt-3">
+                <p className="text-blue-300 text-sm">
+                  <strong>Selected:</strong> Email campaign - Direct email outreach without LinkedIn connection requests
+                </p>
+              </div>
+            )}
+            {campaignType === 'multichannel' && (
+              <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-3 mt-3">
+                <p className="text-purple-300 text-sm">
+                  <strong>Selected:</strong> Multichannel campaign - Combine LinkedIn and email outreach
                 </p>
               </div>
             )}
