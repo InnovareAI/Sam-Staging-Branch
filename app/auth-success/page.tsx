@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-export default function AuthSuccessPage() {
+function AuthSuccessContent() {
   const searchParams = useSearchParams();
   const closePopup = searchParams.get('close_popup');
   const provider = searchParams.get('provider');
@@ -34,5 +34,21 @@ export default function AuthSuccessPage() {
         <p className="opacity-90">This window will close automatically...</p>
       </div>
     </div>
+  );
+}
+
+export default function AuthSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
+        <div className="text-center text-white p-8">
+          <div className="text-6xl mb-4">✓</div>
+          <h1 className="text-2xl font-bold mb-2">Account Connected!</h1>
+          <p className="opacity-90">This window will close automatically...</p>
+        </div>
+      </div>
+    }>
+      <AuthSuccessContent />
+    </Suspense>
   );
 }
