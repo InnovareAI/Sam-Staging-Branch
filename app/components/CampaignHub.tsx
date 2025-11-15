@@ -1371,6 +1371,10 @@ function CampaignBuilder({
   const has1stDegree = connectionDegrees.firstDegree > 0;
   const hasOnly1stDegree = connectionDegrees.firstDegree > 0 && connectionDegrees.secondThird === 0;
 
+  // Check if CSV has connection degree data (required for LinkedIn campaigns)
+  const hasConnectionDegreeData = connectionDegrees.total > 0 &&
+    (connectionDegrees.firstDegree > 0 || connectionDegrees.secondThird > 0);
+
   // Auto-select campaign type based on prospect connection degrees
   useEffect(() => {
     // Only auto-select if user hasn't manually chosen a campaign type
@@ -2093,6 +2097,21 @@ Would you like me to adjust these or create more variations?`
             return row;
           }).filter(row => Object.values(row).some(val => val));
           
+          // Validate connection degree field for LinkedIn campaigns
+          const connectionDegreeFields = [
+            'connection_degree', 'degree', 'connectiondegree', 'connection',
+            'connection degree', 'linkedin_connection_degree', 'linkedin connection degree'
+          ];
+
+          const hasConnectionDegree = headers.some(h =>
+            connectionDegreeFields.includes(h.toLowerCase().trim())
+          );
+
+          if (!hasConnectionDegree) {
+            console.warn('⚠️ CSV missing connection degree field - LinkedIn campaigns will be disabled');
+            toastInfo('CSV uploaded without LinkedIn connection degree data. You can only create Email campaigns with this data. For LinkedIn campaigns, export from Sales Navigator or use SAM Search.');
+          }
+
           setCsvHeaders(headers);
           setCsvData(data);
           setShowPreview(true);
@@ -2495,15 +2514,27 @@ Would you like me to adjust these or create more variations?`
             </label>
             {/* Connection Degree Detection Info */}
             {connectionDegrees.total > 0 && (
-              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mb-4">
-                <p className="text-blue-300 text-sm">
-                  {hasOnly1stDegree && (
+              <div className={`border rounded-lg p-3 mb-4 ${
+                !hasConnectionDegreeData
+                  ? 'bg-yellow-900/20 border-yellow-500/30'
+                  : 'bg-blue-900/20 border-blue-500/30'
+              }`}>
+                <p className={`text-sm ${
+                  !hasConnectionDegreeData ? 'text-yellow-300' : 'text-blue-300'
+                }`}>
+                  {!hasConnectionDegreeData && (
+                    <span>
+                      ⚠️ <strong>No LinkedIn connection degree detected</strong> - Only Email campaigns available.
+                      For LinkedIn campaigns, export from Sales Navigator/LinkedIn Search or use SAM Search.
+                    </span>
+                  )}
+                  {hasConnectionDegreeData && hasOnly1stDegree && (
                     <span>✓ All prospects are 1st degree connections - showing Messenger + Email options</span>
                   )}
-                  {!hasOnly1stDegree && connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0 && (
+                  {hasConnectionDegreeData && !hasOnly1stDegree && connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0 && (
                     <span>✓ All prospects are 2nd/3rd degree - showing Connector + Email options</span>
                   )}
-                  {connectionDegrees.firstDegree > 0 && connectionDegrees.secondThird > 0 && (
+                  {hasConnectionDegreeData && connectionDegrees.firstDegree > 0 && connectionDegrees.secondThird > 0 && (
                     <span>📊 Mixed connection degrees: {connectionDegrees.firstDegree} × 1st degree, {connectionDegrees.secondThird} × 2nd/3rd degree</span>
                   )}
                 </p>
@@ -2511,9 +2542,17 @@ Would you like me to adjust these or create more variations?`
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {campaignTypes.filter(type => {
-                // Filter campaign types based on connection degree detection
-                if (connectionDegrees.total === 0) return true; // Show all if no prospects loaded
+                // No prospects loaded yet -> Show all except multichannel
+                if (connectionDegrees.total === 0) {
+                  return type.value !== 'multichannel';
+                }
 
+                // CSV loaded but NO connection degree data -> Show ONLY Email
+                if (!hasConnectionDegreeData) {
+                  return type.value === 'email';
+                }
+
+                // Has connection degree data -> Filter by detected degrees
                 const firstDegreePercent = (connectionDegrees.firstDegree / connectionDegrees.total) * 100;
                 const secondThirdPercent = (connectionDegrees.secondThird / connectionDegrees.total) * 100;
 
@@ -2527,7 +2566,7 @@ Would you like me to adjust these or create more variations?`
                   return type.value === 'connector' || type.value === 'email';
                 }
 
-                // Mixed or unknown -> Show all except multichannel (coming soon)
+                // Mixed degrees -> Show all except multichannel
                 return type.value !== 'multichannel';
               }).map((type) => {
                 const IconComponent = type.icon;
