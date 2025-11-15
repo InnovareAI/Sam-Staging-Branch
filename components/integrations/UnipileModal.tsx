@@ -179,34 +179,6 @@ export function UnipileModal({ isOpen, onClose, provider = 'LINKEDIN' }: Unipile
 
         {/* Body */}
         <div className="space-y-6 px-6 py-5">
-          <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200">
-            <p className="flex items-center gap-2 font-medium">
-              <Shield size={16} />
-              Secure OAuth handled by Unipile
-            </p>
-            <p className="mt-1 text-xs text-blue-800/80 dark:text-blue-200/80">
-              We generate a temporary Hosted Auth Wizard link. Unipile manages the full {providerName} authentication, including 2FA, captcha, and compliance requirements.
-            </p>
-          </div>
-
-          <div className="space-y-4 text-sm text-gray-700 dark:text-gray-200">
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">What happens next?</h3>
-              <ol className="mt-2 space-y-2 text-xs leading-5 text-gray-600 dark:text-gray-300">
-                <li>1. Click the button below to generate a secure Hosted Auth link.</li>
-                <li>2. Complete {providerName} verification in the Unipile window (supports SMS, in-app approval, OTP).</li>
-                <li>3. Once finished, you'll return to SAM AI and we'll sync your {providerType} account automatically.</li>
-              </ol>
-            </div>
-
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-xs text-gray-600 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-300">
-              <p className="font-semibold text-gray-800 dark:text-gray-100">Need to reconnect?</p>
-              <p>
-                The same Hosted Auth flow handles reconnecting when {providerName} expires credentials. We'll detect that automatically and re-use this wizard.
-              </p>
-            </div>
-          </div>
-
           {error && (
             <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-900/30 dark:text-red-200">
               <AlertCircle size={16} />
@@ -244,34 +216,12 @@ export function UnipileModal({ isOpen, onClose, provider = 'LINKEDIN' }: Unipile
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-800 dark:bg-gray-900/60">
+        <div className="flex items-center justify-center border-t border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-800 dark:bg-gray-900/60">
           <button
             onClick={onClose}
             className="text-sm font-medium text-gray-600 transition hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100"
           >
-            {waitingForConfirmation && !connectionComplete ? 'Cancel & try later' : 'Cancel'}
-          </button>
-          <button
-            onClick={launchHostedAuth}
-            disabled={isConnecting || waitingForConfirmation}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
-          >
-            {isConnecting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Generating link...
-              </>
-            ) : waitingForConfirmation ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Waiting for confirmation...
-              </>
-            ) : (
-              <>
-                <ExternalLink className="h-4 w-4" />
-                Launch Hosted Auth Wizard
-              </>
-            )}
+            {waitingForConfirmation && !connectionComplete ? 'Cancel & try later' : 'Close'}
           </button>
         </div>
       </div>
