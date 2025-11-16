@@ -1,5 +1,6 @@
--- Add 'not_connected' status to campaign_prospects
--- This status is used when a LinkedIn connection request is not accepted after 21 days
+-- Add 'not_connected' and 'invitation_withdrawn' statuses to campaign_prospects
+-- not_connected: CR not accepted after 21 days
+-- invitation_withdrawn: LinkedIn CR officially withdrawn via Unipile API
 
 -- Drop the old constraint
 ALTER TABLE campaign_prospects DROP CONSTRAINT IF EXISTS campaign_prospects_status_check;
@@ -14,6 +15,7 @@ ALTER TABLE campaign_prospects ADD CONSTRAINT campaign_prospects_status_check
     'contacted'::text,
     'connection_requested'::text,
     'not_connected'::text,        -- NEW: CR not accepted after 21 days
+    'invitation_withdrawn'::text, -- NEW: CR withdrawn via Unipile API
     'connected'::text,
     'messaging'::text,
     'replied'::text,
@@ -24,4 +26,4 @@ ALTER TABLE campaign_prospects ADD CONSTRAINT campaign_prospects_status_check
 
 -- Add comment
 COMMENT ON CONSTRAINT campaign_prospects_status_check ON campaign_prospects IS
-  'Valid prospect statuses including not_connected for LinkedIn CRs not accepted within 21 days';
+  'Valid prospect statuses including not_connected and invitation_withdrawn for LinkedIn CR timeout/withdrawal';

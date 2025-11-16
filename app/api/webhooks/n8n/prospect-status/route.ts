@@ -46,6 +46,19 @@ export async function POST(request: NextRequest) {
     // Set contacted_at timestamp when connection is requested
     if (payload.status === 'connection_requested') {
       updateData.contacted_at = new Date().toISOString();
+
+      // Store LinkedIn invitation_id for later withdrawal if needed
+      if (payload.invitation_id) {
+        const currentData = await supabase
+          .from('campaign_prospects')
+          .select('personalization_data')
+          .eq('id', payload.prospect_id)
+          .single();
+
+        const personalizationData = currentData.data?.personalization_data || {};
+        personalizationData.linkedin_invitation_id = payload.invitation_id;
+        updateData.personalization_data = personalizationData;
+      }
     }
 
     // Add error details if present
@@ -55,11 +68,15 @@ export async function POST(request: NextRequest) {
 
     // Add Unipile message ID if present
     if (payload.unipile_message_id) {
-      updateData.personalization_data = supabase.rpc('jsonb_set', {
-        target: supabase.raw('personalization_data'),
-        path: '{unipile_message_id}',
-        new_value: JSON.stringify(payload.unipile_message_id)
-      });
+      const currentData = await supabase
+        .from('campaign_prospects')
+        .select('personalization_data')
+        .eq('id', payload.prospect_id)
+        .single();
+
+      const personalizationData = currentData.data?.personalization_data || {};
+      personalizationData.unipile_message_id = payload.unipile_message_id;
+      updateData.personalization_data = personalizationData;
     }
 
     // Update prospect status in campaign_prospects table
