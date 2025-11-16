@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import ImportProspectsModal from '@/components/ImportProspectsModal'
 import { Checkbox } from '@/components/ui/checkbox'
-import EnrichProspectsButton from '@/components/EnrichProspectsButton'
+// import EnrichProspectsButton from '@/components/EnrichProspectsButton' // REMOVED: Users bring their own enriched data
 
 
 // LinkedIn Campaign Types
@@ -1565,22 +1565,6 @@ export default function DataCollectionHub({
                   <span>Auto-Approve All ({prospectData.filter(p => p.approvalStatus === 'pending').length})</span>
                 </Button>
 
-            {/* Enrich Selected Prospects - BrightData enrichment for missing data */}
-            {selectedProspectIds.size > 0 && actualWorkspaceId && (
-              <EnrichProspectsButton
-                prospectIds={Array.from(selectedProspectIds)}
-                workspaceId={actualWorkspaceId}
-                onEnrichmentComplete={() => {
-                  // Clear selections so user knows enrichment started
-                  setSelectedProspectIds(new Set());
-                  // Refresh will happen automatically via 30s interval
-                }}
-                variant="outline"
-                size="sm"
-                className="border-purple-500/50 hover:bg-purple-500/10 text-purple-400 hover:text-purple-300 hover:border-purple-400/70"
-              />
-            )}
-
             {/* Send Approved Prospects - Only sends approved prospects to Campaign Hub */}
             <Button
               onClick={bulkApproveSelected}
@@ -1631,13 +1615,12 @@ export default function DataCollectionHub({
           <div className="flex-1">
             <h4 className="text-sm font-semibold text-blue-400 mb-1">How to Use Prospect Database</h4>
             <ol className="text-xs text-gray-300 space-y-1 list-decimal list-inside">
-              <li><strong>Import</strong> prospects via SAM Search, CSV, LinkedIn URL, or Sales Navigator</li>
-              <li><strong>Enrich</strong> (optional): Select prospects → Click "Enrich prospect" → Wait 30-40s → Refresh page</li>
+              <li><strong>Import</strong> prospects via SAM Search, CSV, LinkedIn URL, or Sales Navigator (ensure your CSV includes email addresses)</li>
               <li><strong>Review</strong>: Check quality scores and contact info</li>
               <li><strong>Approve</strong>: Click green checkmark ✓ on prospects you want to use</li>
               <li><strong>Send to Campaign</strong>: Click "Send Approved to Campaign" button to create campaigns</li>
             </ol>
-            <p className="text-xs text-yellow-400 mt-2">⚠️ Enrichment adds emails/company data but takes 30-40 seconds per prospect. Refresh the page after enrichment completes.</p>
+            <p className="text-xs text-yellow-400 mt-2">💡 Import prospects with email addresses already included in your CSV for best results.</p>
           </div>
         </div>
       </div>

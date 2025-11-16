@@ -34,6 +34,14 @@ interface BrightDataEnrichmentResult {
 }
 
 export async function POST(request: NextRequest) {
+  // ENRICHMENT DISABLED: Users must bring their own enriched data
+  return NextResponse.json({
+    error: 'Data enrichment is no longer available',
+    message: 'Please upload prospects with email addresses already included in your CSV file',
+    hint: 'Use a third-party enrichment service (Apollo.io, ZoomInfo, etc.) before importing to SAM'
+  }, { status: 410 }); // 410 Gone - feature permanently removed
+
+  /* DISABLED CODE - Enrichment removed
   try {
     let body: EnrichmentRequest;
     try {
