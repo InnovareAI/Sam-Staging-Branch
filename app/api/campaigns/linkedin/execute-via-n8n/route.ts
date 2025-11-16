@@ -952,7 +952,9 @@ export async function POST(req: NextRequest) {
       campaign_type: campaignType, // NEW: 'connector' or 'messenger'
       unipile_account_id: selectedLinkedInAccount.unipile_account_id,
       prospects: prospectsToProcess.map((p: any) => ({
-        id: p.id,           // CRITICAL: N8N expects prospect.id (not prospect_id)
+        id: p.id,                    // Prospect record ID
+        prospect_id: p.id,           // N8N Update nodes expect prospect_id
+        campaign_id: campaignId,     // N8N Update nodes expect campaign_id in each item
         first_name: p.first_name,
         last_name: p.last_name,
         linkedin_url: p.linkedin_url,
