@@ -212,6 +212,7 @@ export async function POST(request: NextRequest) {
               company_name: p.company?.name,
               industry: typeof p.company?.industry === 'string' ? p.company.industry : (p.company?.industry?.[0] || null),
               email: p.contact?.email,
+              phone: p.contact?.phone,
               first_name: p.name?.split(' ')[0],
               last_name: p.name?.split(' ').slice(1).join(' '),
               location: p.location,
@@ -219,6 +220,7 @@ export async function POST(request: NextRequest) {
               is_campaign_prospect: false
             }));
             console.log('✅ Mapped approval prospects for enrichment');
+            console.log('📋 Sample mapped prospect:', prospectsToEnrich[0]);
           } else {
             console.warn('⚠️ No prospects found in any table for IDs:', prospectIds);
           }
@@ -254,14 +256,25 @@ export async function POST(request: NextRequest) {
     const needsEnrichment = prospectsToEnrich.filter(p => {
       if (!autoEnrich) return true; // Enrich all if not auto
 
-      return (
-        !p.linkedin_url ||
-        p.company_name === 'unavailable' ||
-        !p.company_name ||
-        p.industry === 'unavailable' ||
-        !p.industry ||
-        !p.email
-      );
+      const missingEmail = !p.email || p.email.trim() === '';
+      const missingPhone = !p.phone || p.phone.trim() === '';
+      const missingCompany = !p.company_name || p.company_name === 'unavailable';
+      const missingIndustry = !p.industry || p.industry === 'unavailable';
+      const missingLinkedIn = !p.linkedin_url;
+
+      const needsEnrich = missingLinkedIn || missingCompany || missingIndustry || missingEmail || missingPhone;
+
+      if (needsEnrich) {
+        console.log(`🔍 Prospect "${p.first_name} ${p.last_name}" needs enrichment:`, {
+          missingEmail,
+          missingPhone,
+          missingCompany,
+          missingIndustry,
+          missingLinkedIn
+        });
+      }
+
+      return needsEnrich;
     });
 
     console.log(`🔍 Enrichment: ${needsEnrichment.length}/${prospectsToEnrich.length} prospects need enrichment`);
