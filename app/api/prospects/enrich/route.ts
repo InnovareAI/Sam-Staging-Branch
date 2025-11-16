@@ -179,6 +179,7 @@ export async function POST(request: NextRequest) {
         } else {
           // Try prospect_approval_data (for prospects in approval workflow)
           console.log('🔍 Checking prospect_approval_data table for IDs:', prospectIds);
+          console.log('🔍 Type of first ID:', typeof prospectIds[0], prospectIds[0]);
 
           // CRITICAL FIX: Check both 'id' and 'prospect_id' fields
           // UI sends the database row ID, not the prospect_id
@@ -192,6 +193,16 @@ export async function POST(request: NextRequest) {
           }
 
           console.log(`📊 Found ${approvalProspects?.length || 0} prospects in prospect_approval_data`);
+          if (approvalProspects && approvalProspects.length > 0) {
+            console.log('✅ Sample prospect found:', { id: approvalProspects[0].id, prospect_id: approvalProspects[0].prospect_id, name: approvalProspects[0].name });
+          } else {
+            console.log('❌ No prospects found with query. Logging full table for debugging...');
+            const { data: allProspects } = await supabase
+              .from('prospect_approval_data')
+              .select('id, prospect_id, name, workspace_id')
+              .limit(10);
+            console.log('📋 Sample prospects in table:', allProspects);
+          }
 
           if (approvalProspects && approvalProspects.length > 0) {
             prospectsToEnrich = approvalProspects.map(p => ({
