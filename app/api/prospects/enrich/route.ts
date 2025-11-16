@@ -318,9 +318,9 @@ export async function POST(request: NextRequest) {
 
     console.log(`⏱️ Processing ${prospectsToProcess.length} prospect(s) synchronously...`);
 
-    // Trigger N8N enrichment workflow (async - handles long BrightData calls)
-    // N8N will call BrightData and update prospects when complete
-    const enrichmentResults = await triggerN8NEnrichment(prospectsToProcess, workspaceId);
+    // TEMPORARY: Use direct BrightData API instead of N8N (N8N workflow needs fixing)
+    // TODO: Switch back to N8N once "Respond to Webhook" node is connected properly
+    const enrichmentResults = await enrichWithBrightData(prospectsToProcess, 1, true);
 
     // Update prospects with enriched data
     let updatedCount = 0;
