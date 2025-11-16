@@ -6,9 +6,16 @@ declare global {
   function mcp__unipile__unipile_get_accounts(): Promise<any[]>;
 }
 
+// N8N Workflow configuration
+const N8N_WEBHOOK_URL = process.env.N8N_CAMPAIGN_WEBHOOK_URL || 'https://workflows.innovareai.com/webhook/campaign-execute';
+
 // Unipile API configuration
 const UNIPILE_BASE_URL = process.env.UNIPILE_DSN || 'https://api6.unipile.com:13670';
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
+
+// Supabase configuration for N8N
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 interface UnipileResponse<T> {
   object: string;
@@ -179,7 +186,112 @@ export async function POST(req: NextRequest) {
     // Apply daily limit (respect Startup plan limits: 800 emails/month ≈ 40/day weekdays)
     const dailyLimit = Math.min(campaign.daily_limit || 40, 40); // Cap at 40/day for Startup plan
     const prospectsToProcess = pendingProspects.slice(0, dailyLimit);
-    
+
+    // Prepare prospects for N8N orchestration
+    const prospectsPayload = prospectsToProcess.map((cp: any) => {
+      const prospect = cp.workspace_prospects;
+      return {
+        id: cp.id, // campaign_prospect ID
+        email: prospect.email_address,
+        first_name: prospect.first_name,
+        last_name: prospect.last_name,
+        company_name: prospect.company_name,
+        title: prospect.job_title,
+        location: prospect.location,
+        industry: prospect.industry
+      };
+    });
+
+    console.log('📧 Routing email campaign to N8N orchestrator:', {
+      campaign_id: campaignId,
+      prospects_count: prospectsPayload.length,
+      email_account: selectedAccount.name
+    });
+
+    // Call N8N webhook with channel='email'
+    const n8nResponse = await fetch(N8N_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        // CRITICAL: Set channel to 'email'
+        channel: 'email',
+
+        // Campaign identifiers
+        workspace_id: campaign.workspace_id,
+        campaign_id: campaignId,
+
+        // Email-specific fields
+        email_account_id: selectedAccount.sources[0].id,
+        from_email: selectedAccount.name || 'SAM AI Assistant',
+        subject_template: campaign.message_templates?.email_subject || 'Quick question',
+
+        // Common fields
+        unipile_dsn: UNIPILE_BASE_URL,
+        unipile_api_key: UNIPILE_API_KEY,
+        supabase_url: SUPABASE_URL,
+        supabase_service_key: SUPABASE_SERVICE_ROLE_KEY,
+
+        // Prospects
+        prospects: prospectsPayload,
+
+        // Messages
+        messages: {
+          initial_email: campaign.message_templates?.email_body || '',
+          follow_up_1: campaign.message_templates?.follow_up_emails?.[0]?.body || '',
+          follow_up_2: campaign.message_templates?.follow_up_emails?.[1]?.body || '',
+          follow_up_3: campaign.message_templates?.follow_up_emails?.[2]?.body || '',
+          follow_up_4: campaign.message_templates?.follow_up_emails?.[3]?.body || '',
+          goodbye: campaign.message_templates?.follow_up_emails?.[4]?.body || ''
+        },
+
+        // Timing configuration
+        timing: {
+          fu1_delay_days: campaign.message_templates?.follow_up_emails?.[0]?.delay_days || 2,
+          fu2_delay_days: campaign.message_templates?.follow_up_emails?.[1]?.delay_days || 5,
+          fu3_delay_days: campaign.message_templates?.follow_up_emails?.[2]?.delay_days || 7,
+          fu4_delay_days: campaign.message_templates?.follow_up_emails?.[3]?.delay_days || 5,
+          gb_delay_days: campaign.message_templates?.follow_up_emails?.[4]?.delay_days || 7
+        }
+      })
+    });
+
+    if (!n8nResponse.ok) {
+      const errorText = await n8nResponse.text();
+      console.error('❌ N8N workflow failed:', errorText);
+      throw new Error(`N8N workflow failed: ${n8nResponse.statusText}`);
+    }
+
+    const n8nResult = await n8nResponse.json();
+    console.log('✅ Email campaign sent to N8N orchestrator:', n8nResult);
+
+    // Update campaign status to active
+    await supabase
+      .from('campaigns')
+      .update({
+        status: 'active',
+        last_executed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', campaignId);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Email campaign launched via N8N orchestrator',
+      prospects_queued: prospectsPayload.length,
+      n8n_execution: n8nResult,
+      account_used: selectedAccount.name,
+      orchestration: 'n8n',
+      next_steps: [
+        'N8N will orchestrate email sending with configured delays',
+        'Reply detection will trigger automatically',
+        'Follow-ups will be sent if no reply received',
+        'HITL approval will be triggered on prospect replies'
+      ]
+    });
+
+    /* OLD CODE - Replaced with N8N orchestration
     const results = {
       total: prospectsToProcess.length,
       sent: 0,
@@ -308,6 +420,8 @@ export async function POST(req: NextRequest) {
         current_daily_limit: dailyLimit
       }
     });
+    */
+    // END OLD CODE - Now using N8N orchestration above
 
   } catch (error: any) {
     console.error('Email campaign execution error:', error);
