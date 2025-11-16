@@ -485,55 +485,14 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Enrich a single prospect using MCP (free 5K/month) or fallback to API
+ * Enrich a single prospect using BrightData Direct API
  *
- * Strategy: Try MCP first for cost savings, fallback to API if quota exceeded
+ * Note: MCP integration disabled - tool 'brightdata_scrape_as_markdown' doesn't exist
+ * Using direct BrightData Web Unlocker API instead
  */
 async function enrichSingleProspectWithMCP(linkedinUrl: string): Promise<BrightDataEnrichmentResult> {
-  try {
-    // Try MCP first (FREE 5,000 requests/month permanently!)
-    console.log(`🆓 Attempting MCP enrichment for ${linkedinUrl}`);
-
-    // Call MCP directly via registry (server-side, no auth needed)
-    const { mcpRegistry } = await import('@/lib/mcp/mcp-registry');
-
-    const mcpResult = await mcpRegistry.callTool({
-      method: 'tools/call',
-      params: {
-        name: 'brightdata_scrape_as_markdown',
-        arguments: { url: linkedinUrl }
-      },
-      server: 'brightdata'
-    });
-
-    if (!mcpResult.isError && mcpResult.content) {
-      console.log(`✅ MCP enrichment successful (FREE)`);
-
-      // Parse markdown content
-      const contentText = Array.isArray(mcpResult.content)
-        ? mcpResult.content.map(c => c.text).join('\n')
-        : mcpResult.content.text || mcpResult.content;
-
-      const parsed = parseLinkedInMarkdown(contentText, linkedinUrl);
-
-      return {
-        linkedin_url: linkedinUrl,
-        verification_status: 'verified' as const,
-        ...parsed
-      };
-    }
-
-    // MCP failed, log reason
-    console.log(`⚠️  MCP failed (${mcpResult.isError ? 'error' : 'no content'}), falling back to API (paid)`);
-    if (mcpResult.isError) {
-      console.log(`   Error details: ${JSON.stringify(mcpResult.content)}`);
-    }
-
-  } catch (mcpError) {
-    console.log(`⚠️  MCP error: ${mcpError instanceof Error ? mcpError.message : 'Unknown'}, falling back to API`);
-  }
-
-  // Fallback to paid API
+  // MCP tool name was incorrect - skipping MCP and going straight to API
+  console.log(`🔍 Enriching via BrightData Direct API: ${linkedinUrl}`);
   return await enrichSingleProspectWithAPI(linkedinUrl);
 }
 
@@ -603,11 +562,15 @@ async function enrichSingleProspectWithAPI(linkedinUrl: string): Promise<BrightD
     };
 
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     console.error(`❌ Error enriching ${linkedinUrl}:`, error);
+    console.error(`   Error type: ${error instanceof Error ? error.constructor.name : typeof error}`);
+    console.error(`   Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
+
     return {
       linkedin_url: linkedinUrl,
       verification_status: 'failed' as const,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: errorMsg
     };
   }
 }
