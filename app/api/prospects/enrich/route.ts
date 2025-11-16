@@ -181,14 +181,12 @@ export async function POST(request: NextRequest) {
           console.log('🔍 Checking prospect_approval_data table for IDs:', prospectIds);
           console.log('🔍 Type of first ID:', typeof prospectIds[0], prospectIds[0]);
 
-          // CRITICAL FIX: Check both 'id' and 'prospect_id' fields
-          // UI sends prospect_id strings like 'prospect_1763274020862_q8c6q7ndz'
-          // Build the OR query with proper string quoting for prospect_id
-          const quotedIds = prospectIds.map(id => `"${id}"`).join(',');
+          // CRITICAL FIX: UI sends prospect_id strings like 'prospect_1763274020862_q8c6q7ndz'
+          // Use .in() directly on prospect_id field
           const { data: approvalProspects, error: approvalError } = await supabase
             .from('prospect_approval_data')
             .select('*')
-            .or(`id.in.(${prospectIds.join(',')}),prospect_id.in.(${quotedIds})`);
+            .in('prospect_id', prospectIds);
 
           if (approvalError) {
             console.error('❌ Error querying prospect_approval_data:', approvalError);
