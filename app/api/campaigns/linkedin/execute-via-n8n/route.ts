@@ -938,9 +938,18 @@ export async function POST(req: NextRequest) {
     // Step 8: Build simple N8N payload (matches workflow expectations)
     // NOTE: N8N expects snake_case field names (campaign_id, not campaignId)
     // CRITICAL: Each prospect object must have an 'id' field for N8N Update Status nodes
+
+    // Determine campaign_type from campaign data or execution type
+    // 'connector' = send connection request first (for 2nd/3rd degree connections)
+    // 'messenger' = skip connection request (for 1st degree connections)
+    const campaignType = campaign.campaign_type ||
+                        (executionType === 'direct_linkedin' ? 'connector' : executionType);
+
     const n8nPayload = {
       workspace_id: workspaceId,
       campaign_id: campaignId,
+      channel: 'linkedin', // NEW: Specify channel for multi-channel routing
+      campaign_type: campaignType, // NEW: 'connector' or 'messenger'
       unipile_account_id: selectedLinkedInAccount.unipile_account_id,
       prospects: prospectsToProcess.map((p: any) => ({
         id: p.id,           // CRITICAL: N8N expects prospect.id (not prospect_id)
@@ -970,6 +979,8 @@ export async function POST(req: NextRequest) {
     console.log(`🎯 N8N Payload:`, {
       workspace_id: n8nPayload.workspace_id,
       campaign_id: n8nPayload.campaign_id,
+      channel: n8nPayload.channel,
+      campaign_type: n8nPayload.campaign_type,
       linkedInAccount: selectedLinkedInAccount.account_name,
       unipile_account_id: n8nPayload.unipile_account_id,
       prospectCount: n8nPayload.prospects.length,
