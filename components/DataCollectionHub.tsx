@@ -315,7 +315,13 @@ export default function DataCollectionHub({
   // Missing state variables
   const [uploadProgress, setUploadProgress] = useState(0)
   const [showApprovalPanel, setShowApprovalPanel] = useState(true)
-  const [activeTab, setActiveTab] = useState('approve')
+  const [activeTab, setActiveTab] = useState(() => {
+    // Remember last tab across page refreshes
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('prospectDatabaseActiveTab') || 'database'
+    }
+    return 'database'
+  })
   const [linkedinQuery, setLinkedinQuery] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [isProspectSearchOpen, setIsProspectSearchOpen] = useState(false)
@@ -585,6 +591,13 @@ export default function DataCollectionHub({
     }
     fetchWorkspace()
   }, [])
+
+  // Save active tab to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('prospectDatabaseActiveTab', activeTab)
+    }
+  }, [activeTab])
 
   // Update prospects when new data is uploaded from chat
   useEffect(() => {
