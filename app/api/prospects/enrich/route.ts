@@ -575,82 +575,69 @@ async function enrichSingleProspectWithMCP(linkedinUrl: string): Promise<BrightD
 }
 
 /**
- * Enrich a single prospect using BrightData MCP Server
+ * Enrich a single prospect using N8N workflow
  *
- * CRITICAL FIX: Use MCP server instead of REST API (REST API auth doesn't work)
- * The MCP server is configured in .mcp.json with working token
+ * CRITICAL: BrightData authentication requires N8N workflow for production use
+ * - Direct API calls fail with auth errors (tried Bearer, Basic Auth)
+ * - MCP server only works locally, not in Netlify functions
+ * - N8N workflow has BrightData credentials configured and handles async processing
  */
 async function enrichSingleProspectWithAPI(linkedinUrl: string): Promise<BrightDataEnrichmentResult> {
   try {
-    console.log(`🔍 Enriching via BrightData MCP Server: ${linkedinUrl}`);
+    console.log(`🔍 Queuing enrichment via N8N workflow: ${linkedinUrl}`);
 
     // Clean LinkedIn URL - remove query parameters
     const cleanUrl = linkedinUrl.split('?')[0];
 
-    // Call BrightData MCP via /api/mcp endpoint (NOT direct REST API)
-    const mcpResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/mcp`, {
+    // N8N enrichment webhook endpoint
+    const n8nWebhookUrl = 'https://workflows.innovareai.com/webhook/prospect-enrichment-single';
+
+    const payload = {
+      linkedin_url: cleanUrl,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log(`📤 Triggering N8N enrichment webhook...`);
+
+    const response = await fetch(n8nWebhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        toolName: 'brightdata_scrape_as_markdown',
-        arguments: { url: cleanUrl },
-        server: 'brightdata'
-      })
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10000) // 10 second timeout for webhook trigger
     });
 
-    if (!mcpResponse.ok) {
-      console.error(`❌ BrightData MCP call failed: ${mcpResponse.status}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ N8N webhook error: ${response.status} - ${errorText}`);
+
+      // Return queued status even if webhook failed - user can retry
       return {
         linkedin_url: linkedinUrl,
         verification_status: 'failed' as const,
-        error: 'BrightData MCP service unavailable. MCP server may not be running.'
+        error: `N8N webhook failed: ${response.status}. ${errorText}`
       };
     }
 
-    const mcpData = await mcpResponse.json();
+    const result = await response.json();
+    console.log(`✅ N8N enrichment queued:`, result);
 
-    if (!mcpData.success || mcpData.isError) {
-      console.error(`❌ BrightData MCP returned error:`, mcpData.error);
-      return {
-        linkedin_url: linkedinUrl,
-        verification_status: 'failed' as const,
-        error: mcpData.error || 'BrightData scraping failed'
-      };
-    }
-
-    const scrapedData = mcpData.result || {};
-    const markdown = scrapedData.markdown || '';
-    console.log(`📄 Got markdown response: ${markdown.length} chars`);
-
-    if (!markdown) {
-      return {
-        linkedin_url: linkedinUrl,
-        verification_status: 'failed' as const,
-        error: 'No content extracted from LinkedIn page'
-      };
-    }
-
-    // Parse the markdown to extract profile data
-    const enrichedData = parseLinkedInMarkdown(markdown, linkedinUrl);
-
-    console.log(`✅ Enriched ${linkedinUrl}: ${enrichedData.company_name || 'No company'}`);
-
+    // Return queued status - enrichment happens async in N8N
     return {
       linkedin_url: linkedinUrl,
-      verification_status: 'verified' as const,
-      ...enrichedData
+      verification_status: 'queued' as const,
+      message: 'Enrichment queued in N8N workflow. Results will be available shortly.'
     };
 
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`❌ Error enriching ${linkedinUrl}:`, error);
+    console.error(`❌ Error queuing enrichment:`, error);
     console.error(`   Error type: ${error instanceof Error ? error.constructor.name : typeof error}`);
     console.error(`   Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
 
     return {
       linkedin_url: linkedinUrl,
       verification_status: 'failed' as const,
-      error: errorMsg
+      error: `Failed to queue enrichment: ${errorMsg}`
     };
   }
 }

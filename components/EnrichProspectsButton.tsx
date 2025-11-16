@@ -68,11 +68,20 @@ export default function EnrichProspectsButton({
       const data = await response.json();
 
       if (data.success) {
-        // Use API-provided message if available, otherwise build default message
-        const message = data.message ||
-          `✅ Successfully enriched ${data.enriched_count || 0} prospect(s)!\n\nRefresh the page to see updated data.`;
+        // Check if enrichment was queued vs completed
+        if (data.status === 'queued' || data.queued_count > 0) {
+          const queuedCount = data.queued_count || prospectIds.length;
+          toastInfo(
+            `⏳ Enrichment queued for ${queuedCount} prospect(s).\n\nN8N workflow will process them in the background. Check back in a few minutes.`,
+            10000
+          );
+        } else {
+          // Use API-provided message if available, otherwise build default message
+          const message = data.message ||
+            `✅ Successfully enriched ${data.enriched_count || 0} prospect(s)!\n\nRefresh the page to see updated data.`;
 
-        toastSuccess(message, 8000);
+          toastSuccess(message, 8000);
+        }
 
         // Call callback to clear selections
         if (onEnrichmentComplete) {
