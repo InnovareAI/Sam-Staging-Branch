@@ -282,12 +282,27 @@ export async function POST(request: NextRequest) {
     console.log(`🔍 Enrichment: ${needsEnrichment.length}/${prospectsToEnrich.length} prospects need enrichment`);
 
     if (needsEnrichment.length === 0) {
+      // Return diagnostic info when no prospects need enrichment
+      const diagnosticInfo = prospectsToEnrich.map(p => ({
+        name: `${p.first_name} ${p.last_name}`,
+        email: p.email === undefined ? 'undefined' : (p.email === '' ? 'empty string' : p.email),
+        phone: p.phone === undefined ? 'undefined' : (p.phone === '' ? 'empty string' : p.phone),
+        company: p.company_name,
+        industry: p.industry,
+        linkedin: p.linkedin_url
+      }));
+
       return NextResponse.json({
         success: true,
         enriched_count: 0,
         skipped_count: prospectsToEnrich.length,
         message: 'All prospects already have complete data',
-        cost_saved: 0
+        cost_saved: 0,
+        debug: {
+          prospects_checked: diagnosticInfo,
+          total_found: prospectsToEnrich.length,
+          enrichment_criteria: 'Missing: email, phone, company_name=unavailable, industry=unavailable, or linkedin_url'
+        }
       });
     }
 
