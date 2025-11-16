@@ -2219,6 +2219,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
         onReject={handleDataRejection}
         title={approvalSession?.dataset_source === 'csv_upload' ? 'Approve CSV Upload' : 'Approve LinkedIn Prospects'}
         subtitle={approvalSession?.dataset_source === 'csv_upload' ? 'Review uploaded prospects before adding to campaign' : 'Review LinkedIn search results before adding to campaign'}
+        showEnrichment={true}
       />
 
       {/* Memory Snapshots Panel */}

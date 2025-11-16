@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useMemo } from 'react'
-import { Check, X, Users, CheckSquare, Download, AlertTriangle, Filter, Search, Edit2, Save } from 'lucide-react'
+import { Check, X, Users, CheckSquare, Download, AlertTriangle, Filter, Search, Edit2, Save, Sparkles } from 'lucide-react'
 import Modal from './ui/Modal'
 
 export interface ProspectData {
@@ -59,6 +59,8 @@ export default function ProspectApprovalModal({
   const [filterSource, setFilterSource] = useState<string>('all')
   const [editingProspectId, setEditingProspectId] = useState<string | null>(null)
   const [editedNames, setEditedNames] = useState<Record<string, string>>({})
+  const [isEnriching, setIsEnriching] = useState(false)
+  const [enrichmentProgress, setEnrichmentProgress] = useState<{ current: number; total: number } | null>(null)
 
   // Filter prospects based on search and filters
   const filteredProspects = useMemo(() => {
@@ -136,6 +138,61 @@ export default function ProspectApprovalModal({
 
   const updateEditedName = (prospectId: string, newName: string) => {
     setEditedNames({ ...editedNames, [prospectId]: newName })
+  }
+
+  const handleEnrichProspects = async () => {
+    if (!session) {
+      console.error('No session available for enrichment')
+      return
+    }
+
+    setIsEnriching(true)
+    setEnrichmentProgress({ current: 0, total: prospects.length })
+
+    try {
+      // Get prospect IDs that need enrichment
+      const prospectIds = prospects
+        .filter(p => !dismissedProspects.has(p.id))
+        .map(p => p.id)
+
+      console.log(`🔍 Enriching ${prospectIds.length} prospects...`)
+
+      // Call enrichment API (processes 1 prospect at a time due to timeout limits)
+      const response = await fetch('/api/prospects/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prospectIds,
+          sessionId: session.session_id,
+          autoEnrich: true
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        console.log(`✅ Enriched ${result.enriched_count} prospects`)
+
+        // If there are queued prospects, show message
+        if (result.queued_count > 0) {
+          alert(`✅ Enriched ${result.enriched_count} prospect(s)!\n\n⚠️ ${result.queued_count} more prospects need enrichment.\n\nClick "Enrich" again to continue.`)
+        } else {
+          alert(`✅ Successfully enriched ${result.enriched_count} prospect(s)!`)
+        }
+
+        // Reload prospects to show updated data
+        window.location.reload()
+      } else {
+        console.error('Enrichment failed:', result.error)
+        alert(`❌ Enrichment failed: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Enrichment error:', error)
+      alert(`❌ Enrichment error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsEnriching(false)
+      setEnrichmentProgress(null)
+    }
   }
 
   const handleApproveAll = () => {
@@ -297,6 +354,24 @@ export default function ProspectApprovalModal({
           </div>
 
           <div className="flex items-center gap-2">
+            {showEnrichment && (
+              <button
+                onClick={handleEnrichProspects}
+                disabled={isEnriching || prospects.length - dismissedProspects.size === 0}
+                className="flex items-center space-x-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 disabled:bg-surface-highlight disabled:cursor-not-allowed text-purple-400 disabled:text-muted-foreground rounded-lg transition-colors text-sm font-medium border border-purple-500/40 disabled:border-border/60"
+              >
+                <Sparkles size={16} className={isEnriching ? 'animate-spin' : ''} />
+                <span>
+                  {isEnriching
+                    ? enrichmentProgress
+                      ? `Enriching ${enrichmentProgress.current}/${enrichmentProgress.total}...`
+                      : 'Enriching...'
+                    : `Enrich (${prospects.length - dismissedProspects.size})`
+                  }
+                </span>
+              </button>
+            )}
+
             <button
               onClick={handleApproveAll}
               disabled={prospects.length - dismissedProspects.size === 0}
