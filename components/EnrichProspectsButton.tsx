@@ -41,14 +41,15 @@ export default function EnrichProspectsButton({
     try {
       toastInfo(`Enriching ${prospectIds.length} prospect${prospectIds.length > 1 ? 's' : ''}...`);
 
-      const response = await fetch('/api/prospects/enrich-async', {
+      const response = await fetch('/api/prospects/enrich', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           prospectIds,
-          workspaceId
+          workspaceId,
+          autoEnrich: true
         })
       });
 
@@ -67,14 +68,26 @@ export default function EnrichProspectsButton({
       const data = await response.json();
 
       if (data.success) {
-        toastSuccess(
-          `✅ Enrichment started for ${data.total_prospects} prospect${data.total_prospects > 1 ? 's' : ''}! Updates will appear automatically.`
-        );
+        const enrichedCount = data.enriched_count || 0;
+        const queuedCount = data.queued_count || 0;
 
-        // Call callback immediately to clear selections
+        if (queuedCount > 0) {
+          toastSuccess(
+            `✅ Enriched ${enrichedCount} prospect(s)! ${queuedCount} more queued. Click "Enrich" again to continue.`
+          );
+        } else {
+          toastSuccess(
+            `✅ Successfully enriched ${enrichedCount} prospect(s)!`
+          );
+        }
+
+        // Call callback immediately to clear selections and refresh
         if (onEnrichmentComplete) {
           onEnrichmentComplete();
         }
+
+        // Reload page to show updated data
+        setTimeout(() => window.location.reload(), 1500);
       } else {
         toastError(data.error || 'Enrichment failed');
       }
