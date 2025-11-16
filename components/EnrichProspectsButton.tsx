@@ -68,20 +68,11 @@ export default function EnrichProspectsButton({
       const data = await response.json();
 
       if (data.success) {
-        const enrichedCount = data.enriched_count || 0;
-        const queuedCount = data.queued_count || 0;
+        // Use API-provided message if available, otherwise build default message
+        const message = data.message ||
+          `✅ Successfully enriched ${data.enriched_count || 0} prospect(s)!\n\nRefresh the page to see updated data.`;
 
-        if (queuedCount > 0) {
-          toastSuccess(
-            `✅ Enriched ${enrichedCount} prospect(s)!\n\n⚠️ ${queuedCount} more need enrichment.\n\nRefresh the page, select them, and click "Enrich" again.`,
-            8000
-          );
-        } else {
-          toastSuccess(
-            `✅ Successfully enriched ${enrichedCount} prospect(s)!\n\nRefresh the page to see updated data.`,
-            6000
-          );
-        }
+        toastSuccess(message, 8000);
 
         // Call callback to clear selections
         if (onEnrichmentComplete) {

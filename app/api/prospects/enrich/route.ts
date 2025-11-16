@@ -318,21 +318,25 @@ export async function POST(request: NextRequest) {
 
     console.log(`⏱️ Processing ${prospectsToProcess.length} prospect(s) synchronously...`);
 
-    // Call BrightData enrichment service
-    // Using MCP fallback for cost optimization (FREE 5K requests/month)
-    // Falls back to Direct API if MCP quota exceeded
-    // Concurrency = 1 to reduce processing time and stay under timeout
-    const enrichmentResults = await enrichWithBrightData(prospectsToProcess, 1, true);
+    // Trigger N8N enrichment workflow (async - handles long BrightData calls)
+    // N8N will call BrightData and update prospects when complete
+    const enrichmentResults = await triggerN8NEnrichment(prospectsToProcess, workspaceId);
 
     // Update prospects with enriched data
     let updatedCount = 0;
     let failedCount = 0;
+    let queuedCount = 0;
     const updates: any[] = [];
 
     for (const result of enrichmentResults) {
       if (result.verification_status === 'failed') {
         failedCount++;
         continue;
+      }
+
+      if (result.verification_status === 'queued') {
+        queuedCount++;
+        continue; // N8N will handle enrichment async
       }
 
       const prospect = prospectsToEnrich.find(p => p.linkedin_url === result.linkedin_url);
@@ -448,12 +452,22 @@ export async function POST(request: NextRequest) {
 
     const totalCost = needsEnrichment.length * 0.01; // $0.01 per prospect
 
+    // Build user-facing message
+    let message = '';
+    if (queuedCount > 0) {
+      message = `🔄 Enriching ${queuedCount} prospect(s) in background via N8N workflow.\n\nRefresh in 30-60 seconds to see updated data.`;
+    }
+    if (queuedProspects.length > 0) {
+      message += message ? '\n\n' : '';
+      message += `⚠️ ${queuedProspects.length} more prospect(s) need enrichment - click "Enrich" again to continue.`;
+    }
+
     const responseData = {
       success: true,
       enriched_count: updatedCount,
       failed_count: failedCount,
       skipped_count: prospectsToEnrich.length - needsEnrichment.length,
-      queued_count: queuedProspects.length,
+      queued_count: queuedCount + queuedProspects.length, // N8N queue + pagination queue
       total_cost: totalCost,
       cost_per_prospect: 0.01,
       enrichment_details: enrichmentResults.map(r => ({
@@ -463,9 +477,7 @@ export async function POST(request: NextRequest) {
           k !== 'linkedin_url' && k !== 'verification_status' && r[k as keyof typeof r]
         )
       })),
-      ...(queuedProspects.length > 0 && {
-        message: `⚠️ Processed ${updatedCount} prospect(s). ${queuedProspects.length} more need enrichment - click "Enrich" again to continue.`
-      })
+      ...(message && { message })
     };
 
     console.log('📤 Sending enrichment response:', JSON.stringify(responseData, null, 2));
@@ -481,6 +493,69 @@ export async function POST(request: NextRequest) {
       details: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
     }, { status: 500 });
+  }
+}
+
+/**
+ * Trigger N8N enrichment workflow for async prospect enrichment
+ *
+ * N8N handles long-running BrightData calls (35-40s per prospect)
+ * Returns immediate 'queued' status - actual enrichment happens async
+ */
+async function triggerN8NEnrichment(
+  prospects: any[],
+  workspaceId: string
+): Promise<BrightDataEnrichmentResult[]> {
+  try {
+    console.log(`📤 Triggering N8N enrichment for ${prospects.length} prospect(s)...`);
+
+    const prospectIds = prospects.map(p => p.id || p.prospect_id);
+
+    // N8N webhook endpoint
+    const n8nWebhookUrl = 'https://workflows.innovareai.com/webhook/prospect-enrichment';
+
+    const payload = {
+      prospect_ids: prospectIds,
+      workspace_id: workspaceId,
+      supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      supabase_service_key: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      brightdata_api_token: process.env.BRIGHTDATA_API_TOKEN || '61813293-6532-4e16-af76-9803cc043afa',
+      brightdata_zone: process.env.BRIGHTDATA_ZONE || 'residential'
+    };
+
+    console.log(`🔗 Calling N8N webhook: ${n8nWebhookUrl}`);
+    console.log(`📦 Payload:`, JSON.stringify({ ...payload, supabase_service_key: '[REDACTED]' }, null, 2));
+
+    const response = await fetch(n8nWebhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ N8N webhook error: ${response.status} - ${errorText}`);
+      throw new Error(`N8N webhook failed: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log(`✅ N8N enrichment triggered:`, result);
+
+    // Return queued status - actual enrichment happens async in N8N
+    return prospects.map(p => ({
+      linkedin_url: p.linkedin_url,
+      verification_status: 'queued' as const
+    }));
+
+  } catch (error) {
+    console.error('❌ N8N trigger error:', error);
+
+    // Return failed status for all prospects
+    return prospects.map(p => ({
+      linkedin_url: p.linkedin_url,
+      verification_status: 'failed' as const,
+      error: error instanceof Error ? error.message : String(error)
+    }));
   }
 }
 
