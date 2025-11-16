@@ -514,7 +514,9 @@ async function triggerN8NEnrichment(
     // N8N webhook endpoint
     const n8nWebhookUrl = 'https://workflows.innovareai.com/webhook/prospect-enrichment';
 
+    // Match N8N workflow expected format
     const payload = {
+      job_id: `enrich_${Date.now()}`, // N8N workflow expects job_id
       prospect_ids: prospectIds,
       workspace_id: workspaceId,
       supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -529,7 +531,8 @@ async function triggerN8NEnrichment(
     const response = await fetch(n8nWebhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(5000) // 5 second timeout for webhook trigger
     });
 
     if (!response.ok) {
