@@ -2036,6 +2036,10 @@ export default function DataCollectionHub({
         isProcessingQuickAdd={isAddingQuickProspect}
         onCsvUpload={handleCsvUpload}
         onQuickAdd={handleQuickAddProspect}
+        onSamSearch={() => {
+          // Switch to SAM chat tab
+          setActiveTab('search')
+        }}
         onPaste={async (text: string) => {
           setIsProcessingPaste(true)
           try {

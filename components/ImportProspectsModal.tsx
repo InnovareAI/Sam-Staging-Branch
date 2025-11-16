@@ -6,9 +6,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { Link as LinkIcon, FileText, Loader2, Upload, Plus } from 'lucide-react'
+import { Link as LinkIcon, FileText, Loader2, Upload, Plus, Sparkles } from 'lucide-react'
 
-export type ImportTab = 'url' | 'paste' | 'csv' | 'quick-add'
+export type ImportTab = 'url' | 'paste' | 'csv' | 'quick-add' | 'sam-search'
 
 interface ImportProspectsModalProps {
   open: boolean
@@ -18,6 +18,7 @@ interface ImportProspectsModalProps {
   onLinkedInUrl: (url: string) => Promise<void> | void
   onCsvUpload: (file: File) => Promise<void> | void
   onQuickAdd: (url: string) => Promise<void> | void
+  onSamSearch?: () => void
   isProcessingPaste?: boolean
   isProcessingUrl?: boolean
   isProcessingCsv?: boolean
@@ -32,6 +33,7 @@ export default function ImportProspectsModal({
   onLinkedInUrl,
   onCsvUpload,
   onQuickAdd,
+  onSamSearch,
   isProcessingPaste = false,
   isProcessingUrl = false,
   isProcessingCsv = false,
@@ -99,7 +101,11 @@ export default function ImportProspectsModal({
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as ImportTab)} className="mt-2">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="sam-search" className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              SAM Search
+            </TabsTrigger>
             <TabsTrigger value="url" className="flex items-center gap-2">
               <LinkIcon className="h-4 w-4" />
               LinkedIn URL
@@ -117,6 +123,39 @@ export default function ImportProspectsModal({
               Quick Add
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="sam-search" className="space-y-3 pt-4">
+            <div className="text-center py-8 space-y-4">
+              <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+                <Sparkles className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">AI-Powered Prospect Search</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Chat with SAM to find prospects using natural language.<br/>
+                  Just describe who you're looking for and SAM will search LinkedIn.
+                </p>
+              </div>
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 text-left">
+                <p className="text-sm font-medium text-blue-400 mb-2">Example searches:</p>
+                <ul className="text-xs text-gray-300 space-y-1">
+                  <li>• "Find CTOs at Series A startups in San Francisco"</li>
+                  <li>• "Marketing directors in the SaaS industry with 5+ years experience"</li>
+                  <li>• "Founders of AI companies in the Bay Area"</li>
+                </ul>
+              </div>
+              <Button
+                onClick={() => {
+                  onSamSearch?.()
+                  onClose()
+                }}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                Start SAM Search
+              </Button>
+            </div>
+          </TabsContent>
 
           <TabsContent value="url" className="space-y-3 pt-4">
             <label className="text-sm font-medium">LinkedIn search URL</label>
