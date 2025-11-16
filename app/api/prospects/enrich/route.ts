@@ -180,10 +180,12 @@ export async function POST(request: NextRequest) {
           // Try prospect_approval_data (for prospects in approval workflow)
           console.log('🔍 Checking prospect_approval_data table for IDs:', prospectIds);
 
+          // CRITICAL FIX: Check both 'id' and 'prospect_id' fields
+          // UI sends the database row ID, not the prospect_id
           const { data: approvalProspects, error: approvalError } = await supabase
             .from('prospect_approval_data')
             .select('*')
-            .in('prospect_id', prospectIds);
+            .or(`id.in.(${prospectIds.join(',')}),prospect_id.in.(${prospectIds.join(',')}`);
 
           if (approvalError) {
             console.error('❌ Error querying prospect_approval_data:', approvalError);
@@ -276,10 +278,10 @@ export async function POST(request: NextRequest) {
     console.log(`⏱️ Processing ${prospectsToProcess.length} prospect(s) synchronously...`);
 
     // Call BrightData enrichment service
-    // Note: MCP fallback disabled until BrightData MCP server is properly configured
-    // Using Direct API (linkedin_enrichment zone) which is verified working
+    // Using MCP fallback for cost optimization (FREE 5K requests/month)
+    // Falls back to Direct API if MCP quota exceeded
     // Concurrency = 1 to reduce processing time and stay under timeout
-    const enrichmentResults = await enrichWithBrightData(prospectsToProcess, 1, false);
+    const enrichmentResults = await enrichWithBrightData(prospectsToProcess, 1, true);
 
     // Update prospects with enriched data
     let updatedCount = 0;

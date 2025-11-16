@@ -912,9 +912,8 @@ export default function DataCollectionHub({
       }
     }
 
-    // Auto-forward to Campaign screen with approved prospects
-    const approvedProspects = pendingProspects.map(p => ({ ...p, approvalStatus: 'approved' as const }))
-    handleProceedToCampaignHub(approvedProspects)
+    // Show success message - prospects stay in database until user clicks "Send Approved to Campaign"
+    toastSuccess(`✅ Approved ${pendingProspects.length} prospect(s)\n\nClick "Send Approved to Campaign" when ready to create campaigns`)
   }
 
   const handleRejectAll = async () => {
@@ -1229,7 +1228,6 @@ export default function DataCollectionHub({
       dismissed.find(d => d.id === p.id) ? { ...p, approvalStatus: 'rejected' as const } : p
     ))
 
-    toastSuccess(`Approved ${nonDismissed.length} prospects, dismissed ${dismissed.length}`)
     setDismissedProspectIds(new Set())
 
     // Save all decisions to database
@@ -1276,9 +1274,8 @@ export default function DataCollectionHub({
       }
     }
 
-    // Auto-forward to Campaign screen with approved prospects
-    const approvedProspects = nonDismissed.map(p => ({ ...p, approvalStatus: 'approved' as const }))
-    handleProceedToCampaignHub(approvedProspects)
+    // Show success message - prospects stay in database until user clicks "Send Approved to Campaign"
+    toastSuccess(`✅ Approved ${nonDismissed.length} prospect(s), dismissed ${dismissed.length}\n\nClick "Send Approved to Campaign" when ready to create campaigns`)
   }
 
   // Proceed to Campaign Hub with approved prospects ONLY (disregard rejected and pending)
