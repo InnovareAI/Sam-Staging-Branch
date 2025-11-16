@@ -575,50 +575,52 @@ async function enrichSingleProspectWithMCP(linkedinUrl: string): Promise<BrightD
 }
 
 /**
- * Enrich a single prospect using Direct BrightData API (paid)
+ * Enrich a single prospect using BrightData MCP Server
  *
- * CRITICAL FIX: Call BrightData directly instead of internal API to avoid auth issues
+ * CRITICAL FIX: Use MCP server instead of REST API (REST API auth doesn't work)
+ * The MCP server is configured in .mcp.json with working token
  */
 async function enrichSingleProspectWithAPI(linkedinUrl: string): Promise<BrightDataEnrichmentResult> {
   try {
-    console.log(`🔍 Enriching directly via BrightData API: ${linkedinUrl}`);
+    console.log(`🔍 Enriching via BrightData MCP Server: ${linkedinUrl}`);
 
     // Clean LinkedIn URL - remove query parameters
     const cleanUrl = linkedinUrl.split('?')[0];
 
-    // BrightData API credentials
-    const brightdataApiToken = process.env.BRIGHTDATA_API_TOKEN || '61813293-6532-4e16-af76-9803cc043afa';
-    const brightdataZone = process.env.BRIGHTDATA_ZONE || 'linkedin_enrichment';
-
-    // Call BrightData Web Unlocker API directly
-    const response = await fetch('https://api.brightdata.com/request', {
+    // Call BrightData MCP via /api/mcp endpoint (NOT direct REST API)
+    const mcpResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/mcp`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${brightdataApiToken}`
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        zone: brightdataZone,
-        url: cleanUrl,
-        format: 'raw'
+        toolName: 'brightdata_scrape_as_markdown',
+        arguments: { url: cleanUrl },
+        server: 'brightdata'
       })
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ BrightData API error: ${response.status} - ${errorText}`);
+    if (!mcpResponse.ok) {
+      console.error(`❌ BrightData MCP call failed: ${mcpResponse.status}`);
       return {
         linkedin_url: linkedinUrl,
         verification_status: 'failed' as const,
-        error: `BrightData API error: ${response.status}`
+        error: 'BrightData MCP service unavailable. MCP server may not be running.'
       };
     }
 
-    const html = await response.text();
-    console.log(`📄 Got HTML response: ${html.length} bytes`);
+    const mcpData = await mcpResponse.json();
 
-    // Convert HTML to markdown for parsing
-    const markdown = convertLinkedInHtmlToMarkdown(html);
+    if (!mcpData.success || mcpData.isError) {
+      console.error(`❌ BrightData MCP returned error:`, mcpData.error);
+      return {
+        linkedin_url: linkedinUrl,
+        verification_status: 'failed' as const,
+        error: mcpData.error || 'BrightData scraping failed'
+      };
+    }
+
+    const scrapedData = mcpData.result || {};
+    const markdown = scrapedData.markdown || '';
+    console.log(`📄 Got markdown response: ${markdown.length} chars`);
 
     if (!markdown) {
       return {
