@@ -2068,6 +2068,7 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         } else {
           // Both required fields present, proceed with search
           // Pass user context directly via internal auth header (avoids cookie forwarding issues)
+          console.log('🔍 Triggering LinkedIn search with criteria:', searchCriteria);
           const searchResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/search/simple`, {
           method: 'POST',
           headers: {
@@ -2082,9 +2083,19 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
           })
         })
 
-        const searchData = await searchResponse.json()
+        console.log('📡 Search API response status:', searchResponse.status);
 
-        if (searchData.success) {
+        if (!searchResponse.ok) {
+          const errorText = await searchResponse.text();
+          console.error('❌ Search API failed:', errorText);
+          aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
+            `\n\n❌ **Search Failed:** HTTP ${searchResponse.status}\n\n${errorText.substring(0, 200)}`
+          ).trim();
+        } else {
+          const searchData = await searchResponse.json()
+          console.log('📊 Search API response:', searchData);
+
+          if (searchData.success) {
           const prospectCount = searchData.count || 0
           const targetCount = searchCriteria.targetCount || 100
 
@@ -2115,9 +2126,10 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
           // Remove contradictory "Head to Data Approval" text when search fails
           aiResponse = aiResponse.replace(/Head to.*Data Approval.*to (watch|see).*(\.|!)/gi, '').trim()
           aiResponse = aiResponse.replace(/Campaign:\s*\d+-[A-Z]+-[^\n]+\n*/gi, '').trim()
-        }
+          }
 
           console.log('✅ Search trigger executed, response updated')
+        }
         }
       } catch (error) {
         aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
