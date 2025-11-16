@@ -139,7 +139,13 @@ export default function Page() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [showStarterScreen, setShowStarterScreen] = useState(true);
   const [inputMessage, setInputMessage] = useState('');
-  const [activeMenuItem, setActiveMenuItem] = useState('chat');
+  const [activeMenuItem, setActiveMenuItem] = useState(() => {
+    // Remember last tab across page refreshes
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('activeMenuItem') || 'database'
+    }
+    return 'database'
+  });
   const [messages, setMessages] = useState<any[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -252,6 +258,13 @@ export default function Page() {
       localStorage.removeItem('selectedWorkspaceId');
     }
   }, [selectedWorkspaceId]);
+
+  // Persist activeMenuItem to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('activeMenuItem', activeMenuItem);
+    }
+  }, [activeMenuItem]);
 
   // Auto-select first workspace if none selected and workspaces loaded
   useEffect(() => {
