@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
           const { data: approvalProspects, error: approvalError } = await supabase
             .from('prospect_approval_data')
             .select('*')
-            .or(`id.in.(${prospectIds.join(',')}),prospect_id.in.(${prospectIds.join(',')}`);
+            .or(`id.in.(${prospectIds.join(',')}),prospect_id.in.(${prospectIds.join(',')})`);
 
           if (approvalError) {
             console.error('❌ Error querying prospect_approval_data:', approvalError);
