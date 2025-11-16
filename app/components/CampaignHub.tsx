@@ -393,6 +393,16 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'draft': return 'Saved as Draft';
+      case 'active': return 'Active';
+      case 'paused': return 'Paused';
+      case 'completed': return 'Completed';
+      default: return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+  };
+
   if (loading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -438,7 +448,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                 </CardTitle>
                 <Badge className={`${getStatusColor(c.status)}`}>
                   {getStatusIcon(c.status)}
-                  {c.status}
+                  {getStatusLabel(c.status)}
                 </Badge>
               </div>
               <div className="flex gap-2 ml-4 relative z-10">
