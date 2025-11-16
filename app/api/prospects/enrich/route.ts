@@ -306,21 +306,106 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // WORKAROUND FOR NETLIFY TIMEOUT:
-    // Only process first prospect to stay under timeout limit
-    // User needs to run enrichment multiple times for multiple prospects
-    const prospectsToProcess = needsEnrichment.slice(0, MAX_SYNC_PROSPECTS);
-    const queuedProspects = needsEnrichment.slice(MAX_SYNC_PROSPECTS);
+    // N8N ASYNC ENRICHMENT:
+    // Create enrichment job and trigger N8N workflow to process all prospects async
+    console.log(`🔄 Creating enrichment job for ${needsEnrichment.length} prospect(s)...`);
 
-    if (queuedProspects.length > 0) {
-      console.log(`⚠️ Queueing ${queuedProspects.length} prospects (Netlify timeout limit)`);
+    // Extract prospect IDs for N8N workflow
+    const prospectIds = needsEnrichment.map(p => p.prospect_id || p.id);
+
+    // Create enrichment job
+    const { data: job, error: jobError } = await supabase
+      .from('enrichment_jobs')
+      .insert({
+        workspace_id: workspaceId,
+        user_id: user.id,
+        prospect_ids: prospectIds,
+        total_prospects: prospectIds.length,
+        status: 'pending'
+      })
+      .select('id')
+      .single();
+
+    if (jobError || !job) {
+      console.error('❌ Failed to create enrichment job:', jobError);
+      return NextResponse.json({
+        success: false,
+        error: `Failed to create enrichment job: ${jobError?.message}`
+      }, { status: 500 });
     }
 
-    console.log(`⏱️ Processing ${prospectsToProcess.length} prospect(s) synchronously...`);
+    console.log(`✅ Created enrichment job: ${job.id}`);
 
-    // TEMPORARY: Use direct BrightData API instead of N8N (N8N workflow needs fixing)
-    // TODO: Switch back to N8N once "Respond to Webhook" node is connected properly
-    const enrichmentResults = await enrichWithBrightData(prospectsToProcess, 1, true);
+    // Trigger N8N webhook
+    const n8nWebhookUrl = 'https://workflows.innovareai.com/webhook/prospect-enrichment';
+
+    const payload = {
+      job_id: job.id,
+      workspace_id: workspaceId,
+      prospect_ids: prospectIds,
+      supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      supabase_service_key: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      brightdata_api_token: 'hl_8aca120e:vokteG-4zibcy-juwrux',
+      brightdata_zone: 'residential'
+    };
+
+    console.log(`📤 Triggering N8N enrichment webhook for job ${job.id}...`);
+
+    try {
+      const response = await fetch(n8nWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000) // 10 second timeout for webhook trigger
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ N8N webhook error: ${response.status} - ${errorText}`);
+
+        // Update job status to failed
+        await supabase
+          .from('enrichment_jobs')
+          .update({
+            status: 'failed',
+            error_message: `N8N webhook failed: ${response.status}. ${errorText}`
+          })
+          .eq('id', job.id);
+
+        return NextResponse.json({
+          success: false,
+          error: `N8N webhook failed: ${response.status}. ${errorText}`
+        }, { status: 500 });
+      }
+
+      const result = await response.json();
+      console.log(`✅ N8N enrichment queued for job ${job.id}:`, result);
+
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`❌ Error triggering N8N webhook:`, error);
+
+      // Update job status to failed
+      await supabase
+        .from('enrichment_jobs')
+        .update({
+          status: 'failed',
+          error_message: `Failed to trigger N8N: ${errorMsg}`
+        })
+        .eq('id', job.id);
+
+      return NextResponse.json({
+        success: false,
+        error: `Failed to trigger N8N: ${errorMsg}`
+      }, { status: 500 });
+    }
+
+    // Return queued status immediately - N8N will process prospects async
+    const enrichmentResults: BrightDataEnrichmentResult[] = needsEnrichment.map(p => ({
+      linkedin_url: p.linkedin_url,
+      verification_status: 'queued' as const,
+      message: `Enrichment queued in job ${job.id}`
+    }));
 
     // Update prospects with enriched data
     let updatedCount = 0;
@@ -457,17 +542,14 @@ export async function POST(request: NextRequest) {
     if (queuedCount > 0) {
       message = `🔄 Enriching ${queuedCount} prospect(s) in background via N8N workflow.\n\nRefresh in 30-60 seconds to see updated data.`;
     }
-    if (queuedProspects.length > 0) {
-      message += message ? '\n\n' : '';
-      message += `⚠️ ${queuedProspects.length} more prospect(s) need enrichment - click "Enrich" again to continue.`;
-    }
 
     const responseData = {
       success: true,
       enriched_count: updatedCount,
       failed_count: failedCount,
       skipped_count: prospectsToEnrich.length - needsEnrichment.length,
-      queued_count: queuedCount + queuedProspects.length, // N8N queue + pagination queue
+      queued_count: queuedCount,
+      status: 'queued' as const, // Add status field for UI
       total_cost: totalCost,
       cost_per_prospect: 0.01,
       enrichment_details: enrichmentResults.map(r => ({
@@ -589,12 +671,17 @@ async function enrichSingleProspectWithAPI(linkedinUrl: string): Promise<BrightD
     // Clean LinkedIn URL - remove query parameters
     const cleanUrl = linkedinUrl.split('?')[0];
 
-    // N8N enrichment webhook endpoint
-    const n8nWebhookUrl = 'https://workflows.innovareai.com/webhook/prospect-enrichment-single';
+    // N8N enrichment webhook endpoint (uses enrichment_jobs table)
+    const n8nWebhookUrl = 'https://workflows.innovareai.com/webhook/prospect-enrichment';
 
     const payload = {
-      linkedin_url: cleanUrl,
-      timestamp: new Date().toISOString()
+      job_id: `temp_${Date.now()}`, // Temporary job ID for single prospect enrichment
+      workspace_id: '', // Will be set by caller
+      prospect_ids: [cleanUrl], // Using LinkedIn URL as prospect identifier
+      supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      supabase_service_key: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      brightdata_api_token: 'hl_8aca120e:vokteG-4zibcy-juwrux',
+      brightdata_zone: 'residential'
     };
 
     console.log(`📤 Triggering N8N enrichment webhook...`);
