@@ -2486,8 +2486,8 @@ Would you like me to adjust these or create more variations?`
       // Trigger refresh of campaign list
       window.dispatchEvent(new CustomEvent('refreshCampaigns'));
 
-      // Switch to Inactive tab to show the approved campaign
-      setCampaignFilter('inactive');
+      // Switch to Paused tab to show the approved campaign
+      setCampaignFilter('paused');
 
     } catch (error: any) {
       console.error('Campaign creation error:', error);
@@ -5305,7 +5305,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   }, [autoOpenApprovals]);
 
   // Campaign filter state
-  const [campaignFilter, setCampaignFilter] = useState<'active' | 'inactive' | 'archived' | 'completed' | 'pending' | 'draft'>('active');
+  const [campaignFilter, setCampaignFilter] = useState<'active' | 'paused' | 'archived' | 'completed' | 'pending' | 'draft'>('active');
 
   // REACT QUERY: Fetch pending campaigns with caching - LAZY LOAD when tab is active
   const { data: pendingCampaignsFromDB = [], isLoading: loadingPendingFromDB } = useQuery({
@@ -6358,7 +6358,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   // Filter campaigns based on selected tab
   const filteredCampaigns = allCampaigns.filter((c: any) => {
     if (campaignFilter === 'active') return c.status === 'active';
-    if (campaignFilter === 'inactive') return c.status === 'paused' || c.status === 'inactive' || c.status === 'scheduled'; // Paused campaigns moved to inactive
+    if (campaignFilter === 'paused') return c.status === 'paused' || c.status === 'inactive' || c.status === 'scheduled'; // Paused/inactive/scheduled campaigns
     if (campaignFilter === 'completed') return c.status === 'completed' || c.status === 'archived'; // Campaigns that finished their sequence
     return true;
   });
@@ -6374,7 +6374,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
   // Calculate counts for each tab
   const activeCampaignsCount = allCampaigns.filter((c: any) => c.status === 'active').length;
-  const inactiveCampaignsCount = allCampaigns.filter((c: any) => c.status === 'paused' || c.status === 'inactive' || c.status === 'scheduled').length;
+  const pausedCampaignsCount = allCampaigns.filter((c: any) => c.status === 'paused' || c.status === 'inactive' || c.status === 'scheduled').length;
   const completedCampaignsCount = allCampaigns.filter((c: any) => c.status === 'completed' || c.status === 'archived').length;
 
   // Handle campaign action menu (open settings)
@@ -6851,7 +6851,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   setShowBuilder(false);
                   setSelectedCampaignProspects(null); // Clear selected campaign prospects
                   setSelectedDraft(null); // Clear selected draft
-                  setCampaignFilter('inactive'); // Switch to Inactive tab to show approved campaign
+                  setCampaignFilter('paused'); // Switch to Paused tab to show approved campaign
                   onCampaignCreated?.();
                 }}
                 initialProspects={selectedCampaignProspects || initialProspects}
@@ -6892,17 +6892,17 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 )}
               </button>
               <button
-                onClick={() => setCampaignFilter('inactive')}
+                onClick={() => setCampaignFilter('paused')}
                 className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
-                  campaignFilter === 'inactive'
+                  campaignFilter === 'paused'
                     ? 'text-white border-b-2 border-purple-500'
                     : 'text-gray-400 hover:text-white'
                 }`}
               >
-                Inactive
-                {inactiveCampaignsCount > 0 && (
+                Paused
+                {pausedCampaignsCount > 0 && (
                   <span className="px-2 py-0.5 bg-gray-600 text-white text-xs rounded-full">
-                    {inactiveCampaignsCount}
+                    {pausedCampaignsCount}
                   </span>
                 )}
               </button>
