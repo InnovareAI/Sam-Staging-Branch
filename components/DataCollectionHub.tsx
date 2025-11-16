@@ -1621,7 +1621,7 @@ export default function DataCollectionHub({
           <div className="flex-1">
             <h4 className="text-sm font-semibold text-blue-400 mb-1">How to Use Prospect Database</h4>
             <ol className="text-xs text-gray-300 space-y-1 list-decimal list-inside">
-              <li><strong>Import</strong> prospects via CSV, LinkedIn URL, or Sales Navigator</li>
+              <li><strong>Import</strong> prospects via SAM Search, CSV, LinkedIn URL, or Sales Navigator</li>
               <li><strong>Enrich</strong> (optional): Select prospects → Click "Enrich prospect" → Wait 30-40s → Refresh page</li>
               <li><strong>Review</strong>: Check quality scores and contact info</li>
               <li><strong>Approve</strong>: Click green checkmark ✓ on prospects you want to use</li>
