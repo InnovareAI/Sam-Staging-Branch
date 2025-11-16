@@ -311,7 +311,7 @@ export async function POST(request: NextRequest) {
     console.log(`🔄 Creating enrichment job for ${needsEnrichment.length} prospect(s)...`);
 
     // Extract prospect IDs for N8N workflow
-    const prospectIds = needsEnrichment.map(p => p.prospect_id || p.id);
+    const enrichmentProspectIds = needsEnrichment.map(p => p.prospect_id || p.id);
 
     // Create enrichment job
     const { data: job, error: jobError } = await supabase
@@ -319,8 +319,8 @@ export async function POST(request: NextRequest) {
       .insert({
         workspace_id: workspaceId,
         user_id: user.id,
-        prospect_ids: prospectIds,
-        total_prospects: prospectIds.length,
+        prospect_ids: enrichmentProspectIds,
+        total_prospects: enrichmentProspectIds.length,
         status: 'pending'
       })
       .select('id')
@@ -342,7 +342,7 @@ export async function POST(request: NextRequest) {
     const payload = {
       job_id: job.id,
       workspace_id: workspaceId,
-      prospect_ids: prospectIds,
+      prospect_ids: enrichmentProspectIds,
       supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
       supabase_service_key: process.env.SUPABASE_SERVICE_ROLE_KEY!,
       brightdata_api_token: 'hl_8aca120e:vokteG-4zibcy-juwrux',
