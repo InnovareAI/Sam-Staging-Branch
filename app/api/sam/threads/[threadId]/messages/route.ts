@@ -1263,9 +1263,7 @@ You: "Starting the search now!
 
 #trigger-search:{"title":"CEO","location":"Florida","keywords":"tech startups","connectionDegree":"1st","targetCount":10,"campaignName":"FL Tech CEOs"}
 
-Campaign: 20251014-IAI-FL Tech CEOs
-
-Head to **Data Approval** to see your 10 prospects!"
+Head to **Data Approval** to see your prospects!"
 
 Example 2 - Broad Request (General Web Search - No Connection Degree):
 User: "Find me some VPs of Sales"
@@ -1287,8 +1285,6 @@ You: "Starting your search now!
 
 #trigger-search:{"title":"VP Sales","location":"New York","keywords":"SaaS","targetCount":50,"campaignName":"NYC SaaS VPs Q1"}
 
-Campaign: 20251014-IAI-NYC SaaS VPs Q1
-
 Head to **Data Approval** to see the results!"
 
 Example 2 - Partially Specific Request:
@@ -1302,8 +1298,6 @@ User: "2nd degree connections, call it SF Tech CTOs"
 You: "Perfect! Starting the search.
 
 #trigger-search:{"title":"CTO","location":"San Francisco","keywords":"tech startups","connectionDegree":"2nd","targetCount":50,"campaignName":"SF Tech CTOs"}
-
-Campaign: 20251014-IAI-SF Tech CTOs
 
 Check **Data Approval** for results!"
 
