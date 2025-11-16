@@ -1612,6 +1612,26 @@ export default function DataCollectionHub({
         </div>
       </div>
 
+      {/* Workflow Guide Banner */}
+      <div className="border-b border-gray-700 px-6 py-4 bg-blue-500/10">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+            <span className="text-blue-400 text-lg">ℹ️</span>
+          </div>
+          <div className="flex-1">
+            <h4 className="text-sm font-semibold text-blue-400 mb-1">How to Use Prospect Database</h4>
+            <ol className="text-xs text-gray-300 space-y-1 list-decimal list-inside">
+              <li><strong>Import</strong> prospects via CSV, LinkedIn URL, or Sales Navigator</li>
+              <li><strong>Enrich</strong> (optional): Select prospects → Click "Enrich prospect" → Wait 30-40s → Refresh page</li>
+              <li><strong>Review</strong>: Check quality scores and contact info</li>
+              <li><strong>Approve</strong>: Click green checkmark ✓ on prospects you want to use</li>
+              <li><strong>Send to Campaign</strong>: Click "Send Approved to Campaign" button to create campaigns</li>
+            </ol>
+            <p className="text-xs text-yellow-400 mt-2">⚠️ Enrichment adds emails/company data but takes 30-40 seconds per prospect. Refresh the page after enrichment completes.</p>
+          </div>
+        </div>
+      </div>
+
       {/* Campaign Selector with Latest Search Toggle */}
       {(() => {
         // Group prospects by campaign name to show unique campaigns

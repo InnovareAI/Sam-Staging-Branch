@@ -73,21 +73,22 @@ export default function EnrichProspectsButton({
 
         if (queuedCount > 0) {
           toastSuccess(
-            `✅ Enriched ${enrichedCount} prospect(s)! ${queuedCount} more queued. Click "Enrich" again to continue.`
+            `✅ Enriched ${enrichedCount} prospect(s)!\n\n⚠️ ${queuedCount} more need enrichment.\n\nRefresh the page, select them, and click "Enrich" again.`,
+            8000
           );
         } else {
           toastSuccess(
-            `✅ Successfully enriched ${enrichedCount} prospect(s)!`
+            `✅ Successfully enriched ${enrichedCount} prospect(s)!\n\nRefresh the page to see updated data.`,
+            6000
           );
         }
 
-        // Call callback immediately to clear selections and refresh
+        // Call callback to clear selections
         if (onEnrichmentComplete) {
           onEnrichmentComplete();
         }
 
-        // Reload page to show updated data
-        setTimeout(() => window.location.reload(), 1500);
+        // DO NOT auto-reload - let user control when to refresh
       } else {
         toastError(data.error || 'Enrichment failed');
       }
