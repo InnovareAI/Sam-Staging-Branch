@@ -256,23 +256,25 @@ export async function POST(request: NextRequest) {
     const needsEnrichment = prospectsToEnrich.filter(p => {
       if (!autoEnrich) return true; // Enrich all if not auto
 
-      const missingEmail = !p.email || p.email.trim() === '';
-      const missingPhone = !p.phone || p.phone.trim() === '';
+      // Safe string checks - handle null/undefined
+      const missingEmail = !p.email || (typeof p.email === 'string' && p.email.trim() === '');
+      const missingPhone = !p.phone || (typeof p.phone === 'string' && p.phone.trim() === '');
       const missingCompany = !p.company_name || p.company_name === 'unavailable';
       const missingIndustry = !p.industry || p.industry === 'unavailable';
       const missingLinkedIn = !p.linkedin_url;
 
       const needsEnrich = missingLinkedIn || missingCompany || missingIndustry || missingEmail || missingPhone;
 
-      if (needsEnrich) {
-        console.log(`🔍 Prospect "${p.first_name} ${p.last_name}" needs enrichment:`, {
-          missingEmail,
-          missingPhone,
-          missingCompany,
-          missingIndustry,
-          missingLinkedIn
-        });
-      }
+      console.log(`🔍 Prospect "${p.first_name} ${p.last_name}" enrichment check:`, {
+        email: p.email,
+        phone: p.phone,
+        missingEmail,
+        missingPhone,
+        missingCompany,
+        missingIndustry,
+        missingLinkedIn,
+        needsEnrich
+      });
 
       return needsEnrich;
     });
