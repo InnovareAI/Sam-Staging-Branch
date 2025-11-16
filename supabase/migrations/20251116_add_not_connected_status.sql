@@ -1,0 +1,27 @@
+-- Add 'not_connected' status to campaign_prospects
+-- This status is used when a LinkedIn connection request is not accepted after 21 days
+
+-- Drop the old constraint
+ALTER TABLE campaign_prospects DROP CONSTRAINT IF EXISTS campaign_prospects_status_check;
+
+-- Add updated constraint with additional statuses
+ALTER TABLE campaign_prospects ADD CONSTRAINT campaign_prospects_status_check
+  CHECK (status = ANY (ARRAY[
+    'pending'::text,
+    'approved'::text,
+    'ready_to_message'::text,
+    'queued_in_n8n'::text,
+    'contacted'::text,
+    'connection_requested'::text,
+    'not_connected'::text,        -- NEW: CR not accepted after 21 days
+    'connected'::text,
+    'messaging'::text,
+    'replied'::text,
+    'not_interested'::text,
+    'failed'::text,
+    'error'::text
+  ]));
+
+-- Add comment
+COMMENT ON CONSTRAINT campaign_prospects_status_check ON campaign_prospects IS
+  'Valid prospect statuses including not_connected for LinkedIn CRs not accepted within 21 days';
