@@ -162,7 +162,14 @@ export async function POST(req: NextRequest) {
         company_name: p.company_name,
         title: p.title
       })),
-      messages: {
+      messages: campaignType === 'messenger' ? {
+        // Messenger campaigns: array of messages to send in sequence
+        message_sequence: [
+          campaign.message_templates?.connection_request || '',
+          ...(campaign.message_templates?.follow_up_messages || [])
+        ].filter(msg => msg && msg.trim() !== '')
+      } : {
+        // Connector campaigns: connection request only
         connection_request: campaign.connection_message || campaign.message_templates?.connection_request || ''
       },
       timing: {
