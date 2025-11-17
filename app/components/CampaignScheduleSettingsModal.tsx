@@ -58,9 +58,9 @@ const COUNTRIES = [
 export default function CampaignScheduleSettingsModal({ isOpen, onClose, campaignId, currentSettings }: Props) {
   const [settings, setSettings] = useState<CampaignScheduleSettings>({
     timezone: 'America/New_York',
-    working_hours_start: 7,  // 7 AM
-    working_hours_end: 18,    // 6 PM
-    skip_weekends: true,
+    working_hours_start: 9,   // 9 AM (matches backend default)
+    working_hours_end: 17,     // 5 PM (matches backend default)
+    skip_weekends: true,       // Monday-Friday only (matches backend default)
     skip_holidays: true,
     country_code: 'US',
     ...currentSettings
@@ -184,20 +184,32 @@ export default function CampaignScheduleSettingsModal({ isOpen, onClose, campaig
           </div>
 
           {/* Skip Weekends */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Skip Weekends
-              </Label>
-              <p className="text-xs text-gray-400">
-                Don't send messages on Saturday and Sunday
-              </p>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Skip Weekends
+                </Label>
+                <p className="text-xs text-gray-400">
+                  Don't send messages on Saturday and Sunday
+                </p>
+              </div>
+              <Switch
+                checked={settings.skip_weekends}
+                onCheckedChange={(checked) => setSettings({ ...settings, skip_weekends: checked })}
+              />
             </div>
-            <Switch
-              checked={settings.skip_weekends}
-              onCheckedChange={(checked) => setSettings({ ...settings, skip_weekends: checked })}
-            />
+
+            {/* Warning when skip_weekends is disabled */}
+            {!settings.skip_weekends && (
+              <div className="flex items-start gap-2 p-3 bg-red-900/20 border border-red-500/50 rounded">
+                <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-red-200">
+                  <strong>⚠️ Warning:</strong> Sending messages on weekends may appear unnatural and could flag your LinkedIn account. Only change this if you are 100% confident in what you are doing. Use at your own risk.
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Skip Holidays */}
@@ -217,6 +229,16 @@ export default function CampaignScheduleSettingsModal({ isOpen, onClose, campaig
                 onCheckedChange={(checked) => setSettings({ ...settings, skip_holidays: checked })}
               />
             </div>
+
+            {/* Warning when skip_holidays is disabled */}
+            {!settings.skip_holidays && (
+              <div className="flex items-start gap-2 p-3 bg-red-900/20 border border-red-500/50 rounded">
+                <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-red-200">
+                  <strong>⚠️ Warning:</strong> Sending messages on holidays may appear unnatural and could flag your LinkedIn account. Only change this if you are 100% confident in what you are doing. Use at your own risk.
+                </div>
+              </div>
+            )}
 
             {settings.skip_holidays && (
               <div className="space-y-2 ml-6">
