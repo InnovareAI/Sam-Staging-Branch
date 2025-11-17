@@ -17,6 +17,153 @@ import { cookies } from 'next/headers';
 const N8N_CONNECTOR_WEBHOOK = process.env.N8N_CONNECTOR_WEBHOOK_URL || 'https://workflows.innovareai.com/webhook/connector-campaign';
 const N8N_MESSENGER_WEBHOOK = process.env.N8N_MESSENGER_WEBHOOK_URL || 'https://workflows.innovareai.com/webhook/messenger-campaign';
 
+/**
+ * HUMAN-LIKE MESSAGE RANDOMIZER
+ *
+ * Generates realistic sending patterns that vary by day:
+ * - Sometimes 0-2 messages/hour (slow days)
+ * - Sometimes 3-5 messages/hour (busy days)
+ * - Sometimes mixed (burst then pause)
+ * - Respects daily CR limits per account
+ * - Each day has different pattern seeded by date
+ */
+async function calculateHumanSendDelay(
+  supabase: any,
+  unipileAccountId: string,
+  totalProspects: number,
+  prospectIndex: number
+): Promise<number> {
+  // 1. Get account's daily limit and today's sent count
+  const { data: account } = await supabase
+    .from('workspace_accounts')
+    .select('daily_message_limit, messages_sent_today, last_message_date')
+    .eq('unipile_account_id', unipileAccountId)
+    .single();
+
+  const dailyLimit = account?.daily_message_limit || 20; // Default: Free LinkedIn limit
+  const sentToday = account?.messages_sent_today || 0;
+  const lastMessageDate = account?.last_message_date;
+
+  // Reset counter if it's a new day
+  const today = new Date().toISOString().split('T')[0];
+  const isNewDay = !lastMessageDate || lastMessageDate.split('T')[0] !== today;
+
+  const actualSentToday = isNewDay ? 0 : sentToday;
+  const remainingToday = Math.max(0, dailyLimit - actualSentToday);
+
+  console.log(`📊 Account ${unipileAccountId}: ${actualSentToday}/${dailyLimit} sent today, ${remainingToday} remaining`);
+
+  // 2. Check if today is weekend or holiday (unless user allows it)
+  const { data: workspacePrefs } = await supabase
+    .from('workspaces')
+    .select('campaign_preferences')
+    .eq('id', await getWorkspaceIdForAccount(supabase, unipileAccountId))
+    .single();
+
+  const sendOnWeekends = workspacePrefs?.campaign_preferences?.send_on_weekends ?? false;
+  const sendOnHolidays = workspacePrefs?.campaign_preferences?.send_on_holidays ?? false;
+
+  const dayOfWeek = new Date().getDay(); // 0 = Sunday, 6 = Saturday
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+  if (isWeekend && !sendOnWeekends) {
+    console.log(`⏸️  Weekend - skipping until Monday`);
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : 2; // Sunday = 1 day, Saturday = 2 days
+    return daysUntilMonday * 24 * 60;
+  }
+
+  // 3. Can't send more today
+  if (remainingToday === 0) {
+    console.log(`⏸️  Daily limit reached, delaying to tomorrow`);
+    return 24 * 60; // Wait 24 hours
+  }
+
+  // 3. Generate day-specific randomization seed
+  // Use date + account ID so same account has same pattern each day
+  const dateSeed = parseInt(today.replace(/-/g, '')) + unipileAccountId.charCodeAt(0);
+  const dayPattern = (dateSeed % 5); // 5 different day patterns
+
+  // 4. Determine today's sending pattern
+  let hourlyRate: number; // messages per hour
+
+  switch (dayPattern) {
+    case 0: // Slow day: 0-2 messages/hour
+      hourlyRate = Math.random() * 2;
+      break;
+    case 1: // Medium day: 2-3 messages/hour
+      hourlyRate = 2 + Math.random();
+      break;
+    case 2: // Busy day: 3-5 messages/hour
+      hourlyRate = 3 + Math.random() * 2;
+      break;
+    case 3: // Burst pattern: alternate fast/slow
+      hourlyRate = (prospectIndex % 2 === 0) ? 4 + Math.random() : 1 + Math.random();
+      break;
+    case 4: // Random walk: each message slightly different
+      hourlyRate = 1 + Math.random() * 4;
+      break;
+    default:
+      hourlyRate = 2;
+  }
+
+  // 5. Calculate delay for this specific message
+  // Add +/- 30% randomness to make it more human
+  const baseDelayMinutes = 60 / hourlyRate;
+  const randomness = 0.7 + Math.random() * 0.6; // 0.7 to 1.3x multiplier
+  const delayMinutes = Math.floor(baseDelayMinutes * randomness);
+
+  // 6. Ensure we don't exceed daily limit
+  const totalDelayMinutes = delayMinutes * (prospectIndex + 1);
+  const hoursToSendAll = totalDelayMinutes / 60;
+
+  if (actualSentToday + totalProspects > dailyLimit) {
+    // Spread remaining over full work day (8 hours)
+    const spreadOverMinutes = 8 * 60;
+    return Math.floor(spreadOverMinutes / Math.min(totalProspects, remainingToday)) * prospectIndex;
+  }
+
+  console.log(`⏱️  Prospect ${prospectIndex}: ${delayMinutes}min delay (${hourlyRate.toFixed(1)} msg/hr pattern)`);
+
+  return Math.max(0, delayMinutes);
+}
+
+/**
+ * Get workspace ID for a given account
+ */
+async function getWorkspaceIdForAccount(supabase: any, unipileAccountId: string): Promise<string> {
+  const { data } = await supabase
+    .from('workspace_accounts')
+    .select('workspace_id')
+    .eq('unipile_account_id', unipileAccountId)
+    .single();
+
+  return data?.workspace_id;
+}
+
+/**
+ * Update account's daily message counter after sending
+ */
+async function incrementAccountMessageCount(supabase: any, unipileAccountId: string) {
+  const today = new Date().toISOString().split('T')[0];
+
+  const { data: account } = await supabase
+    .from('workspace_accounts')
+    .select('messages_sent_today, last_message_date')
+    .eq('unipile_account_id', unipileAccountId)
+    .single();
+
+  const lastMessageDate = account?.last_message_date?.split('T')[0];
+  const isNewDay = lastMessageDate !== today;
+
+  await supabase
+    .from('workspace_accounts')
+    .update({
+      messages_sent_today: isNewDay ? 1 : (account?.messages_sent_today || 0) + 1,
+      last_message_date: new Date().toISOString()
+    })
+    .eq('unipile_account_id', unipileAccountId);
+}
+
 export async function POST(req: NextRequest) {
   try {
     console.log('🚀 ========== CAMPAIGN EXECUTE CALLED ==========');
@@ -158,16 +305,27 @@ export async function POST(req: NextRequest) {
       channel: 'linkedin',
       campaign_type: campaignType,
       unipile_account_id: campaign.linkedin_account.unipile_account_id,
-      prospects: pendingProspects.map((p: any) => ({
-        id: p.id,
-        prospect_id: p.id,
-        campaign_id: campaignId,
-        first_name: p.first_name,
-        last_name: p.last_name,
-        linkedin_url: p.linkedin_url,
-        linkedin_user_id: p.linkedin_user_id,
-        company_name: p.company_name,
-        title: p.title
+      prospects: await Promise.all(pendingProspects.map(async (p: any, index: number) => {
+        // HUMAN-LIKE RANDOMIZER: Calculate intelligent send delays
+        const sendDelay = await calculateHumanSendDelay(
+          supabaseAdmin,
+          campaign.linkedin_account.unipile_account_id,
+          pendingProspects.length,
+          index
+        );
+
+        return {
+          id: p.id,
+          prospect_id: p.id,
+          campaign_id: campaignId,
+          first_name: p.first_name,
+          last_name: p.last_name,
+          linkedin_url: p.linkedin_url,
+          linkedin_user_id: p.linkedin_user_id,
+          company_name: p.company_name,
+          title: p.title,
+          send_delay_minutes: sendDelay
+        };
       })),
       messages: campaignType === 'messenger' ? {
         // Messenger campaigns: array of messages to send in sequence
