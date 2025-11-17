@@ -153,7 +153,11 @@ export async function POST(request: NextRequest) {
       'phone': 'phone',
       'location': 'location',
       'city': 'location',
-      'industry': 'industry'
+      'industry': 'industry',
+      'degree': 'connectionDegree',           // Connection degree column
+      'connection degree': 'connectionDegree',
+      'connection': 'connectionDegree',
+      'linkedin degree': 'connectionDegree'
     };
 
     // Parse prospects
@@ -208,6 +212,16 @@ export async function POST(request: NextRequest) {
       const normalized = normalizeFullName(rawName);
       const fullName = normalized.fullName;
 
+      // Parse connection degree (1, 2, or 3) - convert "1st", "2nd", "3rd" to numbers
+      let connectionDegree = null;
+      if (prospect.connectionDegree) {
+        const degreeStr = prospect.connectionDegree.toString().toLowerCase();
+        if (degreeStr.includes('1') || degreeStr === 'first') connectionDegree = 1;
+        else if (degreeStr.includes('2') || degreeStr === 'second') connectionDegree = 2;
+        else if (degreeStr.includes('3') || degreeStr === 'third') connectionDegree = 3;
+        else if (!isNaN(parseInt(degreeStr))) connectionDegree = parseInt(degreeStr);
+      }
+
       prospects.push({
         name: fullName,
         title: prospect.title || '',
@@ -218,6 +232,7 @@ export async function POST(request: NextRequest) {
           linkedin_url: prospect.linkedinUrl || '',
           phone: prospect.phone || ''
         },
+        connectionDegree: connectionDegree,  // Add connection degree
         source: source,
         enrichment_score: 70,
         approval_status: 'pending'
@@ -292,6 +307,7 @@ export async function POST(request: NextRequest) {
       company: p.company,
       location: p.location,
       contact: p.contact,
+      connection_degree: p.connectionDegree,  // Add connection degree to DB
       source: p.source,
       enrichment_score: p.enrichment_score,
       approval_status: p.approval_status
