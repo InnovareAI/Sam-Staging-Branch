@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { normalizeCompanyName } from '@/lib/enrich-prospect-name';
 
 // GET - Check endpoint status
 export async function GET() {
@@ -181,10 +182,18 @@ export async function POST(request: NextRequest) {
         last_name: p.last_name || p.contact?.last_name || name.split(' ').slice(1).join(' ') || ''
       };
 
-      // Ensure company is an object
-      const company = typeof p.company === 'string'
-        ? { name: p.company }
-        : (p.company || { name: p.company_name || '' });
+      // Ensure company is an object and normalize the name
+      let companyName = typeof p.company === 'string'
+        ? p.company
+        : (p.company?.name || p.company_name || '');
+
+      // Normalize company name to remove legal suffixes
+      const cleanCompanyName = normalizeCompanyName(companyName);
+
+      const company = {
+        name: cleanCompanyName,
+        industry: p.company?.industry || ''
+      };
 
       return {
         session_id: session.id,

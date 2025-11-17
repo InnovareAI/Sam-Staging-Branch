@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { normalizeFullName } from '@/lib/enrich-prospect-name';
+import { normalizeFullName, normalizeCompanyName } from '@/lib/enrich-prospect-name';
 
 export async function POST(request: NextRequest) {
   try {
@@ -242,10 +242,14 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Normalize company name to remove legal suffixes
+      const rawCompanyName = prospect.company || '';
+      const cleanCompanyName = normalizeCompanyName(rawCompanyName);
+
       prospects.push({
         name: fullName,
         title: prospect.title || '',
-        company: { name: prospect.company || '', industry: prospect.industry || '' },
+        company: { name: cleanCompanyName, industry: prospect.industry || '' },
         location: prospect.location || '',
         contact: {
           email: prospect.email || '',

@@ -10,6 +10,54 @@ interface EnrichNameResult {
 }
 
 /**
+ * Normalizes a company name by removing legal suffixes and common abbreviations
+ * Examples:
+ * - "InnovareAI, Inc." → "InnovareAI"
+ * - "Acme Corporation LLC" → "Acme Corporation"
+ * - "Tech Startup Co., Ltd." → "Tech Startup"
+ * - "Google (Alphabet Inc.)" → "Google"
+ */
+export function normalizeCompanyName(companyName: string): string {
+  if (!companyName || companyName.trim() === '') {
+    return '';
+  }
+
+  let cleanedName = companyName.trim();
+
+  // Remove content in parentheses (often parent company names)
+  cleanedName = cleanedName.replace(/\([^)]*\)/g, '').trim();
+
+  // Legal suffixes and abbreviations to remove (case insensitive)
+  const legalSuffixes = [
+    // Corporations
+    'Inc\\.?', 'Incorporated', 'Corp\\.?', 'Corporation',
+    // Limited liability
+    'LLC', 'L\\.L\\.C\\.?', 'LLP', 'L\\.L\\.P\\.?', 'Ltd\\.?', 'Limited',
+    'Co\\.?, Ltd\\.?', 'Pty\\.? Ltd\\.?', 'Pvt\\.? Ltd\\.?',
+    // Partnerships
+    'LP', 'L\\.P\\.?', 'LTD', 'LLLP',
+    // Other common suffixes
+    'Co\\.?', 'Company', 'Group', 'Holdings', 'International',
+    'PLC', 'P\\.L\\.C\\.?', 'AG', 'S\\.A\\.?', 'S\\.L\\.?', 'GmbH',
+    'B\\.V\\.?', 'N\\.V\\.?'
+  ];
+
+  // Create regex pattern to match suffixes at the end (with optional comma and period)
+  const suffixPattern = new RegExp(
+    `,?\\s*(${legalSuffixes.join('|')})\\s*$`,
+    'i'
+  );
+
+  // Remove legal suffixes
+  cleanedName = cleanedName.replace(suffixPattern, '').trim();
+
+  // Remove trailing commas or periods
+  cleanedName = cleanedName.replace(/[,.]$/g, '').trim();
+
+  return cleanedName;
+}
+
+/**
  * Normalizes a full name by removing titles, credentials, and descriptions
  * Examples:
  * - "Stephen T King CIO, Startups 7x, strategy..." → "Stephen T King"
