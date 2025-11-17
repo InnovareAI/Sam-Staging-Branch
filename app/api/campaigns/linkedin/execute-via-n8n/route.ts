@@ -56,11 +56,12 @@ async function calculateHumanSendDelay(
 
   // 2. Check if today is weekend or holiday (respect campaign settings)
   // DEFAULT: Monday to Friday messaging only (skip_weekends: true)
+  // Wide window (5 AM - 6 PM PT) to cover all US timezones
   const skipWeekends = campaignSettings?.skip_weekends ?? true; // Default: M-F only
   const skipHolidays = campaignSettings?.skip_holidays ?? true; // Default: skip holidays
-  const timezone = campaignSettings?.timezone || 'America/New_York';
-  const workingHoursStart = campaignSettings?.working_hours_start || 9; // 9 AM
-  const workingHoursEnd = campaignSettings?.working_hours_end || 17; // 5 PM
+  const timezone = campaignSettings?.timezone || 'America/Los_Angeles'; // Pacific Time for US/CAN
+  const workingHoursStart = campaignSettings?.working_hours_start || 5;  // 5 AM PT (covers 8 AM ET)
+  const workingHoursEnd = campaignSettings?.working_hours_end || 18;     // 6 PM PT (covers 9 PM ET)
 
   // Get current time in campaign's timezone
   const now = new Date();
@@ -342,10 +343,11 @@ export async function POST(req: NextRequest) {
 
       // Schedule settings for N8N to enforce timing
       // DEFAULT: Monday to Friday messaging only (skip_weekends: true)
+      // Wide window (5 AM - 6 PM PT) to cover all US timezones
       schedule_settings: campaign.schedule_settings || {
-        timezone: 'America/New_York',
-        working_hours_start: 9,    // 9 AM
-        working_hours_end: 17,      // 5 PM
+        timezone: 'America/Los_Angeles',  // Pacific Time for US/CAN
+        working_hours_start: 5,    // 5 AM PT (covers 8 AM ET)
+        working_hours_end: 18,      // 6 PM PT (covers 9 PM ET)
         skip_weekends: true,        // Default: M-F only
         skip_holidays: true
       },

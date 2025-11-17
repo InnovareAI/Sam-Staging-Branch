@@ -57,10 +57,10 @@ const COUNTRIES = [
 
 export default function CampaignScheduleSettingsModal({ isOpen, onClose, campaignId, currentSettings }: Props) {
   const [settings, setSettings] = useState<CampaignScheduleSettings>({
-    timezone: 'America/New_York',
-    working_hours_start: 9,   // 9 AM (matches backend default)
-    working_hours_end: 17,     // 5 PM (matches backend default)
-    skip_weekends: true,       // Monday-Friday only (matches backend default)
+    timezone: 'America/Los_Angeles',  // Pacific Time for US/CAN (matches backend default)
+    working_hours_start: 5,    // 5 AM PT - covers 8 AM ET (matches backend default)
+    working_hours_end: 18,      // 6 PM PT - covers 9 PM ET (matches backend default)
+    skip_weekends: true,        // Monday-Friday only (matches backend default)
     skip_holidays: true,
     country_code: 'US',
     ...currentSettings
