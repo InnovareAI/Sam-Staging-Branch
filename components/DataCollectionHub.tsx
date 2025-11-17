@@ -428,10 +428,10 @@ export default function DataCollectionHub({
         const data = await response.json()
         if (data.success) {
           toastSuccess(`✅ Uploaded ${data.count || 0} prospects from CSV and saved to database`)
-          // Immediately refetch to show new data
-          await refetch()
           // Close the import modal automatically
           setShowImportModal(false)
+          // Force full page reload to bypass all caches and show uploaded prospects
+          window.location.reload()
         }
       } else {
         const errorData = await response.json()
