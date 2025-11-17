@@ -31,7 +31,8 @@ async function calculateHumanSendDelay(
   supabase: any,
   unipileAccountId: string,
   totalProspects: number,
-  prospectIndex: number
+  prospectIndex: number,
+  campaignSettings?: any  // Pass campaign schedule settings
 ): Promise<number> {
   // 1. Get account's daily limit and today's sent count
   const { data: account } = await supabase
@@ -53,21 +54,33 @@ async function calculateHumanSendDelay(
 
   console.log(`📊 Account ${unipileAccountId}: ${actualSentToday}/${dailyLimit} sent today, ${remainingToday} remaining`);
 
-  // 2. Check if today is weekend or holiday (unless user allows it)
-  const { data: workspacePrefs } = await supabase
-    .from('workspaces')
-    .select('campaign_preferences')
-    .eq('id', await getWorkspaceIdForAccount(supabase, unipileAccountId))
-    .single();
+  // 2. Check if today is weekend or holiday (respect campaign settings)
+  const skipWeekends = campaignSettings?.skip_weekends ?? true; // Default: skip weekends
+  const skipHolidays = campaignSettings?.skip_holidays ?? true; // Default: skip holidays
+  const timezone = campaignSettings?.timezone || 'UTC';
+  const workingHoursStart = campaignSettings?.working_hours_start || 7; // 7 AM
+  const workingHoursEnd = campaignSettings?.working_hours_end || 18; // 6 PM
 
-  const sendOnWeekends = workspacePrefs?.campaign_preferences?.send_on_weekends ?? false;
-  const sendOnHolidays = workspacePrefs?.campaign_preferences?.send_on_holidays ?? false;
-
-  const dayOfWeek = new Date().getDay(); // 0 = Sunday, 6 = Saturday
+  // Get current time in campaign's timezone
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+  const currentHour = now.getHours();
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-  if (isWeekend && !sendOnWeekends) {
-    console.log(`⏸️  Weekend - skipping until Monday`);
+  // Check if we're outside working hours
+  const isOutsideWorkingHours = currentHour < workingHoursStart || currentHour >= workingHoursEnd;
+
+  if (isOutsideWorkingHours) {
+    // Calculate minutes until next working hour start
+    const hoursUntilStart = currentHour < workingHoursStart
+      ? workingHoursStart - currentHour
+      : (24 - currentHour) + workingHoursStart;
+    console.log(`⏸️  Outside working hours (${workingHoursStart}:00-${workingHoursEnd}:00) - waiting ${hoursUntilStart}h`);
+    return hoursUntilStart * 60;
+  }
+
+  if (isWeekend && skipWeekends) {
+    console.log(`⏸️  Weekend detected, skip_weekends=true - skipping until Monday`);
     const daysUntilMonday = dayOfWeek === 0 ? 1 : 2; // Sunday = 1 day, Saturday = 2 days
     return daysUntilMonday * 24 * 60;
   }
@@ -298,20 +311,51 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // 9. Build N8N payload
+    // 9. Get account tracking data for N8N
+    const { data: accountTracking } = await supabaseAdmin
+      .from('workspace_accounts')
+      .select('daily_message_limit, messages_sent_today, last_message_date')
+      .eq('unipile_account_id', campaign.linkedin_account.unipile_account_id)
+      .single();
+
+    const today = new Date().toISOString().split('T')[0];
+    const lastMessageDate = accountTracking?.last_message_date?.split('T')[0];
+    const isNewDay = !lastMessageDate || lastMessageDate !== today;
+    const currentSentToday = isNewDay ? 0 : (accountTracking?.messages_sent_today || 0);
+
+    // 10. Build N8N payload
     const n8nPayload = {
       workspace_id: workspaceId,
       campaign_id: campaignId,
       channel: 'linkedin',
       campaign_type: campaignType,
       unipile_account_id: campaign.linkedin_account.unipile_account_id,
+
+      // CRITICAL: Account tracking data for N8N to update message counters
+      account_tracking: {
+        daily_message_limit: accountTracking?.daily_message_limit || 20,
+        messages_sent_today: currentSentToday,
+        last_message_date: accountTracking?.last_message_date || new Date().toISOString(),
+        remaining_today: Math.max(0, (accountTracking?.daily_message_limit || 20) - currentSentToday)
+      },
+
+      // Schedule settings for N8N to enforce timing
+      schedule_settings: campaign.schedule_settings || {
+        timezone: 'UTC',
+        working_hours_start: 7,
+        working_hours_end: 18,
+        skip_weekends: true,
+        skip_holidays: true
+      },
+
       prospects: await Promise.all(pendingProspects.map(async (p: any, index: number) => {
         // HUMAN-LIKE RANDOMIZER: Calculate intelligent send delays
         const sendDelay = await calculateHumanSendDelay(
           supabaseAdmin,
           campaign.linkedin_account.unipile_account_id,
           pendingProspects.length,
-          index
+          index,
+          campaign.schedule_settings // Pass campaign schedule settings (timezone, working hours, skip_weekends, skip_holidays)
         );
 
         return {
@@ -353,7 +397,10 @@ export async function POST(req: NextRequest) {
     console.log(`📦 Sending to N8N:`, {
       campaign_type: campaignType,
       prospect_count: pendingProspects.length,
-      linkedin_account: campaign.linkedin_account.account_name
+      linkedin_account: campaign.linkedin_account.account_name,
+      daily_limit: accountTracking?.daily_message_limit || 20,
+      sent_today: currentSentToday,
+      remaining_today: Math.max(0, (accountTracking?.daily_message_limit || 20) - currentSentToday)
     });
 
     console.log(`📋 FULL N8N PAYLOAD:`, JSON.stringify(n8nPayload, null, 2));
