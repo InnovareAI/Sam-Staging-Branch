@@ -2333,6 +2333,15 @@ Would you like me to adjust these or create more variations?`
         using_fallback: !workspaceId
       });
 
+      // Extract session_id from initialProspects if present (for auto-transfer)
+      const sessionId = initialProspects?.[0]?.sessionId || initialProspects?.[0]?.session_id;
+
+      console.log('🔍 Campaign creation - session_id detection:', {
+        hasInitialProspects: !!initialProspects?.length,
+        firstProspect: initialProspects?.[0],
+        extractedSessionId: sessionId
+      });
+
       // Step 1: Create campaign
       const campaignResponse = await fetch('/api/campaigns', {
         method: 'POST',
@@ -2343,7 +2352,8 @@ Would you like me to adjust these or create more variations?`
           campaign_type: campaignType,
           connection_message: connectionMessage,
           alternative_message: alternativeMessage,
-          follow_up_messages: followUpMessages.filter(msg => msg.trim())
+          follow_up_messages: followUpMessages.filter(msg => msg.trim()),
+          session_id: sessionId // CRITICAL FIX: Include session_id for auto-transfer of approved prospects
         })
       });
 
