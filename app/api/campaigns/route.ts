@@ -153,6 +153,21 @@ export async function POST(req: NextRequest) {
       }, { status: 500 });
     }
 
+    // Auto-assign LinkedIn account for LinkedIn campaigns
+    let linkedinAccountId = null;
+    if (campaign_type === 'connector' || campaign_type === 'messenger') {
+      const { data: linkedinAccount } = await supabase
+        .from('workspace_accounts')
+        .select('id')
+        .eq('workspace_id', workspace_id)
+        .eq('account_type', 'linkedin')
+        .eq('connection_status', 'connected')
+        .eq('is_active', true)
+        .single();
+
+      linkedinAccountId = linkedinAccount?.id || null;
+    }
+
     // Update status AND flow_settings.messages from message_templates
     // CRITICAL FIX: Copy messages from message_templates to flow_settings for N8N execution
     const flowSettings = {
@@ -175,7 +190,8 @@ export async function POST(req: NextRequest) {
       .from('campaigns')
       .update({
         status,
-        flow_settings: flowSettings
+        flow_settings: flowSettings,
+        linkedin_account_id: linkedinAccountId
       })
       .eq('id', campaignId);
 
@@ -265,6 +281,7 @@ export async function POST(req: NextRequest) {
             title: prospect.title || contact.title || contact.headline || '',
             location: prospect.location || contact.location || null,
             industry: prospect.company?.industry?.[0] || 'Not specified',
+            connection_degree: prospect.connectionDegree || contact.connectionDegree || null,
             status: 'approved',
             notes: null,
             added_by_unipile_account: unipileAccountId,
@@ -305,6 +322,21 @@ export async function POST(req: NextRequest) {
         campaign_id: campaignId,
         prospects_transferred: prospectsTransferred
       }, { status: 201 });
+    }
+
+    // CLEANUP: Delete completed session from prospect_approval_sessions
+    // This prevents the session from showing up in the campaign creator UI
+    if (session_id) {
+      const { error: deleteError } = await supabase
+        .from('prospect_approval_sessions')
+        .delete()
+        .eq('id', session_id);
+
+      if (deleteError) {
+        console.warn('⚠️  Failed to delete completed session:', deleteError);
+      } else {
+        console.log(`✅ Deleted completed session: ${session_id}`);
+      }
     }
 
     return NextResponse.json({

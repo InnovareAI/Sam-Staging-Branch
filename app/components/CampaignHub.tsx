@@ -1341,10 +1341,30 @@ function CampaignBuilder({
   // Check connection degrees of prospects
   const getConnectionDegrees = () => {
     const prospects = csvData.length > 0 ? csvData : (initialProspects || []);
-    const degrees = prospects.map((p: any) => {
+    const degrees = prospects.map((p: any, index: number) => {
       // Check multiple possible field names (case-insensitive)
+      // IMPORTANT: Check contact.connectionDegree for SAM prospects
       const degree = p.connection_degree || p.degree || p.connectionDegree ||
+                     p.contact?.connectionDegree || p.contact?.connection_degree ||
                      p.Connection || p['Connection Degree'] || p.linkedin_connection_degree;
+
+      // DETAILED DEBUG LOGGING for first 3 prospects
+      if (index < 3) {
+        console.log(`🔍 Prospect ${index} connection degree debug:`, {
+          name: p.name,
+          raw_prospect: p,
+          connection_degree: p.connection_degree,
+          degree: p.degree,
+          connectionDegree: p.connectionDegree,
+          contact_object: p.contact,
+          'contact.connectionDegree': p.contact?.connectionDegree,
+          'contact.connection_degree': p.contact?.connection_degree,
+          'p.Connection': p.Connection,
+          'p["Connection Degree"]': p['Connection Degree'],
+          linkedin_connection_degree: p.linkedin_connection_degree,
+          detected_value: degree
+        });
+      }
 
       // Normalize to string for comparison
       const degreeStr = String(degree || '').toLowerCase().trim();
@@ -1389,8 +1409,18 @@ function CampaignBuilder({
   const hasOnly1stDegree = connectionDegrees.firstDegree > 0 && connectionDegrees.secondThird === 0;
 
   // Check if CSV has connection degree data (required for LinkedIn campaigns)
-  const hasConnectionDegreeData = connectionDegrees.total > 0 &&
-    (connectionDegrees.firstDegree > 0 || connectionDegrees.secondThird > 0);
+  // FIXED: For SAM search results (non-CSV), check if prospects have LinkedIn URLs
+  const prospects = csvData.length > 0 ? csvData : (initialProspects || []);
+  const hasLinkedInUrls = prospects.some((p: any) =>
+    p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url || p.contact?.linkedinUrl
+  );
+  // For CSV uploads: require explicit connection degree field
+  // For SAM/initialProspects: connection degree is always included in scraped data
+  const hasConnectionDegreeData = (initialProspects && initialProspects.length > 0)
+    ? true // SAM scraped data always has connectionDegree field
+    : (csvData.length > 0)
+      ? (connectionDegrees.total > 0 && (connectionDegrees.firstDegree > 0 || connectionDegrees.secondThird > 0))
+      : false; // No prospects loaded yet
 
   // Auto-select campaign type based on prospect connection degrees
   useEffect(() => {
@@ -1448,8 +1478,8 @@ function CampaignBuilder({
     },
     {
       value: 'multichannel',
-      label: 'Multichannel',
-      description: 'Combine LinkedIn and email outreach in one campaign',
+      label: 'Multi-Channel',
+      description: 'Multi-Channel Outreach Campaigns - Combine LinkedIn and email outreach in one campaign',
       icon: Settings
     }
   ];
@@ -2639,46 +2669,22 @@ Would you like me to adjust these or create more variations?`
                     </span>
                   )}
                   {hasConnectionDegreeData && hasOnly1stDegree && (
-                    <span>✓ All prospects are 1st degree connections - showing Messenger + Email options</span>
+                    <span>✓ All prospects are 1st degree connections - Messenger available, Connector disabled</span>
                   )}
                   {hasConnectionDegreeData && !hasOnly1stDegree && connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0 && (
-                    <span>✓ All prospects are 2nd/3rd degree - showing Connector + Email options</span>
+                    <span>✓ All prospects are 2nd/3rd degree - Connector available, Messenger disabled</span>
                   )}
                   {hasConnectionDegreeData && connectionDegrees.firstDegree > 0 && connectionDegrees.secondThird > 0 && (
                     <span>📊 Mixed connection degrees: {connectionDegrees.firstDegree} × 1st degree, {connectionDegrees.secondThird} × 2nd/3rd degree</span>
+                  )}
+                  {hasConnectionDegreeData && connectionDegrees.firstDegree === 0 && connectionDegrees.secondThird === 0 && (initialProspects && initialProspects.length > 0) && (
+                    <span>✓ LinkedIn prospects loaded - All campaign types available based on your connections</span>
                   )}
                 </p>
               </div>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {campaignTypes.filter(type => {
-                // No prospects loaded yet -> Show all except multichannel
-                if (connectionDegrees.total === 0) {
-                  return type.value !== 'multichannel';
-                }
-
-                // CSV loaded but NO connection degree data -> Show ONLY Email
-                if (!hasConnectionDegreeData) {
-                  return type.value === 'email';
-                }
-
-                // Has connection degree data -> Filter by detected degrees
-                const firstDegreePercent = (connectionDegrees.firstDegree / connectionDegrees.total) * 100;
-                const secondThirdPercent = (connectionDegrees.secondThird / connectionDegrees.total) * 100;
-
-                // If 70%+ are 1st degree connections -> Show ONLY Messenger + Email
-                if (firstDegreePercent >= 70) {
-                  return type.value === 'messenger' || type.value === 'email';
-                }
-
-                // If 70%+ are 2nd/3rd degree connections -> Show ONLY Connector + Email
-                if (secondThirdPercent >= 70) {
-                  return type.value === 'connector' || type.value === 'email';
-                }
-
-                // Mixed degrees -> Show all except multichannel
-                return type.value !== 'multichannel';
-              }).map((type) => {
+              {campaignTypes.map((type) => {
                 const IconComponent = type.icon;
                 const isConnector = type.value === 'connector';
                 const isMessenger = type.value === 'messenger';
@@ -2696,54 +2702,66 @@ Would you like me to adjust these or create more variations?`
                 // STRICT ENFORCEMENT: Disable campaign types that don't match the majority
                 const hasOnly2nd3rdDegree = connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0;
 
+                // Check if prospects have email addresses
+                const prospects = csvData.length > 0 ? csvData : (initialProspects || []);
+                const hasEmailAddresses = prospects.some(p => p.email || p.email_address || p.contact?.email);
+
                 let isDisabled = false;
                 let disabledReason = '';
                 let needsConnection: 'linkedin' | 'email' | 'both' | null = null;
 
-                // Check account connections first
-                if ((isConnector || isMessenger) && !connectedAccounts.linkedin) {
+                // Multi is always disabled (in development)
+                if (isMultichannel) {
                   isDisabled = true;
-                  disabledReason = 'LinkedIn account not connected';
-                  needsConnection = 'linkedin';
-                } else if (isEmail && !connectedAccounts.email) {
-                  isDisabled = true;
-                  disabledReason = 'Email account not connected';
-                  needsConnection = 'email';
-                } else if (isMultichannel) {
-                  if (!connectedAccounts.linkedin && !connectedAccounts.email) {
-                    isDisabled = true;
-                    disabledReason = 'LinkedIn and Email accounts not connected';
-                    needsConnection = 'both';
-                  } else if (!connectedAccounts.linkedin) {
-                    isDisabled = true;
-                    disabledReason = 'LinkedIn account not connected';
-                    needsConnection = 'linkedin';
-                  } else if (!connectedAccounts.email) {
-                    isDisabled = true;
-                    disabledReason = 'Email account not connected';
-                    needsConnection = 'email';
-                  } else {
-                    isDisabled = true;
-                    disabledReason = '🚧 Coming Soon - Advanced features in development';
-                  }
-                } else if (connectionDegrees.total > 0) {
+                  disabledReason = '🚧 In Development - Multi-channel campaigns coming soon';
+                }
+                // Check connection degree restrictions FIRST (highest priority)
+                else if (connectionDegrees.total > 0) {
                   // Disable Connector if prospects are predominantly 1st degree (70%+)
                   if (isConnector && (hasOnly1stDegree || firstDegreePercent >= 70)) {
                     isDisabled = true;
                     if (hasOnly1stDegree) {
-                      disabledReason = 'All prospects are already 1st degree connections';
+                      disabledReason = 'All prospects are 1st degree - use Messenger for direct messages';
                     } else {
                       disabledReason = `${Math.round(firstDegreePercent)}% are 1st degree - use Messenger instead`;
                     }
                   }
                   // Disable Messenger if prospects are predominantly 2nd/3rd degree (70%+)
-                  else if (isMessenger && (hasOnly2nd3rdDegree || secondThirdPercent >= 70)) {
+                  if (isMessenger && (hasOnly2nd3rdDegree || secondThirdPercent >= 70)) {
                     isDisabled = true;
                     if (hasOnly2nd3rdDegree) {
-                      disabledReason = 'All prospects are 2nd/3rd degree - send connection requests first';
+                      disabledReason = 'All prospects are 2nd/3rd degree - use Connector to send connection requests first';
                     } else {
                       disabledReason = `${Math.round(secondThirdPercent)}% are 2nd/3rd degree - use Connector instead`;
                     }
+                  }
+                  // Check email availability for Email campaigns
+                  if (isEmail && !hasEmailAddresses && prospects.length > 0) {
+                    isDisabled = true;
+                    disabledReason = 'No email addresses in prospects - add email column to CSV';
+                  }
+                  // Check account connections (lower priority) - only if not already disabled
+                  if (!isDisabled && (isConnector || isMessenger) && !connectedAccounts.linkedin) {
+                    isDisabled = true;
+                    disabledReason = 'LinkedIn account not connected';
+                    needsConnection = 'linkedin';
+                  }
+                  if (!isDisabled && isEmail && !connectedAccounts.email) {
+                    isDisabled = true;
+                    disabledReason = 'Email account not connected';
+                    needsConnection = 'email';
+                  }
+                }
+                // No prospects loaded yet - check account connections only
+                else {
+                  if ((isConnector || isMessenger) && !connectedAccounts.linkedin) {
+                    isDisabled = true;
+                    disabledReason = 'LinkedIn account not connected';
+                    needsConnection = 'linkedin';
+                  } else if (isEmail && !connectedAccounts.email) {
+                    isDisabled = true;
+                    disabledReason = 'Email account not connected';
+                    needsConnection = 'email';
                   }
                 }
 
@@ -5738,7 +5756,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${mappedProspects.length} prospects uploaded${syncMessage}\n🚀 Your campaign is now live and messages will be sent according to your schedule`);
           } else {
             const errorData = await executeResponse.json();
-            toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Launch failed: ${errorData.error || 'Unknown error'}\n💡 Check campaign dashboard for details`);
+            const errorDetails = errorData.details ? `\n🔍 Details: ${errorData.details}` : '';
+            toastError(`✅ Campaign "${finalCampaignData.name}" created!\n⚠️ Launch failed: ${errorData.error || 'Unknown error'}${errorDetails}\n💡 Check campaign dashboard for details`);
           }
         } catch (executeError) {
           console.error('Campaign execution error:', executeError);

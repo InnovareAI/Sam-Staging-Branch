@@ -13,10 +13,14 @@ import { cookies } from 'next/headers';
  * NO multi-channel, NO email, NO tiers, NO HITL complexity
  */
 
-const N8N_WEBHOOK_URL = process.env.N8N_CAMPAIGN_WEBHOOK_URL || 'https://workflows.innovareai.com/webhook/campaign-execute';
+// Base N8N webhook URLs for different campaign types
+const N8N_CONNECTOR_WEBHOOK = process.env.N8N_CONNECTOR_WEBHOOK_URL || 'https://workflows.innovareai.com/webhook/connector-campaign';
+const N8N_MESSENGER_WEBHOOK = process.env.N8N_MESSENGER_WEBHOOK_URL || 'https://workflows.innovareai.com/webhook/messenger-campaign';
 
 export async function POST(req: NextRequest) {
   try {
+    console.log('🚀 ========== CAMPAIGN EXECUTE CALLED ==========');
+
     // 1. Authenticate user
     const cookieStore = cookies();
     const supabase = createServerClient(
@@ -68,7 +72,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`🚀 LinkedIn Campaign Launch: ${campaignId}`);
 
-    // 4. Get campaign with prospects
+    // 4. Get campaign with LinkedIn account
     const { data: campaign, error: campaignError } = await supabaseAdmin
       .from('campaigns')
       .select(`
@@ -78,17 +82,6 @@ export async function POST(req: NextRequest) {
           account_name,
           unipile_account_id,
           is_active
-        ),
-        campaign_prospects (
-          id,
-          first_name,
-          last_name,
-          email,
-          company_name,
-          title,
-          linkedin_url,
-          linkedin_user_id,
-          status
         )
       `)
       .eq('id', campaignId)
@@ -102,7 +95,20 @@ export async function POST(req: NextRequest) {
       }, { status: 404 });
     }
 
-    // 5. Validate LinkedIn account
+    // 5. Get campaign prospects separately (RLS bypass for service role)
+    const { data: prospects, error: prospectsError } = await supabaseAdmin
+      .from('campaign_prospects')
+      .select('id, first_name, last_name, email, company_name, title, linkedin_url, linkedin_user_id, status')
+      .eq('campaign_id', campaignId);
+
+    if (prospectsError) {
+      console.error('Error fetching prospects:', prospectsError);
+    }
+
+    // Attach prospects to campaign object
+    campaign.campaign_prospects = prospects || [];
+
+    // 6. Validate LinkedIn account
     if (!campaign.linkedin_account?.unipile_account_id) {
       return NextResponse.json({
         error: 'No LinkedIn account connected',
@@ -117,7 +123,7 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // 6. Get prospects ready to contact
+    // 7. Get prospects ready to contact
     const pendingProspects = campaign.campaign_prospects.filter(
       (p: any) => ['pending', 'approved', 'ready_to_message', 'queued_in_n8n'].includes(p.status) && p.linkedin_url
     );
@@ -131,10 +137,11 @@ export async function POST(req: NextRequest) {
 
     console.log(`📋 Processing ${pendingProspects.length} prospects`);
 
-    // 7. Determine campaign type
+    // 8. Determine campaign type
     // connector = send CR first (default)
     // messenger = direct message only
     const campaignType = campaign.campaign_type || 'connector';
+    console.log(`📋 Campaign Type from DB: "${campaign.campaign_type}" → Using: "${campaignType}"`);
 
     if (!['connector', 'messenger'].includes(campaignType)) {
       return NextResponse.json({
@@ -144,7 +151,7 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // 8. Build N8N payload
+    // 9. Build N8N payload
     const n8nPayload = {
       workspace_id: workspaceId,
       campaign_id: campaignId,
@@ -191,7 +198,14 @@ export async function POST(req: NextRequest) {
       linkedin_account: campaign.linkedin_account.account_name
     });
 
-    // 9. Call N8N webhook
+    console.log(`📋 FULL N8N PAYLOAD:`, JSON.stringify(n8nPayload, null, 2));
+
+    // 10. Determine which N8N webhook to call based on campaign type
+    const N8N_WEBHOOK_URL = campaignType === 'messenger' ? N8N_MESSENGER_WEBHOOK : N8N_CONNECTOR_WEBHOOK;
+
+    console.log(`🎯 Calling ${campaignType} workflow: ${N8N_WEBHOOK_URL}`);
+
+    // 11. Call N8N webhook
     const n8nResponse = await fetch(N8N_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -207,7 +221,7 @@ export async function POST(req: NextRequest) {
     const n8nResult = await n8nResponse.json();
     console.log(`✅ N8N accepted campaign`);
 
-    // 10. Update prospect statuses
+    // 11. Update prospect statuses
     for (const prospect of pendingProspects) {
       await supabaseAdmin
         .from('campaign_prospects')
@@ -215,7 +229,7 @@ export async function POST(req: NextRequest) {
         .eq('id', prospect.id);
     }
 
-    // 11. Update campaign
+    // 12. Update campaign
     await supabaseAdmin
       .from('campaigns')
       .update({
@@ -233,9 +247,11 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ Campaign execution error:', error);
+    console.error('Error stack:', error.stack);
     return NextResponse.json({
       error: 'Campaign launch failed',
-      details: error.message
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     }, { status: 500 });
   }
 }
