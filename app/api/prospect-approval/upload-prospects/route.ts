@@ -195,6 +195,7 @@ export async function POST(request: NextRequest) {
         company: company,
         location: p.location || '',
         contact: contact,
+        connectionDegree: p.connectionDegree || p.connection_degree || null,  // CRITICAL: Preserve connectionDegree from SAM scrape
         source: p.source || source || 'manual-upload',
         enrichment_score: p.enrichment_score || 70,
         approval_status: 'pending',
