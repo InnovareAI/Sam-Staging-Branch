@@ -129,6 +129,15 @@ export async function POST(request: NextRequest) {
     const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
     console.log('CSV Parsing - Detected headers:', headers);
 
+    // Check if degree column exists
+    const hasDegreeColumn = headers.some(h =>
+      h === 'degree' ||
+      h === 'connection degree' ||
+      h === 'connection' ||
+      h === 'linkedin degree'
+    );
+    console.log('CSV Parsing - Has degree column:', hasDegreeColumn);
+
     // Map common header names
     const headerMap: Record<string, string> = {
       'name': 'name',
@@ -197,7 +206,9 @@ export async function POST(request: NextRequest) {
           hasFirstName: !!prospect.firstName,
           hasLastName: !!prospect.lastName,
           hasLinkedinUrl: !!prospect.linkedinUrl,
-          linkedinUrlValue: prospect.linkedinUrl || 'EMPTY/NULL'
+          linkedinUrlValue: prospect.linkedinUrl || 'EMPTY/NULL',
+          rawConnectionDegree: prospect.connectionDegree,
+          connectionDegreeType: typeof prospect.connectionDegree
         });
       }
 
@@ -220,6 +231,15 @@ export async function POST(request: NextRequest) {
         else if (degreeStr.includes('2') || degreeStr === 'second') connectionDegree = 2;
         else if (degreeStr.includes('3') || degreeStr === 'third') connectionDegree = 3;
         else if (!isNaN(parseInt(degreeStr))) connectionDegree = parseInt(degreeStr);
+
+        // Log parsing result for first row
+        if (i === 1) {
+          console.log('CSV Parsing - Connection degree parsing:', {
+            raw: prospect.connectionDegree,
+            degreeStr,
+            parsed: connectionDegree
+          });
+        }
       }
 
       prospects.push({
