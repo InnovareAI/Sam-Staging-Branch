@@ -364,9 +364,11 @@ export default function DataCollectionHub({
 
       if (response.ok) {
         // Update local prospect data
-        setProspectData(prev => prev.map(p =>
-          p.sessionId === sessionId ? { ...p, campaignName: newCampaignName } : p
-        ))
+        // CRITICAL FIX: Database returns snake_case 'session_id', not camelCase 'sessionId'
+        setProspectData(prev => prev.map(p => {
+          const pSessionId = (p as any)?.session_id || (p as any)?.sessionId
+          return pSessionId === sessionId ? { ...p, campaignName: newCampaignName } : p
+        }))
         setEditingCampaignName(null)
         console.log('✅ Campaign name updated:', newCampaignName)
       } else {
@@ -811,8 +813,10 @@ export default function DataCollectionHub({
   const handleReject = async (prospectId: string) => {
     // Find prospect in server data first, fallback to local filtered data
     const prospect = serverProspects.find(p => p.id === prospectId) || prospectData.find(p => p.id === prospectId)
-    if (!prospect || !prospect.sessionId) {
-      console.error('Prospect not found or missing sessionId:', prospectId)
+    // CRITICAL FIX: Database returns snake_case 'session_id', not camelCase 'sessionId'
+    const sessionId = (prospect as any)?.session_id || (prospect as any)?.sessionId
+    if (!prospect || !sessionId) {
+      console.error('Prospect not found or missing session_id:', prospectId, prospect)
       toastError('Cannot reject: prospect data not found')
       return
     }
@@ -826,7 +830,7 @@ export default function DataCollectionHub({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          session_id: prospect.sessionId,
+          session_id: sessionId,
           prospect_id: prospectId,
           decision: newStatus
         })
@@ -856,8 +860,10 @@ export default function DataCollectionHub({
   const handleApprove = async (prospectId: string) => {
     // Find prospect in server data first, fallback to local filtered data
     const prospect = serverProspects.find(p => p.id === prospectId) || prospectData.find(p => p.id === prospectId)
-    if (!prospect || !prospect.sessionId) {
-      console.error('Prospect not found or missing sessionId:', prospectId)
+    // CRITICAL FIX: Database returns snake_case 'session_id', not camelCase 'sessionId'
+    const sessionId = (prospect as any)?.session_id || (prospect as any)?.sessionId
+    if (!prospect || !sessionId) {
+      console.error('Prospect not found or missing session_id:', prospectId, prospect)
       toastError('Cannot approve: prospect data not found')
       return
     }
@@ -871,7 +877,7 @@ export default function DataCollectionHub({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          session_id: prospect.sessionId,
+          session_id: sessionId,
           prospect_id: prospectId,
           decision: newStatus
         })
@@ -908,13 +914,15 @@ export default function DataCollectionHub({
 
     // Save all to database
     for (const prospect of pendingProspects) {
-      if (prospect.sessionId) {
+      // CRITICAL FIX: Database returns snake_case 'session_id', not camelCase 'sessionId'
+      const sessionId = (prospect as any)?.session_id || (prospect as any)?.sessionId
+      if (sessionId) {
         try {
           await fetch('/api/prospect-approval/decisions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              session_id: prospect.sessionId,
+              session_id: sessionId,
               prospect_id: prospect.id,
               decision: 'approved'
             })
@@ -936,13 +944,15 @@ export default function DataCollectionHub({
 
     // Save rejections (but don't delete - let them auto-expire after 7 days)
     for (const prospect of allProspects) {
-      if (prospect.sessionId) {
+      // CRITICAL FIX: Database returns snake_case 'session_id', not camelCase 'sessionId'
+      const sessionId = (prospect as any)?.session_id || (prospect as any)?.sessionId
+      if (sessionId) {
         try {
           await fetch('/api/prospect-approval/decisions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              session_id: prospect.sessionId,
+              session_id: sessionId,
               prospect_id: prospect.id,
               decision: 'rejected'
             })
@@ -1173,13 +1183,15 @@ export default function DataCollectionHub({
 
     // Save rejections and delete from database
     for (const prospect of selectedProspects) {
-      if (prospect.sessionId) {
+      // CRITICAL FIX: Database returns snake_case 'session_id', not camelCase 'sessionId'
+      const sessionId = (prospect as any)?.session_id || (prospect as any)?.sessionId
+      if (sessionId) {
         try {
           await fetch('/api/prospect-approval/decisions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              session_id: prospect.sessionId,
+              session_id: sessionId,
               prospect_id: prospect.id,
               decision: 'rejected'
             })
@@ -1245,13 +1257,15 @@ export default function DataCollectionHub({
 
     // Save all decisions to database
     for (const prospect of nonDismissed) {
-      if (prospect.sessionId) {
+      // CRITICAL FIX: Database returns snake_case 'session_id', not camelCase 'sessionId'
+      const sessionId = (prospect as any)?.session_id || (prospect as any)?.sessionId
+      if (sessionId) {
         try {
           await fetch('/api/prospect-approval/decisions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              session_id: prospect.sessionId,
+              session_id: sessionId,
               prospect_id: prospect.id,
               decision: 'approved'
             })
@@ -1263,13 +1277,15 @@ export default function DataCollectionHub({
     }
 
     for (const prospect of dismissed) {
-      if (prospect.sessionId) {
+      // CRITICAL FIX: Database returns snake_case 'session_id', not camelCase 'sessionId'
+      const sessionId = (prospect as any)?.session_id || (prospect as any)?.sessionId
+      if (sessionId) {
         try {
           await fetch('/api/prospect-approval/decisions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              session_id: prospect.sessionId,
+              session_id: sessionId,
               prospect_id: prospect.id,
               decision: 'rejected'
             })
@@ -1540,13 +1556,15 @@ export default function DataCollectionHub({
 
                     // Save all approval decisions to database
                     for (const prospect of pendingProspects) {
-                      if (prospect.sessionId) {
+                      // CRITICAL FIX: Database returns snake_case 'session_id', not camelCase 'sessionId'
+                      const sessionId = (prospect as any)?.session_id || (prospect as any)?.sessionId
+                      if (sessionId) {
                         try {
                           await fetch('/api/prospect-approval/decisions', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                              session_id: prospect.sessionId,
+                              session_id: sessionId,
                               prospect_id: prospect.id,
                               decision: 'approved'
                             })
@@ -1630,8 +1648,10 @@ export default function DataCollectionHub({
         // Group prospects by campaign name to show unique campaigns
         const campaignsByName = prospectData.reduce((acc, p) => {
           const campName = p.campaignName || 'Unnamed Campaign'
+          // CRITICAL FIX: Database returns snake_case 'session_id', not camelCase 'sessionId'
+          const sessionId = (p as any)?.session_id || (p as any)?.sessionId
           if (!acc[campName]) {
-            acc[campName] = { campaignName: campName, count: 0, sessionId: p.sessionId }
+            acc[campName] = { campaignName: campName, count: 0, sessionId }
           }
           acc[campName].count++
           return acc

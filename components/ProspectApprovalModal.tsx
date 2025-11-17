@@ -15,7 +15,7 @@ export interface ProspectData {
   source: 'linkedin' | 'csv_upload' | 'unipile' | 'bright-data' | 'websearch' | 'manual' | 'test_data'
   confidence?: number
   complianceFlags?: string[]
-  connectionDegree?: string
+  connectionDegree?: string | number  // Can be integer (1, 2, 3) or string ("1st", "2nd", "3rd")
   mutualConnections?: number
   location?: string
   industry?: string
@@ -477,7 +477,10 @@ export default function ProspectApprovalModal({
                     )}
                     {prospect.connectionDegree && (
                       <span className="px-2 py-1 rounded-lg text-xs font-medium border bg-indigo-500/20 text-indigo-400 border-indigo-500/40">
-                        {prospect.connectionDegree} connection
+                        {typeof prospect.connectionDegree === 'number'
+                          ? `${prospect.connectionDegree}${prospect.connectionDegree === 1 ? 'st' : prospect.connectionDegree === 2 ? 'nd' : 'rd'} degree`
+                          : prospect.connectionDegree
+                        }
                       </span>
                     )}
                   </div>
