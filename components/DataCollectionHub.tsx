@@ -430,6 +430,8 @@ export default function DataCollectionHub({
           toastSuccess(`✅ Uploaded ${data.count || 0} prospects from CSV and saved to database`)
           // Immediately refetch to show new data
           await refetch()
+          // Close the import modal automatically
+          setShowImportModal(false)
         }
       } else {
         const errorData = await response.json()
