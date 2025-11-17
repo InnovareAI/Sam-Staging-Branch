@@ -354,7 +354,8 @@ export async function POST(req: NextRequest) {
 
       prospects: await Promise.all(pendingProspects.map(async (p: any, index: number) => {
         // HUMAN-LIKE RANDOMIZER: Calculate intelligent send delays
-        const sendDelay = await calculateHumanSendDelay(
+        // CRITICAL: First message (index 0) sends immediately, then randomizer kicks in
+        const sendDelay = index === 0 ? 0 : await calculateHumanSendDelay(
           supabaseAdmin,
           campaign.linkedin_account.unipile_account_id,
           pendingProspects.length,
