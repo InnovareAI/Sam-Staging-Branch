@@ -8806,6 +8806,42 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                               </div>
                             )}
                           </div>
+
+                          {/* Campaign Stats */}
+                          <div className="mt-3 pt-3 border-t border-gray-700">
+                            <div className="grid grid-cols-5 gap-4 text-xs">
+                              <div className="text-center">
+                                <div className="text-gray-400 mb-1">CR Sent</div>
+                                <div className={prospect.contacted_at ? "text-green-400 font-semibold text-sm" : "text-gray-500 text-sm"}>
+                                  {prospect.contacted_at ? "1" : "0"}
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-gray-400 mb-1">Connected</div>
+                                <div className={prospect.connection_accepted_at ? "text-green-400 font-semibold text-sm" : "text-gray-500 text-sm"}>
+                                  {prospect.connection_accepted_at ? "1" : "0"}
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-gray-400 mb-1">FU Sent</div>
+                                <div className={prospect.follow_up_sequence_index > 0 ? "text-purple-400 font-semibold text-sm" : "text-gray-500 text-sm"}>
+                                  {prospect.follow_up_sequence_index || 0}
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-gray-400 mb-1">Replied</div>
+                                <div className={prospect.responded_at ? "text-blue-400 font-semibold text-sm" : "text-gray-500 text-sm"}>
+                                  {prospect.responded_at ? "1" : "0"}
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-gray-400 mb-1">Opted Out</div>
+                                <div className={prospect.status === 'opted_out' ? "text-red-400 font-semibold text-sm" : "text-gray-500 text-sm"}>
+                                  {prospect.status === 'opted_out' ? "1" : "0"}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
