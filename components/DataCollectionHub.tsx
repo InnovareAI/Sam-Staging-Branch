@@ -306,7 +306,7 @@ export default function DataCollectionHub({
   const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
   const [defaultCampaignName, setDefaultCampaignName] = useState(`${today}-CLIENT-Demo`)
   const [defaultCampaignTag, setDefaultCampaignTag] = useState('')
-  const [selectedCampaignName, setSelectedCampaignName] = useState<string>('latest')
+  const [selectedCampaignName, setSelectedCampaignName] = useState<string>('all')
   const [selectedCampaignTag, setSelectedCampaignTag] = useState<string>('all')
   const [showLatestSessionOnly, setShowLatestSessionOnly] = useState<boolean>(true) // Default to showing only latest search
 
@@ -1126,11 +1126,19 @@ export default function DataCollectionHub({
       return false
     }
 
-    // Campaign name filter - DISABLED for grouped view (we want to see all campaigns grouped)
-    // Only filter if user explicitly selects a specific campaign (not 'all' or 'latest')
-    if (selectedCampaignName !== 'all' && selectedCampaignName !== 'latest' && p.campaignName !== selectedCampaignName) {
-      return false
+    // Campaign name filter - Allow filtering by specific search names
+    if (selectedCampaignName === 'latest') {
+      // Show only latest search
+      if (latestCampaignName && p.campaignName !== latestCampaignName) {
+        return false
+      }
+    } else if (selectedCampaignName !== 'all') {
+      // Show only selected search
+      if (p.campaignName !== selectedCampaignName) {
+        return false
+      }
     }
+    // If 'all' is selected, don't filter by campaign name
 
     // Campaign tag filter - independent of campaign name
     if (selectedCampaignTag !== 'all' && p.campaignTag !== selectedCampaignTag) {
