@@ -2,6 +2,31 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeFullName, normalizeCompanyName } from '@/lib/enrich-prospect-name';
 
+/**
+ * Detect Sales Navigator URLs (which are NOT supported)
+ *
+ * Sales Navigator URLs use encrypted IDs that cannot be converted to regular LinkedIn profile URLs.
+ * Example: https://www.linkedin.com/sales/lead/ACwAAFvDKocBkeHV8FCRfQlmLM8S5b9feZ7Kh4E,NAME,abc
+ *
+ * Users must provide regular LinkedIn profile URLs instead:
+ * Example: https://www.linkedin.com/in/john-smith-12345
+ *
+ * To get the real LinkedIn URL from Sales Navigator:
+ * 1. Click on the prospect in Sales Navigator
+ * 2. Click "View profile on LinkedIn" button
+ * 3. Copy the actual LinkedIn profile URL
+ */
+function detectSalesNavUrl(url: string): boolean {
+  if (!url || !url.trim()) {
+    return false;
+  }
+
+  const trimmedUrl = url.trim();
+
+  // Detect Sales Navigator URLs
+  return trimmedUrl.includes('/sales/lead/') || trimmedUrl.includes('/sales/account/');
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Get user authentication
@@ -172,6 +197,7 @@ export async function POST(request: NextRequest) {
     // Parse prospects
     const prospects: any[] = [];
     const skippedRows: any[] = [];
+    let salesNavUrlsDetected = 0;
 
     for (let i = 1; i < lines.length; i++) {
       const values = parseCSVLine(lines[i]);
@@ -246,6 +272,20 @@ export async function POST(request: NextRequest) {
       const rawCompanyName = prospect.company || '';
       const cleanCompanyName = normalizeCompanyName(rawCompanyName);
 
+      // Detect Sales Navigator URLs and skip them
+      const linkedinUrl = prospect.linkedinUrl || '';
+      if (detectSalesNavUrl(linkedinUrl)) {
+        salesNavUrlsDetected++;
+        skippedRows.push({
+          row: i,
+          reason: 'sales_navigator_url',
+          name: rawName,
+          linkedin_url: linkedinUrl
+        });
+        console.warn(`⚠️  Row ${i}: Skipping prospect "${rawName}" - Sales Navigator URL detected. Please provide regular LinkedIn profile URL instead.`);
+        continue;  // Skip this prospect
+      }
+
       prospects.push({
         name: fullName,
         title: prospect.title || '',
@@ -253,7 +293,7 @@ export async function POST(request: NextRequest) {
         location: prospect.location || '',
         contact: {
           email: prospect.email || '',
-          linkedin_url: prospect.linkedinUrl || '',
+          linkedin_url: linkedinUrl,
           phone: prospect.phone || ''
         },
         connectionDegree: connectionDegree,  // Add connection degree
@@ -267,8 +307,15 @@ export async function POST(request: NextRequest) {
       totalRows: lines.length - 1,
       prospectsFound: prospects.length,
       rowsSkipped: skippedRows.length,
+      salesNavUrlsDetected: salesNavUrlsDetected,
       firstFewSkipped: skippedRows.slice(0, 3)
     });
+
+    // Log Sales Navigator warning
+    if (salesNavUrlsDetected > 0) {
+      console.warn(`⚠️  Skipped ${salesNavUrlsDetected} prospects with Sales Navigator URLs - these cannot be used for campaigns`);
+      console.warn(`   To fix: Open each prospect in Sales Navigator → Click "View on LinkedIn" → Copy the real LinkedIn URL`);
+    }
 
     if (prospects.length === 0) {
       return NextResponse.json({
@@ -387,13 +434,34 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ CSV Upload - Successfully inserted ${verifyCount} prospects`);
 
+    // Build user-friendly message
+    let message = `Successfully uploaded ${prospects.length} prospects.`;
+    let warning = null;
+
+    if (salesNavUrlsDetected > 0) {
+      message = `Uploaded ${prospects.length} prospects. ${salesNavUrlsDetected} prospects were skipped due to Sales Navigator URLs.`;
+      warning = {
+        type: 'sales_navigator_urls',
+        count: salesNavUrlsDetected,
+        message: `${salesNavUrlsDetected} prospects with Sales Navigator URLs were skipped. Sales Navigator URLs cannot be used for campaigns. Please use regular LinkedIn profile URLs instead.`,
+        help: 'To get real LinkedIn URLs: 1) Open each prospect in Sales Navigator, 2) Click "View on LinkedIn", 3) Copy the real LinkedIn URL from your browser',
+        toolRecommendations: [
+          'Use Evaboot.com to automatically extract real LinkedIn URLs from Sales Navigator',
+          'Use PhantomBuster Sales Navigator scraper',
+          'Manually click through each profile to get real URLs'
+        ]
+      };
+    }
+
     return NextResponse.json({
       success: true,
       session_id: session.id,
       workspace_id: workspaceId,
       count: prospects.length,
+      skipped_count: salesNavUrlsDetected,
       campaign_name: campaignName,
-      message: `Successfully uploaded ${prospects.length} prospects. Go to Prospect Approval to review.`
+      message: message,
+      warning: warning
     });
 
   } catch (error) {

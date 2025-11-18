@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     // Pagination parameters
     const page = Math.max(1, Number(searchParams.get('page')) || 1)
-    const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit')) || 50))
+    const limit = Math.min(10000, Math.max(1, Number(searchParams.get('limit')) || 1000))
     const sortBy = searchParams.get('sort_by') || 'enrichment_score'
     const sortOrder = searchParams.get('sort_order') || 'desc'
     const status = searchParams.get('status') // 'all' | 'pending' | 'approved' | 'rejected'

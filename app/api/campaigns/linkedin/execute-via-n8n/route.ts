@@ -65,9 +65,14 @@ async function calculateHumanSendDelay(
 
   // Get current time in campaign's timezone
   const now = new Date();
-  const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
-  const currentHour = now.getHours();
+  
+  // CRITICAL: Convert to campaign's timezone for accurate hour checking
+  const campaignTime = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+  const dayOfWeek = campaignTime.getDay(); // 0 = Sunday, 6 = Saturday
+  const currentHour = campaignTime.getHours();
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  
+  console.log(`🕐 Server time: ${now.toISOString()} | Campaign timezone (${timezone}): ${campaignTime.toLocaleString()} | Hour: ${currentHour}`);
 
   // Check if we're outside working hours
   const isOutsideWorkingHours = currentHour < workingHoursStart || currentHour >= workingHoursEnd;
@@ -332,6 +337,7 @@ export async function POST(req: NextRequest) {
       channel: 'linkedin',
       campaign_type: campaignType,
       unipile_account_id: campaign.linkedin_account.unipile_account_id,
+      unipileAccountId: campaign.linkedin_account.unipile_account_id, // CRITICAL: N8N expects camelCase
 
       // CRITICAL: Account tracking data for N8N to update message counters
       account_tracking: {
@@ -354,8 +360,8 @@ export async function POST(req: NextRequest) {
 
       prospects: await Promise.all(pendingProspects.map(async (p: any, index: number) => {
         // HUMAN-LIKE RANDOMIZER: Calculate intelligent send delays
-        // CRITICAL: First message (index 0) sends immediately, then randomizer kicks in
-        const sendDelay = index === 0 ? 0 : await calculateHumanSendDelay(
+        // ALL prospects respect working hours - no immediate sends
+        const sendDelay = await calculateHumanSendDelay(
           supabaseAdmin,
           campaign.linkedin_account.unipile_account_id,
           pendingProspects.length,
@@ -383,8 +389,15 @@ export async function POST(req: NextRequest) {
           ...(campaign.message_templates?.follow_up_messages || [])
         ].filter(msg => msg && msg.trim() !== '')
       } : {
-        // Connector campaigns: connection request only
-        connection_request: campaign.connection_message || campaign.message_templates?.connection_request || ''
+        // Connector campaigns: connection request + follow-ups (N8N expects snake_case)
+        connection_request: campaign.connection_message || campaign.message_templates?.connection_request || '',
+        cr: campaign.connection_message || campaign.message_templates?.connection_request || '',
+        follow_up_1: campaign.message_templates?.follow_up_messages?.[0] || '',
+        follow_up_2: campaign.message_templates?.follow_up_messages?.[1] || '',
+        follow_up_3: campaign.message_templates?.follow_up_messages?.[2] || '',
+        follow_up_4: campaign.message_templates?.follow_up_messages?.[3] || '',
+        goodbye_message: campaign.message_templates?.follow_up_messages?.[4] || '',
+        alternative_message: campaign.message_templates?.alternative_message || campaign.message_templates?.follow_up_messages?.[0] || ''
       },
       timing: {
         fu1_delay_days: 2,

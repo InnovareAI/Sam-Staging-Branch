@@ -50,7 +50,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-async function sendBatch(campaign, prospects, batchNumber, totalBatches) {
+async function sendBatch(campaign, prospects, templates, batchNumber, totalBatches) {
   console.log(`\\n📦 Batch ${batchNumber}/${totalBatches} - ${prospects.length} prospects`);
 
   const payload = {
@@ -123,9 +123,20 @@ async function sendBatch(campaign, prospects, batchNumber, totalBatches) {
     }),
 
     messages: {
-      connectionRequest: campaign.message,  // Keep camelCase for API consistency
-      connection_request: campaign.message,  // N8N expects snake_case
-      cr: campaign.message  // N8N also checks this field
+      // Connection request
+      connectionRequest: templates.connection_request,
+      connection_request: templates.connection_request,
+      cr: templates.connection_request,
+
+      // Follow-up messages (N8N expects snake_case)
+      follow_up_1: templates.follow_up_messages?.[0] || '',
+      follow_up_2: templates.follow_up_messages?.[1] || '',
+      follow_up_3: templates.follow_up_messages?.[2] || '',
+      follow_up_4: templates.follow_up_messages?.[3] || '',
+      goodbye_message: templates.follow_up_messages?.[4] || '',
+
+      // Alternative/acceptance message
+      alternative_message: templates.alternative_message || templates.follow_up_messages?.[0] || ''
     },
 
     timing: {
@@ -198,14 +209,29 @@ async function executeCampaign(campaign) {
   console.log(`\\n🚀 Executing campaign: ${campaign.name}`);
   console.log(`   Campaign ID: ${campaign.campaignId}`);
 
-  // Get pending prospects - LIMIT TO 1 FOR TESTING
+  // FETCH MESSAGE TEMPLATES FROM DATABASE
+  const { data: campaignData, error: campaignError } = await supabase
+    .from('campaigns')
+    .select('message_templates')
+    .eq('id', campaign.campaignId)
+    .single();
+
+  if (campaignError || !campaignData) {
+    console.error(`❌ Failed to fetch campaign templates:`, campaignError);
+    return;
+  }
+
+  const templates = campaignData.message_templates;
+  console.log(`📝 Loaded message templates from database`);
+
+  // Get pending prospects - LIMIT TO 5 FOR TESTING
   const { data: prospects, error } = await supabase
     .from('campaign_prospects')
     .select('id, first_name, last_name, email, company_name, title, linkedin_url, linkedin_user_id')
     .eq('campaign_id', campaign.campaignId)
     .eq('status', 'pending')
     .order('created_at')
-    .limit(1);  // TESTING: Only send 1 connection request
+    .limit(5);  // TESTING: Send 5 connection requests
 
   if (error) {
     console.error(`❌ Failed to fetch prospects:`, error);
@@ -234,7 +260,7 @@ async function executeCampaign(campaign) {
 
   // Send batches with delays
   for (let i = 0; i < batches.length; i++) {
-    const success = await sendBatch(campaign, batches[i], i + 1, batches.length);
+    const success = await sendBatch(campaign, batches[i], templates, i + 1, batches.length);
 
     if (success) {
       successCount++;

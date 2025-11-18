@@ -42,7 +42,8 @@ import {
   Archive,
   Trash2,
   Sparkles,
-  Rocket
+  Rocket,
+  UserPlus
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -56,6 +57,7 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import CampaignApprovalScreen from '@/app/components/CampaignApprovalScreen';
 import { UnipileModal } from '@/components/integrations/UnipileModal';
 
@@ -85,6 +87,14 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [campaignToEdit, setCampaignToEdit] = useState<any>(null);
   const [editFormData, setEditFormData] = useState<any>({});
+
+  // Add Prospects modal state
+  const [showAddProspects, setShowAddProspects] = useState(false);
+  const [selectedCampaignForAdd, setSelectedCampaignForAdd] = useState<any>(null);
+  const [availableProspects, setAvailableProspects] = useState<any[]>([]);
+  const [selectedProspectIds, setSelectedProspectIds] = useState<string[]>([]);
+  const [prospectSearchTerm, setProspectSearchTerm] = useState('');
+  const [loadingProspectsForAdd, setLoadingProspectsForAdd] = useState(false);
 
   // Multi-select state
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
@@ -303,6 +313,95 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
 
     setSelectedCampaignForProspects(campaignId);
     setShowProspectsModal(true);
+  };
+
+  // Handler for opening Add Prospects modal
+  const openAddProspectsModal = async (campaign: any) => {
+    console.log('➕ Add Prospects clicked:', campaign.id);
+
+    setSelectedCampaignForAdd(campaign);
+    setShowAddProspects(true);
+    setLoadingProspectsForAdd(true);
+
+    // Fetch available prospects from workspace_prospects table
+    try {
+      const supabase = createClient();
+      const { data: prospects, error } = await supabase
+        .from('workspace_prospects')
+        .select('*')
+        .eq('workspace_id', actualWorkspaceId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to fetch prospects:', error);
+        toastError('Failed to load prospects');
+        setAvailableProspects([]);
+      } else {
+        console.log('✅ Loaded', prospects?.length || 0, 'available prospects');
+        setAvailableProspects(prospects || []);
+      }
+    } catch (error) {
+      console.error('Error fetching prospects:', error);
+      toastError('Failed to load prospects');
+      setAvailableProspects([]);
+    } finally {
+      setLoadingProspectsForAdd(false);
+    }
+  };
+
+  // Handler for toggling prospect selection
+  const toggleProspectSelection = (prospectId: string) => {
+    setSelectedProspectIds(prev => {
+      if (prev.includes(prospectId)) {
+        return prev.filter(id => id !== prospectId);
+      } else {
+        return [...prev, prospectId];
+      }
+    });
+  };
+
+  // Handler for adding selected prospects to campaign
+  const handleAddProspects = async () => {
+    if (!selectedCampaignForAdd || selectedProspectIds.length === 0) {
+      toastError('Please select at least one prospect');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/campaigns/${selectedCampaignForAdd.id}/prospects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prospect_ids: selectedProspectIds })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          // Conflict with other campaigns
+          const conflictList = data.conflicts
+            .map((c: any) => `- ${c.name} (in ${c.current_campaign})`)
+            .join('\n');
+          toastError(`Campaign conflict:\n\n${data.message}\n\n${conflictList}`);
+        } else {
+          toastError(data.error || 'Failed to add prospects');
+        }
+        return;
+      }
+
+      toastSuccess(`Added ${data.added_prospects} prospect(s) to campaign`);
+
+      // Reset state
+      setShowAddProspects(false);
+      setSelectedProspectIds([]);
+      setProspectSearchTerm('');
+
+      // Refresh campaigns list
+      queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+    } catch (error) {
+      console.error('Error adding prospects:', error);
+      toastError('Failed to add prospects to campaign');
+    }
   };
 
   // Multi-select handlers
@@ -551,6 +650,21 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                 >
                   <Users size={16} />
                 </button>
+                {c.status !== 'archived' && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      console.log('🟢 Add Prospects button clicked!', c.id);
+                      openAddProspectsModal(c);
+                    }}
+                    className="p-2 rounded-md text-green-400 hover:bg-gray-700 hover:text-white transition-colors"
+                    title="Add prospects to campaign"
+                    type="button"
+                  >
+                    <UserPlus size={16} />
+                  </button>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -924,6 +1038,117 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
               >
                 Close
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Add Prospects Modal */}
+      {showAddProspects && selectedCampaignForAdd && (
+        <Dialog open={showAddProspects} onOpenChange={setShowAddProspects}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-green-500">
+            <DialogHeader>
+              <DialogTitle className="text-2xl text-white flex items-center gap-2">
+                <UserPlus className="text-green-400" size={24} />
+                Add Prospects to Campaign
+              </DialogTitle>
+              <DialogDescription className="text-gray-400">
+                Select prospects from your database to add to "{selectedCampaignForAdd.name}"
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 mt-4">
+              {/* Search/Filter */}
+              <Input
+                placeholder="Search prospects by name, company, title..."
+                value={prospectSearchTerm}
+                onChange={(e) => setProspectSearchTerm(e.target.value)}
+                className="bg-gray-800 border-gray-700 text-white"
+              />
+
+              {/* Prospect List */}
+              {loadingProspectsForAdd ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="animate-spin text-green-400" size={48} />
+                </div>
+              ) : (
+                <div className="max-h-96 overflow-y-auto border border-gray-700 rounded-lg">
+                  {availableProspects
+                    .filter(p => {
+                      if (!prospectSearchTerm) return true;
+                      const searchLower = prospectSearchTerm.toLowerCase();
+                      return (
+                        p.first_name?.toLowerCase().includes(searchLower) ||
+                        p.last_name?.toLowerCase().includes(searchLower) ||
+                        p.company_name?.toLowerCase().includes(searchLower) ||
+                        p.title?.toLowerCase().includes(searchLower)
+                      );
+                    })
+                    .map((prospect) => (
+                      <div
+                        key={prospect.id}
+                        className="flex items-center gap-3 p-3 border-b border-gray-700 hover:bg-gray-800/50"
+                      >
+                        <Checkbox
+                          checked={selectedProspectIds.includes(prospect.id)}
+                          onCheckedChange={() => toggleProspectSelection(prospect.id)}
+                        />
+                        <div className="flex-1">
+                          <div className="font-semibold text-white">
+                            {prospect.first_name} {prospect.last_name}
+                          </div>
+                          <div className="text-sm text-gray-400">
+                            {prospect.title || 'No title'} at {prospect.company_name || 'No company'}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                  {availableProspects.filter(p => {
+                    if (!prospectSearchTerm) return true;
+                    const searchLower = prospectSearchTerm.toLowerCase();
+                    return (
+                      p.first_name?.toLowerCase().includes(searchLower) ||
+                      p.last_name?.toLowerCase().includes(searchLower) ||
+                      p.company_name?.toLowerCase().includes(searchLower) ||
+                      p.title?.toLowerCase().includes(searchLower)
+                    );
+                  }).length === 0 && (
+                    <div className="text-center py-12 text-gray-400">
+                      <Users size={48} className="mx-auto mb-4 text-gray-600" />
+                      <p>No prospects found</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="mt-6">
+              <div className="flex justify-between items-center w-full">
+                <div className="text-sm text-gray-400">
+                  {selectedProspectIds.length} prospect(s) selected
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowAddProspects(false);
+                      setSelectedProspectIds([]);
+                      setProspectSearchTerm('');
+                    }}
+                    className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleAddProspects}
+                    disabled={selectedProspectIds.length === 0}
+                    className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                  >
+                    Add {selectedProspectIds.length} Prospect{selectedProspectIds.length !== 1 ? 's' : ''}
+                  </Button>
+                </div>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>

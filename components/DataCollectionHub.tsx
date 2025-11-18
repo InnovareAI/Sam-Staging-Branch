@@ -219,7 +219,7 @@ async function fetchApprovalSessions(
       }
     }
 
-    // Sort by created date (newest first) and apply pagination
+    // Sort by created date (newest first) - NO PAGINATION, show all prospects
     allProspects.sort((a, b) => {
       const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0
       const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0
@@ -227,20 +227,17 @@ async function fetchApprovalSessions(
     })
 
     const totalProspects = allProspects.length
-    const startIndex = (page - 1) * limit
-    const endIndex = startIndex + limit
-    const paginatedProspects = allProspects.slice(startIndex, endIndex)
 
     return {
-      prospects: paginatedProspects,
+      prospects: allProspects, // Return ALL prospects, no pagination
       pagination: {
-        page,
-        limit,
+        page: 1,
+        limit: totalProspects,
         total: totalProspects,
-        totalPages: Math.ceil(totalProspects / limit),
-        hasNext: endIndex < totalProspects,
-        hasPrev: page > 1,
-        showing: paginatedProspects.length
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+        showing: totalProspects
       }
     }
   } catch (error) {
@@ -303,6 +300,7 @@ export default function DataCollectionHub({
 
   const [prospectData, setProspectData] = useState<ProspectData[]>([])
   const [expandedProspect, setExpandedProspect] = useState<string | null>(null)
+  const [expandedSearchGroups, setExpandedSearchGroups] = useState<Set<string>>(new Set()) // Track which search groups are expanded
   const [searchTerm, setSearchTerm] = useState('')
   // Generate default campaign name with systematic naming: YYYYMMDD-ClientID-CampaignName
   const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
@@ -1050,6 +1048,18 @@ export default function DataCollectionHub({
     setExpandedProspect(prev => prev === prospectId ? null : prospectId)
   }
 
+  const toggleSearchGroup = (searchName: string) => {
+    setExpandedSearchGroups(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(searchName)) {
+        newSet.delete(searchName)
+      } else {
+        newSet.add(searchName)
+      }
+      return newSet
+    })
+  }
+
   const downloadCSV = () => {
     const csv = [
       ['Name', 'Company', 'Title', 'Industry', 'Email', 'Phone', 'LinkedIn', 'Location', 'Campaign Tag', 'Status', 'Confidence', 'Source'],
@@ -1158,13 +1168,38 @@ export default function DataCollectionHub({
     return dateB - dateA // Descending order (newest first)
   })
 
+  // Group prospects by campaign name (search name)
+  const prospectsBySearch = new Map<string, ProspectData[]>()
+  filteredProspects.forEach(prospect => {
+    const searchName = prospect.campaignName || 'Unknown Search'
+    if (!prospectsBySearch.has(searchName)) {
+      prospectsBySearch.set(searchName, [])
+    }
+    prospectsBySearch.get(searchName)!.push(prospect)
+  })
+
+  // Sort search groups by most recent prospect in each group
+  const sortedSearchGroups = Array.from(prospectsBySearch.entries()).sort((a, b) => {
+    const latestA = Math.max(...a[1].map(p => p.createdAt ? p.createdAt.getTime() : 0))
+    const latestB = Math.max(...b[1].map(p => p.createdAt ? p.createdAt.getTime() : 0))
+    return latestB - latestA
+  })
+
+  // Auto-expand the first search group on initial load
+  React.useEffect(() => {
+    if (sortedSearchGroups.length > 0 && expandedSearchGroups.size === 0) {
+      setExpandedSearchGroups(new Set([sortedSearchGroups[0][0]]))
+    }
+  }, [sortedSearchGroups.length])
+
   // Debug logging for campaign filtering
   console.log('🔍 Campaign Filter Debug:', {
     selectedCampaignName,
     showLatestSessionOnly,
     totalProspects: prospectData.length,
     filteredProspects: filteredProspects.length,
-    uniqueCampaigns: Array.from(new Set(prospectData.map(p => p.campaignName).filter(Boolean)))
+    uniqueCampaigns: Array.from(new Set(prospectData.map(p => p.campaignName).filter(Boolean))),
+    searchGroups: sortedSearchGroups.length
   })
 
   // Calculate counts based on the currently filtered prospects (respects campaign selection)
@@ -1906,9 +1941,38 @@ export default function DataCollectionHub({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
-            {filteredProspects.map((prospect) => {
-              const qualityBadge = getQualityBadge(prospect.qualityScore ?? 0)
-              return (
+            {/* Render prospects grouped by search name */}
+            {sortedSearchGroups.flatMap(([searchName, prospects]) => [
+              // Group header row
+              <tr key={`header-${searchName}`} className="bg-gray-800/80 border-b-2 border-purple-500/30">
+                <td colSpan={10} className="px-4 py-3">
+                  <button
+                    onClick={() => toggleSearchGroup(searchName)}
+                    className="flex items-center justify-between w-full text-left hover:bg-gray-750/50 rounded px-2 py-1 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      {expandedSearchGroups.has(searchName) ? (
+                        <ChevronDown className="w-5 h-5 text-purple-400" />
+                      ) : (
+                        <ChevronUp className="w-5 h-5 text-gray-500" />
+                      )}
+                      <span className="text-lg font-semibold text-white">{searchName}</span>
+                      <span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-600/30 text-purple-300">
+                        {prospects.length} prospects
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {prospects.filter(p => p.approvalStatus === 'approved').length} approved,
+                        {prospects.filter(p => p.approvalStatus === 'pending').length} pending,
+                        {prospects.filter(p => p.approvalStatus === 'rejected').length} rejected
+                      </span>
+                    </div>
+                  </button>
+                </td>
+              </tr>,
+              // Render prospects if group is expanded
+              ...(expandedSearchGroups.has(searchName) ? prospects.map((prospect) => {
+                const qualityBadge = getQualityBadge(prospect.qualityScore ?? 0)
+                return (
               <React.Fragment key={prospect.id}>
                 <tr className={`hover:bg-gray-750 transition-colors ${
                   dismissedProspectIds.has(prospect.id)
@@ -2119,7 +2183,8 @@ export default function DataCollectionHub({
                 )}
               </React.Fragment>
               )
-            })}
+              }) : []) // Close expandedSearchGroups conditional
+            ])} {/* Close sortedSearchGroups.flatMap */}
           </tbody>
         </table>
         {filteredProspects.length === 0 && (
@@ -2132,19 +2197,26 @@ export default function DataCollectionHub({
           </div>
         )}
 
-        {/* Pagination Controls */}
+        {/* Results Summary - No Pagination */}
         {pagination.total > 0 && (
           <div className="border-t border-gray-700 px-6 py-4 flex items-center justify-between bg-gray-900">
-            {/* Results info */}
             <div className="text-sm text-gray-400">
-              Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} prospects
+              Showing all {pagination.total} prospects across {sortedSearchGroups.length} searches
             </div>
+            <div className="text-sm text-gray-500">
+              {sortedSearchGroups.filter(([name]) => expandedSearchGroups.has(name)).length} searches expanded
+            </div>
+          </div>
+        )}
 
-            {/* Pagination buttons */}
+        {/* OLD PAGINATION REMOVED - Show all prospects in grouped sections */}
+        {false && pagination.total > 0 && (
+          <div className="border-t border-gray-700 px-6 py-4 flex items-center justify-between bg-gray-900" style={{display: 'none'}}>
+            <div className="text-sm text-gray-400"></div>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setCurrentPage(1)}
-                disabled={!pagination.hasPrev || isLoadingSessions}
+                onClick={() => {}}
+                disabled={true}
                 className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 First

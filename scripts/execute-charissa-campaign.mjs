@@ -13,7 +13,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Load environment from project
-dotenv.config({ path: join(__dirname, '../Dev_Master/InnovareAI/Sam-New-Sep-7/.env.local') });
+dotenv.config({ path: join(__dirname, '../.env.local') });
 
 const CAMPAIGN_ID = '683f9214-8a3f-4015-98fe-aa3ae76a9ebe';
 const WORKSPACE_ID = '7f0341da-88db-476b-ae0a-fc0da5b70861';
@@ -48,9 +48,8 @@ const payload = {
     // Will be populated from database query
   ],
 
-  messages: {
-    connectionRequest: "Hi {first_name}, \n\nI work with early-stage founders on scaling outbound without burning time or budget on traditional sales hires. Saw that you're building {company_name} and thought it might be worth connecting.\n\nOpen to it?"
-  },
+  // Messages will be populated from database templates
+  messages: {},
 
   timing: {
     fu1DelayDays: 2,
@@ -62,8 +61,12 @@ const payload = {
 
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
   supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-  unipileDsn: `https://${process.env.UNIPILE_DSN}`,
-  unipileApiKey: process.env.UNIPILE_API_KEY
+  supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL,  // N8N expects snake_case
+  supabase_service_key: process.env.SUPABASE_SERVICE_ROLE_KEY,  // N8N expects snake_case
+  unipileDsn: process.env.UNIPILE_DSN,  // Don't add https:// here
+  unipile_dsn: process.env.UNIPILE_DSN,  // N8N expects snake_case and adds https://
+  unipileApiKey: process.env.UNIPILE_API_KEY,
+  unipile_api_key: process.env.UNIPILE_API_KEY  // N8N expects snake_case
 };
 
 console.log('📋 Campaign Details:');
@@ -85,7 +88,8 @@ const { data: prospects, error } = await supabase
   .from('campaign_prospects')
   .select('id, first_name, last_name, email, company_name, title, linkedin_url, linkedin_user_id, status')
   .eq('campaign_id', CAMPAIGN_ID)
-  .in('status', ['pending', 'approved', 'ready_to_message', 'queued_in_n8n']);
+  .in('status', ['pending', 'approved', 'ready_to_message', 'queued_in_n8n'])
+  .limit(1);  // TEST: Send only 1 prospect
 
 if (error) {
   console.error('❌ Failed to fetch prospects:', error);
@@ -98,6 +102,42 @@ if (!prospects || prospects.length === 0) {
 }
 
 console.log(`✅ Found ${prospects.length} prospects\n`);
+
+// FETCH MESSAGE TEMPLATES FROM DATABASE
+console.log('📝 Fetching message templates from database...');
+const { data: campaignData, error: campaignError } = await supabase
+  .from('campaigns')
+  .select('message_templates')
+  .eq('id', CAMPAIGN_ID)
+  .single();
+
+if (campaignError || !campaignData) {
+  console.error('❌ Failed to fetch campaign templates:', campaignError);
+  process.exit(1);
+}
+
+const templates = campaignData.message_templates;
+console.log(`✅ Loaded message templates from database\n`);
+
+// Populate messages with all templates (N8N expects snake_case)
+payload.messages = {
+  // Connection request
+  connectionRequest: templates.connection_request,
+  connection_request: templates.connection_request,
+  cr: templates.connection_request,
+
+  // Follow-up messages (N8N expects snake_case)
+  follow_up_1: templates.follow_up_messages?.[0] || '',
+  follow_up_2: templates.follow_up_messages?.[1] || '',
+  follow_up_3: templates.follow_up_messages?.[2] || '',
+  follow_up_4: templates.follow_up_messages?.[3] || '',
+  goodbye_message: templates.follow_up_messages?.[4] || '',
+  goodbye: templates.follow_up_messages?.[4] || '',  // N8N also checks this field
+
+  // Alternative/acceptance message
+  alternative_message: templates.alternative_message || templates.follow_up_messages?.[0] || '',
+  acceptance_message: templates.alternative_message || templates.follow_up_messages?.[0] || ''  // N8N also checks this
+};
 
 // PRODUCTION-GRADE HUMAN RANDOMIZER
 // Mimics natural human sending patterns with day-specific variations
@@ -168,13 +208,20 @@ payload.prospects = await Promise.all(prospects.map(async (p, index) => {
     prospectId: p.id,
     campaignId: CAMPAIGN_ID,
     firstName: p.first_name,
+    first_name: p.first_name,  // N8N expects snake_case
     lastName: p.last_name,
+    last_name: p.last_name,  // N8N expects snake_case
     linkedinUrl: p.linkedin_url,
+    linkedin_url: p.linkedin_url,  // N8N expects snake_case
     linkedinUsername: linkedinUsername,  // CRITICAL: Extract for Unipile API
+    linkedin_username: linkedinUsername,  // N8N expects snake_case
     linkedinUserId: p.linkedin_user_id,
+    linkedin_user_id: p.linkedin_user_id,  // N8N expects snake_case
     companyName: p.company_name,
+    company_name: p.company_name,  // N8N expects snake_case
     title: p.title,
-    sendDelayMinutes: sendDelay
+    sendDelayMinutes: sendDelay,
+    send_delay_minutes: sendDelay  // N8N expects snake_case
   };
 }));
 
