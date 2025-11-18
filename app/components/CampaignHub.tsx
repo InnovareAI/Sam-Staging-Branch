@@ -836,10 +836,11 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                         <TableHead className="text-gray-300">Title</TableHead>
                         <TableHead className="text-gray-300">Company</TableHead>
                         <TableHead className="text-gray-300">Status</TableHead>
-                        <TableHead className="text-gray-300">Contacted</TableHead>
-                        <TableHead className="text-gray-300">Connected</TableHead>
-                        <TableHead className="text-gray-300">Last Reply</TableHead>
-                        <TableHead className="text-gray-300">Follow-ups</TableHead>
+                        <TableHead className="text-gray-300 text-center">CR Sent</TableHead>
+                        <TableHead className="text-gray-300 text-center">Connected</TableHead>
+                        <TableHead className="text-gray-300 text-center">FU Sent</TableHead>
+                        <TableHead className="text-gray-300 text-center">Replied</TableHead>
+                        <TableHead className="text-gray-300 text-center">Opted Out</TableHead>
                         <TableHead className="text-gray-300">LinkedIn</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -863,56 +864,30 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                               {prospect.status || 'unknown'}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-gray-300">
-                            {prospect.contacted_at ? (
-                              <span className="text-xs">
-                                {new Date(prospect.contacted_at).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
-                            ) : (
-                              <span className="text-gray-600">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-gray-300">
-                            {prospect.connection_accepted_at ? (
-                              <span className="text-xs text-green-400">
-                                {new Date(prospect.connection_accepted_at).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
-                            ) : (
-                              <span className="text-gray-600">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-gray-300">
-                            {prospect.responded_at ? (
-                              <span className="text-xs text-blue-400">
-                                {new Date(prospect.responded_at).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
-                            ) : (
-                              <span className="text-gray-600">-</span>
-                            )}
+                          <TableCell className="text-center">
+                            <span className={prospect.contacted_at ? "text-green-400 font-semibold" : "text-gray-500"}>
+                              {prospect.contacted_at ? "1" : "0"}
+                            </span>
                           </TableCell>
                           <TableCell className="text-center">
-                            {prospect.follow_up_sequence_index !== null && prospect.follow_up_sequence_index !== undefined ? (
-                              <Badge className="bg-purple-900/20 text-purple-400 border-purple-500">
-                                {prospect.follow_up_sequence_index}
-                              </Badge>
-                            ) : (
-                              <span className="text-gray-600">0</span>
-                            )}
+                            <span className={prospect.connection_accepted_at ? "text-green-400 font-semibold" : "text-gray-500"}>
+                              {prospect.connection_accepted_at ? "1" : "0"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className={prospect.follow_up_sequence_index > 0 ? "text-purple-400 font-semibold" : "text-gray-500"}>
+                              {prospect.follow_up_sequence_index || 0}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className={prospect.responded_at ? "text-blue-400 font-semibold" : "text-gray-500"}>
+                              {prospect.responded_at ? "1" : "0"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className={prospect.status === 'opted_out' ? "text-red-400 font-semibold" : "text-gray-500"}>
+                              {prospect.status === 'opted_out' ? "1" : "0"}
+                            </span>
                           </TableCell>
                           <TableCell>
                             {prospect.linkedin_url ? (
