@@ -169,6 +169,46 @@ export async function POST(request: NextRequest) {
 
     console.log('Successfully updated approval_status:', updatedData[0])
 
+    // CRITICAL: If approved, immediately save to workspace_prospects
+    // This ensures prospects from ALL sources (SAM, CSV, LinkedIn URL) are available
+    if (decision === 'approved' && updatedData[0]) {
+      const prospect = updatedData[0]
+
+      // Get workspace_id from session
+      const { data: session } = await adminClient
+        .from('prospect_approval_sessions')
+        .select('workspace_id')
+        .eq('id', session_id)
+        .single()
+
+      if (session && session.workspace_id) {
+        // Save to workspace_prospects (upsert to avoid duplicates)
+        await adminClient
+          .from('workspace_prospects')
+          .upsert({
+            workspace_id: session.workspace_id,
+            first_name: prospect.first_name || '',
+            last_name: prospect.last_name || '',
+            full_name: prospect.full_name || `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
+            email: prospect.email || null,
+            phone: prospect.phone || null,
+            company_name: prospect.company_name || prospect.company || null,
+            job_title: prospect.job_title || prospect.title || null,
+            linkedin_profile_url: prospect.linkedin_profile_url || prospect.linkedin_url || null,
+            location: prospect.location || null,
+            industry: prospect.industry || null,
+            source: prospect.source || 'manual',
+            confidence_score: prospect.confidence || null,
+            created_at: new Date().toISOString()
+          }, {
+            onConflict: 'workspace_id,linkedin_profile_url',
+            ignoreDuplicates: true
+          })
+
+        console.log('✅ Saved approved prospect to workspace_prospects:', prospect.full_name)
+      }
+    }
+
     // Update session counts in background (non-blocking)
     updateSessionCounts(supabase, session_id).catch(console.error)
 
