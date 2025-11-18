@@ -118,8 +118,9 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
       return campaigns;
     },
     enabled: !!actualWorkspaceId, // Only fetch if workspaceId is available
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Always consider data stale - campaigns change frequently
     refetchOnWindowFocus: true,
+    refetchOnMount: 'always', // Always refetch on component mount
   });
 
   // Listen for refresh events
@@ -182,6 +183,37 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
 
   const toggleCampaignStatus = (campaignId: string, currentStatus: string) => {
     toggleStatusMutation.mutate({ campaignId, currentStatus });
+  };
+
+  // REACT QUERY: Mutation for archiving campaign
+  const archiveMutation = useMutation({
+    mutationFn: async (campaignId: string) => {
+      const response = await fetch(`/api/campaigns/${campaignId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'archived' })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to archive campaign');
+      }
+
+      return { campaignId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+      toastSuccess('Campaign archived');
+    },
+    onError: (error) => {
+      console.error('Error archiving campaign:', error);
+      toastError('Failed to archive campaign');
+    }
+  });
+
+  const archiveCampaign = (campaignId: string) => {
+    if (confirm('Archive this campaign? This will permanently stop it and move it to archived campaigns.')) {
+      archiveMutation.mutate(campaignId);
+    }
   };
 
   const showCampaignAnalytics = (campaignId: string) => {
@@ -477,6 +509,20 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                     title="Resume campaign"
                   >
                     <Play size={16} />
+                  </Button>
+                )}
+                {c.status !== 'archived' && (
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      archiveCampaign(c.id);
+                    }}
+                    variant="ghost"
+                    size="icon"
+                    className="text-gray-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
+                    title="Archive campaign"
+                  >
+                    <Archive size={16} />
                   </Button>
                 )}
                 <button
