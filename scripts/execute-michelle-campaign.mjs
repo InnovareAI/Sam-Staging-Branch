@@ -15,8 +15,8 @@ const __dirname = dirname(__filename);
 // Load environment from project
 dotenv.config({ path: join(__dirname, '../Dev_Master/InnovareAI/Sam-New-Sep-7/.env.local') });
 
-const CAMPAIGN_ID = '683f9214-8a3f-4015-98fe-aa3ae76a9ebe';
-const WORKSPACE_ID = '7f0341da-88db-476b-ae0a-fc0da5b70861';
+const CAMPAIGN_ID = '9fcfcab0-7007-4628-b49b-1636ba5f781f';
+const WORKSPACE_ID = '04666209-fce8-4d71-8eaf-01278edfc73b';
 const N8N_WEBHOOK_URL = 'https://workflows.innovareai.com/webhook/connector-campaign';
 
 console.log('🚀 Executing Charissa\'s campaign...\n');
@@ -27,7 +27,7 @@ const payload = {
   campaignId: CAMPAIGN_ID,
   channel: 'linkedin',
   campaignType: 'connector',
-  unipileAccountId: '4nt1J-blSnGUPBjH2Nfjpg',
+  unipileAccountId: 'MT39bAEDTJ6e_ZPY337UgQ',
 
   accountTracking: {
     dailyMessageLimit: 20,
