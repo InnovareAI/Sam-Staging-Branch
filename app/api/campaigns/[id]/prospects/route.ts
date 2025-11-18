@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/app/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createClient();
-    
+    console.log('🔍 [PROSPECTS API] Request started for campaign:', params.id);
+
+    // Use route client that handles auth headers properly
+    const supabase = await createSupabaseRouteClient();
+    console.log('✅ [PROSPECTS API] Supabase client created');
+
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
+    console.log('🔐 [PROSPECTS API] Auth check:', { hasUser: !!user, authError: authError?.message });
+
     if (authError || !user) {
+      console.error('❌ [PROSPECTS API] Auth failed:', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -20,6 +28,8 @@ export async function GET(
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
+    console.log('📋 [PROSPECTS API] Query params:', { campaignId, status, limit, offset });
+
     // Verify campaign exists and user has access
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
@@ -27,8 +37,14 @@ export async function GET(
       .eq('id', campaignId)
       .single();
 
+    console.log('🏢 [PROSPECTS API] Campaign lookup:', {
+      found: !!campaign,
+      workspaceId: campaign?.workspace_id,
+      error: campaignError?.message
+    });
+
     if (campaignError || !campaign) {
-      console.error('Campaign not found:', campaignError);
+      console.error('❌ [PROSPECTS API] Campaign not found:', campaignError);
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
     }
 
@@ -81,9 +97,19 @@ export async function GET(
     });
 
   } catch (error: any) {
-    console.error('Campaign prospects fetch error:', error);
+    console.error('❌ [PROSPECTS API] Fatal error:', error);
+    console.error('❌ [PROSPECTS API] Error stack:', error.stack);
+    console.error('❌ [PROSPECTS API] Error details:', {
+      name: error.name,
+      message: error.message,
+      cause: error.cause
+    });
     return NextResponse.json(
-      { error: 'Failed to fetch campaign prospects', details: error.message },
+      {
+        error: 'Failed to fetch campaign prospects',
+        details: error.message,
+        errorName: error.name
+      },
       { status: 500 }
     );
   }
@@ -94,7 +120,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createClient();
+    // Use route client that handles auth headers properly
+    const supabase = await createSupabaseRouteClient();
 
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
