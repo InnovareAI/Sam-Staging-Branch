@@ -26,15 +26,14 @@ const campaigns = [
     workspaceId: '7f0341da-88db-476b-ae0a-fc0da5b70861',
     unipileAccountId: '4nt1J-blSnGUPBjH2Nfjpg',
     message: "Hi {first_name},\n\nI work with early-stage founders on scaling outbound without burning time or budget on traditional sales hires. Saw that you're building {company_name} and thought it might be worth connecting.\n\nOpen to it?"
+  },
+  {
+    name: 'Michelle (IA2)',
+    campaignId: '9fcfcab0-7007-4628-b49b-1636ba5f781f',
+    workspaceId: '04666209-fce8-4d71-8eaf-01278edfc73b',
+    unipileAccountId: 'MT39bAEDTJ6e_ZPY337UgQ',
+    message: "Hi {first_name},\n\nI work with early-stage founders on scaling outbound without burning time or budget on traditional sales hires. Saw that you're building {company_name} and thought it might be worth connecting.\n\nOpen to it?"
   }
-  // Michelle's campaign commented out - running Charissa only
-  // {
-  //   name: 'Michelle (IA2)',
-  //   campaignId: '9fcfcab0-7007-4628-b49b-1636ba5f781f',
-  //   workspaceId: '04666209-fce8-4d71-8eaf-01278edfc73b',
-  //   unipileAccountId: 'MT39bAEDTJ6e_ZPY337UgQ',
-  //   message: "Hi {first_name}, \\n\\nI work with early-stage founders on scaling outbound without burning time or budget on traditional sales hires. Saw that you're building {company_name} and thought it might be worth connecting.\\n\\nOpen to it?"
-  // }
 ];
 
 // Verify environment variables are loaded
@@ -59,6 +58,7 @@ async function sendBatch(campaign, prospects, templates, batchNumber, totalBatch
     channel: 'linkedin',
     campaignType: 'connector',
     unipileAccountId: campaign.unipileAccountId,
+    unipile_account_id: campaign.unipileAccountId,  // N8N expects snake_case
 
     accountTracking: {
       dailyMessageLimit: 20,
