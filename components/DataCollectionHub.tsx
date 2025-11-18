@@ -308,7 +308,7 @@ export default function DataCollectionHub({
   const [defaultCampaignTag, setDefaultCampaignTag] = useState('')
   const [selectedCampaignName, setSelectedCampaignName] = useState<string>('all')
   const [selectedCampaignTag, setSelectedCampaignTag] = useState<string>('all')
-  const [showLatestSessionOnly, setShowLatestSessionOnly] = useState<boolean>(true) // Default to showing only latest search
+  const [showLatestSessionOnly, setShowLatestSessionOnly] = useState<boolean>(false) // Default to showing all searches
 
   // Phase 2: Add to Existing Campaign state
   const [availableCampaigns, setAvailableCampaigns] = useState<any[]>([])
