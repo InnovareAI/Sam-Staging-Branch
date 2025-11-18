@@ -182,30 +182,42 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (session && session.workspace_id) {
+        // Extract contact data from JSONB fields
+        const contact = prospect.contact || {}
+        const company = prospect.company || {}
+
+        // Parse name into first/last
+        const nameParts = (prospect.name || '').split(' ')
+        const firstName = nameParts[0] || ''
+        const lastName = nameParts.slice(1).join(' ') || ''
+
+        // Get LinkedIn URL from contact object
+        const linkedinUrl = contact.linkedin_url || contact.linkedin_profile_url || null
+
         // Save to workspace_prospects (upsert to avoid duplicates)
         await adminClient
           .from('workspace_prospects')
           .upsert({
             workspace_id: session.workspace_id,
-            first_name: prospect.first_name || '',
-            last_name: prospect.last_name || '',
-            full_name: prospect.full_name || `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
-            email: prospect.email || null,
-            phone: prospect.phone || null,
-            company_name: prospect.company_name || prospect.company || null,
-            job_title: prospect.job_title || prospect.title || null,
-            linkedin_profile_url: prospect.linkedin_profile_url || prospect.linkedin_url || null,
+            first_name: firstName,
+            last_name: lastName,
+            full_name: prospect.name,
+            email: contact.email || null,
+            phone: contact.phone || null,
+            company_name: company.name || null,
+            job_title: prospect.title || null,
+            linkedin_profile_url: linkedinUrl,
             location: prospect.location || null,
-            industry: prospect.industry || null,
+            industry: company.industry || null,
             source: prospect.source || 'manual',
-            confidence_score: prospect.confidence || null,
+            confidence_score: prospect.enrichment_score || null,
             created_at: new Date().toISOString()
           }, {
             onConflict: 'workspace_id,linkedin_profile_url',
             ignoreDuplicates: true
           })
 
-        console.log('✅ Saved approved prospect to workspace_prospects:', prospect.full_name)
+        console.log('✅ Saved approved prospect to workspace_prospects:', prospect.name)
       }
     }
 
