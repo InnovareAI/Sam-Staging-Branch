@@ -311,7 +311,17 @@ export default function DataCollectionHub({
   const [selectedCampaignName, setSelectedCampaignName] = useState<string>('latest')
   const [selectedCampaignTag, setSelectedCampaignTag] = useState<string>('all')
   const [showLatestSessionOnly, setShowLatestSessionOnly] = useState<boolean>(true) // Default to showing only latest search
-  
+
+  // Phase 2: Add to Existing Campaign state
+  const [availableCampaigns, setAvailableCampaigns] = useState<any[]>([])
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>('')
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false)
+
+  // Available prospects (approved but not in campaigns)
+  const [availableProspects, setAvailableProspects] = useState<any[]>([])
+  const [loadingAvailableProspects, setLoadingAvailableProspects] = useState(false)
+  const [refreshTrigger, setRefreshTrigger] = useState(0) // Trigger to force refresh
+
   // Missing state variables
   const [uploadProgress, setUploadProgress] = useState(0)
   const [showApprovalPanel, setShowApprovalPanel] = useState(true)
@@ -622,6 +632,65 @@ export default function DataCollectionHub({
       })
     }
   }, [initialUploadedData, workspaceCode])
+
+  // Fetch available campaigns for "Add to Existing Campaign" dropdown
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      if (!actualWorkspaceId) return
+
+      setLoadingCampaigns(true)
+      try {
+        const response = await fetch(`/api/campaigns?workspace_id=${actualWorkspaceId}`)
+        if (!response.ok) throw new Error('Failed to fetch campaigns')
+
+        const data = await response.json()
+        // Filter for active and draft campaigns only (not archived)
+        const activeCampaigns = (data.campaigns || []).filter(
+          (c: any) => c.status === 'active' || c.status === 'draft' || c.status === 'paused'
+        )
+        setAvailableCampaigns(activeCampaigns)
+      } catch (error) {
+        console.error('Error fetching campaigns:', error)
+        setAvailableCampaigns([])
+      } finally {
+        setLoadingCampaigns(false)
+      }
+    }
+
+    fetchCampaigns()
+  }, [actualWorkspaceId])
+
+  // Fetch available prospects (approved but not in campaigns)
+  useEffect(() => {
+    const fetchAvailableProspects = async () => {
+      if (!actualWorkspaceId) return
+
+      setLoadingAvailableProspects(true)
+      try {
+        const response = await fetch(`/api/workspace-prospects/available?workspace_id=${actualWorkspaceId}`)
+        if (!response.ok) throw new Error('Failed to fetch available prospects')
+
+        const data = await response.json()
+        setAvailableProspects(data.prospects || [])
+      } catch (error) {
+        console.error('Error fetching available prospects:', error)
+        setAvailableProspects([])
+      } finally {
+        setLoadingAvailableProspects(false)
+      }
+    }
+
+    // Fetch immediately
+    fetchAvailableProspects()
+
+    // Set up polling to refresh every 3 seconds (so SAM search results appear quickly)
+    const intervalId = setInterval(() => {
+      fetchAvailableProspects()
+    }, 3000) // 3 seconds
+
+    // Clean up interval on unmount or dependency change
+    return () => clearInterval(intervalId)
+  }, [actualWorkspaceId, activeTab, refreshTrigger]) // Refetch when tab changes or when explicitly triggered
 
   // CSV Upload Handler
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1099,7 +1168,8 @@ export default function DataCollectionHub({
   })
 
   // Calculate counts based on the currently filtered prospects (respects campaign selection)
-  const approvedCount = filteredProspects.filter(p => p.approvalStatus === 'approved').length
+  // For approved count, use availableProspects (prospects in database but NOT in campaigns)
+  const approvedCount = availableProspects.length
   const rejectedCount = prospectData.filter(p => p.approvalStatus === 'rejected').length // Always use full data for rejected count
   const pendingCount = filteredProspects.filter(p => p.approvalStatus === 'pending').length
   
@@ -1176,6 +1246,66 @@ export default function DataCollectionHub({
 
     // Forward ONLY approved prospects to Campaign Hub (disregard rejected and pending)
     handleProceedToCampaignHub(approvedProspects)
+  }
+
+  const addApprovedToExistingCampaign = async () => {
+    const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved')
+
+    if (approvedProspects.length === 0) {
+      toastError('No approved prospects to add. Please approve prospects first.')
+      return
+    }
+
+    if (!selectedCampaignId) {
+      toastError('Please select a campaign first.')
+      return
+    }
+
+    setLoading(true)
+    setLoadingMessage(`Adding ${approvedProspects.length} prospects to campaign...`)
+
+    try {
+      // Get prospect IDs from workspace_prospects table
+      const prospectIds = approvedProspects.map(p => p.id).filter(Boolean)
+
+      const response = await fetch(`/api/campaigns/${selectedCampaignId}/prospects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prospect_ids: prospectIds })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          // Conflict with other campaigns
+          const conflictList = data.conflicts
+            .map((c: any) => `- ${c.name} (in ${c.current_campaign})`)
+            .join('\n')
+          toastError(`Campaign conflict:\n\n${data.message}\n\n${conflictList}`)
+        } else {
+          toastError(data.error || 'Failed to add prospects to campaign')
+        }
+        setLoading(false)
+        return
+      }
+
+      toastSuccess(`Added ${data.added_prospects} prospect(s) to campaign!`)
+
+      // Clear approved prospects from the list after successful addition
+      setProspectData(prev => prev.filter(p => p.approvalStatus !== 'approved'))
+
+      // Reset campaign selection
+      setSelectedCampaignId('')
+
+      // Refresh available prospects count
+      setRefreshTrigger(prev => prev + 1)
+    } catch (error) {
+      console.error('Error adding prospects to campaign:', error)
+      toastError('Failed to add prospects to campaign. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const bulkRejectSelected = async () => {
@@ -1597,11 +1727,42 @@ export default function DataCollectionHub({
               <span>Send Approved to Campaign ({prospectData.filter(p => p.approvalStatus === 'approved').length})</span>
             </Button>
 
-            {/* Info message about next steps */}
+            {/* Add to Existing Campaign - Dropdown + Button */}
             {prospectData.filter(p => p.approvalStatus === 'approved').length > 0 && (
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedCampaignId}
+                  onChange={(e) => setSelectedCampaignId(e.target.value)}
+                  disabled={loadingCampaigns}
+                  className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  <option value="">Select existing campaign...</option>
+                  {availableCampaigns.map(campaign => (
+                    <option key={campaign.id} value={campaign.id}>
+                      {campaign.name} ({campaign.status})
+                    </option>
+                  ))}
+                </select>
+
+                <Button
+                  onClick={addApprovedToExistingCampaign}
+                  disabled={!selectedCampaignId || prospectData.filter(p => p.approvalStatus === 'approved').length === 0}
+                  size="sm"
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500"
+                  title="Add approved prospects to the selected existing campaign"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add to Campaign ({prospectData.filter(p => p.approvalStatus === 'approved').length})</span>
+                </Button>
+              </div>
+            )}
+
+            {/* Info message about next steps */}
+            {availableProspects.length > 0 && (
               <div className="text-sm text-gray-400 flex items-center gap-2">
-                <span>✓ {prospectData.filter(p => p.approvalStatus === 'approved').length} approved</span>
-                <span className="text-purple-400">→ Go to Campaign Hub to create campaigns</span>
+                <span>✓ {availableProspects.length} approved & saved to database</span>
+                <span className="text-gray-500">•</span>
+                <span className="text-blue-400">Optional: Create new or add to existing campaign</span>
               </div>
             )}
               </div>
