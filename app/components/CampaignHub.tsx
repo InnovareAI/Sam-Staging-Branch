@@ -8649,9 +8649,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             {/* Header */}
             <div className="bg-gray-750 px-6 py-4 border-b border-gray-700 flex items-center justify-between sticky top-0">
               <div>
-                <h3 className="text-xl font-semibold text-white">Approved Prospects</h3>
+                <h3 className="text-xl font-semibold text-white">Campaign Prospects</h3>
                 <p className="text-sm text-gray-400 mt-1">
-                  {campaignProspects.length} prospect{campaignProspects.length !== 1 ? 's' : ''} approved for this campaign
+                  {campaignProspects.length} prospect{campaignProspects.length !== 1 ? 's' : ''} in this campaign
                 </p>
               </div>
               <button
@@ -8668,7 +8668,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 <div className="text-center py-12">
                   <Users className="mx-auto text-gray-600 mb-4" size={48} />
                   <div className="text-white font-medium mb-2">No prospects found</div>
-                  <div className="text-gray-400">This campaign doesn't have any approved prospects yet.</div>
+                  <div className="text-gray-400">This campaign doesn't have any prospects yet.</div>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -8680,37 +8680,46 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
-                            <h4 className="text-white font-semibold">{prospect.workspace_prospects?.full_name || prospect.name || 'Unknown'}</h4>
-                            {prospect.approval_status === 'approved' && (
-                              <span className="px-2 py-0.5 bg-green-600/20 text-green-400 text-xs rounded-full border border-green-500/40">
-                                ✓ Approved
+                            <h4 className="text-white font-semibold">
+                              {prospect.first_name && prospect.last_name
+                                ? `${prospect.first_name} ${prospect.last_name}`
+                                : prospect.workspace_prospects?.full_name || prospect.name || 'Unknown'}
+                            </h4>
+                            {prospect.status && (
+                              <span className={`px-2 py-0.5 text-xs rounded-full border ${
+                                prospect.status === 'pending' ? 'bg-yellow-600/20 text-yellow-400 border-yellow-500/40' :
+                                prospect.status === 'approved' ? 'bg-green-600/20 text-green-400 border-green-500/40' :
+                                prospect.status === 'contacted' || prospect.status === 'connected' ? 'bg-blue-600/20 text-blue-400 border-blue-500/40' :
+                                'bg-gray-600/20 text-gray-400 border-gray-500/40'
+                              }`}>
+                                {prospect.status}
                               </span>
                             )}
                           </div>
                           <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                            {prospect.workspace_prospects?.job_title && (
+                            {(prospect.title || prospect.workspace_prospects?.job_title) && (
                               <div>
                                 <span className="text-gray-400">Title:</span>
-                                <span className="text-gray-300 ml-2">{prospect.workspace_prospects.job_title}</span>
+                                <span className="text-gray-300 ml-2">{prospect.title || prospect.workspace_prospects?.job_title}</span>
                               </div>
                             )}
-                            {prospect.workspace_prospects?.company_name && (
+                            {(prospect.company_name || prospect.company || prospect.workspace_prospects?.company_name) && (
                               <div>
                                 <span className="text-gray-400">Company:</span>
-                                <span className="text-gray-300 ml-2">{prospect.workspace_prospects.company_name}</span>
+                                <span className="text-gray-300 ml-2">{prospect.company_name || prospect.company || prospect.workspace_prospects?.company_name}</span>
                               </div>
                             )}
-                            {prospect.workspace_prospects?.email && (
+                            {(prospect.email || prospect.workspace_prospects?.email) && (
                               <div>
                                 <span className="text-gray-400">Email:</span>
-                                <span className="text-gray-300 ml-2">{prospect.workspace_prospects.email}</span>
+                                <span className="text-gray-300 ml-2">{prospect.email || prospect.workspace_prospects?.email}</span>
                               </div>
                             )}
-                            {prospect.workspace_prospects?.linkedin_url && (
+                            {(prospect.linkedin_url || prospect.workspace_prospects?.linkedin_url) && (
                               <div>
                                 <span className="text-gray-400">LinkedIn:</span>
                                 <a
-                                  href={prospect.workspace_prospects.linkedin_url}
+                                  href={prospect.linkedin_url || prospect.workspace_prospects?.linkedin_url}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-purple-400 hover:text-purple-300 ml-2 underline"
