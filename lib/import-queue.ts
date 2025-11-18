@@ -90,14 +90,24 @@ class ImportQueue {
     const { sessionId, prospects } = item;
 
     // Transform prospects to database format
-    const approvalProspects = prospects.map((prospect: any) => {
+    const approvalProspects = prospects.map((prospect: any, index: number) => {
       const linkedinUrl = prospect.profile_url || prospect.public_profile_url || '';
-      const prospectId = linkedinUrl.split('/').filter(Boolean).pop() || uuidv4();
+
+      // CRITICAL FIX: Generate truly unique prospect_id by combining LinkedIn username with timestamp and index
+      // This prevents unique constraint violations when LinkedIn returns duplicates or malformed URLs
+      let prospectId;
+      if (linkedinUrl) {
+        const username = linkedinUrl.split('/').filter(Boolean).pop() || '';
+        prospectId = `${username}_${Date.now()}_${index}`;
+      } else {
+        prospectId = `unipile_${uuidv4()}`;
+      }
 
       return {
         id: uuidv4(),
         session_id: sessionId,
         prospect_id: prospectId,
+        workspace_id: prospect.workspace_id || null,  // CRITICAL: Add workspace_id for RLS policies
         name: prospect.name || `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim() || 'Unknown',
         title: prospect.headline || prospect.current_positions?.[0]?.role || 'Unknown',
         location: prospect.location || prospect.geo_region,
@@ -120,14 +130,40 @@ class ImportQueue {
       };
     });
 
-    // Insert prospects
-    const { error: insertError } = await supabase
+    console.log(`💾 Attempting to insert ${approvalProspects.length} prospects for session ${sessionId}`);
+
+    // Insert prospects with detailed error logging
+    const { data: insertedData, error: insertError } = await supabase
       .from('prospect_approval_data')
-      .insert(approvalProspects);
+      .insert(approvalProspects)
+      .select('id');  // CRITICAL: Select to verify inserts succeeded
 
     if (insertError) {
-      throw new Error(`Database insert failed: ${insertError.message}`);
+      console.error('❌ Database insert error:', {
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+        code: insertError.code,
+        sessionId: sessionId,
+        prospectCount: approvalProspects.length
+      });
+      throw new Error(`Database insert failed: ${insertError.message} (code: ${insertError.code})`);
     }
+
+    // CRITICAL: Verify ALL prospects were inserted
+    const insertedCount = insertedData?.length || 0;
+    const expectedCount = approvalProspects.length;
+
+    if (insertedCount !== expectedCount) {
+      console.error(`❌ CRITICAL: Insert count mismatch for session ${sessionId}`, {
+        expected: expectedCount,
+        inserted: insertedCount,
+        missing: expectedCount - insertedCount
+      });
+      throw new Error(`Insert verification failed: ${insertedCount}/${expectedCount} prospects saved`);
+    }
+
+    console.log(`✅ Verified ${insertedCount}/${expectedCount} prospects inserted successfully`)
 
     // Update session counts
     const { data: currentSession } = await supabase

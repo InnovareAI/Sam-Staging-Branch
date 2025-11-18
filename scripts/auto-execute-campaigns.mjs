@@ -97,8 +97,8 @@ async function sendBatchToN8N(campaign, prospects, batchNumber) {
 
     scheduleSettings: {
       timezone: 'America/Los_Angeles',
-      workingHoursStart: 5,
-      workingHoursEnd: 18,
+      workingHoursStart: 0,
+      workingHoursEnd: 24,
       skipWeekends: false,
       skipHolidays: false
     },

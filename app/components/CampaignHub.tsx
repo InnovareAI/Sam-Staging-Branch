@@ -2667,7 +2667,7 @@ Would you like me to adjust these or create more variations?`
 
       // Step 2: Add prospects to campaign
       // CRITICAL FIX: Use different API for approved prospects vs raw uploads
-      if (initialProspects && initialProspects.length > 0 && initialProspects[0].prospect_id) {
+      if (initialProspects && initialProspects.length > 0 && initialProspects[0].id) {
         // Prospects from Data Approval - use add-approved-prospects API
         console.log('✅ Adding approved prospects via /api/campaigns/add-approved-prospects');
 
@@ -2677,7 +2677,7 @@ Would you like me to adjust these or create more variations?`
           body: JSON.stringify({
             campaign_id: campaign.id,
             workspace_id: actualWorkspaceId,
-            prospect_ids: initialProspects.map(p => p.prospect_id)  // FIXED: Use prospect_id not id
+            prospect_ids: initialProspects.map(p => p.id)  // FIXED: Use id not prospect_id
           })
         });
 
