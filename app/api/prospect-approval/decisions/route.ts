@@ -169,57 +169,9 @@ export async function POST(request: NextRequest) {
 
     console.log('Successfully updated approval_status:', updatedData[0])
 
-    // CRITICAL: If approved, immediately save to workspace_prospects
-    // This ensures prospects from ALL sources (SAM, CSV, LinkedIn URL) are available
-    if (decision === 'approved' && updatedData[0]) {
-      const prospect = updatedData[0]
-
-      // Get workspace_id from session
-      const { data: session } = await adminClient
-        .from('prospect_approval_sessions')
-        .select('workspace_id')
-        .eq('id', session_id)
-        .single()
-
-      if (session && session.workspace_id) {
-        // Extract contact data from JSONB fields
-        const contact = prospect.contact || {}
-        const company = prospect.company || {}
-
-        // Parse name into first/last
-        const nameParts = (prospect.name || '').split(' ')
-        const firstName = nameParts[0] || ''
-        const lastName = nameParts.slice(1).join(' ') || ''
-
-        // Get LinkedIn URL from contact object
-        const linkedinUrl = contact.linkedin_url || contact.linkedin_profile_url || null
-
-        // Save to workspace_prospects (upsert to avoid duplicates)
-        await adminClient
-          .from('workspace_prospects')
-          .upsert({
-            workspace_id: session.workspace_id,
-            first_name: firstName,
-            last_name: lastName,
-            full_name: prospect.name,
-            email: contact.email || null,
-            phone: contact.phone || null,
-            company_name: company.name || null,
-            job_title: prospect.title || null,
-            linkedin_profile_url: linkedinUrl,
-            location: prospect.location || null,
-            industry: company.industry || null,
-            source: prospect.source || 'manual',
-            confidence_score: prospect.enrichment_score || null,
-            created_at: new Date().toISOString()
-          }, {
-            onConflict: 'workspace_id,linkedin_profile_url',
-            ignoreDuplicates: true
-          })
-
-        console.log('✅ Saved approved prospect to workspace_prospects:', prospect.name)
-      }
-    }
+    // NOTE: Prospects are NOT automatically moved to workspace_prospects when approved.
+    // They only move there when actually assigned to a campaign via "Add Prospects to Campaign" feature.
+    // This keeps approved prospects in prospect_approval_data table until user explicitly adds them to campaigns.
 
     // Update session counts in background (non-blocking)
     updateSessionCounts(supabase, session_id).catch(console.error)

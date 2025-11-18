@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, ChevronDown, ChevronUp, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star, Plus, CheckSquare } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, ChevronRight, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star, Plus, CheckSquare } from 'lucide-react';
 import { toastError, toastSuccess } from '@/lib/toast';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -1126,10 +1126,9 @@ export default function DataCollectionHub({
       return false
     }
 
-    // Campaign name filter - user explicitly selects which campaign to view
-    if (selectedCampaignName === 'latest' && latestCampaignName && p.campaignName !== latestCampaignName) {
-      return false
-    } else if (selectedCampaignName !== 'all' && selectedCampaignName !== 'latest' && p.campaignName !== selectedCampaignName) {
+    // Campaign name filter - DISABLED for grouped view (we want to see all campaigns grouped)
+    // Only filter if user explicitly selects a specific campaign (not 'all' or 'latest')
+    if (selectedCampaignName !== 'all' && selectedCampaignName !== 'latest' && p.campaignName !== selectedCampaignName) {
       return false
     }
 
@@ -1954,7 +1953,7 @@ export default function DataCollectionHub({
                       {expandedSearchGroups.has(searchName) ? (
                         <ChevronDown className="w-5 h-5 text-purple-400" />
                       ) : (
-                        <ChevronUp className="w-5 h-5 text-gray-500" />
+                        <ChevronRight className="w-5 h-5 text-gray-500" />
                       )}
                       <span className="text-lg font-semibold text-white">{searchName}</span>
                       <span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-600/30 text-purple-300">
