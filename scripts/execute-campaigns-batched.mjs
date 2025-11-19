@@ -16,23 +16,28 @@ const __dirname = dirname(__filename);
 // Load environment
 dotenv.config({ path: join(__dirname, '../.env.local') });
 
-const BATCH_SIZE = 1;  // Send 1 prospect per batch (for testing)
-const BATCH_DELAY_MS = 180000;  // 3 minutes between batches (to see N8N process each one)
+const BATCH_SIZE = 1;  // Send 1 prospect per batch (N8N timeout with >1)
+const BATCH_DELAY_MS = 10000;  // 10 seconds between batches
 
+// CHARISSA'S 3 ACTIVE CAMPAIGNS (IA4 workspace)
 const campaigns = [
   {
-    name: 'Charissa (IA4)',
+    name: '20251117-IA4-Outreach Campaign',
     campaignId: '683f9214-8a3f-4015-98fe-aa3ae76a9ebe',
     workspaceId: '7f0341da-88db-476b-ae0a-fc0da5b70861',
-    unipileAccountId: '4nt1J-blSnGUPBjH2Nfjpg',
-    message: "Hi {first_name},\n\nI work with early-stage founders on scaling outbound without burning time or budget on traditional sales hires. Saw that you're building {company_name} and thought it might be worth connecting.\n\nOpen to it?"
+    unipileAccountId: '4nt1J-blSnGUPBjH2Nfjpg'
   },
   {
-    name: 'Michelle (IA2)',
-    campaignId: '9fcfcab0-7007-4628-b49b-1636ba5f781f',
-    workspaceId: '04666209-fce8-4d71-8eaf-01278edfc73b',
-    unipileAccountId: 'MT39bAEDTJ6e_ZPY337UgQ',
-    message: "Hi {first_name},\n\nI work with early-stage founders on scaling outbound without burning time or budget on traditional sales hires. Saw that you're building {company_name} and thought it might be worth connecting.\n\nOpen to it?"
+    name: 'Cha Canada Campaign',
+    campaignId: '35415fff-a230-48c6-ae91-e8f170cd3232',
+    workspaceId: '7f0341da-88db-476b-ae0a-fc0da5b70861',
+    unipileAccountId: '4nt1J-blSnGUPBjH2Nfjpg'
+  },
+  {
+    name: 'SAM Startup Canada',
+    campaignId: '3326aa89-9220-4bef-a1db-9c54f14fc536',
+    workspaceId: '7f0341da-88db-476b-ae0a-fc0da5b70861',
+    unipileAccountId: '4nt1J-blSnGUPBjH2Nfjpg'
   }
 ];
 
@@ -224,14 +229,13 @@ async function executeCampaign(campaign) {
   const templates = campaignData.message_templates;
   console.log(`📝 Loaded message templates from database`);
 
-  // Get pending prospects - LIMIT TO 5 FOR TESTING
+  // Get ALL pending prospects
   const { data: prospects, error } = await supabase
     .from('campaign_prospects')
     .select('id, first_name, last_name, email, company_name, title, linkedin_url, linkedin_user_id')
     .eq('campaign_id', campaign.campaignId)
     .eq('status', 'pending')
-    .order('created_at')
-    .limit(5);  // TESTING: Send 5 connection requests
+    .order('created_at');
 
   if (error) {
     console.error(`❌ Failed to fetch prospects:`, error);

@@ -22,15 +22,25 @@ export async function POST(request: NextRequest) {
 
     const payload = JSON.parse(body);
 
+    // Handle both prospect_id (string) and prospect.id (object) structures
+    const prospectId = payload.prospect_id || payload.prospect?.id;
+    const campaignId = payload.campaign_id || payload.campaignId;
+
     console.log('📡 N8N Prospect Status Webhook received:', {
-      prospect_id: payload.prospect_id,
-      campaign_id: payload.campaign_id,
+      prospect_id: prospectId,
+      campaign_id: campaignId,
       status: payload.status,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      raw_payload: payload
     });
 
     // Validate required fields
-    if (!payload.prospect_id || !payload.status) {
+    if (!prospectId || !payload.status) {
+      console.error('❌ Missing required fields:', {
+        prospect_id: prospectId,
+        status: payload.status,
+        payload
+      });
       return NextResponse.json(
         { error: 'Missing required fields: prospect_id or status' },
         { status: 400 }
@@ -52,7 +62,7 @@ export async function POST(request: NextRequest) {
         const currentData = await supabase
           .from('campaign_prospects')
           .select('personalization_data')
-          .eq('id', payload.prospect_id)
+          .eq('id', prospectId)
           .single();
 
         const personalizationData = currentData.data?.personalization_data || {};
@@ -71,7 +81,7 @@ export async function POST(request: NextRequest) {
       const currentData = await supabase
         .from('campaign_prospects')
         .select('personalization_data')
-        .eq('id', payload.prospect_id)
+        .eq('id', prospectId)
         .single();
 
       const personalizationData = currentData.data?.personalization_data || {};
@@ -83,7 +93,7 @@ export async function POST(request: NextRequest) {
     const { data: updateResult, error: updateError } = await supabase
       .from('campaign_prospects')
       .update(updateData)
-      .eq('id', payload.prospect_id)
+      .eq('id', prospectId)
       .select();
 
     if (updateError) {
@@ -98,28 +108,28 @@ export async function POST(request: NextRequest) {
     }
 
     if (!updateResult || updateResult.length === 0) {
-      console.error('⚠️  Prospect not found:', payload.prospect_id);
+      console.error('⚠️  Prospect not found:', prospectId);
       return NextResponse.json(
         { error: 'Prospect not found' },
         { status: 404 }
       );
     }
 
-    console.log(`✅ Prospect ${payload.prospect_id} status updated to: ${payload.status}`);
+    console.log(`✅ Prospect ${prospectId} status updated to: ${payload.status}`);
 
     // Handle different status types for additional actions
     switch (payload.status) {
       case 'connection_requested':
-        await handleConnectionRequested(payload);
+        await handleConnectionRequested({ ...payload, prospect_id: prospectId, campaign_id: campaignId });
         break;
       case 'email_sent':
-        await handleEmailSent(payload);
+        await handleEmailSent({ ...payload, prospect_id: prospectId, campaign_id: campaignId });
         break;
       case 'failed':
-        await handleProspectFailed(payload);
+        await handleProspectFailed({ ...payload, prospect_id: prospectId, campaign_id: campaignId });
         break;
       case 'replied':
-        await handleProspectReplied(payload);
+        await handleProspectReplied({ ...payload, prospect_id: prospectId, campaign_id: campaignId });
         break;
       default:
         console.log(`📊 Prospect status updated: ${payload.status}`);
@@ -128,7 +138,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Prospect status updated',
-      prospect_id: payload.prospect_id,
+      prospect_id: prospectId,
       status: payload.status,
       updated: updateResult[0]
     });
