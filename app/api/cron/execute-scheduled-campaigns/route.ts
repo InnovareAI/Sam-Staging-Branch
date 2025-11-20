@@ -83,22 +83,42 @@ export async function POST(req: NextRequest) {
     );
 
     // Find campaigns that are due for execution
+    // INCLUDES:
+    // 1. 'scheduled' campaigns with next_execution_time <= now
+    // 2. 'active' campaigns with pending prospects (auto-execute if never run)
     const now = new Date().toISOString();
+
+    // Query 1: Scheduled campaigns
     const { data: scheduledCampaigns, error: queryError } = await supabase
       .from('campaigns')
-      .select('id, name, workspace_id, next_execution_time, timezone, working_hours_start, working_hours_end, skip_weekends, skip_holidays, country_code')
+      .select('id, name, workspace_id, next_execution_time, timezone, working_hours_start, working_hours_end, skip_weekends, skip_holidays, country_code, n8n_execution_id')
       .eq('status', 'scheduled')
       .eq('auto_execute', true)
       .lte('next_execution_time', now)
       .not('next_execution_time', 'is', null)
       .limit(10); // Process up to 10 campaigns per run
 
+    // Query 2: Active campaigns that were never executed
+    const { data: activeCampaigns, error: activeError } = await supabase
+      .from('campaigns')
+      .select('id, name, workspace_id, timezone, working_hours_start, working_hours_end, skip_weekends, skip_holidays, country_code, n8n_execution_id')
+      .eq('status', 'active')
+      .eq('auto_execute', true)
+      .is('n8n_execution_id', null)
+      .limit(5); // Process up to 5 never-executed campaigns
+
+    const allCampaigns = [...(scheduledCampaigns || []), ...(activeCampaigns || [])];
+
     if (queryError) {
-      console.error('❌ Error querying campaigns:', queryError);
+      console.error('❌ Error querying scheduled campaigns:', queryError);
       return NextResponse.json({ error: 'Query failed', details: queryError.message }, { status: 500 });
     }
 
-    if (!scheduledCampaigns || scheduledCampaigns.length === 0) {
+    if (activeError) {
+      console.error('❌ Error querying active campaigns:', activeError);
+    }
+
+    if (allCampaigns.length === 0) {
       console.log('✅ No campaigns due for execution');
       return NextResponse.json({
         success: true,
@@ -107,12 +127,12 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    console.log(`📊 Found ${scheduledCampaigns.length} campaigns due for execution`);
+    console.log(`📊 Found ${allCampaigns.length} campaigns due for execution (${scheduledCampaigns?.length || 0} scheduled, ${activeCampaigns?.length || 0} active)`);
 
     const results = [];
 
     // Execute each campaign
-    for (const campaign of scheduledCampaigns) {
+    for (const campaign of allCampaigns) {
       try {
         console.log(`\n🔍 Checking campaign: ${campaign.name} (${campaign.id})`);
 
@@ -159,9 +179,9 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        // Trigger the execute-live API
+        // Trigger the execute-via-n8n API (uses N8N with humanized randomizer)
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const response = await fetch(`${baseUrl}/api/campaigns/linkedin/execute-live`, {
+        const response = await fetch(`${baseUrl}/api/campaigns/linkedin/execute-via-n8n`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -169,8 +189,7 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify({
             campaignId: campaign.id,
-            maxProspects: 1, // Process 1 prospect at a time
-            dryRun: false
+            workspaceId: campaign.workspace_id
           })
         });
 
