@@ -188,26 +188,34 @@ export async function POST(req: NextRequest) {
   try {
     console.log('🚀 ========== CAMPAIGN EXECUTE CALLED ==========');
 
-    // 1. Authenticate user
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          },
-        },
-      }
-    );
+    // Check if this is an internal cron trigger
+    const isInternalTrigger = req.headers.get('x-internal-trigger') === 'cron';
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // 1. Authenticate user (skip for internal cron triggers)
+    let user = null;
+
+    if (!isInternalTrigger) {
+      const cookieStore = cookies();
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() { return cookieStore.getAll(); },
+            setAll(cookiesToSet) {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                cookieStore.set(name, value, options);
+              });
+            },
+          },
+        }
+      );
+
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      if (authError || !authUser) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      user = authUser;
     }
 
     // 2. Get request data
@@ -220,21 +228,23 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // 3. Verify workspace access
+    // 3. Verify workspace access (skip for internal cron triggers)
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { data: member } = await supabaseAdmin
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
+    if (!isInternalTrigger) {
+      const { data: member } = await supabaseAdmin
+        .from('workspace_members')
+        .select('role')
+        .eq('workspace_id', workspaceId)
+        .eq('user_id', user!.id)
+        .single();
 
-    if (!member) {
-      return NextResponse.json({ error: 'Access denied to workspace' }, { status: 403 });
+      if (!member) {
+        return NextResponse.json({ error: 'Access denied to workspace' }, { status: 403 });
+      }
     }
 
     console.log(`🚀 LinkedIn Campaign Launch: ${campaignId}`);
