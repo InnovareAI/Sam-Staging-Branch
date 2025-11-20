@@ -197,11 +197,17 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
             console.log('✅ Campaign launched:', launchResult);
             return { campaignId, newStatus, launched: true, launchResult };
           } else {
-            console.warn('Campaign activated but launch failed - cron will pick it up');
+            // Get error details from response
+            const errorData = await launchResponse.json().catch(() => ({ error: 'Unknown error' }));
+            const errorMessage = errorData.error || errorData.message || 'Campaign launch failed';
+            const errorDetails = errorData.details || '';
+
+            console.error('❌ Campaign launch failed:', errorMessage, errorDetails);
+            throw new Error(`${errorMessage}${errorDetails ? ': ' + errorDetails : ''}`);
           }
-        } catch (error) {
-          console.warn('Campaign launch failed:', error);
-          // Continue - cron will pick it up
+        } catch (error: any) {
+          console.error('❌ Campaign launch error:', error);
+          throw new Error(`Campaign launch failed: ${error.message || 'Unknown error'}`);
         }
       }
 
@@ -216,9 +222,10 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
         toastSuccess('Campaign status updated');
       }
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Error toggling campaign status:', error);
-      toastError('Failed to update campaign status');
+      const errorMessage = error.message || 'Failed to update campaign status';
+      toastError(errorMessage);
     }
   });
 
