@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
 
     // 7. Get prospects ready to contact
     const pendingProspects = (prospects || []).filter(
-      (p: any) => ['pending', 'approved', 'ready_to_message', 'queued_in_n8n'].includes(p.status) && p.linkedin_url
+      (p: any) => ['pending', 'approved'].includes(p.status) && p.linkedin_url
     );
 
     if (pendingProspects.length === 0) {
@@ -143,11 +143,11 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // 9. Update prospect statuses to queued
+    // 9. Update prospect statuses to processing (Inngest)
     const prospectIds = pendingProspects.map((p: any) => p.id);
     await supabaseAdmin
       .from('campaign_prospects')
-      .update({ status: 'queued_in_n8n' })
+      .update({ status: 'processing' })
       .in('id', prospectIds);
 
     // 10. Update campaign status
