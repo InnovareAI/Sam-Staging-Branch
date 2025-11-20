@@ -2785,7 +2785,7 @@ Would you like me to adjust these or create more variations?`
       // Step 3: Auto-execute via correct endpoint based on campaign type
       if (totalProspectsWithIds > 0 || campaign.campaign_type === 'connector') {
         // ALL campaigns now execute via N8N workflow (no direct API)
-        const executeEndpoint = '/api/campaigns/linkedin/execute-via-n8n';
+        const executeEndpoint = '/api/campaigns/linkedin/execute-inngest';
 
         const executeResponse = await fetch(executeEndpoint, {
           method: 'POST',
@@ -6051,7 +6051,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       // No user action needed - n8n execution happens immediately after approval
       if (mappedProspects.length > 0) {
         try {
-          const executeResponse = await fetch('/api/campaigns/linkedin/execute-via-n8n', {
+          const executeResponse = await fetch('/api/campaigns/linkedin/execute-inngest', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -8270,7 +8270,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                           if (newStatus === 'active') {
                             try {
                               // ALL LinkedIn campaigns now execute via N8N workflow
-                              let executeEndpoint = '/api/campaigns/linkedin/execute-via-n8n';
+                              let executeEndpoint = '/api/campaigns/linkedin/execute-inngest';
 
                               if (selectedCampaign.campaign_type === 'email') {
                                 executeEndpoint = '/api/campaigns/email/execute';
