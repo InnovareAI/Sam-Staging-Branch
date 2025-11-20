@@ -1036,12 +1036,13 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                                 prospect.status === 'fu5_sent' ? 'bg-purple-900/20 text-purple-400 border-purple-500' :
                                 prospect.status === 'completed' ? 'bg-cyan-900/20 text-cyan-400 border-cyan-500' :
                                 prospect.status === 'failed' ? 'bg-red-900/20 text-red-400 border-red-500' :
+                                prospect.status === 'daily_limit_exceeded' ? 'bg-orange-900/20 text-orange-400 border-orange-500' :
                                 prospect.status === 'approved' ? 'bg-yellow-900/20 text-yellow-400 border-yellow-500' :
                                 prospect.status === 'pending' ? 'bg-gray-900/20 text-gray-400 border-gray-500' :
                                 'bg-gray-900/20 text-gray-400 border-gray-500'
                               }
                             >
-                              {prospect.status?.replace('_', ' ') || 'pending'}
+                              {prospect.status === 'daily_limit_exceeded' ? '⏸️ Daily Limit' : prospect.status?.replace(/_/g, ' ') || 'pending'}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">

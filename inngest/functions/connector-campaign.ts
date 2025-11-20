@@ -109,6 +109,51 @@ export const executeConnectorCampaign = inngest.createFunction(
       }
 
       try {
+        // === CHECK DAILY LIMIT BEFORE SENDING ===
+        const canSend = await step.run(`check-daily-limit-${prospect.id}`, async () => {
+          const { data: account } = await supabase
+            .from('workspace_accounts')
+            .select('daily_message_limit, messages_sent_today, last_message_date')
+            .eq('unipile_account_id', accountId)
+            .single();
+
+          const dailyLimit = account?.daily_message_limit || 20;
+          const sentToday = account?.messages_sent_today || 0;
+          const lastMessageDate = account?.last_message_date;
+
+          // Reset counter if it's a new day
+          const today = new Date().toISOString().split('T')[0];
+          const isNewDay = !lastMessageDate || lastMessageDate.split('T')[0] !== today;
+          const actualSentToday = isNewDay ? 0 : sentToday;
+
+          if (actualSentToday >= dailyLimit) {
+            console.log(`⚠️  Daily limit reached (${actualSentToday}/${dailyLimit})`);
+            return false;
+          }
+
+          return true;
+        });
+
+        if (!canSend) {
+          // Mark prospect as waiting for daily limit reset
+          await step.run(`mark-limit-exceeded-${prospect.id}`, async () => {
+            await supabase
+              .from('campaign_prospects')
+              .update({
+                status: 'daily_limit_exceeded',
+                error_message: 'Daily messaging limit reached - will retry tomorrow'
+              })
+              .eq('id', prospect.id);
+          });
+
+          // Sleep until next day (wait 24 hours)
+          console.log(`⏸️  Sleeping 24 hours until daily limit resets...`);
+          await step.sleep(`wait-daily-limit-${prospect.id}`, '24h');
+
+          // Retry this prospect after the sleep
+          console.log(`🔄 Retrying ${prospect.first_name} after daily limit reset`);
+        }
+
         // === STEP 1: SEND CONNECTION REQUEST ===
         const crResult = await step.run(`send-cr-${prospect.id}`, async () => {
           console.log(`📤 Sending connection request to ${prospect.first_name}...`);
