@@ -178,12 +178,43 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
         throw new Error('Failed to update campaign status');
       }
 
+      // If activating campaign, trigger it immediately via Inngest
+      if (newStatus === 'active' && workspaceId) {
+        try {
+          console.log(`🚀 Auto-launching campaign ${campaignId}...`);
+          const launchResponse = await fetch('/api/campaigns/linkedin/execute-inngest', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              campaignId,
+              workspaceId
+            })
+          });
+
+          if (launchResponse.ok) {
+            const launchResult = await launchResponse.json();
+            console.log('✅ Campaign launched:', launchResult);
+            return { campaignId, newStatus, launched: true, launchResult };
+          } else {
+            console.warn('Campaign activated but launch failed - cron will pick it up');
+          }
+        } catch (error) {
+          console.warn('Campaign launch failed:', error);
+          // Continue - cron will pick it up
+        }
+      }
+
       return { campaignId, newStatus };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Invalidate and refetch campaigns
       queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
-      toastSuccess('Campaign status updated');
+      if (data.launched) {
+        toastSuccess('Campaign activated and launched!');
+      } else {
+        toastSuccess('Campaign status updated');
+      }
     },
     onError: (error) => {
       console.error('Error toggling campaign status:', error);
