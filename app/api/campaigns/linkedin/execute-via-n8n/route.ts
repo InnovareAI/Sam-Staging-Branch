@@ -371,16 +371,10 @@ export async function POST(req: NextRequest) {
         skip_holidays: true
       },
 
-      prospects: await Promise.all(pendingProspects.map(async (p: any, index: number) => {
-        // HUMAN-LIKE RANDOMIZER: Calculate intelligent send delays
-        // ALL prospects respect working hours - no immediate sends
-        const sendDelay = await calculateHumanSendDelay(
-          supabaseAdmin,
-          campaign.linkedin_account.unipile_account_id,
-          pendingProspects.length,
-          index,
-          campaign.schedule_settings // Pass campaign schedule settings (timezone, working hours, skip_weekends, skip_holidays)
-        );
+      prospects: pendingProspects.map((p: any, index: number) => {
+        // Simple index-based delay - N8N will handle actual randomization
+        // This prevents 18+ async database queries that cause timeouts
+        const sendDelay = index * 30; // 30 min intervals between prospects
 
         return {
           id: p.id,
@@ -394,7 +388,7 @@ export async function POST(req: NextRequest) {
           title: p.title,
           send_delay_minutes: sendDelay
         };
-      })),
+      }),
       messages: campaignType === 'messenger' ? {
         // Messenger campaigns: array of messages to send in sequence
         message_sequence: [
@@ -457,13 +451,12 @@ export async function POST(req: NextRequest) {
     const n8nResult = await n8nResponse.json();
     console.log(`✅ N8N accepted campaign`);
 
-    // 11. Update prospect statuses
-    for (const prospect of pendingProspects) {
-      await supabaseAdmin
-        .from('campaign_prospects')
-        .update({ status: 'queued_in_n8n' })
-        .eq('id', prospect.id);
-    }
+    // 11. Update prospect statuses (BATCH UPDATE for performance)
+    const prospectIds = pendingProspects.map(p => p.id);
+    await supabaseAdmin
+      .from('campaign_prospects')
+      .update({ status: 'queued_in_n8n' })
+      .in('id', prospectIds);
 
     // 12. Update campaign
     await supabaseAdmin
