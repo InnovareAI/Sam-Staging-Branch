@@ -5965,3 +5965,80 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main 3075c7b4] 🔄 Auto-backup: auto-backup-20251120_180000
+ Committer: Thorsten Linz <tvonlinz@1e6d65b3-6053-4c3c-9aef-b9959ff7bede.fritz.box>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 29 files changed, 2705 insertions(+), 92 deletions(-)
+ create mode 100644 .git_log_temp
+ create mode 100644 CAMPAIGN_DEPLOYMENT_PLAN.md
+ create mode 100644 HANDOVER_CAMPAIGN_RANDOMIZATION_FIX_NOV20.md
+ create mode 100644 scripts/check-campaign-execution-status.mjs
+ create mode 100644 scripts/check-campaign-timezones.mjs
+ create mode 100644 scripts/check-charissa-michelle-campaigns.mjs
+ create mode 100644 scripts/check-connector-campaigns.mjs
+ create mode 100644 scripts/check-last-hour-updates.mjs
+ create mode 100644 scripts/check-michelle-campaigns.mjs
+ create mode 100644 scripts/check-new-canada-campaign.mjs
+ create mode 100644 scripts/check-prospect-linkedin-urls.mjs
+ create mode 100644 scripts/check-queued-prospects.mjs
+ create mode 100644 scripts/check-recent-prospect-updates.mjs
+ create mode 100644 scripts/check-specific-accounts.mjs
+ create mode 100644 scripts/check-workspace-members.mjs
+ create mode 100644 scripts/debug-campaign-owners.mjs
+ create mode 100755 scripts/docker-cron-trigger.sh
+ create mode 100644 scripts/execute-canada-campaign.mjs
+ create mode 100644 scripts/find-tobias-sent-prospects.mjs
+ create mode 100644 scripts/fix-workspace-members.mjs
+ create mode 100644 scripts/list-queued-prospects.mjs
+ create mode 100644 scripts/mark-queued-as-failed.mjs
+ create mode 100644 scripts/reset-queued-to-pending.mjs
+ create mode 100644 scripts/reset-tobias-prospects.mjs
+ create mode 100644 scripts/test-execute-charissa-campaign.mjs
+ create mode 100644 scripts/test-execute-via-n8n-local.mjs
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251120_180000[0m
+[0;32m📅 Timestamp: Thu Nov 20 18:00:00 CET 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║          SAM AI - Automated Backup System             ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32mBackup started: Fri Nov 21 00:00:00 CET 2025[0m
+[0;32mBackup name: auto-backup-20251121_000000[0m
+
+[1;33m📦 Step 1: Backing up to Airtable...[0m
+
+/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/scripts/auto-backup.sh: line 76: node: command not found
+[0;31m❌ Airtable backup failed (non-critical)[0m
+
+[1;33m📝 Step 2: Creating Git snapshot...[0m
+
