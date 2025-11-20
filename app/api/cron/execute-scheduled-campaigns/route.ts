@@ -131,8 +131,18 @@ export async function POST(req: NextRequest) {
 
     const results = [];
 
-    // Execute each campaign
-    for (const campaign of allCampaigns) {
+    // Execute each campaign with randomized delays to avoid robotic patterns
+    for (let i = 0; i < allCampaigns.length; i++) {
+      const campaign = allCampaigns[i];
+
+      // Add random delay between campaigns (0-10 minutes)
+      // This makes campaign starts look more natural and human-like
+      if (i > 0) {
+        const randomDelay = Math.floor(Math.random() * 10 * 60 * 1000); // 0-10 minutes in ms
+        console.log(`⏱️  Adding ${Math.floor(randomDelay / 60000)} minute random delay before campaign ${i + 1}`);
+        await new Promise(resolve => setTimeout(resolve, randomDelay));
+      }
+
       try {
         console.log(`\n🔍 Checking campaign: ${campaign.name} (${campaign.id})`);
 
