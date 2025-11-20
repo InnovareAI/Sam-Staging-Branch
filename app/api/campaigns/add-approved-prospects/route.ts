@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
       `)
       .eq('workspace_id', workspace_id)
       .neq('campaign_id', campaign_id) // Different campaign
-      .in('status', ['pending', 'approved', 'ready_to_message', 'queued_in_n8n', 'connection_requested', 'connected', 'messaging'])
+      .in('status', ['pending', 'approved', 'processing', 'cr_sent', 'fu1_sent', 'fu2_sent', 'fu3_sent', 'fu4_sent', 'fu5_sent', 'connection_requested', 'connected', 'messaging', 'completed'])
       .or(`linkedin_url.in.(${linkedinUrls.length > 0 ? linkedinUrls.map(u => `"${u}"`).join(',') : '""'}),email.in.(${emails.length > 0 ? emails.map(e => `"${e}"`).join(',') : '""'})`)
 
     if (checkError) {
