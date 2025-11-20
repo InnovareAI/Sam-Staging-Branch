@@ -503,8 +503,36 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
       return result.prospects || [];
     },
     enabled: !!selectedCampaignForProspects && showProspectsModal,
-    staleTime: 5 * 60 * 1000,
+    refetchInterval: 10000, // Auto-refresh every 10 seconds
+    staleTime: 5 * 1000, // Consider data stale after 5 seconds
   });
+
+  // Real-time subscription for prospect status updates
+  useEffect(() => {
+    if (!selectedCampaignForProspects || !showProspectsModal) return;
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`campaign-prospects-${selectedCampaignForProspects}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'campaign_prospects',
+          filter: `campaign_id=eq.${selectedCampaignForProspects}`
+        },
+        () => {
+          // Refetch prospects when any update occurs
+          queryClient.invalidateQueries({ queryKey: ['campaignProspects', selectedCampaignForProspects] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedCampaignForProspects, showProspectsModal, queryClient]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -969,38 +997,50 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                           <TableCell>
                             <Badge
                               className={
-                                prospect.status === 'connection_requested' ? 'bg-green-900/20 text-green-400 border-green-500' :
-                                prospect.status === 'approved' ? 'bg-blue-900/20 text-blue-400 border-blue-500' :
-                                prospect.status === 'pending' ? 'bg-yellow-900/20 text-yellow-400 border-yellow-500' :
+                                prospect.status === 'cr_sent' ? 'bg-green-900/20 text-green-400 border-green-500' :
+                                prospect.status === 'fu1_sent' ? 'bg-blue-900/20 text-blue-400 border-blue-500' :
+                                prospect.status === 'fu2_sent' ? 'bg-blue-900/20 text-blue-400 border-blue-500' :
+                                prospect.status === 'fu3_sent' ? 'bg-purple-900/20 text-purple-400 border-purple-500' :
+                                prospect.status === 'fu4_sent' ? 'bg-purple-900/20 text-purple-400 border-purple-500' :
+                                prospect.status === 'fu5_sent' ? 'bg-purple-900/20 text-purple-400 border-purple-500' :
+                                prospect.status === 'completed' ? 'bg-cyan-900/20 text-cyan-400 border-cyan-500' :
+                                prospect.status === 'failed' ? 'bg-red-900/20 text-red-400 border-red-500' :
+                                prospect.status === 'approved' ? 'bg-yellow-900/20 text-yellow-400 border-yellow-500' :
+                                prospect.status === 'pending' ? 'bg-gray-900/20 text-gray-400 border-gray-500' :
                                 'bg-gray-900/20 text-gray-400 border-gray-500'
                               }
                             >
-                              {prospect.status || 'unknown'}
+                              {prospect.status?.replace('_', ' ') || 'pending'}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">
-                            <span className={prospect.contacted_at ? "text-green-400 font-semibold" : "text-gray-500"}>
-                              {prospect.contacted_at ? "1" : "0"}
+                            <span className={prospect.status === 'cr_sent' || prospect.status?.startsWith('fu') ? "text-green-400 font-semibold" : "text-gray-500"}>
+                              {prospect.status === 'cr_sent' || prospect.status?.startsWith('fu') ? "✓" : "-"}
                             </span>
                           </TableCell>
                           <TableCell className="text-center">
                             <span className={prospect.connection_accepted_at ? "text-green-400 font-semibold" : "text-gray-500"}>
-                              {prospect.connection_accepted_at ? "1" : "0"}
+                              {prospect.connection_accepted_at ? "✓" : "-"}
                             </span>
                           </TableCell>
                           <TableCell className="text-center">
-                            <span className={prospect.follow_up_sequence_index > 0 ? "text-purple-400 font-semibold" : "text-gray-500"}>
-                              {prospect.follow_up_sequence_index || 0}
+                            <span className={prospect.status?.startsWith('fu') ? "text-purple-400 font-semibold" : "text-gray-500"}>
+                              {prospect.status === 'fu1_sent' ? '1' :
+                               prospect.status === 'fu2_sent' ? '2' :
+                               prospect.status === 'fu3_sent' ? '3' :
+                               prospect.status === 'fu4_sent' ? '4' :
+                               prospect.status === 'fu5_sent' ? '5' :
+                               prospect.status === 'completed' ? '5' : '0'}
                             </span>
                           </TableCell>
                           <TableCell className="text-center">
                             <span className={prospect.responded_at ? "text-blue-400 font-semibold" : "text-gray-500"}>
-                              {prospect.responded_at ? "1" : "0"}
+                              {prospect.responded_at ? "✓" : "-"}
                             </span>
                           </TableCell>
                           <TableCell className="text-center">
                             <span className={prospect.status === 'opted_out' ? "text-red-400 font-semibold" : "text-gray-500"}>
-                              {prospect.status === 'opted_out' ? "1" : "0"}
+                              {prospect.status === 'opted_out' ? "✓" : "-"}
                             </span>
                           </TableCell>
                           <TableCell>
