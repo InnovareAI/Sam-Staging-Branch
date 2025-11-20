@@ -13,6 +13,9 @@ import { cookies } from 'next/headers';
  * NO multi-channel, NO email, NO tiers, NO HITL complexity
  */
 
+// Set Netlify function timeout to 5 minutes (N8N webhook calls + randomizer can take time)
+export const maxDuration = 300;
+
 // Base N8N webhook URLs for different campaign types
 const N8N_CONNECTOR_WEBHOOK = process.env.N8N_CONNECTOR_WEBHOOK_URL || 'https://workflows.innovareai.com/webhook/connector-campaign';
 const N8N_MESSENGER_WEBHOOK = process.env.N8N_MESSENGER_WEBHOOK_URL || 'https://workflows.innovareai.com/webhook/messenger-campaign';

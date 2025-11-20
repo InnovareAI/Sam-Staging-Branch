@@ -13,6 +13,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+// Set Netlify function timeout to 5 minutes (campaigns can take time to execute)
+export const maxDuration = 300;
+
 // Helper function to check if execution should proceed based on campaign settings
 function shouldExecuteNow(campaign: any): { allowed: boolean; reason?: string } {
   const {
