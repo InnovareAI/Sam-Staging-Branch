@@ -22,4 +22,5 @@ export const { GET, POST, PUT } = serve({
     checkActiveCampaigns,
     // Add more functions here as you build them
   ],
+  signingKey: process.env.INNGEST_SIGNING_KEY, // Explicitly pass signing key
 });
