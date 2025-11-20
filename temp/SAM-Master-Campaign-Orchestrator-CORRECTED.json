@@ -1,0 +1,2036 @@
+{
+  "name": "SAM Master Campaign Orchestrator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "connector-campaign",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "ab23fdcb-a785-42b8-82d3-d5db5615b02d",
+      "name": "Campaign Execute Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -1872,
+        -176
+      ],
+      "webhookId": "campaign-execute"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.UNIPILE_DSN + '/api/v1/users/' + $json.linkedin_username + '?account_id=' + $json.unipileAccountId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "06922276-cbcf-4769-8f6b-e61c28f55a14",
+      "name": "Get LinkedIn Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -1456,
+        -176
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "functionCode": "// Merge profile data with original prospect data\nconst profileData = $input.first().json;\nconst originalData = $('Code in JavaScript').first().json;\n\n// Merge: keep all original fields and add provider_id from profile\nreturn {\n  ...originalData,\n  provider_id: profileData.provider_id,\n  profile_name: profileData.name,\n  is_connected: profileData.is_connected || false\n};"
+      },
+      "id": "aadf35a4-29d4-4394-8df4-f24b18327bd6",
+      "name": "Merge Profile Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1264,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.UNIPILE_DSN + '/api/v1/users/invite' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  provider_id: $json.provider_id,\n  account_id: $json.unipileAccountId,\n  message: ($json.messages.cr || $json.messages.connection_request || '').replace('{first_name}', $json.prospect.first_name).replace('{last_name}', $json.prospect.last_name).replace('{company_name}', $json.prospect.company_name || '').replace('{title}', $json.prospect.title || '')\n}) }}",
+        "options": {}
+      },
+      "id": "29f3a15c-8989-40c4-9cd4-52b87e57606a",
+      "name": "Send CR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -1136,
+        -480
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "functionCode": "// Initialize connection check counter\nconst data = $input.first().json;\nreturn {\n  ...data,\n  connection_check_count: 0,\n  connection_check_start: new Date().toISOString()\n};"
+      },
+      "id": "244f8b32-c0cf-44d5-99a8-42669ec40015",
+      "name": "Init Connection Check",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        -480
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Restore data after wait\nconst originalData = $node['Init Connection Check'].json;\nreturn originalData;"
+      },
+      "id": "1a3a90c1-51c8-4fe5-8e57-9263cc002fd5",
+      "name": "Restore After Wait",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -832,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "url": "$env.UNIPILE_DSN + '/api/v1/users/' + $json.linkedin_username + '?account_id=' + $json.unipileAccountId",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "37fbfb18-a2a3-4504-84c8-eb9ce8d0b110",
+      "name": "Check Connection Accepted",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -640,
+        -176
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.is_connected }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ac2b2d5c-34f8-498c-8d47-531aee4519e9",
+      "name": "Connection Accepted?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Increment check counter and decide if we should keep checking\nconst data = $input.first().json;\nconst checkCount = (data.connection_check_count || 0) + 1;\nconst startTime = new Date(data.connection_check_start || new Date());\nconst now = new Date();\nconst hoursPassed = (now - startTime) / (1000 * 60 * 60);\n\n// Max 3 weeks (21 days = 504 hours) of checking\nconst maxHours = 504;\nconst shouldContinueChecking = hoursPassed < maxHours;\n\nreturn {\n  ...data,\n  connection_check_count: checkCount,\n  should_continue_checking: shouldContinueChecking,\n  hours_passed: Math.floor(hoursPassed)\n};"
+      },
+      "id": "0b000f36-e220-41ce-91f8-0f5baabd021a",
+      "name": "Increment Check Counter",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        -464
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.should_continue_checking }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4d28c117-199c-4d53-836a-9f1fd4706a2c",
+      "name": "Should Retry Check?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        -448
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://workflows.innovareai.com/webhook/wait-connection-check-1hr",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "resumeData",
+              "value": "={{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "68139557-d367-476f-b2fb-db37aa7d0756",
+      "name": "Loop Back to Wait",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        400,
+        -480
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.meet-sam.com/api/webhooks/n8n/prospect-status",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { prospect_id: $json.prospect.id, campaign_id: $json.campaign_id, status: \"not_connected\" } }}",
+        "options": {}
+      },
+      "id": "a85f6e4e-40eb-434e-8a93-44122e4283b1",
+      "name": "Not Connected - Exit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        384,
+        -224
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "amount": 4
+      },
+      "id": "dded3a9a-eaa2-442d-983f-021e69ae5040",
+      "name": "Wait 4 Hours After Acceptance",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        224
+      ],
+      "webhookId": "wait-after-acceptance"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Restore data after acceptance wait\nconst originalData = $node['Check Connection Accepted'].json;\nreturn originalData;"
+      },
+      "id": "e36fc9b4-f7ff-499d-a71d-4f321352ecd1",
+      "name": "Restore After Acceptance Wait",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.UNIPILE_DSN + '/api/v1/messaging/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "attendees_ids",
+              "value": "={{ [$json.provider_id] }}"
+            },
+            {
+              "name": "account_id",
+              "value": "={{ $json.unipileAccountId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.messages.acceptance_message ? $json.messages.acceptance_message.replace('{first_name}', $json.prospect.first_name).replace('{last_name}', $json.prospect.last_name) : 'Thanks for connecting, ' + $json.prospect.first_name + '!' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "60d99b70-7af2-4050-bfad-43b421741205",
+      "name": "Send Acceptance Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        96,
+        224
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.timing.fu1_delay_days }}",
+        "unit": "days"
+      },
+      "id": "71e75674-82b5-4309-87e9-cb9d58279f91",
+      "name": "Wait FU1 Delay",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        320,
+        224
+      ],
+      "webhookId": "wait-fu1-delay"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Restore data after FU1 wait\nconst originalData = $node['Send Acceptance Message'].json;\nreturn originalData;"
+      },
+      "id": "d157d0b7-b58f-4d31-8fdd-7023d79aac47",
+      "name": "Restore After FU1 Wait",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.UNIPILE_DSN + '/api/v1/messaging/messages?attendees_ids={{ $json.provider_id }}&account_id={{ $json.unipileAccountId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "30b8bb44-095c-45ad-8c29-d0c61fb0775f",
+      "name": "Check Reply FU1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -208,
+        608
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.items?.filter(m => m.from !== $json.unipileAccountId && new Date(m.date) > new Date($json.last_message_sent)).length || 0 }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "abe2078d-4e1f-459b-bde9-8aa90c63f9f9",
+      "name": "Reply Received FU1?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        0,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.meet-sam.com/api/webhooks/n8n/prospect-status",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { prospect_id: $json.prospect.id, campaign_id: $json.campaign_id, status: \"replied_fu1\" } }}",
+        "options": {}
+      },
+      "id": "95a81fed-c203-49f6-9129-2b7de7891277",
+      "name": "Mark Replied - Exit FU1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        272,
+        864
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.UNIPILE_DSN + '/api/v1/messaging/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "attendees_ids",
+              "value": "={{ [$json.provider_id] }}"
+            },
+            {
+              "name": "account_id",
+              "value": "={{ $json.unipileAccountId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.messages.follow_up_1.replace('{first_name}', $json.prospect.first_name).replace('{last_name}', $json.prospect.last_name).replace('{company_name}', $json.prospect.company_name).replace('{title}', $json.prospect.title) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "441c6160-7515-40bd-8c2c-ff4b6310f1d4",
+      "name": "Send FU1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        256,
+        592
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.timing.fu2_delay_days }}",
+        "unit": "days"
+      },
+      "id": "212b6ec8-f2d0-47cc-89b8-2c1c32d3172b",
+      "name": "Wait for FU2",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        448,
+        592
+      ],
+      "webhookId": "wait-fu2"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.UNIPILE_DSN + '/api/v1/messaging/messages?attendees_ids={{ $json.provider_id }}&account_id={{ $json.unipileAccountId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6fad1f01-a73e-442a-b11e-49f942204249",
+      "name": "Check Reply FU2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        752,
+        -16
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.items?.filter(m => m.from !== $json.unipileAccountId && new Date(m.date) > new Date($json.last_message_sent)).length || 0 }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9eedfa8c-f563-47d8-aa42-dcec4d8317c7",
+      "name": "Reply Received FU2?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        944,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.meet-sam.com/api/webhooks/n8n/prospect-status",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { prospect_id: $json.prospect.id, campaign_id: $json.campaign_id, status: \"replied_fu2\" } }}",
+        "options": {}
+      },
+      "id": "aa3074b3-6622-46ab-a2b7-55aeafa6fbc7",
+      "name": "Mark Replied - Exit FU2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1136,
+        -112
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.UNIPILE_DSN + '/api/v1/messaging/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "attendees_ids",
+              "value": "={{ [$json.provider_id] }}"
+            },
+            {
+              "name": "account_id",
+              "value": "={{ $json.unipileAccountId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.messages.follow_up_2.replace('{first_name}', $json.prospect.first_name).replace('{last_name}', $json.prospect.last_name).replace('{company_name}', $json.prospect.company_name).replace('{title}', $json.prospect.title) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d94e4dc0-a13c-45d9-b755-0a9b0d9b327e",
+      "name": "Send FU2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1136,
+        160
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.timing.fu3_delay_days }}",
+        "unit": "days"
+      },
+      "id": "653f1684-46b3-4eae-b4d9-bc31c52224ed",
+      "name": "Wait for FU3",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        160
+      ],
+      "webhookId": "wait-fu3"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.UNIPILE_DSN + '/api/v1/messaging/messages?attendees_ids={{ $json.provider_id }}&account_id={{ $json.unipileAccountId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2900ef5a-377d-434a-8c66-939f88e6b96d",
+      "name": "Check Reply FU3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1520,
+        160
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.items?.filter(m => m.from !== $json.unipileAccountId && new Date(m.date) > new Date($json.last_message_sent)).length || 0 }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "acfdc29c-2391-48df-ae04-12c14d5e0610",
+      "name": "Reply Received FU3?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1712,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.meet-sam.com/api/webhooks/n8n/prospect-status",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { prospect_id: $json.prospect.id, campaign_id: $json.campaign_id, status: \"replied_fu3\" } }}",
+        "options": {}
+      },
+      "id": "f3e61b9e-f2ad-4fed-a944-65ee16e62511",
+      "name": "Mark Replied - Exit FU3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1904,
+        -16
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.UNIPILE_DSN + '/api/v1/messaging/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "attendees_ids",
+              "value": "={{ [$json.provider_id] }}"
+            },
+            {
+              "name": "account_id",
+              "value": "={{ $json.unipileAccountId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.messages.follow_up_3.replace('{first_name}', $json.prospect.first_name).replace('{last_name}', $json.prospect.last_name).replace('{company_name}', $json.prospect.company_name).replace('{title}', $json.prospect.title) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "10e108d8-9b28-4955-8500-461f500abea5",
+      "name": "Send FU3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1904,
+        256
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.timing.fu4_delay_days }}",
+        "unit": "days"
+      },
+      "id": "5af505f7-dd77-4f6c-a458-676b7b6c3e98",
+      "name": "Wait for FU4",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        2096,
+        256
+      ],
+      "webhookId": "wait-fu4"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.UNIPILE_DSN + '/api/v1/messaging/messages?attendees_ids={{ $json.provider_id }}&account_id={{ $json.unipileAccountId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9e85b08f-d39d-4038-9651-0c379804772b",
+      "name": "Check Reply FU4",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2288,
+        256
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.items?.filter(m => m.from !== $json.unipileAccountId && new Date(m.date) > new Date($json.last_message_sent)).length || 0 }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "266bbe11-6774-4893-a024-a5cb996c6a9b",
+      "name": "Reply Received FU4?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2480,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.meet-sam.com/api/webhooks/n8n/prospect-status",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { prospect_id: $json.prospect.id, campaign_id: $json.campaign_id, status: \"replied_fu4\" } }}",
+        "options": {}
+      },
+      "id": "1e40af45-337b-47ea-a762-c98e6f23365e",
+      "name": "Mark Replied - Exit FU4",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2672,
+        160
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.UNIPILE_DSN + '/api/v1/messaging/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "attendees_ids",
+              "value": "={{ [$json.provider_id] }}"
+            },
+            {
+              "name": "account_id",
+              "value": "={{ $json.unipileAccountId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.messages.follow_up_4.replace('{first_name}', $json.prospect.first_name).replace('{last_name}', $json.prospect.last_name).replace('{company_name}', $json.prospect.company_name).replace('{title}', $json.prospect.title) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7ce056a3-84f5-40a7-a5e8-1eba23bf2ba2",
+      "name": "Send FU4",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2672,
+        352
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.timing.gb_delay_days }}",
+        "unit": "days"
+      },
+      "id": "a3c408a6-fbeb-4a84-b509-ae2a82cc244b",
+      "name": "Wait for GB",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        2864,
+        352
+      ],
+      "webhookId": "wait-gb"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.UNIPILE_DSN + '/api/v1/messaging/messages?attendees_ids={{ $json.provider_id }}&account_id={{ $json.unipileAccountId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7806b192-ed9b-4378-97fe-e6df2b8178f6",
+      "name": "Check Reply GB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        3056,
+        352
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.items?.filter(m => m.from !== $json.unipileAccountId && new Date(m.date) > new Date($json.last_message_sent)).length || 0 }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "427ef90f-256a-4e99-805f-695c94d5f2ac",
+      "name": "Reply Received GB?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3248,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.meet-sam.com/api/webhooks/n8n/prospect-status",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { prospect_id: $json.prospect.id, campaign_id: $json.campaign_id, status: \"replied_gb\" } }}",
+        "options": {}
+      },
+      "id": "191095e5-dc2d-4f86-ac3f-0acbba43c125",
+      "name": "Mark Replied - Exit GB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        3440,
+        256
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.UNIPILE_DSN + '/api/v1/messaging/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.UNIPILE_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "attendees_ids",
+              "value": "={{ [$json.provider_id] }}"
+            },
+            {
+              "name": "account_id",
+              "value": "={{ $json.unipileAccountId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.messages.goodbye.replace('{first_name}', $json.prospect.first_name).replace('{last_name}', $json.prospect.last_name).replace('{company_name}', $json.prospect.company_name).replace('{title}', $json.prospect.title) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "86defd82-6d8a-45e1-a824-be2056c00ba8",
+      "name": "Send GB (Breakup)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        3440,
+        464
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.meet-sam.com/api/webhooks/n8n/prospect-status",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { prospect_id: $json.prospect.id, campaign_id: $json.campaign_id, status: \"completed\" } }}",
+        "options": {}
+      },
+      "id": "ffb0a5a2-5326-4c4a-99cb-3adc520f07f7",
+      "name": "Mark Campaign Complete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        3632,
+        464
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.send_delay_minutes || 0 }}",
+        "unit": "minutes"
+      },
+      "id": "3deb4366-dc62-46a6-a32f-6d8e74ad47c3",
+      "name": "Wait for Cadence Delay",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        -992,
+        128
+      ],
+      "webhookId": "wait-cadence-delay"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.meet-sam.com/api/webhooks/n8n/prospect-status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { prospect_id: $json.prospect.id, campaign_id: $json.campaign_id, status: \"connection_requested\", contacted_at: $now.toISO() } }}",
+        "options": {}
+      },
+      "id": "8d476385-e265-4fee-bf3c-ce9df315f108",
+      "name": "Update Status - CR Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -1040,
+        -176
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetween": 5000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.meet-sam.com/api/webhooks/n8n/error-handler",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"executionId\": $execution.id,\n  \"workflowId\": $workflow.id,\n  \"nodeName\": $node.name,\n  \"error\": {\n    \"message\": $json.error?.message || 'Unknown error',\n    \"httpCode\": $json.error?.httpCode || $json.error?.statusCode || 0\n  },\n  \"prospectId\": $json.prospect?.id,\n  \"campaignId\": $json.campaign_id,\n  \"timestamp\": $now\n} }}",
+        "options": {}
+      },
+      "id": "0862bd7c-51c5-4763-abe8-42683539ea74",
+      "name": "Report Error to SAM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -1456,
+        304
+      ],
+      "notes": "Reports errors to SAM error handler for automatic recovery"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        3840,
+        464
+      ],
+      "id": "d94d861d-5a10-4b52-8471-5e8f2d3b2172",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.first().json;\nconst webhookData = inputData.body || inputData;\n\nconst unipileAccountId = webhookData.unipileAccountId || webhookData.unipile_account_id || webhookData.body?.unipileAccountId || webhookData.body?.unipile_account_id;\nconst workspaceId = webhookData.workspaceId || webhookData.workspace_id;\nconst campaignId = webhookData.campaignId || webhookData.campaign_id;\nconst channel = webhookData.channel || 'linkedin';\nconst campaignType = webhookData.campaignType || webhookData.campaign_type;\nconst messages = webhookData.messages || {};\nconst prospects = Array.isArray(webhookData.prospects) ? webhookData.prospects : [];\n\nif (prospects.length === 0) {\n  return [];\n}\n\nreturn prospects.map(prospect => {\n  const linkedinUrl = prospect.linkedin_url || '';\n  const linkedinUsername = linkedinUrl.split('/').filter(Boolean).pop() || '';\n  \n  return {\n    json: {\n      workspaceId,\n      campaignId,\n      unipileAccountId,\n      channel,\n      campaignType,\n      prospect,\n      linkedin_username: linkedinUsername,\n      messages,\n      supabase_url: webhookData.supabase_url,\n      supabase_service_key: webhookData.supabase_service_key,\n      unipile_dsn: webhookData.unipile_dsn,\n      unipileApiKey: webhookData.unipile_api_key\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1648,
+        -176
+      ],
+      "id": "928e0a1f-df8d-4918-9846-41b1f7932484",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "unit": "days"
+      },
+      "id": "3c684027-96e3-454c-a61f-2815e94a80e4",
+      "name": "Wait 1 Day",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        -480
+      ],
+      "webhookId": "wait-connection-check-1hr"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "webhook_trigger": {
+      "main": [
+        [
+          {
+            "node": "campaign_handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "workspace_router": {
+      "main": [
+        [
+          {
+            "node": "template_selector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "template_selector": {
+      "main": [
+        [
+          {
+            "node": "campaign_handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "campaign_handler": {
+      "main": [
+        [
+          {
+            "node": "prospect_loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prospect_loop": {
+      "main": [
+        [
+          {
+            "node": "send_cr",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_cr": {
+      "main": [
+        [
+          {
+            "node": "check_connection_accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_connection_accepted": {
+      "main": [
+        [
+          {
+            "node": "if_connection_accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if_connection_accepted": {
+      "main": [
+        [
+          {
+            "node": "mark_not_connected",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "wait_fu1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait_fu1": {
+      "main": [
+        [
+          {
+            "node": "check_reply_fu1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_reply_fu1": {
+      "main": [
+        [
+          {
+            "node": "if_reply_fu1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if_reply_fu1": {
+      "main": [
+        [
+          {
+            "node": "mark_engaged_fu1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "send_fu1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_fu1": {
+      "main": [
+        [
+          {
+            "node": "wait_fu2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait_fu2": {
+      "main": [
+        [
+          {
+            "node": "check_reply_fu2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_reply_fu2": {
+      "main": [
+        [
+          {
+            "node": "if_reply_fu2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if_reply_fu2": {
+      "main": [
+        [
+          {
+            "node": "mark_engaged_fu2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "send_fu2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_fu2": {
+      "main": [
+        [
+          {
+            "node": "wait_fu3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait_fu3": {
+      "main": [
+        [
+          {
+            "node": "check_reply_fu3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_reply_fu3": {
+      "main": [
+        [
+          {
+            "node": "if_reply_fu3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if_reply_fu3": {
+      "main": [
+        [
+          {
+            "node": "mark_engaged_fu3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "send_fu3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_fu3": {
+      "main": [
+        [
+          {
+            "node": "wait_fu4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait_fu4": {
+      "main": [
+        [
+          {
+            "node": "check_reply_fu4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_reply_fu4": {
+      "main": [
+        [
+          {
+            "node": "if_reply_fu4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if_reply_fu4": {
+      "main": [
+        [
+          {
+            "node": "mark_engaged_fu4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "send_fu4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_fu4": {
+      "main": [
+        [
+          {
+            "node": "wait_gb",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait_gb": {
+      "main": [
+        [
+          {
+            "node": "check_reply_gb",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_reply_gb": {
+      "main": [
+        [
+          {
+            "node": "if_reply_gb",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if_reply_gb": {
+      "main": [
+        [
+          {
+            "node": "mark_engaged_gb",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "send_gb",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_gb": {
+      "main": [
+        [
+          {
+            "node": "update_status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campaign Execute Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get LinkedIn Profile": {
+      "main": [
+        [
+          {
+            "node": "Merge Profile Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Profile Data": {
+      "main": [
+        [
+          {
+            "node": "Wait for Cadence Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send CR": {
+      "main": [
+        [
+          {
+            "node": "Update Status - CR Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init Connection Check": {
+      "main": [
+        [
+          {
+            "node": "Wait 1 Day",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore After Wait": {
+      "main": [
+        [
+          {
+            "node": "Check Connection Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Connection Accepted": {
+      "main": [
+        [
+          {
+            "node": "Connection Accepted?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Connection Accepted?": {
+      "main": [
+        [
+          {
+            "node": "Increment Check Counter",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 4 Hours After Acceptance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Increment Check Counter": {
+      "main": [
+        [
+          {
+            "node": "Should Retry Check?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Retry Check?": {
+      "main": [
+        [
+          {
+            "node": "Loop Back to Wait",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Not Connected - Exit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 4 Hours After Acceptance": {
+      "main": [
+        [
+          {
+            "node": "Restore After Acceptance Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore After Acceptance Wait": {
+      "main": [
+        [
+          {
+            "node": "Send Acceptance Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Acceptance Message": {
+      "main": [
+        [
+          {
+            "node": "Wait FU1 Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait FU1 Delay": {
+      "main": [
+        [
+          {
+            "node": "Restore After FU1 Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore After FU1 Wait": {
+      "main": [
+        [
+          {
+            "node": "Check Reply FU1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Reply FU1": {
+      "main": [
+        [
+          {
+            "node": "Reply Received FU1?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply Received FU1?": {
+      "main": [
+        [
+          {
+            "node": "Send FU1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Replied - Exit FU1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send FU1": {
+      "main": [
+        [
+          {
+            "node": "Wait for FU2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for FU2": {
+      "main": [
+        [
+          {
+            "node": "Check Reply FU2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Reply FU2": {
+      "main": [
+        [
+          {
+            "node": "Reply Received FU2?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply Received FU2?": {
+      "main": [
+        [
+          {
+            "node": "Send FU2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Replied - Exit FU2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send FU2": {
+      "main": [
+        [
+          {
+            "node": "Wait for FU3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for FU3": {
+      "main": [
+        [
+          {
+            "node": "Check Reply FU3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Reply FU3": {
+      "main": [
+        [
+          {
+            "node": "Reply Received FU3?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply Received FU3?": {
+      "main": [
+        [
+          {
+            "node": "Send FU3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Replied - Exit FU3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send FU3": {
+      "main": [
+        [
+          {
+            "node": "Wait for FU4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for FU4": {
+      "main": [
+        [
+          {
+            "node": "Check Reply FU4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Reply FU4": {
+      "main": [
+        [
+          {
+            "node": "Reply Received FU4?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply Received FU4?": {
+      "main": [
+        [
+          {
+            "node": "Send FU4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Replied - Exit FU4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send FU4": {
+      "main": [
+        [
+          {
+            "node": "Wait for GB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for GB": {
+      "main": [
+        [
+          {
+            "node": "Check Reply GB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Reply GB": {
+      "main": [
+        [
+          {
+            "node": "Reply Received GB?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply Received GB?": {
+      "main": [
+        [
+          {
+            "node": "Send GB (Breakup)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Replied - Exit GB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send GB (Breakup)": {
+      "main": [
+        [
+          {
+            "node": "Mark Campaign Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Cadence Delay": {
+      "main": [
+        [
+          {
+            "node": "Send CR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Status - CR Sent": {
+      "main": [
+        [
+          {
+            "node": "Init Connection Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Campaign Complete": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Get LinkedIn Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 1 Day": {
+      "main": [
+        [
+          {
+            "node": "Restore After Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/New_York",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all",
+    "executionTimeout": 3600
+  },
+  "versionId": "ceaf5a5c-1cc5-4070-9b48-0454131aa2fe",
+  "meta": {
+    "instanceId": "57bbc7bcc64f32bccb1d26f3f2b7d2387e819fb384e88e55daf276e2e48423c4"
+  },
+  "id": "aVG6LC4ZFRMN7Bw6",
+  "tags": []
+}

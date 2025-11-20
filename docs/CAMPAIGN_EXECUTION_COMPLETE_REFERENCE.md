@@ -538,6 +538,66 @@ main();
 
 ## Troubleshooting
 
+### Issue: Blank Connection Requests Sent
+
+**Symptom:** LinkedIn connection requests sent with NO MESSAGE TEXT
+**Discovered:** November 20, 2025
+**Root Cause:** Test scripts were sending empty message strings:
+
+```javascript
+// ❌ WRONG - sends blank messages
+messages: {
+  connection_request: "",
+  cr: ""
+}
+```
+
+**Fix:** ALWAYS fetch actual CR message from campaign database:
+
+```javascript
+// ✅ CORRECT - fetches real message
+const { data: campaign } = await supabase
+  .from('campaigns')
+  .select('message_templates')
+  .eq('id', campaignId)
+  .single();
+
+const payload = {
+  // ... other fields
+  messages: {
+    connection_request: campaign.message_templates.connection_request,
+    cr: campaign.message_templates.connection_request
+  }
+};
+```
+
+**Verification Script:** See `scripts/test-with-cr-message.mjs` for working example
+
+### Issue: Database Not Updating After CR Sent
+
+**Symptom:** LinkedIn CR sent successfully, but `campaign_prospects` table still shows `status='pending'` and `contacted_at=null`
+**Discovered:** November 20, 2025
+**Root Cause:** N8N "Update Status - CR Sent" node used `$json.prospect.id`, but the previous "Send CR" HTTP Request node REPLACED `$json` with Unipile API response
+
+**Evidence:**
+```json
+// N8N execution showed:
+Send CR Output: { "error": { "message": "422 - already_invited_recently" } }
+Update Status - CR Sent Output: { "error": "JSON parameter needs to be valid JSON" }
+```
+
+**Fix:** Use `$node["Merge Profile Data"].json.prospect.id` to access preserved data:
+
+```json
+// ❌ WRONG
+"jsonBody": "={{ { prospect_id: $json.prospect.id, campaign_id: $json.campaignId, status: \"connection_requested\", contacted_at: $now.toISO() } }}"
+
+// ✅ CORRECT
+"jsonBody": "={{ { prospect_id: $node[\"Merge Profile Data\"].json.prospect.id, campaign_id: $node[\"Merge Profile Data\"].json.campaignId, status: \"connection_requested\", contacted_at: $now } }}"
+```
+
+**Test Result:** After fix, database correctly updated with status='connection_requested' and timestamp
+
 ### Issue: Wrong Message Sent
 
 **Symptom:** Message doesn't match campaign template
@@ -603,6 +663,80 @@ ORDER BY first_name;
 ### Webhook URLs
 - **Connector Campaigns:** `https://workflows.innovareai.com/webhook/connector-campaign`
 - **Messenger Campaigns:** `https://workflows.innovareai.com/webhook/messenger-campaign`
+
+### 🚨 CRITICAL: N8N Field Reference Bug (Fixed Nov 20, 2025)
+
+**ROOT CAUSE:** HTTP Request nodes in N8N **REPLACE** `$json` with their API response. When subsequent nodes try to access `$json.prospect.id`, they're reading from the API response (which doesn't have that field), not the original prospect data.
+
+**WRONG:**
+```json
+"jsonBody": "={{ { prospect_id: $json.prospect.id, campaign_id: $json.campaignId, status: \"connection_requested\" } }}"
+```
+
+**CORRECT:**
+```json
+"jsonBody": "={{ { prospect_id: $node[\"Merge Profile Data\"].json.prospect.id, campaign_id: $node[\"Merge Profile Data\"].json.campaignId, status: \"connection_requested\", contacted_at: $now } }}"
+```
+
+**RULE:** After ANY HTTP Request node, use `$node["NodeName"].json` to access preserved data from earlier nodes.
+
+### Nodes Requiring Fix (Nov 20, 2025)
+
+**🚨 CRITICAL: TWO SEPARATE BUGS FOUND**
+
+#### Bug #1: Send CR Node (LinkedIn Sending)
+
+**Node:** "Send CR" (HTTP Request to Unipile API)
+**Impact:** Connection requests FAIL to send to LinkedIn with 400 error
+
+**WRONG:**
+```javascript
+provider_id: $json.provider_id,  // undefined after Extract LinkedIn Username runs
+account_id: $json.unipileAccountId,
+message: $json.messages.cr.replace('{first_name}', $json.prospect.first_name)
+```
+
+**CORRECT:**
+```javascript
+provider_id: $node["Extract LinkedIn Username"].json.provider_id,
+account_id: $node["Merge Profile Data"].json.unipileAccountId,
+message: ($node["Merge Profile Data"].json.messages.cr || $node["Merge Profile Data"].json.messages.connection_request || "")
+  .replace("{first_name}", $node["Merge Profile Data"].json.prospect.first_name)
+  .replace("{last_name}", $node["Merge Profile Data"].json.prospect.last_name)
+  .replace("{company_name}", $node["Merge Profile Data"].json.prospect.company_name || "")
+  .replace("{title}", $node["Merge Profile Data"].json.prospect.title || "")
+```
+
+**Error seen:** `"One or more request parameters are invalid or missing. Required property /provider_id"`
+
+#### Bug #2: Database Tracking Nodes
+
+The following nodes use WRONG field references and will fail to update the database:
+
+1. ✅ **Update Status - CR Sent** - FIXED (uses `$node["Merge Profile Data"].json`)
+2. ❌ **Not Connected - Exit** - uses `$json.prospect.id`
+3. ❌ **Mark Replied - Exit FU1** - uses `$json.prospect.id`
+4. ❌ **Mark Replied - Exit FU2** - uses `$json.prospect.id`
+5. ❌ **Mark Replied - Exit FU3** - uses `$json.prospect.id`
+6. ❌ **Mark Replied - Exit FU4** - uses `$json.prospect.id`
+7. ❌ **Mark Replied - Exit GB** - uses `$json.prospect.id`
+8. ❌ **Mark Campaign Complete** - uses `$json.prospect.id`
+
+**Fix:** Change ALL instances of `$json.prospect.id` to `$node["Merge Profile Data"].json.prospect.id`
+
+**Also change:** `$now.toISO()` to just `$now`
+
+### Missing Status Update Nodes
+
+The workflow is **MISSING** these critical tracking nodes:
+
+1. ❌ **After "Send Acceptance Message"** - No status update for "acceptance_message_sent"
+2. ❌ **After "Send FU1"** - No status update for "fu1_sent"
+3. ❌ **After "Send FU2"** - No status update for "fu2_sent"
+4. ❌ **After "Send FU3"** - No status update for "fu3_sent"
+5. ❌ **After "Send FU4"** - No status update for "fu4_sent"
+
+**Impact:** Database doesn't track when follow-up messages are actually sent, only when prospects reply.
 
 ### Workflow Features
 
@@ -711,6 +845,84 @@ Before executing ANY campaign action:
 
 ---
 
-**Document Version:** 1.0
-**Last Updated:** November 19, 2025
+---
+
+## System Architecture Overview
+
+### Why N8N is Required (Nov 20, 2025)
+
+**Question:** "Why not send directly via Unipile API without N8N?"
+
+**Answer:** N8N handles **long-running multi-day campaign sequences** that can't be done with simple API calls.
+
+### What N8N Handles
+
+A LinkedIn campaign runs over **14+ days** with complex timing:
+
+```
+Day 0:  Send connection request
+Days 1-14: Check every 24 hours if accepted
+          ↓ (once accepted)
+Day X:  Wait 4 hours → Send acceptance message
+Day X+2: Check for reply → Send FU1
+Day X+5: Check for reply → Send FU2
+Day X+8: Check for reply → Send FU3
+Day X+11: Check for reply → Send FU4
+Day X+14: Send goodbye message
+```
+
+**N8N provides:**
+1. **Stateful workflow execution** - maintains campaign state over weeks
+2. **Scheduled delays** - waits hours/days between steps
+3. **Conditional logic** - checks for replies, skips steps if prospect responds
+4. **24-hour acceptance check loop** - runs for up to 14 days
+5. **Reply detection** - exits flow early if prospect engages
+
+### Current System Flow (Nov 20, 2025)
+
+```
+1. User creates campaign in app
+2. Prospects approved
+3. Cron job queues prospects with schedule
+4. App → N8N Webhook
+5. N8N Workflow executes over days/weeks
+   - Sends messages via Unipile API
+   - Updates database after each action
+   - Waits/checks/loops as configured
+6. Database tracks all statuses
+```
+
+**Direct Unipile API sending** would only work for:
+- One-off messages (no follow-ups)
+- Immediate sends (no scheduling)
+- No acceptance checking
+- No reply detection
+
+For multi-step campaigns with timing, N8N is **essential**.
+
+### What Changed Yesterday (Nov 19, 2025)
+
+**What was built:**
+- Cron job to queue prospects with their send schedule
+- Database tracking for campaign execution
+- N8N workflow for multi-day sequences
+
+**What was broken (fixed Nov 20):**
+- N8N database tracking (field reference bug)
+- CR messages sent blank (test script issue)
+
+**What stayed the same:**
+- N8N still handles campaign execution
+- Unipile still sends the actual messages
+- Multi-day workflow logic unchanged
+
+---
+
+**Document Version:** 2.0
+**Last Updated:** November 20, 2025
 **Maintainer:** Development Team
+**Major Changes:**
+- Added N8N field reference bug documentation and fixes
+- Added blank message troubleshooting
+- Added system architecture explanation
+- Added 7 nodes requiring fixes + 5 missing status update nodes

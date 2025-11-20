@@ -1,0 +1,373 @@
+{
+  "name": "SAM Master Campaign Orchestrator",
+  "nodes": [],
+  "pinData": {},
+  "connections": {
+    "webhook_trigger": {
+      "main": [
+        [
+          {
+            "node": "campaign_handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "workspace_router": {
+      "main": [
+        [
+          {
+            "node": "template_selector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "template_selector": {
+      "main": [
+        [
+          {
+            "node": "campaign_handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "campaign_handler": {
+      "main": [
+        [
+          {
+            "node": "prospect_loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prospect_loop": {
+      "main": [
+        [
+          {
+            "node": "send_cr",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_cr": {
+      "main": [
+        [
+          {
+            "node": "check_connection_accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_connection_accepted": {
+      "main": [
+        [
+          {
+            "node": "if_connection_accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if_connection_accepted": {
+      "main": [
+        [
+          {
+            "node": "mark_not_connected",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "wait_fu1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait_fu1": {
+      "main": [
+        [
+          {
+            "node": "check_reply_fu1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_reply_fu1": {
+      "main": [
+        [
+          {
+            "node": "if_reply_fu1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if_reply_fu1": {
+      "main": [
+        [
+          {
+            "node": "mark_engaged_fu1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "send_fu1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_fu1": {
+      "main": [
+        [
+          {
+            "node": "wait_fu2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait_fu2": {
+      "main": [
+        [
+          {
+            "node": "check_reply_fu2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_reply_fu2": {
+      "main": [
+        [
+          {
+            "node": "if_reply_fu2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if_reply_fu2": {
+      "main": [
+        [
+          {
+            "node": "mark_engaged_fu2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "send_fu2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_fu2": {
+      "main": [
+        [
+          {
+            "node": "wait_fu3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait_fu3": {
+      "main": [
+        [
+          {
+            "node": "check_reply_fu3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_reply_fu3": {
+      "main": [
+        [
+          {
+            "node": "if_reply_fu3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if_reply_fu3": {
+      "main": [
+        [
+          {
+            "node": "mark_engaged_fu3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "send_fu3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_fu3": {
+      "main": [
+        [
+          {
+            "node": "wait_fu4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait_fu4": {
+      "main": [
+        [
+          {
+            "node": "check_reply_fu4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_reply_fu4": {
+      "main": [
+        [
+          {
+            "node": "if_reply_fu4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if_reply_fu4": {
+      "main": [
+        [
+          {
+            "node": "mark_engaged_fu4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "send_fu4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_fu4": {
+      "main": [
+        [
+          {
+            "node": "wait_gb",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait_gb": {
+      "main": [
+        [
+          {
+            "node": "check_reply_gb",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_reply_gb": {
+      "main": [
+        [
+          {
+            "node": "if_reply_gb",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if_reply_gb": {
+      "main": [
+        [
+          {
+            "node": "mark_engaged_gb",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "send_gb",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_gb": {
+      "main": [
+        [
+          {
+            "node": "update_status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/New_York",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all",
+    "executionTimeout": 3600
+  },
+  "versionId": "84863645-33b4-45dd-a9c4-f786f0f7ba82",
+  "meta": {
+    "instanceId": "57bbc7bcc64f32bccb1d26f3f2b7d2387e819fb384e88e55daf276e2e48423c4"
+  },
+  "id": "aVG6LC4ZFRMN7Bw6",
+  "tags": []
+}
