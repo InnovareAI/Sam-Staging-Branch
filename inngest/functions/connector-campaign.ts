@@ -52,8 +52,13 @@ export const executeConnectorCampaign = inngest.createFunction(
     name: "Execute Connector Campaign (CR + 5 FUs)",
     retries: 3,
     throttle: {
-      limit: 10, // Max 10 concurrent campaigns
-      period: "1m"
+      limit: 15, // Max 15 messages per LinkedIn account per day (safe buffer under 20)
+      period: "24h",
+      key: "event.data.accountId" // Throttle per LinkedIn account, not globally
+    },
+    concurrency: {
+      limit: 5, // Max 5 concurrent campaigns running at once
+      key: "event.data.accountId" // One campaign per account at a time
     }
   },
   { event: "campaign/connector/execute" },
@@ -205,10 +210,35 @@ export const executeConnectorCampaign = inngest.createFunction(
             console.error(`❌ Failed to send CR to ${prospect.first_name}:`, error);
 
             // Handle Unipile-specific errors
-            if (error.code === 'RATE_LIMIT' || error.message?.includes('rate limit')) {
-              console.log(`⏸️  Rate limited, waiting 1 hour...`);
-              await step.sleep(`rate-limit-backoff-${prospect.id}`, "1h");
-              throw error; // Retry this step
+            if (error.code === 'RATE_LIMIT' || error.message?.includes('rate limit') || error.message?.includes('weekly limit')) {
+              // Check if it's a weekly limit (LinkedIn typically says "weekly" in error)
+              const isWeeklyLimit = error.message?.toLowerCase().includes('week');
+
+              if (isWeeklyLimit) {
+                console.log(`⏸️  Weekly limit exceeded, will retry Monday...`);
+                // Mark as weekly limit exceeded and wait until Monday
+                await supabase
+                  .from('campaign_prospects')
+                  .update({ status: 'weekly_limit_exceeded' })
+                  .eq('id', prospect.id);
+
+                // Calculate days until next Monday (weekly limit resets)
+                const now = new Date();
+                const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+                const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
+                const hoursUntilMonday = daysUntilMonday * 24;
+
+                console.log(`⏰ Sleeping ${hoursUntilMonday} hours until Monday...`);
+                await step.sleep(`wait-weekly-limit-${prospect.id}`, `${hoursUntilMonday}h`);
+
+                // Retry after weekly limit resets
+                throw error;
+              } else {
+                // Daily limit - handled by throttling, just sleep briefly
+                console.log(`⏸️  Daily rate limited, Inngest throttling will handle retry...`);
+                await step.sleep(`rate-limit-backoff-${prospect.id}`, "1h");
+                throw error; // Retry this step
+              }
             }
 
             if (error.code === 'ACCOUNT_DISCONNECTED') {
@@ -220,16 +250,14 @@ export const executeConnectorCampaign = inngest.createFunction(
               throw new Error('LinkedIn account disconnected - campaign paused');
             }
 
-            // Mark prospect as failed
+            // Mark prospect as failed (non-recoverable error)
             await supabase
               .from('campaign_prospects')
-              .update({
-                status: 'failed',
-                error_message: error.message || 'Failed to send connection request'
-              })
+              .update({ status: 'failed' })
               .eq('id', prospect.id);
 
-            throw error;
+            // Don't throw - continue to next prospect
+            console.error(`⏭️  Skipping ${prospect.first_name} due to error`);
           }
         });
 
