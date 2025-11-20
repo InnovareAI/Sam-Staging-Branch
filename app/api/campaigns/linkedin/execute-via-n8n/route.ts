@@ -435,23 +435,8 @@ export async function POST(req: NextRequest) {
 
     console.log(`🎯 Calling ${campaignType} workflow: ${N8N_WEBHOOK_URL}`);
 
-    // 11. Call N8N webhook
-    const n8nResponse = await fetch(N8N_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(n8nPayload)
-    });
-
-    if (!n8nResponse.ok) {
-      const errorText = await n8nResponse.text();
-      console.error(`❌ N8N failed:`, errorText);
-      throw new Error(`N8N webhook failed: ${n8nResponse.status}`);
-    }
-
-    const n8nResult = await n8nResponse.json();
-    console.log(`✅ N8N accepted campaign`);
-
-    // 11. Update prospect statuses (BATCH UPDATE for performance)
+    // 11. Update prospect statuses FIRST (BATCH UPDATE for performance)
+    // Do this BEFORE calling N8N so API can return quickly
     const prospectIds = pendingProspects.map(p => p.id);
     await supabaseAdmin
       .from('campaign_prospects')
@@ -466,6 +451,15 @@ export async function POST(req: NextRequest) {
         last_executed_at: new Date().toISOString()
       })
       .eq('id', campaignId);
+
+    // 13. Call N8N webhook ASYNC (fire and forget - don't wait for response)
+    fetch(N8N_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(n8nPayload)
+    }).catch(err => console.error('N8N webhook error:', err));
+
+    console.log(`✅ Campaign queued - N8N processing asynchronously`);
 
     return NextResponse.json({
       success: true,
