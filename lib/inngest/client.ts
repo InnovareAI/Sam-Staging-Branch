@@ -13,7 +13,8 @@ import { Inngest } from "inngest";
 // Create Inngest client
 export const inngest = new Inngest({
   id: "sam-ai",
-  name: "SAM AI Campaign Automation"
+  name: "SAM AI Campaign Automation",
+  eventKey: process.env.INNGEST_EVENT_KEY, // Optional: only needed for external event sending
 });
 
 // Event types (for type safety)
