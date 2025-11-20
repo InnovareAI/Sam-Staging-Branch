@@ -52,7 +52,7 @@ export const executeConnectorCampaign = inngest.createFunction(
     name: "Execute Connector Campaign (CR + 5 FUs)",
     retries: 3,
     throttle: {
-      limit: 15, // Max 15 messages per LinkedIn account per day (safe buffer under 20)
+      limit: 20, // Max 20 connection requests per LinkedIn account per day
       period: "24h",
       key: "event.data.accountId" // Throttle per LinkedIn account, not globally
     },
