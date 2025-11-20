@@ -1,0 +1,140 @@
+commit 73e0d0b45ace06ca118a2dbc7ef78ec263d3d365
+Author: Thorsten Linz <tvonlinz@a4d5ed8f-9576-4cb6-9317-c44477bc86d8.fritz.box>
+Date:   Thu Nov 20 12:00:01 2025 +0100
+
+    🔄 Auto-backup: auto-backup-20251120_120000
+    
+    Automated backup performed at Thu Nov 20 12:00:01 CET 2025
+    
+    Changes backed up:
+    - Database snapshots to Airtable
+    - Application code state
+    - Configuration files
+    
+    Backup type: Automated cron job
+
+commit bcfc14e7ceb5ec046f31ba0f73aa3e6c2b5e0f5c
+Author: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Date:   Thu Nov 20 06:00:00 2025 +0100
+
+    🔄 Auto-backup: auto-backup-20251120_060000
+    
+    Automated backup performed at Thu Nov 20 06:00:00 CET 2025
+    
+    Changes backed up:
+    - Database snapshots to Airtable
+    - Application code state
+    - Configuration files
+    
+    Backup type: Automated cron job
+
+commit d3d042f8e4b1dc7ee9486449efa7b456a373d15a
+Author: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Date:   Thu Nov 20 00:00:00 2025 +0100
+
+    🔄 Auto-backup: auto-backup-20251120_000000
+    
+    Automated backup performed at Thu Nov 20 00:00:00 CET 2025
+    
+    Changes backed up:
+    - Database snapshots to Airtable
+    - Application code state
+    - Configuration files
+    
+    Backup type: Automated cron job
+
+commit 06085c16a80575fe11cf19ae697a08d3a8fcdb6f
+Author: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Date:   Wed Nov 19 18:00:02 2025 +0100
+
+    🔄 Auto-backup: auto-backup-20251119_180000
+    
+    Automated backup performed at Wed Nov 19 18:00:01 CET 2025
+    
+    Changes backed up:
+    - Database snapshots to Airtable
+    - Application code state
+    - Configuration files
+    
+    Backup type: Automated cron job
+
+commit a785534a86382710b53fe0ceea5d9e0d0aafef7c
+Author: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Date:   Wed Nov 19 12:00:00 2025 +0100
+
+    🔄 Auto-backup: auto-backup-20251119_120000
+    
+    Automated backup performed at Wed Nov 19 12:00:00 CET 2025
+    
+    Changes backed up:
+    - Database snapshots to Airtable
+    - Application code state
+    - Configuration files
+    
+    Backup type: Automated cron job
+
+commit 2d0df6a764c2a9945d3d7c8a713e170838dfe6ec
+Author: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Date:   Wed Nov 19 06:00:00 2025 +0100
+
+    🔄 Auto-backup: auto-backup-20251119_060000
+    
+    Automated backup performed at Wed Nov 19 06:00:00 CET 2025
+    
+    Changes backed up:
+    - Database snapshots to Airtable
+    - Application code state
+    - Configuration files
+    
+    Backup type: Automated cron job
+
+commit 23d0428332a3ab6b6a33dcd99d90a6bea5dd4d24
+Author: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Date:   Wed Nov 19 00:00:01 2025 +0100
+
+    🔄 Auto-backup: auto-backup-20251119_000000
+    
+    Automated backup performed at Wed Nov 19 00:00:01 CET 2025
+    
+    Changes backed up:
+    - Database snapshots to Airtable
+    - Application code state
+    - Configuration files
+    
+    Backup type: Automated cron job
+
+commit fbf7ee6333fedaf3aacafc8d44f9d96374a96e4d
+Author: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Date:   Tue Nov 18 18:00:01 2025 +0100
+
+    🔄 Auto-backup: auto-backup-20251118_180001
+    
+    Automated backup performed at Tue Nov 18 18:00:01 CET 2025
+    
+    Changes backed up:
+    - Database snapshots to Airtable
+    - Application code state
+    - Configuration files
+    
+    Backup type: Automated cron job
+
+commit 5000ef3795382bba905f84bc56d3f9661bb8b4b5
+Author: Thorsten Linz <tvonlinz@f80b1217-567d-43ed-b0ab-3702a55c4242.fritz.box>
+Date:   Tue Nov 18 12:31:06 2025 +0100
+
+    Set showLatestSessionOnly to false by default
+    
+    - Changes default from true to false so all searches display by default
+    - Was only showing 500 prospects from latest CLI search
+    - Now shows all 682 prospects across all 5 searches grouped by search name
+
+commit 87cb5cc54171ba813dc8ea99e85183e445e2c61b
+Author: Thorsten Linz <tvonlinz@f80b1217-567d-43ed-b0ab-3702a55c4242.fritz.box>
+Date:   Tue Nov 18 12:24:56 2025 +0100
+
+    Fix campaign dropdown filter to allow specific search selection
+    
+    - Changed default dropdown value from 'latest' to 'all'
+    - Fixed filter logic to properly handle 'latest', 'all', and specific search names
+    - When user selects specific search from dropdown, prospects now display correctly
+    - Fixes issue where selecting search showed 'No Prospects Found'

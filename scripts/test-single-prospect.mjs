@@ -1,102 +1,115 @@
-#!/usr/bin/env node
-
-/**
- * Test sending a single prospect through N8N after workflow update
- */
-
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { config } from 'dotenv';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-dotenv.config({ path: join(__dirname, '../.env.local') });
+config({ path: '.env.local' });
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const WORKSPACE_ID = '7f0341da-88db-476b-ae0a-fc0da5b70861'; // IA4
-const UNIPILE_ACCOUNT_ID = '4nt1J-blSnGUPBjH2Nfjpg'; // Charissa
-const CAMPAIGN_ID = '683f9214-8a3f-4015-98fe-aa3ae76a9ebe'; // 20251117-IA4-Outreach Campaign
+async function testSingleProspect() {
+  console.log('🧪 TESTING CAMPAIGN EXECUTION WITH 1 PROSPECT\n');
+  console.log('='.repeat(60));
 
-console.log('🧪 Testing Single Prospect through N8N\n');
+  // Get Charissa's "New Campaign-Canada" campaign
+  const { data: campaign } = await supabase
+    .from('campaigns')
+    .select('id, name, workspace_id')
+    .ilike('name', '%New Campaign-Canada%')
+    .single();
 
-// Get first pending prospect
-const { data: prospects, error } = await supabase
-  .from('campaign_prospects')
-  .select('id, first_name, last_name, linkedin_url, company_name, title')
-  .eq('campaign_id', CAMPAIGN_ID)
-  .eq('status', 'pending')
-  .limit(1);
+  if (!campaign) {
+    console.error('❌ Campaign not found');
+    process.exit(1);
+  }
 
-if (error || !prospects || prospects.length === 0) {
-  console.error('❌ No pending prospects found');
-  process.exit(1);
+  console.log(`\n📋 Campaign: ${campaign.name}`);
+  console.log(`   ID: ${campaign.id}`);
+  console.log(`   Workspace: ${campaign.workspace_id}`);
+
+  // Get one pending prospect
+  const { data: prospects } = await supabase
+    .from('campaign_prospects')
+    .select('id, first_name, last_name, linkedin_url, status')
+    .eq('campaign_id', campaign.id)
+    .eq('status', 'pending')
+    .limit(1);
+
+  if (!prospects || prospects.length === 0) {
+    console.error('\n❌ No pending prospects found');
+    process.exit(1);
+  }
+
+  const prospect = prospects[0];
+  console.log(`\n👤 Test Prospect: ${prospect.first_name} ${prospect.last_name}`);
+  console.log(`   ID: ${prospect.id}`);
+  console.log(`   Status: ${prospect.status}`);
+  console.log(`   LinkedIn: ${prospect.linkedin_url}`);
+
+  // Call the execute API
+  console.log('\n🚀 Calling API: /api/campaigns/linkedin/execute-via-n8n');
+  console.log('-'.repeat(60));
+
+  try {
+    const response = await fetch('http://localhost:3000/api/campaigns/linkedin/execute-via-n8n', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        campaignId: campaign.id,
+        workspaceId: campaign.workspace_id
+      })
+    });
+
+    const data = await response.json();
+
+    console.log(`\n📡 API Response: ${response.status}`);
+    console.log(JSON.stringify(data, null, 2));
+
+    if (!response.ok) {
+      console.error('\n❌ API call failed');
+      process.exit(1);
+    }
+
+    console.log('\n✅ API call successful');
+
+    // Wait 5 seconds for database to update
+    console.log('\n⏳ Waiting 5 seconds for database update...');
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    // Check prospect status changed
+    const { data: updatedProspect } = await supabase
+      .from('campaign_prospects')
+      .select('status, contacted_at')
+      .eq('id', prospect.id)
+      .single();
+
+    console.log('\n📊 Updated Prospect Status:');
+    console.log(`   Status: ${updatedProspect.status}`);
+    console.log(`   Contacted: ${updatedProspect.contacted_at || 'Not yet'}`);
+
+    if (updatedProspect.status === 'queued_in_n8n') {
+      console.log('\n✅✅✅ SUCCESS! Prospect queued in N8N');
+      console.log('\n📝 Next steps:');
+      console.log('   1. Check N8N execution logs');
+      console.log('   2. Wait for randomizer delay');
+      console.log('   3. Check LinkedIn for CR');
+      console.log('   4. Verify prospect status changes to "connection_request_sent"');
+    } else if (updatedProspect.status === 'pending') {
+      console.log('\n⚠️  WARNING: Prospect still pending');
+      console.log('   N8N may not have received the payload');
+      console.log('   Check N8N logs for errors');
+    } else {
+      console.log(`\n✅ Status changed to: ${updatedProspect.status}`);
+    }
+
+  } catch (error) {
+    console.error('\n❌ Test failed:', error.message);
+    process.exit(1);
+  }
+
+  console.log('\n' + '='.repeat(60));
+  console.log('🧪 TEST COMPLETE');
 }
 
-const prospect = prospects[0];
-
-// Get campaign details
-const { data: campaign } = await supabase
-  .from('campaigns')
-  .select('name, connection_message, message_templates')
-  .eq('id', CAMPAIGN_ID)
-  .single();
-
-console.log(`📋 Test Prospect: ${prospect.first_name} ${prospect.last_name}`);
-console.log(`📋 Campaign: ${campaign.name}`);
-console.log(`📋 LinkedIn: ${prospect.linkedin_url}\n`);
-
-// Prepare payload (NO unipile_dsn or unipileApiKey - N8N will use env vars)
-const payload = {
-  workspaceId: WORKSPACE_ID,
-  campaignId: CAMPAIGN_ID,
-  channel: 'linkedin',
-  campaignType: 'connector',
-  unipileAccountId: UNIPILE_ACCOUNT_ID,
-  prospects: [{
-    id: prospect.id,
-    first_name: prospect.first_name,
-    last_name: prospect.last_name,
-    linkedin_url: prospect.linkedin_url,
-    company_name: prospect.company_name,
-    title: prospect.title,
-    send_delay_minutes: 0
-  }],
-  messages: {
-    connection_request: campaign.message_templates?.connection_request || campaign.connection_message || '',
-    cr: campaign.message_templates?.connection_request || campaign.connection_message || ''
-  },
-  supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  supabase_service_key: process.env.SUPABASE_SERVICE_ROLE_KEY
-};
-
-console.log('🚀 Sending to N8N webhook...\n');
-
-// Send to N8N (fire-and-forget)
-fetch('https://workflows.innovareai.com/webhook/connector-campaign', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(payload)
-}).catch(err => {
-  console.error(`⚠️  N8N trigger warning: ${err.message}`);
-});
-
-// Mark as queued
-await supabase
-  .from('campaign_prospects')
-  .update({
-    status: 'queued',
-    scheduled_send_at: new Date().toISOString()
-  })
-  .eq('id', prospect.id);
-
-console.log('✅ Test prospect sent to N8N!');
-console.log('\n📌 Next Steps:');
-console.log('1. Check N8N executions at: https://workflows.innovareai.com/workflow/aVG6LC4ZFRMN7Bw6/executions');
-console.log('2. Check Charissa\'s LinkedIn for the connection request');
-console.log('3. If successful, run the cron job for all remaining prospects\n');
+testSingleProspect().catch(console.error);

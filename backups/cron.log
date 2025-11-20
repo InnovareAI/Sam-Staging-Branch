@@ -5834,3 +5834,134 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main 73e0d0b4] 🔄 Auto-backup: auto-backup-20251120_120000
+ Committer: Thorsten Linz <tvonlinz@a4d5ed8f-9576-4cb6-9317-c44477bc86d8.fritz.box>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 83 files changed, 13239 insertions(+), 2 deletions(-)
+ create mode 100644 N8N_FIX_ACTION_PLAN.md
+ create mode 100644 N8N_SERVER_DEPLOYMENT_GUIDE.md
+ create mode 100644 N8N_WEBHOOK_FIX_REPORT.md
+ create mode 100644 N8N_WEBHOOK_FIX_VISUAL.md
+ create mode 100644 N8N_WORKFLOW_FIX_NOV20.md
+ create mode 100644 n8n-workflow-current.json
+ create mode 100644 n8n-workflow-fixed-v2.json
+ create mode 100644 n8n-workflow-fixed.json
+ create mode 100755 scripts/add-fresh-test-prospect.mjs
+ create mode 100755 scripts/add-tobias-account.mjs
+ create mode 100755 scripts/add-tobias-ia5.mjs
+ create mode 100755 scripts/add-tobias-to-ia7.mjs
+ create mode 100644 scripts/check-account-structure.mjs
+ create mode 100755 scripts/check-all-linkedin-accounts.mjs
+ create mode 100644 scripts/check-charissa-campaigns.mjs
+ create mode 100644 scripts/check-charissa-status.mjs
+ create mode 100644 scripts/check-cr-messages.mjs
+ create mode 100644 scripts/check-ia-workspaces.mjs
+ create mode 100644 scripts/check-ia5-usage.mjs
+ create mode 100644 scripts/check-if-worked.mjs
+ create mode 100644 scripts/check-maca.mjs
+ create mode 100644 scripts/check-n8n-execution-details.mjs
+ create mode 100644 scripts/check-n8n-execution.mjs
+ create mode 100644 scripts/check-n8n-webhook-node.mjs
+ create mode 100644 scripts/check-sent-prospects.mjs
+ create mode 100644 scripts/check-test-prospect.mjs
+ create mode 100755 scripts/check-unipile-account-status.mjs
+ create mode 100755 scripts/check-unipile-invitations.mjs
+ create mode 100644 scripts/check-zachary.mjs
+ create mode 100644 scripts/create-fresh-test-prospect.mjs
+ create mode 100755 scripts/create-ia7-add-tobias.mjs
+ create mode 100755 scripts/create-ia7-sql.mjs
+ create mode 100644 scripts/create-test-queued-prospect.mjs
+ create mode 100755 scripts/deploy-cron-to-n8n-server.sh
+ create mode 100755 scripts/deploy-cron.sh
+ create mode 100644 scripts/diagnose-n8n-json-error.mjs
+ create mode 100755 scripts/final-end-to-end-test.mjs
+ create mode 100644 scripts/final-test-one.mjs
+ create mode 100755 scripts/final-test-tobias.mjs
+ create mode 100644 scripts/find-campaigns-with-prospects.mjs
+ create mode 100755 scripts/find-different-campaign-prospect.mjs
+ create mode 100755 scripts/find-newest-prospects.mjs
+ create mode 100644 scripts/find-simple-prospect.mjs
+ create mode 100644 scripts/find-untouched-prospect.mjs
+ create mode 100644 scripts/fix-all-urls-in-workflow.mjs
+ create mode 100644 scripts/fix-n8n-json.mjs
+ create mode 100755 scripts/fix-n8n-status-update.mjs
+ create mode 100644 scripts/fix-n8n-use-params.mjs
+ create mode 100644 scripts/fix-n8n-workflow-via-api.mjs
+ create mode 100644 scripts/fix-webhook-id.mjs
+ create mode 100644 scripts/get-prospect-with-cr.mjs
+ create mode 100644 scripts/get-workspace-unipile.mjs
+ create mode 100644 scripts/list-all-ia.mjs
+ create mode 100755 scripts/list-all-unipile-accounts.mjs
+ create mode 100644 scripts/list-ia-workspaces.mjs
+ create mode 100755 scripts/move-prospects-to-tobias.mjs
+ create mode 100644 scripts/reactivate-n8n-workflow.mjs
+ create mode 100755 scripts/reset-unipile-cached-prospects.mjs
+ create mode 100755 scripts/send-from-thorsten-ia1.mjs
+ create mode 100755 scripts/send-from-thorsten.mjs
+ create mode 100644 scripts/send-tobias-no-message.mjs
+ create mode 100644 scripts/send-tobias-simple.mjs
+ create mode 100755 scripts/simple-add-tobias.mjs
+ create mode 100755 scripts/test-david-murumbi.mjs
+ create mode 100644 scripts/test-db-update-fix.mjs
+ create mode 100644 scripts/test-direct-unipile-send.mjs
+ create mode 100644 scripts/test-final-db-tracking.mjs
+ create mode 100644 scripts/test-n8n-webhook-direct.mjs
+ create mode 100755 scripts/test-tobias-short-message.mjs
+ create mode 100644 scripts/test-unipile-direct.mjs
+ create mode 100644 scripts/test-webhook-directly.mjs
+ create mode 100644 scripts/test-webhook-with-simon.mjs
+ create mode 100644 scripts/test-with-cr-message.mjs
+ create mode 100644 scripts/test-with-fresh-prospect.mjs
+ create mode 100644 scripts/toggle-n8n-workflow.mjs
+ create mode 100644 scripts/upload-workflow-to-n8n.mjs
+ create mode 100755 scripts/verify-ia7-and-test.mjs
+ create mode 100644 temp/SAM-Master-Campaign-Orchestrator-CORRECTED.json
+ create mode 100644 temp/current-n8n-workflow.json
+ create mode 100644 temp/n8n-execution-107589.json
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251120_120000[0m
+[0;32m📅 Timestamp: Thu Nov 20 12:00:01 CET 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║          SAM AI - Automated Backup System             ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32mBackup started: Thu Nov 20 18:00:00 CET 2025[0m
+[0;32mBackup name: auto-backup-20251120_180000[0m
+
+[1;33m📦 Step 1: Backing up to Airtable...[0m
+
+/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/scripts/auto-backup.sh: line 76: node: command not found
+[0;31m❌ Airtable backup failed (non-critical)[0m
+
+[1;33m📝 Step 2: Creating Git snapshot...[0m
+
