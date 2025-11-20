@@ -171,20 +171,20 @@ export async function POST(req: NextRequest) {
         console.log(`🚀 Executing campaign: ${campaign.name} (within working hours)`);
 
         // Get the user who created the campaign (to use their LinkedIn account)
-        const { data: campaignOwner } = await supabase
+        const { data: campaignOwner, error: ownerError } = await supabase
           .from('workspace_members')
-          .select('user_id, users(email)')
+          .select('user_id, role')
           .eq('workspace_id', campaign.workspace_id)
           .eq('role', 'owner')
           .single();
 
-        if (!campaignOwner) {
-          console.error(`❌ No owner found for campaign ${campaign.id}`);
+        if (!campaignOwner || ownerError) {
+          console.error(`❌ No owner found for campaign ${campaign.id}:`, ownerError?.message);
           results.push({
             campaign_id: campaign.id,
             campaign_name: campaign.name,
             status: 'error',
-            error: 'No campaign owner found'
+            error: ownerError?.message || 'No campaign owner found'
           });
           continue;
         }
