@@ -269,6 +269,28 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     toastError(`Analytics for campaign ${campaignId} - Coming soon!`);
   };
 
+  const viewMessages = (campaign: any) => {
+    console.log('👁️ View messages clicked:', campaign);
+
+    if (!campaign || !campaign.id) {
+      toastError('Invalid campaign data');
+      return;
+    }
+
+    // Open edit modal in read-only mode to view messages
+    setCampaignToEdit(campaign);
+    setEditFormData({
+      name: campaign.name || campaign.campaign_name || '',
+      connection_message: campaign.connection_message || campaign.message_templates?.connection_request || '',
+      alternative_message: campaign.alternative_message || campaign.message_templates?.alternative_message || '',
+      follow_up_messages: campaign.follow_up_messages?.length > 0
+        ? campaign.follow_up_messages
+        : (campaign.message_templates?.follow_up_messages || []),
+      timing: campaign.timing || {}
+    });
+    setShowEditModal(true);
+  };
+
   const editCampaign = (campaign: any) => {
     console.log('🎯 Edit campaign clicked:', campaign);
 
