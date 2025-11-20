@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useSamThreadedChat } from '@/lib/hooks/useSamThreadedChat';
 import { useConfirm } from '@/hooks/useConfirm';
 import { DemoModeToggle } from '@/components/DemoModeToggle';
-import { WorkspaceSelector } from '@/components/WorkspaceSelector';
+// import { WorkspaceSelector } from '@/components/WorkspaceSelector'; // REMOVED - not needed
 import ConnectionStatusBar from '@/components/ConnectionStatusBar';
 import ConversationHistory from '@/components/ConversationHistory';
 import InviteUserPopup from '@/components/InviteUserPopup';
@@ -2878,8 +2878,8 @@ export default function Page() {
 
         {/* Sidebar Bottom */}
         <div className="space-y-0 border-t border-border/60">
-          <WorkspaceSelector userEmail={testUser?.email} />
-          
+          {/* <WorkspaceSelector userEmail={testUser?.email} /> */}
+
           <div className="space-y-4 px-5 py-5">
           <button
             type="button"
