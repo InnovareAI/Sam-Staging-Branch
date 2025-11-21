@@ -596,38 +596,32 @@ export async function POST(req: NextRequest) {
           sentResults.push(...n8nProspects.map(p => ({
             prospect: `${p.first_name} ${p.last_name}`,
             linkedin_url: p.linkedin_url,
-            status: 'queued_in_n8n'
+            status: 'processing'
           })));
 
-          results.n8n_triggered = true;
-        }
-      } catch (n8nError) {
-        console.error('❌ Error triggering N8N:');
-        console.error('   Error type:', n8nError instanceof Error ? 'Error' : typeof n8nError);
-        console.error('   Error message:', n8nError instanceof Error ? n8nError.message : String(n8nError));
-        console.error('   Error stack:', n8nError instanceof Error ? n8nError.stack : 'N/A');
-        console.error('   Full error object:', JSON.stringify(n8nError, Object.getOwnPropertyNames(n8nError)));
+          results.inngest_triggered = true;
+
+      } catch (inngestError) {
+        console.error('❌ Error triggering Inngest:', inngestError);
 
         failedResults.push({
           prospect: 'All prospects',
-          error: n8nError instanceof Error ? n8nError.message : 'N8N webhook failed'
+          error: inngestError instanceof Error ? inngestError.message : 'Inngest event failed'
         });
       }
 
-      // Original direct API code replaced with N8N workflow
-      // N8N will handle:
-      // - LinkedIn profile lookup (GET /api/v1/users/{username})
-      // - Connection request (POST /api/v1/users/invite)
-      // - Wait 24-48 hours
-      // - Check connection acceptance
-      // - Send follow-ups (FU1-4, Goodbye)
-      // - Reply detection
+      // Inngest handles:
+      // - LinkedIn profile lookup
+      // - Connection request with throttling
+      // - Wait 2 days for acceptance
+      // - Send 5 follow-up messages with delays
+      // - Automatic retries and error handling
 
       results.errors = failedResults;
     }
 
     // Step 7: Update campaign status and return results
-    const executionStatus = results.n8n_triggered ? 'active' : campaign.status;
+    const executionStatus = results.inngest_triggered ? 'active' : campaign.status;
     await supabase
       .from('campaigns')
       .update({
