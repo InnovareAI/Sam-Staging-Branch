@@ -203,13 +203,26 @@ export async function POST(req: NextRequest) {
         await new Promise(resolve => setTimeout(resolve, 3000 + Math.random() * 2000));
 
       } catch (error: any) {
-        console.error(`❌ Failed to process ${prospect.first_name}:`, error.message);
+        // Capture full error details (Unipile errors have status, type, title)
+        const errorDetails = {
+          message: error.message || 'Unknown error',
+          status: error.status || error.statusCode,
+          type: error.type,
+          title: error.title,
+          response: error.response?.data,
+          stack: error.stack
+        };
+
+        console.error(`❌ Failed to process ${prospect.first_name}:`, JSON.stringify(errorDetails, null, 2));
+
+        const errorMessage = error.title || error.message || 'Unknown error';
 
         results.push({
           prospectId: prospect.id,
           name: `${prospect.first_name} ${prospect.last_name}`,
           status: 'failed',
-          error: error.message
+          error: errorMessage,
+          errorDetails: errorDetails
         });
 
         // Don't update DB on error - will retry next hour
@@ -238,9 +251,20 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ Follow-up processing error:', error);
+    const errorDetails = {
+      message: error.message || 'Unknown error',
+      status: error.status || error.statusCode,
+      type: error.type,
+      title: error.title,
+      response: error.response?.data,
+      stack: error.stack
+    };
+
+    console.error('❌ Follow-up processing error:', JSON.stringify(errorDetails, null, 2));
+
     return NextResponse.json({
-      error: error.message || 'Internal server error'
+      error: error.title || error.message || 'Internal server error',
+      details: errorDetails
     }, { status: 500 });
   }
 }

@@ -161,14 +161,28 @@ export async function POST(req: NextRequest) {
         await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000));
 
       } catch (error: any) {
-        console.error(`❌ Failed to process ${prospect.first_name}:`, error.message);
+        // Capture full error details (Unipile errors have status, type, title)
+        const errorDetails = {
+          message: error.message || 'Unknown error',
+          status: error.status || error.statusCode,
+          type: error.type,
+          title: error.title,
+          response: error.response?.data,
+          stack: error.stack
+        };
+
+        console.error(`❌ Failed to process ${prospect.first_name}:`, JSON.stringify(errorDetails, null, 2));
+
+        // Create readable error message
+        const errorMessage = error.title || error.message || 'Unknown error';
+        const errorNote = `CR failed: ${errorMessage}${error.status ? ` (${error.status})` : ''}${error.type ? ` [${error.type}]` : ''}`;
 
         // Mark as failed
         await supabase
           .from('campaign_prospects')
           .update({
             status: 'failed',
-            notes: `CR failed: ${error.message}`,
+            notes: errorNote,
             updated_at: new Date().toISOString()
           })
           .eq('id', prospect.id);
@@ -177,7 +191,8 @@ export async function POST(req: NextRequest) {
           prospectId: prospect.id,
           name: `${prospect.first_name} ${prospect.last_name}`,
           status: 'failed',
-          error: error.message
+          error: errorMessage,
+          errorDetails: errorDetails
         });
       }
     }
@@ -196,9 +211,20 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ Campaign execution error:', error);
+    const errorDetails = {
+      message: error.message || 'Unknown error',
+      status: error.status || error.statusCode,
+      type: error.type,
+      title: error.title,
+      response: error.response?.data,
+      stack: error.stack
+    };
+
+    console.error('❌ Campaign execution error:', JSON.stringify(errorDetails, null, 2));
+
     return NextResponse.json({
-      error: error.message || 'Internal server error'
+      error: error.title || error.message || 'Internal server error',
+      details: errorDetails
     }, { status: 500 });
   }
 }
