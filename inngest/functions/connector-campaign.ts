@@ -109,8 +109,8 @@ export const executeConnectorCampaign = inngest.createFunction(
 
       // Wait with human-like randomization
       if (delay > 0) {
-        console.log(`⏳ Waiting ${delay} minutes before processing ${prospect.first_name}...`);
-        await step.sleep(`human-delay-${prospect.id}`, `${delay}m`);
+        console.log(`⏳ Waiting ${delay} seconds before processing ${prospect.first_name}...`);
+        await step.sleep(`human-delay-${prospect.id}`, `${delay}s`);
       }
 
       try {

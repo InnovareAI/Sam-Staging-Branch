@@ -114,11 +114,10 @@ export async function calculateSmartDelay({
   // 5. Simple random delay between 30 seconds and 3 minutes
   // Fast enough for testing, slow enough to avoid rate limits
   const delaySeconds = 30 + Math.floor(Math.random() * 150); // 30-180 seconds
-  const delayMinutes = Math.floor(delaySeconds / 60);
 
   console.log(`⏱️  Prospect ${prospectIndex}: ${delaySeconds}s delay`);
 
-  return delayMinutes;
+  return delaySeconds; // Return seconds, not minutes
 }
 
 /**
