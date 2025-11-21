@@ -4,7 +4,7 @@
  * Runs every 2 hours to check for active connector campaigns
  * with pending prospects and triggers campaign execution.
  *
- * Schedule: Every 2 hours (cron: "0 star-slash-2 star star star")
+ * Schedule: Every 2 hours (cron: "0 STAR_SLASH_2 * * *")
  */
 
 import { inngest } from "@/lib/inngest/client";
