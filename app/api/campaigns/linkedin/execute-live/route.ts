@@ -471,7 +471,7 @@ export async function POST(req: NextRequest) {
       campaign_name: campaign.name,
       linkedin_account: selectedAccount.name,
       prospects_processed: executableProspects.length,
-      n8n_triggered: false,
+      inngest_triggered: false,
       errors: []
     };
 
@@ -485,7 +485,7 @@ export async function POST(req: NextRequest) {
 
     if (dryRun) {
       console.log('🧪 DRY RUN - Would send to N8N:', executableProspects.map(p => `${p.first_name} ${p.last_name}`).join(', '));
-      results.n8n_triggered = false;
+      results.inngest_triggered = false;
     } else {
       // LIVE: Trigger N8N workflow for complete campaign lifecycle
       console.log('\n📡 Preparing N8N payload...');
@@ -567,40 +567,27 @@ export async function POST(req: NextRequest) {
         console.log(`   LinkedIn URL length: ${n8nProspects[0].linkedin_url?.length || 0}`);
       }
 
-      // Trigger N8N webhook
+      // Trigger Inngest workflow
       try {
-        const n8nResponse = await fetch(process.env.N8N_CAMPAIGN_WEBHOOK_URL || '', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.N8N_API_KEY || ''}`
-          },
-          body: JSON.stringify(n8nPayload)
+        const { inngest } = await import('@/lib/inngest/client');
+
+        const result = await inngest.send({
+          name: 'campaign/connector/execute',
+          data: n8nPayload // Reuse the same payload structure
         });
 
-        console.log(`🔍 DEBUG: N8N Response Status: ${n8nResponse.status}`);
+        console.log('✅ Inngest workflow triggered successfully');
+        console.log(`   Event ID: ${result.ids[0]}`);
 
-        if (!n8nResponse.ok) {
-          const errorText = await n8nResponse.text();
-          console.error(`❌ N8N webhook error (${n8nResponse.status}): ${errorText}`);
-          failedResults.push({
-            prospect: 'All prospects',
-            error: `N8N webhook ${n8nResponse.status}: ${errorText}`
-          });
-        } else {
-          const n8nData = await n8nResponse.json();
-          console.log('✅ N8N workflow triggered successfully');
-          console.log(`   Execution ID: ${n8nData.executionId || 'N/A'}`);
-
-          // Update all prospects to 'queued_in_n8n' status
-          const prospectIds = executableProspects.map(p => p.id);
-          await supabase
-            .from('campaign_prospects')
-            .update({
-              status: 'queued_in_n8n',
+        // Update all prospects to 'processing' status
+        const prospectIds = executableProspects.map(p => p.id);
+        await supabase
+          .from('campaign_prospects')
+          .update({
+              status: 'processing',
               personalization_data: {
                 ...(executableProspects[0].personalization_data || {}),
-                n8n_execution_id: n8nData.executionId,
+                inngest_event_id: result.ids[0],
                 queued_at: new Date().toISOString()
               }
             })

@@ -75,7 +75,8 @@ export const executeConnectorCampaign = inngest.createFunction(
           id,
           campaign_name,
           linkedin_account_id,
-          message_templates
+          message_templates,
+          status
         `)
         .eq('id', campaignId)
         .single();
@@ -83,6 +84,18 @@ export const executeConnectorCampaign = inngest.createFunction(
 
     if (!campaign) {
       throw new Error(`Campaign ${campaignId} not found`);
+    }
+
+    // Exit immediately if campaign is paused
+    if (campaign.status === 'paused') {
+      console.log(`⏸️  Campaign ${campaignId} is paused - exiting`);
+      return {
+        campaignId,
+        workspaceId,
+        processed: 0,
+        results: [],
+        status: 'paused'
+      };
     }
 
     // Process each prospect sequentially
