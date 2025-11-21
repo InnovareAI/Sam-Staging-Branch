@@ -48,50 +48,50 @@ Header: x-cron-secret: <your-secret>
 
 ## Setup Instructions
 
-### Step 1: Verify Environment Variables
+### Step 1: System Already Deployed ✅
 
-Already set in Netlify:
-- `UNIPILE_DSN`
-- `UNIPILE_API_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `CRON_SECRET` (generated: `792e0c09eeee...`)
+The direct campaign system is live at: **https://app.meet-sam.com**
 
-### Step 2: Wait for Deployment
+Environment variables already configured:
+- `UNIPILE_DSN` = `api6.unipile.com:13670`
+- `UNIPILE_API_KEY` = (configured)
+- `SUPABASE_SERVICE_ROLE_KEY` = (configured)
+- `CRON_SECRET` = `792e0c09eeee1a229b78a6341739613177fad24f401b1c82f2673bbb9ee806a0`
 
-Netlify will automatically deploy the new code.
+### Step 2: Configure cron-job.org
 
-Check deployment status:
-```bash
-netlify status
+Go to https://cron-job.org and add this job:
+
+**Title:** Process Campaign Follow-Ups
+
+**URL:** `https://app.meet-sam.com/api/campaigns/direct/process-follow-ups`
+
+**Schedule:** Every hour (or `0 * * * *`)
+
+**Method:** POST
+
+**Headers:**
+```
+x-cron-secret: 792e0c09eeee1a229b78a6341739613177fad24f401b1c82f2673bbb9ee806a0
+Content-Type: application/json
 ```
 
-### Step 3: Configure cron-job.org
+**Important:** Keep `x-cron-secret` private!
 
-1. Go to https://cron-job.org
-2. Create new job:
-   - **Title:** Process Campaign Follow-Ups
-   - **URL:** `https://app.meet-sam.com/api/campaigns/direct/process-follow-ups`
-   - **Schedule:** Every hour (or `0 * * * *`)
-   - **Method:** POST
-   - **Headers:**
-     ```
-     x-cron-secret: 792e0c09eeee1a229b78a6341739613177fad24f401b1c82f2673bbb9ee806a0
-     Content-Type: application/json
-     ```
-3. Save and enable
+### Step 3: Send Connection Requests
 
-### Step 4: Test It
+To start a campaign, call the send-connection-requests endpoint:
 
-#### Test sending connection requests:
+```bash
+curl -X POST "https://app.meet-sam.com/api/campaigns/direct/send-connection-requests" \
+  -H "Content-Type: application/json" \
+  -d '{"campaignId": "YOUR_CAMPAIGN_ID"}'
+```
+
+Or use the test script:
 ```bash
 cd /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7
 node scripts/js/test-direct-campaign.mjs
-```
-
-#### Test follow-up processing:
-```bash
-curl -X POST "http://localhost:3000/api/campaigns/direct/process-follow-ups" \
-  -H "x-cron-secret: 792e0c09eeee1a229b78a6341739613177fad24f401b1c82f2673bbb9ee806a0"
 ```
 
 ## Monitoring
@@ -150,6 +150,24 @@ SET follow_up_due_at = NULL,
 WHERE id = 'prospect-id';
 ```
 
+### LinkedIn Rate Limit?
+**Error:** "You have reached a temporary provider limit"
+**Fix:** Wait 24 hours, LinkedIn resets daily limits
+**Prevention:** Spread campaigns across multiple accounts
+
+## Rate Limits
+
+**LinkedIn Connection Requests:**
+- 100/week per account (LinkedIn's limit)
+- Best practice: 15-20/day to stay safe
+
+**LinkedIn Messages:**
+- Unlimited for accepted connections
+- 15-20/day for new connections
+
+**Unipile API:**
+- No strict limits, but respect LinkedIn's limits
+
 ## Benefits Over N8N/Inngest
 
 1. **Simple** - No workflow engines to manage
@@ -161,8 +179,8 @@ WHERE id = 'prospect-id';
 
 ## Next Steps
 
-1. Deploy to production (automatic)
-2. Set up cron-job.org
-3. Test with Charissa's campaign
-4. Monitor for 24 hours
-5. If working well, switch all campaigns to this system
+1. ✅ System deployed to production
+2. ⏳ Configure cron-job.org (see Step 2 above)
+3. ⏳ Test with Charissa's campaign (wait for rate limit to clear)
+4. ⏳ Monitor for 24 hours
+5. ⏳ If working well, migrate all campaigns to this system
