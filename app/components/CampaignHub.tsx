@@ -269,13 +269,12 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     mutationFn: async (campaignId: string) => {
       console.log(`🚀 Executing campaign ${campaignId}...`);
 
-      const response = await fetch('/api/campaigns/linkedin/execute-inngest', {
+      const response = await fetch('/api/campaigns/direct/send-connection-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          campaignId,
-          workspaceId: actualWorkspaceId
+          campaignId
         })
       });
 
