@@ -264,6 +264,44 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     }
   };
 
+  // REACT QUERY: Mutation for executing campaign
+  const executeMutation = useMutation({
+    mutationFn: async (campaignId: string) => {
+      console.log(`🚀 Executing campaign ${campaignId}...`);
+
+      const response = await fetch('/api/campaigns/linkedin/execute-inngest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          campaignId,
+          workspaceId: actualWorkspaceId
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || errorData.message || 'Campaign execution failed');
+      }
+
+      const result = await response.json();
+      return { campaignId, result };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+      toastSuccess('Campaign launched successfully!');
+      console.log('✅ Campaign execution result:', data.result);
+    },
+    onError: (error: any) => {
+      console.error('Error executing campaign:', error);
+      toastError(error.message || 'Failed to launch campaign');
+    }
+  });
+
+  const executeCampaign = (campaignId: string) => {
+    executeMutation.mutate(campaignId);
+  };
+
   const showCampaignAnalytics = (campaignId: string) => {
     // TODO: Open analytics modal or navigate to analytics view
     toastError(`Analytics for campaign ${campaignId} - Coming soon!`);
@@ -696,6 +734,20 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                     title="Resume campaign"
                   >
                     <Play size={16} />
+                  </Button>
+                )}
+                {(c.status === 'active' || c.status === 'paused') && (
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      executeCampaign(c.id);
+                    }}
+                    variant="ghost"
+                    size="icon"
+                    className="text-purple-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
+                    title="Launch campaign now"
+                  >
+                    <Rocket size={16} />
                   </Button>
                 )}
                 {c.status !== 'archived' && (
