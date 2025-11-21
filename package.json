@@ -122,6 +122,7 @@
     "eslint-plugin-react-refresh": "^0.4.11",
     "globals": "^15.9.0",
     "ignore-loader": "^0.1.2",
+    "netlify-plugin-inngest": "^1.0.1",
     "next": "^15.5.2",
     "playwright": "^1.55.1",
     "puppeteer": "^24.23.0",

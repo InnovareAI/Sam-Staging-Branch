@@ -9,6 +9,9 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+[[plugins]]
+  package = "netlify-plugin-inngest"
+
 [[headers]]
   for = "/_next/static/*"
   [headers.values]
