@@ -111,48 +111,14 @@ export async function calculateSmartDelay({
   const dateSeed = parseInt(today.replace(/-/g, '')) + accountId.charCodeAt(0);
   const dayPattern = (dateSeed % 5); // 5 different day patterns
 
-  // 5. Determine today's sending pattern
-  let hourlyRate: number; // messages per hour
+  // 5. Simple random delay between 30 seconds and 3 minutes
+  // Fast enough for testing, slow enough to avoid rate limits
+  const delaySeconds = 30 + Math.floor(Math.random() * 150); // 30-180 seconds
+  const delayMinutes = Math.floor(delaySeconds / 60);
 
-  switch (dayPattern) {
-    case 0: // Slow day: 0-2 messages/hour
-      hourlyRate = Math.random() * 2;
-      break;
-    case 1: // Medium day: 2-3 messages/hour
-      hourlyRate = 2 + Math.random();
-      break;
-    case 2: // Busy day: 3-5 messages/hour
-      hourlyRate = 3 + Math.random() * 2;
-      break;
-    case 3: // Burst pattern: alternate fast/slow
-      hourlyRate = (prospectIndex % 2 === 0) ? 4 + Math.random() : 1 + Math.random();
-      break;
-    case 4: // Random walk: each message slightly different
-      hourlyRate = 1 + Math.random() * 4;
-      break;
-    default:
-      hourlyRate = 2;
-  }
+  console.log(`⏱️  Prospect ${prospectIndex}: ${delaySeconds}s delay`);
 
-  // 6. Calculate delay for this specific message
-  // Add +/- 30% randomness to make it more human
-  const baseDelayMinutes = 60 / hourlyRate;
-  const randomness = 0.7 + Math.random() * 0.6; // 0.7 to 1.3x multiplier
-  const delayMinutes = Math.floor(baseDelayMinutes * randomness);
-
-  // 7. Ensure we don't exceed daily limit
-  const totalDelayMinutes = delayMinutes * (prospectIndex + 1);
-  const hoursToSendAll = totalDelayMinutes / 60;
-
-  if (actualSentToday + totalProspects > dailyLimit) {
-    // Spread remaining over full work day (8 hours)
-    const spreadOverMinutes = 8 * 60;
-    return Math.floor(spreadOverMinutes / Math.min(totalProspects, remainingToday)) * prospectIndex;
-  }
-
-  console.log(`⏱️  Prospect ${prospectIndex}: ${delayMinutes}min delay (${hourlyRate.toFixed(1)} msg/hr pattern)`);
-
-  return Math.max(0, delayMinutes);
+  return delayMinutes;
 }
 
 /**
