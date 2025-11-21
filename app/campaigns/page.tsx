@@ -172,12 +172,11 @@ export default function CampaignsPage() {
 
     setLoading(true);
     try {
-      const response = await fetch('/api/campaigns/linkedin/execute-inngest', {
+      const response = await fetch('/api/campaigns/direct/send-connection-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          campaign_id: campaign.id,
-          prospects: prospects.filter(p => selectedProspects.has(p.id))
+          campaignId: campaign.id
         })
       });
 

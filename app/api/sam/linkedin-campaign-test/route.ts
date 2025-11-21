@@ -52,15 +52,12 @@ export async function POST(request: NextRequest) {
           }, { status: 400 });
         }
 
-        // Call existing LinkedIn campaign execution
-        const campaignResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/campaigns/linkedin/execute-via-n8n`, {
+        // Call direct Unipile LinkedIn campaign execution
+        const campaignResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/campaigns/direct/send-connection-requests`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            campaign_id: `test_${Date.now()}`,
-            prospects: [prospect_data],
-            template_system: 'variable_only', // Use 0-token personalization
-            test_mode: true
+            campaignId: `test_${Date.now()}`
           })
         });
 

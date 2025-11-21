@@ -103,18 +103,15 @@ export async function POST(req: NextRequest) {
             const prospectName = `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim() || 'Unknown';
             console.log(`  → ${prospectName} at ${prospect.company_name || 'Unknown company'}`);
 
-            // Call execute-live API to send connection request
-            const response = await fetch(`${baseUrl}/api/campaigns/linkedin/execute-live`, {
+            // Call direct Unipile API to send connection request
+            const response = await fetch(`${baseUrl}/api/campaigns/direct/send-connection-requests`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
                 'x-internal-trigger': 'cron-pending-prospects'
               },
               body: JSON.stringify({
-                campaignId: campaignId,
-                maxProspects: 1,
-                dryRun: false,
-                specificProspectId: prospect.id // Process this specific prospect
+                campaignId: campaignId
               })
             });
 

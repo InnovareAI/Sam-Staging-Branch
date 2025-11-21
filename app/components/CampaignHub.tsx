@@ -178,17 +178,16 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
         throw new Error('Failed to update campaign status');
       }
 
-      // If activating campaign, trigger it immediately via Inngest
+      // If activating campaign, trigger it immediately via direct execution
       if (newStatus === 'active' && workspaceId) {
         try {
           console.log(`🚀 Auto-launching campaign ${campaignId}...`);
-          const launchResponse = await fetch('/api/campaigns/linkedin/execute-inngest', {
+          const launchResponse = await fetch('/api/campaigns/direct/send-connection-requests', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({
-              campaignId,
-              workspaceId
+              campaignId
             })
           });
 
@@ -2937,18 +2936,16 @@ Would you like me to adjust these or create more variations?`
       // Update prospects count to include synced IDs
       const totalProspectsWithIds = uploadResult.prospects_with_linkedin_ids + syncedCount;
 
-      // Step 3: Auto-execute via correct endpoint based on campaign type
+      // Step 3: Auto-execute via direct Unipile integration
       if (totalProspectsWithIds > 0 || campaign.campaign_type === 'connector') {
-        // ALL campaigns now execute via N8N workflow (no direct API)
-        const executeEndpoint = '/api/campaigns/linkedin/execute-inngest';
+        const executeEndpoint = '/api/campaigns/direct/send-connection-requests';
 
         const executeResponse = await fetch(executeEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include', // Include cookies for Supabase auth
           body: JSON.stringify({
-            campaignId: campaign.id,
-            workspaceId: workspaceId
+            campaignId: campaign.id
           })
         });
 
@@ -6203,15 +6200,14 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       const totalProspectsWithIds = uploadResult.prospects_with_linkedin_ids + syncedCount;
 
       // Step 3: AUTOMATED EXECUTION - Execute campaign automatically for ALL approved campaigns
-      // No user action needed - n8n execution happens immediately after approval
+      // Direct Unipile integration - no workflow engine needed
       if (mappedProspects.length > 0) {
         try {
-          const executeResponse = await fetch('/api/campaigns/linkedin/execute-inngest', {
+          const executeResponse = await fetch('/api/campaigns/direct/send-connection-requests', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              campaignId: campaign.id,
-              workspaceId: actualWorkspaceId
+              campaignId: campaign.id
             })
           });
 
@@ -8424,8 +8420,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                           // If activating, also execute the campaign
                           if (newStatus === 'active') {
                             try {
-                              // ALL LinkedIn campaigns now execute via N8N workflow
-                              let executeEndpoint = '/api/campaigns/linkedin/execute-inngest';
+                              // Direct Unipile integration for LinkedIn campaigns
+                              let executeEndpoint = '/api/campaigns/direct/send-connection-requests';
 
                               if (selectedCampaign.campaign_type === 'email') {
                                 executeEndpoint = '/api/campaigns/email/execute';
@@ -8438,9 +8434,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                 headers: { 'Content-Type': 'application/json' },
                                 credentials: 'include', // Include cookies for Supabase auth
                                 body: JSON.stringify({
-                                  campaignId: selectedCampaign.id,
-                                  workspaceId: actualWorkspaceId,
-                                  maxProspects: 1  // Limit to 1 prospect per batch to prevent timeout
+                                  campaignId: selectedCampaign.id
                                 })
                               });
 

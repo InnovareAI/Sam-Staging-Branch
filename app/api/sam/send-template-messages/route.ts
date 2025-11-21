@@ -136,15 +136,11 @@ export async function POST(request: NextRequest) {
         // If send_immediately is true, execute LinkedIn campaign
         if (send_immediately) {
           try {
-            const linkedinResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/campaigns/linkedin/execute-via-n8n`, {
+            const linkedinResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/campaigns/direct/send-connection-requests`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                campaign_id: `template_${Date.now()}_${prospect.first_name}`,
-                prospects: [prospectData],
-                custom_message: assembledMessage.full_message,
-                template_system: 'variable_only',
-                personalization_cost: 0
+                campaignId: `template_${Date.now()}_${prospect.first_name}`
               })
             });
 

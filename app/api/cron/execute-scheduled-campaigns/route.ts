@@ -198,17 +198,16 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        // Trigger the execute-via-n8n API (uses N8N with humanized randomizer)
+        // Trigger the direct Unipile API
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const response = await fetch(`${baseUrl}/api/campaigns/linkedin/execute-via-n8n`, {
+        const response = await fetch(`${baseUrl}/api/campaigns/direct/send-connection-requests`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'x-internal-trigger': 'cron'
           },
           body: JSON.stringify({
-            campaignId: campaign.id,
-            workspaceId: campaign.workspace_id
+            campaignId: campaign.id
           })
         });
 

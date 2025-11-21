@@ -69,12 +69,9 @@ export async function POST(request: NextRequest) {
     // Execute the campaign based on campaign type
     try {
       // Determine execution endpoint based on campaign type
-      let executeEndpoint = '/api/campaigns/linkedin/execute-direct' // Default for messenger campaigns
+      let executeEndpoint = '/api/campaigns/direct/send-connection-requests' // Direct Unipile for all LinkedIn campaigns
 
-      if (campaign.campaign_type === 'connector') {
-        // Connector campaigns send connection requests (for 2nd/3rd degree)
-        executeEndpoint = '/api/campaigns/linkedin/execute-live'
-      } else if (campaign.campaign_type === 'email') {
+      if (campaign.campaign_type === 'email') {
         executeEndpoint = '/api/campaigns/email/execute'
       }
 
@@ -86,8 +83,7 @@ export async function POST(request: NextRequest) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            campaignId,
-            workspaceId
+            campaignId
           })
         }
       )
