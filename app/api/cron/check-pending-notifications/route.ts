@@ -261,10 +261,3 @@ export async function GET(request: NextRequest) {
     }, { status: 500 })
   }
 }
-
-// Netlify scheduled function configuration
-export const config = {
-  runtime: 'edge',
-  // Run every 15 minutes
-  schedule: '*/15 * * * *'
-}
