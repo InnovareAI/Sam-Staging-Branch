@@ -36,7 +36,11 @@ export const checkActiveCampaigns = inngest.createFunction(
           campaign_type,
           linkedin_account_id,
           message_templates,
-          schedule_settings,
+          timezone,
+          working_hours_start,
+          working_hours_end,
+          skip_weekends,
+          skip_holidays,
           linkedin_account:workspace_accounts!linkedin_account_id (
             unipile_account_id,
             is_active
@@ -98,12 +102,12 @@ export const checkActiveCampaigns = inngest.createFunction(
               connection_request: campaign.message_templates?.connection_request || '',
               follow_up_messages: campaign.message_templates?.follow_up_messages || []
             },
-            settings: campaign.schedule_settings || {
-              timezone: 'America/Los_Angeles',
-              working_hours_start: 5,
-              working_hours_end: 18,
-              skip_weekends: true,
-              skip_holidays: true
+            settings: {
+              timezone: campaign.timezone || 'America/Los_Angeles',
+              working_hours_start: campaign.working_hours_start || 5,
+              working_hours_end: campaign.working_hours_end || 18,
+              skip_weekends: campaign.skip_weekends ?? true,
+              skip_holidays: campaign.skip_holidays ?? true
             }
           }
         });
