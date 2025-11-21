@@ -42,12 +42,12 @@ export async function calculateSmartDelay({
   totalProspects: number;
   settings?: DelaySettings;
 }): Promise<number> {
-  // SIMPLIFIED: Just return 10 seconds for testing
+  // SIMPLIFIED: Just return 2 minutes between prospects
   // TODO: Add back randomization, working hours, daily limits later
 
-  console.log(`⏱️  Prospect ${prospectIndex + 1}/${totalProspects}: 10s delay (simplified for testing)`);
+  console.log(`⏱️  Prospect ${prospectIndex + 1}/${totalProspects}: 2min delay`);
 
-  return 10; // 10 seconds between each prospect
+  return 120; // 120 seconds = 2 minutes between each prospect
 }
 
 /**
