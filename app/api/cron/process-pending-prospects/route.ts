@@ -48,9 +48,10 @@ export async function POST(req: NextRequest) {
         company_name,
         linkedin_url,
         created_at,
-        campaigns (
+        campaigns!inner (
           id,
           name,
+          campaign_name,
           status,
           workspace_id
         )
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
       .in('status', ['pending', 'approved', 'ready_to_message'])
       .not('linkedin_url', 'is', null)
       .in('campaigns.status', ['active', 'scheduled'])
-      .limit(3); // Process 3 prospects per run to avoid Netlify timeout (26s max)
+      .limit(10); // Process 10 prospects per run
 
     if (queryError) {
       console.error('❌ Error querying prospects:', queryError);
@@ -95,7 +96,19 @@ export async function POST(req: NextRequest) {
     // Process each campaign's prospects
     for (const [campaignId, { campaign, prospects }] of Object.entries(prospectsByCampaign)) {
       try {
-        console.log(`\n🔍 Processing ${prospects.length} prospects for campaign: ${campaign.name}`);
+        if (!campaign) {
+          console.error(`❌ Campaign data missing for campaign ID: ${campaignId}`);
+          results.push({
+            campaign_id: campaignId,
+            campaign_name: 'Unknown',
+            status: 'campaign_error',
+            error: 'Campaign data not found in database'
+          });
+          continue;
+        }
+
+        const campaignName = campaign.campaign_name || campaign.name || 'Unknown Campaign';
+        console.log(`\n🔍 Processing ${prospects.length} prospects for campaign: ${campaignName}`);
 
         // Process prospects one at a time to avoid rate limits
         for (const prospect of prospects) {
