@@ -120,25 +120,25 @@ export async function POST(req: NextRequest) {
       try {
         console.log(`\n👤 Processing: ${prospect.first_name} ${prospect.last_name}`);
 
-        // FIRST: Check if this LinkedIn URL was already contacted (any campaign, any workspace)
-        const { data: existingContact } = await supabase
+        // FIRST: Check if this LinkedIn URL exists in ANY other campaign (one prospect = one campaign rule)
+        const { data: existingInOtherCampaign } = await supabase
           .from('campaign_prospects')
-          .select('status, contacted_at, campaign_id')
+          .select('status, contacted_at, campaign_id, campaigns(campaign_name)')
           .eq('linkedin_url', prospect.linkedin_url)
-          .in('status', ['connection_request_sent', 'connected', 'messaging', 'replied'])
-          .order('contacted_at', { ascending: false })
+          .neq('campaign_id', campaignId)  // Must be in a DIFFERENT campaign
           .limit(1)
           .single();
 
-        if (existingContact) {
-          console.log(`⚠️  Already contacted ${prospect.first_name} (status: ${existingContact.status}, date: ${existingContact.contacted_at})`);
+        if (existingInOtherCampaign) {
+          const otherCampaignName = (existingInOtherCampaign as any).campaigns?.campaign_name || 'another campaign';
+          console.log(`⚠️  ${prospect.first_name} already exists in ${otherCampaignName} - cannot be in multiple campaigns`);
 
-          // Update current prospect to match existing status
+          // Update current prospect to failed (data integrity violation)
           await supabase
             .from('campaign_prospects')
             .update({
-              status: existingContact.status,
-              notes: `Previously contacted in campaign ${existingContact.campaign_id}`,
+              status: 'failed',
+              notes: `Duplicate: Already in ${otherCampaignName} (${existingInOtherCampaign.campaign_id})`,
               updated_at: new Date().toISOString()
             })
             .eq('id', prospect.id);
@@ -147,7 +147,39 @@ export async function POST(req: NextRequest) {
             prospectId: prospect.id,
             name: `${prospect.first_name} ${prospect.last_name}`,
             status: 'skipped',
-            reason: `already_${existingContact.status}`
+            reason: 'duplicate_in_other_campaign'
+          });
+          continue;
+        }
+
+        // SECOND: Check if already contacted in THIS campaign
+        const { data: existingInThisCampaign } = await supabase
+          .from('campaign_prospects')
+          .select('status, contacted_at')
+          .eq('linkedin_url', prospect.linkedin_url)
+          .eq('campaign_id', campaignId)
+          .in('status', ['connection_request_sent', 'connected', 'messaging', 'replied'])
+          .limit(1)
+          .single();
+
+        if (existingInThisCampaign) {
+          console.log(`⚠️  Already contacted ${prospect.first_name} in this campaign (status: ${existingInThisCampaign.status})`);
+
+          // Update current prospect to match existing status
+          await supabase
+            .from('campaign_prospects')
+            .update({
+              status: existingInThisCampaign.status,
+              notes: `Already contacted in this campaign`,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', prospect.id);
+
+          results.push({
+            prospectId: prospect.id,
+            name: `${prospect.first_name} ${prospect.last_name}`,
+            status: 'skipped',
+            reason: `already_${existingInThisCampaign.status}`
           });
           continue;
         }

@@ -166,6 +166,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: sessionError.message }, { status: 500 });
     }
 
+    // CHECK FOR DUPLICATES: One LinkedIn URL can only exist in ONE campaign
+    const linkedinUrls = prospects
+      .map((p: any) => p.linkedin_url || p.contact?.linkedin_url)
+      .filter(Boolean);
+
+    if (linkedinUrls.length > 0) {
+      const { data: existingProspects } = await supabase
+        .from('campaign_prospects')
+        .select('linkedin_url, campaign_id, campaigns(campaign_name)')
+        .in('linkedin_url', linkedinUrls);
+
+      if (existingProspects && existingProspects.length > 0) {
+        const duplicates = existingProspects.map((ep: any) => ({
+          linkedin_url: ep.linkedin_url,
+          existing_campaign: ep.campaigns?.campaign_name || 'Unknown campaign'
+        }));
+
+        // Rollback session
+        await supabase.from('prospect_approval_sessions').delete().eq('id', session.id);
+
+        return NextResponse.json({
+          success: false,
+          error: `${duplicates.length} prospect(s) already exist in other campaigns`,
+          duplicates: duplicates,
+          message: 'Each prospect can only be in one campaign. Remove duplicates and try again.'
+        }, { status: 400 });
+      }
+    }
+
     // Save prospects to approval data table
     const approvalData = prospects.map((p: any, index: number) => {
       // Ensure unique prospect_id
