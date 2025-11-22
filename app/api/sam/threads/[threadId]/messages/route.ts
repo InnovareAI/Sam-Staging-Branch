@@ -2131,6 +2131,7 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
           console.log('🔍 [8b2/8] Response success flag:', searchData?.success);
           console.log('🔍 [8b3/8] Response error:', searchData?.error);
           console.log('🔍 [8b4/8] Response details:', searchData?.details);
+          console.log('🔍 [8b5/8] AI response BEFORE trigger replacement:', aiResponse.substring(0, 500));
 
           if (searchData.success) {
           const prospectCount = searchData.count || 0
@@ -2169,11 +2170,16 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
             action: searchData.action
           });
 
+          console.log('🔍 [8c3/8] Error message to insert:', errorMsg.substring(0, 300));
           aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i, errorMsg).trim()
+          console.log('🔍 [8c4/8] AI response AFTER trigger replacement:', aiResponse.substring(0, 500));
 
           // Remove contradictory "Head to Data Approval" text when search fails
+          console.log('🔍 [8c5/8] Cleaning up contradictory success text...');
           aiResponse = aiResponse.replace(/Head to.*Data Approval.*to (watch|see).*(\.|!)/gi, '').trim()
+          console.log('🔍 [8c6/8] After first regex:', aiResponse.substring(0, 500));
           aiResponse = aiResponse.replace(/Campaign:\s*\d+-[A-Z]+-[^\n]+\n*/gi, '').trim()
+          console.log('🔍 [8c7/8] After campaign cleanup:', aiResponse.substring(0, 500));
           }
 
           console.log('✅ Search trigger executed, response updated')
