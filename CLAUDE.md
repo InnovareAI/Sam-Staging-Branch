@@ -4,6 +4,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## 🚨🚨🚨 CRITICAL: CAMPAIGN EXECUTION ARCHITECTURE 🚨🚨🚨
+
+**READ THIS FIRST - NOVEMBER 22, 2025**
+
+### ✅ WHAT WE USE FOR CAMPAIGNS:
+- **Connection Requests**: DIRECT Unipile REST API (`/api/campaigns/direct/send-connection-requests`)
+- **Follow-up Messages**: DIRECT Unipile REST API
+- **ALL LinkedIn Operations**: DIRECT Unipile REST API
+
+### ❌ WHAT WE DO NOT USE:
+- ❌ **N8N** - NOT used for campaign execution
+- ❌ **Inngest** - NOT used for campaign execution
+- ❌ **Workflows** - NOT used for campaign execution
+
+**The system calls Unipile API directly. Period. No orchestration layers.**
+
+**Unipile Configuration:**
+- DSN: `api6.unipile.com:13670`
+- API Key: `/kdLciOD.5b8LbZkgBTK60Dubiv8ER49imjSwJV1cBCyZotKj70I=` (in `.env` and `.env.local`)
+- Account ID (Irish): `ymtTx4xVQ6OVUFk83ctwtA`
+
+---
+
 ## 🎯 NEXT AGENT: START HERE (November 15, 2025)
 
 ### 📋 12-WEEK FEATURE ROLLOUT PLAN
