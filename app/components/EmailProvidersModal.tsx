@@ -195,6 +195,46 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
     }
   };
 
+  // Connect IMAP/SMTP account via Unipile - Open in popup like LinkedIn
+  const connectIMAP = async () => {
+    try {
+      setIsConnecting(true);
+      const response = await fetch('/api/unipile/hosted-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'MAIL',
+          type: 'MESSAGING',
+        }),
+      });
+      const data = await response.json();
+
+      if (data.success && (data.auth_url || data.url)) {
+        // Open in popup window (matches LinkedIn flow)
+        const authWindow = window.open(
+          data.auth_url || data.url,
+          'unipile_hosted_auth',
+          'width=500,height=720,scrollbars=yes,resizable=yes'
+        );
+
+        if (!authWindow) {
+          // Popup blocked – fall back to redirecting the current tab
+          window.location.href = data.auth_url || data.url;
+        } else {
+          showNotification('success', 'Complete IMAP setup in the popup window');
+          // Start polling for connection
+          startPollingConnection('email');
+        }
+      } else {
+        throw new Error(data.error || 'Failed to initiate IMAP setup');
+      }
+    } catch (error) {
+      console.error('Error connecting IMAP:', error);
+      showNotification('error', 'Failed to connect IMAP account');
+      setIsConnecting(false);
+    }
+  };
+
   // Poll for email connection (like LinkedIn modal)
   const startPollingConnection = (accountType: 'email') => {
     const pollInterval = setInterval(async () => {
@@ -564,13 +604,14 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
                   <div className="text-gray-300 text-sm mt-1">Outlook & Office 365</div>
                 </button>
 
-                {/* SMTP */}
+                {/* IMAP/SMTP */}
                 <button
-                  onClick={() => setAddProviderType('smtp')}
-                  className="bg-gray-600 hover:bg-gray-500 p-6 rounded-lg transition-colors text-center"
+                  onClick={() => connectIMAP()}
+                  disabled={isConnecting}
+                  className="bg-gray-600 hover:bg-gray-500 disabled:bg-gray-500 p-6 rounded-lg transition-colors text-center"
                 >
                   <Mail className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <div className="text-white font-medium">SMTP</div>
+                  <div className="text-white font-medium">IMAP</div>
                   <div className="text-gray-300 text-sm mt-1">Custom Email Server</div>
                 </button>
               </div>
