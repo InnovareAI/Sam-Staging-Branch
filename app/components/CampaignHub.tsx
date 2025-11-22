@@ -215,7 +215,41 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     onSuccess: async (data) => {
       // Add 3-second delay before invalidating cache to allow backend processing
       if (data.launched) {
-        toastSuccess('Campaign started! Messages are being sent');
+        const result = data.launchResult;
+        const sent = result.sent || 0;
+        const failed = result.failed || 0;
+        const processed = result.processed || 0;
+        const skipped = processed - sent - failed;
+
+        // Build summary message
+        let message = `Campaign executed: ${sent} sent`;
+        if (skipped > 0) message += `, ${skipped} skipped`;
+        if (failed > 0) message += `, ${failed} failed`;
+
+        toastSuccess(message);
+
+        // Log details of skipped/failed prospects for troubleshooting
+        if (result.results && (skipped > 0 || failed > 0)) {
+          const issues = result.results
+            .filter((r: any) => r.status !== 'success')
+            .map((r: any) => `${r.name}: ${r.reason || 'unknown'}`);
+
+          if (issues.length > 0) {
+            console.warn('🔍 Skipped/Failed prospects:', issues.join('\n'));
+
+            // Count by reason type
+            const reasonCounts: Record<string, number> = {};
+            result.results
+              .filter((r: any) => r.status !== 'success')
+              .forEach((r: any) => {
+                const reason = r.reason || 'unknown';
+                reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
+              });
+
+            console.warn('📊 Breakdown by reason:', reasonCounts);
+          }
+        }
+
         // Wait for backend to finish processing prospects
         await new Promise(resolve => setTimeout(resolve, 3000));
       } else {

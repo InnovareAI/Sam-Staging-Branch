@@ -444,7 +444,22 @@ export default function DataCollectionHub({
       } else {
         const errorData = await response.json()
         console.error('CSV upload error response:', errorData)
-        toastError(errorData.error || 'Failed to upload CSV file')
+
+        // Show detailed error for duplicates
+        if (errorData.duplicates && errorData.duplicates.length > 0) {
+          const dupCount = errorData.duplicates.length
+          const dupList = errorData.duplicates.slice(0, 3).map((d: any) =>
+            `${d.linkedin_url} (already in: ${d.existing_campaign})`
+          ).join('\n')
+
+          const message = `${errorData.error}\n\nExamples:\n${dupList}${dupCount > 3 ? `\n...and ${dupCount - 3} more` : ''}`
+          toastError(message)
+
+          // Log all duplicates for troubleshooting
+          console.warn('🔍 All duplicate prospects:', errorData.duplicates)
+        } else {
+          toastError(errorData.error || 'Failed to upload CSV file')
+        }
       }
     } catch (error) {
       console.error('CSV upload error:', error)
