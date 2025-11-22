@@ -24,7 +24,7 @@ async function unipileRequest(endpoint: string, options: RequestInit = {}) {
   const response = await fetch(`${UNIPILE_BASE_URL}${endpoint}`, {
     ...options,
     headers: {
-      'X-Api-Key': UNIPILE_API_KEY,
+      'X-API-KEY': UNIPILE_API_KEY,
       'Accept': 'application/json',
       'Content-Type': 'application/json',
       ...options.headers
@@ -112,9 +112,24 @@ export async function POST(req: NextRequest) {
 
         try {
           // Get the prospect's profile to check network_distance
-          const profile = await unipileRequest(
-            `/api/v1/users/profile?account_id=${unipileAccountId}&provider_id=${prospect.linkedin_user_id}`
-          );
+          let profile: any;
+
+          // CRITICAL BUG FIX (Nov 22): profile?identifier= returns WRONG profiles for vanities with numbers
+          if (prospect.linkedin_user_id) {
+            // PRIMARY: Use stored provider_id
+            profile = await unipileRequest(
+              `/api/v1/users/profile?account_id=${unipileAccountId}&provider_id=${prospect.linkedin_user_id}`
+            );
+          } else {
+            // FALLBACK: Use legacy /users/{vanity} endpoint ONLY (reliable)
+            // DO NOT use profile?identifier= - it returns wrong profiles (e.g., noah-ottmar-b59478295 returns Jamshaid Ali)
+            const vanityMatch = prospect.linkedin_url.match(/linkedin\.com\/in\/([^\/\?#]+)/);
+            if (!vanityMatch) throw new Error(`Cannot extract LinkedIn vanity identifier from ${prospect.linkedin_url}`);
+
+            const vanityId = vanityMatch[1];
+            // ALWAYS use legacy endpoint - profile?identifier= returns wrong profiles
+            profile = await unipileRequest(`/api/v1/users/${vanityId}?account_id=${unipileAccountId}`);
+          }
 
           // Check if connection is accepted (1st degree connection)
           if (profile.network_distance !== 'FIRST_DEGREE') {

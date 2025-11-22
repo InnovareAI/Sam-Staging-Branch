@@ -22,8 +22,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Unipile Configuration:**
 - DSN: `api6.unipile.com:13670`
-- API Key: `/kdLciOD.5b8LbZkgBTK60Dubiv8ER49imjSwJV1cBCyZotKj70I=` (in `.env` and `.env.local`)
+- API Key: `POcBmCSV.b/t0gstHvY5alDsy/BmKQmUBt4FmNXRF7fdOYqywJSM=` (set via `netlify env:set` - **NOVEMBER 22, 2025 FIX**)
 - Account ID (Irish): `ymtTx4xVQ6OVUFk83ctwtA`
+
+**⚠️ CRITICAL - November 22, 2025:** Previous API key `/kdLciOD.5b8LbZkgBTK60Dubiv8ER49imjSwJV1cBCyZotKj70I=` was invalid. Updated to correct key `POcBmCSV.b/t0gstHvY5alDsy/BmKQmUBt4FmNXRF7fdOYqywJSM=` and deployed to production via Netlify CLI.
 
 ---
 
@@ -227,7 +229,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
-## 🔴 RECENT CRITICAL FIXES (Nov 10-15)
+## 🔴 RECENT CRITICAL FIXES (Nov 10-22)
 
 ### ✅ Resolved Issues
 
@@ -265,6 +267,59 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - Commit: 5ca571b0
    - Status: ✅ RESOLVED
 
+7. **LinkedIn Search Failing** (Nov 22)
+   - Error: "Technical error while starting the search"
+   - Root cause: Unipile API key in production was invalid/missing
+   - Diagnosis: Tested Unipile API directly - got 401 "Missing credentials"
+   - Fix: Updated to correct API key via Netlify CLI:
+     ```bash
+     netlify env:set UNIPILE_API_KEY "POcBmCSV.b/t0gstHvY5alDsy/BmKQmUBt4FmNXRF7fdOYqywJSM="
+     netlify env:set UNIPILE_DSN "api6.unipile.com:13670"
+     netlify deploy --prod
+     ```
+   - Key Learning: `.env.local` only works for local dev - production needs `netlify env:set`
+   - Verification: Search returned 2 marketing prospects in Berlin ✅
+   - Status: ✅ RESOLVED
+
+8. **LinkedIn Connection Requests + Unipile Profile Lookup Fix** (Nov 22 - REVISED)
+   - Root causes identified (from Unipile API expert):
+     1. ❌ NOT using the correct Unipile API pattern for profile lookups
+        - Was passing full LinkedIn URLs to `/api/v1/users/profile?identifier=` parameter
+        - This is unreliable for vanity URLs that redirect to wrong profiles
+     2. ✅ Correct pattern: Use provider_id (from `item.id` in search results) directly
+        - Primary: `provider_id` (LinkedIn's internal ID) - MOST RELIABLE
+        - Fallback 1: `public_identifier` (vanity username like "john-doe") - RELIABLE
+        - Fallback 2: Extract vanity from full URL - LEAST RELIABLE
+   - Architecture fixes implemented (Nov 22 - DEPLOYED):
+     1. **Search endpoint** (`/app/api/linkedin/search/simple/route.ts`):
+        - Now returns `providerId: item.id` (LinkedIn's internal ID)
+        - Now returns `publicIdentifier: item.public_identifier` (vanity username)
+     2. **Upload prospects** (`/app/api/prospect-approval/upload-prospects/route.ts`):
+        - Stores `linkedin_provider_id` from search results
+        - Stores `public_identifier` (vanity) as fallback
+        - Preserves full LinkedIn URLs unchanged (don't strip parameters)
+     3. **Send connection requests** (`/app/api/campaigns/direct/send-connection-requests/route.ts`):
+        - Uses three-tier fallback strategy for profile lookup:
+          - Tier 1: Use stored `linkedin_user_id` (provider_id) directly
+          - Tier 2: Use `public_identifier` (vanity username only)
+          - Tier 3: Extract vanity from URL using regex
+     4. **Process follow-ups** (`/app/api/campaigns/direct/process-follow-ups/route.ts`):
+        - Same three-tier fallback as send-connection-requests
+     5. **Poll accepted connections** (`/app/api/cron/poll-accepted-connections/route.ts`):
+        - Same three-tier fallback strategy
+   - Key insight from Unipile documentation:
+     - Use `provider_id` directly when available (most authoritative)
+     - Use `public_identifier` (vanity part only, e.g., "john-doe" not full URL)
+     - NEVER pass full LinkedIn URLs to identifier parameter - causes wrong profile lookups
+   - Files fixed:
+     - `/app/api/linkedin/search/simple/route.ts` ✅
+     - `/app/api/prospect-approval/upload-prospects/route.ts` ✅
+     - `/app/api/campaigns/direct/send-connection-requests/route.ts` ✅
+     - `/app/api/campaigns/direct/process-follow-ups/route.ts` ✅
+     - `/app/api/cron/poll-accepted-connections/route.ts` ✅
+   - Deployed: November 22, 2025, 3:37 PM UTC (https://app.meet-sam.com)
+   - Status: ✅ FULLY FIXED AND DEPLOYED
+
 ### 🔴 Open Issues
 
 1. **LinkedIn Commenting Agent** (Nov 11)
@@ -283,7 +338,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Production
 - **URL:** https://app.meet-sam.com
 - **Status:** ✅ FULLY OPERATIONAL
-- **Latest Deploy:** November 15, 2025
+- **Latest Deploy:** November 22, 2025 (Unipile API key + CR header fix)
+- **Campaign Status:** ✅ Connection requests now sending successfully
 
 ### N8N
 - **URL:** https://workflows.innovareai.com
@@ -656,6 +712,34 @@ N8N_API_KEY=<n8n_key>
 ```
 
 **Never commit `.env.local` or expose service role keys.**
+
+**Setting Environment Variables in Production (Netlify):**
+
+⚠️ **CRITICAL:** `.env.local` changes do NOT apply to production. Use Netlify CLI:
+
+```bash
+# View all env vars
+netlify env:list
+
+# Set a variable
+netlify env:set VARIABLE_NAME "value"
+
+# Deploy after updating env vars
+netlify deploy --prod
+```
+
+**Example - Updating Unipile Credentials:**
+```bash
+netlify env:set UNIPILE_DSN "api6.unipile.com:13670"
+netlify env:set UNIPILE_API_KEY "POcBmCSV.b/t0gstHvY5alDsy/BmKQmUBt4FmNXRF7fdOYqywJSM="
+netlify deploy --prod
+```
+
+**Current Production Environment Variables (Nov 22, 2025):**
+- `UNIPILE_DSN`: `api6.unipile.com:13670`
+- `UNIPILE_API_KEY`: `POcBmCSV.b/t0gstHvY5alDsy/BmKQmUBt4FmNXRF7fdOYqywJSM=`
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`: Supabase credentials
+- Plus 10+ other API keys (see `netlify env:list` for full list)
 
 ---
 

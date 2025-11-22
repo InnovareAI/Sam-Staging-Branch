@@ -23,7 +23,7 @@ async function unipileRequest(endpoint: string, options: RequestInit = {}) {
   const response = await fetch(`${UNIPILE_BASE_URL}${endpoint}`, {
     ...options,
     headers: {
-      'X-Api-Key': UNIPILE_API_KEY,
+      'X-API-KEY': UNIPILE_API_KEY,
       'Accept': 'application/json',
       'Content-Type': 'application/json',
       ...options.headers
@@ -187,32 +187,41 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        // Clean LinkedIn URL to remove miniProfileUrn and other parameters
-        // CRITICAL FIX: miniProfileUrn contains a different provider_id than the vanity URL
-        // We MUST extract ONLY the vanity URL to get the correct profile
-        const cleanLinkedInUrl = (url: string) => {
-          try {
-            // Extract just the username from the URL
-            const match = url.match(/linkedin\.com\/in\/([^/?#]+)/);
-            if (match) {
-              const username = match[1];
-              return `https://www.linkedin.com/in/${username}`;
+        // Get LinkedIn profile to verify relationship status before sending CR
+        let providerId = prospect.linkedin_user_id;
+        let profile: any = null;
+
+        // Profile lookup strategy: provider_id → legacy /users/{vanity} ONLY
+        // CRITICAL BUG FIX (Nov 22): profile?identifier= returns WRONG profiles for vanities with numbers
+        if (providerId) {
+          // PRIMARY: Use stored provider_id from search results (most authoritative)
+          console.log(`📝 Looking up profile with stored provider_id ${providerId} for ${prospect.first_name}`);
+          profile = await unipileRequest(
+            `/api/v1/users/profile?account_id=${unipileAccountId}&provider_id=${encodeURIComponent(providerId)}`
+          );
+        } else {
+          // FALLBACK: Extract vanity identifier and use LEGACY endpoint ONLY
+          // DO NOT use profile?identifier= - it returns wrong profiles (e.g., noah-ottmar-b59478295 returns Jamshaid Ali)
+          console.log(`📝 Extracting vanity identifier from ${prospect.linkedin_url}`);
+          const vanityMatch = prospect.linkedin_url.match(/linkedin\.com\/in\/([^\/\?#]+)/);
+          if (vanityMatch) {
+            const vanityId = vanityMatch[1];
+
+            // ALWAYS use legacy /users/{vanity} endpoint (correct profile resolution)
+            try {
+              console.log(`  Using legacy endpoint (reliable): /users/${vanityId}`);
+              profile = await unipileRequest(`/api/v1/users/${vanityId}?account_id=${unipileAccountId}`);
+              providerId = profile.provider_id;
+              console.log(`  ✅ Found correct profile: ${profile.first_name} ${profile.last_name} (ID: ${providerId})`);
+            } catch (legacyError: any) {
+              // If legacy fails, the profile likely doesn't exist or is private
+              // DO NOT fallback to profile?identifier= as it returns wrong profiles
+              throw new Error(`Could not access LinkedIn profile for ${prospect.first_name} ${prospect.last_name} - profile may be private or deleted. Legacy endpoint error: ${legacyError.message || legacyError}`);
             }
-            return url;
-          } catch {
-            return url;
+          } else {
+            throw new Error(`Could not extract LinkedIn vanity identifier from ${prospect.linkedin_url}`);
           }
-        };
-
-        // Get LinkedIn profile to get provider_id
-        // Always fetch from Unipile - don't trust linkedin_user_id (may contain wrong IDs from miniProfileUrn)
-        const cleanedUrl = cleanLinkedInUrl(prospect.linkedin_url);
-        console.log(`📝 Fetching LinkedIn profile for ${cleanedUrl} (removed miniProfileUrn from ${prospect.linkedin_url})...`);
-
-        const profile = await unipileRequest(
-          `/api/v1/users/profile?account_id=${unipileAccountId}&identifier=${encodeURIComponent(cleanedUrl)}`
-        );
-        const providerId = profile.provider_id;
+        }
 
         // Check if already connected
         if (profile.network_distance === 'FIRST_DEGREE') {

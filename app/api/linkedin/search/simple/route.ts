@@ -847,7 +847,7 @@ export async function POST(request: NextRequest) {
 
       // LinkedIn URL - convert Sales Navigator URLs to public LinkedIn
       let linkedinUrl = item.profile_url || item.public_profile_url || '';
-      
+
       // Convert Sales Navigator URL to regular LinkedIn profile URL
       // From: https://www.linkedin.com/sales/lead/...
       // To: https://www.linkedin.com/in/[username]
@@ -942,6 +942,8 @@ export async function POST(request: NextRequest) {
         location,
         linkedinUrl,
         connectionDegree,
+        providerId: item.id, // Store the provider_id from search results - this is the authoritative profile ID
+        publicIdentifier: item.public_identifier || null, // Vanity identifier for fallback lookups
         needsEnrichment: !company || company === 'unavailable', // Flag for downstream enrichment
         apiType: api, // Track which API was used (classic, sales_navigator, recruiter)
         headline: item.headline || null // Store headline for reference only, never as company

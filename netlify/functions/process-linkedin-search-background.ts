@@ -73,7 +73,7 @@ export const handler: Handler = async (event, context) => {
         const response = await fetch(searchUrl.toString(), {
           method: 'POST',
           headers: {
-            'X-Api-Key': UNIPILE_API_KEY!,
+            'X-API-KEY': UNIPILE_API_KEY!,
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },

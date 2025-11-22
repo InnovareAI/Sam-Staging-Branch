@@ -220,16 +220,16 @@ export async function POST(request: NextRequest) {
       // Get name from various possible fields
       const name = p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Unknown';
 
-      // Clean LinkedIn URL: Remove miniProfileUrn and other query parameters
-      let linkedinUrl = p.linkedin_url || p.contact?.linkedin_url || '';
-      if (linkedinUrl) {
-        linkedinUrl = cleanLinkedInUrl(linkedinUrl);
-      }
+      // Keep LinkedIn URL UNCHANGED - preserve miniProfileUrn and query parameters
+      // miniProfileUrn contains critical context for Unipile API lookups
+      const linkedinUrl = p.linkedin_url || p.contact?.linkedin_url || '';
 
       // Ensure contact is an object with required fields
       const contact = {
         email: p.email || p.contact?.email || '',
-        linkedin_url: linkedinUrl, // CLEANED: Vanity URL only, no miniProfileUrn or query parameters
+        linkedin_url: linkedinUrl, // UNCHANGED: Full URL with miniProfileUrn for accurate API lookups
+        linkedin_provider_id: p.providerId || p.contact?.linkedin_provider_id || null, // CRITICAL: Store the authoritative provider_id from search results
+        public_identifier: p.publicIdentifier || p.public_identifier || null, // Vanity identifier (e.g., "john-doe") for fallback lookups
         first_name: p.first_name || p.contact?.first_name || name.split(' ')[0] || '',
         last_name: p.last_name || p.contact?.last_name || name.split(' ').slice(1).join(' ') || ''
       };
