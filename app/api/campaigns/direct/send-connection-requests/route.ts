@@ -188,30 +188,26 @@ export async function POST(req: NextRequest) {
         }
 
         // Clean LinkedIn URL to remove miniProfileUrn and other parameters
-        // This fixes the bug where Unipile returns wrong profiles for URLs with parameters
+        // CRITICAL FIX: miniProfileUrn contains a different provider_id than the vanity URL
+        // We MUST extract ONLY the vanity URL to get the correct profile
         const cleanLinkedInUrl = (url: string) => {
           try {
-            const urlObj = new URL(url);
-            urlObj.search = ''; // Remove all query parameters
-            let cleanUrl = urlObj.toString().replace(/\/$/, ''); // Remove trailing slash
-
-            // Extract just the username part for LinkedIn URLs
-            if (cleanUrl.includes('linkedin.com/in/')) {
-              const match = cleanUrl.match(/linkedin\.com\/in\/([^/?#]+)/);
-              if (match) {
-                return `https://www.linkedin.com/in/${match[1]}`;
-              }
+            // Extract just the username from the URL
+            const match = url.match(/linkedin\.com\/in\/([^/?#]+)/);
+            if (match) {
+              const username = match[1];
+              return `https://www.linkedin.com/in/${username}`;
             }
-            return cleanUrl;
+            return url;
           } catch {
             return url;
           }
         };
 
         // Get LinkedIn profile to get provider_id
-        // Always fetch from Unipile - don't trust linkedin_user_id (may contain CSV import IDs)
+        // Always fetch from Unipile - don't trust linkedin_user_id (may contain wrong IDs from miniProfileUrn)
         const cleanedUrl = cleanLinkedInUrl(prospect.linkedin_url);
-        console.log(`📝 Fetching LinkedIn profile for ${cleanedUrl} (cleaned from ${prospect.linkedin_url})...`);
+        console.log(`📝 Fetching LinkedIn profile for ${cleanedUrl} (removed miniProfileUrn from ${prospect.linkedin_url})...`);
 
         const profile = await unipileRequest(
           `/api/v1/users/profile?account_id=${unipileAccountId}&identifier=${encodeURIComponent(cleanedUrl)}`
