@@ -142,9 +142,8 @@ export async function POST(request: NextRequest) {
           const UNIPILE_DSN = process.env.UNIPILE_DSN || 'api6';
           const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
 
-          const searchUrl = UNIPILE_DSN.includes('.')
-            ? `https://${UNIPILE_DSN}/api/v1/linkedin/search`
-            : `https://${UNIPILE_DSN}.unipile.com:13443/api/v1/linkedin/search`;
+          // UNIPILE_DSN format: "api6.unipile.com:13670" - already includes domain and port
+          const searchUrl = `https://${UNIPILE_DSN}/api/v1/linkedin/search`;
 
           let allProspects: any[] = [];
           let cursor: string | null = null;

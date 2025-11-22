@@ -142,9 +142,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch all Unipile accounts to check their features
-    const unipileAccountsUrl = UNIPILE_DSN.includes('.')
-      ? `https://${UNIPILE_DSN}/api/v1/accounts`
-      : `https://${UNIPILE_DSN}.unipile.com:13443/api/v1/accounts`;
+    // UNIPILE_DSN format: "api6.unipile.com:13670" - already includes domain and port
+    const unipileAccountsUrl = `https://${UNIPILE_DSN}/api/v1/accounts`;
 
     const unipileResponse = await fetch(unipileAccountsUrl, {
       headers: {
@@ -200,9 +199,8 @@ export async function POST(request: NextRequest) {
       console.log(`✅ Using Sales Navigator account: ${linkedInAccount.account_name}`);
     }
 
-    const searchUrl = UNIPILE_DSN.includes('.')
-      ? `https://${UNIPILE_DSN}/api/v1/linkedin/search`
-      : `https://${UNIPILE_DSN}.unipile.com:13443/api/v1/linkedin/search`;
+    // UNIPILE_DSN format: "api6.unipile.com:13670" - already includes domain and port
+    const searchUrl = `https://${UNIPILE_DSN}/api/v1/linkedin/search`;
 
     // Fetch in batches until target reached (50 per batch for faster import)
     const batchSize = 50;

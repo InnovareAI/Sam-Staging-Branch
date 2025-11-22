@@ -5,7 +5,8 @@ import { cookies } from 'next/headers';
 // Unipile API configuration
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
 const UNIPILE_DSN = process.env.UNIPILE_DSN;
-const UNIPILE_BASE_URL = `https://${UNIPILE_DSN}.unipile.com:13443`;
+// UNIPILE_DSN format: "api6.unipile.com:13670" - already includes domain and port
+const UNIPILE_BASE_URL = `https://${UNIPILE_DSN}`;
 
 /**
  * LinkedIn Search API using Unipile

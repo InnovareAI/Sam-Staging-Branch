@@ -124,15 +124,14 @@ export async function POST(request: NextRequest) {
     // Auto-detect LinkedIn capabilities
     let api = 'classic';
     try {
-      const accountInfoResponse = await fetch(
-        `https://${process.env.UNIPILE_DSN}.unipile.com:13443/api/v1/accounts/${linkedinAccount.unipile_account_id}`,
-        {
-          headers: {
-            'X-API-KEY': process.env.UNIPILE_API_KEY!,
-            'Accept': 'application/json'
-          }
+      // UNIPILE_DSN format: "api6.unipile.com:13670" - already includes domain and port
+      const accountInfoUrl = `https://${process.env.UNIPILE_DSN}/api/v1/accounts/${linkedinAccount.unipile_account_id}`;
+      const accountInfoResponse = await fetch(accountInfoUrl, {
+        headers: {
+          'X-API-KEY': process.env.UNIPILE_API_KEY!,
+          'Accept': 'application/json'
         }
-      );
+      });
 
       if (accountInfoResponse.ok) {
         const accountInfo = await accountInfoResponse.json();
@@ -169,7 +168,9 @@ export async function POST(request: NextRequest) {
     // Call Unipile directly
     let searchUrl;
     try {
-      searchUrl = new URL(`https://${process.env.UNIPILE_DSN}.unipile.com:13443/api/v1/linkedin/search`);
+      // UNIPILE_DSN format: "api6.unipile.com:13670" - already includes domain and port
+      const unipileBaseUrl = `https://${process.env.UNIPILE_DSN}/api/v1/linkedin/search`;
+      searchUrl = new URL(unipileBaseUrl);
       searchUrl.searchParams.append('account_id', linkedinAccount.unipile_account_id);
       searchUrl.searchParams.append('limit', limitedTarget.toString());
       console.log(`🔗 Unipile URL: ${searchUrl.toString().substring(0, 80)}...`);
