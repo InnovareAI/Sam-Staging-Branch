@@ -195,6 +195,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Helper function to clean LinkedIn URLs
+    const cleanLinkedInUrl = (url: string): string => {
+      if (!url) return '';
+      try {
+        // Extract just the username from the URL
+        const match = url.match(/linkedin\.com\/in\/([^/?#]+)/);
+        if (match) {
+          const username = match[1];
+          return `https://www.linkedin.com/in/${username}`;
+        }
+        return url;
+      } catch (error) {
+        console.error('Error cleaning LinkedIn URL:', url, error);
+        return url;
+      }
+    };
+
     // Save prospects to approval data table
     const approvalData = prospects.map((p: any, index: number) => {
       // Ensure unique prospect_id
@@ -203,10 +220,16 @@ export async function POST(request: NextRequest) {
       // Get name from various possible fields
       const name = p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Unknown';
 
+      // Clean LinkedIn URL: Remove miniProfileUrn and other query parameters
+      let linkedinUrl = p.linkedin_url || p.contact?.linkedin_url || '';
+      if (linkedinUrl) {
+        linkedinUrl = cleanLinkedInUrl(linkedinUrl);
+      }
+
       // Ensure contact is an object with required fields
       const contact = {
         email: p.email || p.contact?.email || '',
-        linkedin_url: p.linkedin_url || p.contact?.linkedin_url || '',
+        linkedin_url: linkedinUrl, // CLEANED: Vanity URL only, no miniProfileUrn or query parameters
         first_name: p.first_name || p.contact?.first_name || name.split(' ')[0] || '',
         last_name: p.last_name || p.contact?.last_name || name.split(' ').slice(1).join(' ') || ''
       };

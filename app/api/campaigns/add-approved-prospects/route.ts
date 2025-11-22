@@ -193,8 +193,22 @@ export async function POST(request: NextRequest) {
       }
 
       // CRITICAL: Extract LinkedIn URL and provider_id from multiple possible locations
-      const linkedinUrl = prospect.contact?.linkedin_url || prospect.linkedin_url || null;
+      let linkedinUrl = prospect.contact?.linkedin_url || prospect.linkedin_url || null;
       const linkedinUserId = prospect.contact?.linkedin_provider_id || null;
+
+      // Clean LinkedIn URL: Remove miniProfileUrn and other query parameters
+      // The miniProfileUrn encodes a provider_id that may differ from the vanity URL
+      if (linkedinUrl) {
+        try {
+          const match = linkedinUrl.match(/linkedin\.com\/in\/([^/?#]+)/);
+          if (match) {
+            const username = match[1];
+            linkedinUrl = `https://www.linkedin.com/in/${username}`;
+          }
+        } catch (error) {
+          console.error('Error cleaning LinkedIn URL:', linkedinUrl, error);
+        }
+      }
 
       console.log('📊 Prospect data:', {
         prospect_id: prospect.prospect_id,
@@ -214,7 +228,7 @@ export async function POST(request: NextRequest) {
         last_name: lastName,
         email: prospect.contact?.email || null,
         company_name: prospect.company?.name || '',
-        linkedin_url: linkedinUrl, // Cleaned LinkedIn URL (without query parameters)
+        linkedin_url: linkedinUrl, // CLEANED: Vanity URL only, no miniProfileUrn or query parameters
         linkedin_user_id: linkedinUserId, // Authoritative LinkedIn provider_id (doesn't change)
         title: prospect.title || '',
         location: prospect.location || null,
