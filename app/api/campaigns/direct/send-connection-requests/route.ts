@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
           .from('campaign_prospects')
           .select('status, contacted_at, campaign_id')
           .eq('linkedin_url', prospect.linkedin_url)
-          .in('status', ['connection_request_sent', 'invitation_pending', 'already_connected'])
+          .in('status', ['connection_request_sent', 'connected', 'messaging', 'replied'])
           .order('contacted_at', { ascending: false })
           .limit(1)
           .single();
@@ -160,13 +160,13 @@ export async function POST(req: NextRequest) {
         );
         const providerId = profile.provider_id;
 
-        // Check if already connected or invitation pending
+        // Check if already connected
         if (profile.network_distance === 'FIRST_DEGREE') {
           console.log(`⚠️  Already connected to ${prospect.first_name} - skipping`);
           await supabase
             .from('campaign_prospects')
             .update({
-              status: 'already_connected',
+              status: 'connected',
               notes: 'Already a 1st degree connection',
               linkedin_user_id: providerId,
               updated_at: new Date().toISOString()
@@ -257,12 +257,13 @@ export async function POST(req: NextRequest) {
 
         // Check if this is a "already invited recently" error - handle gracefully
         if (error.type === 'errors/already_invited_recently' || errorMessage.toLowerCase().includes('already') || errorMessage.toLowerCase().includes('invitation')) {
-          console.log(`⚠️  Invitation already sent to ${prospect.first_name} - marking as pending`);
+          console.log(`⚠️  Invitation already sent to ${prospect.first_name} - marking as sent`);
           await supabase
             .from('campaign_prospects')
             .update({
-              status: 'invitation_pending',
-              notes: 'Invitation already sent (waiting for acceptance)',
+              status: 'connection_request_sent',
+              contacted_at: new Date().toISOString(),
+              notes: 'Invitation already sent (detected by Unipile)',
               linkedin_user_id: providerId || prospect.linkedin_user_id,
               updated_at: new Date().toISOString()
             })
@@ -272,7 +273,7 @@ export async function POST(req: NextRequest) {
             prospectId: prospect.id,
             name: `${prospect.first_name} ${prospect.last_name}`,
             status: 'skipped',
-            reason: 'invitation_already_pending'
+            reason: 'invitation_already_sent'
           });
           continue;
         }
