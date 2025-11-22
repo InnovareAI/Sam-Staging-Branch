@@ -2173,9 +2173,17 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
           console.error('❌ Error cause:', (error as any).cause);
         }
         console.error('❌ ═══════════════════════════════════════════════════');
-        aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
-          '\n\n❌ **Search Failed:** Technical error while starting the search. Try heading to the **Data Approval** tab and entering your criteria directly.'
-        ).trim()
+
+        // Replace trigger with error message
+        const errorMsg = '\n\n❌ **Search Failed:** Technical error while starting the search. Try heading to the **Data Approval** tab and entering your criteria directly.';
+        aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i, errorMsg).trim();
+
+        // CRITICAL: Also remove the success text that was already added
+        // Remove "Campaign: YYYYMMDD-..." lines
+        aiResponse = aiResponse.replace(/Campaign:\s*\d+-[A-Z]+-[^\n]+\n*/gi, '').trim();
+        // Remove "Head to **Data Approval**..." lines
+        aiResponse = aiResponse.replace(/Head to.*Data Approval.*should.*\!/gi, '').trim();
+        aiResponse = aiResponse.replace(/\n\n✅.*?approval/gi, '\n\n');
       }
     }
 
