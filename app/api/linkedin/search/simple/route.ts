@@ -727,7 +727,8 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'X-API-KEY': process.env.UNIPILE_API_KEY!,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'  // Per Unipile docs
       },
       body: JSON.stringify(unipilePayload)
     });
