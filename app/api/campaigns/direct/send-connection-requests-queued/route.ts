@@ -25,6 +25,47 @@ export const maxDuration = 60; // 60 seconds max
 const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
 
+// Public holidays (US holidays 2025-2026)
+// Format: YYYY-MM-DD
+const PUBLIC_HOLIDAYS = [
+  '2025-01-01', // New Year's Day
+  '2025-01-20', // MLK Jr. Day
+  '2025-02-17', // Presidents' Day
+  '2025-03-17', // St. Patrick's Day (optional - adjust as needed)
+  '2025-05-26', // Memorial Day
+  '2025-06-19', // Juneteenth
+  '2025-07-04', // Independence Day
+  '2025-09-01', // Labor Day
+  '2025-10-13', // Columbus Day
+  '2025-11-11', // Veterans Day
+  '2025-11-27', // Thanksgiving
+  '2025-12-25', // Christmas
+  '2026-01-01', // New Year's Day
+  '2026-01-19', // MLK Jr. Day
+];
+
+function isWeekend(date: Date): boolean {
+  const day = date.getUTCDay();
+  return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
+}
+
+function isPublicHoliday(date: Date): boolean {
+  const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+  return PUBLIC_HOLIDAYS.includes(dateStr);
+}
+
+function getNextBusinessDay(date: Date): Date {
+  const nextDay = new Date(date);
+  nextDay.setDate(nextDay.getDate() + 1);
+
+  // Keep advancing until we find a business day
+  while (isWeekend(nextDay) || isPublicHoliday(nextDay)) {
+    nextDay.setDate(nextDay.getDate() + 1);
+  }
+
+  return nextDay;
+}
+
 async function unipileRequest(endpoint: string, options: RequestInit = {}) {
   const response = await fetch(`${UNIPILE_BASE_URL}${endpoint}`, {
     ...options,
@@ -282,9 +323,20 @@ export async function POST(req: NextRequest) {
         }
 
         // VALIDATION PASSED: Create queue record
-        // Schedule 1 CR every 30 minutes
-        const scheduledFor = new Date();
+        // Schedule 1 CR every 30 minutes, but skip weekends and holidays
+        let scheduledFor = new Date();
         scheduledFor.setMinutes(scheduledFor.getMinutes() + (prospectIndex * 30));
+
+        // If scheduled for weekend or holiday, move to next business day (same time)
+        if (isWeekend(scheduledFor) || isPublicHoliday(scheduledFor)) {
+          const nextBusinessDay = getNextBusinessDay(scheduledFor);
+          // Keep the same time but move to next business day
+          const timeOfDay = scheduledFor.getHours() * 3600 + scheduledFor.getMinutes() * 60 + scheduledFor.getSeconds();
+          scheduledFor = new Date(nextBusinessDay);
+          scheduledFor.setHours(Math.floor(timeOfDay / 3600));
+          scheduledFor.setMinutes(Math.floor((timeOfDay % 3600) / 60));
+          scheduledFor.setSeconds(timeOfDay % 60);
+        }
 
         console.log(`✅ Valid prospect - queuing for ${scheduledFor.toLocaleTimeString()}`);
 

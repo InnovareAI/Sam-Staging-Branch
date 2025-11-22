@@ -4,16 +4,18 @@ import { createClient } from '@supabase/supabase-js';
 /**
  * Direct Campaign Execution - Send Connection Requests
  *
- * Simple, no workflow engines:
+ * Queue-based system for testing:
  * 1. Fetch pending prospects
- * 2. Send CR via Unipile REST API
- * 3. Update DB with next_action_at
+ * 2. Create send_queue records (one CR every 30 minutes)
+ * 3. Cron job processes queue and sends actual CRs
  *
  * POST /api/campaigns/direct/send-connection-requests
  * Body: { campaignId: string }
+ *
+ * TESTING MODE: Sends 1 CR every 30 minutes to stay under 20/day limit
  */
 
-export const maxDuration = 300; // 5 minutes
+export const maxDuration = 60; // 60 seconds (queue creation only, no actual sending)
 
 // Unipile REST API configuration
 const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
