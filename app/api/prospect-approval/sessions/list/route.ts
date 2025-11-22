@@ -91,52 +91,8 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // CRITICAL: Filter out sessions where ALL prospects are already in campaigns
-    // User requirement: "if they are in a campaign they need to disappear from my view"
-    const filteredSessions = [];
-    if (sessions && sessions.length > 0) {
-      for (const session of sessions) {
-        // Get approved prospects from this session
-        const { data: approvedProspects } = await supabase
-          .from('prospect_approval_data')
-          .select('id')
-          .eq('session_id', session.id);
-
-        if (!approvedProspects || approvedProspects.length === 0) {
-          // No approved prospects in this session, skip it
-          continue;
-        }
-
-        // Check how many of these prospects are already in campaigns
-        // Prospects in campaigns have personalization_data.approval_data_id matching the prospect ID
-        const { data: campaignProspects } = await supabase
-          .from('campaign_prospects')
-          .select('id, personalization_data')
-          .eq('workspace_id', workspaceId);
-
-        // Extract approval_data_ids from campaign prospects
-        const campaignProspectIds = new Set(
-          campaignProspects
-            ?.filter(cp => cp.personalization_data?.approval_data_id)
-            .map(cp => cp.personalization_data.approval_data_id) || []
-        );
-
-        // Count how many approved prospects are NOT yet in campaigns
-        const prospectsNotInCampaigns = approvedProspects.filter(
-          p => !campaignProspectIds.has(p.id)
-        ).length;
-
-        // Only show session if it has prospects NOT yet in campaigns
-        if (prospectsNotInCampaigns > 0) {
-          // Update the session's approved_count to show only prospects not in campaigns
-          session.approved_count = prospectsNotInCampaigns;
-          filteredSessions.push(session);
-        }
-      }
-    }
-
-    console.log(`📊 Query result: ${sessions?.length || 0} total sessions, ${filteredSessions.length} with prospects not in campaigns`);
-    console.log('Filtered Sessions:', filteredSessions.map(s => ({ id: s.id.substring(0, 8), campaign: s.campaign_name, prospects: s.approved_count })));
+    console.log(`📊 Query result: ${sessions?.length || 0} sessions found`);
+    console.log('Sessions:', sessions?.map(s => ({ id: s.id.substring(0, 8), campaign: s.campaign_name, prospects: s.total_prospects })));
 
     if (sessionsError) {
       console.error('❌ Error fetching sessions:', sessionsError);
@@ -148,8 +104,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      sessions: filteredSessions,
-      count: filteredSessions.length
+      sessions: sessions || [],
+      count: sessions?.length || 0
     });
 
   } catch (error) {
