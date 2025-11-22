@@ -2147,8 +2147,12 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
           let errorMsg = `\n\n❌ **Search Failed:** ${searchData.error || 'Unable to complete the search.'}`
 
           // Add detailed error information if available
-          if (searchData.details && Array.isArray(searchData.details)) {
-            errorMsg += `\n\n**Error Details:**\n${searchData.details.map((d: string) => `• ${d}`).join('\n')}`
+          if (searchData.details) {
+            if (Array.isArray(searchData.details)) {
+              errorMsg += `\n\n**Error Details:**\n${searchData.details.map((d: string) => `• ${d}`).join('\n')}`
+            } else if (typeof searchData.details === 'string') {
+              errorMsg += `\n\n**Details:** ${searchData.details}`
+            }
           }
 
           if (searchData.action === 'connect_linkedin') {
@@ -2156,7 +2160,14 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
           }
 
           // Log full error for debugging
-          console.error('❌ [8c/8] Search failed with error response:', JSON.stringify(searchData, null, 2))
+          console.error('❌ [8c/8] Search failed with error response:', JSON.stringify(searchData, null, 2));
+          console.error('❌ [8c2/8] Search error details:', {
+            error: searchData.error,
+            details: searchData.details,
+            errorType: typeof searchData.error,
+            statusCode: searchData.statusCode,
+            action: searchData.action
+          });
 
           aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i, errorMsg).trim()
 
@@ -2191,9 +2202,12 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         // CRITICAL: Also remove the success text that was already added
         // Remove "Campaign: YYYYMMDD-..." lines
         aiResponse = aiResponse.replace(/Campaign:\s*\d+-[A-Z]+-[^\n]+\n*/gi, '').trim();
-        // Remove "Head to **Data Approval**..." lines
-        aiResponse = aiResponse.replace(/Head to.*Data Approval.*should.*\!/gi, '').trim();
-        aiResponse = aiResponse.replace(/\n\n✅.*?approval/gi, '\n\n');
+        // Remove "Head to **Data Approval**..." lines - match variations
+        aiResponse = aiResponse.replace(/Head to\s+\*\*Data Approval\*\*[^\n]*should[^\n]*!/gi, '').trim();
+        aiResponse = aiResponse.replace(/Head to.*?Data Approval.*?\n/gi, '').trim();
+        aiResponse = aiResponse.replace(/\n\n✅.*?approval/gi, '').trim();
+        // Remove any remaining success emojis and messages
+        aiResponse = aiResponse.replace(/\n\n✅[^\n]*\n*/gi, '\n\n').trim();
       }
     }
 
