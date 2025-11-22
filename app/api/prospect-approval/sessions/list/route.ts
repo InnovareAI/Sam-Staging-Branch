@@ -67,16 +67,16 @@ export async function GET(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Get ALL workspace sessions (permanent sessions shared across all members)
+    // Get user's sessions (permanent sessions, visible across browsers/devices)
     console.log(`🔍 Fetching sessions for workspace: ${workspaceId}, user: ${user.email}`);
 
-    // Fetch sessions - Show ALL workspace sessions (permanent, shared across users)
+    // Fetch sessions - Show ONLY user's own sessions (permanent, across browsers)
     // IMPORTANT: Only show 'active' sessions (exclude 'completed' and 'archived')
     const { data: sessions, error: sessionsError } = await supabase
       .from('prospect_approval_sessions')
       .select('*')
       .eq('workspace_id', workspaceId)
-      // Removed .eq('user_id', user.id) - sessions are workspace-wide, not per-user
+      .eq('user_id', user.id) // CRITICAL: Only show user's own sessions
       .eq('status', 'active') // Only show active sessions (not completed/archived)
       .order('created_at', { ascending: false });
 
