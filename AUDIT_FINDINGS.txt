@@ -1,0 +1,300 @@
+================================================================================
+SUPABASE DATABASE QUERY AUDIT - CRITICAL FINDINGS
+================================================================================
+Date: November 22, 2025
+Scope: Campaign execution system (/api/campaigns/direct/*)
+Status: SYSTEM IS BROKEN - 4 Critical Issues Found
+
+================================================================================
+OVERVIEW
+================================================================================
+
+The campaign execution system has 4 CRITICAL MISMATCHES between the code and 
+the actual database schema. These prevent campaigns from executing.
+
+Files Generated:
+- SUPABASE_AUDIT_REPORT.md (detailed audit, 400+ lines)
+- SUPABASE_FIXES_GUIDE.md (step-by-step fixes, 200+ lines)
+- AUDIT_SUMMARY.md (executive summary)
+- AUDIT_FINDINGS.txt (this file)
+
+================================================================================
+CRITICAL ISSUE #1: MISSING "campaign_name" FIELD
+================================================================================
+Severity: CRITICAL
+Impact: Campaign queries fail or return undefined names
+
+Files Affected:
+- /app/api/campaigns/direct/send-connection-requests/route.ts (line 61)
+- /app/api/campaigns/direct/process-follow-ups/route.ts (line 69)
+
+Problem:
+Code queries: campaigns.campaign_name
+Actual field: campaigns.name
+
+Expected: "My Campaign"
+Gets: undefined
+
+Fix: Change all references from campaign_name to name
+
+================================================================================
+CRITICAL ISSUE #2: BROKEN FOREIGN KEY JOIN
+================================================================================
+Severity: CRITICAL
+Impact: Campaign fetch fails immediately
+
+Files Affected (4 total):
+- /app/api/campaigns/direct/send-connection-requests/route.ts (line 64)
+- /app/api/campaigns/direct/process-follow-ups/route.ts (line 71)
+- /app/api/campaigns/linkedin/execute-via-n8n/route.ts (line 71)
+- /app/api/campaigns/linkedin/execute-inngest/route.ts (line 71)
+
+Problem:
+Code tries to join: workspace_accounts!linkedin_account_id
+But campaigns table has NO linkedin_account_id column
+
+Example failing query:
+```typescript
+workspace_accounts!linkedin_account_id (
+  id,
+  unipile_account_id,
+  account_name
+)
+```
+
+Error: Column "linkedin_account_id" doesn't exist in campaigns table
+
+Fix Required:
+1. Add column to database:
+   ALTER TABLE campaigns ADD COLUMN linkedin_account_id UUID;
+
+2. Update 4 route files to use the new column (works after schema change)
+
+================================================================================
+CRITICAL ISSUE #3: WRONG STATUS ENUM VALUES
+================================================================================
+Severity: CRITICAL
+Impact: Queries return 0 rows or updates fail
+
+Files Affected (2):
+- /app/api/campaigns/direct/send-connection-requests/route.ts (multiple lines)
+- /app/api/campaigns/direct/process-follow-ups/route.ts (lines 77)
+
+Actual Status Values (from database):
+pending, invitation_sent, connected, message_sent, replied, interested,
+not_interested, bounced, error, completed, paused, excluded
+
+Code Uses (WRONG):
+pending ✓ (correct)
+approved ✗ (doesn't exist - remove from queries)
+failed ✗ (should be 'error')
+connection_request_sent ✗ (should be 'invitation_sent')
+messaging ✗ (should be 'message_sent')
+
+Fix: Global search/replace:
+- failed → error
+- connection_request_sent → invitation_sent
+- messaging → message_sent
+- Remove 'approved' from any OR conditions
+
+================================================================================
+CRITICAL ISSUE #4: MISSING "contacted_at" FIELD
+================================================================================
+Severity: CRITICAL
+Impact: Prospect update queries fail
+
+Files Affected (1):
+- /app/api/campaigns/direct/send-connection-requests/route.ts (lines 129, 161, 320)
+
+Problem:
+Code queries: campaign_prospects.contacted_at
+Actual field: campaign_prospects.invitation_sent_at
+
+When code tries to update:
+```
+UPDATE campaign_prospects SET contacted_at = NOW()
+```
+Error: Column "contacted_at" not found
+
+Fix: Replace all contacted_at with invitation_sent_at
+
+================================================================================
+MEDIUM ISSUE #1: PROSPECT DATA NOT JOINED
+================================================================================
+Severity: MEDIUM
+Impact: prospect.first_name, prospect.last_name, etc. return undefined
+
+File: /app/api/campaigns/direct/send-connection-requests/route.ts
+
+Problem:
+Query selects from campaign_prospects only:
+```
+.select('*')
+```
+
+But later code assumes prospect fields exist:
+- prospect.first_name (doesn't exist in campaign_prospects)
+- prospect.last_name (doesn't exist)
+- prospect.company_name (doesn't exist)
+- prospect.linkedin_url (doesn't exist)
+
+These fields are in workspace_prospects table!
+
+Fix: Update query to include:
+```
+.select(`
+  *,
+  workspace_prospects (
+    first_name,
+    last_name,
+    company_name,
+    title,
+    linkedin_url
+  )
+`)
+```
+
+Then access via: prospect.workspace_prospects.first_name
+
+================================================================================
+MEDIUM ISSUE #2: INVALID OR CLAUSE
+================================================================================
+Severity: MEDIUM
+Impact: May return incorrect results
+
+File: /app/api/campaigns/direct/send-connection-requests/route.ts (line 96)
+
+Problem:
+```
+.or(`status.in.(pending,approved),and(status.eq.failed,updated_at.lt.${...})`)
+```
+
+Uses non-existent statuses (pending is OK, approved and failed are not)
+
+Better approach:
+```
+.eq('status', 'pending')
+```
+
+Much simpler and clearer intent.
+
+================================================================================
+MEDIUM ISSUE #3: OBSOLETE RLS POLICY
+================================================================================
+Severity: MEDIUM
+Impact: May block user access
+
+File: /supabase/migrations/20250918100000_campaign_prospects_junction.sql (line 76)
+
+Problem:
+RLS policy references: users.clerk_id
+But Clerk was removed in migration 20250919
+
+Current policy will fail for all non-service-role users
+
+Fix: Update RLS policy to use Supabase Auth:
+```sql
+DROP POLICY IF EXISTS "Users can access workspace campaign prospects" ON campaign_prospects;
+
+CREATE POLICY "campaign_prospects_select" ON campaign_prospects
+  FOR SELECT USING (
+    campaign_id IN (
+      SELECT id FROM campaigns WHERE workspace_id IN (
+        SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
+      )
+    )
+  );
+```
+
+================================================================================
+SUMMARY TABLE
+================================================================================
+
+Issue                       | Type     | Files | Severity | Impact
+---------------------------|----------|-------|----------|----------
+campaign_name field         | Code     | 2     | CRITICAL | Returns undefined
+linkedin_account_id join    | Schema   | 4     | CRITICAL | Query fails
+Status enum values          | Code     | 2     | CRITICAL | Returns 0 rows
+contacted_at field          | Code     | 1     | CRITICAL | Update fails
+Prospect data join          | Code     | 1     | MEDIUM   | Data undefined
+Invalid OR clause           | Code     | 1     | MEDIUM   | Wrong results
+RLS policy outdated         | Policy   | 1     | MEDIUM   | Access blocked
+
+================================================================================
+WHAT TO DO NOW
+================================================================================
+
+Option 1: Quick Fixes (Temporary - Doesn't Fix Root Issues)
+- Grep replace wrong column names
+- Grep replace wrong status values
+- Will still fail because linkedin_account_id doesn't exist
+
+Option 2: Proper Fix (Recommended - 2 hours)
+1. Run migration to add linkedin_account_id to campaigns table (5 min)
+2. Update all 4 route files (1 hour)
+3. Update RLS policies (10 min)
+4. Test end-to-end (30 min)
+
+See SUPABASE_FIXES_GUIDE.md for exact code changes.
+
+================================================================================
+FILES TO REVIEW
+================================================================================
+
+Audit Report:
+- SUPABASE_AUDIT_REPORT.md (400+ lines, detailed findings)
+
+Fix Instructions:
+- SUPABASE_FIXES_GUIDE.md (200+ lines, exact code changes)
+
+Executive Summary:
+- AUDIT_SUMMARY.md (quick overview)
+
+This File:
+- AUDIT_FINDINGS.txt (summary of all issues)
+
+================================================================================
+DATABASE SCHEMA NOTES
+================================================================================
+
+Campaigns Table:
+- Has: id, workspace_id, name, message_templates, status, etc.
+- Missing: linkedin_account_id (NEEDS TO BE ADDED)
+- NOT: campaign_name (it's just "name")
+
+Campaign_Prospects Table:
+- Has: id, campaign_id, prospect_id, status, linkedin_user_id, etc.
+- Missing: contacted_at, first_name, last_name, company_name, title, linkedin_url
+- These should come from workspace_prospects via prospect_id FK
+
+Workspace_Accounts Table:
+- Has: id, workspace_id, unipile_account_id, account_name, etc.
+- No issue here, just needs to be properly joined
+
+================================================================================
+VERIFICATION CHECKLIST
+================================================================================
+
+Run these to verify the database schema:
+
+1. Check campaigns table:
+   SELECT column_name FROM information_schema.columns
+   WHERE table_name = 'campaigns'
+   ORDER BY column_name;
+
+2. Check campaign_prospects table:
+   SELECT column_name FROM information_schema.columns
+   WHERE table_name = 'campaign_prospects'
+   ORDER BY column_name;
+
+3. Check status values:
+   SELECT DISTINCT status FROM campaign_prospects;
+
+4. Check if linkedin_account_id exists:
+   SELECT COUNT(*) FROM information_schema.columns
+   WHERE table_name = 'campaigns' AND column_name = 'linkedin_account_id';
+   (Returns 0 = column doesn't exist yet)
+
+================================================================================
+END OF AUDIT FINDINGS
+================================================================================

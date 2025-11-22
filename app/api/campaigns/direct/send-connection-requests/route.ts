@@ -187,11 +187,34 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
+        // Clean LinkedIn URL to remove miniProfileUrn and other parameters
+        // This fixes the bug where Unipile returns wrong profiles for URLs with parameters
+        const cleanLinkedInUrl = (url: string) => {
+          try {
+            const urlObj = new URL(url);
+            urlObj.search = ''; // Remove all query parameters
+            let cleanUrl = urlObj.toString().replace(/\/$/, ''); // Remove trailing slash
+
+            // Extract just the username part for LinkedIn URLs
+            if (cleanUrl.includes('linkedin.com/in/')) {
+              const match = cleanUrl.match(/linkedin\.com\/in\/([^/?#]+)/);
+              if (match) {
+                return `https://www.linkedin.com/in/${match[1]}`;
+              }
+            }
+            return cleanUrl;
+          } catch {
+            return url;
+          }
+        };
+
         // Get LinkedIn profile to get provider_id
         // Always fetch from Unipile - don't trust linkedin_user_id (may contain CSV import IDs)
-        console.log(`📝 Fetching LinkedIn profile for ${prospect.linkedin_url}...`);
+        const cleanedUrl = cleanLinkedInUrl(prospect.linkedin_url);
+        console.log(`📝 Fetching LinkedIn profile for ${cleanedUrl} (cleaned from ${prospect.linkedin_url})...`);
+
         const profile = await unipileRequest(
-          `/api/v1/users/profile?account_id=${unipileAccountId}&identifier=${encodeURIComponent(prospect.linkedin_url)}`
+          `/api/v1/users/profile?account_id=${unipileAccountId}&identifier=${encodeURIComponent(cleanedUrl)}`
         );
         const providerId = profile.provider_id;
 
@@ -217,6 +240,55 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
+        // Check for WITHDRAWN invitations (LinkedIn enforces 3-4 week cooldown)
+        if (profile.invitation?.status === 'WITHDRAWN') {
+          console.log(`⚠️  Previously withdrawn invitation to ${prospect.first_name} - LinkedIn cooldown active`);
+
+          // Calculate when the cooldown might end (3 weeks from now as estimate)
+          const cooldownEndDate = new Date();
+          cooldownEndDate.setDate(cooldownEndDate.getDate() + 21); // 3 weeks
+
+          await supabase
+            .from('campaign_prospects')
+            .update({
+              status: 'failed',
+              notes: `Invitation previously withdrawn - LinkedIn cooldown until ~${cooldownEndDate.toISOString().split('T')[0]}. Use InMail or wait.`,
+              linkedin_user_id: providerId,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', prospect.id);
+
+          results.push({
+            prospectId: prospect.id,
+            name: `${prospect.first_name} ${prospect.last_name}`,
+            status: 'skipped',
+            reason: 'withdrawn_cooldown'
+          });
+          continue;
+        }
+
+        // Check for existing PENDING invitation
+        if (profile.invitation?.status === 'PENDING') {
+          console.log(`⚠️  Invitation already pending to ${prospect.first_name}`);
+          await supabase
+            .from('campaign_prospects')
+            .update({
+              status: 'connection_request_sent',
+              notes: 'Invitation already pending on LinkedIn',
+              linkedin_user_id: providerId,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', prospect.id);
+
+          results.push({
+            prospectId: prospect.id,
+            name: `${prospect.first_name} ${prospect.last_name}`,
+            status: 'skipped',
+            reason: 'already_pending'
+          });
+          continue;
+        }
+
         // Personalize message
         const personalizedMessage = connectionRequestMessage
           .replace(/{first_name}/g, prospect.first_name)
@@ -236,9 +308,10 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify(payload)
         });
 
-        // Calculate next action time (2 days from now)
+        // Calculate next action time (3 days from now - gives time for acceptance)
+        // Best practice: Allow 2-3 days for connection acceptance before first follow-up check
         const nextActionAt = new Date();
-        nextActionAt.setDate(nextActionAt.getDate() + 2);
+        nextActionAt.setDate(nextActionAt.getDate() + 3);
 
         // Update database
         await supabase
@@ -286,19 +359,46 @@ export async function POST(req: NextRequest) {
         console.error('Full error object:', error);
         console.error('Extracted details:', JSON.stringify(errorDetails, null, 2));
 
-        // Create readable error message
-        const errorMessage = error.title || error.message || 'Unknown error';
-        const errorNote = `CR failed: ${errorMessage}${error.status ? ` (${error.status})` : ''}${error.type ? ` [${error.type}]` : ''}`;
+        // Create readable error message with specific handling for common errors
+        let errorMessage = error.title || error.message || 'Unknown error';
+        let errorNote = `CR failed: ${errorMessage}`;
 
-        // Mark as failed - do NOT infer success from error messages
-        await supabase
-          .from('campaign_prospects')
-          .update({
-            status: 'failed',
-            notes: errorNote,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', prospect.id);
+        // Handle specific error types
+        if (error.type === 'errors/already_invited_recently' ||
+            errorMessage.includes('Should delay new invitation')) {
+          errorNote = 'LinkedIn cooldown: This person was recently invited/withdrawn. Wait 3-4 weeks or use InMail.';
+
+          // Try to set a more specific status for cooldown errors
+          await supabase
+            .from('campaign_prospects')
+            .update({
+              status: 'failed',
+              notes: errorNote,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', prospect.id);
+        } else if (error.status === 429) {
+          errorNote = 'Rate limited: Too many requests. Wait before retrying.';
+          await supabase
+            .from('campaign_prospects')
+            .update({
+              status: 'failed',
+              notes: errorNote,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', prospect.id);
+        } else {
+          // Generic error handling
+          errorNote = `CR failed: ${errorMessage}${error.status ? ` (${error.status})` : ''}${error.type ? ` [${error.type}]` : ''}`;
+          await supabase
+            .from('campaign_prospects')
+            .update({
+              status: 'failed',
+              notes: errorNote,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', prospect.id);
+        }
 
         results.push({
           prospectId: prospect.id,

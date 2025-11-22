@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { UnipileClient } from 'unipile-node-sdk';
 
 /**
  * Direct Campaign Execution - Process Follow-Ups
@@ -17,10 +16,28 @@ import { UnipileClient } from 'unipile-node-sdk';
 
 export const maxDuration = 300; // 5 minutes
 
-const unipile = new UnipileClient(
-  `https://${process.env.UNIPILE_DSN}`,
-  process.env.UNIPILE_API_KEY!
-);
+// Unipile REST API configuration - matching send-connection-requests route
+const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
+const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
+
+async function unipileRequest(endpoint: string, options: RequestInit = {}) {
+  const response = await fetch(`${UNIPILE_BASE_URL}${endpoint}`, {
+    ...options,
+    headers: {
+      'X-Api-Key': UNIPILE_API_KEY,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+    throw new Error(error.title || error.message || `HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -90,24 +107,96 @@ export async function POST(req: NextRequest) {
         const linkedinAccount = campaign.workspace_accounts as any;
         const unipileAccountId = linkedinAccount.unipile_account_id;
 
-        // Check if connection was accepted
-        console.log(`🔍 Checking connection status...`);
+        // Check if connection was accepted by checking network_distance
+        console.log(`🔍 Checking connection status via profile...`);
 
-        // Get all chats to find this prospect
-        const chats = await unipile.messaging.getAllChats({
-          account_id: unipileAccountId
-        });
+        try {
+          // Get the prospect's profile to check network_distance
+          const profile = await unipileRequest(
+            `/api/v1/users/profile?account_id=${unipileAccountId}&provider_id=${prospect.linkedin_user_id}`
+          );
 
-        const chat = chats.items.find((c: any) =>
-          c.attendees?.some((a: any) => a.provider_id === prospect.linkedin_user_id)
-        );
+          // Check if connection is accepted (1st degree connection)
+          if (profile.network_distance !== 'FIRST_DEGREE') {
+            console.log(`⏸️  Connection not accepted yet (distance: ${profile.network_distance}), will retry later`);
 
-        if (!chat) {
-          console.log(`⏸️  Connection not accepted yet, will retry later`);
+            // Push back the follow_up_due_at by 1 day
+            const newDueAt = new Date(prospect.follow_up_due_at);
+            newDueAt.setDate(newDueAt.getDate() + 1);
 
-          // Push back the follow_up_due_at by 1 day
-          const newDueAt = new Date(prospect.follow_up_due_at);
-          newDueAt.setDate(newDueAt.getDate() + 1);
+            await supabase
+              .from('campaign_prospects')
+              .update({
+                follow_up_due_at: newDueAt.toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', prospect.id);
+
+            results.push({
+              prospectId: prospect.id,
+              name: `${prospect.first_name} ${prospect.last_name}`,
+              status: 'pending_acceptance',
+              networkDistance: profile.network_distance,
+              nextCheck: newDueAt.toISOString()
+            });
+
+            continue;
+          }
+
+          // Connection is accepted! Update the database
+          if (!prospect.connection_accepted_at) {
+            await supabase
+              .from('campaign_prospects')
+              .update({
+                status: 'connected',
+                connection_accepted_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', prospect.id);
+          }
+
+          // Now find or create the chat for messaging
+          const chatsResponse = await unipileRequest(
+            `/api/v1/chats?account_id=${unipileAccountId}`
+          );
+
+          let chat = chatsResponse.items?.find((c: any) =>
+            c.attendees?.some((a: any) => a.provider_id === prospect.linkedin_user_id)
+          );
+
+          // If no chat exists, we may need to create one or wait for LinkedIn to create it
+          if (!chat) {
+            console.log(`⚠️  Connection accepted but no chat yet, will retry in next cycle`);
+
+            // Push back by 2 hours to allow chat creation
+            const newDueAt = new Date();
+            newDueAt.setHours(newDueAt.getHours() + 2);
+
+            await supabase
+              .from('campaign_prospects')
+              .update({
+                follow_up_due_at: newDueAt.toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', prospect.id);
+
+            results.push({
+              prospectId: prospect.id,
+              name: `${prospect.first_name} ${prospect.last_name}`,
+              status: 'waiting_for_chat',
+              nextCheck: newDueAt.toISOString()
+            });
+
+            continue;
+          }
+
+        } catch (profileError: any) {
+          // If we can't get the profile, skip this prospect for now
+          console.error(`❌ Failed to check profile for ${prospect.first_name}:`, profileError.message);
+
+          // Push back by 2 hours to retry
+          const newDueAt = new Date();
+          newDueAt.setHours(newDueAt.getHours() + 2);
 
           await supabase
             .from('campaign_prospects')
@@ -120,7 +209,8 @@ export async function POST(req: NextRequest) {
           results.push({
             prospectId: prospect.id,
             name: `${prospect.first_name} ${prospect.last_name}`,
-            status: 'pending_acceptance',
+            status: 'profile_check_failed',
+            error: profileError.message,
             nextCheck: newDueAt.toISOString()
           });
 
@@ -161,11 +251,13 @@ export async function POST(req: NextRequest) {
           .replace(/{company_name}/g, prospect.company_name || '')
           .replace(/{title}/g, prospect.title || '');
 
-        // Send message
+        // Send message using REST API
         console.log(`📤 Sending follow-up message...`);
-        await unipile.messaging.sendMessage({
-          chat_id: chat.id,
-          text: message
+        await unipileRequest(`/api/v1/chats/${chat.id}/messages`, {
+          method: 'POST',
+          body: JSON.stringify({
+            text: message
+          })
         });
 
         // Calculate next follow-up time
@@ -217,15 +309,44 @@ export async function POST(req: NextRequest) {
 
         const errorMessage = error.title || error.message || 'Unknown error';
 
+        // Implement retry logic based on error type
+        let retryDelay = 60; // Default: retry in 1 hour
+
+        if (error.status === 429) {
+          // Rate limited - retry in 4 hours
+          retryDelay = 240;
+          console.log(`⏸️  Rate limited, will retry in 4 hours`);
+        } else if (error.status >= 500) {
+          // Server error - retry in 30 minutes
+          retryDelay = 30;
+          console.log(`⚠️  Server error, will retry in 30 minutes`);
+        } else if (error.status === 404) {
+          // Not found - might be deleted, retry in 24 hours
+          retryDelay = 1440;
+          console.log(`❓ Not found, will retry in 24 hours`);
+        }
+
+        // Update follow_up_due_at to retry later
+        const retryAt = new Date();
+        retryAt.setMinutes(retryAt.getMinutes() + retryDelay);
+
+        await supabase
+          .from('campaign_prospects')
+          .update({
+            follow_up_due_at: retryAt.toISOString(),
+            notes: `Follow-up retry: ${errorMessage} (${new Date().toISOString()})`,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', prospect.id);
+
         results.push({
           prospectId: prospect.id,
           name: `${prospect.first_name} ${prospect.last_name}`,
-          status: 'failed',
+          status: 'failed_retry_scheduled',
           error: errorMessage,
+          retryAt: retryAt.toISOString(),
           errorDetails: errorDetails
         });
-
-        // Don't update DB on error - will retry next hour
       }
     }
 
