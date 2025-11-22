@@ -255,30 +255,7 @@ export async function POST(req: NextRequest) {
         const errorMessage = error.title || error.message || 'Unknown error';
         const errorNote = `CR failed: ${errorMessage}${error.status ? ` (${error.status})` : ''}${error.type ? ` [${error.type}]` : ''}`;
 
-        // Check if this is a "already invited recently" error - handle gracefully
-        if (error.type === 'errors/already_invited_recently' || errorMessage.toLowerCase().includes('already') || errorMessage.toLowerCase().includes('invitation')) {
-          console.log(`⚠️  Invitation already sent to ${prospect.first_name} - marking as sent`);
-          await supabase
-            .from('campaign_prospects')
-            .update({
-              status: 'connection_request_sent',
-              contacted_at: new Date().toISOString(),
-              notes: 'Invitation already sent (detected by Unipile)',
-              linkedin_user_id: providerId || prospect.linkedin_user_id,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', prospect.id);
-
-          results.push({
-            prospectId: prospect.id,
-            name: `${prospect.first_name} ${prospect.last_name}`,
-            status: 'skipped',
-            reason: 'invitation_already_sent'
-          });
-          continue;
-        }
-
-        // Mark as failed for real errors
+        // Mark as failed - do NOT infer success from error messages
         await supabase
           .from('campaign_prospects')
           .update({
