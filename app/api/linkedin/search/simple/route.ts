@@ -1228,6 +1228,13 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
+    console.log('🔵 [SEARCH-6/6] About to return success response:', {
+      prospectCount: validProspects.length,
+      totalFound: prospects.length,
+      sessionId,
+      api
+    });
+
     return NextResponse.json({
       success: true,
       prospects: validProspects,

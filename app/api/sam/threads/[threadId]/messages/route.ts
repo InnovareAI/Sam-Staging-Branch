@@ -2119,8 +2119,18 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
           ).trim();
         } else {
           console.log('🔍 [8a/8] Attempting to parse JSON response...');
-          const searchData = await searchResponse.json()
+          let searchData: any = null;
+          try {
+            searchData = await searchResponse.json()
+          } catch (jsonErr) {
+            console.error('❌ [8a2/8] Failed to parse search response JSON:', jsonErr instanceof Error ? jsonErr.message : String(jsonErr));
+            throw new Error(`Search response parse error: ${jsonErr instanceof Error ? jsonErr.message : String(jsonErr)}`);
+          }
+
           console.log('🔍 [8b/8] Search API response:', JSON.stringify(searchData, null, 2));
+          console.log('🔍 [8b2/8] Response success flag:', searchData?.success);
+          console.log('🔍 [8b3/8] Response error:', searchData?.error);
+          console.log('🔍 [8b4/8] Response details:', searchData?.details);
 
           if (searchData.success) {
           const prospectCount = searchData.count || 0
