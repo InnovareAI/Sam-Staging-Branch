@@ -85,12 +85,15 @@ export async function POST(req: NextRequest) {
     console.log(`📋 Campaign: ${campaign.campaign_name}`);
     console.log(`👤 LinkedIn Account: ${linkedinAccount.account_name} (${unipileAccountId})`);
 
-    // 2. Fetch pending prospects
+    // 2. Fetch pending prospects (including failed prospects after 24h cooldown)
+    const cooldownDate = new Date();
+    cooldownDate.setHours(cooldownDate.getHours() - 24);
+
     const { data: prospects, error: prospectsError } = await supabase
       .from('campaign_prospects')
       .select('*')
       .eq('campaign_id', campaignId)
-      .in('status', ['pending', 'approved'])
+      .or(`status.in.(pending,approved),and(status.eq.failed,updated_at.lt.${cooldownDate.toISOString()})`)
       .not('linkedin_url', 'is', null)
       .order('created_at', { ascending: true })
       .limit(20); // Process 20 at a time

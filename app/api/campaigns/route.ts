@@ -325,20 +325,9 @@ export async function POST(req: NextRequest) {
       }, { status: 201 });
     }
 
-    // CLEANUP: Delete completed session from prospect_approval_sessions
-    // This prevents the session from showing up in the campaign creator UI
-    if (session_id) {
-      const { error: deleteError } = await supabase
-        .from('prospect_approval_sessions')
-        .delete()
-        .eq('id', session_id);
-
-      if (deleteError) {
-        console.warn('⚠️  Failed to delete completed session:', deleteError);
-      } else {
-        console.log(`✅ Deleted completed session: ${session_id}`);
-      }
-    }
+    // PERMANENT SESSIONS: Do NOT delete sessions after campaign creation
+    // Sessions are permanent and can be reused across browsers/devices
+    // Users may want to create multiple campaigns from the same prospect list
 
     return NextResponse.json({
       message: 'Campaign created successfully',
