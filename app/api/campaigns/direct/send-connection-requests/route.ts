@@ -121,15 +121,12 @@ export async function POST(req: NextRequest) {
         console.log(`\n👤 Processing: ${prospect.first_name} ${prospect.last_name}`);
 
         // Get LinkedIn profile to get provider_id
-        let providerId = prospect.linkedin_user_id;
-
-        if (!providerId) {
-          console.log(`📝 Fetching LinkedIn profile...`);
-          const profile = await unipileRequest(
-            `/api/v1/users/profile?account_id=${unipileAccountId}&identifier=${encodeURIComponent(prospect.linkedin_url)}`
-          );
-          providerId = profile.provider_id;
-        }
+        // Always fetch from Unipile - don't trust linkedin_user_id (may contain CSV import IDs)
+        console.log(`📝 Fetching LinkedIn profile for ${prospect.linkedin_url}...`);
+        const profile = await unipileRequest(
+          `/api/v1/users/profile?account_id=${unipileAccountId}&identifier=${encodeURIComponent(prospect.linkedin_url)}`
+        );
+        const providerId = profile.provider_id;
 
         // Personalize message
         const personalizedMessage = connectionRequestMessage
@@ -139,14 +136,15 @@ export async function POST(req: NextRequest) {
           .replace(/{title}/g, prospect.title || '');
 
         // Send connection request via REST API
-        console.log(`📤 Sending connection request...`);
+        const payload = {
+          account_id: unipileAccountId,
+          provider_id: providerId,
+          message: personalizedMessage
+        };
+        console.log(`📤 Sending connection request with payload:`, JSON.stringify(payload));
         await unipileRequest('/api/v1/users/invite', {
           method: 'POST',
-          body: JSON.stringify({
-            account_id: unipileAccountId,
-            provider_id: providerId,
-            message: personalizedMessage
-          })
+          body: JSON.stringify(payload)
         });
 
         // Calculate next action time (2 days from now)
