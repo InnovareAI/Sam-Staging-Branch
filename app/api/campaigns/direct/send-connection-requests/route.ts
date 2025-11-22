@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { UnipileClient } from 'unipile-node-sdk';
 
 /**
  * Direct Campaign Execution - Send Connection Requests
  *
  * Simple, no workflow engines:
  * 1. Fetch pending prospects
- * 2. Send CR via Unipile
+ * 2. Send CR via Unipile SDK
  * 3. Update DB with next_action_at
  *
  * POST /api/campaigns/direct/send-connection-requests
@@ -15,28 +16,11 @@ import { createClient } from '@supabase/supabase-js';
 
 export const maxDuration = 300; // 5 minutes
 
-// Unipile API helper (uses X-Api-Key header, not Bearer token)
-const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
-const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
-
-async function unipileRequest(endpoint: string, options: RequestInit = {}) {
-  const response = await fetch(`${UNIPILE_BASE_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      'X-Api-Key': UNIPILE_API_KEY,
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      ...options.headers
-    }
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-    throw new Error(error.title || error.message || `HTTP ${response.status}`);
-  }
-
-  return response.json();
-}
+// Initialize Unipile SDK
+const unipile = new UnipileClient(
+  `https://${process.env.UNIPILE_DSN}`,
+  process.env.UNIPILE_API_KEY!
+);
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -125,9 +109,10 @@ export async function POST(req: NextRequest) {
 
         if (!providerId) {
           console.log(`📝 Fetching LinkedIn profile...`);
-          const profile = await unipileRequest(
-            `/api/v1/users/profile?account_id=${unipileAccountId}&identifier=${encodeURIComponent(prospect.linkedin_url)}`
-          );
+          const profile = await unipile.users.getProfile({
+            account_id: unipileAccountId,
+            identifier: prospect.linkedin_url
+          });
           providerId = profile.provider_id;
         }
 
@@ -138,14 +123,12 @@ export async function POST(req: NextRequest) {
           .replace(/{company_name}/g, prospect.company_name || '')
           .replace(/{title}/g, prospect.title || '');
 
-        // Send connection request
+        // Send connection request via SDK
         console.log(`📤 Sending connection request...`);
-        await unipileRequest(`/api/v1/users/${providerId}/invitation`, {
-          method: 'POST',
-          body: JSON.stringify({
-            account_id: unipileAccountId,
-            message: personalizedMessage
-          })
+        await unipile.users.sendInvitation({
+          account_id: unipileAccountId,
+          provider_id: providerId,
+          message: personalizedMessage
         });
 
         // Calculate next action time (2 days from now)
