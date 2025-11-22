@@ -2156,6 +2156,13 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
             }
           }
 
+          // Include debug info if available (will help diagnose Unipile failures)
+          if (searchData.debug) {
+            errorMsg += `\n\n**Debug Info:**\n`;
+            if (searchData.debug.status) errorMsg += `- Status: ${searchData.debug.status}\n`;
+            if (searchData.debug.url) errorMsg += `- URL: ${searchData.debug.url}\n`;
+          }
+
           if (searchData.action === 'connect_linkedin') {
             errorMsg += `\n\n**Action needed:** Please connect your LinkedIn account in Settings > Integrations first.`
           }
@@ -2167,7 +2174,8 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
             details: searchData.details,
             errorType: typeof searchData.error,
             statusCode: searchData.statusCode,
-            action: searchData.action
+            action: searchData.action,
+            debugInfo: searchData.debug
           });
 
           console.log('🔍 [8c3/8] Error message to insert:', errorMsg.substring(0, 300));
