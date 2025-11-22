@@ -114,8 +114,9 @@ export async function GET(request: NextRequest) {
     // Calculate offset for pagination
     const offset = (page - 1) * limit
 
+    // CRITICAL FIX: Use admin client to bypass RLS for prospect_approval_data queries
     // Get all decisions for this session first
-    const { data: decisions } = await supabase
+    const { data: decisions } = await adminClient
       .from('prospect_approval_decisions')
       .select('prospect_id, decision, reason, decided_by, decided_at')
       .eq('session_id', sessionId)
@@ -126,7 +127,8 @@ export async function GET(request: NextRequest) {
     )
 
     // Build query - get ALL prospects first, we'll filter by status after joining decisions
-    let query = supabase
+    // USE ADMIN CLIENT to bypass RLS policies
+    let query = adminClient
       .from('prospect_approval_data')
       .select('*', { count: 'exact' })
       .eq('session_id', sessionId)
