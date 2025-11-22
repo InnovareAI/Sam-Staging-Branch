@@ -178,11 +178,11 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
         throw new Error('Failed to update campaign status');
       }
 
-      // If activating campaign, trigger it immediately via direct execution
+      // If activating campaign, trigger it via queue-based execution (30 min spacing)
       if (newStatus === 'active' && workspaceId) {
         try {
-          console.log(`🚀 Auto-launching campaign ${campaignId}...`);
-          const launchResponse = await fetch('/api/campaigns/direct/send-connection-requests', {
+          console.log(`🚀 Auto-launching campaign ${campaignId} (queued, 30 min spacing)...`);
+          const launchResponse = await fetch('/api/campaigns/direct/send-connection-requests-queued', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -304,9 +304,9 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   // REACT QUERY: Mutation for executing campaign
   const executeMutation = useMutation({
     mutationFn: async (campaignId: string) => {
-      console.log(`🚀 Executing campaign ${campaignId}...`);
+      console.log(`🚀 Executing campaign ${campaignId} (queued, 30 min spacing)...`);
 
-      const response = await fetch('/api/campaigns/direct/send-connection-requests', {
+      const response = await fetch('/api/campaigns/direct/send-connection-requests-queued', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -2591,28 +2591,36 @@ Would you like me to adjust these or create more variations?`
   };
 
   const handleQuickAddProspect = async () => {
-    if (!quickAddUrl.trim()) {
+    if (!quickAddUrl || !quickAddUrl.trim()) {
       toastError('Please enter a LinkedIn URL');
       return;
     }
 
-    // Basic URL validation
-    if (!quickAddUrl.toLowerCase().includes('linkedin.com/in/')) {
-      toastError('Invalid LinkedIn URL. Expected format: https://linkedin.com/in/username');
+    // Basic URL validation - accept both www and non-www variants
+    const lowerUrl = quickAddUrl.toLowerCase();
+    if (!lowerUrl.includes('linkedin.com') || !lowerUrl.includes('/in/')) {
+      toastError('Invalid LinkedIn URL. Expected format: https://linkedin.com/in/username or https://www.linkedin.com/in/username');
       return;
     }
 
     setIsAddingQuickProspect(true);
 
     try {
+      // Create abort controller with 10 second timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
       const response = await fetch('/api/prospects/quick-add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           linkedin_url: quickAddUrl.trim(),
           workspace_id: workspaceId
-        })
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -2646,10 +2654,19 @@ Would you like me to adjust these or create more variations?`
         } else if (data.campaign_type_suggestion === 'connector' && campaignType !== 'connector') {
           toastSuccess('💡 Tip: This is a 2nd/3rd degree connection - Connector campaign will send a connection request first');
         }
+      } else {
+        toastError(data.message || 'Failed to add prospect');
       }
     } catch (error) {
-      console.error('Quick add prospect error:', error);
-      toastError(error instanceof Error ? error.message : 'Failed to add prospect');
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          toastError('Request timed out. Please try again.');
+        } else {
+          toastError(error.message);
+        }
+      } else {
+        toastError('Failed to add prospect');
+      }
     } finally {
       setIsAddingQuickProspect(false);
     }
@@ -2974,9 +2991,9 @@ Would you like me to adjust these or create more variations?`
       // Update prospects count to include synced IDs
       const totalProspectsWithIds = uploadResult.prospects_with_linkedin_ids + syncedCount;
 
-      // Step 3: Auto-execute via direct Unipile integration
+      // Step 3: Auto-execute via queue-based Unipile integration (30 min spacing)
       if (totalProspectsWithIds > 0 || campaign.campaign_type === 'connector') {
-        const executeEndpoint = '/api/campaigns/direct/send-connection-requests';
+        const executeEndpoint = '/api/campaigns/direct/send-connection-requests-queued';
 
         const executeResponse = await fetch(executeEndpoint, {
           method: 'POST',
@@ -3674,8 +3691,12 @@ Would you like me to adjust these or create more variations?`
                   disabled={isAddingQuickProspect}
                 />
                 <Button
-                  onClick={handleQuickAddProspect}
-                  disabled={!quickAddUrl.trim() || isAddingQuickProspect}
+                  onClick={() => {
+                    if (quickAddUrl && quickAddUrl.trim()) {
+                      handleQuickAddProspect();
+                    }
+                  }}
+                  disabled={typeof quickAddUrl !== 'string' || quickAddUrl.trim().length === 0 || isAddingQuickProspect}
                   className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600"
                 >
                   {isAddingQuickProspect ? (
@@ -6238,10 +6259,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       const totalProspectsWithIds = uploadResult.prospects_with_linkedin_ids + syncedCount;
 
       // Step 3: AUTOMATED EXECUTION - Execute campaign automatically for ALL approved campaigns
-      // Direct Unipile integration - no workflow engine needed
+      // Queue-based Unipile integration (30 min spacing) - no workflow engine needed
       if (mappedProspects.length > 0) {
         try {
-          const executeResponse = await fetch('/api/campaigns/direct/send-connection-requests', {
+          const executeResponse = await fetch('/api/campaigns/direct/send-connection-requests-queued', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -8458,8 +8479,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                           // If activating, also execute the campaign
                           if (newStatus === 'active') {
                             try {
-                              // Direct Unipile integration for LinkedIn campaigns
-                              let executeEndpoint = '/api/campaigns/direct/send-connection-requests';
+                              // Queue-based Unipile integration for LinkedIn campaigns (30 min spacing)
+                              let executeEndpoint = '/api/campaigns/direct/send-connection-requests-queued';
 
                               if (selectedCampaign.campaign_type === 'email') {
                                 executeEndpoint = '/api/campaigns/email/execute';

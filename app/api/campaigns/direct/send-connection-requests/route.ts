@@ -2,20 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 /**
- * Direct Campaign Execution - Send Connection Requests
+ * ⚠️ DISABLED - DO NOT USE
  *
- * Queue-based system for testing:
- * 1. Fetch pending prospects
- * 2. Create send_queue records (one CR every 30 minutes)
- * 3. Cron job processes queue and sends actual CRs
+ * This endpoint is DISABLED to prevent direct sends bypassing the queue.
+ * Use /api/campaigns/direct/send-connection-requests-queued instead.
  *
  * POST /api/campaigns/direct/send-connection-requests
  * Body: { campaignId: string }
  *
- * TESTING MODE: Sends 1 CR every 30 minutes to stay under 20/day limit
+ * ❌ DISABLED - All requests rejected
  */
 
-export const maxDuration = 60; // 60 seconds (queue creation only, no actual sending)
+export const maxDuration = 60;
 
 // Unipile REST API configuration
 const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
@@ -46,6 +44,12 @@ const supabase = createClient(
 );
 
 export async function POST(req: NextRequest) {
+  return NextResponse.json({
+    error: 'DISABLED',
+    message: 'This endpoint is disabled to prevent direct sends. Use /api/campaigns/direct/send-connection-requests-queued instead.'
+  }, { status: 503 });
+
+  // DISABLED CODE BELOW - DO NOT USE
   try {
     const { campaignId } = await req.json();
 
@@ -53,7 +57,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'campaignId required' }, { status: 400 });
     }
 
-    console.log(`🚀 Starting direct campaign execution: ${campaignId}`);
+    console.log(`🚀 DISABLED - direct campaign execution: ${campaignId}`);
 
     // 1. Fetch campaign details
     const { data: campaign, error: campaignError } = await supabase

@@ -57,12 +57,18 @@ export async function POST(request: NextRequest) {
     let fullName = 'LinkedIn User';
 
     try {
-      // Try to find this person in Unipile connections
+      // Try to find this person in Unipile connections (with 5 second timeout)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       const unipileResponse = await fetch(`https://${process.env.UNIPILE_DSN}/api/v1/users/${username}?account_id=${process.env.UNIPILE_ACCOUNT_ID}`, {
         headers: {
           'X-API-KEY': process.env.UNIPILE_API_KEY || ''
-        }
+        },
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (unipileResponse.ok) {
         const unipileData = await unipileResponse.json();
@@ -125,14 +131,21 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Prospect saved to database');
 
-    // Step 5: Return success
+    // Step 5: Return success with prospect data
     return NextResponse.json({
       success: true,
       message: connectionDegree === '1st'
         ? '✅ Added as 1st degree connection (Messenger campaign ready)'
         : '✅ Added as 2nd/3rd degree (Connector campaign ready)',
       campaign_type_suggestion: connectionDegree === '1st' ? 'messenger' : 'connector',
-      session_id: sessionId
+      session_id: sessionId,
+      prospect: {
+        name: fullName,
+        linkedin_url: linkedin_url,
+        linkedin_user_id: linkedinUserId,
+        connection_degree: connectionDegree,
+        source: 'quick_add'
+      }
     });
 
   } catch (error) {

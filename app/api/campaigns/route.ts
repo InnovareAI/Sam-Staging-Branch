@@ -36,7 +36,8 @@ export async function GET(req: NextRequest) {
         execution_preferences,
         connection_message,
         alternative_message,
-        follow_up_messages
+        follow_up_messages,
+        email_account_id
       `)
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false });

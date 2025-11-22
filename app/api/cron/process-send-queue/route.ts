@@ -94,41 +94,26 @@ export async function POST(req: NextRequest) {
   try {
     // Security check
     const cronSecret = req.headers.get('x-cron-secret');
+    console.log('🕐 Cron request received');
+    console.log(`   Secret received: ${cronSecret ? cronSecret.substring(0, 10) + '...' : 'MISSING'}`);
+    console.log(`   Expected: ${process.env.CRON_SECRET ? process.env.CRON_SECRET.substring(0, 10) + '...' : 'NOT SET'}`);
+
     if (cronSecret !== process.env.CRON_SECRET) {
-      console.warn('⚠️  Unauthorized cron request');
+      console.warn(`⚠️  Unauthorized cron request - secret mismatch`);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('🕐 Processing send queue...');
+    console.log('✅ Cron secret validated. Processing send queue...');
 
     // 1. Find NEXT message due to send (order by scheduled_for ASC, limit 1)
+    const now = new Date().toISOString();
+    console.log(`⏰ Current time: ${now}`);
+
     const { data: queuedMessages, error: fetchError } = await supabase
       .from('send_queue')
-      .select(`
-        id,
-        campaign_id,
-        prospect_id,
-        linkedin_user_id,
-        scheduled_for,
-        message,
-        campaigns!inner (
-          id,
-          campaign_name,
-          linkedin_account_id,
-          workspace_accounts!linkedin_account_id (
-            unipile_account_id,
-            account_name
-          )
-        ),
-        campaign_prospects (
-          id,
-          first_name,
-          last_name,
-          linkedin_url
-        )
-      `)
+      .select('*')
       .eq('status', 'pending')
-      .lte('scheduled_for', new Date().toISOString())
+      .lte('scheduled_for', now)
       .order('scheduled_for', { ascending: true })
       .limit(1);
 
@@ -136,6 +121,8 @@ export async function POST(req: NextRequest) {
       console.error('❌ Queue fetch error:', fetchError);
       return NextResponse.json({ error: 'Failed to fetch queue' }, { status: 500 });
     }
+
+    console.log(`📋 Found ${queuedMessages?.length || 0} messages due`);
 
     if (!queuedMessages || queuedMessages.length === 0) {
       console.log('✅ No messages due');
@@ -147,21 +134,51 @@ export async function POST(req: NextRequest) {
     }
 
     const queueItem = queuedMessages[0];
-    const scheduledFor = new Date(queueItem.scheduled_for);
+    console.log(`🔍 Processing queue item:`, {
+      id: queueItem.id,
+      campaign_id: queueItem.campaign_id,
+      prospect_id: queueItem.prospect_id,
+      linkedin_user_id: queueItem.linkedin_user_id,
+      scheduled_for: queueItem.scheduled_for
+    });
 
-    // Check if message should be skipped due to weekend or holiday
-    if (!canSendMessage(scheduledFor)) {
-      console.log(`⏳ Message scheduled for weekend/holiday. Will try again on next business day.`);
-      return NextResponse.json({
-        success: true,
-        processed: 0,
-        message: 'Message scheduled for weekend/holiday - skipped until next business day',
-        scheduledFor: queueItem.scheduled_for
-      });
+    // 2. Fetch campaign details
+    const { data: campaign, error: campaignError } = await supabase
+      .from('campaigns')
+      .select('id, campaign_name, linkedin_account_id')
+      .eq('id', queueItem.campaign_id)
+      .single();
+
+    if (campaignError || !campaign) {
+      console.error('❌ Campaign not found:', campaignError);
+      return NextResponse.json({ error: 'Campaign not found' }, { status: 400 });
     }
-    const campaign = queueItem.campaigns as any;
-    const prospect = queueItem.campaign_prospects[0];
-    const linkedinAccount = campaign.workspace_accounts as any;
+
+    // 3. Fetch workspace account
+    console.log(`🔍 Looking for workspace account with ID: ${campaign.linkedin_account_id}`);
+    const { data: linkedinAccount, error: accountError } = await supabase
+      .from('workspace_accounts')
+      .select('unipile_account_id, account_name')
+      .eq('id', campaign.linkedin_account_id)
+      .single();
+
+    if (accountError || !linkedinAccount) {
+      console.error('❌ LinkedIn account not found:', accountError);
+      return NextResponse.json({ error: 'LinkedIn account not found' }, { status: 400 });
+    }
+
+    // 4. Fetch prospect details
+    const { data: prospect, error: prospectError } = await supabase
+      .from('campaign_prospects')
+      .select('id, first_name, last_name, linkedin_url')
+      .eq('id', queueItem.prospect_id)
+      .single();
+
+    if (prospectError || !prospect) {
+      console.error('❌ Prospect not found:', prospectError);
+      return NextResponse.json({ error: 'Prospect not found' }, { status: 400 });
+    }
+
     const unipileAccountId = linkedinAccount.unipile_account_id;
 
     console.log(`\n📤 Sending CR to ${prospect.first_name} ${prospect.last_name}`);
@@ -177,7 +194,9 @@ export async function POST(req: NextRequest) {
         message: queueItem.message
       };
 
-      console.log(`📨 Sending to provider_id: ${queueItem.linkedin_user_id}`);
+      console.log(`📨 Unipile payload:`, JSON.stringify(payload, null, 2));
+      console.log(`📨 Account ID: ${unipileAccountId}`);
+      console.log(`📨 Provider ID: ${queueItem.linkedin_user_id}`);
 
       await unipileRequest('/api/v1/users/invite', {
         method: 'POST',

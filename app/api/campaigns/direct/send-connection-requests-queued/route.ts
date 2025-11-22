@@ -2,18 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 /**
- * Direct Campaign Execution - Queue-Based (TESTING MODE)
+ * Direct Campaign Execution - Queue-Based (TESTING MODE - 5 MIN SPACING)
  *
  * Safe queue-based system for gradual CR sending:
  * 1. Fetch pending prospects
- * 2. Create send_queue records (spaced 30 minutes apart)
+ * 2. Create send_queue records (spaced 5 minutes apart - ACCELERATED FOR TESTING)
  * 3. Cron job processes queue and sends actual CRs
  *
  * POST /api/campaigns/direct/send-connection-requests-queued
  * Body: { campaignId: string }
  *
- * TESTING MODE: Creates queue with 1 CR every 30 minutes
- * This ensures we never exceed 20 CRs/day (20 * 30 min = 10 hours)
+ * TESTING MODE: Creates queue with 1 CR every 5 minutes (accelerated testing)
+ * Production mode: Change to 30 minutes (1 CR every 30 min = 20 CRs per 10 hours)
  *
  * Response: Immediate (no hanging)
  * Actual sending: Happens via cron job every minute
@@ -323,22 +323,17 @@ export async function POST(req: NextRequest) {
         }
 
         // VALIDATION PASSED: Create queue record
-        // Schedule 1 CR every 30 minutes, but skip weekends and holidays
+        // Schedule to start immediately with 5-minute spacing
         let scheduledFor = new Date();
-        scheduledFor.setMinutes(scheduledFor.getMinutes() + (prospectIndex * 30));
 
-        // If scheduled for weekend or holiday, move to next business day (same time)
-        if (isWeekend(scheduledFor) || isPublicHoliday(scheduledFor)) {
-          const nextBusinessDay = getNextBusinessDay(scheduledFor);
-          // Keep the same time but move to next business day
-          const timeOfDay = scheduledFor.getHours() * 3600 + scheduledFor.getMinutes() * 60 + scheduledFor.getSeconds();
-          scheduledFor = new Date(nextBusinessDay);
-          scheduledFor.setHours(Math.floor(timeOfDay / 3600));
-          scheduledFor.setMinutes(Math.floor((timeOfDay % 3600) / 60));
-          scheduledFor.setSeconds(timeOfDay % 60);
-        }
+        // Clear seconds and milliseconds for consistency
+        scheduledFor.setSeconds(0, 0);
+
+        // Add 5-minute spacing for this prospect (0 min for first, 5 for second, 10 for third, etc)
+        scheduledFor.setMinutes(scheduledFor.getMinutes() + (prospectIndex * 5));
 
         console.log(`✅ Valid prospect - queuing for ${scheduledFor.toLocaleTimeString()}`);
+        console.log(`   Index: ${prospectIndex}, Scheduled (ISO): ${scheduledFor.toISOString()}`);
 
         queueRecords.push({
           campaign_id: campaignId,
@@ -376,16 +371,28 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Bulk insert queue records
-    const { error: insertError } = await supabase
+    console.log(`\n📝 Attempting to insert ${queueRecords.length} queue records...`);
+    console.log(`📋 ALL queue records to be inserted:`);
+    queueRecords.forEach((record, index) => {
+      console.log(`   [${index}] scheduled_for: ${record.scheduled_for}, prospect: ${record.linkedin_user_id}`);
+    });
+
+    const { data: insertedData, error: insertError } = await supabase
       .from('send_queue')
-      .insert(queueRecords);
+      .insert(queueRecords)
+      .select();
 
     if (insertError) {
-      console.error('Queue insertion error:', insertError);
+      console.error('❌ Queue insertion error:', insertError);
+      console.error('   Error details:', JSON.stringify(insertError, null, 2));
       return NextResponse.json({ error: `Failed to queue messages: ${insertError.message}` }, { status: 500 });
     }
 
-    console.log(`✅ Queued ${queueRecords.length} messages`);
+    console.log(`✅ Successfully inserted ${insertedData?.length || 0} records`);
+    if (!insertedData || insertedData.length === 0) {
+      console.error('⚠️  WARNING: Insert returned no data even though no error was thrown!');
+      console.error('   This suggests a constraint violation or RLS policy issue.');
+    }
 
     // Calculate estimated completion time
     const lastScheduledTime = new Date(queueRecords[queueRecords.length - 1].scheduled_for);
@@ -428,12 +435,12 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     name: 'Queue-Based Campaign Execution',
-    description: 'Creates send_queue records for gradual CR sending (1 every 30 minutes)',
+    description: 'Creates send_queue records for gradual CR sending (1 every 5 minutes - TESTING MODE)',
     endpoint: '/api/campaigns/direct/send-connection-requests-queued',
     method: 'POST',
-    mode: 'TESTING MODE (safe)',
-    sending_pattern: '1 CR every 30 minutes = 20 CRs per 10 hours',
-    daily_limit: '20 CRs per day (LinkedIn free tier)',
+    mode: 'TESTING MODE (accelerated - 5 min spacing)',
+    sending_pattern: '1 CR every 5 minutes (TESTING) - Change to 30 minutes for production',
+    daily_limit: '20 CRs per day (LinkedIn free tier) - Testing cadence will exceed this',
     payload: {
       campaignId: 'UUID of campaign to queue'
     },

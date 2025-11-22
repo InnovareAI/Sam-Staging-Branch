@@ -133,10 +133,10 @@ export async function POST(request: NextRequest) {
           ready_to_send: true
         });
 
-        // If send_immediately is true, execute LinkedIn campaign
+        // If send_immediately is true, execute LinkedIn campaign via QUEUE (not direct)
         if (send_immediately) {
           try {
-            const linkedinResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/campaigns/direct/send-connection-requests`, {
+            const linkedinResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/campaigns/direct/send-connection-requests-queued`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

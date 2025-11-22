@@ -55,5 +55,19 @@ CREATE POLICY "Users can view send_queue for their campaigns"
     )
   );
 
--- RLS Policy: Service role and cron jobs can access all send_queue records
+-- RLS Policy: Allow INSERT for service role (bypasses RLS anyway)
+-- Note: Service role key bypasses all RLS, so this is for documentation
+CREATE POLICY "Allow INSERT for service role"
+  ON send_queue
+  FOR INSERT
+  WITH CHECK (true);
+
+-- RLS Policy: Allow UPDATE for service role
+CREATE POLICY "Allow UPDATE for service role"
+  ON send_queue
+  FOR UPDATE
+  USING (true)
+  WITH CHECK (true);
+
+-- RLS Policy: Cron jobs and service role can access all records
 -- (relies on SUPABASE_SERVICE_ROLE_KEY which bypasses RLS)

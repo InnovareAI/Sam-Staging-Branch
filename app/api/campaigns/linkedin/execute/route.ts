@@ -62,10 +62,15 @@ interface Campaign {
 }
 
 export async function POST(req: NextRequest) {
+  return NextResponse.json({
+    error: 'DISABLED',
+    message: 'This endpoint is disabled. Use /api/campaigns/direct/send-connection-requests-queued instead.'
+  }, { status: 503 });
+
   try {
     const supabase = createClient();
-    
-    // Get user and workspace
+
+    // DISABLED - DO NOT USE
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -73,7 +78,7 @@ export async function POST(req: NextRequest) {
 
     // Get request data
     const { campaignId } = await req.json();
-    
+
     if (!campaignId) {
       return NextResponse.json({ error: 'Campaign ID required' }, { status: 400 });
     }

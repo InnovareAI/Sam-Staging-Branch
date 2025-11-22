@@ -920,8 +920,8 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: false,
-      error: statusCode === 503 ? 
-        'Unipile integration not configured. Please check environment variables.' : 
+      error: statusCode === 503 ?
+        `Unipile API error: ${errorMessage}` :
         errorMessage,
       requires_2fa: requires2FA,
       requires_captcha: requiresCaptcha,

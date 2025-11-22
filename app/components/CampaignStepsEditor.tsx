@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Calendar, FileText, GripVertical, MessageSquare, Plus, Settings, Tag, Trash2, Upload } from 'lucide-react';
 import { toastError } from '@/lib/toast';
 
@@ -88,6 +88,9 @@ export default function CampaignStepsEditor({
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
   const [uploadingTemplate, setUploadingTemplate] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [emailAccounts, setEmailAccounts] = useState<any[]>([]);
+  const [selectedEmailAccountId, setSelectedEmailAccountId] = useState<string>('');
+  const [loadingEmailAccounts, setLoadingEmailAccounts] = useState(false);
 
   const selectedStep = steps.find(s => s.id === selectedStepId);
 
@@ -100,6 +103,62 @@ export default function CampaignStepsEditor({
     { tag: '{{pain_point}}', description: 'Custom pain point' },
     { tag: '{{value_prop}}', description: 'Custom value proposition' }
   ];
+
+  // Load email accounts when settings modal opens for email campaigns
+  useEffect(() => {
+    if (showSettings && campaignType === 'email') {
+      loadEmailAccounts();
+      loadCampaignEmailAccount();
+    }
+  }, [showSettings, campaignType, campaignId]);
+
+  const loadCampaignEmailAccount = async () => {
+    try {
+      const response = await fetch(`/api/campaigns/${campaignId}`);
+      if (!response.ok) {
+        console.warn('Failed to load campaign details');
+        return;
+      }
+
+      const data = await response.json();
+      if (data.campaign?.email_account_id && !selectedEmailAccountId) {
+        setSelectedEmailAccountId(data.campaign.email_account_id);
+      }
+    } catch (error) {
+      console.error('Error loading campaign email account:', error);
+    }
+  };
+
+  const loadEmailAccounts = async () => {
+    try {
+      setLoadingEmailAccounts(true);
+      // Get workspace_id from current user's metadata (would be passed from parent in real scenario)
+      const workspaceId = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('workspace_id');
+
+      if (!workspaceId) {
+        console.warn('Workspace ID not found in URL');
+        return;
+      }
+
+      const response = await fetch(`/api/email-providers?workspace_id=${workspaceId}`);
+      if (!response.ok) {
+        console.error('Failed to fetch email accounts:', response.status);
+        return;
+      }
+
+      const data = await response.json();
+      setEmailAccounts(data.providers || []);
+
+      // Auto-select first account if none selected
+      if (data.providers && data.providers.length > 0 && !selectedEmailAccountId) {
+        setSelectedEmailAccountId(data.providers[0].id);
+      }
+    } catch (error) {
+      console.error('Error loading email accounts:', error);
+    } finally {
+      setLoadingEmailAccounts(false);
+    }
+  };
 
   const addStep = () => {
     const newStep: CampaignStep = {
@@ -164,9 +223,32 @@ export default function CampaignStepsEditor({
     setSamInput('');
   };
 
-  const handleSave = () => {
-    onSave(steps);
-    onClose();
+  const handleSave = async () => {
+    try {
+      // Save email account selection if this is an email campaign
+      if (campaignType === 'email' && selectedEmailAccountId) {
+        const updateResponse = await fetch(`/api/campaigns/${campaignId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email_account_id: selectedEmailAccountId
+          })
+        });
+
+        if (!updateResponse.ok) {
+          const errorData = await updateResponse.json();
+          console.error('Failed to save email account selection:', errorData);
+          toastError('Failed to save email account selection');
+          return;
+        }
+      }
+
+      onSave(steps);
+      onClose();
+    } catch (error) {
+      console.error('Error saving campaign:', error);
+      toastError('Failed to save campaign');
+    }
   };
 
   const handleAskSAMToDraft = () => {
@@ -752,6 +834,44 @@ export default function CampaignStepsEditor({
                     </>
                   )}
                 </div>
+
+                {/* Email Account Selection (Email Campaigns Only) */}
+                {campaignType === 'email' && (
+                  <div className="border-b border-gray-700 pb-6">
+                    <h4 className="text-white font-medium mb-2">Email Account</h4>
+                    <p className="text-gray-400 text-sm mb-3">Select which email account to send this campaign from. You can add more accounts in Settings → Email Integration.</p>
+
+                    {loadingEmailAccounts ? (
+                      <div className="text-gray-400 text-sm py-2">Loading email accounts...</div>
+                    ) : emailAccounts.length === 0 ? (
+                      <div className="text-gray-400 text-sm py-3 px-3 bg-gray-700 rounded">
+                        No email accounts configured. <a href="/settings/integrations" className="text-purple-400 hover:text-purple-300">Add an email account</a> first.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <select
+                          value={selectedEmailAccountId}
+                          onChange={(e) => setSelectedEmailAccountId(e.target.value)}
+                          className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none"
+                        >
+                          <option value="">-- Select Email Account --</option>
+                          {emailAccounts.map((account) => (
+                            <option key={account.id} value={account.id}>
+                              {account.email_address} {account.provider_name && `(${account.provider_name})`}
+                            </option>
+                          ))}
+                        </select>
+                        {selectedEmailAccountId && emailAccounts.length > 0 && (
+                          <div className="text-xs text-gray-400 mt-2 p-2 bg-gray-700 rounded">
+                            <div className="font-medium text-gray-300 mb-1">Selected Account:</div>
+                            <div>{emailAccounts.find(a => a.id === selectedEmailAccountId)?.email_address}</div>
+                            <div className="text-gray-500 text-xs mt-1">Status: {emailAccounts.find(a => a.id === selectedEmailAccountId)?.status || 'Unknown'}</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Campaign Status */}
                 <div className="border-b border-gray-700 pb-6">
