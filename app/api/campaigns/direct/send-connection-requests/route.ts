@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { UnipileClient } from 'unipile-node-sdk';
 
 /**
  * Direct Campaign Execution - Send Connection Requests
@@ -16,10 +15,28 @@ import { UnipileClient } from 'unipile-node-sdk';
 
 export const maxDuration = 300; // 5 minutes
 
-const unipile = new UnipileClient(
-  `https://${process.env.UNIPILE_DSN}`,
-  process.env.UNIPILE_API_KEY!
-);
+// Unipile API helper (uses X-Api-Key header, not Bearer token)
+const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
+const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
+
+async function unipileRequest(endpoint: string, options: RequestInit = {}) {
+  const response = await fetch(`${UNIPILE_BASE_URL}${endpoint}`, {
+    ...options,
+    headers: {
+      'X-Api-Key': UNIPILE_API_KEY,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+    throw new Error(error.title || error.message || `HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -108,10 +125,9 @@ export async function POST(req: NextRequest) {
 
         if (!providerId) {
           console.log(`📝 Fetching LinkedIn profile...`);
-          const profile = await unipile.users.getProfile({
-            account_id: unipileAccountId,
-            identifier: prospect.linkedin_url
-          });
+          const profile = await unipileRequest(
+            `/api/v1/users/profile?account_id=${unipileAccountId}&identifier=${encodeURIComponent(prospect.linkedin_url)}`
+          );
           providerId = profile.provider_id;
         }
 
@@ -124,10 +140,12 @@ export async function POST(req: NextRequest) {
 
         // Send connection request
         console.log(`📤 Sending connection request...`);
-        await unipile.users.sendInvitation({
-          account_id: unipileAccountId,
-          provider_id: providerId,
-          message: personalizedMessage
+        await unipileRequest(`/api/v1/users/${providerId}/invitation`, {
+          method: 'POST',
+          body: JSON.stringify({
+            account_id: unipileAccountId,
+            message: personalizedMessage
+          })
         });
 
         // Calculate next action time (2 days from now)
