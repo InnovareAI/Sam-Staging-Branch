@@ -224,34 +224,58 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
     }, 300000);
   };
 
-  // Add SMTP provider
+  // Add SMTP provider via Unipile
   const addSMTPProvider = async () => {
     try {
       setIsConnecting(true);
 
-      const response = await fetch('/api/email-providers', {
+      // First, create SMTP account in Unipile
+      console.log('📧 Creating SMTP account in Unipile...');
+      const unipileResponse = await fetch('/api/unipile/accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'SMTP',
+          username: smtpForm.smtp_username,
+          password: smtpForm.smtp_password,
+          host: smtpForm.smtp_host,
+          port: parseInt(smtpForm.smtp_port),
+          use_tls: smtpForm.smtp_use_tls,
+          use_ssl: smtpForm.smtp_use_ssl,
+        }),
+      });
+
+      const unipileData = await unipileResponse.json();
+
+      if (!unipileResponse.ok || !unipileData.success) {
+        throw new Error(unipileData.error || 'Failed to create SMTP account in Unipile');
+      }
+
+      console.log('✅ SMTP account created in Unipile:', unipileData.account_id);
+
+      // Now save to our email_providers table
+      const saveResponse = await fetch('/api/email-providers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           provider_type: 'smtp',
-          provider_name: 'Custom SMTP',
+          provider_name: smtpForm.email_address,
           email_address: smtpForm.email_address,
           config: {
+            unipile_account_id: unipileData.account_id,
             host: smtpForm.smtp_host,
             port: parseInt(smtpForm.smtp_port),
             username: smtpForm.smtp_username,
-            password: smtpForm.smtp_password,
             use_tls: smtpForm.smtp_use_tls,
             use_ssl: smtpForm.smtp_use_ssl,
           },
         }),
       });
 
-      const data = await response.json();
+      const saveData = await saveResponse.json();
 
-      if (data.success) {
+      if (saveData.success) {
         showNotification('success', 'SMTP account added successfully');
-        setShowAddProvider(false);
         setAddProviderType(null);
         setSmtpForm({
           email_address: '',
@@ -264,11 +288,11 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
         });
         await fetchProviders();
       } else {
-        throw new Error(data.error || 'Failed to add SMTP provider');
+        throw new Error(saveData.error || 'Failed to save SMTP provider');
       }
     } catch (error) {
       console.error('Error adding SMTP provider:', error);
-      showNotification('error', 'Failed to add SMTP account');
+      showNotification('error', error instanceof Error ? error.message : 'Failed to add SMTP account');
     } finally {
       setIsConnecting(false);
     }

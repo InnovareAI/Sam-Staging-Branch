@@ -500,8 +500,63 @@ export async function POST(request: NextRequest) {
     console.log(`👤 User ${user.email} (${user.id}) attempting LinkedIn connection`)
 
     const body = await request.json()
-    const { action, account_id, linkedin_credentials, captcha_response } = body
-    
+    const {
+      action,
+      account_id,
+      linkedin_credentials,
+      captcha_response,
+      provider,
+      username,
+      password,
+      host,
+      port,
+      use_tls,
+      use_ssl
+    } = body
+
+    // SMTP account creation
+    if (provider === 'SMTP') {
+      console.log('📧 Creating SMTP account in Unipile...')
+
+      if (!username || !password || !host || !port) {
+        return NextResponse.json({
+          success: false,
+          error: 'Missing required SMTP fields: username, password, host, port',
+          timestamp: new Date().toISOString()
+        }, { status: 400 })
+      }
+
+      try {
+        // Create SMTP account via Unipile API
+        const smtpResult = await callUnipileAPI('accounts', 'POST', {
+          type: 'SMTP',
+          connection_params: {
+            mail: {
+              username: username,
+              password: password,
+              host: host,
+              port: port || 587,
+              use_tls: use_tls !== false, // Default to true if not specified
+              use_ssl: use_ssl === true   // Default to false if not specified
+            }
+          }
+        })
+
+        console.log('✅ SMTP account created in Unipile:', smtpResult.id)
+
+        return NextResponse.json({
+          success: true,
+          action: 'created_smtp',
+          account_id: smtpResult.id,
+          account: smtpResult,
+          timestamp: new Date().toISOString()
+        })
+      } catch (error) {
+        console.error('❌ Failed to create SMTP account:', error)
+        throw error
+      }
+    }
+
     if (action === 'manual_associate') {
       // Manual association for existing Unipile LinkedIn account to SAM AI user
       console.log(`🔗 Manual association requested for user ${user.email}`)

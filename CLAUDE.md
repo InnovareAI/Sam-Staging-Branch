@@ -22,10 +22,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Unipile Configuration:**
 - DSN: `api6.unipile.com:13670`
-- API Key: `POcBmCSV.b/t0gstHvY5alDsy/BmKQmUBt4FmNXRF7fdOYqywJSM=` (set via `netlify env:set` - **NOVEMBER 22, 2025 FIX**)
+- API Key: `39qOAzhn.7ks6QfCYBMSYSEx4op78j57lD5ZItVooPcsN1Fu1EbE=` (set via `netlify env:set` - **NOVEMBER 22, 2025 FINAL FIX**)
 - Account ID (Irish): `ymtTx4xVQ6OVUFk83ctwtA`
 
-**⚠️ CRITICAL - November 22, 2025:** Previous API key `/kdLciOD.5b8LbZkgBTK60Dubiv8ER49imjSwJV1cBCyZotKj70I=` was invalid. Updated to correct key `POcBmCSV.b/t0gstHvY5alDsy/BmKQmUBt4FmNXRF7fdOYqywJSM=` and deployed to production via Netlify CLI.
+**⚠️ CRITICAL - November 22, 2025 (LATEST FIX):** Previous API key `POcBmCSV.b/t0gstHvY5alDsy/BmKQmUBt4FmNXRF7fdOYqywJSM=` was returning 401 "Missing credentials". Updated to correct key `39qOAzhn.7ks6QfCYBMSYSEx4op78j57lD5ZItVooPcsN1Fu1EbE=` via `netlify env:set UNIPILE_API_KEY "39qOAzhn.7ks6QfCYBMSYSEx4op78j57lD5ZItVooPcsN1Fu1EbE="` and deployed to production. **✅ VERIFIED WORKING - Cron job now successfully processing queue.**
 
 ---
 
