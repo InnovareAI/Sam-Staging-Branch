@@ -192,15 +192,18 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // CRITICAL: Extract LinkedIn URL from multiple possible locations
+      // CRITICAL: Extract LinkedIn URL and provider_id from multiple possible locations
       const linkedinUrl = prospect.contact?.linkedin_url || prospect.linkedin_url || null;
+      const linkedinUserId = prospect.contact?.linkedin_provider_id || null;
 
       console.log('📊 Prospect data:', {
         prospect_id: prospect.prospect_id,
         name: `${firstName} ${lastName}`,
         linkedin_url: linkedinUrl,
+        linkedin_user_id: linkedinUserId,
         has_contact: !!prospect.contact,
         contact_linkedin: prospect.contact?.linkedin_url,
+        contact_provider_id: prospect.contact?.linkedin_provider_id,
         direct_linkedin: prospect.linkedin_url
       });
 
@@ -211,7 +214,8 @@ export async function POST(request: NextRequest) {
         last_name: lastName,
         email: prospect.contact?.email || null,
         company_name: prospect.company?.name || '',
-        linkedin_url: linkedinUrl, // FIXED: Check both locations
+        linkedin_url: linkedinUrl, // Cleaned LinkedIn URL (without query parameters)
+        linkedin_user_id: linkedinUserId, // Authoritative LinkedIn provider_id (doesn't change)
         title: prospect.title || '',
         location: prospect.location || null,
         industry: prospect.company?.industry?.[0] || 'Not specified',

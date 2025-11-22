@@ -222,6 +222,29 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Found ${items.length} prospects from Unipile`);
 
+    // Helper function to clean LinkedIn URLs
+    const cleanLinkedInUrl = (url: string): string => {
+      if (!url) return '';
+      try {
+        const urlObj = new URL(url);
+        // Remove all query parameters (miniProfileUrn, etc.)
+        urlObj.search = '';
+        // Remove trailing slash
+        let cleanUrl = urlObj.toString().replace(/\/$/, '');
+        // Extract just the profile identifier
+        if (cleanUrl.includes('linkedin.com/in/')) {
+          const match = cleanUrl.match(/linkedin\.com\/in\/([^/?#]+)/);
+          if (match) {
+            return `https://www.linkedin.com/in/${match[1]}`;
+          }
+        }
+        return cleanUrl;
+      } catch (error) {
+        console.error('Error cleaning LinkedIn URL:', url, error);
+        return url;
+      }
+    };
+
     // Transform prospects to our format
     const prospects = items.map((item: any) => ({
       // Basic info
@@ -235,8 +258,11 @@ export async function POST(request: NextRequest) {
       company: item.company_name || item.current_company,
       industry: item.industry,
 
-      // LinkedIn specific
-      linkedinUrl: item.profile_url,
+      // LinkedIn specific - CRITICAL FIX
+      // Store provider_id (authoritative LinkedIn user ID that doesn't change)
+      // and cleaned LinkedIn URL (remove query parameters)
+      providerId: item.provider_id,
+      linkedinUrl: cleanLinkedInUrl(item.profile_url),
       publicIdentifier: item.public_identifier,
 
       // Location
@@ -302,6 +328,8 @@ export async function POST(request: NextRequest) {
           profile_image: null, // LinkedIn doesn't provide images via search API
           contact: {
             linkedin: p.linkedinUrl,
+            linkedin_provider_id: p.providerId, // Store authoritative LinkedIn ID
+            public_identifier: p.publicIdentifier,
             email: null // Not available from search
           },
           recent_activity: p.headline,
