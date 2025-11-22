@@ -104,11 +104,11 @@ export async function POST(request: NextRequest) {
     // Get LinkedIn account from workspace_accounts table - ONLY user's own accounts
     let linkedinAccountId = accountId;
     if (!linkedinAccountId) {
+      // Get any workspace member's LinkedIn account (can be shared across team)
       const { data: linkedinAccounts } = await supabase
         .from('workspace_accounts')
         .select('unipile_account_id, account_name, account_identifier')
         .eq('workspace_id', workspaceId)
-        .eq('user_id', user.id) // CRITICAL: Only user's own accounts
         .eq('account_type', 'linkedin')
         .eq('connection_status', 'connected');
 
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
       if (!linkedinAccounts || linkedinAccounts.length === 0) {
         return NextResponse.json({
           success: false,
-          error: 'No active LinkedIn account found. Please connect your LinkedIn account first.',
+          error: 'No active LinkedIn account found. Please connect a LinkedIn account to your workspace first.',
           action: 'connect_linkedin'
         }, { status: 400 });
       }
