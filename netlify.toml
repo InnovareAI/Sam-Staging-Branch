@@ -47,3 +47,7 @@
 # Scheduled function: Process pending prospects every 5 minutes
 [functions."process-pending-prospects"]
   schedule = "*/5 * * * *"
+
+# Scheduled function: Process send queue every minute (replaces cron-job.org)
+[functions."process-send-queue"]
+  schedule = "* * * * *"
