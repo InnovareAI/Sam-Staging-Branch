@@ -70,13 +70,13 @@ export async function GET(request: NextRequest) {
     // Get user's sessions (permanent sessions, visible across browsers/devices)
     console.log(`🔍 Fetching sessions for workspace: ${workspaceId}, user: ${user.email}`);
 
-    // Fetch sessions - Show ONLY user's own sessions (permanent, across browsers)
+    // Fetch sessions - Show ALL workspace sessions (approved prospects visible to all)
     // IMPORTANT: Only show 'active' sessions (exclude 'completed' and 'archived')
     const { data: sessions, error: sessionsError } = await supabase
       .from('prospect_approval_sessions')
       .select('*')
       .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id) // CRITICAL: Only show user's own sessions
+      // REMOVED user_id filter - all workspace members see approved prospects
       .eq('status', 'active') // Only show active sessions (not completed/archived)
       .order('created_at', { ascending: false });
 
