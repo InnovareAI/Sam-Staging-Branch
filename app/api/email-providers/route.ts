@@ -164,9 +164,9 @@ export async function GET(request: NextRequest) {
 
         if (!belongsToWorkspace) return false
 
-        // Include GOOGLE, GOOGLE_OAUTH, OUTLOOK, OUTLOOK_OAUTH, and MESSAGING types
+        // Include GOOGLE, GOOGLE_OAUTH, OUTLOOK, OUTLOOK_OAUTH, MESSAGING, and MAIL (IMAP/SMTP) types
         const accountType = account.type?.toUpperCase() || ''
-        const isEmailType = accountType.includes('GOOGLE') || accountType.includes('OUTLOOK') || accountType === 'MESSAGING'
+        const isEmailType = accountType.includes('GOOGLE') || accountType.includes('OUTLOOK') || accountType === 'MESSAGING' || accountType === 'MAIL'
         console.log(`  Type check: ${accountType} →`, isEmailType ? '✅ email type' : '❌ not email')
 
         return isEmailType
@@ -180,6 +180,7 @@ export async function GET(request: NextRequest) {
         const accountType = account.type?.toUpperCase() || ''
         if (accountType.includes('GOOGLE')) providerType = 'google'
         else if (accountType.includes('OUTLOOK')) providerType = 'microsoft'
+        else if (accountType === 'MAIL') providerType = 'smtp'
 
         // Extract email from different OAuth formats
         const email = connectionParams.mail?.username ||
@@ -268,6 +269,13 @@ export async function POST(request: NextRequest) {
     const user = session.user
 
     // Insert new email provider
+    console.log(`📧 Creating email provider:`, {
+      user_id: user.id,
+      provider_type,
+      provider_name,
+      email_address
+    })
+
     const { data: provider, error: insertError } = await supabase
       .from('email_providers')
       .insert({
@@ -282,14 +290,20 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (insertError) {
-      console.error('❌ Failed to create email provider:', insertError)
+      console.error('❌ Failed to create email provider:', {
+        error: insertError,
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint
+      })
       return NextResponse.json({
         success: false,
-        error: 'Failed to create provider'
+        error: insertError.message || 'Failed to create provider',
+        details: insertError.details
       }, { status: 500 })
     }
 
-    console.log(`✅ Created email provider: ${provider_type} (${email_address})`)
+    console.log(`✅ Created email provider:`, provider)
 
     return NextResponse.json({
       success: true,
