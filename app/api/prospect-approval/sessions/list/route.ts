@@ -70,14 +70,14 @@ export async function GET(request: NextRequest) {
     // Get user's sessions (permanent sessions, visible across browsers/devices)
     console.log(`🔍 Fetching sessions for workspace: ${workspaceId}, user: ${user.email}`);
 
-    // Fetch sessions - Show ALL workspace sessions (approved prospects visible to all)
-    // IMPORTANT: Only show 'active' sessions (exclude 'completed' and 'archived')
+    // Fetch sessions - Show ONLY user's own sessions
+    // FIXED: Show ALL sessions (active, completed, archived) so approved prospects remain visible
+    // User requirement: "if the prospects are approved and not in a campaign yet, they need to show under approved in the prosepct database"
     const { data: sessions, error: sessionsError } = await supabase
       .from('prospect_approval_sessions')
       .select('*')
       .eq('workspace_id', workspaceId)
-      // REMOVED user_id filter - all workspace members see approved prospects
-      .eq('status', 'active') // Only show active sessions (not completed/archived)
+      .eq('user_id', user.id) // CRITICAL: Only show user's own sessions
       .order('created_at', { ascending: false });
 
     // Enrich with user info (use admin client to bypass RLS on auth.users)
