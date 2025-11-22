@@ -11,7 +11,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
 const UNIPILE_DSN = process.env.UNIPILE_DSN;
-const UNIPILE_BASE_URL = `https://${UNIPILE_DSN}.unipile.com:13443`;
+const UNIPILE_BASE_URL = `https://${UNIPILE_DSN}`; // DSN already includes full domain + port
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -73,7 +73,7 @@ export const handler: Handler = async (event, context) => {
         const response = await fetch(searchUrl.toString(), {
           method: 'POST',
           headers: {
-            'X-API-KEY': UNIPILE_API_KEY!,
+            'X-Api-Key': UNIPILE_API_KEY!,
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
