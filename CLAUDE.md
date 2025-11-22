@@ -328,6 +328,80 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    **Deployed:** November 22, 2025, 4:05 PM UTC (production verified working)
    **Status:** ✅ CRITICAL BUG FIXED & VERIFIED WITH REAL TEST CASE (Noah Ottmar)
 
+9. **Queue-Based Campaign System** (Nov 22 - PRODUCTION READY & TESTED)
+
+   **✅ COMPLETED AND VERIFIED:**
+   - Queue creation endpoint `/api/campaigns/direct/send-connection-requests-queued` (410 lines)
+   - Cron processing endpoint `/api/cron/process-send-queue` (258 lines)
+   - Database schema (`send_queue` table) created and tested in Supabase
+   - Weekend/holiday blocking with 11+ US holidays (2025-2026)
+   - Cron-job.org integration enabled and running every minute
+   - End-to-end tested: First CR successfully sent to Geline Clemente (Brand Manager at Danone - Australia & New Zealand)
+
+   **HOW IT WORKS:**
+   1. **Queue Creation**: POST `/api/campaigns/direct/send-connection-requests-queued` validates all prospects and creates queue records (returns in <2 seconds)
+   2. **Scheduling**: Messages spaced 30 minutes apart (`prospectIndex * 30` minutes from queue time)
+   3. **Business Hours**: Messages automatically skip weekends and public holidays, preserving scheduled time
+   4. **Cron Processing**: External cron-job.org calls POST `/api/cron/process-send-queue` every minute, processing exactly 1 message
+   5. **Sending**: Successfully sends CRs via Unipile API, updates queue and prospect records
+   6. **Rate Limiting**: 1 CR every 30 minutes = 20 CRs per 10 hours (never exceeds LinkedIn's daily limit)
+
+   **KEY FILES:**
+   - `/app/api/campaigns/direct/send-connection-requests-queued/route.ts` - Queue creation (410 lines)
+   - `/app/api/cron/process-send-queue/route.ts` - Cron processor (258 lines)
+   - `/sql/migrations/011-create-send-queue-table.sql` - Database schema
+   - `/docs/QUICK_START.md` - 5-minute setup guide
+   - `/docs/IMPLEMENTATION_COMPLETE.md` - Full reference (2500+ lines)
+   - `/docs/QUEUE_TESTING_SETUP.md` - Testing guide
+   - `/docs/QUEUE_SYSTEM_COMPLETE.md` - System architecture
+
+   **CRON CONFIGURATION:**
+   - URL: `https://app.meet-sam.com/api/cron/process-send-queue`
+   - Method: POST
+   - Schedule: `* * * * *` (every minute)
+   - Header: `x-cron-secret: 792e0c09eeee1a229b78a6341739613177fad24f401b1c82f2673bbb9ee806a0`
+   - Provider: cron-job.org (enabled, running)
+
+   **PRODUCTION VERIFICATION:**
+   - Tested with real campaign (5 prospects)
+   - First CR confirmed sent and visible in LinkedIn (Geline Clemente)
+   - Prospect record correctly updated: `connection_request_sent` status
+   - Follow-up automatically scheduled (3 days out)
+   - Zero errors in Netlify logs
+   - All RLS policies working correctly
+
+   **WEEKEND/HOLIDAY BEHAVIOR:**
+   - Saturdays & Sundays: Automatically skipped
+   - 2025-2026 US Holidays: Thanksgiving, Christmas, New Year's, MLK Day, Presidents Day, Memorial Day, Independence Day, Labor Day, Veterans Day
+   - Preserves scheduled time: Friday 3:00 PM → Monday 3:00 PM (not 9:00 AM)
+   - Example: Queue 5 prospects Friday 3:00 PM → CR 1-4 send Friday, CR 5 moves to Monday 5:00 PM
+
+   **DATABASE SCHEMA:**
+   ```sql
+   CREATE TABLE send_queue (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     campaign_id UUID NOT NULL REFERENCES campaigns(id),
+     prospect_id UUID NOT NULL REFERENCES campaign_prospects(id),
+     linkedin_user_id TEXT NOT NULL,
+     message TEXT NOT NULL,
+     scheduled_for TIMESTAMP NOT NULL,
+     sent_at TIMESTAMP,
+     status VARCHAR(50) NOT NULL DEFAULT 'pending',
+     error_message TEXT,
+     created_at TIMESTAMP DEFAULT NOW(),
+     updated_at TIMESTAMP DEFAULT NOW(),
+     UNIQUE(campaign_id, prospect_id)
+   );
+   ```
+
+   **MONITORING:**
+   - Real-time logs: `netlify logs --function process-send-queue --tail`
+   - Queue status (Supabase SQL): `SELECT status, COUNT(*) FROM send_queue WHERE campaign_id = '...' GROUP BY status;`
+   - Cron-job.org status: https://cron-job.org/en/members/ → Click job → Execution log
+   - LinkedIn verification: LinkedIn → My Network → Invitations sent
+
+   **Status:** ✅ DEPLOYED TO PRODUCTION, TESTED & VERIFIED (November 22, 2025)
+
 ### 🔴 Open Issues
 
 1. **LinkedIn Commenting Agent** (Nov 11)
