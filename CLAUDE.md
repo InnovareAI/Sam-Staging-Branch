@@ -281,44 +281,52 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - Verification: Search returned 2 marketing prospects in Berlin ✅
    - Status: ✅ RESOLVED
 
-8. **LinkedIn Connection Requests + Unipile Profile Lookup Fix** (Nov 22 - REVISED)
-   - Root causes identified (from Unipile API expert):
-     1. ❌ NOT using the correct Unipile API pattern for profile lookups
-        - Was passing full LinkedIn URLs to `/api/v1/users/profile?identifier=` parameter
-        - This is unreliable for vanity URLs that redirect to wrong profiles
-     2. ✅ Correct pattern: Use provider_id (from `item.id` in search results) directly
-        - Primary: `provider_id` (LinkedIn's internal ID) - MOST RELIABLE
-        - Fallback 1: `public_identifier` (vanity username like "john-doe") - RELIABLE
-        - Fallback 2: Extract vanity from full URL - LEAST RELIABLE
-   - Architecture fixes implemented (Nov 22 - DEPLOYED):
-     1. **Search endpoint** (`/app/api/linkedin/search/simple/route.ts`):
-        - Now returns `providerId: item.id` (LinkedIn's internal ID)
-        - Now returns `publicIdentifier: item.public_identifier` (vanity username)
-     2. **Upload prospects** (`/app/api/prospect-approval/upload-prospects/route.ts`):
-        - Stores `linkedin_provider_id` from search results
-        - Stores `public_identifier` (vanity) as fallback
-        - Preserves full LinkedIn URLs unchanged (don't strip parameters)
-     3. **Send connection requests** (`/app/api/campaigns/direct/send-connection-requests/route.ts`):
-        - Uses three-tier fallback strategy for profile lookup:
-          - Tier 1: Use stored `linkedin_user_id` (provider_id) directly
-          - Tier 2: Use `public_identifier` (vanity username only)
-          - Tier 3: Extract vanity from URL using regex
-     4. **Process follow-ups** (`/app/api/campaigns/direct/process-follow-ups/route.ts`):
-        - Same three-tier fallback as send-connection-requests
-     5. **Poll accepted connections** (`/app/api/cron/poll-accepted-connections/route.ts`):
-        - Same three-tier fallback strategy
-   - Key insight from Unipile documentation:
-     - Use `provider_id` directly when available (most authoritative)
-     - Use `public_identifier` (vanity part only, e.g., "john-doe" not full URL)
-     - NEVER pass full LinkedIn URLs to identifier parameter - causes wrong profile lookups
-   - Files fixed:
-     - `/app/api/linkedin/search/simple/route.ts` ✅
-     - `/app/api/prospect-approval/upload-prospects/route.ts` ✅
+8. **LinkedIn Connection Requests + CRITICAL Unipile Profile Lookup Bug** (Nov 22 - FINAL FIX)
+
+   **CRITICAL BUG DISCOVERED & FIXED:**
+   - Unipile's `/api/v1/users/profile?identifier=` endpoint **returns WRONG profiles** for LinkedIn vanity URLs containing numbers
+   - Example: `noah-ottmar-b59478295` was returning **Jamshaid Ali's profile** (with withdrawn invitation) instead of Noah Ottmar
+   - This caused legitimate prospects to be incorrectly rejected with "Invitation previously withdrawn" error
+   - CR never reached LinkedIn because system detected false withdrawn invitation before sending
+
+   **Root causes identified:**
+     1. ❌ BROKEN ENDPOINT: `/api/v1/users/profile?identifier={vanity}` - Returns WRONG person for vanities with numbers
+     2. ✅ CORRECT ENDPOINT: `/api/v1/users/{vanity}?account_id=...` - Legacy endpoint correctly resolves all vanities
+
+   **Architecture fixes implemented (Nov 22 - DEPLOYED & VERIFIED):**
+     1. **Send connection requests** (`/app/api/campaigns/direct/send-connection-requests/route.ts`):
+        - **NEVER use** `/api/v1/users/profile?identifier=` for profile lookup (returns wrong profiles)
+        - **PRIMARY:** Use stored `provider_id` with `/api/v1/users/profile?provider_id=` (most reliable)
+        - **FALLBACK:** Use legacy `/api/v1/users/{vanity}?account_id=` endpoint (correctly resolves vanities with numbers)
+        - Extract vanity from URL using regex: `/linkedin\.com\/in\/([^\/\?#]+)/`
+     2. **Process follow-ups** (`/app/api/campaigns/direct/process-follow-ups/route.ts`):
+        - Same two-tier strategy: provider_id → legacy endpoint (NO profile?identifier=)
+     3. **Poll accepted connections** (`/app/api/cron/poll-accepted-connections/route.ts`):
+        - Same two-tier strategy: provider_id → legacy endpoint (NO profile?identifier=)
+
+   **Verification & Testing:**
+   - Tested with Noah Ottmar (`noah-ottmar-b59478295`)
+   - Profile lookup now returns **correct Noah Ottmar profile** (no false withdrawn invitation)
+   - CR successfully sent to LinkedIn: "Hi Noah, I noticed you're studying Business Marketing at SDSU..."
+   - Confirms fix works for vanity URLs with numbers
+
+   **Impact:**
+   - Fixes all prospects with numbers in LinkedIn vanity URLs
+   - CRs will no longer fail with false "invitation withdrawn" errors
+   - System now aligns with Unipile's own API recommendations
+
+   **Critical Code Comments Added:**
+   - Line 133-141 (poll-accepted-connections): "CRITICAL BUG FIX (Nov 22): profile?identifier= returns WRONG profiles for vanities with numbers"
+   - Line 117-131 (process-follow-ups): Same warning
+   - Lines 209-222 (send-connection-requests): Explicit DO NOT USE comments
+
+   **Files fixed:**
      - `/app/api/campaigns/direct/send-connection-requests/route.ts` ✅
      - `/app/api/campaigns/direct/process-follow-ups/route.ts` ✅
      - `/app/api/cron/poll-accepted-connections/route.ts` ✅
-   - Deployed: November 22, 2025, 3:37 PM UTC (https://app.meet-sam.com)
-   - Status: ✅ FULLY FIXED AND DEPLOYED
+
+   **Deployed:** November 22, 2025, 4:05 PM UTC (production verified working)
+   **Status:** ✅ CRITICAL BUG FIXED & VERIFIED WITH REAL TEST CASE (Noah Ottmar)
 
 ### 🔴 Open Issues
 
