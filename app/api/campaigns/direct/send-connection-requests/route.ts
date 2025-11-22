@@ -120,6 +120,38 @@ export async function POST(req: NextRequest) {
       try {
         console.log(`\n👤 Processing: ${prospect.first_name} ${prospect.last_name}`);
 
+        // FIRST: Check if this LinkedIn URL was already contacted (any campaign, any workspace)
+        const { data: existingContact } = await supabase
+          .from('campaign_prospects')
+          .select('status, contacted_at, campaign_id')
+          .eq('linkedin_url', prospect.linkedin_url)
+          .in('status', ['connection_request_sent', 'invitation_pending', 'already_connected'])
+          .order('contacted_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (existingContact) {
+          console.log(`⚠️  Already contacted ${prospect.first_name} (status: ${existingContact.status}, date: ${existingContact.contacted_at})`);
+
+          // Update current prospect to match existing status
+          await supabase
+            .from('campaign_prospects')
+            .update({
+              status: existingContact.status,
+              notes: `Previously contacted in campaign ${existingContact.campaign_id}`,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', prospect.id);
+
+          results.push({
+            prospectId: prospect.id,
+            name: `${prospect.first_name} ${prospect.last_name}`,
+            status: 'skipped',
+            reason: `already_${existingContact.status}`
+          });
+          continue;
+        }
+
         // Get LinkedIn profile to get provider_id
         // Always fetch from Unipile - don't trust linkedin_user_id (may contain CSV import IDs)
         console.log(`📝 Fetching LinkedIn profile for ${prospect.linkedin_url}...`);
