@@ -517,6 +517,18 @@ export async function POST(request: NextRequest) {
     // IMAP/SMTP account creation (email provider)
     if (provider === 'SMTP' || provider === 'IMAP' || provider === 'MAIL') {
       console.log('📧 Creating email account in Unipile via IMAP...')
+      console.log('   Credentials check:', {
+        hasUsername: !!username,
+        hasPassword: !!password,
+        hasHost: !!host,
+        hasPort: !!port,
+        use_tls,
+        use_ssl
+      })
+      console.log('   Environment check:', {
+        hasDsn: !!process.env.UNIPILE_DSN,
+        hasApiKey: !!process.env.UNIPILE_API_KEY
+      })
 
       if (!username || !password || !host || !port) {
         return NextResponse.json({
@@ -529,7 +541,7 @@ export async function POST(request: NextRequest) {
       try {
         // Unipile uses IMAP provider for custom email accounts (IMAP for receiving, SMTP for sending)
         // Note: Unipile requires BOTH imap and smtp configuration
-        const emailResult = await callUnipileAPI('accounts', 'POST', {
+        const payload = {
           provider: 'MAIL',
           imap_user: username,
           imap_password: password,
@@ -541,7 +553,18 @@ export async function POST(request: NextRequest) {
           smtp_host: host,
           smtp_port: parseInt(port),
           sync_limit: 'NO_HISTORY_SYNC'
+        }
+
+        console.log('📨 Sending MAIL account payload to Unipile:', {
+          provider: payload.provider,
+          imap_host: payload.imap_host,
+          imap_port: payload.imap_port,
+          imap_encryption: payload.imap_encryption,
+          smtp_port: payload.smtp_port,
+          hasPasswords: !!payload.imap_password && !!payload.smtp_password
         })
+
+        const emailResult = await callUnipileAPI('accounts', 'POST', payload)
 
         console.log('✅ Email account created in Unipile:', emailResult.id)
 
@@ -553,7 +576,10 @@ export async function POST(request: NextRequest) {
           timestamp: new Date().toISOString()
         })
       } catch (error) {
-        console.error('❌ Failed to create email account:', error)
+        console.error('❌ Failed to create email account:', {
+          error: error instanceof Error ? error.message : String(error),
+          errorType: error instanceof Error ? error.constructor.name : typeof error
+        })
         throw error
       }
     }
