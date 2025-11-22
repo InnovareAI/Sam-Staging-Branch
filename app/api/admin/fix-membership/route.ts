@@ -3,16 +3,16 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/security/route-auth';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function POST(request: Request) {
-
   // Require admin authentication
   const { error: authError } = await requireAdmin(request);
   if (authError) return authError;
+
+  // Create Supabase client at runtime (not build time)
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
   try {
     const userId = 'f6885ff3-deef-4781-8721-93011c990b1b';
     const workspaceId = 'babdcab8-1a78-4b2f-913e-6e9fd9821009';
