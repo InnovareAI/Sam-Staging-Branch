@@ -514,45 +514,46 @@ export async function POST(request: NextRequest) {
       use_ssl
     } = body
 
-    // SMTP account creation
-    if (provider === 'SMTP') {
-      console.log('📧 Creating SMTP account in Unipile...')
+    // IMAP/SMTP account creation (email provider)
+    if (provider === 'SMTP' || provider === 'IMAP' || provider === 'MAIL') {
+      console.log('📧 Creating email account in Unipile via IMAP...')
 
       if (!username || !password || !host || !port) {
         return NextResponse.json({
           success: false,
-          error: 'Missing required SMTP fields: username, password, host, port',
+          error: 'Missing required email fields: username, password, host, port',
           timestamp: new Date().toISOString()
         }, { status: 400 })
       }
 
       try {
-        // Create SMTP account via Unipile API
-        const smtpResult = await callUnipileAPI('accounts', 'POST', {
-          type: 'SMTP',
-          connection_params: {
-            mail: {
-              username: username,
-              password: password,
-              host: host,
-              port: port || 587,
-              use_tls: use_tls !== false, // Default to true if not specified
-              use_ssl: use_ssl === true   // Default to false if not specified
-            }
-          }
+        // Unipile uses IMAP provider for custom email accounts (IMAP for receiving, SMTP for sending)
+        // Note: Unipile requires BOTH imap and smtp configuration
+        const emailResult = await callUnipileAPI('accounts', 'POST', {
+          provider: 'MAIL',
+          imap_user: username,
+          imap_password: password,
+          imap_host: host,
+          imap_port: parseInt(port),
+          imap_encryption: use_ssl ? 'ssl' : (use_tls ? 'tls' : 'none'),
+          smtp_user: username,
+          smtp_password: password,
+          smtp_host: host,
+          smtp_port: parseInt(port),
+          sync_limit: 'NO_HISTORY_SYNC'
         })
 
-        console.log('✅ SMTP account created in Unipile:', smtpResult.id)
+        console.log('✅ Email account created in Unipile:', emailResult.id)
 
         return NextResponse.json({
           success: true,
-          action: 'created_smtp',
-          account_id: smtpResult.id,
-          account: smtpResult,
+          action: 'created_email',
+          account_id: emailResult.id,
+          account: emailResult,
           timestamp: new Date().toISOString()
         })
       } catch (error) {
-        console.error('❌ Failed to create SMTP account:', error)
+        console.error('❌ Failed to create email account:', error)
         throw error
       }
     }
