@@ -35,9 +35,11 @@ for (const endpoint of CRITICAL_ENDPOINTS) {
   const queries = content.match(/from\('workspace_accounts'\)[^;]+/g) || []
 
   for (const query of queries) {
-    // Check if query has user_id filter
-    if (!query.includes('user_id')) {
-      violations.push(`❌ VIOLATION in ${endpoint}:\n   Query missing user_id filter:\n   ${query.substring(0, 100)}...`)
+    // Check if query has workspace_id filter (for multi-tenant isolation)
+    // workspace_id is the primary isolation mechanism
+    // user_id is optional when accounts are shared at workspace level
+    if (!query.includes('workspace_id') && !query.includes('eq(\'workspace_id\'')) {
+      violations.push(`❌ VIOLATION in ${endpoint}:\n   Query missing workspace_id filter:\n   ${query.substring(0, 100)}...`)
     }
   }
 }

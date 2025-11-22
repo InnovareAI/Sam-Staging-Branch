@@ -2044,7 +2044,9 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
       console.log('🔄 Detected search trigger in SAM response:', triggerSearchMatch[1])
 
       try {
+        console.log('🔍 [1/8] Raw trigger match:', triggerSearchMatch[1]);
         const searchCriteria = JSON.parse(triggerSearchMatch[1])
+        console.log('🔍 [2/8] Parsed searchCriteria from trigger:', JSON.stringify(searchCriteria, null, 2))
 
         // CRITICAL VALIDATION: Ensure campaignName and connectionDegree are present
         if (!searchCriteria.campaignName) {
@@ -2062,32 +2064,63 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         } else {
           // Both required fields present, proceed with search
           // Pass user context directly via internal auth header (avoids cookie forwarding issues)
-          console.log('🔍 Triggering LinkedIn search with criteria:', searchCriteria);
-          const searchResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/search/simple`, {
-          method: 'POST',
-          headers: {
+          console.log('🔍 [3/8] Triggering LinkedIn search with criteria:', searchCriteria);
+
+          // Ensure all required fields have defaults
+          const finalSearchCriteria = {
+            ...searchCriteria,
+            connectionDegree: searchCriteria.connectionDegree || '2nd', // Default to 2nd if not specified
+            keywords: searchCriteria.keywords || searchCriteria.title || 'prospects' // Fallback to title or generic
+          };
+
+          console.log('🔍 [4/8] Final search criteria being sent:', JSON.stringify(finalSearchCriteria, null, 2));
+
+          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+          const searchUrl = `${baseUrl}/api/linkedin/search/simple`;
+          console.log('🔍 [5/8] Search API URL:', searchUrl);
+          console.log('🔍 [5a/8] Thread workspace_id:', thread?.workspace_id);
+          console.log('🔍 [5b/8] Resolved workspaceId (from context):', workspaceId);
+          console.log('🔍 [5c/8] User id:', user.id);
+
+          // CRITICAL: Ensure we have valid workspace_id
+          if (!workspaceId) {
+            throw new Error('🔴 CRITICAL: workspace_id is null or undefined - cannot execute search');
+          }
+          if (!user.id) {
+            throw new Error('🔴 CRITICAL: user.id is null or undefined - cannot execute search');
+          }
+
+          const requestHeaders = {
             'Content-Type': 'application/json',
             'X-Internal-Auth': 'true',
             'X-User-Id': user.id,
-            'X-Workspace-Id': thread?.workspace_id || ''
-          },
-          body: JSON.stringify({
-            search_criteria: searchCriteria,
-            target_count: searchCriteria.targetCount || 50 // Simple route limited to 50
-          })
-        })
+            'X-Workspace-Id': workspaceId
+          };
 
-        console.log('📡 Search API response status:', searchResponse.status);
+          console.log('🔍 [6/8] About to call fetch for search...');
+          console.log('🔍 [6a/8] Request headers:', requestHeaders);
+
+          const searchResponse = await fetch(searchUrl, {
+            method: 'POST',
+            headers: requestHeaders,
+            body: JSON.stringify({
+              search_criteria: finalSearchCriteria,
+              target_count: searchCriteria.targetCount || 50 // Simple route limited to 50
+            })
+          });
+
+          console.log('🔍 [7/8] Search API response status:', searchResponse.status);
 
         if (!searchResponse.ok) {
           const errorText = await searchResponse.text();
-          console.error('❌ Search API failed:', errorText);
+          console.error('❌ [7a/8] Search API HTTP error:', { status: searchResponse.status, body: errorText });
           aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
             `\n\n❌ **Search Failed:** HTTP ${searchResponse.status}\n\n${errorText.substring(0, 200)}`
           ).trim();
         } else {
+          console.log('🔍 [8a/8] Attempting to parse JSON response...');
           const searchData = await searchResponse.json()
-          console.log('📊 Search API response:', searchData);
+          console.log('🔍 [8b/8] Search API response:', JSON.stringify(searchData, null, 2));
 
           if (searchData.success) {
           const prospectCount = searchData.count || 0
@@ -2113,7 +2146,7 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
           }
 
           // Log full error for debugging
-          console.error('❌ Search failed:', JSON.stringify(searchData, null, 2))
+          console.error('❌ [8c/8] Search failed with error response:', JSON.stringify(searchData, null, 2))
 
           aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i, errorMsg).trim()
 
@@ -2126,6 +2159,20 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         }
         }
       } catch (error) {
+        console.error('❌ ═══════════════════════════════════════════════════');
+        console.error('❌ SEARCH TRIGGER ERROR CAUGHT');
+        console.error('❌ ═══════════════════════════════════════════════════');
+        console.error('❌ Full error object:', error);
+        console.error('❌ Error type:', error instanceof Error ? error.constructor.name : typeof error);
+        console.error('❌ Error message:', error instanceof Error ? error.message : String(error));
+        console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack');
+        if (error instanceof Error && 'code' in error) {
+          console.error('❌ Error code:', (error as any).code);
+        }
+        if (error instanceof Error && 'cause' in error) {
+          console.error('❌ Error cause:', (error as any).cause);
+        }
+        console.error('❌ ═══════════════════════════════════════════════════');
         aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
           '\n\n❌ **Search Failed:** Technical error while starting the search. Try heading to the **Data Approval** tab and entering your criteria directly.'
         ).trim()

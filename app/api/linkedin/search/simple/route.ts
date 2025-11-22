@@ -16,6 +16,13 @@ export async function POST(request: NextRequest) {
     const internalUserId = request.headers.get('X-User-Id');
     const internalWorkspaceId = request.headers.get('X-Workspace-Id');
 
+    console.log('🔵 [SEARCH-1/6] Headers received:', {
+      internalAuth,
+      internalUserId,
+      internalWorkspaceId,
+      hasWorkspace: !!internalWorkspaceId
+    });
+
     let user: any = null;
     let workspaceId: string | null = null;
     let supabase: any = null;  // Declare at function level so it's accessible everywhere
@@ -23,11 +30,17 @@ export async function POST(request: NextRequest) {
     if (internalAuth === 'true' && internalUserId) {
       // Internal call from SAM - use service role to verify user exists
       console.log('🔐 Internal auth detected from SAM');
-      const { data: userData } = await supabaseAdmin()
+      const { data: userData, error: userError } = await supabaseAdmin()
         .from('users')
         .select('id, email, current_workspace_id')
         .eq('id', internalUserId)
         .single();
+
+      console.log('🔵 [SEARCH-2/6] User lookup result:', {
+        found: !!userData,
+        email: userData?.email,
+        error: userError?.message
+      });
 
       if (userData) {
         user = userData;
@@ -36,6 +49,8 @@ export async function POST(request: NextRequest) {
 
         // Create supabase client for later use in the function
         supabase = supabaseAdmin();
+      } else {
+        console.error('❌ User not found in database:', { internalUserId, error: userError?.message });
       }
     }
 
@@ -74,9 +89,19 @@ export async function POST(request: NextRequest) {
       console.log(`✅ User authenticated: ${user.email}`);
     }
 
-    const { search_criteria, target_count = 50 } = await request.json();
+    console.log('🔵 [SEARCH-3/6] About to parse request JSON...');
+    let requestBody: any = null;
+    try {
+      requestBody = await request.json();
+    } catch (jsonError) {
+      console.error('❌ [SEARCH-3a/6] Failed to parse request JSON:', jsonError instanceof Error ? jsonError.message : String(jsonError));
+      throw new Error(`Invalid JSON in request body: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}`);
+    }
 
-    console.log('🔵 Received search_criteria:', JSON.stringify(search_criteria));
+    const { search_criteria, target_count = 50 } = requestBody;
+
+    console.log('🔵 [SEARCH-4/6] Received search_criteria:', JSON.stringify(search_criteria));
+    console.log('🔵 [SEARCH-4a/6] Target count:', target_count);
 
     // Get workspace (with fallback, or use internal auth workspace)
     if (!workspaceId) {
@@ -133,21 +158,31 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log('✅ Final workspace:', workspaceId);
+    console.log('✅ [SEARCH-5/6] Final workspace:', workspaceId);
     // Note: Membership already verified above (lines 105-126), no need for redundant check
 
     // CRITICAL FIX: Query Unipile API directly instead of trusting stale database records
     // This ensures we always get live account data and avoid 404 errors from stale IDs
-    console.log('🔍 Fetching LinkedIn accounts directly from Unipile API...');
+    console.log('🔍 [SEARCH-5a/6] Fetching LinkedIn accounts directly from Unipile API...');
 
-    const unipileDSN = process.env.UNIPILE_DSN!;
-    const unipileApiKey = process.env.UNIPILE_API_KEY!;
+    const unipileDSN = process.env.UNIPILE_DSN;
+    const unipileApiKey = process.env.UNIPILE_API_KEY;
+
+    if (!unipileDSN || !unipileApiKey) {
+      throw new Error(`Missing Unipile config: DSN=${!!unipileDSN}, KEY=${!!unipileApiKey}`);
+    }
+
+    console.log('🔍 [SEARCH-5b/6] Unipile config valid:', {
+      hasDSN: !!unipileDSN,
+      hasKey: !!unipileApiKey,
+      dsnValue: unipileDSN?.substring(0, 20)
+    });
 
     // Step 1: Get ALL accounts from Unipile
-    const allAccountsUrl = unipileDSN.includes('.')
-      ? `https://${unipileDSN}/api/v1/accounts`
-      : `https://${unipileDSN}.unipile.com:13443/api/v1/accounts`;
+    // UNIPILE_DSN format: "api6.unipile.com:13670" - already includes domain and port
+    const allAccountsUrl = `https://${unipileDSN}/api/v1/accounts`;
 
+    console.log('🔍 [SEARCH-5c/6] Calling Unipile accounts endpoint:', allAccountsUrl);
     const allAccountsResponse = await fetch(allAccountsUrl, {
       headers: {
         'X-API-KEY': unipileApiKey,
@@ -194,26 +229,28 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Step 4: Filter to ONLY user's OWN accounts (NEVER use shared accounts)
-    const ownAccounts = userLinkedInAccounts.filter(acc => acc.user_id === user.id);
-    console.log(`📊 User ${user.email} has ${ownAccounts.length} own LinkedIn account(s)`);
+    // Step 4: Allow ANY workspace member to use ANY connected workspace account
+    // This enables collaborative searches where team members can use each other's accounts
+    console.log(`📊 Workspace has ${userLinkedInAccounts.length} LinkedIn account(s) available`);
 
-    if (ownAccounts.length === 0) {
-      console.error(`❌ User has no own LinkedIn accounts (${userLinkedInAccounts.length} total in workspace)`);
+    const availableAccounts = userLinkedInAccounts; // Use ALL workspace accounts, not just user's own
+
+    if (availableAccounts.length === 0) {
+      console.error(`❌ No LinkedIn accounts found in workspace`);
       return NextResponse.json({
         success: false,
         error: 'No LinkedIn account connected',
-        details: 'You must connect your own LinkedIn account to use this feature. Please go to Settings > Integrations.'
+        details: 'No LinkedIn accounts are connected in this workspace. Please go to Settings > Integrations to connect one.'
       }, { status: 400 });
     }
 
-    // Step 5: Match user's accounts to Unipile accounts - PRIORITIZE Sales Navigator/Recruiter
+    // Step 5: Match workspace accounts to Unipile accounts - PRIORITIZE Sales Navigator/Recruiter
     let selectedAccount = null;
     let salesNavAccount = null;
     let recruiterAccount = null;
     let premiumAccount = null; // Includes Career, Business Premium, Learning, Job Seeker
 
-    for (const dbAccount of ownAccounts) {
+    for (const dbAccount of availableAccounts) {
       console.log(`\n  🔍 Checking user's account: ${dbAccount.account_name} (${dbAccount.unipile_account_id})`);
 
       const unipileAccount = allLinkedInAccounts.find(a => a.id === dbAccount.unipile_account_id);
@@ -355,10 +392,9 @@ export async function POST(request: NextRequest) {
       keywords: string
     ): Promise<string[] | null> {
       try {
-        const paramUrl = unipileDSN.includes('.')
-          ? `https://${unipileDSN}/api/v1/linkedin/search/parameters`
-          : `https://${unipileDSN}.unipile.com:13443/api/v1/linkedin/search/parameters`;
-        
+        // UNIPILE_DSN format: "api6.unipile.com:13670" - already includes domain and port
+        const paramUrl = `https://${unipileDSN}/api/v1/linkedin/search/parameters`;
+
         const params = new URLSearchParams({
           account_id: linkedinAccount.unipile_account_id,
           type: paramType,
@@ -377,18 +413,38 @@ export async function POST(request: NextRequest) {
         });
 
         if (!response.ok) {
-          console.error(`❌ ${paramType} lookup failed: ${response.status}`, await response.text());
+          const errorText = await response.text();
+          console.error(`❌ ${paramType} lookup failed: ${response.status}`);
+          console.error(`❌ Error body:`, errorText);
+
+          // If we get a 404, the account might not support parameter lookup
+          if (response.status === 404) {
+            console.warn(`⚠️ ${paramType} lookup endpoint not available - account may not support this feature`);
+          }
+
           return null;
         }
 
         const data = await response.json();
-        console.log(`✅ ${paramType} lookup results:`, JSON.stringify(data, null, 2));
+        console.log(`✅ ${paramType} lookup response:`, JSON.stringify(data, null, 2));
+
+        // Handle different response structures
+        // Some APIs return { items: [...] }, others return arrays directly
+        let items = data.items || data;
+        if (!Array.isArray(items)) {
+          console.warn(`⚠️ Unexpected ${paramType} response structure:`, data);
+          return null;
+        }
 
         // Extract IDs from results
-        if (data.items && data.items.length > 0) {
-          const ids = data.items.map((item: any) => item.id);
+        if (items.length > 0) {
+          const ids = items.map((item: any) => {
+            // Handle different ID field names
+            return item.id || item.urn || item.value;
+          }).filter(id => id != null);
+
           console.log(`✅ Found ${ids.length} ${paramType} ID(s):`, ids);
-          return ids;
+          return ids.length > 0 ? ids : null;
         } else {
           console.log(`⚠️ No ${paramType} matches found for "${keywords}"`);
           return null;
@@ -400,10 +456,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Call Unipile - format payload correctly
-    // UNIPILE_DSN can be either "api6" or "api6.unipile.com:13443" (full domain)
-    const unipileUrl = unipileDSN.includes('.')
-      ? `https://${unipileDSN}/api/v1/linkedin/search`  // Full domain already provided
-      : `https://${unipileDSN}.unipile.com:13443/api/v1/linkedin/search`;  // Just subdomain
+    // UNIPILE_DSN format: "api6.unipile.com:13670" - already includes domain and port
+    const unipileUrl = `https://${unipileDSN}/api/v1/linkedin/search`;
 
     // Sales Navigator and Recruiter can handle up to 100, Classic limited to 50
     const maxLimit = (api === 'sales_navigator' || api === 'recruiter') ? 100 : 50;
@@ -413,7 +467,7 @@ export async function POST(request: NextRequest) {
       limit: String(Math.min(target_count, maxLimit))
     });
 
-    // Build proper Unipile payload with detected API
+    // Build proper Unipile payload with detected API (for Sales Navigator/Recruiter)
     const unipilePayload: any = {
       api: api,  // Use detected API (sales_navigator, recruiter, or classic)
       category: 'people' // Default to people search
@@ -430,11 +484,25 @@ export async function POST(request: NextRequest) {
       unipilePayload.keywords = search_criteria.keywords;
     }
 
-    // Location (city, state, country) - REQUIRES NUMERIC IDs
-    if (search_criteria.location) {
+    // Track if we can use structured filters or need to fall back to keywords
+    // For classic API, ALWAYS use keyword-based search (parameter lookups often fail)
+    let useStructuredFilters = (api !== 'classic');
+    let keywordsFallback: string[] = [];
+
+    // For classic API, add all filters to keywords instead of trying parameter lookups
+    if (api === 'classic') {
+      console.log('🎯 Classic API detected - using keyword-based search (no parameter lookups)');
+      if (search_criteria.location) keywordsFallback.push(search_criteria.location);
+      if (search_criteria.company) keywordsFallback.push(search_criteria.company);
+      if (search_criteria.industry) keywordsFallback.push(search_criteria.industry);
+      if (search_criteria.school) keywordsFallback.push(search_criteria.school);
+    }
+
+    // Location (city, state, country) - REQUIRES NUMERIC IDs (Sales Nav/Recruiter only)
+    if (api !== 'classic' && search_criteria.location) {
       console.log('🎯 Processing location filter:', search_criteria.location);
       const locationIds = await lookupParameterIds('LOCATION', search_criteria.location);
-      
+
       if (locationIds && locationIds.length > 0) {
         // Use the location IDs for the appropriate API type
         if (api === 'sales_navigator') {
@@ -453,12 +521,19 @@ export async function POST(request: NextRequest) {
           console.log('✅ Location filter (Classic):', unipilePayload.location);
         }
       } else {
-        console.warn(`⚠️ Could not find location ID for "${search_criteria.location}" - proceeding without location filter`);
+        console.warn(`⚠️ Could not find location ID for "${search_criteria.location}"`);
+
+        // For classic API, if we can't get location IDs, add location to keywords as fallback
+        if (api === 'classic') {
+          keywordsFallback.push(search_criteria.location);
+          useStructuredFilters = false;
+          console.log(`⚠️ Adding location "${search_criteria.location}" to keyword search as fallback`);
+        }
       }
     }
 
-    // Company (current company filter) - REQUIRES NUMERIC IDs
-    if (search_criteria.company) {
+    // Company (current company filter) - REQUIRES NUMERIC IDs (Sales Nav/Recruiter only)
+    if (api !== 'classic' && search_criteria.company) {
       console.log('🎯 Processing company filter:', search_criteria.company);
       const companyIds = await lookupParameterIds('COMPANY', search_criteria.company);
       
@@ -488,8 +563,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Industry - REQUIRES NUMERIC IDs
-    if (search_criteria.industry) {
+    // Industry - REQUIRES NUMERIC IDs (Sales Nav/Recruiter only)
+    if (api !== 'classic' && search_criteria.industry) {
       console.log('🎯 Processing industry filter:', search_criteria.industry);
       // Use SALES_INDUSTRY for Sales Navigator, INDUSTRY for Classic/Recruiter
       const industryType = api === 'sales_navigator' ? 'INDUSTRY' : 'INDUSTRY';
@@ -519,8 +594,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // School/University - REQUIRES NUMERIC IDs
-    if (search_criteria.school) {
+    // School/University - REQUIRES NUMERIC IDs (Sales Nav/Recruiter only)
+    if (api !== 'classic' && search_criteria.school) {
       console.log('🎯 Processing school filter:', search_criteria.school);
       const schoolIds = await lookupParameterIds('SCHOOL', search_criteria.school);
       
@@ -549,17 +624,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Connection degree filter - REQUIRED (no default)
-    // User MUST specify connection degree - reject search if not provided
-    const connectionDegree = search_criteria.connectionDegree;
-
-    if (!connectionDegree) {
-      return NextResponse.json({
-        success: false,
-        error: 'Connection degree is required. Please specify "1st", "2nd", or "3rd" degree connections.',
-        requiresConnectionDegree: true
-      }, { status: 400 });
-    }
+    // Connection degree filter - Default to 2nd degree if not specified
+    // Allow 1st, 2nd, 3rd, or all degrees
+    const connectionDegree = search_criteria.connectionDegree || '2nd'; // Default to 2nd degree
 
     const degreeToNumber: Record<string, number> = {
       '1st': 1, '2nd': 2, '3rd': 3,
@@ -630,6 +697,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // If we're using classic API and couldn't get structured filters, combine everything into keywords
+    if (api === 'classic' && !useStructuredFilters && keywordsFallback.length > 0) {
+      // Combine original keywords with fallback terms
+      const allKeywords = [
+        search_criteria.keywords,
+        ...keywordsFallback
+      ].filter(k => k).join(' ');
+
+      unipilePayload.keywords = allKeywords;
+      console.log('⚠️ Using keyword-based search fallback for Classic API');
+      console.log('⚠️ Combined keywords:', unipilePayload.keywords);
+
+      // Remove any failed structured filters to avoid conflicts
+      delete unipilePayload.location;
+      delete unipilePayload.company;
+      delete unipilePayload.industry;
+      delete unipilePayload.school;
+    }
+
     console.log('🔵 ═══════════════════════════════════════════════════');
     console.log('🔵 UNIPILE SEARCH REQUEST');
     console.log('🔵 API Type:', api);
@@ -648,11 +734,35 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Unipile API error:', response.status, errorText);
+      console.error('❌ ═══════════════════════════════════════════════════');
+      console.error('❌ UNIPILE API ERROR DETAILS');
+      console.error('❌ Status:', response.status);
+      console.error('❌ Status Text:', response.statusText);
+      console.error('❌ Error Body:', errorText);
+      console.error('❌ Request URL:', `${unipileUrl}?${params}`);
+      console.error('❌ Request Payload:', JSON.stringify(unipilePayload, null, 2));
+      console.error('❌ API Key (first 10 chars):', process.env.UNIPILE_API_KEY?.substring(0, 10));
+      console.error('❌ ═══════════════════════════════════════════════════');
+
+      // Parse error if it's JSON
+      let errorDetails = errorText;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorDetails = errorJson.message || errorJson.error || errorText;
+        console.error('❌ Parsed Error:', errorJson);
+      } catch {
+        // Not JSON, use raw text
+      }
+
       return NextResponse.json({
         success: false,
         error: `LinkedIn search failed: ${response.status}`,
-        details: errorText
+        details: errorDetails,
+        debug: {
+          url: `${unipileUrl}?${params}`,
+          payload: unipilePayload,
+          status: response.status
+        }
       }, { status: 500 });
     }
 
@@ -1141,10 +1251,24 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Simple search error:', error);
+    console.error('❌ ═══════════════════════════════════════════════════');
+    console.error('❌ SIMPLE SEARCH ENDPOINT ERROR CAUGHT');
+    console.error('❌ ═══════════════════════════════════════════════════');
+    console.error('❌ Full error object:', error);
+    console.error('❌ Error type:', error instanceof Error ? error.constructor.name : typeof error);
+    console.error('❌ Error message:', error instanceof Error ? error.message : String(error));
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack');
+    if (error instanceof Error && 'code' in error) {
+      console.error('❌ Error code:', (error as any).code);
+    }
+    if (error instanceof Error && 'cause' in error) {
+      console.error('❌ Error cause:', (error as any).cause);
+    }
+    console.error('❌ ═══════════════════════════════════════════════════');
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Search failed'
+      error: error instanceof Error ? error.message : 'Search failed',
+      errorType: error instanceof Error ? error.constructor.name : typeof error
     }, { status: 500 });
   }
 }
