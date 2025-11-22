@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation';
 import ProspectSearchChat from '@/components/ProspectSearchChat';
 import { ProspectData as BaseProspectData } from '@/components/ProspectApprovalModal';
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/app/lib/supabase-client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -285,6 +286,7 @@ export default function DataCollectionHub({
   const [filterStatus, setFilterStatus] = useState<string>('pending') // Only show pending prospects by default
 
   // REACT QUERY: Fetch and cache approval sessions with pagination
+  const queryClient = useQueryClient()
   const { data, isLoading: isLoadingSessions, refetch } = useQuery({
     queryKey: ['approval-sessions', currentPage, pageSize, filterStatus, actualWorkspaceId],
     queryFn: () => fetchApprovalSessions(currentPage, pageSize, filterStatus, actualWorkspaceId),
@@ -294,6 +296,52 @@ export default function DataCollectionHub({
     keepPreviousData: true, // Smooth page transitions
     enabled: !!actualWorkspaceId, // Only fetch when workspace ID is available
   })
+
+  // REAL-TIME SUBSCRIPTIONS: Invalidate cache when sessions change
+  useEffect(() => {
+    if (!actualWorkspaceId) return
+
+    console.log('📡 [REAL-TIME] Setting up Supabase subscription for prospect sessions')
+
+    const channel = supabase
+      .channel('prospect_approval_sessions_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'prospect_approval_sessions',
+          filter: `workspace_id=eq.${actualWorkspaceId}` // Only workspace sessions
+        },
+        (payload) => {
+          console.log('📡 [REAL-TIME] Session change detected:', payload.eventType, payload.new?.id || payload.old?.id)
+          // Invalidate query cache to trigger refetch
+          queryClient.invalidateQueries(['approval-sessions'])
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'prospect_approval_data',
+          filter: `workspace_id=eq.${actualWorkspaceId}` // Only workspace prospects
+        },
+        (payload) => {
+          console.log('📡 [REAL-TIME] Prospect data change detected:', payload.eventType)
+          // Invalidate query cache to trigger refetch
+          queryClient.invalidateQueries(['approval-sessions'])
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 [REAL-TIME] Subscription status:', status)
+      })
+
+    return () => {
+      console.log('📡 [REAL-TIME] Cleaning up subscription')
+      channel.unsubscribe()
+    }
+  }, [actualWorkspaceId, queryClient])
 
   const serverProspects = data?.prospects || []
   const pagination = data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 0, hasNext: false, hasPrev: false, showing: 0 }
