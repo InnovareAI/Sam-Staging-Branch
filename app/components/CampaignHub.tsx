@@ -212,14 +212,18 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
 
       return { campaignId, newStatus };
     },
-    onSuccess: (data) => {
-      // Invalidate and refetch campaigns
-      queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+    onSuccess: async (data) => {
+      // Add 3-second delay before invalidating cache to allow backend processing
       if (data.launched) {
-        toastSuccess('Campaign activated and launched!');
+        toastSuccess('Campaign started! Messages are being sent');
+        // Wait for backend to finish processing prospects
+        await new Promise(resolve => setTimeout(resolve, 3000));
       } else {
         toastSuccess('Campaign status updated');
       }
+
+      // Invalidate and refetch campaigns
+      queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
     },
     onError: (error: any) => {
       console.error('Error toggling campaign status:', error);
