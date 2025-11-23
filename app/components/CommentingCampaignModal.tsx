@@ -293,7 +293,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
             <p className="text-sm text-gray-400 mb-3">
               Enter LinkedIn profile vanity names (e.g., sama, andrewng, ylecun)
             </p>
-            {targets.map((target, index) => (
+            {(activeTab === 'profiles' ? profileTargets : companyTargets).map((target, index) => (
               <div key={index} className="flex gap-2 mb-2">
                 <input
                   type="text"
@@ -302,7 +302,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
                   placeholder="e.g., sama, andrewng, or linkedin.com/in/username"
                   className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
                 />
-                {targets.length > 1 && (
+                {(activeTab === 'profiles' ? profileTargets : companyTargets).length > 1 && (
                   <button
                     onClick={() => handleRemoveTarget(index)}
                     className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-400 rounded-lg transition-colors"
@@ -698,7 +698,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
             </button>
             <button
               onClick={handleCreate}
-              disabled={saving || !campaignName.trim() || targets.filter(t => t.trim()).length === 0}
+              disabled={saving || !campaignName.trim() || (profileTargets.filter(t => t.trim()).length === 0 && companyTargets.filter(t => t.trim()).length === 0)}
               className="px-6 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {saving ? (
