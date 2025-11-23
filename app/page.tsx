@@ -3168,45 +3168,48 @@ export default function Page() {
                   </div>
                 ) : (
                   <div className="p-6 space-y-4">
-                    {commentingCampaigns.map((campaign) => (
-                      <div key={campaign.id} className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                campaign.monitor_type === 'hashtag' ? 'bg-blue-600/20' :
-                                campaign.monitor_type === 'keyword' ? 'bg-green-600/20' :
-                                'bg-purple-600/20'
+                    {commentingCampaigns.map((campaign) => {
+                      const monitorType = campaign.hashtags?.length > 0 ? 'hashtag' : campaign.keywords?.length > 0 ? 'keyword' : 'profile';
+                      const targetValue = campaign.hashtags?.length > 0 ? campaign.hashtags.join(', ') : campaign.keywords?.length > 0 ? campaign.keywords.join(', ') : 'Unknown';
+
+                      return (
+                        <div key={campaign.id} className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                                  monitorType === 'hashtag' ? 'bg-blue-600/20' :
+                                  monitorType === 'keyword' ? 'bg-green-600/20' :
+                                  'bg-purple-600/20'
+                                }`}>
+                                  {monitorType === 'hashtag' ? <Hash size={16} className="text-blue-400" /> :
+                                   monitorType === 'keyword' ? <Search size={16} className="text-green-400" /> :
+                                   <User size={16} className="text-purple-400" />}
+                                </div>
+                                <div>
+                                  <h3 className="text-white font-medium">{targetValue}</h3>
+                                  <p className="text-sm text-gray-400">
+                                    {monitorType === 'hashtag' ? 'Hashtag' : monitorType === 'keyword' ? 'Keyword' : 'Profile'} monitoring
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4 text-xs text-gray-400">
+                                <span>Posts: 0</span>
+                                <span>Auto-approve: {campaign.auto_approve_enabled ? 'Yes' : 'No'}</span>
+                                <span>Timezone: {campaign.timezone || 'UTC'}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                campaign.status === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-gray-600/20 text-gray-400'
                               }`}>
-                                {campaign.monitor_type === 'hashtag' ? <Hash size={16} className="text-blue-400" /> :
-                                 campaign.monitor_type === 'keyword' ? <Search size={16} className="text-green-400" /> :
-                                 <User size={16} className="text-purple-400" />}
-                              </div>
-                              <div>
-                                <h3 className="text-white font-medium">{campaign.target_metadata?.campaign_name || campaign.target_value}</h3>
-                                <p className="text-sm text-gray-400">
-                                  {campaign.monitor_type}: <span className="text-pink-400">{campaign.target_value}</span>
-                                </p>
-                              </div>
+                                {campaign.status === 'active' ? 'Active' : 'Inactive'}
+                              </span>
                             </div>
-                            <div className="flex items-center gap-4 text-xs text-gray-400">
-                              <span>Posts: {campaign.posts_discovered_count || 0}</span>
-                              <span>Priority: {campaign.priority}/5</span>
-                              <span>Check: Every {campaign.check_frequency_minutes}min</span>
-                              {campaign.monitor_comments && <span className="text-blue-400">• Monitoring comments</span>}
-                              {campaign.reply_to_comments && <span className="text-green-400">• Replying to comments</span>}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              campaign.is_active ? 'bg-green-600/20 text-green-400' : 'bg-gray-600/20 text-gray-400'
-                            }`}>
-                              {campaign.is_active ? 'Active' : 'Inactive'}
-                            </span>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
