@@ -152,6 +152,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
         console.log('✅ Monitor created successfully:', data);
       } else if (targetingMode === 'profile') {
         // For profile targeting mode, create ONE monitor per profile
+        // Using hashtags array format to store profile vanity names (compatible with existing schema)
         for (const target of validTargets) {
           // Extract vanity name from LinkedIn URL or use as-is
           let vanityName = target.trim();
@@ -161,40 +162,12 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
           }
 
           const monitor: any = {
-            monitor_type: 'profile',
-            target_value: vanityName,
-            target_metadata: {
-              prompt_config: {
-                tone,
-                formality,
-                comment_length: commentLength,
-                question_frequency: questionFrequency,
-                custom_instructions: customInstructions,
-                use_knowledge_base: useKnowledgeBase
-              },
-              anti_bot_config: {
-                min_existing_comments: minExistingComments,
-                min_post_reactions: minPostReactions,
-                min_post_age_minutes: minPostAgeMinutes,
-                max_post_age_hours: maxPostAgeHours,
-                daily_limit: dailyLimit,
-                min_delay_minutes: minDelayMinutes
-              },
-              advanced_config: {
-                tag_authors: tagAuthors,
-                blacklisted_profiles: blacklistedProfiles.split(',').map(p => p.trim()).filter(Boolean),
-                monitor_comments: monitorComments,
-                reply_to_comments: replyToComments
-              }
-            },
-            is_active: true,
-            check_frequency_minutes: minDelayMinutes,
-            timezone: timezone,
-            daily_start_time: dailyStartTime + ':00',
-            auto_approve_enabled: autoApproveEnabled,
-            auto_approve_start_time: autoApproveStartTime + ':00',
-            auto_approve_end_time: autoApproveEndTime + ':00',
+            // Store profile as special hashtag format: "PROFILE:vanity_name"
+            hashtags: [`PROFILE:${vanityName}`],
+            keywords: [],
             status: 'active'
+            // Note: All other settings (timezone, auto_approve, etc.) should be stored in a future metadata JSONB column
+            // For now, they are only in the UI and will be used when N8N workflows are built
           };
 
           console.log('📤 Creating profile monitor:', monitor);
