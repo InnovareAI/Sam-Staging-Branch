@@ -45,6 +45,66 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+/**
+ * Calculate next business day at 9 AM local time
+ * Skips weekends and public holidays
+ */
+function getNextBusinessDay(daysToAdd: number = 1): Date {
+  const PUBLIC_HOLIDAYS = [
+    '2025-01-01', '2025-01-20', '2025-02-17', '2025-03-17',
+    '2025-05-26', '2025-06-19', '2025-07-04', '2025-09-01',
+    '2025-10-13', '2025-11-11', '2025-11-27', '2025-12-25',
+    '2026-01-01', '2026-01-19'
+  ];
+
+  let nextDay = new Date();
+  nextDay.setDate(nextDay.getDate() + daysToAdd);
+  nextDay.setHours(9, 0, 0, 0); // Set to 9 AM
+
+  // Keep advancing until we find a business day
+  while (true) {
+    const dayOfWeek = nextDay.getDay(); // 0 = Sunday, 6 = Saturday
+    const dateStr = nextDay.toISOString().split('T')[0];
+
+    // Check if weekend
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      nextDay.setDate(nextDay.getDate() + 1);
+      continue;
+    }
+
+    // Check if public holiday
+    if (PUBLIC_HOLIDAYS.includes(dateStr)) {
+      nextDay.setDate(nextDay.getDate() + 1);
+      continue;
+    }
+
+    // Found a business day!
+    break;
+  }
+
+  return nextDay;
+}
+
+/**
+ * Follow-up sequence timing:
+ * FU1: Next business day after acceptance
+ * FU2: 3 days after FU1
+ * FU3: 5 days after FU2
+ * FU4: 5 days after FU3
+ * FU5: 3 days after FU4
+ * GB:  3 days after FU5 (goodbye message)
+ */
+function getFollowUpSchedule(): Date[] {
+  return [
+    getNextBusinessDay(1),          // FU1: Next business day
+    getNextBusinessDay(1 + 3),      // FU2: 3 days later
+    getNextBusinessDay(1 + 3 + 5),  // FU3: 5 days later
+    getNextBusinessDay(1 + 3 + 5 + 5),      // FU4: 5 days later
+    getNextBusinessDay(1 + 3 + 5 + 5 + 3),  // FU5: 3 days later
+    getNextBusinessDay(1 + 3 + 5 + 5 + 3 + 3) // GB: 3 days later
+  ];
+}
+
 export async function POST(req: NextRequest) {
   try {
     // Security check - verify cron secret
@@ -150,9 +210,17 @@ export async function POST(req: NextRequest) {
           if (profile.network_distance === 'FIRST_DEGREE') {
             console.log(`✅ Connection accepted: ${prospect.first_name} ${prospect.last_name}`);
 
-            // Calculate follow-up time (24 hours after acceptance)
-            const followUpDueAt = new Date();
-            followUpDueAt.setHours(followUpDueAt.getHours() + 24);
+            // Calculate follow-up schedule
+            const followUpSchedule = getFollowUpSchedule();
+            const firstFollowUpAt = followUpSchedule[0]; // FU1: Next business day at 9 AM
+
+            console.log(`   📅 Follow-up schedule:`);
+            console.log(`      FU1: ${firstFollowUpAt.toLocaleString()} (next business day)`);
+            console.log(`      FU2: ${followUpSchedule[1].toLocaleString()} (+3 days)`);
+            console.log(`      FU3: ${followUpSchedule[2].toLocaleString()} (+5 days)`);
+            console.log(`      FU4: ${followUpSchedule[3].toLocaleString()} (+5 days)`);
+            console.log(`      FU5: ${followUpSchedule[4].toLocaleString()} (+3 days)`);
+            console.log(`      GB:  ${followUpSchedule[5].toLocaleString()} (+3 days)`);
 
             // Update prospect status
             await supabase
@@ -160,7 +228,7 @@ export async function POST(req: NextRequest) {
               .update({
                 status: 'connected',
                 connection_accepted_at: new Date().toISOString(),
-                follow_up_due_at: followUpDueAt.toISOString(),
+                follow_up_due_at: firstFollowUpAt.toISOString(),
                 updated_at: new Date().toISOString()
               })
               .eq('id', prospect.id);

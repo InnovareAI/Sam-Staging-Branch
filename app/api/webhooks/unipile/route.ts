@@ -19,6 +19,46 @@ const supabase = createClient(
 );
 
 /**
+ * Calculate next business day at 9 AM local time
+ * Skips weekends and public holidays
+ */
+function getNextBusinessDay(daysToAdd: number = 1): Date {
+  const PUBLIC_HOLIDAYS = [
+    '2025-01-01', '2025-01-20', '2025-02-17', '2025-03-17',
+    '2025-05-26', '2025-06-19', '2025-07-04', '2025-09-01',
+    '2025-10-13', '2025-11-11', '2025-11-27', '2025-12-25',
+    '2026-01-01', '2026-01-19'
+  ];
+
+  let nextDay = new Date();
+  nextDay.setDate(nextDay.getDate() + daysToAdd);
+  nextDay.setHours(9, 0, 0, 0); // Set to 9 AM
+
+  // Keep advancing until we find a business day
+  while (true) {
+    const dayOfWeek = nextDay.getDay(); // 0 = Sunday, 6 = Saturday
+    const dateStr = nextDay.toISOString().split('T')[0];
+
+    // Check if weekend
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      nextDay.setDate(nextDay.getDate() + 1);
+      continue;
+    }
+
+    // Check if public holiday
+    if (PUBLIC_HOLIDAYS.includes(dateStr)) {
+      nextDay.setDate(nextDay.getDate() + 1);
+      continue;
+    }
+
+    // Found a business day!
+    break;
+  }
+
+  return nextDay;
+}
+
+/**
  * Verify webhook signature from Unipile
  */
 function verifyWebhookSignature(
@@ -145,9 +185,8 @@ async function handleUsersWebhook(event: any) {
       for (const prospect of prospects) {
         console.log(`✅ Updating prospect ${prospect.id} to connected status`);
 
-        // Calculate follow-up time (24 hours after acceptance)
-        const followUpDueAt = new Date();
-        followUpDueAt.setHours(followUpDueAt.getHours() + 24);
+        // Calculate follow-up time (next business day at 9 AM)
+        const followUpDueAt = getNextBusinessDay(1);
 
         await supabase
           .from('campaign_prospects')
@@ -159,6 +198,8 @@ async function handleUsersWebhook(event: any) {
             updated_at: new Date().toISOString()
           })
           .eq('id', prospect.id);
+
+        console.log(`   📅 First follow-up scheduled for: ${followUpDueAt.toLocaleString()}`);
       }
 
       console.log(`🎉 Updated ${prospects.length} prospects to connected status`);
@@ -209,19 +250,20 @@ async function handleMessagingWebhook(event: any) {
         .in('status', ['connected', 'messaging']);
 
       if (prospects && prospects.length > 0) {
-        // Update prospect status to 'replied'
+        // Update prospect status to 'replied' and STOP follow-up sequence
         for (const prospect of prospects) {
           await supabase
             .from('campaign_prospects')
             .update({
               status: 'replied',
               responded_at: new Date().toISOString(),
+              follow_up_due_at: null, // STOP follow-up sequence
               updated_at: new Date().toISOString()
             })
             .eq('id', prospect.id);
         }
 
-        console.log(`✅ Updated ${prospects.length} prospects to replied status`);
+        console.log(`✅ Updated ${prospects.length} prospects to replied status and stopped follow-up sequence`);
       }
     }
 

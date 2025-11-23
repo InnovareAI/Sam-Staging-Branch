@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     console.log('🕐 Processing follow-ups...');
 
-    // 1. Find prospects due for follow-up
+    // 1. Find prospects due for follow-up (exclude those who replied)
     const { data: prospects, error: prospectsError } = await supabase
       .from('campaign_prospects')
       .select(`
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
           )
         )
       `)
-      .eq('status', 'connection_request_sent')
+      .in('status', ['connection_request_sent', 'connected', 'messaging'])
       .not('follow_up_due_at', 'is', null)
       .lte('follow_up_due_at', new Date().toISOString())
       .order('follow_up_due_at', { ascending: true })
@@ -102,6 +102,17 @@ export async function POST(req: NextRequest) {
       try {
         console.log(`\n👤 Processing: ${prospect.first_name} ${prospect.last_name}`);
         console.log(`📍 Follow-up index: ${prospect.follow_up_sequence_index}`);
+
+        // Safety check: Skip if prospect has replied
+        if (prospect.status === 'replied') {
+          console.log(`✅ Prospect already replied, skipping follow-up`);
+          results.push({
+            prospectId: prospect.id,
+            name: `${prospect.first_name} ${prospect.last_name}`,
+            status: 'skipped_replied'
+          });
+          continue;
+        }
 
         const campaign = prospect.campaigns as any;
         const linkedinAccount = campaign.workspace_accounts as any;

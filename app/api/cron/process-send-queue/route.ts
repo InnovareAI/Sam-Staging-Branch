@@ -40,27 +40,42 @@ const PUBLIC_HOLIDAYS = [
   '2026-01-19', // MLK Jr. Day
 ];
 
-function isWeekend(date: Date): boolean {
-  const day = date.getUTCDay();
-  return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
-}
+import moment from 'moment-timezone';
 
-function isPublicHoliday(date: Date): boolean {
-  const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
-  return PUBLIC_HOLIDAYS.includes(dateStr);
-}
+function canSendMessage(date: Date, settings?: any): boolean {
+  // Default settings
+  const timezone = settings?.timezone || 'America/New_York';
+  const startHour = settings?.working_hours_start ?? 8;
+  const endHour = settings?.working_hours_end ?? 18;
+  const skipWeekends = settings?.skip_weekends ?? true;
+  const skipHolidays = settings?.skip_holidays ?? true;
 
-function canSendMessage(scheduledFor: Date): boolean {
-  // Don't send on weekends
-  if (isWeekend(scheduledFor)) {
-    console.log(`⏸️  Skipping weekend message (${scheduledFor.toISOString()})`);
+  // Convert to target timezone
+  const localTime = moment(date).tz(timezone);
+
+  // 1. Check Weekend
+  if (skipWeekends) {
+    const day = localTime.day(); // 0=Sun, 6=Sat
+    if (day === 0 || day === 6) {
+      console.log(`⏸️  Skipping weekend (${localTime.format('llll')})`);
+      return false;
+    }
+  }
+
+  // 2. Check Business Hours
+  const currentHour = localTime.hour();
+  if (currentHour < startHour || currentHour >= endHour) {
+    console.log(`⏸️  Outside business hours (${currentHour}:00 in ${timezone})`);
     return false;
   }
 
-  // Don't send on public holidays
-  if (isPublicHoliday(scheduledFor)) {
-    console.log(`🎉 Skipping public holiday message (${scheduledFor.toISOString()})`);
-    return false;
+  // 3. Check Holidays (US Only for now)
+  if (skipHolidays) {
+    const dateStr = localTime.format('YYYY-MM-DD');
+    if (PUBLIC_HOLIDAYS.includes(dateStr)) {
+      console.log(`🎉 Skipping public holiday (${dateStr})`);
+      return false;
+    }
   }
 
   return true;
@@ -145,13 +160,29 @@ export async function POST(req: NextRequest) {
     // 2. Fetch campaign details
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
-      .select('id, campaign_name, linkedin_account_id')
+      .select('id, campaign_name, linkedin_account_id, schedule_settings, workspace_id')
       .eq('id', queueItem.campaign_id)
       .single();
 
     if (campaignError || !campaign) {
       console.error('❌ Campaign not found:', campaignError);
       return NextResponse.json({ error: 'Campaign not found' }, { status: 400 });
+    }
+
+    // 2.5 Check if we can send NOW based on campaign schedule
+    // If schedule_settings exists, check against it. Otherwise use defaults.
+    if (!canSendMessage(new Date(), campaign.schedule_settings)) {
+      console.log('⏸️  Campaign schedule restriction active. Skipping send.');
+
+      // OPTIONAL: We could update the scheduled_for time to the next valid window here,
+      // but simply skipping allows the cron to check again later (or we can rely on the randomizer's initial scheduling).
+      // For now, we just skip this execution.
+
+      return NextResponse.json({
+        success: true,
+        processed: 0,
+        message: 'Skipped due to schedule restrictions'
+      });
     }
 
     // 3. Fetch workspace account
@@ -213,6 +244,35 @@ export async function POST(req: NextRequest) {
           sent_at: new Date().toISOString()
         })
         .eq('id', queueItem.id);
+
+      // 3.5. Store message in campaign_messages table for tracking
+      const messageRecord = {
+        campaign_id: queueItem.campaign_id,
+        workspace_id: campaign.workspace_id,
+        platform: 'linkedin',
+        platform_message_id: `linkedin_cr_${queueItem.id}`,
+        recipient_linkedin_profile: prospect.linkedin_url,
+        recipient_name: `${prospect.first_name} ${prospect.last_name}`,
+        prospect_id: prospect.id,
+        message_content: queueItem.message,
+        message_template_variant: 'connection_request',
+        sent_at: new Date().toISOString(),
+        sent_via: 'queue_cron',
+        sender_account: linkedinAccount.account_name,
+        expects_reply: true,
+        delivery_status: 'sent'
+      };
+
+      const { error: messageError } = await supabase
+        .from('campaign_messages')
+        .insert(messageRecord);
+
+      if (messageError) {
+        console.error('⚠️  Failed to store message in campaign_messages:', messageError);
+        // Don't fail the whole operation, just log it
+      } else {
+        console.log('📝 Message stored in campaign_messages table');
+      }
 
       // 4. Update prospect record
       const nextActionAt = new Date();
