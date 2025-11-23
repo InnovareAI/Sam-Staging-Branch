@@ -1,51 +1,97 @@
 #!/usr/bin/env node
 
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
 
-dotenv.config({ path: '.env.local' });
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-const campaignId = '683f9214-8a3f-4015-98fe-aa3ae76a9ebe'; // Charissa's campaign
-
-console.log('🔄 Resetting failed prospects to pending...\n');
-
-async function resetProspects() {
-  // Get failed prospects
-  const { data: failedProspects } = await supabase
-    .from('campaign_prospects')
-    .select('id, first_name, last_name')
-    .eq('campaign_id', campaignId)
-    .eq('status', 'failed');
-
-  if (!failedProspects || failedProspects.length === 0) {
-    console.log('✅ No failed prospects to reset');
-    return;
-  }
-
-  console.log(`Found ${failedProspects.length} failed prospects\n`);
-
-  // Reset to pending
-  const { error } = await supabase
-    .from('campaign_prospects')
-    .update({ status: 'pending' })
-    .eq('campaign_id', campaignId)
-    .eq('status', 'failed');
-
-  if (error) {
-    console.error('❌ Error:', error);
-    return;
-  }
-
-  console.log(`✅ Reset ${failedProspects.length} prospects to 'pending' status`);
-  console.log('\n📋 These prospects will now be processed with rate limiting:');
-  console.log('   - Max 15 messages per 24 hours');
-  console.log('   - Respects LinkedIn weekly limit (100/week)');
-  console.log('   - Auto-retry on Monday if weekly limit hit\n');
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Missing Supabase credentials');
+  process.exit(1);
 }
 
-resetProspects().catch(console.error);
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function resetFailedProspects() {
+  try {
+    console.log('🔍 Finding BLL-CISO campaign...');
+
+    // Find the campaign
+    const { data: campaigns, error: campaignError } = await supabase
+      .from('campaigns')
+      .select('id, name, workspace_id, status')
+      .ilike('name', '%BLL-CISO%');
+
+    if (campaignError) {
+      console.error('❌ Error finding campaign:', campaignError);
+      return;
+    }
+
+    if (!campaigns || campaigns.length === 0) {
+      console.error('❌ No BLL-CISO campaign found');
+      return;
+    }
+
+    const campaign = campaigns[0];
+    console.log('✅ Found campaign:', campaign.name);
+    console.log('   Campaign ID:', campaign.id);
+    console.log('   Workspace ID:', campaign.workspace_id);
+    console.log('   Status:', campaign.status);
+
+    // Count failed prospects
+    const { data: failedProspects, error: countError } = await supabase
+      .from('campaign_prospects')
+      .select('id, first_name, last_name, status')
+      .eq('campaign_id', campaign.id)
+      .eq('status', 'failed');
+
+    if (countError) {
+      console.error('❌ Error counting failed prospects:', countError);
+      return;
+    }
+
+    console.log(`\n📊 Found ${failedProspects?.length || 0} failed prospects`);
+
+    if (!failedProspects || failedProspects.length === 0) {
+      console.log('✅ No failed prospects to reset');
+      return;
+    }
+
+    // Reset all failed prospects to pending
+    console.log('\n🔄 Resetting failed prospects to pending...');
+
+    const { data: updated, error: updateError } = await supabase
+      .from('campaign_prospects')
+      .update({
+        status: 'pending',
+        updated_at: new Date().toISOString()
+      })
+      .eq('campaign_id', campaign.id)
+      .eq('status', 'failed')
+      .select();
+
+    if (updateError) {
+      console.error('❌ Error updating prospects:', updateError);
+      return;
+    }
+
+    console.log(`✅ Successfully reset ${updated?.length || 0} prospects to pending status`);
+
+    // Show summary
+    console.log('\n📋 Reset prospects:');
+    failedProspects.slice(0, 10).forEach((p, i) => {
+      console.log(`   ${i + 1}. ${p.first_name} ${p.last_name}`);
+    });
+    if (failedProspects.length > 10) {
+      console.log(`   ... and ${failedProspects.length - 10} more`);
+    }
+
+    console.log('\n✅ Campaign is ready to be restarted!');
+    console.log('💡 Next step: Resume the campaign in the UI or change status to "active"');
+
+  } catch (error) {
+    console.error('❌ Unexpected error:', error);
+  }
+}
+
+resetFailedProspects();
