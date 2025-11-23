@@ -150,9 +150,82 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
 
         const data = await response.json();
         console.log('✅ Monitor created successfully:', data);
+      } else if (targetingMode === 'profile') {
+        // For profile targeting mode, create ONE monitor per profile
+        for (const target of validTargets) {
+          // Extract vanity name from LinkedIn URL or use as-is
+          let vanityName = target.trim();
+          if (vanityName.includes('linkedin.com/in/')) {
+            const match = vanityName.match(/linkedin\.com\/in\/([^\/\?#]+)/);
+            if (match) vanityName = match[1];
+          }
+
+          const monitor: any = {
+            monitor_type: 'profile',
+            target_value: vanityName,
+            target_metadata: {
+              prompt_config: {
+                tone,
+                formality,
+                comment_length: commentLength,
+                question_frequency: questionFrequency,
+                custom_instructions: customInstructions,
+                use_knowledge_base: useKnowledgeBase
+              },
+              anti_bot_config: {
+                min_existing_comments: minExistingComments,
+                min_post_reactions: minPostReactions,
+                min_post_age_minutes: minPostAgeMinutes,
+                max_post_age_hours: maxPostAgeHours,
+                daily_limit: dailyLimit,
+                min_delay_minutes: minDelayMinutes
+              },
+              advanced_config: {
+                tag_authors: tagAuthors,
+                blacklisted_profiles: blacklistedProfiles.split(',').map(p => p.trim()).filter(Boolean),
+                monitor_comments: monitorComments,
+                reply_to_comments: replyToComments
+              }
+            },
+            is_active: true,
+            check_frequency_minutes: minDelayMinutes,
+            timezone: timezone,
+            daily_start_time: dailyStartTime + ':00',
+            auto_approve_enabled: autoApproveEnabled,
+            auto_approve_start_time: autoApproveStartTime + ':00',
+            auto_approve_end_time: autoApproveEndTime + ':00',
+            status: 'active'
+          };
+
+          console.log('📤 Creating profile monitor:', monitor);
+
+          const response = await fetch('/api/linkedin-commenting/monitors', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(monitor),
+          });
+
+          if (!response.ok) {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const error = await response.json();
+              console.error('❌ API Error Details:', error);
+              const errorMsg = error.error || error.message || 'Failed to create monitor';
+              const errorDetails = error.details ? `\n\nDetails: ${error.details}` : '';
+              const errorHint = error.hint ? `\n\nHint: ${error.hint}` : '';
+              throw new Error(errorMsg + errorDetails + errorHint);
+            } else {
+              const text = await response.text();
+              console.error('Non-JSON error response:', text);
+              throw new Error(`Server error: ${response.status} ${response.statusText}\n\n${text}`);
+            }
+          }
+
+          const data = await response.json();
+          console.log('✅ Monitor created successfully:', data);
+        }
       } else {
-        // Profile targeting not yet supported in this schema
-        throw new Error('Profile targeting is not yet supported');
+        throw new Error('Unknown targeting mode: ' + targetingMode);
       }
 
       console.log('✅ Campaign created successfully');
