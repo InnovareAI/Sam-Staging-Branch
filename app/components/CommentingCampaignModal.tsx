@@ -68,18 +68,34 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
   const [saving, setSaving] = useState(false);
 
   const handleAddTarget = () => {
-    setTargets([...targets, '']);
+    if (activeTab === 'profiles') {
+      setProfileTargets([...profileTargets, '']);
+    } else {
+      setCompanyTargets([...companyTargets, '']);
+    }
   };
 
   const handleTargetChange = (index: number, value: string) => {
-    const newTargets = [...targets];
-    newTargets[index] = value;
-    setTargets(newTargets);
+    if (activeTab === 'profiles') {
+      const newTargets = [...profileTargets];
+      newTargets[index] = value;
+      setProfileTargets(newTargets);
+    } else {
+      const newTargets = [...companyTargets];
+      newTargets[index] = value;
+      setCompanyTargets(newTargets);
+    }
   };
 
   const handleRemoveTarget = (index: number) => {
-    if (targets.length > 1) {
-      setTargets(targets.filter((_, i) => i !== index));
+    if (activeTab === 'profiles') {
+      if (profileTargets.length > 1) {
+        setProfileTargets(profileTargets.filter((_, i) => i !== index));
+      }
+    } else {
+      if (companyTargets.length > 1) {
+        setCompanyTargets(companyTargets.filter((_, i) => i !== index));
+      }
     }
   };
 
@@ -87,7 +103,10 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
     setSaving(true);
 
     try {
-      const validTargets = targets.filter(t => t.trim());
+      // Combine profile and company targets
+      const allProfileTargets = profileTargets.filter(t => t.trim());
+      const allCompanyTargets = companyTargets.filter(t => t.trim());
+      const validTargets = [...allProfileTargets, ...allCompanyTargets];
 
       // For hashtag targeting mode, create ONE monitor with ALL hashtags
       if (targetingMode === 'hashtag') {
