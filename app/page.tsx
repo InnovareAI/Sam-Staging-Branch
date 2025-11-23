@@ -484,6 +484,31 @@ export default function Page() {
     }
   }, [activeMenuItem]);
 
+  // Load commenting campaigns when tab is active
+  useEffect(() => {
+    if (activeMenuItem === 'commenting-agent' && selectedWorkspaceId) {
+      const loadCommentingCampaigns = async () => {
+        setCommentingCampaignsLoading(true);
+        try {
+          const response = await fetch(`/api/linkedin-commenting/monitors?workspace_id=${selectedWorkspaceId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setCommentingCampaigns(data.monitors || []);
+          } else {
+            console.error('Failed to load commenting campaigns:', await response.text());
+            setCommentingCampaigns([]);
+          }
+        } catch (error) {
+          console.error('Error loading commenting campaigns:', error);
+          setCommentingCampaigns([]);
+        } finally {
+          setCommentingCampaignsLoading(false);
+        }
+      };
+      loadCommentingCampaigns();
+    }
+  }, [activeMenuItem, selectedWorkspaceId]);
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (messagesContainerRef.current && messages.length > 0) {
@@ -1413,16 +1438,12 @@ export default function Page() {
       description: 'Plan multi-channel outreach with Sam',
       icon: Megaphone,
     },
-    ...(currentWorkspace?.commenting_agent_enabled
-      ? [
-          {
-            id: 'commenting-agent',
-            label: 'Commenting Agent',
-            description: 'Automated LinkedIn engagement and commenting',
-            icon: MessageSquare,
-          },
-        ]
-      : []),
+    {
+      id: 'commenting-agent',
+      label: 'Commenting Agent',
+      description: 'Automated LinkedIn engagement and commenting',
+      icon: MessageSquare,
+    },
     {
       id: 'analytics',
       label: 'Analytics',
