@@ -1,60 +1,63 @@
 #!/usr/bin/env node
-import { createClient } from '@supabase/supabase-js'
-import dotenv from 'dotenv'
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-dotenv.config({ path: join(__dirname, '../../.env.local') })
+import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-async function main() {
-  console.log('🔒 Checking RLS Policies for knowledge_base table\n')
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-  // Test if Stan can insert (simulate his permissions)
-  const stanUserId = '6a927440-ebe1-49b4-ae5e-fbee5d27944d'
-  const blueLabel = '014509ba-226e-43ee-ba58-ab5f20d2ed08'
+async function checkRLS() {
+  console.log('\n🔒 CHECKING RLS POLICIES ON CAMPAIGNS TABLE\n');
+  console.log('═══════════════════════════════════════════════════════════════\n');
 
-  console.log('Testing insert as Stan...')
-  console.log(`User ID: ${stanUserId}`)
-  console.log(`Workspace: ${blueLabel}\n`)
-
-  // Try to insert a test document (will fail or succeed based on RLS)
-  const { data, error } = await supabase
-    .from('knowledge_base')
-    .insert({
-      workspace_id: blueLabel,
-      category: 'test',
-      title: 'RLS Test Document',
-      content: 'Testing RLS policies',
-      is_active: true
-    })
-    .select()
+  // Query the pg_policies table to see RLS policies
+  const { data: policies, error } = await supabase
+    .rpc('exec_sql', {
+      sql: `
+        SELECT 
+          schemaname,
+          tablename,
+          policyname,
+          permissive,
+          roles,
+          cmd,
+          qual,
+          with_check
+        FROM pg_policies 
+        WHERE tablename = 'campaigns'
+        ORDER BY policyname;
+      `
+    });
 
   if (error) {
-    console.log('❌ INSERT FAILED')
-    console.log('Error:', error.message)
-    console.log('')
-    console.log('This suggests RLS policy is blocking inserts!')
-    console.log('OR the upload API needs to use service role key')
-  } else {
-    console.log('✅ INSERT SUCCEEDED')
-    console.log('Document ID:', data[0].id)
-    console.log('')
-    console.log('RLS allows inserts - deleting test doc...')
+    // Try alternative method
+    console.log('Using service role to check policies...\n');
     
-    await supabase
-      .from('knowledge_base')
-      .delete()
-      .eq('id', data[0].id)
+    const { data: campaigns } = await supabase
+      .from('campaigns')
+      .select('id, name, workspace_id')
+      .eq('workspace_id', '96c03b38-a2f4-40de-9e16-43098599e1d4')
+      .limit(5);
+
+    console.log(`✅ Service role can see ${campaigns?.length || 0} campaigns\n`);
     
-    console.log('✅ Test document deleted')
+    if (campaigns && campaigns.length > 0) {
+      campaigns.forEach((c, i) => {
+        console.log(`${i + 1}. ${c.name}`);
+      });
+    }
   }
+
+  console.log('\n═══════════════════════════════════════════════════════════════');
+  console.log('💡 DIAGNOSIS:');
+  console.log('   If service role sees campaigns but user does not,');
+  console.log('   then RLS policies are blocking user access.');
+  console.log('\n   Most likely causes:');
+  console.log('   1. User not in workspace_members table');
+  console.log('   2. RLS policy checking wrong user_id column');
+  console.log('   3. Policy recursion causing infinite loop');
+  console.log('═══════════════════════════════════════════════════════════════\n');
 }
 
-main().catch(console.error)
+checkRLS();

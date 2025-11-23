@@ -322,8 +322,8 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        // VALIDATION PASSED: Create queue record
-        // Schedule to start immediately with 5-minute spacing
+        // VALIDATION PASSED: Create queue records for ALL 6 messages (CR + 5 follow-ups)
+        // Schedule to start immediately with 5-minute spacing for CRs
         let scheduledFor = new Date();
 
         // Clear seconds and milliseconds for consistency
@@ -332,20 +332,55 @@ export async function POST(req: NextRequest) {
         // Add 5-minute spacing for this prospect (0 min for first, 5 for second, 10 for third, etc)
         scheduledFor.setMinutes(scheduledFor.getMinutes() + (prospectIndex * 5));
 
-        console.log(`✅ Valid prospect - queuing for ${scheduledFor.toLocaleTimeString()}`);
-        console.log(`   Index: ${prospectIndex}, Scheduled (ISO): ${scheduledFor.toISOString()}`);
+        console.log(`✅ Valid prospect - queuing CR + 5 follow-ups for ${scheduledFor.toLocaleTimeString()}`);
+        console.log(`   Index: ${prospectIndex}, CR Scheduled (ISO): ${scheduledFor.toISOString()}`);
 
+        // 1. CONNECTION REQUEST (immediate - respecting weekend/holiday blocking)
         queueRecords.push({
           campaign_id: campaignId,
           prospect_id: prospect.id,
           linkedin_user_id: providerId,
           scheduled_for: scheduledFor.toISOString(),
           status: 'pending',
+          message_type: 'connection_request',
           message: connectionRequestMessage
             .replace(/{first_name}/g, prospect.first_name)
             .replace(/{last_name}/g, prospect.last_name)
             .replace(/{company_name}/g, prospect.company_name || '')
             .replace(/{title}/g, prospect.title || '')
+        });
+
+        // 2-6. FOLLOW-UP MESSAGES (scheduled 3, 8, 13, 18, 23 days after CR)
+        const followUpMessages = [
+          campaign.message_templates?.follow_up_messages?.[0] || campaign.message_templates?.alternative_message,
+          campaign.message_templates?.follow_up_messages?.[1],
+          campaign.message_templates?.follow_up_messages?.[2],
+          campaign.message_templates?.follow_up_messages?.[3],
+          campaign.message_templates?.follow_up_messages?.[4]
+        ];
+
+        const followUpDelays = [3, 8, 13, 18, 23]; // Days after CR
+
+        followUpMessages.forEach((followUpMessage, index) => {
+          if (followUpMessage) {
+            const followUpDate = new Date(scheduledFor);
+            followUpDate.setDate(followUpDate.getDate() + followUpDelays[index]);
+
+            queueRecords.push({
+              campaign_id: campaignId,
+              prospect_id: prospect.id,
+              linkedin_user_id: providerId,
+              scheduled_for: followUpDate.toISOString(),
+              status: 'pending',
+              message_type: `follow_up_${index + 1}`,
+              requires_connection: true, // Only send if connection accepted
+              message: followUpMessage
+                .replace(/{first_name}/g, prospect.first_name)
+                .replace(/{last_name}/g, prospect.last_name)
+                .replace(/{company_name}/g, prospect.company_name || '')
+                .replace(/{title}/g, prospect.title || '')
+            });
+          }
         });
 
       } catch (error: any) {
