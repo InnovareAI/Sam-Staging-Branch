@@ -42,6 +42,10 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
   const [monitorComments, setMonitorComments] = useState(false);
   const [replyToComments, setReplyToComments] = useState(false);
   const [timezone, setTimezone] = useState('America/New_York');
+  const [dailyStartTime, setDailyStartTime] = useState('09:00');
+  const [autoApproveEnabled, setAutoApproveEnabled] = useState(false);
+  const [autoApproveStartTime, setAutoApproveStartTime] = useState('09:00');
+  const [autoApproveEndTime, setAutoApproveEndTime] = useState('17:00');
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -98,11 +102,18 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
             monitor_comments: monitorComments,
             reply_to_comments: replyToComments,
             timezone: timezone,
+            daily_start_time: dailyStartTime,
           },
           is_active: true,
           priority: 1,
           check_frequency_minutes: 30,
           min_engagement_threshold: minPostReactions,
+          // Add new columns at top level (migration 014)
+          timezone: timezone,
+          daily_start_time: dailyStartTime + ':00', // Convert HH:mm to HH:mm:ss
+          auto_approve_enabled: autoApproveEnabled,
+          auto_approve_start_time: autoApproveStartTime + ':00',
+          auto_approve_end_time: autoApproveEndTime + ':00',
         };
 
         // Add new columns if migration has been run (they'll be ignored if columns don't exist)
@@ -112,9 +123,6 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
         }
         if (replyToComments !== undefined) {
           monitor.reply_to_comments = replyToComments;
-        }
-        if (timezone) {
-          monitor.timezone = timezone;
         }
 
         console.log('📤 Creating monitor:', monitor);
@@ -558,6 +566,66 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
                     <option value="Asia/Dubai">Dubai (GST)</option>
                     <option value="Australia/Sydney">Sydney (AEDT)</option>
                   </select>
+                </div>
+
+                {/* Daily Start Time */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Daily Start Time</label>
+                  <input
+                    type="time"
+                    value={dailyStartTime}
+                    onChange={(e) => setDailyStartTime(e.target.value)}
+                    className="w-full px-4 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Commenting will start at this time each day (in selected timezone)</p>
+                </div>
+
+                {/* Auto-Approval Window */}
+                <div className="p-4 bg-blue-900/20 rounded-lg border border-blue-700/50">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="text-white font-medium text-sm">Auto-Approve Comments</div>
+                      <div className="text-gray-400 text-xs">Automatically approve comments generated during active hours</div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={autoApproveEnabled}
+                        onChange={(e) => setAutoApproveEnabled(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  {autoApproveEnabled && (
+                    <div className="grid grid-cols-2 gap-3 mt-3">
+                      <div>
+                        <label className="block text-xs text-gray-300 mb-1">Start Time</label>
+                        <input
+                          type="time"
+                          value={autoApproveStartTime}
+                          onChange={(e) => setAutoApproveStartTime(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-300 mb-1">End Time</label>
+                        <input
+                          type="time"
+                          value={autoApproveEndTime}
+                          onChange={(e) => setAutoApproveEndTime(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {autoApproveEnabled && (
+                    <p className="text-xs text-gray-400 mt-2">
+                      Comments generated between {autoApproveStartTime} - {autoApproveEndTime} will be auto-approved
+                    </p>
+                  )}
                 </div>
               </div>
             )}
