@@ -6271,10 +6271,21 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           });
 
           if (executeResponse.ok) {
+            const executeResult = await executeResponse.json();
             const syncMessage = syncedCount > 0
               ? `\n🔗 ${syncedCount} LinkedIn IDs auto-resolved from message history`
               : '';
-            toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${mappedProspects.length} prospects uploaded${syncMessage}\n🚀 Your campaign is now live and messages will be sent according to your schedule`);
+
+            // Check if all prospects were skipped (duplicates or failed)
+            if (executeResult.queued === 0 && executeResult.skipped > 0) {
+              toastWarning(`⚠️ Campaign "${finalCampaignData.name}" created but cannot launch!\n\n❌ All ${executeResult.skipped} prospects were skipped:\n${executeResult.skipped_details?.slice(0, 3).map((s: any) => `   • ${s.reason}`).join('\n') || '   • Duplicate or already in another campaign'}\n\n💡 Solution: Upload new prospects who haven't been contacted before`);
+            } else if (executeResult.skipped > 0) {
+              // Some prospects queued, some skipped
+              toastWarning(`✅ Campaign "${finalCampaignData.name}" launched with warnings!\n\n✅ ${executeResult.queued} prospects queued\n⚠️ ${executeResult.skipped} prospects skipped (duplicates)${syncMessage}\n\n💡 Check campaign dashboard for details`);
+            } else {
+              // All prospects queued successfully
+              toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${mappedProspects.length} prospects uploaded${syncMessage}\n🚀 Your campaign is now live and messages will be sent according to your schedule`);
+            }
           } else {
             const errorData = await executeResponse.json();
             const errorDetails = errorData.details ? `\n🔍 Details: ${errorData.details}` : '';
