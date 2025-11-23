@@ -60,10 +60,16 @@ export async function POST(request: NextRequest) {
       .from('workspace_members')
       .select('workspace_id')
       .eq('user_id', user.id)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (memberError) {
       console.error('❌ Error getting workspace:', memberError);
+      return NextResponse.json({ error: 'Database error getting workspace', details: memberError.message }, { status: 500 });
+    }
+
+    if (!memberData) {
+      console.error('❌ User not in any workspace');
       return NextResponse.json({ error: 'User not in any workspace' }, { status: 403 });
     }
 
