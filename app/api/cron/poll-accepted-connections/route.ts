@@ -91,6 +91,46 @@ function getNextBusinessDay(daysToAdd: number = 1): Date {
 }
 
 /**
+ * Calculate first follow-up time with smart scheduling:
+ * - If currently in business hours (9 AM - 5 PM, Mon-Fri): Send in 1-2 hours
+ * - If outside business hours or weekend: Next business day at 9 AM
+ */
+function getFirstFollowUpTime(): Date {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+  const dateStr = now.toISOString().split('T')[0];
+
+  const PUBLIC_HOLIDAYS = [
+    '2025-01-01', '2025-01-20', '2025-02-17', '2025-03-17',
+    '2025-05-26', '2025-06-19', '2025-07-04', '2025-09-01',
+    '2025-10-13', '2025-11-11', '2025-11-27', '2025-12-25',
+    '2026-01-01', '2026-01-19'
+  ];
+
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  const isHoliday = PUBLIC_HOLIDAYS.includes(dateStr);
+  const inBusinessHours = currentHour >= 9 && currentHour < 17; // 9 AM - 5 PM
+
+  if (!isWeekend && !isHoliday && inBusinessHours) {
+    // We're in business hours - send in 1-2 hours
+    const followUpTime = new Date();
+    const randomMinutes = 60 + Math.floor(Math.random() * 60); // 60-120 minutes
+    followUpTime.setMinutes(followUpTime.getMinutes() + randomMinutes);
+
+    // But don't go past 5 PM - if we would, schedule for next business day 9 AM
+    if (followUpTime.getHours() >= 17) {
+      return getNextBusinessDay(1);
+    }
+
+    return followUpTime;
+  } else {
+    // Outside business hours, weekend, or holiday - next business day at 9 AM
+    return getNextBusinessDay(1);
+  }
+}
+
+/**
  * Follow-up sequence timing:
  * FU1: Next business day after acceptance
  * FU2: 3 days after FU1
@@ -215,9 +255,11 @@ export async function POST(req: NextRequest) {
           if (profile.network_distance === 'FIRST_DEGREE') {
             console.log(`✅ Connection accepted: ${prospect.first_name} ${prospect.last_name}`);
 
-            // Calculate follow-up schedule
+            // Calculate first follow-up time (smart scheduling: 1-2hrs if in business hours, else next business day)
+            const firstFollowUpAt = getFirstFollowUpTime();
+
+            // Calculate remaining follow-up schedule
             const followUpSchedule = getFollowUpSchedule();
-            const firstFollowUpAt = followUpSchedule[0]; // FU1: Next business day at 9 AM
 
             console.log(`   📅 Follow-up schedule:`);
             console.log(`      FU1: ${firstFollowUpAt.toLocaleString()} (next business day)`);

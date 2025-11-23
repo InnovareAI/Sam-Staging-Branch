@@ -59,6 +59,46 @@ function getNextBusinessDay(daysToAdd: number = 1): Date {
 }
 
 /**
+ * Calculate first follow-up time with smart scheduling:
+ * - If currently in business hours (9 AM - 5 PM, Mon-Fri): Send in 1-2 hours
+ * - If outside business hours or weekend: Next business day at 9 AM
+ */
+function getFirstFollowUpTime(): Date {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+  const dateStr = now.toISOString().split('T')[0];
+
+  const PUBLIC_HOLIDAYS = [
+    '2025-01-01', '2025-01-20', '2025-02-17', '2025-03-17',
+    '2025-05-26', '2025-06-19', '2025-07-04', '2025-09-01',
+    '2025-10-13', '2025-11-11', '2025-11-27', '2025-12-25',
+    '2026-01-01', '2026-01-19'
+  ];
+
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  const isHoliday = PUBLIC_HOLIDAYS.includes(dateStr);
+  const inBusinessHours = currentHour >= 9 && currentHour < 17; // 9 AM - 5 PM
+
+  if (!isWeekend && !isHoliday && inBusinessHours) {
+    // We're in business hours - send in 1-2 hours
+    const followUpTime = new Date();
+    const randomMinutes = 60 + Math.floor(Math.random() * 60); // 60-120 minutes
+    followUpTime.setMinutes(followUpTime.getMinutes() + randomMinutes);
+
+    // But don't go past 5 PM - if we would, schedule for next business day 9 AM
+    if (followUpTime.getHours() >= 17) {
+      return getNextBusinessDay(1);
+    }
+
+    return followUpTime;
+  } else {
+    // Outside business hours, weekend, or holiday - next business day at 9 AM
+    return getNextBusinessDay(1);
+  }
+}
+
+/**
  * Verify webhook signature from Unipile
  */
 function verifyWebhookSignature(
@@ -185,8 +225,8 @@ async function handleUsersWebhook(event: any) {
       for (const prospect of prospects) {
         console.log(`✅ Updating prospect ${prospect.id} to connected status`);
 
-        // Calculate follow-up time (next business day at 9 AM)
-        const followUpDueAt = getNextBusinessDay(1);
+        // Calculate first follow-up time (smart: 1-2hrs if in business hours, else next business day)
+        const followUpDueAt = getFirstFollowUpTime();
 
         // Optimistic locking: only update if not already processed by polling cron
         const { data: updated, error: updateError } = await supabase
