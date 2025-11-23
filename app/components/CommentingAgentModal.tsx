@@ -267,19 +267,6 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
                   </li>
                 </ol>
               </div>
-
-              {/* Cost Info */}
-              <div className="p-4 bg-blue-900/20 border border-blue-700/50 rounded-lg">
-                <h4 className="text-blue-200 font-medium mb-2 flex items-center gap-2">
-                  <Sparkles size={16} />
-                  Cost-Effective with SAM AI
-                </h4>
-                <p className="text-blue-300/80 text-sm leading-relaxed">
-                  Using tiered AI strategy: ~$0.09/month for 30 comments per day per workspace.
-                  That's 80x cheaper than using premium AI for everything. Templates are free,
-                  light AI costs $0.0001/comment, full AI costs $0.0005/comment.
-                </p>
-              </div>
             </>
           )}
         </div>
