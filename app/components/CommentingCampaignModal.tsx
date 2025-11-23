@@ -72,60 +72,20 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
     try {
       const validTargets = targets.filter(t => t.trim());
 
-      // Create a monitor for each target
-      const monitorPromises = validTargets.map(async (target) => {
+      // For hashtag targeting mode, create ONE monitor with ALL hashtags
+      if (targetingMode === 'hashtag') {
         const monitor: any = {
-          workspace_id: workspaceId,
-          monitor_type: targetingMode,
-          target_value: target.trim(),
-          target_metadata: {
-            campaign_name: campaignName,
-            prompt_config: {
-              tone,
-              formality,
-              commentLength,
-              questionFrequency,
-              customInstructions,
-              useKnowledgeBase,
-            },
-            anti_bot_detection: {
-              min_existing_comments: minExistingComments,
-              min_post_reactions: minPostReactions,
-              min_post_age_minutes: minPostAgeMinutes,
-              max_post_age_hours: maxPostAgeHours,
-              daily_limit: dailyLimit,
-              min_delay_minutes: minDelayMinutes,
-            },
-            tag_authors: tagAuthors,
-            blacklisted_profiles: blacklistedProfiles.split(',').map(p => p.trim()).filter(Boolean),
-            // Store these in metadata until migration is run
-            monitor_comments: monitorComments,
-            reply_to_comments: replyToComments,
-            timezone: timezone,
-            daily_start_time: dailyStartTime,
-          },
-          is_active: true,
-          priority: 1,
-          check_frequency_minutes: 30,
-          min_engagement_threshold: minPostReactions,
-          // Add new columns at top level (migration 014)
+          hashtags: validTargets.map(t => t.replace(/^#/, '')), // Remove # prefix
+          keywords: [],
+          status: 'active',
           timezone: timezone,
-          daily_start_time: dailyStartTime + ':00', // Convert HH:mm to HH:mm:ss
+          daily_start_time: dailyStartTime + ':00',
           auto_approve_enabled: autoApproveEnabled,
           auto_approve_start_time: autoApproveStartTime + ':00',
           auto_approve_end_time: autoApproveEndTime + ':00',
         };
 
-        // Add new columns if migration has been run (they'll be ignored if columns don't exist)
-        // This allows backward compatibility
-        if (monitorComments !== undefined) {
-          monitor.monitor_comments = monitorComments;
-        }
-        if (replyToComments !== undefined) {
-          monitor.reply_to_comments = replyToComments;
-        }
-
-        console.log('📤 Creating monitor:', monitor);
+        console.log('📤 Creating hashtag monitor:', monitor);
 
         const response = await fetch('/api/linkedin-commenting/monitors', {
           method: 'POST',
@@ -137,7 +97,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
             const error = await response.json();
-            throw new Error(error.error || 'Failed to create monitor');
+            throw new Error(error.error || error.message || 'Failed to create monitor');
           } else {
             const text = await response.text();
             console.error('Non-JSON error response:', text);
@@ -145,18 +105,49 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
           }
         }
 
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          return response.json();
-        } else {
-          console.warn('Response is not JSON, returning empty object');
-          return {};
+        const data = await response.json();
+        console.log('✅ Monitor created successfully:', data);
+      } else if (targetingMode === 'keyword') {
+        // For keyword targeting mode, create ONE monitor with ALL keywords
+        const monitor: any = {
+          hashtags: [],
+          keywords: validTargets,
+          status: 'active',
+          timezone: timezone,
+          daily_start_time: dailyStartTime + ':00',
+          auto_approve_enabled: autoApproveEnabled,
+          auto_approve_start_time: autoApproveStartTime + ':00',
+          auto_approve_end_time: autoApproveEndTime + ':00',
+        };
+
+        console.log('📤 Creating keyword monitor:', monitor);
+
+        const response = await fetch('/api/linkedin-commenting/monitors', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(monitor),
+        });
+
+        if (!response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const error = await response.json();
+            throw new Error(error.error || error.message || 'Failed to create monitor');
+          } else {
+            const text = await response.text();
+            console.error('Non-JSON error response:', text);
+            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+          }
         }
-      });
 
-      await Promise.all(monitorPromises);
+        const data = await response.json();
+        console.log('✅ Monitor created successfully:', data);
+      } else {
+        // Profile targeting not yet supported in this schema
+        throw new Error('Profile targeting is not yet supported');
+      }
 
-      console.log('✅ Campaign created successfully with', validTargets.length, 'monitors');
+      console.log('✅ Campaign created successfully');
       onClose();
 
       // Refresh the page to show new campaigns
