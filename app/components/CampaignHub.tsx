@@ -6588,7 +6588,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       return result.prospects || [];
     },
     enabled: !!selectedCampaignForProspects && showCampaignProspects,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Force fresh data every time
   });
 
   const loadCampaignProspects = (campaignId: string) => {
