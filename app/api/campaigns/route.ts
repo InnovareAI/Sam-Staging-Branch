@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
+      console.error('❌ [CAMPAIGNS API] Auth error:', authError?.message || 'No user');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -15,7 +16,15 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const workspaceId = searchParams.get('workspace_id') || user.user_metadata.workspace_id;
 
+    console.log('📡 [CAMPAIGNS API] Request:', {
+      userId: user.id,
+      email: user.email,
+      workspaceId,
+      userMetadata: user.user_metadata
+    });
+
     if (!workspaceId) {
+      console.error('❌ [CAMPAIGNS API] No workspace ID');
       return NextResponse.json({ error: 'Workspace ID required' }, { status: 400 });
     }
 
@@ -42,8 +51,15 @@ export async function GET(req: NextRequest) {
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false });
 
+    console.log('📊 [CAMPAIGNS API] Query result:', {
+      campaignCount: campaigns?.length || 0,
+      error: error?.message,
+      errorDetails: error?.details,
+      errorHint: error?.hint
+    });
+
     if (error) {
-      console.error('Failed to fetch campaigns:', error);
+      console.error('❌ [CAMPAIGNS API] Query failed:', error);
       return NextResponse.json({ error: 'Failed to fetch campaigns' }, { status: 500 });
     }
 
