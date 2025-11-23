@@ -4963,7 +4963,8 @@ export default function Page() {
             setEditingCampaign(null);
           }}
           workspaceId={selectedWorkspaceId}
-          editingMonitor={editingCampaign}
+          editMode={!!editingCampaign}
+          existingMonitor={editingCampaign || undefined}
         />
       )}
 
