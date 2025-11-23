@@ -36,7 +36,7 @@ async function checkAndUpdateStatuses() {
     console.log(`  - ${p.first_name} ${p.last_name}: ${p.status}`);
   });
 
-  console.log('\n🔄 Updating to Inngest statuses...\n');
+  console.log('\n🔄 Updating to current statuses...\n');
 
   // Update queued_in_n8n → processing
   const queuedIds = n8nProspects

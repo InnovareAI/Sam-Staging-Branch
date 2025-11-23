@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 
       // CRITICAL FIX: Count LinkedIn connection requests from campaign_prospects
       // LinkedIn campaigns update campaign_prospects, not campaign_messages
-      // Include: Inngest statuses (processing, cr_sent, fu1-5_sent, completed) + legacy (connection_requested, contacted)
+      // Include: All sent statuses (processing, cr_sent, fu1-5_sent, completed) + legacy (connection_requested, contacted)
       // NOTE: 'failed' is NOT included - failed means no message was actually sent
       const { count: linkedinSent } = await supabase
         .from('campaign_prospects')

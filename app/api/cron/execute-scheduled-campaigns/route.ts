@@ -1,12 +1,8 @@
 /**
  * Cron Job: Execute Scheduled LinkedIn Campaigns
  *
- * ⚠️ DEPRECATED - This cron is now handled by Inngest
- *
- * Inngest's built-in cron (every 2 hours) triggers campaign workflows,
- * and Inngest workflows handle all timing/delays internally.
- *
- * This endpoint returns early to prevent conflicts with Inngest.
+ * This cron job runs every 2 minutes to check for campaigns that are due for execution.
+ * It respects working hours, timezone, and other campaign execution preferences.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -63,15 +59,6 @@ function shouldExecuteNow(campaign: any): { allowed: boolean; reason?: string } 
 
 export async function POST(req: NextRequest) {
   try {
-    // ⚠️ DEPRECATED: Campaign execution now handled by Inngest
-    // Return early to prevent conflicts with Inngest workflows
-    console.log('⏰ Old cron called - skipping (Inngest handles campaigns now)');
-    return NextResponse.json({
-      message: 'This cron is deprecated - campaigns now handled by Inngest',
-      deprecation: 'Use Inngest cron instead (runs every 2 hours)',
-      inngest_url: '/api/inngest'
-    });
-
     // Verify cron secret (optional security)
     const cronSecret = req.headers.get('x-cron-secret');
     if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {

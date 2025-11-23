@@ -9,13 +9,6 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-[[plugins]]
-  package = "netlify-plugin-inngest"
-
-  [plugins.inputs]
-    host = "https://app.meet-sam.com"
-    path = "/api/inngest"
-
 [[headers]]
   for = "/_next/static/*"
   [headers.values]

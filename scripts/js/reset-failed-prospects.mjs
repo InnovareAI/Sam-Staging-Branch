@@ -42,7 +42,7 @@ async function resetProspects() {
   }
 
   console.log(`✅ Reset ${failedProspects.length} prospects to 'pending' status`);
-  console.log('\n📋 These prospects will now be processed with Inngest throttling:');
+  console.log('\n📋 These prospects will now be processed with rate limiting:');
   console.log('   - Max 15 messages per 24 hours');
   console.log('   - Respects LinkedIn weekly limit (100/week)');
   console.log('   - Auto-retry on Monday if weekly limit hit\n');

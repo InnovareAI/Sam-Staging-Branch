@@ -1,7 +1,7 @@
 /**
  * Test Direct Campaign System
  *
- * Tests the new simple direct campaign system (no N8N, no Inngest)
+ * Tests the direct campaign system using Unipile API
  */
 
 const CAMPAIGN_ID = '5bb3ac9c-eac3-475b-b2a5-5f939edace34'; // Charissa's test campaign

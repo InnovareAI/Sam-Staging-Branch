@@ -1,12 +1,26 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Target, MessageSquare, Shield, Clock, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+
+interface Monitor {
+  id: string;
+  hashtags: string[];
+  keywords: string[];
+  status: string;
+  timezone?: string;
+  daily_start_time?: string;
+  auto_approve_enabled?: boolean;
+  auto_approve_start_time?: string;
+  auto_approve_end_time?: string;
+}
 
 interface CommentingCampaignModalProps {
   isOpen: boolean;
   onClose: () => void;
   workspaceId: string;
+  editMode?: boolean;
+  existingMonitor?: Monitor;
 }
 
 type TargetingMode = 'hashtag' | 'keyword' | 'profile';
@@ -14,11 +28,14 @@ type Tone = 'professional' | 'friendly' | 'casual' | 'passionate';
 type Formality = 'formal' | 'semi-formal' | 'informal';
 type CommentLength = 'short' | 'medium' | 'long';
 type QuestionFrequency = 'frequently' | 'sometimes' | 'rarely' | 'never';
+type TargetTab = 'profiles' | 'companies';
 
-export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }: CommentingCampaignModalProps) {
+export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, editMode = false, existingMonitor }: CommentingCampaignModalProps) {
   const [campaignName, setCampaignName] = useState('');
   const [targetingMode] = useState<TargetingMode>('profile'); // Only profile targeting supported
-  const [targets, setTargets] = useState<string[]>(['']);
+  const [activeTab, setActiveTab] = useState<TargetTab>('profiles');
+  const [profileTargets, setProfileTargets] = useState<string[]>(['']);
+  const [companyTargets, setCompanyTargets] = useState<string[]>(['']);
 
   // Prompt Builder Settings
   const [tone, setTone] = useState<Tone>('professional');

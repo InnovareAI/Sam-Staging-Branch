@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Real-time campaign execution monitoring
- * Tracks: Campaign creation → Inngest trigger → Delay → CR sent
+ * Tracks: Campaign creation → Processing → Delay → CR sent
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -79,9 +79,8 @@ async function checkProspectUpdates() {
         console.log(`   Name: ${prospect.first_name} ${prospect.last_name}`);
         console.log(`   ${oldStatus} → ${prospect.status}`);
 
-        if (prospect.personalization_data?.inngest_event_id) {
-          console.log(`   Inngest Event: ${prospect.personalization_data.inngest_event_id}`);
-          console.log(`   🔗 https://app.inngest.com/env/production/runs/${prospect.personalization_data.inngest_event_id}`);
+        if (prospect.personalization_data?.event_id) {
+          console.log(`   Event ID: ${prospect.personalization_data.event_id}`);
         }
 
         if (prospect.contacted_at) {
@@ -99,28 +98,16 @@ async function checkProspectUpdates() {
   }
 }
 
-async function showInngestStatus() {
-  // Try to get latest Inngest execution (requires API key)
-  if (process.env.INNGEST_SIGNING_KEY) {
-    try {
-      const response = await fetch('https://api.inngest.com/v1/runs?limit=1', {
-        headers: {
-          'Authorization': `Bearer ${process.env.INNGEST_SIGNING_KEY}`
-        }
-      });
+async function showExecutionStatus() {
+  // Show campaign execution status
+  const { data: activeCampaigns } = await supabase
+    .from('campaigns')
+    .select('id, campaign_name, status')
+    .eq('workspace_id', WORKSPACE_ID)
+    .in('status', ['active', 'processing']);
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.data && data.data.length > 0) {
-          const run = data.data[0];
-          console.log(`\n⏳ Latest Inngest Run:`);
-          console.log(`   Status: ${run.status}`);
-          console.log(`   Started: ${new Date(run.started_at).toLocaleString()}`);
-        }
-      }
-    } catch (error) {
-      // Silent fail - Inngest API not critical
-    }
+  if (activeCampaigns && activeCampaigns.length > 0) {
+    console.log(`\n⏳ Active Campaigns: ${activeCampaigns.length}`);
   }
 }
 
@@ -132,8 +119,8 @@ setInterval(async () => {
   await checkProspectUpdates();
 }, 5000);
 
-// Show Inngest status every 30 seconds
-setInterval(showInngestStatus, 30000);
+// Show execution status every 30 seconds
+setInterval(showExecutionStatus, 30000);
 
 // Keep alive
 process.stdin.resume();

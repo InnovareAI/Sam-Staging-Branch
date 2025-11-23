@@ -189,6 +189,7 @@ export default function Page() {
 
   // Commenting Agent modal state
   const [showCommentingCampaignModal, setShowCommentingCampaignModal] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState<any | null>(null);
   const [commentingAgentView, setCommentingAgentView] = useState<'dashboard' | 'approve'>('dashboard');
   const [commentingCampaigns, setCommentingCampaigns] = useState<any[]>([]);
   const [commentingCampaignsLoading, setCommentingCampaignsLoading] = useState(false);
@@ -3172,11 +3173,21 @@ export default function Page() {
                       // Profile-based monitoring (NEW: Unipile free API)
                       const profileVanities = campaign.profile_vanities || [];
                       const keywords = campaign.keywords || [];
-                      const displayProfiles = profileVanities.length > 0 ? profileVanities.join(', ') : 'No profiles yet';
+                      const displayProfiles = profileVanities.length > 0
+                        ? profileVanities.join(', ')
+                        : 'No profiles yet - click to add';
                       const hasProfiles = profileVanities.length > 0;
+                      const campaignName = campaign.name || campaign.campaign_name || 'Unnamed Campaign';
 
                       return (
-                        <div key={campaign.id} className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+                        <div
+                          key={campaign.id}
+                          onClick={() => {
+                            setEditingCampaign(campaign);
+                            setShowCommentingCampaignModal(true);
+                          }}
+                          className="bg-gray-700/50 rounded-lg p-4 border border-gray-600 cursor-pointer hover:bg-gray-700/70 hover:border-purple-500/50 transition-all"
+                        >
                           <div className="flex items-center justify-between">
                             <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
@@ -3184,9 +3195,9 @@ export default function Page() {
                                   <User size={16} className="text-purple-400" />
                                 </div>
                                 <div>
-                                  <h3 className="text-white font-medium">{displayProfiles}</h3>
+                                  <h3 className="text-white font-medium">{campaignName}</h3>
                                   <p className="text-sm text-gray-400">
-                                    Monitoring {profileVanities.length} LinkedIn {profileVanities.length === 1 ? 'profile' : 'profiles'}
+                                    {displayProfiles}
                                   </p>
                                 </div>
                               </div>
@@ -4947,8 +4958,12 @@ export default function Page() {
       {showCommentingCampaignModal && selectedWorkspaceId && (
         <CommentingCampaignModal
           isOpen={showCommentingCampaignModal}
-          onClose={() => setShowCommentingCampaignModal(false)}
+          onClose={() => {
+            setShowCommentingCampaignModal(false);
+            setEditingCampaign(null);
+          }}
           workspaceId={selectedWorkspaceId}
+          editingMonitor={editingCampaign}
         />
       )}
 

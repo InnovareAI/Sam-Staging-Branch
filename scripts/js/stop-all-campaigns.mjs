@@ -26,5 +26,5 @@ const { count: prospectCount, error: prospectError } = await supabase
 console.log(`✅ Cancelled ${prospectCount || 0} pending prospects`);
 
 console.log('\n✅ ALL CAMPAIGNS STOPPED');
-console.log('- Inngest runs will exit when they check prospect status');
+console.log('- All pending prospects cancelled');
 console.log('- No CRs will be sent');
