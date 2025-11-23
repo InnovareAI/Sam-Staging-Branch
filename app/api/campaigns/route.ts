@@ -3,10 +3,14 @@ import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
 export async function GET(req: NextRequest) {
   try {
+    console.log('🚀 [CAMPAIGNS API] Starting GET request');
+
     const supabase = await createSupabaseRouteClient();
+    console.log('✅ [CAMPAIGNS API] Supabase client created');
 
     // Get user and workspace
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError} = await supabase.auth.getUser();
+    console.log('📝 [CAMPAIGNS API] Auth check complete:', { hasUser: !!user, hasError: !!authError });
     if (authError || !user) {
       console.error('❌ [CAMPAIGNS API] Auth error:', authError?.message || 'No user');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -134,9 +138,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ campaigns: enrichedCampaigns });
 
   } catch (error: any) {
-    console.error('Campaign fetch error:', error);
+    console.error('❌❌❌ [CAMPAIGNS API] CRITICAL ERROR:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      fullError: JSON.stringify(error, Object.getOwnPropertyNames(error))
+    });
     return NextResponse.json(
-      { error: 'Failed to fetch campaigns', details: error.message },
+      { error: 'Failed to fetch campaigns', details: error.message, stack: error.stack },
       { status: 500 }
     );
   }
