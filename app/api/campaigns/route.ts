@@ -3,16 +3,11 @@ import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
 export async function GET(req: NextRequest) {
   try {
-    console.log('🚀 [CAMPAIGNS API] Starting GET request');
-
     const supabase = await createSupabaseRouteClient();
-    console.log('✅ [CAMPAIGNS API] Supabase client created');
-
+    
     // Get user and workspace
-    const { data: { user }, error: authError} = await supabase.auth.getUser();
-    console.log('📝 [CAMPAIGNS API] Auth check complete:', { hasUser: !!user, hasError: !!authError });
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      console.error('❌ [CAMPAIGNS API] Auth error:', authError?.message || 'No user');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -20,15 +15,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const workspaceId = searchParams.get('workspace_id') || user.user_metadata.workspace_id;
 
-    console.log('📡 [CAMPAIGNS API] Request:', {
-      userId: user.id,
-      email: user.email,
-      workspaceId,
-      userMetadata: user.user_metadata
-    });
-
     if (!workspaceId) {
-      console.error('❌ [CAMPAIGNS API] No workspace ID');
       return NextResponse.json({ error: 'Workspace ID required' }, { status: 400 });
     }
 
@@ -49,21 +36,13 @@ export async function GET(req: NextRequest) {
         execution_preferences,
         connection_message,
         alternative_message,
-        follow_up_messages,
-        email_account_id
+        follow_up_messages
       `)
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false });
 
-    console.log('📊 [CAMPAIGNS API] Query result:', {
-      campaignCount: campaigns?.length || 0,
-      error: error?.message,
-      errorDetails: error?.details,
-      errorHint: error?.hint
-    });
-
     if (error) {
-      console.error('❌ [CAMPAIGNS API] Query failed:', error);
+      console.error('Failed to fetch campaigns:', error);
       return NextResponse.json({ error: 'Failed to fetch campaigns' }, { status: 500 });
     }
 
@@ -86,41 +65,22 @@ export async function GET(req: NextRequest) {
         .in('status', ['processing', 'cr_sent', 'connection_request_sent', 'fu1_sent', 'fu2_sent', 'fu3_sent', 'fu4_sent', 'fu5_sent', 'completed', 'connection_requested', 'contacted', 'connected', 'messaging', 'replied']);
 
       // Get message stats from campaign_messages (for email campaigns)
-      // Wrapped in try-catch to handle missing tables gracefully
-      let emailSent = 0;
-      let connected = 0;
-      let replyCount = 0;
+      const { data: messages } = await supabase
+        .from('campaign_messages')
+        .select('id, status')
+        .eq('campaign_id', campaign.id);
 
-      try {
-        const { data: messages, error: messagesError } = await supabase
-          .from('campaign_messages')
-          .select('id, status')
-          .eq('campaign_id', campaign.id);
-
-        if (!messagesError && messages) {
-          emailSent = messages.length || 0;
-          connected = messages.filter((m: any) => m.status === 'accepted' || m.status === 'connected').length || 0;
-        }
-      } catch (e) {
-        // Table might not exist - skip
-      }
+      const emailSent = messages?.length || 0;
+      const connected = messages?.filter((m: any) => m.status === 'accepted' || m.status === 'connected').length || 0;
 
       // Total sent = LinkedIn connection requests + email messages
       const totalSent = (linkedinSent || 0) + emailSent;
 
       // Get reply count
-      try {
-        const { count, error: replyError } = await supabase
-          .from('campaign_replies')
-          .select('*', { count: 'exact', head: true })
-          .eq('campaign_id', campaign.id);
-
-        if (!replyError) {
-          replyCount = count || 0;
-        }
-      } catch (e) {
-        // Table might not exist - skip
-      }
+      const { count: replyCount } = await supabase
+        .from('campaign_replies')
+        .select('*', { count: 'exact', head: true })
+        .eq('campaign_id', campaign.id);
 
       return {
         ...campaign,
@@ -138,14 +98,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ campaigns: enrichedCampaigns });
 
   } catch (error: any) {
-    console.error('❌❌❌ [CAMPAIGNS API] CRITICAL ERROR:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name,
-      fullError: JSON.stringify(error, Object.getOwnPropertyNames(error))
-    });
+    console.error('Campaign fetch error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch campaigns', details: error.message, stack: error.stack },
+      { error: 'Failed to fetch campaigns', details: error.message },
       { status: 500 }
     );
   }
@@ -154,7 +109,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createSupabaseRouteClient();
-
+    
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -327,8 +282,7 @@ export async function POST(req: NextRequest) {
             title: prospect.title || contact.title || contact.headline || '',
             location: prospect.location || contact.location || null,
             industry: prospect.company?.industry?.[0] || 'Not specified',
-            // CRITICAL FIX (Nov 23): Removed connection_degree - column doesn't exist in campaign_prospects table
-            // This was causing silent insertion failures
+            connection_degree: prospect.connectionDegree || contact.connectionDegree || null,
             status: 'approved',
             notes: null,
             added_by_unipile_account: unipileAccountId,
