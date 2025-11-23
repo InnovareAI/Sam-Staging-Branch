@@ -4,7 +4,7 @@ import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 export async function GET(req: NextRequest) {
   try {
     const supabase = await createSupabaseRouteClient();
-    
+
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -66,22 +66,41 @@ export async function GET(req: NextRequest) {
         .in('status', ['processing', 'cr_sent', 'connection_request_sent', 'fu1_sent', 'fu2_sent', 'fu3_sent', 'fu4_sent', 'fu5_sent', 'completed', 'connection_requested', 'contacted', 'connected', 'messaging', 'replied']);
 
       // Get message stats from campaign_messages (for email campaigns)
-      const { data: messages } = await supabase
-        .from('campaign_messages')
-        .select('id, status')
-        .eq('campaign_id', campaign.id);
+      // Wrapped in try-catch to handle missing tables gracefully
+      let emailSent = 0;
+      let connected = 0;
+      let replyCount = 0;
 
-      const emailSent = messages?.length || 0;
-      const connected = messages?.filter((m: any) => m.status === 'accepted' || m.status === 'connected').length || 0;
+      try {
+        const { data: messages, error: messagesError } = await supabase
+          .from('campaign_messages')
+          .select('id, status')
+          .eq('campaign_id', campaign.id);
+
+        if (!messagesError && messages) {
+          emailSent = messages.length || 0;
+          connected = messages.filter((m: any) => m.status === 'accepted' || m.status === 'connected').length || 0;
+        }
+      } catch (e) {
+        // Table might not exist - skip
+      }
 
       // Total sent = LinkedIn connection requests + email messages
       const totalSent = (linkedinSent || 0) + emailSent;
 
       // Get reply count
-      const { count: replyCount } = await supabase
-        .from('campaign_replies')
-        .select('*', { count: 'exact', head: true })
-        .eq('campaign_id', campaign.id);
+      try {
+        const { count, error: replyError } = await supabase
+          .from('campaign_replies')
+          .select('*', { count: 'exact', head: true })
+          .eq('campaign_id', campaign.id);
+
+        if (!replyError) {
+          replyCount = count || 0;
+        }
+      } catch (e) {
+        // Table might not exist - skip
+      }
 
       return {
         ...campaign,
@@ -110,7 +129,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createSupabaseRouteClient();
-    
+
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
