@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
         id,
         campaign_name,
         message_templates,
+        schedule_settings,
         linkedin_account_id,
         workspace_accounts!linkedin_account_id (
           id,
@@ -90,6 +91,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`📋 Campaign: ${campaign.campaign_name}`);
     console.log(`👤 LinkedIn Account: ${linkedinAccount.account_name} (${unipileAccountId})`);
+    console.log(`📅 Schedule Settings:`, campaign.schedule_settings || 'Default');
 
     // 2. Fetch pending prospects (including failed prospects after 24h cooldown)
     const cooldownDate = new Date();
@@ -102,7 +104,7 @@ export async function POST(req: NextRequest) {
       .or(`status.in.(pending,approved),and(status.eq.failed,updated_at.lt.${cooldownDate.toISOString()})`)
       .not('linkedin_url', 'is', null)
       .order('created_at', { ascending: true })
-      .limit(20); // Process 20 at a time
+      .limit(50); // Process 50 at a time
 
     if (prospectsError) {
       console.error('Error fetching prospects:', prospectsError);
@@ -118,21 +120,31 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    console.log(`📊 Found ${prospects.length} prospects to contact`);
+    console.log(`📊 Found ${prospects.length} prospects to queue`);
 
-    // 3. Process each prospect
+    // 3. Queue each prospect
     const results = [];
-    const connectionRequestMessage = campaign.message_templates?.connection_request ||
-      'Hi {first_name}, I\'d like to connect!';
+    let queuedCount = 0;
 
-    for (const prospect of prospects) {
+    for (let i = 0; i < prospects.length; i++) {
+      const prospect = prospects[i];
       try {
-        console.log(`\n👤 Processing: ${prospect.first_name} ${prospect.last_name}`);
+        // Calculate randomized delay
+        // Pass the campaign's schedule_settings to the randomizer
+        const delayMinutes = await calculateHumanSendDelay(
+          supabase,
+          unipileAccountId,
+          prospects.length,
+          i,
+          campaign.schedule_settings // Pass settings here
+        );
+
+        const scheduledFor = new Date();
+        scheduledFor.setMinutes(scheduledFor.getMinutes() + delayMinutes);
 
         // FIRST: Check if this LinkedIn URL exists in ANY other campaign (one prospect = one campaign rule)
         const { data: existingInOtherCampaign } = await supabase
           .from('campaign_prospects')
-          .select('status, contacted_at, campaign_id, campaigns(campaign_name)')
           .eq('linkedin_url', prospect.linkedin_url)
           .neq('campaign_id', campaignId)  // Must be in a DIFFERENT campaign
           .limit(1)
@@ -376,7 +388,7 @@ export async function POST(req: NextRequest) {
 
         // Handle specific error types
         if (error.type === 'errors/already_invited_recently' ||
-            errorMessage.includes('Should delay new invitation')) {
+          errorMessage.includes('Should delay new invitation')) {
           errorNote = 'LinkedIn cooldown: This person was recently invited/withdrawn. Wait 3-4 weeks or use InMail.';
 
           // Try to set a more specific status for cooldown errors
