@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
     console.log(`📊 Found ${prospects.length} prospects due for follow-up`);
 
     const results = [];
+    const processedProspectIds = new Set<string>(); // Track successfully processed prospects
 
     for (const prospect of prospects) {
       try {
@@ -286,6 +287,9 @@ export async function POST(req: NextRequest) {
           })
         });
 
+        // Mark as successfully processed (for rate limit tracking)
+        processedProspectIds.add(prospect.id);
+
         // Calculate next follow-up time
         const nextInterval = FOLLOW_UP_INTERVALS[messageIndex];
         const nextDueAt = nextInterval ? new Date() : null;
@@ -339,40 +343,66 @@ export async function POST(req: NextRequest) {
         let retryDelay = 60; // Default: retry in 1 hour
 
         if (error.status === 429) {
-          // Rate limited - retry in 4 hours
+          // Rate limited - STOP processing immediately to prevent duplicates
           retryDelay = 240;
-          console.log(`⏸️  Rate limited, will retry in 4 hours`);
-        } else if (error.status >= 500) {
-          // Server error - retry in 30 minutes
-          retryDelay = 30;
-          console.log(`⚠️  Server error, will retry in 30 minutes`);
-        } else if (error.status === 404) {
-          // Not found - might be deleted, retry in 24 hours
-          retryDelay = 1440;
-          console.log(`❓ Not found, will retry in 24 hours`);
+          console.log(`⏸️  Rate limited at prospect #${processedProspectIds.size + 1}/${prospects.length}`);
+          console.log(`⏸️  Successfully processed: ${processedProspectIds.size} prospects`);
+          console.log(`⏸️  Will stop and retry unprocessed prospects in 4 hours`);
+
+          // Update THIS prospect's retry time
+          await supabase
+            .from('campaign_prospects')
+            .update({
+              follow_up_due_at: new Date(Date.now() + retryDelay * 60 * 1000).toISOString(),
+              notes: `Rate limited: ${errorMessage} (${new Date().toISOString()})`,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', prospect.id);
+
+          results.push({
+            prospectId: prospect.id,
+            name: `${prospect.first_name} ${prospect.last_name}`,
+            status: 'rate_limited',
+            error: errorMessage,
+            retryAt: new Date(Date.now() + retryDelay * 60 * 1000).toISOString()
+          });
+
+          // BREAK the loop - stop processing to avoid hitting already-processed prospects on retry
+          break;
+        } else {
+          // Other errors (500, 404, etc.) - retry this specific prospect later
+          if (error.status >= 500) {
+            retryDelay = 30; // Server error - retry in 30 minutes
+            console.log(`⚠️  Server error, will retry in 30 minutes`);
+          } else if (error.status === 404) {
+            retryDelay = 1440; // Not found - might be deleted, retry in 24 hours
+            console.log(`❓ Not found, will retry in 24 hours`);
+          }
+
+          // Update THIS prospect's follow_up_due_at to retry later
+          const retryAt = new Date();
+          retryAt.setMinutes(retryAt.getMinutes() + retryDelay);
+
+          await supabase
+            .from('campaign_prospects')
+            .update({
+              follow_up_due_at: retryAt.toISOString(),
+              notes: `Follow-up retry: ${errorMessage} (${new Date().toISOString()})`,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', prospect.id);
+
+          results.push({
+            prospectId: prospect.id,
+            name: `${prospect.first_name} ${prospect.last_name}`,
+            status: 'failed_retry_scheduled',
+            error: errorMessage,
+            retryAt: retryAt.toISOString(),
+            errorDetails: errorDetails
+          });
+
+          // Continue processing other prospects (don't break for non-rate-limit errors)
         }
-
-        // Update follow_up_due_at to retry later
-        const retryAt = new Date();
-        retryAt.setMinutes(retryAt.getMinutes() + retryDelay);
-
-        await supabase
-          .from('campaign_prospects')
-          .update({
-            follow_up_due_at: retryAt.toISOString(),
-            notes: `Follow-up retry: ${errorMessage} (${new Date().toISOString()})`,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', prospect.id);
-
-        results.push({
-          prospectId: prospect.id,
-          name: `${prospect.first_name} ${prospect.last_name}`,
-          status: 'failed_retry_scheduled',
-          error: errorMessage,
-          retryAt: retryAt.toISOString(),
-          errorDetails: errorDetails
-        });
       }
     }
 

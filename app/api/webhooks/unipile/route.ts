@@ -188,7 +188,8 @@ async function handleUsersWebhook(event: any) {
         // Calculate follow-up time (next business day at 9 AM)
         const followUpDueAt = getNextBusinessDay(1);
 
-        await supabase
+        // Optimistic locking: only update if not already processed by polling cron
+        const { data: updated, error: updateError } = await supabase
           .from('campaign_prospects')
           .update({
             status: 'connected',
@@ -197,9 +198,17 @@ async function handleUsersWebhook(event: any) {
             linkedin_user_id: provider_id, // Update provider_id if not set
             updated_at: new Date().toISOString()
           })
-          .eq('id', prospect.id);
+          .eq('id', prospect.id)
+          .is('connection_accepted_at', null) // Only update if not already processed
+          .select();
 
-        console.log(`   📅 First follow-up scheduled for: ${followUpDueAt.toLocaleString()}`);
+        if (updateError) {
+          console.error(`   ❌ Error updating prospect: ${updateError.message}`);
+        } else if (!updated || updated.length === 0) {
+          console.log(`   ⏭️  Already processed (polling cron beat us to it)`);
+        } else {
+          console.log(`   📅 First follow-up scheduled for: ${followUpDueAt.toLocaleString()}`);
+        }
       }
 
       console.log(`🎉 Updated ${prospects.length} prospects to connected status`);

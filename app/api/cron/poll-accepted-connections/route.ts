@@ -2,7 +2,12 @@
  * Polling-based Connection Acceptance Checker
  *
  * Polls for accepted LinkedIn connections using network_distance
- * This is a backup to the webhook system
+ * This is a BACKUP to the webhook system (primary method)
+ *
+ * STRATEGY (Nov 23, 2025):
+ * - PRIMARY: Unipile webhook (/api/webhooks/unipile) - up to 8-hour delay but no detection risk
+ * - BACKUP: This polling cron - 3-4 times/day catches missed webhooks
+ * - PROTECTION: Optimistic locking (connection_accepted_at IS NULL) prevents duplicates
  *
  * Schedule: 3-4 times per day with random delays (per Unipile recommendations)
  *
@@ -222,8 +227,8 @@ export async function POST(req: NextRequest) {
             console.log(`      FU5: ${followUpSchedule[4].toLocaleString()} (+3 days)`);
             console.log(`      GB:  ${followUpSchedule[5].toLocaleString()} (+3 days)`);
 
-            // Update prospect status
-            await supabase
+            // Update prospect status with optimistic locking
+            const { data: updated, error: updateError } = await supabase
               .from('campaign_prospects')
               .update({
                 status: 'connected',
@@ -231,9 +236,17 @@ export async function POST(req: NextRequest) {
                 follow_up_due_at: firstFollowUpAt.toISOString(),
                 updated_at: new Date().toISOString()
               })
-              .eq('id', prospect.id);
+              .eq('id', prospect.id)
+              .is('connection_accepted_at', null) // Only update if not already processed by webhook
+              .select();
 
-            results.accepted++;
+            if (updateError) {
+              console.error(`   ❌ Error updating prospect: ${updateError.message}`);
+            } else if (!updated || updated.length === 0) {
+              console.log(`   ⏭️  Already processed (webhook beat us to it)`);
+            } else {
+              results.accepted++;
+            }
           } else {
             console.log(`⏸️  Still pending: ${prospect.first_name} ${prospect.last_name} (${profile.network_distance})`);
             results.still_pending++;
