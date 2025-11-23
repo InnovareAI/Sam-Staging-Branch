@@ -97,11 +97,15 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
             const error = await response.json();
-            throw new Error(error.error || error.message || 'Failed to create monitor');
+            console.error('❌ API Error Details:', error);
+            const errorMsg = error.error || error.message || 'Failed to create monitor';
+            const errorDetails = error.details ? `\n\nDetails: ${error.details}` : '';
+            const errorHint = error.hint ? `\n\nHint: ${error.hint}` : '';
+            throw new Error(errorMsg + errorDetails + errorHint);
           } else {
             const text = await response.text();
             console.error('Non-JSON error response:', text);
-            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+            throw new Error(`Server error: ${response.status} ${response.statusText}\n\n${text}`);
           }
         }
 
@@ -132,11 +136,15 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
             const error = await response.json();
-            throw new Error(error.error || error.message || 'Failed to create monitor');
+            console.error('❌ API Error Details:', error);
+            const errorMsg = error.error || error.message || 'Failed to create monitor';
+            const errorDetails = error.details ? `\n\nDetails: ${error.details}` : '';
+            const errorHint = error.hint ? `\n\nHint: ${error.hint}` : '';
+            throw new Error(errorMsg + errorDetails + errorHint);
           } else {
             const text = await response.text();
             console.error('Non-JSON error response:', text);
-            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+            throw new Error(`Server error: ${response.status} ${response.statusText}\n\n${text}`);
           }
         }
 
