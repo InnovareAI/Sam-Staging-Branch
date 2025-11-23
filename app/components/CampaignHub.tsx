@@ -6363,8 +6363,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
       queryClient.invalidateQueries({ queryKey: ['pendingCampaigns'] });
 
-      // CRITICAL FIX (Nov 23): Switch to Active Campaigns tab so user sees their new campaign
+      // CRITICAL FIX (Nov 23): Switch to Active Campaigns tab AND trigger refresh event
       setCampaignFilter('active');
+
+      // Dispatch custom event to force refresh in CampaignList component
+      window.dispatchEvent(new CustomEvent('refreshCampaigns'));
 
       onCampaignCreated?.();
 
