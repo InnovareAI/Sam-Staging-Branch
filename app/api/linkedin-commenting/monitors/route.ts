@@ -7,12 +7,29 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
+
+    console.log('🔍 GET monitors - User:', user?.email, 'ID:', user?.id);
+
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const workspaceId = request.nextUrl.searchParams.get('workspace_id');
+    console.log('🔍 GET monitors - Workspace ID:', workspaceId);
+
     if (!workspaceId) return NextResponse.json({ error: 'Missing workspace_id' }, { status: 400 });
 
+    // Check user's workspace membership
+    const { data: membership, error: memberError } = await supabase
+      .from('workspace_members')
+      .select('workspace_id, role')
+      .eq('user_id', user.id)
+      .eq('workspace_id', workspaceId)
+      .single();
+
+    console.log('🔍 Workspace membership:', membership, 'Error:', memberError);
+
     const { data, error } = await supabase.from('linkedin_post_monitors').select('*').eq('workspace_id', workspaceId);
+
+    console.log('🔍 Query result - Data:', data, 'Error:', error);
 
     if (error) {
       console.error('❌ Error fetching monitors:', error);
