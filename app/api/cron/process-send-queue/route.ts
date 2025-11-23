@@ -201,7 +201,7 @@ export async function POST(req: NextRequest) {
     // 4. Fetch prospect details
     const { data: prospect, error: prospectError } = await supabase
       .from('campaign_prospects')
-      .select('id, first_name, last_name, linkedin_url')
+      .select('id, first_name, last_name, linkedin_url, status')
       .eq('id', queueItem.prospect_id)
       .single();
 
@@ -212,13 +212,44 @@ export async function POST(req: NextRequest) {
 
     const unipileAccountId = linkedinAccount.unipile_account_id;
 
-    console.log(`\n📤 Sending CR to ${prospect.first_name} ${prospect.last_name}`);
+    // 4.5 Check if message requires connection (follow-ups only send if connected)
+    if (queueItem.requires_connection) {
+      console.log(`🔍 Message requires connection - checking prospect status`);
+      console.log(`   Prospect status: ${prospect.status}`);
+
+      const connectedStatuses = ['connected', 'messaging', 'replied'];
+      if (!connectedStatuses.includes(prospect.status)) {
+        console.log(`⏭️  Skipping message - prospect not connected yet (status: ${prospect.status})`);
+
+        // Mark as skipped (not failed) - we might retry later
+        await supabase
+          .from('send_queue')
+          .update({
+            status: 'skipped',
+            error_message: `Connection not accepted yet (prospect status: ${prospect.status})`,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', queueItem.id);
+
+        return NextResponse.json({
+          success: true,
+          processed: 0,
+          skipped: 1,
+          message: 'Message requires connection - prospect not connected yet'
+        });
+      }
+
+      console.log(`✅ Prospect is connected - proceeding with follow-up message`);
+    }
+
+    const messageType = queueItem.message_type || 'connection_request';
+    console.log(`\n📤 Sending ${messageType} to ${prospect.first_name} ${prospect.last_name}`);
     console.log(`   Campaign: ${campaign.campaign_name}`);
     console.log(`   Account: ${linkedinAccount.account_name}`);
     console.log(`   Scheduled: ${queueItem.scheduled_for}`);
 
     try {
-      // 2. Send connection request via Unipile
+      // 2. Send message via Unipile (CR or follow-up)
       const payload = {
         account_id: unipileAccountId,
         provider_id: queueItem.linkedin_user_id,
