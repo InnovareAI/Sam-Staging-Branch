@@ -55,10 +55,31 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('📥 Monitor data:', JSON.stringify(body, null, 2));
 
-    console.log('💾 Step 3: Inserting into database...');
+    console.log('🔍 Step 3: Getting user workspace...');
+    const { data: memberData, error: memberError } = await supabase
+      .from('workspace_members')
+      .select('workspace_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (memberError) {
+      console.error('❌ Error getting workspace:', memberError);
+      return NextResponse.json({ error: 'User not in any workspace' }, { status: 403 });
+    }
+
+    const workspaceId = memberData.workspace_id;
+    console.log('✅ Workspace ID:', workspaceId);
+
+    console.log('💾 Step 4: Inserting into database...');
+    const monitorData = {
+      ...body,
+      workspace_id: workspaceId,
+      created_by: user.id
+    };
+
     const { data, error } = await supabase
       .from('linkedin_post_monitors')
-      .insert(body)
+      .insert(monitorData)
       .select()
       .single();
 
