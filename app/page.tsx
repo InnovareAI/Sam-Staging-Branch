@@ -3059,8 +3059,8 @@ export default function Page() {
                     <span className="text-gray-400 text-sm">Active Campaigns</span>
                     <Target size={20} className="text-blue-400" />
                   </div>
-                  <div className="text-3xl font-bold text-white">{commentingCampaigns.filter(c => c.is_active).length}</div>
-                  <div className="text-xs text-gray-500 mt-1">{commentingCampaigns.filter(c => c.is_active).length === 0 ? 'No campaigns running' : `${commentingCampaigns.length} total`}</div>
+                  <div className="text-3xl font-bold text-white">{commentingCampaigns.filter(c => c.status === 'active').length}</div>
+                  <div className="text-xs text-gray-500 mt-1">{commentingCampaigns.filter(c => c.status === 'active').length === 0 ? 'No campaigns running' : `${commentingCampaigns.length} total`}</div>
                 </div>
 
                 <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
