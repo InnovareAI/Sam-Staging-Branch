@@ -3182,30 +3182,14 @@ export default function Page() {
                       return (
                         <div
                           key={campaign.id}
-                          onClick={() => {
-                            setEditingCampaign(campaign);
-                            setShowCommentingCampaignModal(true);
-                          }}
-                          className="bg-gray-700/50 rounded-lg p-4 border border-gray-600 cursor-pointer hover:bg-gray-700/70 hover:border-purple-500/50 transition-all"
+                          className="bg-gray-700/50 rounded-lg p-4 border border-gray-600 hover:border-purple-500/50 transition-all"
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-600/20">
-                                  <User size={16} className="text-purple-400" />
-                                </div>
-                                <div>
-                                  <h3 className="text-white font-medium">{campaignName}</h3>
-                                  <p className="text-sm text-gray-400">
-                                    {displayProfiles}
-                                  </p>
-                                </div>
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-600/20">
+                                <User size={16} className="text-purple-400" />
                               </div>
-                              <div className="flex items-center gap-4 text-xs text-gray-400">
-                                <span>Posts: 0</span>
-                                {keywords.length > 0 && <span>Keywords: {keywords.join(', ')}</span>}
-                                <span>Auto-approve: {campaign.auto_approve_enabled ? 'Yes' : 'No'}</span>
-                              </div>
+                              <h3 className="text-white font-medium">{campaignName}</h3>
                             </div>
                             <div className="flex items-center gap-2">
                               <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -3214,6 +3198,37 @@ export default function Page() {
                                 {campaign.status === 'active' ? 'Active' : 'Inactive'}
                               </span>
                             </div>
+                          </div>
+
+                          {/* Profile List */}
+                          <div className="space-y-2 mb-3">
+                            {profileVanities.length > 0 ? (
+                              profileVanities.map((vanity, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-sm text-gray-300 bg-gray-800/50 rounded px-3 py-2">
+                                  <User size={14} className="text-purple-400" />
+                                  <span>{vanity}</span>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-sm text-gray-500 italic">No profiles yet</div>
+                            )}
+                            <button
+                              onClick={() => {
+                                setEditingCampaign(campaign);
+                                setShowCommentingCampaignModal(true);
+                              }}
+                              className="flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
+                            >
+                              <Plus size={14} />
+                              <span>Add profile</span>
+                            </button>
+                          </div>
+
+                          {/* Stats */}
+                          <div className="flex items-center gap-4 text-xs text-gray-400 pt-2 border-t border-gray-600">
+                            <span>Posts: 0</span>
+                            {keywords.length > 0 && <span>Keywords: {keywords.join(', ')}</span>}
+                            <span>Auto-approve: {campaign.auto_approve_enabled ? 'Yes' : 'No'}</span>
                           </div>
                         </div>
                       );
