@@ -3163,40 +3163,37 @@ export default function Page() {
                       Create Your First Campaign
                     </button>
                     <p className="text-sm text-gray-500 mt-4">
-                      Choose from 3 targeting modes: Hashtags, Keywords, or Profiles
+                      Monitor LinkedIn profiles and auto-comment with AI
                     </p>
                   </div>
                 ) : (
                   <div className="p-6 space-y-4">
                     {commentingCampaigns.map((campaign) => {
-                      const monitorType = campaign.hashtags?.length > 0 ? 'hashtag' : campaign.keywords?.length > 0 ? 'keyword' : 'profile';
-                      const targetValue = campaign.hashtags?.length > 0 ? campaign.hashtags.join(', ') : campaign.keywords?.length > 0 ? campaign.keywords.join(', ') : 'Unknown';
+                      // Profile-based monitoring (NEW: Unipile free API)
+                      const profileVanities = campaign.profile_vanities || [];
+                      const keywords = campaign.keywords || [];
+                      const displayProfiles = profileVanities.length > 0 ? profileVanities.join(', ') : 'No profiles yet';
+                      const hasProfiles = profileVanities.length > 0;
 
                       return (
                         <div key={campaign.id} className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
                           <div className="flex items-center justify-between">
                             <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                  monitorType === 'hashtag' ? 'bg-blue-600/20' :
-                                  monitorType === 'keyword' ? 'bg-green-600/20' :
-                                  'bg-purple-600/20'
-                                }`}>
-                                  {monitorType === 'hashtag' ? <Hash size={16} className="text-blue-400" /> :
-                                   monitorType === 'keyword' ? <Search size={16} className="text-green-400" /> :
-                                   <User size={16} className="text-purple-400" />}
+                                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-600/20">
+                                  <User size={16} className="text-purple-400" />
                                 </div>
                                 <div>
-                                  <h3 className="text-white font-medium">{targetValue}</h3>
+                                  <h3 className="text-white font-medium">{displayProfiles}</h3>
                                   <p className="text-sm text-gray-400">
-                                    {monitorType === 'hashtag' ? 'Hashtag' : monitorType === 'keyword' ? 'Keyword' : 'Profile'} monitoring
+                                    Monitoring {profileVanities.length} LinkedIn {profileVanities.length === 1 ? 'profile' : 'profiles'}
                                   </p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-4 text-xs text-gray-400">
                                 <span>Posts: 0</span>
+                                {keywords.length > 0 && <span>Keywords: {keywords.join(', ')}</span>}
                                 <span>Auto-approve: {campaign.auto_approve_enabled ? 'Yes' : 'No'}</span>
-                                <span>Timezone: {campaign.timezone || 'UTC'}</span>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -3224,16 +3221,16 @@ export default function Page() {
                     <h3 className="text-lg font-semibold text-white mb-2">How it works</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                       <div>
-                        <div className="text-pink-400 font-medium mb-1">1. Create Campaign</div>
-                        <div className="text-gray-300">Target posts by hashtag (#SaaS), keyword ("sales automation"), or specific profiles</div>
+                        <div className="text-pink-400 font-medium mb-1">1. Add LinkedIn Profiles</div>
+                        <div className="text-gray-300">Monitor thought leaders in your niche (e.g., sama, andrewng, ylecun). System scrapes 100 posts/day per profile via Unipile API.</div>
                       </div>
                       <div>
-                        <div className="text-pink-400 font-medium mb-1">2. AI Discovers Posts</div>
-                        <div className="text-gray-300">Haiku 4.5 finds relevant posts, waits for organic engagement (2+ comments, 5+ likes) to avoid bot detection</div>
+                        <div className="text-pink-400 font-medium mb-1">2. AI Generates Comments</div>
+                        <div className="text-gray-300">Claude 3.5 Sonnet writes human-like comments using your brand voice. Comments sound natural, not robotic.</div>
                       </div>
                       <div>
-                        <div className="text-pink-400 font-medium mb-1">3. Approve & Post</div>
-                        <div className="text-gray-300">Review AI-generated comments, approve the ones you like, and post with smart timing (20+ min delays)</div>
+                        <div className="text-pink-400 font-medium mb-1">3. Review & Post</div>
+                        <div className="text-gray-300">Approve AI comments before posting. Smart timing prevents spam detection (1 comment every 73 minutes).</div>
                       </div>
                     </div>
                   </div>
