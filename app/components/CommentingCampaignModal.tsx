@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Target, Hash, Search, User, MessageSquare, Shield, Clock, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Target, MessageSquare, Shield, Clock, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface CommentingCampaignModalProps {
   isOpen: boolean;
@@ -17,7 +17,7 @@ type QuestionFrequency = 'frequently' | 'sometimes' | 'rarely' | 'never';
 
 export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }: CommentingCampaignModalProps) {
   const [campaignName, setCampaignName] = useState('');
-  const [targetingMode, setTargetingMode] = useState<TargetingMode>('hashtag');
+  const [targetingMode] = useState<TargetingMode>('profile'); // Only profile targeting supported
   const [targets, setTargets] = useState<string[]>(['']);
 
   // Prompt Builder Settings
@@ -170,16 +170,6 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
 
   if (!isOpen) return null;
 
-  const targetingModes = [
-    { id: 'hashtag' as TargetingMode, label: 'Hashtags', icon: Hash, description: 'Target posts with specific hashtags', placeholder: '#SaaS' },
-    { id: 'keyword' as TargetingMode, label: 'Keywords', icon: Search, description: 'Find posts containing keywords', placeholder: 'sales automation' },
-    { id: 'profile' as TargetingMode, label: 'Profiles', icon: User, description: 'Comment on specific users\' posts', placeholder: 'https://linkedin.com/in/username' },
-  ];
-
-  const selectedMode = targetingModes.find(m => m.id === targetingMode)!;
-
-  if (!isOpen) return null;
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
       <div className="bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 my-8 max-h-[90vh] overflow-hidden flex flex-col">
@@ -213,40 +203,21 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
             />
           </div>
 
-          {/* Targeting Mode */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-3">Targeting Mode</label>
-            <div className="grid grid-cols-3 gap-3">
-              {targetingModes.map((mode) => (
-                <button
-                  key={mode.id}
-                  onClick={() => setTargetingMode(mode.id)}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    targetingMode === mode.id
-                      ? 'border-pink-500 bg-pink-900/30'
-                      : 'border-gray-600 bg-gray-700 hover:border-gray-500'
-                  }`}
-                >
-                  <mode.icon size={24} className={targetingMode === mode.id ? 'text-pink-400' : 'text-gray-400'} />
-                  <div className="mt-2 text-sm font-medium text-white">{mode.label}</div>
-                  <div className="text-xs text-gray-400 mt-1">{mode.description}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Targets */}
+          {/* LinkedIn Profiles to Monitor */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              {selectedMode.label} (0/{targetingMode === 'hashtag' || targetingMode === 'keyword' ? '4' : '30'})
+              LinkedIn Profiles to Monitor (Max 30)
             </label>
+            <p className="text-sm text-gray-400 mb-3">
+              Enter LinkedIn profile vanity names (e.g., sama, andrewng, ylecun)
+            </p>
             {targets.map((target, index) => (
               <div key={index} className="flex gap-2 mb-2">
                 <input
                   type="text"
                   value={target}
                   onChange={(e) => handleTargetChange(index, e.target.value)}
-                  placeholder={selectedMode.placeholder}
+                  placeholder="e.g., sama, andrewng, or linkedin.com/in/username"
                   className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
                 />
                 {targets.length > 1 && (
@@ -263,7 +234,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId }
               onClick={handleAddTarget}
               className="text-sm text-pink-400 hover:text-pink-300 transition-colors"
             >
-              + Add another {targetingMode === 'profile' ? 'profile' : targetingMode}
+              + Add another profile
             </button>
           </div>
 
