@@ -1,27 +1,37 @@
 'use client';
 
-import { CheckCircle, Clock, Eye, MessageSquare, Play, Plus, Search, Users, XCircle } from 'lucide-react';
+import { CheckCircle, Clock, Eye, MessageSquare, Play, Plus, Search, Users, XCircle, Calendar } from 'lucide-react';
 import { toastError } from '@/lib/toast';
 import { createClient } from '@/app/lib/supabase';
 import { useState, useEffect } from 'react';
+import ScheduleSettings, { ScheduleSettingsData } from '@/components/ScheduleSettings';
 
 export default function CampaignsPage() {
   const supabase = createClient();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  
+
   // Step state
-  const [currentStep, setCurrentStep] = useState<'search' | 'review' | 'messages' | 'approve' | 'launch'>('search');
-  
+  const [currentStep, setCurrentStep] = useState<'search' | 'review' | 'messages' | 'schedule' | 'approve' | 'launch'>('search');
+
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [prospects, setProspects] = useState<any[]>([]);
   const [selectedProspects, setSelectedProspects] = useState<Set<string>>(new Set());
-  
+
   // Campaign state
   const [campaignName, setCampaignName] = useState('');
   const [messages, setMessages] = useState<string[]>(['']);
   const [campaign, setCampaign] = useState<any>(null);
+
+  // Schedule Settings State
+  const [scheduleSettings, setScheduleSettings] = useState<ScheduleSettingsData>({
+    timezone: 'America/New_York',
+    working_hours_start: 8,
+    working_hours_end: 18,
+    skip_weekends: true,
+    skip_holidays: true
+  });
 
   // Check authentication
   useEffect(() => {
@@ -128,7 +138,7 @@ export default function CampaignsPage() {
     setLoading(true);
     try {
       const selectedProspectsList = prospects.filter(p => selectedProspects.has(p.id));
-      
+
       const response = await fetch('/api/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,18 +152,20 @@ export default function CampaignsPage() {
               order: i + 1,
               message: msg,
               delay_days: i
-            }))
-          }
+            })),
+            connection_request: validMessages[0] // Use first message as connection request
+          },
+          schedule_settings: scheduleSettings // Pass schedule settings
         })
       });
 
       const data = await response.json();
       if (data.campaign) {
         setCampaign(data.campaign);
-        
+
         // Store prospects for this campaign
         localStorage.setItem(`campaign_${data.campaign.id}_prospects`, JSON.stringify(selectedProspectsList));
-        
+
         setCurrentStep('approve');
       } else {
         toastError('Campaign creation failed');
@@ -208,17 +220,17 @@ export default function CampaignsPage() {
 
         {/* Progress Steps */}
         <div className="mb-8 flex items-center justify-center space-x-4">
-          {['search', 'review', 'messages', 'approve', 'launch'].map((step, index) => (
+          {['search', 'review', 'messages', 'schedule', 'approve', 'launch'].map((step, index) => (
             <div key={step} className="flex items-center">
               <div className={`
                 w-10 h-10 rounded-full flex items-center justify-center font-bold
-                ${currentStep === step ? 'bg-blue-600' : 
-                  ['search', 'review', 'messages', 'approve', 'launch'].indexOf(currentStep) > index ? 'bg-green-600' : 'bg-gray-700'}
+                ${currentStep === step ? 'bg-blue-600' :
+                  ['search', 'review', 'messages', 'schedule', 'approve', 'launch'].indexOf(currentStep) > index ? 'bg-green-600' : 'bg-gray-700'}
               `}>
                 {index + 1}
               </div>
               <span className="ml-2 capitalize hidden md:inline">{step}</span>
-              {index < 4 && <div className="w-8 h-0.5 bg-gray-700 mx-2" />}
+              {index < 5 && <div className="w-8 h-0.5 bg-gray-700 mx-2" />}
             </div>
           ))}
         </div>
@@ -235,7 +247,7 @@ export default function CampaignsPage() {
                 </h2>
                 <p className="text-gray-400 mb-4">Enter keywords to find your ideal prospects on LinkedIn</p>
               </div>
-              
+
               <div className="space-y-4">
                 <input
                   type="text"
@@ -290,11 +302,10 @@ export default function CampaignsPage() {
                   <div
                     key={prospect.id}
                     onClick={() => toggleProspect(prospect.id)}
-                    className={`p-4 rounded-lg cursor-pointer transition-colors ${
-                      selectedProspects.has(prospect.id)
+                    className={`p-4 rounded-lg cursor-pointer transition-colors ${selectedProspects.has(prospect.id)
                         ? 'bg-blue-900/50 border-2 border-blue-500'
                         : 'bg-gray-700 border-2 border-transparent hover:border-gray-600'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <div>
@@ -303,10 +314,9 @@ export default function CampaignsPage() {
                         <p className="text-xs text-gray-500 mt-1">{prospect.location}</p>
                       </div>
                       <div className="text-right">
-                        <div className={`text-sm font-medium ${
-                          prospect.confidence > 0.8 ? 'text-green-400' : 
-                          prospect.confidence > 0.6 ? 'text-yellow-400' : 'text-gray-400'
-                        }`}>
+                        <div className={`text-sm font-medium ${prospect.confidence > 0.8 ? 'text-green-400' :
+                            prospect.confidence > 0.6 ? 'text-yellow-400' : 'text-gray-400'
+                          }`}>
                           {Math.round(prospect.confidence * 100)}% match
                         </div>
                         {selectedProspects.has(prospect.id) && (
@@ -379,17 +389,42 @@ export default function CampaignsPage() {
                   Back
                 </button>
                 <button
-                  onClick={createCampaign}
-                  disabled={loading}
-                  className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 rounded-lg"
+                  onClick={() => setCurrentStep('schedule')}
+                  className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg"
                 >
-                  {loading ? 'Creating...' : 'Create Campaign'}
+                  Next: Schedule
                 </button>
               </div>
             </div>
           )}
 
-          {/* STEP 4: Approve */}
+          {/* STEP 4: Schedule Settings */}
+          {currentStep === 'schedule' && (
+            <div className="space-y-6">
+              <ScheduleSettings
+                settings={scheduleSettings}
+                onChange={setScheduleSettings}
+              />
+
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => setCurrentStep('messages')}
+                  className="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={createCampaign}
+                  disabled={loading}
+                  className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 rounded-lg"
+                >
+                  {loading ? 'Creating...' : 'Create & Review'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 5: Approve */}
           {currentStep === 'approve' && campaign && (
             <div className="space-y-6">
               <div>
@@ -406,7 +441,7 @@ export default function CampaignsPage() {
                   <p className="text-gray-400 text-sm">{campaign.description}</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <p className="text-gray-400 text-sm">Prospects</p>
                     <p className="text-2xl font-bold">{selectedProspects.size}</p>
@@ -414,6 +449,13 @@ export default function CampaignsPage() {
                   <div>
                     <p className="text-gray-400 text-sm">Messages</p>
                     <p className="text-2xl font-bold">{messages.filter(m => m.trim()).length}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm">Schedule</p>
+                    <p className="text-sm font-medium">{scheduleSettings.timezone}</p>
+                    <p className="text-xs text-gray-400">
+                      {scheduleSettings.working_hours_start}:00 - {scheduleSettings.working_hours_end}:00
+                    </p>
                   </div>
                 </div>
 
@@ -430,10 +472,10 @@ export default function CampaignsPage() {
 
               <div className="flex space-x-4">
                 <button
-                  onClick={() => setCurrentStep('messages')}
+                  onClick={() => setCurrentStep('schedule')}
                   className="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg"
                 >
-                  Edit Campaign
+                  Edit Schedule
                 </button>
                 <button
                   onClick={launchCampaign}
@@ -450,7 +492,7 @@ export default function CampaignsPage() {
             </div>
           )}
 
-          {/* STEP 5: Launched */}
+          {/* STEP 6: Launched */}
           {currentStep === 'launch' && (
             <div className="text-center space-y-6 py-12">
               <div className="flex justify-center">

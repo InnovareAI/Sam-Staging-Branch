@@ -302,7 +302,8 @@ export async function POST(req: NextRequest) {
             title: prospect.title || contact.title || contact.headline || '',
             location: prospect.location || contact.location || null,
             industry: prospect.company?.industry?.[0] || 'Not specified',
-            connection_degree: prospect.connectionDegree || contact.connectionDegree || null,
+            // CRITICAL FIX (Nov 23): Removed connection_degree - column doesn't exist in campaign_prospects table
+            // This was causing silent insertion failures
             status: 'approved',
             notes: null,
             added_by_unipile_account: unipileAccountId,

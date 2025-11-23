@@ -1,83 +1,72 @@
 #!/usr/bin/env node
 
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
 
-// Load environment variables
-dotenv.config({ path: '.env.local' });
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-console.log('🔍 Checking for failed/stuck prospects...\n');
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function checkProspects() {
-  // Check for prospects with various statuses
+  const campaignId = '105c036b-797d-4ca7-862c-309518fa72ef';
+  
+  console.log('\n🔍 CHECKING FAILED PROSPECTS\n');
+  console.log('═══════════════════════════════════════════════════════════════\n');
+
   const { data: prospects, error } = await supabase
     .from('campaign_prospects')
-    .select('id, first_name, last_name, status, campaign_id, created_at, updated_at')
-    .in('status', ['failed', 'processing', 'cr_sent'])
-    .order('updated_at', { ascending: false })
-    .limit(30);
+    .select('*')
+    .eq('campaign_id', campaignId);
 
   if (error) {
-    console.error('❌ Error:', error);
-    return;
-  }
-
-  if (!prospects || prospects.length === 0) {
-    console.log('✅ No failed/processing prospects found');
+    console.error('❌ Error:', error.message);
     return;
   }
 
   console.log(`Found ${prospects.length} prospects:\n`);
 
-  // Group by status
-  const byStatus = {};
-  prospects.forEach(p => {
-    if (!byStatus[p.status]) {
-      byStatus[p.status] = [];
-    }
-    byStatus[p.status].push(p);
+  prospects.forEach((p, i) => {
+    console.log(`${i + 1}. ${p.first_name} ${p.last_name}`);
+    console.log(`   ├─ Status: ${p.status}`);
+    console.log(`   ├─ LinkedIn URL: ${p.linkedin_url || 'MISSING'}`);
+    console.log(`   ├─ LinkedIn User ID: ${p.linkedin_user_id || 'MISSING'}`);
+    console.log(`   ├─ Added by: ${p.added_by_unipile_account || 'MISSING'}`);
+    console.log(`   ├─ Error: ${p.error_message || 'None'}`);
+    console.log(`   ├─ Notes: ${p.notes || 'None'}`);
+    console.log(`   └─ Created: ${new Date(p.created_at).toLocaleString()}\n`);
   });
 
-  for (const [status, prospects] of Object.entries(byStatus)) {
-    console.log(`\n📋 Status: ${status} (${prospects.length} prospects)`);
+  // Check campaign details
+  const { data: campaign } = await supabase
+    .from('campaigns')
+    .select('*')
+    .eq('id', campaignId)
+    .single();
 
-    prospects.slice(0, 5).forEach(p => {
-      console.log(`   - ${p.first_name} ${p.last_name}`);
-      console.log(`     Campaign: ${p.campaign_id}`);
-      console.log(`     Updated: ${new Date(p.updated_at).toLocaleString()}\n`);
-    });
+  console.log('Campaign Details:');
+  console.log(`├─ Status: ${campaign.status}`);
+  console.log(`├─ Type: ${campaign.campaign_type}`);
+  console.log(`├─ LinkedIn Account ID: ${campaign.linkedin_account_id || 'MISSING'}`);
+  console.log(`└─ Workspace ID: ${campaign.workspace_id}\n`);
 
-    if (prospects.length > 5) {
-      console.log(`   ... and ${prospects.length - 5} more\n`);
+  // Check if LinkedIn account exists
+  if (campaign.linkedin_account_id) {
+    const { data: account } = await supabase
+      .from('workspace_accounts')
+      .select('*')
+      .eq('id', campaign.linkedin_account_id)
+      .single();
+
+    if (account) {
+      console.log('LinkedIn Account:');
+      console.log(`├─ Name: ${account.account_name}`);
+      console.log(`├─ Unipile Account ID: ${account.unipile_account_id}`);
+      console.log(`├─ Connection Status: ${account.connection_status}`);
+      console.log(`└─ Is Active: ${account.is_active}\n`);
     }
-  }
-
-  // Check workspace accounts
-  console.log('\n📊 Checking LinkedIn account limits...\n');
-
-  const { data: accounts } = await supabase
-    .from('workspace_accounts')
-    .select('id, account_name, unipile_account_id, messages_sent_today, last_message_date, daily_message_limit')
-    .not('unipile_account_id', 'is', null);
-
-  if (accounts) {
-    accounts.forEach(acc => {
-      const today = new Date().toISOString().split('T')[0];
-      const lastDate = acc.last_message_date?.split('T')[0];
-      const isToday = lastDate === today;
-      const sentToday = isToday ? (acc.messages_sent_today || 0) : 0;
-      const limit = acc.daily_message_limit || 20;
-
-      console.log(`   ${acc.account_name}`);
-      console.log(`   Daily: ${sentToday}/${limit}`);
-      console.log(`   Last message: ${acc.last_message_date ? new Date(acc.last_message_date).toLocaleString() : 'Never'}\n`);
-    });
+  } else {
+    console.log('⚠️  No LinkedIn account assigned to campaign\n');
   }
 }
 
-checkProspects().catch(console.error);
+checkProspects();

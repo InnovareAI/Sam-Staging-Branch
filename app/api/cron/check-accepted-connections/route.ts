@@ -89,13 +89,14 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      // Check each account's recent messages for accepted connections
+      // Check each account's recent relations for accepted connections
       for (const account of accounts) {
         try {
-          // Get recent messages (accepted invitations create new chats)
-          const messagesUrl = `https://${process.env.UNIPILE_DSN}/api/v1/chats/messages?account_id=${account.unipile_account_id}&limit=20`;
+          // Get recent relations (new connections)
+          // https://developer.unipile.com/reference/userscontroller_getrelations
+          const relationsUrl = `https://${process.env.UNIPILE_DSN}/api/v1/users/relations?account_id=${account.unipile_account_id}&limit=50`;
 
-          const messagesResponse = await fetch(messagesUrl, {
+          const relationsResponse = await fetch(relationsUrl, {
             method: 'GET',
             headers: {
               'X-API-KEY': process.env.UNIPILE_API_KEY || '',
@@ -103,12 +104,13 @@ export async function POST(req: NextRequest) {
             }
           });
 
-          if (!messagesResponse.ok) {
-            console.error(`❌ Failed to fetch messages for ${account.account_name}`);
+          if (!relationsResponse.ok) {
+            console.error(`❌ Failed to fetch relations for ${account.account_name}`);
             continue;
           }
 
-          const messagesData = await messagesResponse.json();
+          const relationsData = await relationsResponse.json();
+          const recentRelations = relationsData.items || [];
 
           // Find prospects whose connections were accepted
           const workspaceProspects = prospects.filter(
@@ -118,20 +120,17 @@ export async function POST(req: NextRequest) {
           for (const prospect of workspaceProspects) {
             results.checked++;
 
-            // Extract LinkedIn username from URL
+            // Match based on provider_id (linkedin_user_id) or public_identifier (from URL)
             const linkedinUsername = prospect.linkedin_url?.split('/in/')[1]?.split('?')[0]?.replace('/', '');
-            if (!linkedinUsername) continue;
+            const storedProviderId = prospect.personalization_data?.provider_id;
 
-            // Check if there's a chat with this person (indicates acceptance)
-            const hasChat = messagesData.items?.some((msg: any) =>
-              msg.chat_participants?.some((p: any) =>
-                p.public_identifier === linkedinUsername ||
-                p.provider_id === prospect.personalization_data?.provider_id
-              )
+            const isConnected = recentRelations.some((relation: any) =>
+              (storedProviderId && relation.provider_id === storedProviderId) ||
+              (linkedinUsername && relation.public_identifier === linkedinUsername)
             );
 
-            if (hasChat) {
-              console.log(`✅ Connection accepted: ${linkedinUsername}`);
+            if (isConnected) {
+              console.log(`✅ Connection accepted: ${prospect.first_name} ${prospect.last_name}`);
 
               // Update prospect status to 'connected'
               await supabase
