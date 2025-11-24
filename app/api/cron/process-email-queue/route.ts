@@ -73,14 +73,30 @@ async function sendEmailViaUnipile(params: {
   from_name?: string;
 }): Promise<{ success: boolean; message_id?: string; error?: string }> {
   try {
-    const response = await fetch(`${UNIPILE_BASE_URL}/api/v1/messages/send`, {
+    // Unipile email API requires 'to' as array of objects with display_name and identifier
+    const requestBody = {
+      account_id: params.account_id,
+      to: [
+        {
+          display_name: params.to.split('@')[0], // Use email prefix as display name
+          identifier: params.to
+        }
+      ],
+      subject: params.subject,
+      body: params.body
+    };
+
+    console.log(`📤 Sending email via Unipile to: ${params.to}`);
+
+    // CORRECT ENDPOINT: /api/v1/emails (not /api/v1/messages/send)
+    const response = await fetch(`${UNIPILE_BASE_URL}/api/v1/emails`, {
       method: 'POST',
       headers: {
         'X-API-KEY': UNIPILE_API_KEY,
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(params)
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
