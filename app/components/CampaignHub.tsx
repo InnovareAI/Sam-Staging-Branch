@@ -1398,6 +1398,7 @@ function CampaignBuilder({
   const [showPreview, setShowPreview] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [uploadedSessionId, setUploadedSessionId] = useState<string | null>(null); // CRITICAL FIX: Track session_id from CSV uploads
 
   // Auto-populate CSV data when initialProspects are provided
   useEffect(() => {
@@ -1414,6 +1415,16 @@ function CampaignBuilder({
       setCsvData(initialProspects);
       setDataSource('approved'); // Set to approved mode for validation
       setShowPreview(true);
+
+      // CRITICAL FIX: Extract and store session_id from initialProspects
+      const sessionId = initialProspects[0]?.sessionId || initialProspects[0]?.session_id;
+      if (sessionId) {
+        console.log('✅ Extracted session_id from initialProspects:', sessionId);
+        setUploadedSessionId(sessionId);
+      } else {
+        console.warn('⚠️ No session_id found in initialProspects - prospects may not transfer to campaign');
+      }
+
       // Stay on step 1 to let user select campaign type
       toastSuccess(`Loaded ${initialProspects.length} approved prospects - select campaign type`);
     } else {
@@ -2843,14 +2854,27 @@ Would you like me to adjust these or create more variations?`
         using_fallback: !workspaceId
       });
 
-      // Extract session_id from initialProspects if present (for auto-transfer)
-      const sessionId = initialProspects?.[0]?.sessionId || initialProspects?.[0]?.session_id;
+      // Extract session_id from multiple sources (for auto-transfer)
+      // Priority: 1. uploadedSessionId state, 2. initialProspects, 3. csvData[0]
+      const sessionId = uploadedSessionId ||
+                       initialProspects?.[0]?.sessionId ||
+                       initialProspects?.[0]?.session_id ||
+                       csvData?.[0]?.sessionId ||
+                       csvData?.[0]?.session_id;
 
       console.log('🔍 Campaign creation - session_id detection:', {
         hasInitialProspects: !!initialProspects?.length,
+        hasCsvData: !!csvData?.length,
+        uploadedSessionId,
         firstProspect: initialProspects?.[0],
+        firstCsvRow: csvData?.[0],
         extractedSessionId: sessionId
       });
+
+      if (!sessionId) {
+        console.warn('⚠️ ⚠️ ⚠️ NO SESSION_ID FOUND - PROSPECTS WILL NOT BE AUTO-TRANSFERRED TO CAMPAIGN!');
+        console.warn('This means prospects will need to be manually uploaded via /api/campaigns/upload-prospects');
+      }
 
       // Step 1: Create campaign
       const campaignResponse = await fetch('/api/campaigns', {
@@ -2873,6 +2897,20 @@ Would you like me to adjust these or create more variations?`
 
       const campaignData = await campaignResponse.json();
       const campaign = campaignData.campaign; // Extract nested campaign object
+
+      // CRITICAL: Log if prospects were auto-transferred via session_id
+      if (campaignData.prospects_transferred && campaignData.prospects_transferred > 0) {
+        console.log(`✅ AUTO-TRANSFERRED: ${campaignData.prospects_transferred} prospects transferred from session ${sessionId}`);
+        toastSuccess(`Campaign created with ${campaignData.prospects_transferred} prospects from approval session`);
+
+        // Skip manual prospect upload since they were auto-transferred
+        // Jump to campaign list
+        onCampaignCreated?.();
+        return;
+      } else if (sessionId) {
+        console.warn(`⚠️ Session ID ${sessionId} was provided but NO prospects were auto-transferred`);
+        console.warn('Possible reasons: No approved prospects, or prospects already transferred, or RLS blocking access');
+      }
 
       // Step 2: Add prospects to campaign
       // CRITICAL FIX: Use different API for approved prospects vs raw uploads

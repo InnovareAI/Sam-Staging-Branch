@@ -203,19 +203,28 @@ export async function POST(req: NextRequest) {
     // AUTO-TRANSFER: If session_id provided, automatically transfer approved prospects
     let prospectsTransferred = 0;
     if (session_id) {
-      console.log(`📦 Auto-transferring approved prospects from session ${session_id} to campaign ${campaignId}`);
+      console.log(`📦 ===== AUTO-TRANSFER PROSPECTS =====`);
+      console.log(`Session ID: ${session_id}`);
+      console.log(`Campaign ID: ${campaignId}`);
+      console.log(`Workspace ID: ${workspace_id}`);
 
       // Get approved prospects from the session
       // First get approved prospect IDs from decisions table
-      const { data: decisions } = await supabase
+      const { data: decisions, error: decisionsError } = await supabase
         .from('prospect_approval_decisions')
         .select('prospect_id')
         .eq('session_id', session_id)
         .eq('decision', 'approved');
 
+      if (decisionsError) {
+        console.error('❌ Error querying prospect_approval_decisions:', decisionsError);
+      }
+
       if (!decisions || decisions.length === 0) {
-        console.log('⚠️  No approved decisions found for session:', session_id);
-        // Continue to get prospects data
+        console.log('⚠️  No approved decisions found in prospect_approval_decisions for session:', session_id);
+        console.log('   Will attempt to get ALL prospects from prospect_approval_data (backwards compatibility)');
+      } else {
+        console.log(`✅ Found ${decisions.length} approved prospects in decisions table`);
       }
 
       const approvedProspectIds = decisions?.map(d => d.prospect_id) || [];
@@ -231,7 +240,23 @@ export async function POST(req: NextRequest) {
         query = query.in('prospect_id', approvedProspectIds);
       }
 
-      const { data: approvedProspects } = await query;
+      const { data: approvedProspects, error: prospectsError } = await query;
+
+      if (prospectsError) {
+        console.error('❌ Error querying prospect_approval_data:', prospectsError);
+        console.error('   Message:', prospectsError.message);
+        console.error('   Code:', prospectsError.code);
+        console.error('   Details:', prospectsError.details);
+      }
+
+      if (!approvedProspects || approvedProspects.length === 0) {
+        console.error('❌ NO PROSPECTS FOUND IN prospect_approval_data');
+        console.error('   Session ID:', session_id);
+        console.error('   Approved IDs:', approvedProspectIds);
+        console.error('   This means prospects were never uploaded or session ID is wrong');
+      } else {
+        console.log(`✅ Found ${approvedProspects.length} prospects in prospect_approval_data`);
+      }
 
       if (approvedProspects && approvedProspects.length > 0) {
         // Get LinkedIn account for prospect ownership
@@ -295,17 +320,31 @@ export async function POST(req: NextRequest) {
           };
         });
 
+        console.log(`📤 Inserting ${campaignProspects.length} prospects into campaign_prospects table...`);
+
         const { data: inserted, error: insertError } = await supabase
           .from('campaign_prospects')
           .insert(campaignProspects)
           .select();
 
         if (insertError) {
-          console.error('❌ Failed to auto-transfer prospects:', insertError);
+          console.error('❌ FAILED TO AUTO-TRANSFER PROSPECTS');
+          console.error('   Error message:', insertError.message);
+          console.error('   Error code:', insertError.code);
+          console.error('   Error details:', insertError.details);
+          console.error('   Error hint:', insertError.hint);
+          console.error('   First prospect data sample:', campaignProspects[0]);
         } else {
           prospectsTransferred = inserted.length;
-          console.log(`✅ Auto-transferred ${prospectsTransferred} approved prospects to campaign`);
+          console.log(`✅ ✅ ✅ AUTO-TRANSFERRED ${prospectsTransferred} PROSPECTS TO CAMPAIGN`);
+          console.log(`   Campaign ID: ${campaignId}`);
+          console.log(`   Session ID: ${session_id}`);
         }
+      } else {
+        console.log('📋 ===== AUTO-TRANSFER SUMMARY =====');
+        console.log('   Result: NO PROSPECTS TO TRANSFER');
+        console.log(`   Session ID: ${session_id}`);
+        console.log('   Reason: No prospects found in prospect_approval_data');
       }
     }
 
