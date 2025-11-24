@@ -41,8 +41,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message, details: error }, { status: 500 });
     }
 
-    console.log('✅ Fetched monitors:', data?.length || 0);
-    return NextResponse.json({ monitors: data || [] });
+    // Get post counts for each monitor
+    const monitorsWithCounts = await Promise.all(
+      (data || []).map(async (monitor) => {
+        const { count } = await supabase
+          .from('linkedin_posts_discovered')
+          .select('*', { count: 'exact', head: true })
+          .eq('monitor_id', monitor.id);
+
+        return {
+          ...monitor,
+          posts_count: count || 0
+        };
+      })
+    );
+
+    console.log('✅ Fetched monitors with counts:', monitorsWithCounts.length);
+    return NextResponse.json({ monitors: monitorsWithCounts });
   } catch (error) {
     console.error('❌ Unexpected error in GET:', error);
     return NextResponse.json({

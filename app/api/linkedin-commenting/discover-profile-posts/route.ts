@@ -138,12 +138,12 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        const profile = await profileResponse.json();
-        console.log(`✅ Profile found: ${profile.first_name} ${profile.last_name} (provider_id: ${profile.provider_id})`);
+        const profileData = await profileResponse.json();
+        console.log(`✅ Profile found: ${profileData.first_name} ${profileData.last_name} (provider_id: ${profileData.provider_id})`);
 
         // Step 2: Fetch posts using provider_id (NOT vanity name)
         // CRITICAL: Unipile requires provider_id to fetch posts correctly
-        const postsUrl = `https://${UNIPILE_DSN}/api/v1/users/${profile.provider_id}/posts?account_id=${ACCOUNT_ID}`;
+        const postsUrl = `https://${UNIPILE_DSN}/api/v1/users/${profileData.provider_id}/posts?account_id=${ACCOUNT_ID}`;
         console.log(`📡 Fetching posts from URL: ${postsUrl}`);
 
         const postsResponse = await fetch(postsUrl, {
@@ -358,8 +358,8 @@ export async function POST(request: NextRequest) {
               social_id: socialId,
               share_url: shareUrl,
               post_content: content,
-              author_name: `${profile.first_name} ${profile.last_name}`,
-              author_profile_id: profile.provider_id,
+              author_name: `${profileData.first_name} ${profileData.last_name}`,
+              author_profile_id: profileData.provider_id,
               hashtags: post.hashtags || [],
               post_date: postDate.toISOString(),
               engagement_metrics: {

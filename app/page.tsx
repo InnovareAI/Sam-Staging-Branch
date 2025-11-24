@@ -193,6 +193,8 @@ export default function Page() {
   const [commentingAgentView, setCommentingAgentView] = useState<'dashboard' | 'approve'>('dashboard');
   const [commentingCampaigns, setCommentingCampaigns] = useState<any[]>([]);
   const [commentingCampaignsLoading, setCommentingCampaignsLoading] = useState(false);
+  const [expandedCampaignPosts, setExpandedCampaignPosts] = useState<string | null>(null);
+  const [campaignPosts, setCampaignPosts] = useState<Record<string, any[]>>({});
 
   // User management state
   const [showManageUsers, setShowManageUsers] = useState(false);
@@ -392,9 +394,11 @@ export default function Page() {
 
       setCommentingCampaignsLoading(true);
       try {
-        const response = await fetch(`/api/linkedin-commenting/monitors?workspace_id=${selectedWorkspaceId}`);
+        // Add cache-busting timestamp
+        const response = await fetch(`/api/linkedin-commenting/monitors?workspace_id=${selectedWorkspaceId}&_t=${Date.now()}`);
         if (response.ok) {
           const data = await response.json();
+          console.log('📊 Loaded campaigns with counts:', data.monitors);
           setCommentingCampaigns(data.monitors || []);
         }
       } catch (error) {
@@ -1985,26 +1989,33 @@ export default function Page() {
       try {
         console.log('🚪 Signing out user...');
 
-        // Sign out from Supabase completely
-        await supabase.auth.signOut({ scope: 'global' });
-        
-        localStorage.removeItem('supabase.auth.token');
-
-        // Clear session storage as well
+        // CRITICAL: Clear all Supabase storage FIRST before signOut
+        // This prevents the auth listener from immediately restoring session
+        const storageKeys = Object.keys(localStorage).filter(key =>
+          key.startsWith('sb-') || key.includes('supabase')
+        );
+        storageKeys.forEach(key => localStorage.removeItem(key));
         sessionStorage.clear();
-        
+
+        // Sign out from Supabase
+        await supabase.auth.signOut({ scope: 'global' });
+
         // Reset app state
         setUser(null);
+        setSession(null);
         setIsAuthLoading(false);
 
-        console.log('✅ Logout complete, reloading page...');
+        console.log('✅ Logout complete, forcing hard reload...');
 
-        // Reload the page to fully reset state
-        window.location.reload();
+        // Force hard reload with cache bust
+        setTimeout(() => {
+          window.location.href = window.location.origin + '?_logout=' + Date.now();
+        }, 100);
       } catch (error) {
         console.error('❌ Error signing out:', error);
 
-        localStorage.removeItem('supabase.auth.token');
+        // Nuclear option - clear everything and reload
+        localStorage.clear();
         sessionStorage.clear();
         setUser(null);
         setIsAuthLoading(false);
@@ -3225,10 +3236,125 @@ export default function Page() {
 
                           {/* Stats */}
                           <div className="flex items-center gap-4 text-xs text-gray-400 pt-2 border-t border-gray-600">
-                            <span>Posts: 0</span>
+                            <span>Posts: {campaign.posts_count || 0}</span>
                             {keywords.length > 0 && <span>Keywords: {keywords.join(', ')}</span>}
                             <span>Auto-approve: {campaign.auto_approve_enabled ? 'Yes' : 'No'}</span>
+                            {campaign.posts_count > 0 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (expandedCampaignPosts === campaign.id) {
+                                    setExpandedCampaignPosts(null);
+                                  } else {
+                                    setExpandedCampaignPosts(campaign.id);
+                                    // Fetch posts if not already loaded
+                                    if (!campaignPosts[campaign.id]) {
+                                      fetch(`/api/linkedin-commenting/get-discovered-posts?monitor_id=${campaign.id}&limit=50`)
+                                        .then(res => res.json())
+                                        .then(posts => {
+                                          setCampaignPosts(prev => ({ ...prev, [campaign.id]: posts }));
+                                        })
+                                        .catch(err => console.error('Error fetching posts:', err));
+                                    }
+                                  }
+                                }}
+                                className="text-purple-400 hover:text-purple-300 underline"
+                              >
+                                {expandedCampaignPosts === campaign.id ? 'Hide Posts' : 'View Posts'}
+                              </button>
+                            )}
                           </div>
+
+                          {/* Expanded Posts Section */}
+                          {expandedCampaignPosts === campaign.id && (
+                            <div className="mt-4 pt-4 border-t border-gray-600 space-y-3">
+                              {campaignPosts[campaign.id] ? (
+                                campaignPosts[campaign.id].length > 0 ? (
+                                  campaignPosts[campaign.id].map((post: any, idx: number) => (
+                                    <div key={post.id} className="bg-gray-800/50 rounded-lg p-3 space-y-2">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="flex-1">
+                                          <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-sm font-medium text-white">{post.author_name}</span>
+                                            <span className="text-xs text-gray-500">
+                                              {new Date(post.post_date).toLocaleDateString()}
+                                            </span>
+                                            <span className={`px-2 py-0.5 rounded text-xs ${
+                                              post.status === 'discovered' ? 'bg-blue-600/20 text-blue-400' :
+                                              post.status === 'comment_generated' ? 'bg-green-600/20 text-green-400' :
+                                              post.status === 'skipped' ? 'bg-gray-600/20 text-gray-400' :
+                                              'bg-yellow-600/20 text-yellow-400'
+                                            }`}>
+                                              {post.status}
+                                            </span>
+                                          </div>
+                                          <p className="text-sm text-gray-300 line-clamp-3">{post.post_content}</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                                        <span>👍 {post.engagement_metrics?.reactions || 0}</span>
+                                        <span>💬 {post.engagement_metrics?.comments || 0}</span>
+                                        <span>🔄 {post.engagement_metrics?.reposts || 0}</span>
+                                        {post.share_url && (
+                                          <a
+                                            href={post.share_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="text-purple-400 hover:text-purple-300 underline"
+                                          >
+                                            View on LinkedIn →
+                                          </a>
+                                        )}
+                                        {post.status === 'discovered' && (
+                                          <button
+                                            onClick={async (e) => {
+                                              e.stopPropagation();
+                                              try {
+                                                const response = await fetch('/api/linkedin-commenting/generate-comment-ui', {
+                                                  method: 'POST',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify({ post_id: post.id })
+                                                });
+                                                const result = await response.json();
+                                                if (result.success) {
+                                                  alert('✅ Comment generated! Refresh to see it.');
+                                                  // Refresh posts
+                                                  fetch(`/api/linkedin-commenting/get-discovered-posts?monitor_id=${campaign.id}&limit=50`)
+                                                    .then(res => res.json())
+                                                    .then(posts => {
+                                                      setCampaignPosts(prev => ({ ...prev, [campaign.id]: posts }));
+                                                    });
+                                                } else if (result.skipped) {
+                                                  alert(`⚠️ Post skipped: ${result.reason}`);
+                                                } else {
+                                                  alert(`❌ Error: ${result.error || 'Unknown error'}`);
+                                                }
+                                              } catch (err) {
+                                                alert('❌ Failed to generate comment');
+                                                console.error(err);
+                                              }
+                                            }}
+                                            className="ml-auto px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs"
+                                          >
+                                            Generate Comment
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="text-sm text-gray-500 italic text-center py-4">
+                                    No posts discovered yet
+                                  </div>
+                                )
+                              ) : (
+                                <div className="text-sm text-gray-500 italic text-center py-4">
+                                  Loading posts...
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })}

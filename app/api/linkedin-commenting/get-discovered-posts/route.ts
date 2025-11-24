@@ -1,25 +1,40 @@
 import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Simple API endpoint for N8N to get discovered posts
+ * Get discovered LinkedIn posts
+ * Supports filtering by monitor_id for UI display
  * No authentication needed - uses service role key
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { data: posts, error } = await supabase
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const monitorId = searchParams.get('monitor_id');
+    const status = searchParams.get('status') || 'discovered';
+    const limit = parseInt(searchParams.get('limit') || '10');
+
+    // Build query
+    let query = supabase
       .from('linkedin_posts_discovered')
-      .select('*, linkedin_post_monitors(workspace_id)')
-      .eq('status', 'discovered')
+      .select('*, linkedin_post_monitors(workspace_id, name, hashtags)')
+      .eq('status', status)
       .order('post_date', { ascending: false })
-      .limit(10);
+      .limit(limit);
+
+    // Add monitor filter if provided
+    if (monitorId) {
+      query = query.eq('monitor_id', monitorId);
+    }
+
+    const { data: posts, error } = await query;
 
     if (error) {
       console.error('Error fetching posts:', error);
