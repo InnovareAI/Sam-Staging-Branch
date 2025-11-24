@@ -158,8 +158,33 @@ export async function POST(request: NextRequest) {
 
         // Check which posts already exist (check both URL and social_id)
         const existingUrls = recentPosts.map((p: any) => p.url).filter(Boolean);
+
+        // Normalize social_ids to URN format for duplicate checking
+        // Extract numeric ID from any URN format and normalize to urn:li:activity:NUMBER
         const existingSocialIds = recentPosts
-          .map((p: any) => p.urn?.activity_urn || p.full_urn)
+          .map((p: any) => {
+            let socialId = p.urn?.activity_urn || p.full_urn;
+            if (!socialId) return null;
+
+            // Extract numeric ID from any URN format
+            // Handles: urn:li:activity:123, urn:li:ugcPost:123, or plain 123
+            const numericMatch = socialId.match(/(\d{16,20})/); // LinkedIn IDs are 16-20 digits
+            if (numericMatch) {
+              return `urn:li:activity:${numericMatch[1]}`;
+            }
+
+            // Fallback: if already starts with urn:li:activity, keep it
+            if (socialId.startsWith('urn:li:activity:')) {
+              return socialId;
+            }
+
+            // Last resort: assume it's a plain number
+            if (/^\d+$/.test(socialId)) {
+              return `urn:li:activity:${socialId}`;
+            }
+
+            return socialId;
+          })
           .filter(Boolean);
 
         const { data: existingPosts } = await supabase
@@ -172,7 +197,20 @@ export async function POST(request: NextRequest) {
         const existingSocialIdSet = new Set(existingPosts?.map(p => p.social_id) || []);
 
         const newPosts = recentPosts.filter((p: any) => {
-          const socialId = p.urn?.activity_urn || p.full_urn;
+          // Normalize social_id for comparison using same logic
+          let socialId = p.urn?.activity_urn || p.full_urn;
+          if (!socialId) return !existingUrlSet.has(p.url);
+
+          // Extract numeric ID and normalize
+          const numericMatch = socialId.match(/(\d{16,20})/);
+          if (numericMatch) {
+            socialId = `urn:li:activity:${numericMatch[1]}`;
+          } else if (socialId.startsWith('urn:li:activity:')) {
+            // Already normalized
+          } else if (/^\d+$/.test(socialId)) {
+            socialId = `urn:li:activity:${socialId}`;
+          }
+
           return !existingUrlSet.has(p.url) && !existingSocialIdSet.has(socialId);
         });
 
@@ -180,23 +218,42 @@ export async function POST(request: NextRequest) {
 
         // Store new posts
         if (newPosts.length > 0) {
-          const postsToInsert = newPosts.map((post: any) => ({
-            workspace_id: monitor.workspace_id,
-            monitor_id: monitor.id,
-            social_id: post.urn?.activity_urn || post.full_urn,
-            share_url: post.url || `https://www.linkedin.com/feed/update/${post.full_urn}`,
-            post_content: post.text || '',
-            author_name: post.author?.first_name ? `${post.author.first_name} ${post.author.last_name || ''}`.trim() : vanityName,
-            author_profile_id: post.author?.username || vanityName,
-            hashtags: [],
-            post_date: new Date(post.posted_at?.timestamp).toISOString(),
-            engagement_metrics: {
-              comments: post.stats?.comments_count || 0,
-              reactions: post.stats?.total_reactions || 0,
-              reposts: post.stats?.reposts_count || 0
-            },
-            status: 'discovered'
-          }));
+          const postsToInsert = newPosts.map((post: any) => {
+            // Normalize social_id to always use URN format (urn:li:activity:NUMBER)
+            // Extracts numeric ID from ANY URN type (activity, ugcPost, share, etc.)
+            // Prevents duplicates from different URN format variations
+            let socialId = post.urn?.activity_urn || post.full_urn;
+
+            if (socialId) {
+              // Extract numeric ID from any URN format
+              const numericMatch = socialId.match(/(\d{16,20})/);
+              if (numericMatch) {
+                socialId = `urn:li:activity:${numericMatch[1]}`;
+              } else if (socialId.startsWith('urn:li:activity:')) {
+                // Already in correct format
+              } else if (/^\d+$/.test(socialId)) {
+                socialId = `urn:li:activity:${socialId}`;
+              }
+            }
+
+            return {
+              workspace_id: monitor.workspace_id,
+              monitor_id: monitor.id,
+              social_id: socialId,
+              share_url: post.url || `https://www.linkedin.com/feed/update/${post.full_urn}`,
+              post_content: post.text || '',
+              author_name: post.author?.first_name ? `${post.author.first_name} ${post.author.last_name || ''}`.trim() : vanityName,
+              author_profile_id: post.author?.username || vanityName,
+              hashtags: [],
+              post_date: new Date(post.posted_at?.timestamp).toISOString(),
+              engagement_metrics: {
+                comments: post.stats?.comments_count || 0,
+                reactions: post.stats?.total_reactions || 0,
+                reposts: post.stats?.reposts_count || 0
+              },
+              status: 'discovered'
+            };
+          });
 
           const { error: insertError } = await supabase
             .from('linkedin_posts_discovered')
