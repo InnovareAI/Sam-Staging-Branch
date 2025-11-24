@@ -304,9 +304,10 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   // REACT QUERY: Mutation for executing campaign
   const executeMutation = useMutation({
     mutationFn: async (campaignId: string) => {
-      console.log(`🚀 Executing campaign ${campaignId} (queued, 30 min spacing)...`);
+      console.log(`🚀 Executing campaign ${campaignId} (fast queue mode)...`);
 
-      const response = await fetch('/api/campaigns/direct/send-connection-requests-queued', {
+      // Use fast endpoint that returns immediately (no validation - happens in background)
+      const response = await fetch('/api/campaigns/direct/send-connection-requests-fast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
