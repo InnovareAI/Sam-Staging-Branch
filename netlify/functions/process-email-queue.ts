@@ -7,7 +7,7 @@
  * - 9-hour window (8 AM - 5 PM)
  * - 40 emails / 9 hours = ~13.5 minutes per email
  *
- * Scheduled to run: */13 * * * * (every 13 minutes) via netlify.toml
+ * Schedule: every 13 minutes (see netlify.toml)
  */
 
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
