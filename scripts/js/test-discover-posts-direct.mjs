@@ -6,7 +6,7 @@
  */
 
 const UNIPILE_DSN = 'api6.unipile.com:13670';
-const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY || 'POcBmCSV.b/t0gstHvY5alDsy/BmKQmUBt4FmNXRF7fdOYqywJSM=';
+const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY || '85ZMr7iE.Pw5mVHOgvpPXOl47GXXXoW0uLPvOUK23bWXD+hHuziA=';
 const ACCOUNT_ID = 'ymtTx4xVQ6OVUFk83ctwtA';
 
 async function testDiscoverPosts() {
@@ -40,7 +40,7 @@ async function testDiscoverPosts() {
 
     // Step 2: Fetch posts
     console.log(`Step 2: Fetching posts for ${vanityName}...`);
-    const postsUrl = `https://${UNIPILE_DSN}/api/v1/users/${vanityName}/posts`;
+    const postsUrl = `https://${UNIPILE_DSN}/api/v1/users/${vanityName}/posts?account_id=${ACCOUNT_ID}`;
     console.log(`   URL: ${postsUrl}`);
 
     const postsResponse = await fetch(postsUrl, {

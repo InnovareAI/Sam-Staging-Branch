@@ -55,10 +55,10 @@ export async function POST(request: NextRequest) {
 
     const { data: workspaceAccount, error: accountError } = await supabase
       .from('workspace_accounts')
-      .select('unipile_account_id, unipile_dsn, unipile_api_key')
+      .select('unipile_account_id')
       .eq('workspace_id', workspaceId)
-      .eq('provider', 'linkedin')
-      .eq('status', 'active')
+      .eq('account_type', 'linkedin')
+      .eq('connection_status', 'connected')
       .single();
 
     if (accountError || !workspaceAccount) {
@@ -69,9 +69,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const UNIPILE_DSN = workspaceAccount.unipile_dsn;
-    const UNIPILE_API_KEY = workspaceAccount.unipile_api_key;
+    const UNIPILE_DSN = process.env.UNIPILE_DSN || 'api6.unipile.com:13670';
+    const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
     const ACCOUNT_ID = workspaceAccount.unipile_account_id;
+
+    if (!UNIPILE_API_KEY) {
+      console.error('❌ Missing UNIPILE_API_KEY');
+      return Response.json({ success: false, error: 'Unipile API key not configured' });
+    }
 
     console.log(`✅ Using workspace account: ${ACCOUNT_ID}`);
 
