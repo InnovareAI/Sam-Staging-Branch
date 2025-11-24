@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
         console.log(`✅ Profile found: ${profile.first_name} ${profile.last_name}`);
 
         // Step 2: Fetch posts using the correct Unipile endpoint
-        const postsUrl = `https://${UNIPILE_DSN}/api/v1/users/${vanityName}/posts`;
+        const postsUrl = `https://${UNIPILE_DSN}/api/v1/users/${vanityName}/posts?account_id=${ACCOUNT_ID}`;
         const postsResponse = await fetch(postsUrl, {
           method: 'GET',
           headers: {
