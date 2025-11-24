@@ -41,6 +41,6 @@
 [functions."process-pending-prospects"]
   schedule = "*/5 * * * *"
 
-# Scheduled function: Process send queue every 30 minutes (sends 1 CR per run = 48 CRs/day max)
+# Scheduled function: Process send queue every minute (sends 1 CR per run = 1440 CRs/day max)
 [functions."process-send-queue"]
-  schedule = "*/30 * * * *"
+  schedule = "* * * * *"
