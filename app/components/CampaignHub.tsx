@@ -2944,43 +2944,58 @@ Would you like me to adjust these or create more variations?`
         // Raw prospect data (CSV/manual upload) - use upload-prospects API
         console.log('📤 Uploading raw prospects via /api/campaigns/upload-prospects');
 
+        // CRITICAL FIX: Build prospects array from multiple sources with fallback priority
+        // Priority: 1. csvData (direct uploads), 2. initialProspects, 3. selectedProspects
         let prospects;
-        if (initialProspects && initialProspects.length > 0) {
+        if (csvData && csvData.length > 0) {
+          // CSV data uploaded - use it directly
+          console.log(`✅ Using csvData: ${csvData.length} prospects`);
+          prospects = csvData;
+        } else if (initialProspects && initialProspects.length > 0) {
+          console.log(`✅ Using initialProspects: ${initialProspects.length} prospects`);
           prospects = initialProspects.map(prospect => ({
             // Handle both workspace_prospects schema and other schemas
             first_name: prospect.first_name || (prospect.name ? prospect.name.split(' ')[0] : ''),
             last_name: prospect.last_name || (prospect.name ? prospect.name.split(' ').slice(1).join(' ') : ''),
             name: prospect.name || `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
             email: prospect.email || prospect.email_address || prospect.contact?.email,
-          company: prospect.company?.name || prospect.company_name || prospect.company || '',
-          title: prospect.title || prospect.job_title,
-          linkedin_url: prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url,
-          linkedin_user_id: prospect.linkedin_user_id
-        }));
-      } else if (dataSource === 'upload' && csvData.length > 0) {
-        prospects = csvData;
-      } else {
-        prospects = selectedProspects.map(prospect => ({
-          // Handle both workspace_prospects schema and other schemas
-          first_name: prospect.first_name || (prospect.name ? prospect.name.split(' ')[0] : ''),
-          last_name: prospect.last_name || (prospect.name ? prospect.name.split(' ').slice(1).join(' ') : ''),
-          name: prospect.name || `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
-          email: prospect.email || prospect.email_address,
-          company: prospect.company || prospect.company_name,
-          title: prospect.title || prospect.job_title,
-          linkedin_url: prospect.linkedin_url || prospect.linkedin_profile_url,
-          linkedin_user_id: prospect.linkedin_user_id
-        }));
-      }
+            company: prospect.company?.name || prospect.company_name || prospect.company || '',
+            title: prospect.title || prospect.job_title,
+            linkedin_url: prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url,
+            linkedin_user_id: prospect.linkedin_user_id
+          }));
+        } else if (selectedProspects && selectedProspects.length > 0) {
+          console.log(`✅ Using selectedProspects: ${selectedProspects.length} prospects`);
+          prospects = selectedProspects.map(prospect => ({
+            // Handle both workspace_prospects schema and other schemas
+            first_name: prospect.first_name || (prospect.name ? prospect.name.split(' ')[0] : ''),
+            last_name: prospect.last_name || (prospect.name ? prospect.name.split(' ').slice(1).join(' ') : ''),
+            name: prospect.name || `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
+            email: prospect.email || prospect.email_address,
+            company: prospect.company || prospect.company_name,
+            title: prospect.title || prospect.job_title,
+            linkedin_url: prospect.linkedin_url || prospect.linkedin_profile_url,
+            linkedin_user_id: prospect.linkedin_user_id
+          }));
+        } else {
+          // CRITICAL: No prospects found - throw error instead of silently creating empty campaign
+          console.error('❌ NO PROSPECTS FOUND for campaign creation!');
+          console.error('  - csvData:', csvData?.length || 0);
+          console.error('  - initialProspects:', initialProspects?.length || 0);
+          console.error('  - selectedProspects:', selectedProspects?.length || 0);
+          throw new Error('No prospects found. Please upload a CSV file or select prospects before creating a campaign.');
+        }
 
-      const uploadResponse = await fetch('/api/campaigns/upload-prospects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          campaign_id: campaign.id,
-          prospects: prospects
-        })
-      });
+        console.log(`📊 Uploading ${prospects.length} prospects to campaign ${campaign.id}`);
+
+        const uploadResponse = await fetch('/api/campaigns/upload-prospects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            campaign_id: campaign.id,
+            prospects: prospects
+          })
+        });
 
       if (!uploadResponse.ok) {
         const errorData = await uploadResponse.json().catch(() => ({}));
