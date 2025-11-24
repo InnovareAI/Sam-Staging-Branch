@@ -47,6 +47,34 @@ export async function POST(request: NextRequest) {
 
     let totalDiscovered = 0;
 
+    // Get workspace LinkedIn account from database
+    const workspaceId = profileMonitors[0]?.workspace_id;
+    if (!workspaceId) {
+      return Response.json({ success: false, error: 'No workspace found' });
+    }
+
+    const { data: workspaceAccount, error: accountError } = await supabase
+      .from('workspace_accounts')
+      .select('unipile_account_id, unipile_dsn, unipile_api_key')
+      .eq('workspace_id', workspaceId)
+      .eq('provider', 'linkedin')
+      .eq('status', 'active')
+      .single();
+
+    if (accountError || !workspaceAccount) {
+      console.error('❌ No active LinkedIn account for workspace:', workspaceId);
+      return Response.json({
+        success: false,
+        error: 'No active LinkedIn account configured for workspace'
+      });
+    }
+
+    const UNIPILE_DSN = workspaceAccount.unipile_dsn;
+    const UNIPILE_API_KEY = workspaceAccount.unipile_api_key;
+    const ACCOUNT_ID = workspaceAccount.unipile_account_id;
+
+    console.log(`✅ Using workspace account: ${ACCOUNT_ID}`);
+
     // Process each profile monitor
     for (const monitor of profileMonitors) {
       try {
@@ -56,16 +84,6 @@ export async function POST(request: NextRequest) {
 
         const vanityName = profileHashtag.replace('PROFILE:', '');
         console.log(`\n🔍 Processing profile: ${vanityName}`);
-
-        // Step 1: Lookup profile to get provider_id
-        const UNIPILE_DSN = process.env.UNIPILE_DSN || 'api6.unipile.com:13670';
-        const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
-        const ACCOUNT_ID = process.env.UNIPILE_ACCOUNT_ID || 'ymtTx4xVQ6OVUFk83ctwtA';
-
-        if (!UNIPILE_API_KEY) {
-          console.error('❌ Missing UNIPILE_API_KEY');
-          continue;
-        }
 
         const profileUrl = `https://${UNIPILE_DSN}/api/v1/users/${vanityName}?account_id=${ACCOUNT_ID}`;
         const profileResponse = await fetch(profileUrl, {
