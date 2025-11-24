@@ -81,31 +81,25 @@ export async function POST(request: NextRequest) {
         const profile = await profileResponse.json();
         console.log(`✅ Profile found: ${profile.first_name} ${profile.last_name}`);
 
-        // Step 2: Search for posts from this profile using Unipile search API
-        const searchUrl = `https://${UNIPILE_DSN}/api/v1/search`;
-        const searchResponse = await fetch(searchUrl, {
-          method: 'POST',
+        // Step 2: Fetch posts using the correct Unipile endpoint
+        const postsUrl = `https://${UNIPILE_DSN}/api/v1/users/${vanityName}/posts`;
+        const postsResponse = await fetch(postsUrl, {
+          method: 'GET',
           headers: {
             'X-API-KEY': UNIPILE_API_KEY,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            account_id: ACCOUNT_ID,
-            type: 'LINKEDIN',
-            query: `author:${vanityName}`,
-            limit: 100
-          })
+            'Accept': 'application/json'
+          }
         });
 
-        if (!searchResponse.ok) {
-          console.error(`❌ Failed to search posts for ${vanityName}: ${searchResponse.status}`);
-          const errorText = await searchResponse.text();
+        if (!postsResponse.ok) {
+          console.error(`❌ Failed to fetch posts for ${vanityName}: ${postsResponse.status}`);
+          const errorText = await postsResponse.text();
           console.error(`   Error: ${errorText}`);
           continue;
         }
 
-        const searchData = await searchResponse.json();
-        const posts = searchData.items || [];
+        const postsData = await postsResponse.json();
+        const posts = postsData.items || [];
         console.log(`📝 Retrieved ${posts.length} posts from profile`);
 
         // Step 3: Filter posts by age (last 24 hours)
