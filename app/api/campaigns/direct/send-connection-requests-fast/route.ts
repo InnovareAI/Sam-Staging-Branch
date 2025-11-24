@@ -112,6 +112,7 @@ export async function POST(req: NextRequest) {
       const personalizedMessage = connectionMessage
         .replace(/\{first_name\}/g, prospect.first_name)
         .replace(/\{last_name\}/g, prospect.last_name)
+        .replace(/\{company_name\}/g, prospect.company_name || '')
         .replace(/\{company\}/g, prospect.company_name || '');
 
       queueRecords.push({

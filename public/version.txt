@@ -1,1 +1,1 @@
-Auth fix deployed: Mon Nov 24 17:50:10 CET 2025
+Fast endpoint personalization fix deployed: Mon Nov 24 18:56:39 CET 2025
