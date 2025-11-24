@@ -44,3 +44,8 @@
 # Scheduled function: Process send queue every minute (sends 1 CR per run = 1440 CRs/day max)
 [functions."process-send-queue"]
   schedule = "* * * * *"
+
+# Scheduled function: Process email queue every 13 minutes (sends 1 email per run = ~40 emails/day max)
+# Compliance: 40 emails/day, 8 AM - 5 PM business hours, no weekends/holidays
+[functions."process-email-queue"]
+  schedule = "*/13 * * * *"
