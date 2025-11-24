@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { createClient } from '@supabase/supabase-js';
 
 /**
@@ -85,22 +86,32 @@ async function unipileRequest(endpoint: string, options: RequestInit = {}) {
   return response.json();
 }
 
-const supabase = createClient(
+// Service role client for queue operations (bypasses RLS for system operations)
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 export async function POST(req: NextRequest) {
   try {
+    // CRITICAL: Authenticate user first
+    const supabase = await createSupabaseRouteClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      console.error('❌ Authentication failed:', authError);
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { campaignId } = await req.json();
 
     if (!campaignId) {
       return NextResponse.json({ error: 'campaignId required' }, { status: 400 });
     }
 
-    console.log(`🚀 Starting queue-based campaign execution: ${campaignId}`);
+    console.log(`🚀 Starting queue-based campaign execution: ${campaignId} for user ${user.email}`);
 
-    // 1. Fetch campaign details
+    // 1. Fetch campaign details WITH AUTH (verify user owns this campaign via RLS)
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
       .select(`
@@ -137,7 +148,7 @@ export async function POST(req: NextRequest) {
     const cooldownDate = new Date();
     cooldownDate.setHours(cooldownDate.getHours() - 24);
 
-    const { data: prospects, error: prospectsError } = await supabase
+    const { data: prospects, error: prospectsError } = await supabaseAdmin
       .from('campaign_prospects')
       .select('*')
       .eq('campaign_id', campaignId)
@@ -175,7 +186,7 @@ export async function POST(req: NextRequest) {
         console.log(`\n👤 Validating: ${prospect.first_name} ${prospect.last_name}`);
 
         // VALIDATION: Check duplicates WITHIN SAME WORKSPACE ONLY
-        const { data: existingInOtherCampaign } = await supabase
+        const { data: existingInOtherCampaign } = await supabaseAdmin
           .from('campaign_prospects')
           .select('status, campaign_id, campaigns!inner(campaign_name, workspace_id)')
           .eq('linkedin_url', prospect.linkedin_url)
@@ -188,7 +199,7 @@ export async function POST(req: NextRequest) {
           const otherCampaignName = (existingInOtherCampaign as any).campaigns?.campaign_name || 'another campaign';
           console.log(`⚠️  ${prospect.first_name} already in ${otherCampaignName} (same workspace) - skipping`);
 
-          await supabase
+          await supabaseAdmin
             .from('campaign_prospects')
             .update({
               status: 'failed',
@@ -204,7 +215,7 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        const { data: existingInThisCampaign } = await supabase
+        const { data: existingInThisCampaign } = await supabaseAdmin
           .from('campaign_prospects')
           .select('status, contacted_at')
           .eq('linkedin_url', prospect.linkedin_url)
@@ -216,7 +227,7 @@ export async function POST(req: NextRequest) {
         if (existingInThisCampaign) {
           console.log(`⚠️  Already contacted ${prospect.first_name} - skipping`);
 
-          await supabase
+          await supabaseAdmin
             .from('campaign_prospects')
             .update({
               status: existingInThisCampaign.status,
@@ -262,7 +273,7 @@ export async function POST(req: NextRequest) {
         if (profile.network_distance === 'FIRST_DEGREE') {
           console.log(`⚠️  Already connected - skipping`);
 
-          await supabase
+          await supabaseAdmin
             .from('campaign_prospects')
             .update({
               status: 'connected',
@@ -286,7 +297,7 @@ export async function POST(req: NextRequest) {
           const cooldownEnd = new Date();
           cooldownEnd.setDate(cooldownEnd.getDate() + 21);
 
-          await supabase
+          await supabaseAdmin
             .from('campaign_prospects')
             .update({
               status: 'failed',
@@ -307,7 +318,7 @@ export async function POST(req: NextRequest) {
         if (profile.invitation?.status === 'PENDING') {
           console.log(`⚠️  Invitation already pending`);
 
-          await supabase
+          await supabaseAdmin
             .from('campaign_prospects')
             .update({
               status: 'connection_request_sent',
@@ -414,7 +425,7 @@ export async function POST(req: NextRequest) {
       console.log(`   [${index}] scheduled_for: ${record.scheduled_for}, prospect: ${record.linkedin_user_id}`);
     });
 
-    const { data: insertedData, error: insertError } = await supabase
+    const { data: insertedData, error: insertError } = await supabaseAdmin
       .from('send_queue')
       .insert(queueRecords)
       .select();
@@ -436,7 +447,7 @@ export async function POST(req: NextRequest) {
     const durationMinutes = Math.ceil((lastScheduledTime.getTime() - new Date().getTime()) / (1000 * 60));
 
     // 5. Update campaign status to active
-    await supabase
+    await supabaseAdmin
       .from('campaigns')
       .update({
         status: 'active',
