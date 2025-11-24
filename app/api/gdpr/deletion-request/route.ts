@@ -4,13 +4,13 @@
  * Date: October 31, 2025
  */
 
-import { createClient } from '@/lib/supabase-server';
+import { createCleanRouteHandlerClient } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
 
 // POST /api/gdpr/deletion-request - Create deletion request
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createCleanRouteHandlerClient();
 
     // Authenticate user
     const {
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
 // GET /api/gdpr/deletion-request?workspace_id=xxx - List deletion requests
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createCleanRouteHandlerClient();
 
     // Authenticate user
     const {
@@ -190,7 +190,7 @@ export async function GET(request: NextRequest) {
 // PATCH /api/gdpr/deletion-request - Update deletion request status
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createCleanRouteHandlerClient();
 
     // Authenticate user
     const {
