@@ -45,7 +45,7 @@ import moment from 'moment-timezone';
 function canSendMessage(date: Date, settings?: any): boolean {
   // Default settings
   const timezone = settings?.timezone || 'America/New_York';
-  const startHour = settings?.working_hours_start ?? 8;
+  const startHour = settings?.working_hours_start ?? 7;
   const endHour = settings?.working_hours_end ?? 18;
   const skipWeekends = settings?.skip_weekends ?? true;
   const skipHolidays = settings?.skip_holidays ?? true;
@@ -196,6 +196,48 @@ export async function POST(req: NextRequest) {
     if (accountError || !linkedinAccount) {
       console.error('❌ LinkedIn account not found:', accountError);
       return NextResponse.json({ error: 'LinkedIn account not found' }, { status: 400 });
+    }
+
+    // 3.5. Check daily cap PER LINKEDIN ACCOUNT (20 connection requests per day per account)
+    const DAILY_LIMIT_PER_ACCOUNT = 20;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    // Count messages sent TODAY from THIS LinkedIn account
+    const { data: sentTodayForAccount, error: countError } = await supabase
+      .from('send_queue')
+      .select('id, campaign_id')
+      .eq('status', 'sent')
+      .gte('sent_at', todayStart.toISOString());
+
+    if (countError) {
+      console.error('❌ Error checking daily count:', countError);
+    }
+
+    // Filter by campaigns that use this LinkedIn account
+    let sentTodayCount = 0;
+    if (sentTodayForAccount && sentTodayForAccount.length > 0) {
+      const campaignIds = sentTodayForAccount.map(item => item.campaign_id);
+      const { data: campaignsForAccount } = await supabase
+        .from('campaigns')
+        .select('id')
+        .eq('linkedin_account_id', campaign.linkedin_account_id)
+        .in('id', campaignIds);
+
+      sentTodayCount = campaignsForAccount?.length || 0;
+    }
+
+    console.log(`📊 Connection requests sent today for account "${linkedinAccount.account_name}": ${sentTodayCount}/${DAILY_LIMIT_PER_ACCOUNT}`);
+
+    if (sentTodayCount >= DAILY_LIMIT_PER_ACCOUNT) {
+      console.log(`🛑 Daily limit reached for this LinkedIn account. Skipping send.`);
+      return NextResponse.json({
+        success: true,
+        processed: 0,
+        message: `Daily limit reached for account (${sentTodayCount}/${DAILY_LIMIT_PER_ACCOUNT})`,
+        account: linkedinAccount.account_name,
+        remaining_in_queue: 0
+      });
     }
 
     // 4. Fetch prospect details
