@@ -5,6 +5,7 @@ import { X, Target, MessageSquare, Shield, Clock, Sparkles, ChevronDown, Chevron
 
 interface Monitor {
   id: string;
+  name?: string;
   hashtags: string[];
   keywords: string[];
   status: string;
@@ -67,6 +68,40 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Load existing monitor data in edit mode
+  useEffect(() => {
+    if (editMode && existingMonitor) {
+      // Load campaign name
+      if (existingMonitor.name) {
+        setCampaignName(existingMonitor.name);
+      }
+
+      // Extract profile URLs from hashtags array (format: "PROFILE:vanity_name")
+      const profiles = existingMonitor.hashtags
+        .filter(tag => tag.startsWith('PROFILE:'))
+        .map(tag => `https://linkedin.com/in/${tag.replace('PROFILE:', '')}`);
+
+      if (profiles.length > 0) {
+        setProfileTargets(profiles);
+      }
+
+      // Set other fields if they exist
+      if (existingMonitor.timezone) setTimezone(existingMonitor.timezone);
+      if (existingMonitor.daily_start_time) {
+        setDailyStartTime(existingMonitor.daily_start_time.slice(0, 5)); // Remove seconds
+      }
+      if (existingMonitor.auto_approve_enabled !== undefined) {
+        setAutoApproveEnabled(existingMonitor.auto_approve_enabled);
+      }
+      if (existingMonitor.auto_approve_start_time) {
+        setAutoApproveStartTime(existingMonitor.auto_approve_start_time.slice(0, 5));
+      }
+      if (existingMonitor.auto_approve_end_time) {
+        setAutoApproveEndTime(existingMonitor.auto_approve_end_time.slice(0, 5));
+      }
+    }
+  }, [editMode, existingMonitor]);
+
   const handleAddTarget = () => {
     if (activeTab === 'profiles') {
       setProfileTargets([...profileTargets, '']);
@@ -111,6 +146,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
       // For hashtag targeting mode, create ONE monitor with ALL hashtags
       if (targetingMode === 'hashtag') {
         const monitor: any = {
+          name: campaignName || `Hashtag Monitor - ${new Date().toLocaleDateString()}`,
           hashtags: validTargets.map(t => t.replace(/^#/, '')), // Remove # prefix
           keywords: [],
           status: 'active',
@@ -150,6 +186,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
       } else if (targetingMode === 'keyword') {
         // For keyword targeting mode, create ONE monitor with ALL keywords
         const monitor: any = {
+          name: campaignName || `Keyword Monitor - ${new Date().toLocaleDateString()}`,
           hashtags: [],
           keywords: validTargets,
           status: 'active',
@@ -198,6 +235,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
           }
 
           const monitor: any = {
+            name: campaignName || `Profile Monitor - ${vanityName}`,
             // Store profile as special hashtag format: "PROFILE:vanity_name"
             hashtags: [`PROFILE:${vanityName}`],
             keywords: [],

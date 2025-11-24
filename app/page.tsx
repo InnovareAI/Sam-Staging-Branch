@@ -3170,8 +3170,13 @@ export default function Page() {
                 ) : (
                   <div className="p-6 space-y-4">
                     {commentingCampaigns.map((campaign) => {
-                      // Profile-based monitoring (NEW: Unipile free API)
-                      const profileVanities = campaign.profile_vanities || [];
+                      // Extract profile vanities from hashtags array (format: "PROFILE:vanity_name")
+                      const hashtags = campaign.hashtags || [];
+                      console.log('🔍 Campaign hashtags:', campaign.name, hashtags);
+                      const profileVanities = hashtags
+                        .filter((tag: string) => tag.startsWith('PROFILE:'))
+                        .map((tag: string) => tag.replace('PROFILE:', ''));
+                      console.log('🔍 Extracted profiles:', profileVanities);
                       const keywords = campaign.keywords || [];
                       const displayProfiles = profileVanities.length > 0
                         ? profileVanities.join(', ')
@@ -3182,7 +3187,11 @@ export default function Page() {
                       return (
                         <div
                           key={campaign.id}
-                          className="bg-gray-700/50 rounded-lg p-4 border border-gray-600 hover:border-purple-500/50 transition-all"
+                          onClick={() => {
+                            setEditingCampaign(campaign);
+                            setShowCommentingCampaignModal(true);
+                          }}
+                          className="bg-gray-700/50 rounded-lg p-4 border border-gray-600 hover:border-purple-500/50 transition-all cursor-pointer"
                         >
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-3">
@@ -3210,18 +3219,8 @@ export default function Page() {
                                 </div>
                               ))
                             ) : (
-                              <div className="text-sm text-gray-500 italic">No profiles yet</div>
+                              <div className="text-sm text-gray-500 italic">No profiles yet - click to add</div>
                             )}
-                            <button
-                              onClick={() => {
-                                setEditingCampaign(campaign);
-                                setShowCommentingCampaignModal(true);
-                              }}
-                              className="flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
-                            >
-                              <Plus size={14} />
-                              <span>Add profile</span>
-                            </button>
                           </div>
 
                           {/* Stats */}
