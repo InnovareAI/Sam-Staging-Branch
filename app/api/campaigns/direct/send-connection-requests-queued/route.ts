@@ -108,6 +108,7 @@ export async function POST(req: NextRequest) {
         campaign_name,
         message_templates,
         linkedin_account_id,
+        workspace_id,
         workspace_accounts!linkedin_account_id (
           id,
           unipile_account_id,
@@ -173,31 +174,32 @@ export async function POST(req: NextRequest) {
       try {
         console.log(`\n👤 Validating: ${prospect.first_name} ${prospect.last_name}`);
 
-        // VALIDATION: Check duplicates (same as before)
+        // VALIDATION: Check duplicates WITHIN SAME WORKSPACE ONLY
         const { data: existingInOtherCampaign } = await supabase
           .from('campaign_prospects')
-          .select('status, campaign_id, campaigns(campaign_name)')
+          .select('status, campaign_id, campaigns!inner(campaign_name, workspace_id)')
           .eq('linkedin_url', prospect.linkedin_url)
           .neq('campaign_id', campaignId)
+          .eq('campaigns.workspace_id', campaign.workspace_id)
           .limit(1)
           .single();
 
         if (existingInOtherCampaign) {
           const otherCampaignName = (existingInOtherCampaign as any).campaigns?.campaign_name || 'another campaign';
-          console.log(`⚠️  ${prospect.first_name} already in ${otherCampaignName} - skipping`);
+          console.log(`⚠️  ${prospect.first_name} already in ${otherCampaignName} (same workspace) - skipping`);
 
           await supabase
             .from('campaign_prospects')
             .update({
               status: 'failed',
-              notes: `Duplicate: Already in ${otherCampaignName}`,
+              notes: `Duplicate: Already in ${otherCampaignName} (same workspace)`,
               updated_at: new Date().toISOString()
             })
             .eq('id', prospect.id);
 
           skipped.push({
             name: `${prospect.first_name} ${prospect.last_name}`,
-            reason: 'duplicate_in_other_campaign'
+            reason: 'duplicate_in_same_workspace'
           });
           continue;
         }
