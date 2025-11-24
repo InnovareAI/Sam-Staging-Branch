@@ -188,12 +188,57 @@ export default function CampaignStepsEditor({
     }
   };
 
+  // Helper function to format pasted text into proper paragraphs
+  const formatIntoParagraphs = (text: string): string => {
+    // Remove excessive whitespace but preserve intentional spacing
+    let formatted = text.trim();
+
+    // Replace multiple spaces with single space
+    formatted = formatted.replace(/  +/g, ' ');
+
+    // Replace 3+ newlines with exactly 2 (paragraph break)
+    formatted = formatted.replace(/\n{3,}/g, '\n\n');
+
+    // If text has NO paragraph breaks, intelligently add them
+    if (!formatted.includes('\n\n')) {
+      // Split by single newlines
+      const lines = formatted.split('\n');
+
+      // If we have multiple lines, treat each as a potential paragraph
+      if (lines.length > 1) {
+        // Join with double newlines to create paragraphs
+        formatted = lines
+          .map(line => line.trim())
+          .filter(line => line.length > 0)
+          .join('\n\n');
+      }
+    }
+
+    return formatted;
+  };
+
   const updateStepMessage = (stepId: string, message: string) => {
     setSteps(steps.map(s => s.id === stepId ? {
       ...s,
       messageText: message,
       characterCount: message.length
     } : s));
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    // Get pasted text
+    const pastedText = e.clipboardData.getData('text');
+
+    // Format into paragraphs
+    const formatted = formatIntoParagraphs(pastedText);
+
+    // Prevent default paste
+    e.preventDefault();
+
+    // Update message with formatted text
+    if (selectedStep) {
+      updateStepMessage(selectedStep.id, formatted);
+    }
   };
 
   const updateStepDelay = (stepId: string, days: number) => {
@@ -469,6 +514,7 @@ export default function CampaignStepsEditor({
                       <textarea
                         value={selectedStep.messageText}
                         onChange={(e) => updateStepMessage(selectedStep.id, e.target.value)}
+                        onPaste={handlePaste}
                         className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-3 text-white min-h-[200px] focus:border-purple-500 focus:outline-none"
                         placeholder="Enter your message here..."
                         maxLength={isLinkedInCampaign(campaignType) && selectedStep.stepType === 'connection_request' ? 275 : 1000}
