@@ -1993,22 +1993,22 @@ export default function Page() {
         // Clear session storage as well
         sessionStorage.clear();
         
-        // Reset app state but preserve conversation history
+        // Reset app state
         setUser(null);
         setIsAuthLoading(false);
-        
-        console.log('✅ Logout complete, staying on homepage with preserved conversation history...');
-        
-        // Don't redirect - just stay on homepage and let user use the AuthModal
-        // This eliminates the redundant signin page
-        // NOTE: Conversation history is preserved for better user experience
+
+        console.log('✅ Logout complete, reloading page...');
+
+        // Reload the page to fully reset state
+        window.location.reload();
       } catch (error) {
         console.error('❌ Error signing out:', error);
-        
+
         localStorage.removeItem('supabase.auth.token');
         sessionStorage.clear();
         setUser(null);
         setIsAuthLoading(false);
+        window.location.reload();
       }
     }
   };
