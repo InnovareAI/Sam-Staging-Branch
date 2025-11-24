@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler';
 import { requireActiveSubscription } from '@/lib/subscription-guard';
 
 // Campaign launch API - connects Campaign Hub to N8N orchestration
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: () => cookies() });
+    const supabase = await createSupabaseRouteClient();
 
     // Check authentication
     const { data: { session }, error: authError } = await supabase.auth.getSession();

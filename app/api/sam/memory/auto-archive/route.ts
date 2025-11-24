@@ -4,13 +4,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
 // Background job endpoint (can be called by cron/scheduler)
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: () => cookies() });
+    const supabase = await createSupabaseRouteClient();
     
     // Check for API key authentication for background jobs
     const authHeader = request.headers.get('Authorization');
@@ -68,7 +67,7 @@ export async function POST(request: NextRequest) {
 // Manual trigger endpoint (for authenticated users)
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: () => cookies() });
+    const supabase = await createSupabaseRouteClient();
     
     // Check authentication
     const { data: { session }, error: authError } = await supabase.auth.getSession();

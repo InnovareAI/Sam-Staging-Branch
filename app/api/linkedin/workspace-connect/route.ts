@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
 // Simplified LinkedIn-Workspace Connection API
 // This addresses the connection failures by simplifying the process
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = await createSupabaseRouteClient();
     
     // Get current user session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -265,7 +264,7 @@ async function verifyLinkedInConnection(unipileAccountId: string): Promise<boole
 // GET method to check workspace LinkedIn connections
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = await createSupabaseRouteClient();
     
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session) {

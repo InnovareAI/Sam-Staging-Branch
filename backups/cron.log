@@ -6808,3 +6808,50 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main d0b8b2ee] 🔄 Auto-backup: auto-backup-20251124_120000
+ Committer: Thorsten Linz <tvonlinz@mac.lan>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 13 files changed, 973 insertions(+), 19 deletions(-)
+ create mode 100644 docs/DUPLICATE_POSTS_FIX_INSTRUCTIONS.md
+ create mode 100644 scripts/APPLY_THIS_SQL_NOW.sql
+ create mode 100644 scripts/APPLY_THIS_SQL_NOW_FIXED.sql
+ create mode 100644 scripts/check-dave-hayward-duplicate.sql
+ create mode 100644 scripts/check-duplicates-now.sql
+ create mode 100644 scripts/check-encoding-duplicates.sql
+ create mode 100644 scripts/cleanup-duplicate-posts.sql
+ create mode 100644 scripts/diagnose-duplicates-by-social-id.sql
+ create mode 100644 scripts/diagnose-duplicates-fixed.sql
+ create mode 100644 scripts/fix-social-id-format-duplicates.sql
+ create mode 100644 scripts/normalize-all-urn-types.sql
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251124_120000[0m
+[0;32m📅 Timestamp: Mon Nov 24 12:00:01 CET 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+

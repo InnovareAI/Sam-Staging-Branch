@@ -195,6 +195,8 @@ export default function Page() {
   const [commentingCampaignsLoading, setCommentingCampaignsLoading] = useState(false);
   const [expandedCampaignPosts, setExpandedCampaignPosts] = useState<string | null>(null);
   const [campaignPosts, setCampaignPosts] = useState<Record<string, any[]>>({});
+  const [pendingComments, setPendingComments] = useState<any[]>([]);
+  const [pendingCommentsLoading, setPendingCommentsLoading] = useState(false);
 
   // User management state
   const [showManageUsers, setShowManageUsers] = useState(false);
@@ -510,7 +512,28 @@ export default function Page() {
           setCommentingCampaignsLoading(false);
         }
       };
+
+      const loadPendingComments = async () => {
+        setPendingCommentsLoading(true);
+        try {
+          const response = await fetch(`/api/linkedin-commenting/pending-comments?workspace_id=${selectedWorkspaceId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setPendingComments(data.comments || []);
+          } else {
+            console.error('Failed to load pending comments:', await response.text());
+            setPendingComments([]);
+          }
+        } catch (error) {
+          console.error('Error loading pending comments:', error);
+          setPendingComments([]);
+        } finally {
+          setPendingCommentsLoading(false);
+        }
+      };
+
       loadCommentingCampaigns();
+      loadPendingComments();
     }
   }, [activeMenuItem, selectedWorkspaceId]);
 
@@ -3118,25 +3141,66 @@ export default function Page() {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="px-3 py-1 bg-yellow-600/20 text-yellow-400 rounded-full text-sm font-medium">
-                        0 pending
+                        {pendingCommentsLoading ? '...' : pendingComments.length} pending
                       </span>
-                      <button
-                        onClick={() => setCommentingAgentView('approve')}
-                        className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                      >
-                        <Eye size={16} />
-                        View Approval Workflow
-                      </button>
+                      {pendingComments.length > 0 && (
+                        <button
+                          onClick={() => setCommentingAgentView('approve')}
+                          className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                        >
+                          <Eye size={16} />
+                          View Approval Workflow
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
-                <div className="p-8 text-center">
-                  <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle size={32} className="text-gray-500" />
+                {pendingCommentsLoading ? (
+                  <div className="p-8 text-center">
+                    <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Clock size={32} className="text-gray-500 animate-spin" />
+                    </div>
+                    <p className="text-gray-400">Loading pending comments...</p>
                   </div>
-                  <p className="text-gray-400 mb-2">No comments awaiting approval</p>
-                  <p className="text-sm text-gray-500">Create a campaign to start discovering posts to comment on</p>
-                </div>
+                ) : pendingComments.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <CheckCircle size={32} className="text-gray-500" />
+                    </div>
+                    <p className="text-gray-400 mb-2">No comments awaiting approval</p>
+                    <p className="text-sm text-gray-500">Click "Generate Comment" on discovered posts to create comments</p>
+                  </div>
+                ) : (
+                  <div className="p-6 space-y-3">
+                    {pendingComments.slice(0, 3).map((comment: any) => (
+                      <div key={comment.id} className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-sm font-medium text-white">{comment.post.author_name}</span>
+                              <span className="text-xs text-gray-500">
+                                {new Date(comment.post.post_date).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-400 line-clamp-2 mb-2">{comment.post.post_content}</p>
+                            <div className="bg-gray-800/50 rounded p-2 border-l-2 border-yellow-500">
+                              <p className="text-xs text-gray-500 mb-1">AI Generated Comment:</p>
+                              <p className="text-sm text-gray-300">{comment.comment_text}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {pendingComments.length > 3 && (
+                      <button
+                        onClick={() => setCommentingAgentView('approve')}
+                        className="w-full py-2 text-sm text-gray-400 hover:text-white transition-colors"
+                      >
+                        View all {pendingComments.length} pending comments →
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Active Campaigns */}
@@ -3198,11 +3262,7 @@ export default function Page() {
                       return (
                         <div
                           key={campaign.id}
-                          onClick={() => {
-                            setEditingCampaign(campaign);
-                            setShowCommentingCampaignModal(true);
-                          }}
-                          className="bg-gray-700/50 rounded-lg p-4 border border-gray-600 hover:border-purple-500/50 transition-all cursor-pointer"
+                          className="bg-gray-700/50 rounded-lg p-4 border border-gray-600"
                         >
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-3">
@@ -3217,6 +3277,16 @@ export default function Page() {
                               }`}>
                                 {campaign.status === 'active' ? 'Active' : 'Inactive'}
                               </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingCampaign(campaign);
+                                  setShowCommentingCampaignModal(true);
+                                }}
+                                className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white rounded text-xs transition-colors"
+                              >
+                                Edit Campaign
+                              </button>
                             </div>
                           </div>
 
@@ -3224,13 +3294,40 @@ export default function Page() {
                           <div className="space-y-2 mb-3">
                             {profileVanities.length > 0 ? (
                               profileVanities.map((vanity, idx) => (
-                                <div key={idx} className="flex items-center gap-2 text-sm text-gray-300 bg-gray-800/50 rounded px-3 py-2">
-                                  <User size={14} className="text-purple-400" />
-                                  <span>{vanity}</span>
-                                </div>
+                                <button
+                                  key={idx}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    // Toggle expanded view for this profile
+                                    const profileKey = `${campaign.id}-${vanity}`;
+                                    if (expandedCampaignPosts === profileKey) {
+                                      setExpandedCampaignPosts(null);
+                                    } else {
+                                      setExpandedCampaignPosts(profileKey);
+                                      // Fetch posts if not already loaded
+                                      if (!campaignPosts[profileKey]) {
+                                        fetch(`/api/linkedin-commenting/get-discovered-posts?monitor_id=${campaign.id}&limit=50`)
+                                          .then(res => res.json())
+                                          .then(posts => {
+                                            setCampaignPosts(prev => ({ ...prev, [profileKey]: posts }));
+                                          })
+                                          .catch(err => console.error('Error fetching posts:', err));
+                                      }
+                                    }
+                                  }}
+                                  className="w-full flex items-center justify-between gap-2 text-sm text-gray-300 bg-gray-800/50 hover:bg-gray-800 rounded px-3 py-2 transition-colors"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <User size={14} className="text-purple-400" />
+                                    <span>{vanity}</span>
+                                  </div>
+                                  <span className="text-xs text-gray-500">
+                                    {expandedCampaignPosts === `${campaign.id}-${vanity}` ? 'Hide Posts' : 'View Posts'}
+                                  </span>
+                                </button>
                               ))
                             ) : (
-                              <div className="text-sm text-gray-500 italic">No profiles yet - click to add</div>
+                              <div className="text-sm text-gray-500 italic">No profiles yet - click Edit Campaign to add</div>
                             )}
                           </div>
 
@@ -3239,58 +3336,37 @@ export default function Page() {
                             <span>Posts: {campaign.posts_count || 0}</span>
                             {keywords.length > 0 && <span>Keywords: {keywords.join(', ')}</span>}
                             <span>Auto-approve: {campaign.auto_approve_enabled ? 'Yes' : 'No'}</span>
-                            {campaign.posts_count > 0 && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (expandedCampaignPosts === campaign.id) {
-                                    setExpandedCampaignPosts(null);
-                                  } else {
-                                    setExpandedCampaignPosts(campaign.id);
-                                    // Fetch posts if not already loaded
-                                    if (!campaignPosts[campaign.id]) {
-                                      fetch(`/api/linkedin-commenting/get-discovered-posts?monitor_id=${campaign.id}&limit=50`)
-                                        .then(res => res.json())
-                                        .then(posts => {
-                                          setCampaignPosts(prev => ({ ...prev, [campaign.id]: posts }));
-                                        })
-                                        .catch(err => console.error('Error fetching posts:', err));
-                                    }
-                                  }
-                                }}
-                                className="text-purple-400 hover:text-purple-300 underline"
-                              >
-                                {expandedCampaignPosts === campaign.id ? 'Hide Posts' : 'View Posts'}
-                              </button>
-                            )}
                           </div>
 
-                          {/* Expanded Posts Section */}
-                          {expandedCampaignPosts === campaign.id && (
+                          {/* Expanded Posts Section - Shows for specific profile */}
+                          {profileVanities.some(vanity => expandedCampaignPosts === `${campaign.id}-${vanity}`) && (
                             <div className="mt-4 pt-4 border-t border-gray-600 space-y-3">
-                              {campaignPosts[campaign.id] ? (
-                                campaignPosts[campaign.id].length > 0 ? (
-                                  campaignPosts[campaign.id].map((post: any, idx: number) => (
-                                    <div key={post.id} className="bg-gray-800/50 rounded-lg p-3 space-y-2">
-                                      <div className="flex items-start justify-between gap-2">
-                                        <div className="flex-1">
-                                          <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-sm font-medium text-white">{post.author_name}</span>
-                                            <span className="text-xs text-gray-500">
-                                              {new Date(post.post_date).toLocaleDateString()}
-                                            </span>
-                                            <span className={`px-2 py-0.5 rounded text-xs ${
-                                              post.status === 'discovered' ? 'bg-blue-600/20 text-blue-400' :
-                                              post.status === 'comment_generated' ? 'bg-green-600/20 text-green-400' :
-                                              post.status === 'skipped' ? 'bg-gray-600/20 text-gray-400' :
-                                              'bg-yellow-600/20 text-yellow-400'
-                                            }`}>
-                                              {post.status}
-                                            </span>
+                              {(() => {
+                                const activeProfileKey = expandedCampaignPosts;
+                                const posts = campaignPosts[activeProfileKey];
+                                return posts ? (
+                                  posts.length > 0 ? (
+                                    posts.map((post: any, idx: number) => (
+                                      <div key={post.id} className="bg-gray-800/50 rounded-lg p-4 space-y-3 border border-gray-700">
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <span className="text-sm font-medium text-white">{post.author_name}</span>
+                                              <span className="text-xs text-gray-500">
+                                                {new Date(post.post_date).toLocaleDateString()}
+                                              </span>
+                                              <span className={`px-2 py-0.5 rounded text-xs ${
+                                                post.status === 'discovered' ? 'bg-blue-600/20 text-blue-400' :
+                                                post.status === 'comment_generated' ? 'bg-green-600/20 text-green-400' :
+                                                post.status === 'skipped' ? 'bg-gray-600/20 text-gray-400' :
+                                                'bg-yellow-600/20 text-yellow-400'
+                                              }`}>
+                                                {post.status}
+                                              </span>
+                                            </div>
+                                            <p className="text-sm text-gray-300 whitespace-pre-wrap">{post.post_content}</p>
                                           </div>
-                                          <p className="text-sm text-gray-300 line-clamp-3">{post.post_content}</p>
                                         </div>
-                                      </div>
                                       <div className="flex items-center gap-4 text-xs text-gray-500">
                                         <span>👍 {post.engagement_metrics?.reactions || 0}</span>
                                         <span>💬 {post.engagement_metrics?.comments || 0}</span>
@@ -3345,14 +3421,15 @@ export default function Page() {
                                   ))
                                 ) : (
                                   <div className="text-sm text-gray-500 italic text-center py-4">
-                                    No posts discovered yet
+                                    No posts discovered yet for this profile
                                   </div>
                                 )
                               ) : (
                                 <div className="text-sm text-gray-500 italic text-center py-4">
                                   Loading posts...
                                 </div>
-                              )}
+                              );
+                            })()}
                             </div>
                           )}
                         </div>

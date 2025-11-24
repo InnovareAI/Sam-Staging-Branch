@@ -4,8 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
 // Knowledge categories for extraction - mapped to your knowledge base sections
 const KNOWLEDGE_CATEGORIES = {
@@ -93,7 +92,7 @@ const KNOWLEDGE_CATEGORIES = {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: () => cookies() });
+    const supabase = await createSupabaseRouteClient();
     const { conversation_id, force_extract = false } = await request.json();
 
     // Check authentication
@@ -212,7 +211,7 @@ export async function POST(request: NextRequest) {
 // Batch process multiple conversations
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: () => cookies() });
+    const supabase = await createSupabaseRouteClient();
     const { max_conversations = 10 } = await request.json();
 
     // Check authentication

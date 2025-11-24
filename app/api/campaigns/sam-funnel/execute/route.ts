@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { 
   SAM_FUNNEL_TEMPLATES, 
   getSamFunnelTemplateById,
@@ -11,7 +10,7 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = await createSupabaseRouteClient();
     
     // Get current user session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();

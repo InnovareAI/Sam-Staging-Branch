@@ -3,13 +3,11 @@
  * Called directly from the UI to generate AI comments for discovered posts
  */
 
-import { createClient } from '@/app/lib/supabase/server';
+import { supabaseAdmin } from '@/app/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   generateLinkedInComment,
-  CommentGenerationContext,
-  shouldSkipPost,
-  validateCommentQuality
+  CommentGenerationContext
 } from '@/lib/services/linkedin-commenting-agent';
 
 export const dynamic = 'force-dynamic';
@@ -30,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     console.log('💬 Generating comment for post (UI-triggered):', body.post_id);
 
-    const supabase = await createClient();
+    const supabase = supabaseAdmin();
 
     // Get post details
     const { data: post, error: postError } = await supabase
@@ -49,7 +47,7 @@ export async function POST(request: NextRequest) {
     // Get workspace context
     const { data: workspace, error: workspaceError } = await supabase
       .from('workspaces')
-      .select('name, metadata')
+      .select('*')
       .eq('id', post.workspace_id)
       .single();
 
@@ -60,64 +58,65 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get knowledge base snippets for context
-    const { data: knowledgeSnippets } = await supabase
-      .from('knowledge_base')
-      .select('content')
-      .eq('workspace_id', post.workspace_id)
-      .limit(3);
+    // Get monitor settings
+    const { data: monitor, error: monitorError } = await supabase
+      .from('linkedin_post_monitors')
+      .select('*')
+      .eq('id', post.monitor_id)
+      .single();
 
-    // Build context for AI
-    const workspaceContext = {
-      workspace_id: post.workspace_id,
-      company_name: workspace.name || 'Our Company',
-      expertise_areas: workspace.metadata?.expertise_areas || [],
-      products: workspace.metadata?.products || [],
-      value_props: workspace.metadata?.value_propositions || [],
-      tone_of_voice: workspace.metadata?.tone_of_voice || 'professional_friendly',
-      knowledge_base_snippets: knowledgeSnippets?.map(k => k.content) || []
-    };
+    if (monitorError || !monitor) {
+      return NextResponse.json(
+        { error: 'Monitor not found' },
+        { status: 404 }
+      );
+    }
 
+    // Build context for AI (matching the signature from linkedin-commenting-agent.ts)
     const context: CommentGenerationContext = {
-      workspace_context: workspaceContext,
       post: {
-        content: post.post_content,
-        author_name: post.author_name,
-        hashtags: post.hashtags || [],
-        engagement_metrics: post.engagement_metrics
+        id: post.id,
+        post_linkedin_id: post.social_id || '',
+        post_social_id: post.social_id || '',
+        post_text: post.post_content || '',
+        post_type: 'article',
+        author: {
+          linkedin_id: post.author_profile_id || '',
+          name: post.author_name || 'Unknown Author',
+          title: undefined,
+          company: undefined,
+          profile_url: `https://www.linkedin.com/in/${post.author_profile_id}`
+        },
+        engagement: {
+          likes_count: post.engagement_metrics?.reactions || 0,
+          comments_count: post.engagement_metrics?.comments || 0,
+          shares_count: post.engagement_metrics?.reposts || 0
+        },
+        posted_at: new Date(post.post_date),
+        discovered_via_monitor_type: 'profile',
+        matched_keywords: post.hashtags || []
+      },
+      workspace: {
+        workspace_id: workspace.id,
+        company_name: workspace.name || 'Your Company',
+        expertise_areas: monitor.expertise_areas || ['B2B Sales', 'Lead Generation'],
+        products: monitor.products || [],
+        value_props: monitor.value_props || [],
+        tone_of_voice: monitor.tone_of_voice || 'Professional and helpful',
+        knowledge_base_snippets: []
       }
     };
-
-    // Check if we should skip this post
-    const skipCheck = await shouldSkipPost(post, supabase);
-    if (skipCheck.should_skip) {
-      // Update post status to skipped
-      await supabase
-        .from('linkedin_posts_discovered')
-        .update({
-          status: 'skipped',
-          skip_reason: skipCheck.reason,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', body.post_id);
-
-      return NextResponse.json({
-        skipped: true,
-        reason: skipCheck.reason
-      });
-    }
 
     // Generate comment using AI
     const generatedComment = await generateLinkedInComment(context);
 
-    // Validate quality
-    const qualityCheck = validateCommentQuality(generatedComment, post.post_content);
-    if (!qualityCheck.is_valid) {
-      console.warn('❌ Generated comment failed quality check:', qualityCheck.reason);
+    // Check if AI decided to skip
+    if (generatedComment.confidence_score === 0.0) {
+      console.log('⏭️ AI decided to skip this post:', generatedComment.reasoning);
       return NextResponse.json({
-        error: 'Generated comment failed quality check',
-        reason: qualityCheck.reason
-      }, { status: 500 });
+        skipped: true,
+        reason: generatedComment.reasoning
+      });
     }
 
     // Save comment to database
@@ -127,9 +126,17 @@ export async function POST(request: NextRequest) {
         workspace_id: post.workspace_id,
         monitor_id: post.monitor_id,
         post_id: post.id,
-        comment_text: generatedComment,
+        comment_text: generatedComment.comment_text,
         status: 'pending_approval',
-        generated_at: new Date().toISOString()
+        generated_at: new Date().toISOString(),
+        generation_metadata: {
+          model: generatedComment.generation_metadata.model,
+          tokens_used: generatedComment.generation_metadata.tokens_used,
+          generation_time_ms: generatedComment.generation_metadata.generation_time_ms,
+          confidence_score: generatedComment.confidence_score,
+          quality_indicators: generatedComment.quality_indicators,
+          reasoning: generatedComment.reasoning
+        }
       })
       .select()
       .single();

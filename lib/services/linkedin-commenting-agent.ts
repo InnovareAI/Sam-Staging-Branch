@@ -97,7 +97,7 @@ export async function generateLinkedInComment(
       'X-Title': 'SAM AI - LinkedIn Comment Generation'
     },
     body: JSON.stringify({
-      model: 'anthropic/claude-3.5-sonnet',
+      model: 'anthropic/claude-3.5-haiku-20241022',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }

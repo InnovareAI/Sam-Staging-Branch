@@ -255,9 +255,10 @@ export async function POST(request: NextRequest) {
             };
           });
 
-          const { error: insertError } = await supabase
+          const { data: insertedPosts, error: insertError } = await supabase
             .from('linkedin_posts_discovered')
-            .insert(postsToInsert);
+            .insert(postsToInsert)
+            .select();
 
           if (insertError) {
             // Check if it's a duplicate key error (unique constraint violation)
@@ -280,6 +281,23 @@ export async function POST(request: NextRequest) {
           } else {
             totalDiscovered += newPosts.length;
             console.log(`✅ Stored ${newPosts.length} new posts`);
+
+            // 🤖 AUTO-GENERATE COMMENTS FOR NEW POSTS
+            if (insertedPosts && insertedPosts.length > 0) {
+              console.log(`🤖 Auto-generating comments for ${insertedPosts.length} new posts...`);
+
+              // Trigger comment generation in background
+              // Don't await - let it run async so discovery completes faster
+              fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/linkedin-commenting/auto-generate-comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  post_ids: insertedPosts.map(p => p.id),
+                  workspace_id: monitor.workspace_id,
+                  monitor_id: monitor.id
+                })
+              }).catch(err => console.error('❌ Error triggering auto-comment generation:', err));
+            }
           }
         }
 

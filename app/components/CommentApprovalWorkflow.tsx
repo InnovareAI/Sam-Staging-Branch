@@ -37,71 +37,82 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
   const [sortBy, setSortBy] = useState<'confidence' | 'age' | 'engagement'>('confidence');
   const [loading, setLoading] = useState(true);
 
-  // Mock data for demonstration
+  // Fetch real pending comments from database
   useEffect(() => {
-    // TODO: Replace with actual API call
-    const mockComments: PendingComment[] = [
-      {
-        id: '1',
-        postId: 'post-1',
-        postAuthor: 'Sarah Chen',
-        postAuthorTitle: 'CEO at TechStartup Inc.',
-        postContent: 'Just launched our new SaaS platform after 2 years of development! 🚀 The journey from idea to execution has been incredible. Key lesson: Focus on solving ONE problem really well before expanding.',
-        postUrl: 'https://linkedin.com/posts/sarahchen_saas-startup-launch',
-        postLikes: 47,
-        postComments: 12,
-        postAge: '2 hours ago',
-        generatedComment: 'Congratulations on the launch, Sarah! 🎉 Your focus on solving one problem well resonates deeply. What was the biggest technical challenge you faced during those 2 years?',
-        confidence: 'high',
-        campaignName: 'SaaS Founders Engagement',
-        targetingMode: 'hashtag',
-        targetingValue: '#SaaS',
-        relevanceScore: 94,
-        scheduledPostTime: 'In 25 minutes',
-      },
-      {
-        id: '2',
-        postId: 'post-2',
-        postAuthor: 'Michael Rodriguez',
-        postAuthorTitle: 'VP Sales at Enterprise Solutions',
-        postContent: 'Sales automation is transforming how we approach outreach. Our team increased qualified leads by 300% this quarter using AI-powered tools. The future is here.',
-        postUrl: 'https://linkedin.com/posts/mrodriguez_sales-automation',
-        postLikes: 23,
-        postComments: 8,
-        postAge: '4 hours ago',
-        generatedComment: 'Impressive results, Michael! 300% increase is remarkable. Which specific AI tools did you find most effective for lead qualification?',
-        confidence: 'high',
-        campaignName: 'Sales Automation Keywords',
-        targetingMode: 'keyword',
-        targetingValue: 'sales automation',
-        relevanceScore: 89,
-        scheduledPostTime: 'In 32 minutes',
-      },
-      {
-        id: '3',
-        postId: 'post-3',
-        postAuthor: 'David Kim',
-        postAuthorTitle: 'Founder & CTO',
-        postContent: 'Hot take: Most startups overcomplicate their tech stack. We rebuilt our entire platform with 3 tools instead of 15. Faster, cheaper, less headaches.',
-        postUrl: 'https://linkedin.com/posts/davidkim_startup-tech',
-        postLikes: 156,
-        postComments: 34,
-        postAge: '6 hours ago',
-        generatedComment: 'Love this approach! Simplicity is underrated. What were the 3 tools you kept, and which 12 did you eliminate?',
-        confidence: 'medium',
-        campaignName: 'SaaS Founders Engagement',
-        targetingMode: 'hashtag',
-        targetingValue: '#startup',
-        relevanceScore: 78,
-        scheduledPostTime: 'In 45 minutes',
-      },
-    ];
+    const fetchPendingComments = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/linkedin-commenting/pending-comments?workspace_id=${workspaceId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch pending comments');
+        }
+        const data = await response.json();
 
-    setTimeout(() => {
-      setPendingComments(mockComments);
-      setLoading(false);
-    }, 500);
+        // Transform database data to component format
+        const comments: PendingComment[] = data.comments.map((c: any) => ({
+          id: c.id,
+          postId: c.post.id,
+          postAuthor: c.post.author_name,
+          postAuthorTitle: c.post.author_title || '',
+          postContent: c.post.post_content,
+          postUrl: c.post.share_url,
+          postLikes: c.post.engagement_metrics?.reactions || 0,
+          postComments: c.post.engagement_metrics?.comments || 0,
+          postAge: getTimeAgo(c.post.post_date),
+          generatedComment: c.comment_text,
+          confidence: calculateConfidence(c.post.engagement_metrics),
+          campaignName: c.monitor?.name || 'Unknown Campaign',
+          targetingMode: 'profile' as const,
+          targetingValue: c.post.author_profile_id || '',
+          relevanceScore: calculateRelevance(c.post.engagement_metrics),
+          scheduledPostTime: c.scheduled_post_time || undefined,
+        }));
+
+        setPendingComments(comments);
+      } catch (error) {
+        console.error('Error fetching pending comments:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPendingComments();
   }, [workspaceId]);
+
+  // Helper function to calculate time ago
+  const getTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const past = new Date(dateString);
+    const diffMs = now.getTime() - past.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffHours > 0) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    return 'Just now';
+  };
+
+  // Helper function to calculate confidence level
+  const calculateConfidence = (metrics: any): 'high' | 'medium' | 'low' => {
+    const reactions = metrics?.reactions || 0;
+    const comments = metrics?.comments || 0;
+    const totalEngagement = reactions + comments * 2; // Comments weighted more
+
+    if (totalEngagement >= 20) return 'high';
+    if (totalEngagement >= 5) return 'medium';
+    return 'low';
+  };
+
+  // Helper function to calculate relevance score
+  const calculateRelevance = (metrics: any): number => {
+    const reactions = metrics?.reactions || 0;
+    const comments = metrics?.comments || 0;
+    const reposts = metrics?.reposts || 0;
+
+    // Simple scoring algorithm
+    const score = Math.min(100, (reactions + comments * 3 + reposts * 2));
+    return score;
+  };
 
   const selectedComment = pendingComments[selectedIndex];
 
@@ -154,20 +165,59 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [selectedIndex, filteredComments, editingCommentId, selectedComment]);
 
-  const handleApprove = useCallback((id: string) => {
+  const handleApprove = useCallback(async (id: string) => {
     console.log('Approving comment:', id);
-    setPendingComments(prev => prev.filter(c => c.id !== id));
-    // Auto-advance to next
-    if (selectedIndex >= filteredComments.length - 1) {
-      setSelectedIndex(Math.max(0, selectedIndex - 1));
+
+    try {
+      // Call API to approve comment
+      const response = await fetch('/api/linkedin-commenting/approve-comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment_id: id })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to approve comment');
+      }
+
+      // Remove from local state
+      setPendingComments(prev => prev.filter(c => c.id !== id));
+
+      // Auto-advance to next
+      if (selectedIndex >= filteredComments.length - 1) {
+        setSelectedIndex(Math.max(0, selectedIndex - 1));
+      }
+    } catch (error) {
+      console.error('Error approving comment:', error);
+      alert('Failed to approve comment. Please try again.');
     }
   }, [selectedIndex, filteredComments.length]);
 
-  const handleReject = useCallback((id: string) => {
+  const handleReject = useCallback(async (id: string) => {
     console.log('Rejecting comment:', id);
-    setPendingComments(prev => prev.filter(c => c.id !== id));
-    if (selectedIndex >= filteredComments.length - 1) {
-      setSelectedIndex(Math.max(0, selectedIndex - 1));
+
+    try {
+      // Call API to reject comment
+      const response = await fetch('/api/linkedin-commenting/reject-comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment_id: id })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reject comment');
+      }
+
+      // Remove from local state
+      setPendingComments(prev => prev.filter(c => c.id !== id));
+
+      // Auto-advance to next
+      if (selectedIndex >= filteredComments.length - 1) {
+        setSelectedIndex(Math.max(0, selectedIndex - 1));
+      }
+    } catch (error) {
+      console.error('Error rejecting comment:', error);
+      alert('Failed to reject comment. Please try again.');
     }
   }, [selectedIndex, filteredComments.length]);
 

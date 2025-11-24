@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { AutoIPAssignmentService } from '@/lib/services/auto-ip-assignment';
 
 // Helper function to extract country from LinkedIn account location
