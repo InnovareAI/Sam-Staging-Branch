@@ -182,7 +182,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
       if (newStatus === 'active' && workspaceId) {
         try {
           console.log(`🚀 Auto-launching campaign ${campaignId} (queued, 30 min spacing)...`);
-          const launchResponse = await fetch('/api/campaigns/direct/send-connection-requests-queued', {
+          const launchResponse = await fetch('/api/campaigns/direct/send-connection-requests-fast', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -3032,7 +3032,7 @@ Would you like me to adjust these or create more variations?`
 
       // Step 3: Auto-execute via queue-based Unipile integration (30 min spacing)
       if (totalProspectsWithIds > 0 || campaign.campaign_type === 'connector') {
-        const executeEndpoint = '/api/campaigns/direct/send-connection-requests-queued';
+        const executeEndpoint = '/api/campaigns/direct/send-connection-requests-fast';
 
         const executeResponse = await fetch(executeEndpoint, {
           method: 'POST',
@@ -6301,7 +6301,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       // Queue-based Unipile integration (30 min spacing) - no workflow engine needed
       if (mappedProspects.length > 0) {
         try {
-          const executeResponse = await fetch('/api/campaigns/direct/send-connection-requests-queued', {
+          const executeResponse = await fetch('/api/campaigns/direct/send-connection-requests-fast', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -8537,7 +8537,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                           if (newStatus === 'active') {
                             try {
                               // Queue-based Unipile integration for LinkedIn campaigns (30 min spacing)
-                              let executeEndpoint = '/api/campaigns/direct/send-connection-requests-queued';
+                              let executeEndpoint = '/api/campaigns/direct/send-connection-requests-fast';
 
                               if (selectedCampaign.campaign_type === 'email') {
                                 executeEndpoint = '/api/campaigns/email/execute';

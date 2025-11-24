@@ -1,1 +1,1 @@
-Fast endpoint personalization fix deployed: Mon Nov 24 18:56:39 CET 2025
+Fix: All campaign execution uses fast endpoint (no premature status updates): Mon Nov 24 19:04:54 CET 2025
