@@ -2018,6 +2018,11 @@ export default function Page() {
           key.startsWith('sb-') || key.includes('supabase')
         );
         storageKeys.forEach(key => localStorage.removeItem(key));
+
+        // CRITICAL: Clear workspace selection to prevent cross-user workspace leakage
+        // This fixes the bug where User A's workspace stays selected when User B logs in
+        localStorage.removeItem('selectedWorkspaceId');
+
         sessionStorage.clear();
 
         // Sign out from Supabase
