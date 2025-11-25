@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Target, MessageSquare, Shield, Clock, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Target, Shield, Clock, ChevronDown, ChevronUp, Settings } from 'lucide-react';
 
 interface Monitor {
   id: string;
@@ -25,10 +25,6 @@ interface CommentingCampaignModalProps {
 }
 
 type TargetingMode = 'hashtag' | 'keyword' | 'profile';
-type Tone = 'professional' | 'friendly' | 'casual' | 'passionate';
-type Formality = 'formal' | 'semi-formal' | 'informal';
-type CommentLength = 'short' | 'medium' | 'long';
-type QuestionFrequency = 'frequently' | 'sometimes' | 'rarely' | 'never';
 type TargetTab = 'profiles' | 'companies';
 
 export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, editMode = false, existingMonitor }: CommentingCampaignModalProps) {
@@ -37,14 +33,6 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
   const [activeTab, setActiveTab] = useState<TargetTab>('profiles');
   const [profileTargets, setProfileTargets] = useState<string[]>(['']);
   const [companyTargets, setCompanyTargets] = useState<string[]>(['']);
-
-  // Prompt Builder Settings
-  const [tone, setTone] = useState<Tone>('professional');
-  const [formality, setFormality] = useState<Formality>('semi-formal');
-  const [commentLength, setCommentLength] = useState<CommentLength>('medium');
-  const [questionFrequency, setQuestionFrequency] = useState<QuestionFrequency>('sometimes');
-  const [customInstructions, setCustomInstructions] = useState('');
-  const [useKnowledgeBase, setUseKnowledgeBase] = useState(true);
 
   // Anti-bot Detection Settings
   const [minExistingComments, setMinExistingComments] = useState(2);
@@ -358,123 +346,18 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
             </button>
           </div>
 
-          {/* Prompt Builder */}
-          <div className="p-4 bg-gray-700/50 rounded-lg border border-gray-600">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles size={20} className="text-purple-400" />
-              <h3 className="text-lg font-semibold text-white">Prompt Builder</h3>
+          {/* AI Settings Note */}
+          <div className="p-4 bg-purple-900/20 rounded-lg border border-purple-700/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Settings size={20} className="text-purple-400" />
+              <h3 className="text-sm font-semibold text-white">AI Comment Settings</h3>
             </div>
-
-            <div className="space-y-4">
-              {/* Tone */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Tone</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {['professional', 'friendly', 'casual', 'passionate'].map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setTone(t as Tone)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                        tone === t
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                      }`}
-                    >
-                      {t.charAt(0).toUpperCase() + t.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Formality */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Formality Level</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['formal', 'semi-formal', 'informal'].map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => setFormality(f as Formality)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                        formality === f
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                      }`}
-                    >
-                      {f.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('-')}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Comment Length */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Comment Length</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['short', 'medium', 'long'].map((l) => (
-                    <button
-                      key={l}
-                      onClick={() => setCommentLength(l as CommentLength)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                        commentLength === l
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                      }`}
-                    >
-                      {l.charAt(0).toUpperCase() + l.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Question Frequency */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Ask Questions</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {['frequently', 'sometimes', 'rarely', 'never'].map((q) => (
-                    <button
-                      key={q}
-                      onClick={() => setQuestionFrequency(q as QuestionFrequency)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                        questionFrequency === q
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                      }`}
-                    >
-                      {q.charAt(0).toUpperCase() + q.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Use Knowledge Base */}
-              <div className="flex items-center justify-between p-3 bg-gray-600 rounded-lg">
-                <div>
-                  <div className="text-white font-medium text-sm">Use Workspace Knowledge</div>
-                  <div className="text-gray-400 text-xs">Include your company context in comments</div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={useKnowledgeBase}
-                    onChange={(e) => setUseKnowledgeBase(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                </label>
-              </div>
-
-              {/* Custom Instructions */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Custom Instructions (Optional)</label>
-                <textarea
-                  value={customInstructions}
-                  onChange={(e) => setCustomInstructions(e.target.value)}
-                  placeholder="Add specific guidelines for comment generation..."
-                  rows={3}
-                  className="w-full px-4 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                />
-              </div>
-            </div>
+            <p className="text-sm text-gray-300">
+              Tone, formality, and personality settings are configured at the workspace level.
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              Go to <span className="text-purple-400">Settings &rarr; AI Configuration &rarr; LinkedIn Commenting Agent</span> to customize how comments are generated for all campaigns.
+            </p>
           </div>
 
           {/* Anti-bot Detection */}
