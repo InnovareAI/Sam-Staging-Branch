@@ -2031,27 +2031,65 @@ export default function DataCollectionHub({
               // Group header row
               <tr key={`header-${searchName}`} className="bg-gray-800/80 border-b-2 border-purple-500/30">
                 <td colSpan={10} className="px-4 py-3">
-                  <button
-                    onClick={() => toggleSearchGroup(searchName)}
-                    className="flex items-center justify-between w-full text-left hover:bg-gray-750/50 rounded px-2 py-1 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      {expandedSearchGroups.has(searchName) ? (
-                        <ChevronDown className="w-5 h-5 text-purple-400" />
+                  <div className="flex items-center justify-between w-full">
+                    <button
+                      onClick={() => toggleSearchGroup(searchName)}
+                      className="flex items-center gap-3 text-left hover:bg-gray-750/50 rounded px-2 py-1 transition-colors flex-1"
+                    >
+                      <div className="flex items-center gap-3">
+                        {expandedSearchGroups.has(searchName) ? (
+                          <ChevronDown className="w-5 h-5 text-purple-400" />
+                        ) : (
+                          <ChevronRight className="w-5 h-5 text-gray-500" />
+                        )}
+                        <span className="text-lg font-semibold text-white">{searchName}</span>
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-600/30 text-purple-300">
+                          {prospects.length} prospects
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {prospects.filter(p => p.approvalStatus === 'approved').length} approved,
+                          {prospects.filter(p => p.approvalStatus === 'pending').length} pending,
+                          {prospects.filter(p => p.approvalStatus === 'rejected').length} rejected
+                        </span>
+                      </div>
+                    </button>
+                    {/* Select All button for this campaign */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const approvedProspectIds = prospects.filter(p => p.approvalStatus === 'approved').map(p => p.id);
+                        const allSelected = approvedProspectIds.every(id => selectedProspectIds.has(id));
+
+                        if (allSelected) {
+                          // Deselect all from this campaign
+                          setSelectedProspectIds(prev => {
+                            const newSet = new Set(prev);
+                            approvedProspectIds.forEach(id => newSet.delete(id));
+                            return newSet;
+                          });
+                        } else {
+                          // Select all approved from this campaign
+                          setSelectedProspectIds(prev => {
+                            const newSet = new Set(prev);
+                            approvedProspectIds.forEach(id => newSet.add(id));
+                            return newSet;
+                          });
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 transition-colors"
+                      title={
+                        prospects.filter(p => p.approvalStatus === 'approved').every(p => selectedProspectIds.has(p.id))
+                          ? "Deselect all approved prospects from this campaign"
+                          : "Select all approved prospects from this campaign"
+                      }
+                    >
+                      {prospects.filter(p => p.approvalStatus === 'approved').every(p => selectedProspectIds.has(p.id)) ? (
+                        <>✓ Selected ({prospects.filter(p => p.approvalStatus === 'approved').length})</>
                       ) : (
-                        <ChevronRight className="w-5 h-5 text-gray-500" />
+                        <>Select All ({prospects.filter(p => p.approvalStatus === 'approved').length})</>
                       )}
-                      <span className="text-lg font-semibold text-white">{searchName}</span>
-                      <span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-600/30 text-purple-300">
-                        {prospects.length} prospects
-                      </span>
-                      <span className="text-xs text-gray-400">
-                        {prospects.filter(p => p.approvalStatus === 'approved').length} approved,
-                        {prospects.filter(p => p.approvalStatus === 'pending').length} pending,
-                        {prospects.filter(p => p.approvalStatus === 'rejected').length} rejected
-                      </span>
-                    </div>
-                  </button>
+                    </button>
+                  </div>
                 </td>
               </tr>,
               // Render prospects if group is expanded
