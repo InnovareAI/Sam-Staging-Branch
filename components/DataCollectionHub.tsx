@@ -1358,10 +1358,14 @@ export default function DataCollectionHub({
   }
 
   const addApprovedToExistingCampaign = async () => {
+    // FIXED: Use selected prospects if any are checked, otherwise use all approved
     const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved')
+    const prospectsToAdd = selectedProspectIds.size > 0
+      ? approvedProspects.filter(p => selectedProspectIds.has(p.id))
+      : approvedProspects
 
-    if (approvedProspects.length === 0) {
-      toastError('No approved prospects to add. Please approve prospects first.')
+    if (prospectsToAdd.length === 0) {
+      toastError('No prospects to add. Please select prospects or approve some first.')
       return
     }
 
@@ -1371,11 +1375,11 @@ export default function DataCollectionHub({
     }
 
     setLoading(true)
-    setLoadingMessage(`Adding ${approvedProspects.length} prospects to campaign...`)
+    setLoadingMessage(`Adding ${prospectsToAdd.length} prospects to campaign...`)
 
     try {
-      // Get prospect IDs from workspace_prospects table
-      const prospectIds = approvedProspects.map(p => p.id).filter(Boolean)
+      // FIXED: Use prospectsToAdd instead of approvedProspects
+      const prospectIds = prospectsToAdd.map(p => p.id).filter(Boolean)
 
       const response = await fetch(`/api/campaigns/${selectedCampaignId}/prospects`, {
         method: 'POST',
@@ -1401,8 +1405,15 @@ export default function DataCollectionHub({
 
       toastSuccess(`Added ${data.added_prospects} prospect(s) to campaign!`)
 
-      // Clear approved prospects from the list after successful addition
-      setProspectData(prev => prev.filter(p => p.approvalStatus !== 'approved'))
+      // FIXED: Only remove prospects that were actually added (selected or all approved)
+      if (selectedProspectIds.size > 0) {
+        // Remove only selected prospects
+        setProspectData(prev => prev.filter(p => !selectedProspectIds.has(p.id)))
+        setSelectedProspectIds(new Set()) // Clear selection
+      } else {
+        // Remove all approved prospects
+        setProspectData(prev => prev.filter(p => p.approvalStatus !== 'approved'))
+      }
 
       // Reset campaign selection
       setSelectedCampaignId('')
@@ -1858,10 +1869,10 @@ export default function DataCollectionHub({
                   disabled={!selectedCampaignId || prospectData.filter(p => p.approvalStatus === 'approved').length === 0}
                   size="sm"
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500"
-                  title="Add approved prospects to the selected existing campaign"
+                  title={selectedProspectIds.size > 0 ? "Add selected prospects to campaign" : "Add all approved prospects to campaign"}
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Add to Campaign ({prospectData.filter(p => p.approvalStatus === 'approved').length})</span>
+                  <span>Add to Campaign ({selectedProspectIds.size > 0 ? selectedProspectIds.size : prospectData.filter(p => p.approvalStatus === 'approved').length})</span>
                 </Button>
               </div>
             )}
