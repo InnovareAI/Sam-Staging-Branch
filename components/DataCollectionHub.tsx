@@ -1835,20 +1835,9 @@ export default function DataCollectionHub({
                   <span>Auto-Approve All ({prospectData.filter(p => p.approvalStatus === 'pending').length})</span>
                 </Button>
 
-            {/* Send Approved Prospects - Only sends approved prospects to Campaign Hub */}
-            <Button
-              onClick={bulkApproveSelected}
-              disabled={prospectData.filter(p => p.approvalStatus === 'approved').length === 0}
-              size="sm"
-              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-              title="Send only approved prospects to Campaign Hub. Rejected and pending prospects will be ignored."
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>Send Approved to Campaign ({prospectData.filter(p => p.approvalStatus === 'approved').length})</span>
-            </Button>
-
-            {/* Add to Existing Campaign - Dropdown + Button */}
-            {prospectData.filter(p => p.approvalStatus === 'approved').length > 0 && (
+            {/* SIMPLIFIED: Only show dropdown + "Add to Campaign" button when prospects are selected */}
+            {selectedProspectIds.size > 0 ? (
+              // Show campaign selector when specific prospects are selected
               <div className="flex items-center gap-2">
                 <select
                   value={selectedCampaignId}
@@ -1856,7 +1845,7 @@ export default function DataCollectionHub({
                   disabled={loadingCampaigns}
                   className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                 >
-                  <option value="">Select existing campaign...</option>
+                  <option value="">Select campaign...</option>
                   {availableCampaigns.map(campaign => (
                     <option key={campaign.id} value={campaign.id}>
                       {campaign.name} ({campaign.status})
@@ -1866,15 +1855,27 @@ export default function DataCollectionHub({
 
                 <Button
                   onClick={addApprovedToExistingCampaign}
-                  disabled={!selectedCampaignId || prospectData.filter(p => p.approvalStatus === 'approved').length === 0}
+                  disabled={!selectedCampaignId}
                   size="sm"
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500"
-                  title={selectedProspectIds.size > 0 ? "Add selected prospects to campaign" : "Add all approved prospects to campaign"}
+                  title="Add selected prospects to campaign"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Add to Campaign ({selectedProspectIds.size > 0 ? selectedProspectIds.size : prospectData.filter(p => p.approvalStatus === 'approved').length})</span>
+                  <span>Add Selected to Campaign ({selectedProspectIds.size})</span>
                 </Button>
               </div>
+            ) : (
+              // Show "Send All Approved" button when no specific selection
+              <Button
+                onClick={bulkApproveSelected}
+                disabled={prospectData.filter(p => p.approvalStatus === 'approved').length === 0}
+                size="sm"
+                className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                title="Send all approved prospects to Campaign Hub to create a new campaign"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Create Campaign with All Approved ({prospectData.filter(p => p.approvalStatus === 'approved').length})</span>
+              </Button>
             )}
 
             {/* Info message about next steps */}
