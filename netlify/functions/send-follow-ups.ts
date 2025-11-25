@@ -10,7 +10,7 @@
  * - No US public holidays
  * - Rate limited: 10 prospects per run
  *
- * Schedule: */30 * * * * (every 30 minutes) via netlify.toml
+ * Schedule: every 30 minutes (cron: 0,30 * * * *) via netlify.toml
  */
 
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
