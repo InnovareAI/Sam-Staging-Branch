@@ -88,7 +88,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, queued: 0, message: 'No pending prospects' });
     }
 
-    console.log(`📊 Queueing ${prospects.length} prospects...`);
+    // 2.5: Check which prospects are already in queue (to avoid duplicates)
+    const prospectIds = prospects.map(p => p.id);
+    const { data: existingQueue } = await supabaseAdmin
+      .from('send_queue')
+      .select('prospect_id')
+      .eq('campaign_id', campaignId)
+      .in('prospect_id', prospectIds);
+
+    const existingProspectIds = new Set((existingQueue || []).map(q => q.prospect_id));
+    const newProspects = prospects.filter(p => !existingProspectIds.has(p.id));
+    const skippedCount = prospects.length - newProspects.length;
+
+    if (skippedCount > 0) {
+      console.log(`⚠️ Skipping ${skippedCount} prospects already in queue`);
+    }
+
+    if (newProspects.length === 0) {
+      console.log('✅ All prospects already in queue');
+      return NextResponse.json({
+        success: true,
+        queued: 0,
+        skipped: skippedCount,
+        message: 'All prospects already queued'
+      });
+    }
+
+    console.log(`📊 Queueing ${newProspects.length} NEW prospects (${skippedCount} already queued)...`);
 
     // 3. Create queue records (30 min spacing, skip weekends/holidays)
     const queueRecords = [];
@@ -97,8 +123,8 @@ export async function POST(req: NextRequest) {
 
     let scheduledTime = new Date();
 
-    for (let i = 0; i < prospects.length; i++) {
-      const prospect = prospects[i];
+    for (let i = 0; i < newProspects.length; i++) {
+      const prospect = newProspects[i];
 
       // Add 30 minutes for each prospect
       scheduledTime = new Date(scheduledTime.getTime() + (i * 30 * 60 * 1000));
@@ -135,14 +161,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to create queue' }, { status: 500 });
     }
 
-    console.log(`✅ Queued ${queueRecords.length} prospects successfully`);
+    console.log(`✅ Queued ${queueRecords.length} prospects successfully (${skippedCount} already in queue)`);
 
     return NextResponse.json({
       success: true,
       queued: queueRecords.length,
+      skipped: skippedCount,
       firstScheduled: queueRecords[0]?.scheduled_for,
       lastScheduled: queueRecords[queueRecords.length - 1]?.scheduled_for,
-      message: `${queueRecords.length} prospects queued for sending`
+      message: `${queueRecords.length} prospects queued for sending${skippedCount > 0 ? ` (${skippedCount} already queued)` : ''}`
     });
 
   } catch (error: any) {
