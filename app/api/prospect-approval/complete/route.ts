@@ -9,7 +9,7 @@ const supabase = createClient(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { session_id } = body
+    const { session_id, campaign_id, create_campaign } = body
 
     if (!session_id) {
       return NextResponse.json({
@@ -79,9 +79,21 @@ export async function POST(request: NextRequest) {
     if (exportError) throw exportError
 
     // CRITICAL FIX: Add approved prospects to campaign if campaign_id is specified
+    // Priority: 1. campaign_id from request body, 2. session.campaign_id from database
+    const targetCampaignId = campaign_id || session.campaign_id;
     let addedToCampaign = 0;
-    if (session.campaign_id && approvedProspects && approvedProspects.length > 0) {
-      console.log(`Adding ${approvedProspects.length} approved prospects to campaign ${session.campaign_id}`);
+
+    if (targetCampaignId && approvedProspects && approvedProspects.length > 0) {
+      console.log(`Adding ${approvedProspects.length} approved prospects to campaign ${targetCampaignId}`);
+
+      // Update session with campaign_id if it wasn't set
+      if (!session.campaign_id && campaign_id) {
+        await supabase
+          .from('prospect_approval_sessions')
+          .update({ campaign_id: campaign_id })
+          .eq('id', session_id);
+        console.log(`✅ Linked session ${session_id} to campaign ${campaign_id}`);
+      }
 
       // Transform prospects to campaign_prospects format
       const campaignProspects = approvedProspects.map((prospect: any) => {
@@ -95,7 +107,7 @@ export async function POST(request: NextRequest) {
         const linkedinUrl = prospect.contact?.linkedin_url || null;
 
         return {
-          campaign_id: session.campaign_id,
+          campaign_id: targetCampaignId,
           workspace_id: session.workspace_id,
           first_name: firstName,
           last_name: lastName,
@@ -132,7 +144,8 @@ export async function POST(request: NextRequest) {
       session_completed: true,
       approved_prospects: approvedProspects?.length || 0,
       added_to_campaign: addedToCampaign,
-      campaign_id: session.campaign_id,
+      campaign_id: targetCampaignId,
+      session_id: session_id,
       learning_insights: learningInsights,
       export_id: exportRecord.id,
       message: `Session completed with ${approvedProspects?.length || 0} approved prospects${addedToCampaign > 0 ? `, ${addedToCampaign} added to campaign` : ''}`
