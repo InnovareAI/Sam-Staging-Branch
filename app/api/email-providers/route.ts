@@ -1,26 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
-
-// Utility to clean corrupted cookie values
-function cleanCookieValue(value: string): string {
-  if (!value) return value;
-  
-  // If value starts with "base64-", it's corrupted - remove prefix
-  if (value.startsWith('base64-')) {
-    try {
-      const base64Value = value.substring(7);
-      const decoded = Buffer.from(base64Value, 'base64').toString('utf-8');
-      console.log('🔧 Fixed corrupted server-side cookie (decoded base64)');
-      return decoded;
-    } catch (e) {
-      console.log('🔧 Fixed corrupted server-side cookie (removed prefix)');
-      return value.substring(7);
-    }
-  }
-  
-  return value;
-}
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client'
 
 // Helper function to make Unipile API calls
 async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: any) {
@@ -57,48 +36,22 @@ export async function GET(request: NextRequest) {
   try {
     console.log('📧 GET /api/email-providers called')
 
-    // Get current user with cleaned cookies
-    const cookieStore = await cookies()
-    
-    // Clean corrupted cookies before passing to Supabase
-    const cleanedCookies = () => {
-      const originalCookies = cookieStore.getAll()
-      return {
-        getAll: () => originalCookies.map(cookie => ({
-          ...cookie,
-          value: cleanCookieValue(cookie.value)
-        })),
-        get: (name: string) => {
-          const cookie = cookieStore.get(name)
-          if (!cookie) return undefined
-          return {
-            ...cookie,
-            value: cleanCookieValue(cookie.value)
-          }
-        },
-        set: cookieStore.set,
-        delete: cookieStore.delete
-      }
-    }
-    
-    const supabase = createRouteHandlerClient({ cookies: cleanedCookies })
-    const { data: { session }, error: authError } = await supabase.auth.getSession()
+    // Get current user with new SSR auth pattern (fixes session mixing issue)
+    const supabase = await createSupabaseRouteClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     console.log('🔐 Auth check:', {
-      hasSession: !!session,
-      hasUser: !!session?.user,
+      hasUser: !!user,
       authError: authError?.message
     })
 
-    if (authError || !session || !session.user) {
+    if (authError || !user) {
       console.log('❌ Auth failed - returning 401')
       return NextResponse.json({
         success: false,
         error: 'Authentication required'
       }, { status: 401 })
     }
-
-    const user = session.user
 
     console.log('📧 Fetching email providers for user:', user.id)
 
@@ -232,41 +185,16 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Get current user - use the same pattern as GET route with cleaned cookies
-    const cookieStore = await cookies()
-    
-    // Clean corrupted cookies
-    const cleanedCookies = () => {
-      const originalCookies = cookieStore.getAll()
-      return {
-        getAll: () => originalCookies.map(cookie => ({
-          ...cookie,
-          value: cleanCookieValue(cookie.value)
-        })),
-        get: (name: string) => {
-          const cookie = cookieStore.get(name)
-          if (!cookie) return undefined
-          return {
-            ...cookie,
-            value: cleanCookieValue(cookie.value)
-          }
-        },
-        set: cookieStore.set,
-        delete: cookieStore.delete
-      }
-    }
-    
-    const supabase = createRouteHandlerClient({ cookies: cleanedCookies })
-    const { data: { session }, error: authError } = await supabase.auth.getSession()
+    // Get current user with new SSR auth pattern (fixes session mixing issue)
+    const supabase = await createSupabaseRouteClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-    if (authError || !session || !session.user) {
+    if (authError || !user) {
       return NextResponse.json({
         success: false,
         error: 'Authentication required'
       }, { status: 401 })
     }
-
-    const user = session.user
 
     // Insert new email provider
     console.log(`📧 Creating email provider:`, {

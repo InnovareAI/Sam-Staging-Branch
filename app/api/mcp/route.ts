@@ -6,8 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { mcpRegistry, createMCPConfig } from '@/lib/mcp/mcp-registry'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client'
 
 // Initialize MCP registry on first request
 let mcpInitialized = false
@@ -59,9 +58,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await initializeMCP()
-    
-    // Get user authentication
-    const supabase = createRouteHandlerClient({ cookies: cookies })
+
+    // Get user authentication with new SSR auth pattern (fixes session mixing issue)
+    const supabase = await createSupabaseRouteClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
