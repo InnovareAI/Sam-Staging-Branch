@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, MessageSquare, Save, Loader2, CheckCircle, AlertTriangle, Sparkles, TrendingUp, Users, Clock } from 'lucide-react';
+import { X, MessageSquare, Save, Loader2, CheckCircle, AlertTriangle, Sparkles, TrendingUp, Users, Clock, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { createClient } from '@/app/lib/supabase';
 import { useRouter } from 'next/navigation';
 
@@ -11,6 +11,29 @@ interface CommentingAgentModalProps {
   workspaceId: string;
 }
 
+type Tone = 'professional' | 'friendly' | 'casual' | 'passionate';
+type Formality = 'formal' | 'semi-formal' | 'informal';
+type CommentLength = 'short' | 'medium' | 'long';
+type QuestionFrequency = 'frequently' | 'sometimes' | 'rarely' | 'never';
+
+interface AISettings {
+  tone: Tone;
+  formality: Formality;
+  commentLength: CommentLength;
+  questionFrequency: QuestionFrequency;
+  useKnowledgeBase: boolean;
+  personalityDocument: string;
+}
+
+const defaultAISettings: AISettings = {
+  tone: 'professional',
+  formality: 'semi-formal',
+  commentLength: 'medium',
+  questionFrequency: 'sometimes',
+  useKnowledgeBase: true,
+  personalityDocument: '',
+};
+
 export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: CommentingAgentModalProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -18,6 +41,8 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
   const [saveMessage, setSaveMessage] = useState('');
   const [enabled, setEnabled] = useState(false);
   const [hasLinkedInAccount, setHasLinkedInAccount] = useState(false);
+  const [showAISettings, setShowAISettings] = useState(false);
+  const [aiSettings, setAISettings] = useState<AISettings>(defaultAISettings);
 
   useEffect(() => {
     if (isOpen) {
@@ -30,15 +55,28 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
     try {
       const supabase = createClient();
 
-      // Check if commenting agent is enabled for workspace
+      // Check if commenting agent is enabled for workspace and load AI settings
       const { data: workspace } = await supabase
         .from('workspaces')
-        .select('commenting_agent_enabled')
+        .select('commenting_agent_enabled, metadata')
         .eq('id', workspaceId)
         .single();
 
       if (workspace) {
         setEnabled(workspace.commenting_agent_enabled || false);
+
+        // Load AI settings from metadata
+        const savedSettings = workspace.metadata?.commenting_agent_settings;
+        if (savedSettings) {
+          setAISettings({
+            tone: savedSettings.tone || defaultAISettings.tone,
+            formality: savedSettings.formality || defaultAISettings.formality,
+            commentLength: savedSettings.commentLength || defaultAISettings.commentLength,
+            questionFrequency: savedSettings.questionFrequency || defaultAISettings.questionFrequency,
+            useKnowledgeBase: savedSettings.useKnowledgeBase ?? defaultAISettings.useKnowledgeBase,
+            personalityDocument: savedSettings.personalityDocument || defaultAISettings.personalityDocument,
+          });
+        }
       }
 
       // Check for connected LinkedIn accounts
@@ -55,6 +93,46 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
       console.error('Failed to load commenting agent config:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveAISettings = async () => {
+    setSaving(true);
+    setSaveMessage('');
+
+    try {
+      const supabase = createClient();
+
+      // Get current metadata first
+      const { data: workspace } = await supabase
+        .from('workspaces')
+        .select('metadata')
+        .eq('id', workspaceId)
+        .single();
+
+      const currentMetadata = workspace?.metadata || {};
+
+      // Update with new AI settings
+      const { error } = await supabase
+        .from('workspaces')
+        .update({
+          metadata: {
+            ...currentMetadata,
+            commenting_agent_settings: aiSettings,
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', workspaceId);
+
+      if (error) throw error;
+
+      setSaveMessage('✓ AI settings saved successfully!');
+      setTimeout(() => setSaveMessage(''), 3000);
+    } catch (error) {
+      console.error('Failed to save AI settings:', error);
+      setSaveMessage('❌ Failed to save settings');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -267,6 +345,190 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
                   </li>
                 </ol>
               </div>
+
+              {/* AI Settings Section */}
+              {enabled && (
+                <div className="border border-gray-600 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setShowAISettings(!showAISettings)}
+                    className="w-full flex items-center justify-between p-4 bg-gray-700 hover:bg-gray-600 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Sparkles size={20} className="text-purple-400" />
+                      <span className="text-white font-medium">AI Comment Settings</span>
+                    </div>
+                    {showAISettings ? (
+                      <ChevronUp size={20} className="text-gray-400" />
+                    ) : (
+                      <ChevronDown size={20} className="text-gray-400" />
+                    )}
+                  </button>
+
+                  {showAISettings && (
+                    <div className="p-4 bg-gray-800 space-y-6">
+                      {/* Tone */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Tone</label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {(['professional', 'friendly', 'casual', 'passionate'] as Tone[]).map((t) => (
+                            <button
+                              key={t}
+                              onClick={() => setAISettings({ ...aiSettings, tone: t })}
+                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                aiSettings.tone === t
+                                  ? 'bg-purple-600 text-white'
+                                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                              }`}
+                            >
+                              {t.charAt(0).toUpperCase() + t.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Formality */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Formality Level</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(['formal', 'semi-formal', 'informal'] as Formality[]).map((f) => (
+                            <button
+                              key={f}
+                              onClick={() => setAISettings({ ...aiSettings, formality: f })}
+                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                aiSettings.formality === f
+                                  ? 'bg-purple-600 text-white'
+                                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                              }`}
+                            >
+                              {f.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('-')}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Comment Length */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Comment Length</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(['short', 'medium', 'long'] as CommentLength[]).map((l) => (
+                            <button
+                              key={l}
+                              onClick={() => setAISettings({ ...aiSettings, commentLength: l })}
+                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                aiSettings.commentLength === l
+                                  ? 'bg-purple-600 text-white'
+                                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                              }`}
+                            >
+                              {l.charAt(0).toUpperCase() + l.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Question Frequency */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Ask Questions</label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {(['frequently', 'sometimes', 'rarely', 'never'] as QuestionFrequency[]).map((q) => (
+                            <button
+                              key={q}
+                              onClick={() => setAISettings({ ...aiSettings, questionFrequency: q })}
+                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                aiSettings.questionFrequency === q
+                                  ? 'bg-purple-600 text-white'
+                                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                              }`}
+                            >
+                              {q.charAt(0).toUpperCase() + q.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Use Knowledge Base */}
+                      <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                        <div>
+                          <div className="text-white font-medium text-sm">Use Workspace Knowledge</div>
+                          <div className="text-gray-400 text-xs">Include your company context in comments</div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={aiSettings.useKnowledgeBase}
+                            onChange={(e) => setAISettings({ ...aiSettings, useKnowledgeBase: e.target.checked })}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                      </div>
+
+                      {/* Tone of Voice & Personality Document */}
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText size={16} className="text-purple-400" />
+                          <label className="text-sm font-medium text-gray-300">
+                            Tone of Voice & Personality Document
+                          </label>
+                        </div>
+                        <p className="text-xs text-gray-400 mb-3">
+                          Describe your brand voice, personality, and how you want SAM to engage on LinkedIn.
+                          Include examples of good/bad comments, key phrases to use or avoid, and any specific guidelines.
+                        </p>
+                        <textarea
+                          value={aiSettings.personalityDocument}
+                          onChange={(e) => setAISettings({ ...aiSettings, personalityDocument: e.target.value })}
+                          placeholder={`Example:
+
+We are InnovareAI - a B2B sales automation company. Our voice is confident but not arrogant, helpful but not pushy.
+
+DO:
+- Ask thoughtful questions that show genuine interest
+- Reference specific points from the post
+- Share relevant experiences or insights
+- Be conversational and human
+
+DON'T:
+- Use buzzwords like "synergy" or "leverage"
+- Make it about us or our product
+- Use generic praise like "Great post!"
+- Be salesy or push for demos
+
+Key phrases we like:
+- "That's an interesting perspective on..."
+- "We've seen similar results when..."
+- "What led you to that approach?"
+
+Personality traits: Curious, knowledgeable, approachable, slightly witty`}
+                          rows={12}
+                          className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none text-sm"
+                        />
+                        <div className="flex justify-between items-center mt-2">
+                          <span className="text-xs text-gray-500">
+                            {aiSettings.personalityDocument.length} characters
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Save Button */}
+                      <div className="flex justify-end pt-2">
+                        <button
+                          onClick={saveAISettings}
+                          disabled={saving}
+                          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+                        >
+                          {saving ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : (
+                            <Save size={16} />
+                          )}
+                          Save AI Settings
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>

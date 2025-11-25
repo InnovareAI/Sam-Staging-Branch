@@ -26,6 +26,15 @@ export interface LinkedInPost {
   matched_keywords?: string[];
 }
 
+export interface CommentingAgentSettings {
+  tone: 'professional' | 'friendly' | 'casual' | 'passionate';
+  formality: 'formal' | 'semi-formal' | 'informal';
+  commentLength: 'short' | 'medium' | 'long';
+  questionFrequency: 'frequently' | 'sometimes' | 'rarely' | 'never';
+  useKnowledgeBase: boolean;
+  personalityDocument: string;
+}
+
 export interface WorkspaceContext {
   workspace_id: string;
   company_name: string;
@@ -34,6 +43,7 @@ export interface WorkspaceContext {
   value_props: string[];
   tone_of_voice: string;
   knowledge_base_snippets?: string[];
+  commenting_agent_settings?: CommentingAgentSettings;
 }
 
 export interface ProspectContext {
@@ -173,20 +183,67 @@ export async function generateLinkedInComment(
  */
 function buildCommentSystemPrompt(context: CommentGenerationContext): string {
   const { workspace, prospect, post } = context;
+  const settings = workspace.commenting_agent_settings;
+
+  // Determine tone description based on settings
+  const toneDescriptions: Record<string, string> = {
+    professional: 'professional and business-like',
+    friendly: 'warm, friendly, and approachable',
+    casual: 'casual, relaxed, and conversational',
+    passionate: 'enthusiastic and passionate'
+  };
+
+  const formalityDescriptions: Record<string, string> = {
+    formal: 'Use formal language and proper grammar. Avoid contractions and slang.',
+    'semi-formal': 'Use professional but conversational language. Contractions are fine.',
+    informal: 'Use casual, everyday language. Be relaxed and natural.'
+  };
+
+  const lengthGuidelines: Record<string, string> = {
+    short: '1-2 sentences (under 100 characters)',
+    medium: '2-3 sentences (100-200 characters)',
+    long: '3-4 sentences (200-300 characters)'
+  };
+
+  const questionGuidelines: Record<string, string> = {
+    frequently: 'Try to end most comments with a thoughtful question to encourage dialogue.',
+    sometimes: 'Include a question in about half of your comments when it feels natural.',
+    rarely: 'Only ask a question if it adds significant value to the conversation.',
+    never: 'Do not ask questions. Make statements and share insights instead.'
+  };
+
+  const tone = settings?.tone || 'professional';
+  const formality = settings?.formality || 'semi-formal';
+  const commentLength = settings?.commentLength || 'medium';
+  const questionFreq = settings?.questionFrequency || 'sometimes';
+  const useKnowledge = settings?.useKnowledgeBase ?? true;
+  const personalityDoc = settings?.personalityDocument || '';
 
   let prompt = `You are a B2B engagement specialist helping ${workspace.company_name} build relationships on LinkedIn through thoughtful commenting.
 
 ## Company Context
 - Company: ${workspace.company_name}
-- Expertise: ${workspace.expertise_areas.join(', ')}
-- Products/Services: ${workspace.products.join(', ')}
-- Value Propositions: ${workspace.value_props.join(', ')}
-- Tone: ${workspace.tone_of_voice}`;
+- Expertise: ${workspace.expertise_areas.join(', ') || 'B2B Sales'}
+- Products/Services: ${workspace.products.join(', ') || 'Not specified'}
+- Value Propositions: ${workspace.value_props.join(', ') || 'Not specified'}`;
 
-  if (workspace.knowledge_base_snippets && workspace.knowledge_base_snippets.length > 0) {
-    prompt += `\n\n## Company Knowledge
+  // Add personality document if provided (this is the key addition!)
+  if (personalityDoc && personalityDoc.trim().length > 0) {
+    prompt += `\n\n## Brand Voice & Personality Guidelines (FOLLOW CAREFULLY)
+${personalityDoc}`;
+  }
+
+  // Add knowledge base snippets if enabled and available
+  if (useKnowledge && workspace.knowledge_base_snippets && workspace.knowledge_base_snippets.length > 0) {
+    prompt += `\n\n## Company Knowledge (Use for context)
 ${workspace.knowledge_base_snippets.slice(0, 3).join('\n')}`;
   }
+
+  prompt += `\n\n## Communication Style Settings
+- **Tone**: ${toneDescriptions[tone]}
+- **Formality**: ${formalityDescriptions[formality]}
+- **Length**: ${lengthGuidelines[commentLength]}
+- **Questions**: ${questionGuidelines[questionFreq]}`;
 
   prompt += `\n\n## Post Context
 Author: ${post.author.name}${post.author.title ? `, ${post.author.title}` : ''}${post.author.company ? ` at ${post.author.company}` : ''}
@@ -209,9 +266,10 @@ ${prospect.notes ? `- Notes: ${prospect.notes}` : ''}
 **MUST DO**:
 1. Reference a SPECIFIC point from the post (not generic "great post!")
 2. Add genuine insight, experience, or helpful perspective
-3. Keep it conversational and natural (2-3 sentences max)
-4. Match the ${workspace.tone_of_voice} tone
+3. Match the ${toneDescriptions[tone]} tone
+4. Follow the length guideline: ${lengthGuidelines[commentLength]}
 5. Be authentic - sound like a real person, not a bot
+${personalityDoc ? '6. Follow the Brand Voice & Personality Guidelines above' : ''}
 
 **MUST NOT DO**:
 1. ❌ Don't pitch products or services
@@ -229,7 +287,7 @@ ${prospect.notes ? `- Notes: ${prospect.notes}` : ''}
 
 Return ONLY a JSON object with this structure:
 {
-  "comment_text": "Your 2-3 sentence comment here...",
+  "comment_text": "Your comment here...",
   "reasoning": "Why this comment adds value and fits the context",
   "adds_value": true,
   "on_topic": true,

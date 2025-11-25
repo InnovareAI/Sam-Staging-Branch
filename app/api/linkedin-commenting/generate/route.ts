@@ -95,7 +95,9 @@ export async function POST(request: NextRequest) {
       products: workspace.metadata?.products || [],
       value_props: workspace.metadata?.value_propositions || [],
       tone_of_voice: workspace.metadata?.tone_of_voice || 'professional_friendly',
-      knowledge_base_snippets: knowledgeSnippets?.map(k => k.content) || []
+      knowledge_base_snippets: knowledgeSnippets?.map(k => k.content) || [],
+      // Load AI settings from workspace metadata
+      commenting_agent_settings: workspace.metadata?.commenting_agent_settings || undefined
     };
 
     // Check if we should skip this post
