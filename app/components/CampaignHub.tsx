@@ -1391,7 +1391,16 @@ function CampaignBuilder({
   };
 
   const [name, setName] = useState(getInitialCampaignName());
-  const [campaignType, setCampaignType] = useState('connector');
+  // Default campaign type based on connected accounts:
+  // - If only email connected -> 'email'
+  // - If LinkedIn connected -> 'connector' (default for LinkedIn)
+  const getDefaultCampaignType = () => {
+    if (!connectedAccounts.linkedin && connectedAccounts.email) {
+      return 'email';
+    }
+    return 'connector';
+  };
+  const [campaignType, setCampaignType] = useState(getDefaultCampaignType());
   const [userSelectedCampaignType, setUserSelectedCampaignType] = useState(false); // Track manual selection
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvData, setCsvData] = useState<any[]>([]);
@@ -1958,6 +1967,19 @@ function CampaignBuilder({
     }
     // If mixed (no clear majority), keep current selection (default: connector)
   }, [connectionDegrees.total, connectionDegrees.firstDegree, connectionDegrees.secondThird, hasOnly1stDegree, userSelectedCampaignType]);
+
+  // Auto-select email campaign type when only email account is connected
+  useEffect(() => {
+    if (userSelectedCampaignType) return; // Don't override manual selection
+
+    // If user has only email connected (no LinkedIn), default to email campaign
+    if (!connectedAccounts.linkedin && connectedAccounts.email) {
+      if (campaignType !== 'email') {
+        setCampaignType('email');
+        console.log('🎯 Auto-selected EMAIL (only email account connected)');
+      }
+    }
+  }, [connectedAccounts.linkedin, connectedAccounts.email, userSelectedCampaignType, campaignType]);
 
   // Campaign types are greyed out based on connection degrees, but user maintains control
   // Auto-selection happens when prospects are loaded, but user can override manually

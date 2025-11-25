@@ -154,9 +154,11 @@ export async function POST(req: NextRequest) {
       }, { status: 500 });
     }
 
-    // Auto-assign LinkedIn account for LinkedIn campaigns
+    // Auto-assign account based on campaign type
+    // Note: linkedin_account_id column is used for BOTH LinkedIn and email accounts
     let linkedinAccountId = null;
     if (campaign_type === 'connector' || campaign_type === 'messenger') {
+      // LinkedIn campaigns - assign LinkedIn account
       const { data: linkedinAccount } = await supabase
         .from('workspace_accounts')
         .select('id')
@@ -167,6 +169,19 @@ export async function POST(req: NextRequest) {
         .single();
 
       linkedinAccountId = linkedinAccount?.id || null;
+    } else if (campaign_type === 'email') {
+      // Email campaigns - assign email account
+      const { data: emailAccount } = await supabase
+        .from('workspace_accounts')
+        .select('id')
+        .eq('workspace_id', workspace_id)
+        .eq('account_type', 'email')
+        .eq('connection_status', 'connected')
+        .eq('is_active', true)
+        .single();
+
+      linkedinAccountId = emailAccount?.id || null;
+      console.log('📧 Auto-assigned email account for email campaign:', linkedinAccountId);
     }
 
     // Update status AND flow_settings.messages from message_templates
