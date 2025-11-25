@@ -1835,17 +1835,30 @@ export default function DataCollectionHub({
                   <span>Auto-Approve All ({prospectData.filter(p => p.approvalStatus === 'pending').length})</span>
                 </Button>
 
-            {/* SIMPLIFIED: Only show dropdown + "Add to Campaign" button when prospects are selected */}
-            {selectedProspectIds.size > 0 ? (
-              // Show campaign selector when specific prospects are selected
-              <div className="flex items-center gap-2">
+            {/* SIMPLIFIED: Always show both "Create New Campaign" and "Add to Existing" options */}
+            {prospectData.filter(p => p.approvalStatus === 'approved').length > 0 && (
+              <div className="flex items-center gap-3">
+                {/* Option 1: Create New Campaign */}
+                <Button
+                  onClick={bulkApproveSelected}
+                  size="sm"
+                  className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                  title={selectedProspectIds.size > 0 ? `Create new campaign with ${selectedProspectIds.size} selected prospects` : `Create new campaign with all ${prospectData.filter(p => p.approvalStatus === 'approved').length} approved prospects`}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Create New Campaign ({selectedProspectIds.size > 0 ? selectedProspectIds.size : prospectData.filter(p => p.approvalStatus === 'approved').length})</span>
+                </Button>
+
+                <span className="text-gray-500">or</span>
+
+                {/* Option 2: Add to Existing Campaign */}
                 <select
                   value={selectedCampaignId}
                   onChange={(e) => setSelectedCampaignId(e.target.value)}
                   disabled={loadingCampaigns}
                   className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                 >
-                  <option value="">Select campaign...</option>
+                  <option value="">Add to existing campaign...</option>
                   {availableCampaigns.map(campaign => (
                     <option key={campaign.id} value={campaign.id}>
                       {campaign.name} ({campaign.status})
@@ -1858,24 +1871,12 @@ export default function DataCollectionHub({
                   disabled={!selectedCampaignId}
                   size="sm"
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500"
-                  title="Add selected prospects to campaign"
+                  title={selectedProspectIds.size > 0 ? `Add ${selectedProspectIds.size} selected prospects to existing campaign` : `Add all ${prospectData.filter(p => p.approvalStatus === 'approved').length} approved prospects to existing campaign`}
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Add Selected to Campaign ({selectedProspectIds.size})</span>
+                  <span>Add ({selectedProspectIds.size > 0 ? selectedProspectIds.size : prospectData.filter(p => p.approvalStatus === 'approved').length})</span>
                 </Button>
               </div>
-            ) : (
-              // Show "Send All Approved" button when no specific selection
-              <Button
-                onClick={bulkApproveSelected}
-                disabled={prospectData.filter(p => p.approvalStatus === 'approved').length === 0}
-                size="sm"
-                className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                title="Send all approved prospects to Campaign Hub to create a new campaign"
-              >
-                <Check className="w-3.5 h-3.5" />
-                <span>Create Campaign with All Approved ({prospectData.filter(p => p.approvalStatus === 'approved').length})</span>
-              </Button>
             )}
 
             {/* Info message about next steps */}
