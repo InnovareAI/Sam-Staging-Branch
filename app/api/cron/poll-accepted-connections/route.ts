@@ -1,20 +1,17 @@
 /**
  * Polling-based Connection Acceptance Checker
  *
- * Polls for accepted LinkedIn connections using network_distance
- * This is a BACKUP to the webhook system (primary method)
+ * CORRECT APPROACH (Nov 25, 2025 - per Unipile docs):
+ * 1. Call GET /api/v1/users/invite/sent to get ALL pending invitations
+ * 2. Any prospect NOT in pending list but in our DB = accepted or withdrawn
+ * 3. This is ONE API call per account instead of one per prospect
  *
- * STRATEGY (Nov 23, 2025):
- * - PRIMARY: Unipile webhook (/api/webhooks/unipile) - up to 8-hour delay but no detection risk
- * - BACKUP: This polling cron - 3-4 times/day catches missed webhooks
- * - PROTECTION: Optimistic locking (connection_accepted_at IS NULL) prevents duplicates
- *
- * Schedule: 3-4 times per day with random delays (per Unipile recommendations)
+ * Schedule: every 2 hours via netlify.toml
  *
  * Best practices from Unipile:
  * - Space out checks only few times per day with random delay
- * - Check network_distance === 'FIRST_DEGREE' for acceptance
- * - Avoid fixed timing to prevent anti-automation detection
+ * - Use invite/sent endpoint (returns pending invitations)
+ * - Avoid checking individual profiles (slow + wrong results)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -131,23 +128,41 @@ function getFirstFollowUpTime(): Date {
 }
 
 /**
- * Follow-up sequence timing:
- * FU1: Next business day after acceptance
- * FU2: 3 days after FU1
- * FU3: 5 days after FU2
- * FU4: 5 days after FU3
- * FU5: 3 days after FU4
- * GB:  3 days after FU5 (goodbye message)
+ * Fetch ALL pending invitations for an account (with pagination)
  */
-function getFollowUpSchedule(): Date[] {
-  return [
-    getNextBusinessDay(1),          // FU1: Next business day
-    getNextBusinessDay(1 + 3),      // FU2: 3 days later
-    getNextBusinessDay(1 + 3 + 5),  // FU3: 5 days later
-    getNextBusinessDay(1 + 3 + 5 + 5),      // FU4: 5 days later
-    getNextBusinessDay(1 + 3 + 5 + 5 + 3),  // FU5: 3 days later
-    getNextBusinessDay(1 + 3 + 5 + 5 + 3 + 3) // GB: 3 days later
-  ];
+async function fetchAllPendingInvitations(accountId: string): Promise<Set<string>> {
+  const pendingProviderIds = new Set<string>();
+  let cursor: string | null = null;
+  let pageCount = 0;
+  const maxPages = 20; // Safety limit
+
+  do {
+    const url = cursor
+      ? `/api/v1/users/invite/sent?account_id=${accountId}&limit=100&cursor=${cursor}`
+      : `/api/v1/users/invite/sent?account_id=${accountId}&limit=100`;
+
+    const response = await unipileRequest(url);
+
+    for (const invitation of response.items || []) {
+      if (invitation.invited_user_id) {
+        pendingProviderIds.add(invitation.invited_user_id);
+      }
+      // Also add public_id for matching
+      if (invitation.invited_user_public_id) {
+        pendingProviderIds.add(invitation.invited_user_public_id.toLowerCase());
+      }
+    }
+
+    cursor = response.cursor || null;
+    pageCount++;
+
+    // Small delay between pagination requests
+    if (cursor) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  } while (cursor && pageCount < maxPages);
+
+  return pendingProviderIds;
 }
 
 export async function POST(req: NextRequest) {
@@ -161,10 +176,10 @@ export async function POST(req: NextRequest) {
 
     console.log('🔍 Polling for accepted LinkedIn connections...');
 
-    // Add random delay (0-10 minutes) to avoid fixed timing - skip for manual triggers
+    // Add random delay (0-5 minutes) to avoid fixed timing - skip for manual triggers
     const skipDelay = req.headers.get('x-skip-delay') === 'true';
     if (!skipDelay) {
-      const randomDelay = Math.floor(Math.random() * 10 * 60 * 1000);
+      const randomDelay = Math.floor(Math.random() * 5 * 60 * 1000);
       console.log(`⏱️  Adding ${Math.floor(randomDelay / 1000)}s random delay...`);
       await new Promise(resolve => setTimeout(resolve, randomDelay));
     } else {
@@ -188,9 +203,7 @@ export async function POST(req: NextRequest) {
       `)
       .eq('status', 'connection_request_sent')
       .is('connection_accepted_at', null)
-      .not('linkedin_user_id', 'is', null)
-      .order('contacted_at', { ascending: true })
-      .limit(30); // Check 30 at a time to avoid rate limits
+      .order('contacted_at', { ascending: true });
 
     if (prospectsError) {
       console.error('Error fetching prospects:', prospectsError);
@@ -206,21 +219,23 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    console.log(`📊 Checking ${prospects.length} pending connections`);
+    console.log(`📊 Found ${prospects.length} prospects with pending CRs`);
 
     const results = {
       checked: 0,
       accepted: 0,
       still_pending: 0,
-      errors: []
+      errors: [] as { prospect: string; error: string }[]
     };
 
-    // Group by LinkedIn account to minimize API calls
+    // Group by LinkedIn account
     const accountGroups = new Map<string, typeof prospects>();
 
     for (const prospect of prospects) {
       const campaign = prospect.campaigns as any;
       const account = campaign.workspace_accounts as any;
+      if (!account?.unipile_account_id) continue;
+
       const accountId = account.unipile_account_id;
 
       if (!accountGroups.has(accountId)) {
@@ -229,52 +244,38 @@ export async function POST(req: NextRequest) {
       accountGroups.get(accountId)!.push(prospect);
     }
 
-    // Process each account group
+    // Process each account
     for (const [accountId, accountProspects] of accountGroups) {
-      console.log(`\n🔍 Checking ${accountProspects.length} prospects for account ${accountId}`);
+      const accountName = (accountProspects[0].campaigns as any).workspace_accounts?.account_name || accountId;
+      console.log(`\n🔍 Checking ${accountProspects.length} prospects for ${accountName}`);
 
-      for (const prospect of accountProspects) {
-        try {
+      try {
+        // Fetch ALL pending invitations for this account (1 API call)
+        console.log(`   📥 Fetching pending invitations from Unipile...`);
+        const pendingInvitations = await fetchAllPendingInvitations(accountId);
+        console.log(`   📊 Found ${pendingInvitations.size} pending invitations in Unipile`);
+
+        // Check each prospect
+        for (const prospect of accountProspects) {
           results.checked++;
 
-          // Get the prospect's profile to check network_distance
-          let profile: any;
+          // Extract vanity from LinkedIn URL for matching
+          const vanityMatch = prospect.linkedin_url?.match(/linkedin\.com\/in\/([^\/\?#]+)/);
+          const vanity = vanityMatch ? vanityMatch[1].toLowerCase() : null;
+          const providerId = prospect.linkedin_user_id;
 
-          // CRITICAL BUG FIX (Nov 22): profile?identifier= returns WRONG profiles for vanities with numbers
-          if (prospect.linkedin_user_id) {
-            // PRIMARY: Use stored provider_id
-            profile = await unipileRequest(
-              `/api/v1/users/profile?account_id=${accountId}&provider_id=${prospect.linkedin_user_id}`
-            );
-          } else {
-            // FALLBACK: Use legacy /users/{vanity} endpoint ONLY (reliable)
-            // DO NOT use profile?identifier= - it returns wrong profiles (e.g., noah-ottmar-b59478295 returns Jamshaid Ali)
-            const vanityMatch = prospect.linkedin_url.match(/linkedin\.com\/in\/([^\/\?#]+)/);
-            if (!vanityMatch) throw new Error(`Cannot extract LinkedIn vanity identifier from ${prospect.linkedin_url}`);
+          // Check if this prospect is still in pending invitations
+          const stillPending =
+            (providerId && pendingInvitations.has(providerId)) ||
+            (vanity && pendingInvitations.has(vanity));
 
-            const vanityId = vanityMatch[1];
-            // ALWAYS use legacy endpoint - profile?identifier= returns wrong profiles
-            profile = await unipileRequest(`/api/v1/users/${vanityId}?account_id=${accountId}`);
-          }
+          if (!stillPending) {
+            // Not in pending list = ACCEPTED (or withdrawn, but we assume accepted)
+            console.log(`   ✅ Connection accepted: ${prospect.first_name} ${prospect.last_name}`);
 
-          if (profile.network_distance === 'FIRST_DEGREE') {
-            console.log(`✅ Connection accepted: ${prospect.first_name} ${prospect.last_name}`);
-
-            // Calculate first follow-up time (smart scheduling: 1-2hrs if in business hours, else next business day)
             const firstFollowUpAt = getFirstFollowUpTime();
 
-            // Calculate remaining follow-up schedule
-            const followUpSchedule = getFollowUpSchedule();
-
-            console.log(`   📅 Follow-up schedule:`);
-            console.log(`      FU1: ${firstFollowUpAt.toLocaleString()} (next business day)`);
-            console.log(`      FU2: ${followUpSchedule[1].toLocaleString()} (+3 days)`);
-            console.log(`      FU3: ${followUpSchedule[2].toLocaleString()} (+5 days)`);
-            console.log(`      FU4: ${followUpSchedule[3].toLocaleString()} (+5 days)`);
-            console.log(`      FU5: ${followUpSchedule[4].toLocaleString()} (+3 days)`);
-            console.log(`      GB:  ${followUpSchedule[5].toLocaleString()} (+3 days)`);
-
-            // Update prospect status with optimistic locking
+            // Update prospect status
             const { data: updated, error: updateError } = await supabase
               .from('campaign_prospects')
               .update({
@@ -284,31 +285,29 @@ export async function POST(req: NextRequest) {
                 updated_at: new Date().toISOString()
               })
               .eq('id', prospect.id)
-              .is('connection_accepted_at', null) // Only update if not already processed by webhook
+              .is('connection_accepted_at', null)
               .select();
 
             if (updateError) {
-              console.error(`   ❌ Error updating prospect: ${updateError.message}`);
+              console.error(`      ❌ Error updating: ${updateError.message}`);
+              results.errors.push({ prospect: `${prospect.first_name} ${prospect.last_name}`, error: updateError.message });
             } else if (!updated || updated.length === 0) {
-              console.log(`   ⏭️  Already processed (webhook beat us to it)`);
+              console.log(`      ⏭️  Already processed (webhook beat us)`);
             } else {
               results.accepted++;
+              console.log(`      📅 Follow-up scheduled: ${firstFollowUpAt.toISOString()}`);
             }
           } else {
-            console.log(`⏸️  Still pending: ${prospect.first_name} ${prospect.last_name} (${profile.network_distance})`);
             results.still_pending++;
           }
-
-          // Add delay between API calls (3-5 seconds)
-          await new Promise(resolve => setTimeout(resolve, 3000 + Math.random() * 2000));
-
-        } catch (error: any) {
-          console.error(`❌ Error checking ${prospect.first_name} ${prospect.last_name}:`, error.message);
-          results.errors.push({
-            prospect: `${prospect.first_name} ${prospect.last_name}`,
-            error: error.message
-          });
         }
+
+        // Delay between accounts
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+      } catch (error: any) {
+        console.error(`   ❌ Error processing account ${accountName}:`, error.message);
+        results.errors.push({ prospect: `Account: ${accountName}`, error: error.message });
       }
     }
 
@@ -337,18 +336,19 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   return NextResponse.json({
     name: 'Poll Accepted Connections',
-    description: 'Polls for accepted LinkedIn connections using network_distance',
-    schedule: '3-4 times per day with random delays',
+    description: 'Polls for accepted LinkedIn connections using invite/sent endpoint',
+    schedule: 'Every 2 hours via Netlify cron',
     endpoint: '/api/cron/poll-accepted-connections',
     method: 'POST',
     headers: {
-      'x-cron-secret': 'Required'
+      'x-cron-secret': 'Required',
+      'x-skip-delay': 'Optional - set to "true" to skip random delay'
     },
-    best_practices: [
-      'Random delays to avoid detection',
-      'Checks network_distance for acceptance',
-      'Processes 30 prospects per run',
-      '3-5 second delay between API calls'
+    approach: [
+      '1. Fetch ALL pending invitations via /api/v1/users/invite/sent',
+      '2. Compare with our DB prospects marked as connection_request_sent',
+      '3. Any NOT in pending list = accepted',
+      '4. Update status to connected and schedule follow-up'
     ]
   });
 }
