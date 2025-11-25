@@ -1,16 +1,20 @@
 /**
  * Polling-based Connection Acceptance Checker
  *
- * CORRECT APPROACH (Nov 25, 2025 - per Unipile docs):
+ * CORRECT APPROACH (Nov 25, 2025 - FIXED):
  * 1. Call GET /api/v1/users/invite/sent to get ALL pending invitations
- * 2. Any prospect NOT in pending list but in our DB = accepted or withdrawn
- * 3. This is ONE API call per account instead of one per prospect
+ * 2. Call GET /api/v1/users/relations to get ALL first-degree connections
+ * 3. Prospect is ACCEPTED only if:
+ *    - NOT in pending invitations AND
+ *    - IS in relations list (first-degree connection)
+ * 4. This prevents false positives from declined/withdrawn/expired invitations
  *
  * Schedule: every 2 hours via netlify.toml
  *
  * Best practices from Unipile:
  * - Space out checks only few times per day with random delay
  * - Use invite/sent endpoint (returns pending invitations)
+ * - Use relations endpoint to VERIFY actual acceptance
  * - Avoid checking individual profiles (slow + wrong results)
  */
 
@@ -165,6 +169,46 @@ async function fetchAllPendingInvitations(accountId: string): Promise<Set<string
   return pendingProviderIds;
 }
 
+/**
+ * Fetch ALL first-degree connections for an account (with pagination)
+ * CRITICAL: This is the source of truth for who actually accepted
+ */
+async function fetchAllRelations(accountId: string): Promise<Set<string>> {
+  const relationIds = new Set<string>();
+  let cursor: string | null = null;
+  let pageCount = 0;
+  const maxPages = 50; // Higher limit - relations can be large
+
+  do {
+    const url = cursor
+      ? `/api/v1/users/relations?account_id=${accountId}&limit=100&cursor=${cursor}`
+      : `/api/v1/users/relations?account_id=${accountId}&limit=100`;
+
+    const response = await unipileRequest(url);
+
+    for (const relation of response.items || []) {
+      // Add provider_id (main identifier)
+      if (relation.provider_id) {
+        relationIds.add(relation.provider_id);
+      }
+      // Add public_identifier (vanity URL) for matching
+      if (relation.public_identifier) {
+        relationIds.add(relation.public_identifier.toLowerCase());
+      }
+    }
+
+    cursor = response.cursor || null;
+    pageCount++;
+
+    // Small delay between pagination requests
+    if (cursor) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  } while (cursor && pageCount < maxPages);
+
+  return relationIds;
+}
+
 export async function POST(req: NextRequest) {
   try {
     // Security check - verify cron secret
@@ -225,6 +269,7 @@ export async function POST(req: NextRequest) {
       checked: 0,
       accepted: 0,
       still_pending: 0,
+      not_connected: 0, // Not in pending but also not in relations (declined/withdrawn/expired)
       errors: [] as { prospect: string; error: string }[]
     };
 
@@ -250,10 +295,16 @@ export async function POST(req: NextRequest) {
       console.log(`\n🔍 Checking ${accountProspects.length} prospects for ${accountName}`);
 
       try {
-        // Fetch ALL pending invitations for this account (1 API call)
+        // Fetch ALL pending invitations for this account
         console.log(`   📥 Fetching pending invitations from Unipile...`);
         const pendingInvitations = await fetchAllPendingInvitations(accountId);
         console.log(`   📊 Found ${pendingInvitations.size} pending invitations in Unipile`);
+
+        // Fetch ALL first-degree connections (relations) for this account
+        // CRITICAL: This is the source of truth for who actually accepted
+        console.log(`   📥 Fetching relations (first-degree connections) from Unipile...`);
+        const relations = await fetchAllRelations(accountId);
+        console.log(`   📊 Found ${relations.size} first-degree connections in Unipile`);
 
         // Check each prospect
         for (const prospect of accountProspects) {
@@ -269,9 +320,17 @@ export async function POST(req: NextRequest) {
             (providerId && pendingInvitations.has(providerId)) ||
             (vanity && pendingInvitations.has(vanity));
 
-          if (!stillPending) {
-            // Not in pending list = ACCEPTED (or withdrawn, but we assume accepted)
-            console.log(`   ✅ Connection accepted: ${prospect.first_name} ${prospect.last_name}`);
+          // Check if this prospect is in relations (first-degree connection)
+          const isConnected =
+            (providerId && relations.has(providerId)) ||
+            (vanity && relations.has(vanity));
+
+          if (stillPending) {
+            // Still in pending list = waiting for response
+            results.still_pending++;
+          } else if (isConnected) {
+            // NOT in pending AND IS in relations = ACTUALLY ACCEPTED
+            console.log(`   ✅ Connection VERIFIED accepted: ${prospect.first_name} ${prospect.last_name}`);
 
             const firstFollowUpAt = getFirstFollowUpTime();
 
@@ -298,7 +357,10 @@ export async function POST(req: NextRequest) {
               console.log(`      📅 Follow-up scheduled: ${firstFollowUpAt.toISOString()}`);
             }
           } else {
-            results.still_pending++;
+            // NOT in pending AND NOT in relations = declined/withdrawn/expired
+            console.log(`   ⚠️  Not connected (declined/withdrawn/expired): ${prospect.first_name} ${prospect.last_name}`);
+            results.not_connected++;
+            // Don't change status - leave as connection_request_sent for manual review
           }
         }
 
@@ -313,8 +375,9 @@ export async function POST(req: NextRequest) {
 
     console.log(`\n📊 Polling Summary:`);
     console.log(`   - Checked: ${results.checked}`);
-    console.log(`   - Accepted: ${results.accepted}`);
+    console.log(`   - Accepted (verified in relations): ${results.accepted}`);
     console.log(`   - Still pending: ${results.still_pending}`);
+    console.log(`   - Not connected (declined/withdrawn/expired): ${results.not_connected}`);
     console.log(`   - Errors: ${results.errors.length}`);
 
     return NextResponse.json({
@@ -336,7 +399,7 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   return NextResponse.json({
     name: 'Poll Accepted Connections',
-    description: 'Polls for accepted LinkedIn connections using invite/sent endpoint',
+    description: 'Polls for accepted LinkedIn connections using invite/sent AND relations endpoints',
     schedule: 'Every 2 hours via Netlify cron',
     endpoint: '/api/cron/poll-accepted-connections',
     method: 'POST',
@@ -346,9 +409,15 @@ export async function GET(req: NextRequest) {
     },
     approach: [
       '1. Fetch ALL pending invitations via /api/v1/users/invite/sent',
-      '2. Compare with our DB prospects marked as connection_request_sent',
-      '3. Any NOT in pending list = accepted',
-      '4. Update status to connected and schedule follow-up'
-    ]
+      '2. Fetch ALL first-degree connections via /api/v1/users/relations',
+      '3. Compare with our DB prospects marked as connection_request_sent',
+      '4. Mark as ACCEPTED only if: NOT in pending AND IS in relations',
+      '5. This prevents false positives from declined/withdrawn/expired invitations'
+    ],
+    results: {
+      'still_pending': 'In pending invitations - waiting for response',
+      'accepted': 'Verified in relations list - actually accepted',
+      'not_connected': 'Not pending but not in relations - declined/withdrawn/expired'
+    }
   });
 }
