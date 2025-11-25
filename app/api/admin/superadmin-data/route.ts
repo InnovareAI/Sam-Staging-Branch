@@ -1,7 +1,13 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '@/lib/security/route-auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // CRITICAL: Require admin authentication
+  // This prevents unauthorized access to all workspace/member data
+  const { error: authError } = await requireAdmin(request);
+  if (authError) return authError;
+
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

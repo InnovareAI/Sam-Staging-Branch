@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { detectCorruptedCookiesInRequest, clearAllAuthCookies } from '@/lib/auth/cookie-cleanup';
+// NOTE: Cookie cleanup imports removed - aggressive cleanup was causing constant logouts
 
 // InnovareAI workspace ID - only members of this workspace can access /admin routes
 const INNOVARE_AI_WORKSPACE_ID = 'babdcab8-1a78-4b2f-913e-6e9fd9821009';
@@ -14,25 +14,9 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // TEMPORARY: Disable aggressive cookie cleanup to debug issue
-  // TODO: Re-enable once we verify cookie format is correct
-  /*
-  const allCookies = request.cookies.getAll();
-  const corruptedCookies = detectCorruptedCookiesInRequest(allCookies);
-
-  if (corruptedCookies.length > 0) {
-    console.warn('[Middleware] Detected corrupted cookies - clearing and redirecting to signin');
-
-    // Redirect to signin with cleared cookies
-    const loginUrl = new URL('/signin', request.url);
-    loginUrl.searchParams.set('message', 'Your session has expired. Please sign in again.');
-
-    response = NextResponse.redirect(loginUrl);
-    clearAllAuthCookies(response);
-
-    return response;
-  }
-  */
+  // NOTE: Aggressive cookie cleanup was disabled (Nov 2025) because it was
+  // causing constant logouts for users with valid sessions. If client creation
+  // fails (line 65-71), we allow the request through and let pages handle auth.
 
   // CRITICAL: Create Supabase client with middleware cookie handling
   let supabase;
@@ -73,10 +57,8 @@ export async function middleware(request: NextRequest) {
 
   // Check if this is an admin route
   if (request.nextUrl.pathname.startsWith('/admin')) {
-    // TEMPORARY: Bypass auth for /admin/superadmin to preview redesign
-    if (request.nextUrl.pathname === '/admin/superadmin' || request.nextUrl.pathname === '/admin/superadmin-modern') {
-      return response;
-    }
+    // All admin routes require authentication + InnovareAI workspace membership
+    // (bypass removed Nov 25, 2025 - was security vulnerability)
 
     try {
       // Get user from session
