@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
 
     console.log('✅ Cron secret validated. Processing send queue...');
 
-    // 1. Find NEXT message due to send (order by scheduled_for ASC, limit 1)
+    // 1. Find due messages (get more than 1 so we can skip blocked accounts)
     const now = new Date().toISOString();
     console.log(`⏰ Current time: ${now}`);
 
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
       .eq('status', 'pending')
       .lte('scheduled_for', now)
       .order('scheduled_for', { ascending: true })
-      .limit(1);
+      .limit(50); // Get up to 50 to find a sendable one
 
     if (fetchError) {
       console.error('❌ Queue fetch error:', fetchError);
@@ -148,7 +148,91 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const queueItem = queuedMessages[0];
+    // Try each message until we find one we can send
+    let queueItem = null;
+    let skippedAccounts: string[] = [];
+
+    for (const candidate of queuedMessages) {
+      // Quick check: have we already skipped this campaign's account?
+      const candidateCampaignId = candidate.campaign_id;
+
+      // Get campaign to check LinkedIn account
+      const { data: candidateCampaign } = await supabase
+        .from('campaigns')
+        .select('linkedin_account_id, schedule_settings')
+        .eq('id', candidateCampaignId)
+        .single();
+
+      if (!candidateCampaign) continue;
+
+      const accountId = candidateCampaign.linkedin_account_id;
+
+      // Skip if we already know this account is blocked
+      if (skippedAccounts.includes(accountId)) continue;
+
+      // Check business hours/weekends/holidays for this campaign
+      if (!canSendMessage(new Date(), candidateCampaign.schedule_settings)) {
+        console.log(`⏸️  Campaign ${candidateCampaignId} blocked by schedule`);
+        skippedAccounts.push(accountId);
+        continue;
+      }
+
+      // Check 30-min spacing for this account
+      const MIN_SPACING_MINUTES = 30;
+      const spacingCutoff = new Date(Date.now() - MIN_SPACING_MINUTES * 60 * 1000);
+
+      const { data: accountCampaigns } = await supabase
+        .from('campaigns')
+        .select('id')
+        .eq('linkedin_account_id', accountId);
+
+      const accountCampaignIds = accountCampaigns?.map(c => c.id) || [];
+
+      const { data: recentlySent } = await supabase
+        .from('send_queue')
+        .select('sent_at')
+        .eq('status', 'sent')
+        .in('campaign_id', accountCampaignIds)
+        .gte('sent_at', spacingCutoff.toISOString())
+        .limit(1);
+
+      if (recentlySent && recentlySent.length > 0) {
+        console.log(`⏸️  Account ${accountId} blocked by 30-min spacing`);
+        skippedAccounts.push(accountId);
+        continue;
+      }
+
+      // Check daily cap for this account
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const { data: sentToday } = await supabase
+        .from('send_queue')
+        .select('id')
+        .eq('status', 'sent')
+        .in('campaign_id', accountCampaignIds)
+        .gte('sent_at', todayStart.toISOString());
+
+      if ((sentToday?.length || 0) >= 20) {
+        console.log(`⏸️  Account ${accountId} blocked by daily cap (20/day)`);
+        skippedAccounts.push(accountId);
+        continue;
+      }
+
+      // This message can be sent!
+      queueItem = candidate;
+      break;
+    }
+
+    if (!queueItem) {
+      console.log(`✅ No sendable messages (${skippedAccounts.length} accounts blocked)`);
+      return NextResponse.json({
+        success: true,
+        processed: 0,
+        message: `All due messages blocked by limits`,
+        skipped_accounts: skippedAccounts.length
+      });
+    }
     console.log(`🔍 Processing queue item:`, {
       id: queueItem.id,
       campaign_id: queueItem.campaign_id,
@@ -157,7 +241,7 @@ export async function POST(req: NextRequest) {
       scheduled_for: queueItem.scheduled_for
     });
 
-    // 2. Fetch campaign details
+    // 2. Fetch campaign details (already validated in loop, but need full data)
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
       .select('id, campaign_name, linkedin_account_id, schedule_settings, workspace_id')
@@ -167,22 +251,6 @@ export async function POST(req: NextRequest) {
     if (campaignError || !campaign) {
       console.error('❌ Campaign not found:', campaignError);
       return NextResponse.json({ error: 'Campaign not found' }, { status: 400 });
-    }
-
-    // 2.5 Check if we can send NOW based on campaign schedule
-    // If schedule_settings exists, check against it. Otherwise use defaults.
-    if (!canSendMessage(new Date(), campaign.schedule_settings)) {
-      console.log('⏸️  Campaign schedule restriction active. Skipping send.');
-
-      // OPTIONAL: We could update the scheduled_for time to the next valid window here,
-      // but simply skipping allows the cron to check again later (or we can rely on the randomizer's initial scheduling).
-      // For now, we just skip this execution.
-
-      return NextResponse.json({
-        success: true,
-        processed: 0,
-        message: 'Skipped due to schedule restrictions'
-      });
     }
 
     // 3. Fetch workspace account
@@ -198,53 +266,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'LinkedIn account not found' }, { status: 400 });
     }
 
-    // 3.5. Check daily cap PER LINKEDIN ACCOUNT (20 connection requests per day per account)
-    const DAILY_LIMIT_PER_ACCOUNT = 20;
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
-    // Count messages sent TODAY from THIS LinkedIn account
-    const { data: sentTodayForAccount, error: countError } = await supabase
-      .from('send_queue')
-      .select('id, campaign_id')
-      .eq('status', 'sent')
-      .gte('sent_at', todayStart.toISOString());
-
-    if (countError) {
-      console.error('❌ Error checking daily count:', countError);
-    }
-
-    // Filter by campaigns that use this LinkedIn account
-    // CRITICAL FIX (Nov 25): Count actual MESSAGES sent, not just campaigns
-    let sentTodayCount = 0;
-    if (sentTodayForAccount && sentTodayForAccount.length > 0) {
-      const campaignIds = [...new Set(sentTodayForAccount.map(item => item.campaign_id))];
-      const { data: campaignsForAccount } = await supabase
-        .from('campaigns')
-        .select('id')
-        .eq('linkedin_account_id', campaign.linkedin_account_id)
-        .in('id', campaignIds);
-
-      // Count the NUMBER OF MESSAGES from campaigns using this LinkedIn account
-      // (not the number of campaigns, which was the bug)
-      const accountCampaignIds = new Set(campaignsForAccount?.map(c => c.id) || []);
-      sentTodayCount = sentTodayForAccount.filter(item =>
-        accountCampaignIds.has(item.campaign_id)
-      ).length;
-    }
-
-    console.log(`📊 Connection requests sent today for account "${linkedinAccount.account_name}": ${sentTodayCount}/${DAILY_LIMIT_PER_ACCOUNT}`);
-
-    if (sentTodayCount >= DAILY_LIMIT_PER_ACCOUNT) {
-      console.log(`🛑 Daily limit reached for this LinkedIn account. Skipping send.`);
-      return NextResponse.json({
-        success: true,
-        processed: 0,
-        message: `Daily limit reached for account (${sentTodayCount}/${DAILY_LIMIT_PER_ACCOUNT})`,
-        account: linkedinAccount.account_name,
-        remaining_in_queue: 0
-      });
-    }
+    // Note: Schedule, spacing, and daily cap checks already done in the selection loop above
 
     // 4. Fetch prospect details
     const { data: prospect, error: prospectError } = await supabase
@@ -431,19 +453,25 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     name: 'Process Send Queue',
-    description: 'Sends one queued CR per minute (throttled, safe approach)',
+    description: 'Processes queued CRs for ALL workspaces with per-account limits',
     endpoint: '/api/cron/process-send-queue',
     method: 'POST',
-    schedule: '* * * * * (every minute via cron-job.org)',
+    schedule: '* * * * * (every minute via Netlify scheduled function)',
+    limits_per_linkedin_account: {
+      daily_max: '20 CRs per day',
+      min_spacing: '30 minutes between CRs',
+      business_hours: '7 AM - 6 PM (configurable per campaign)',
+      weekends: 'Skipped by default (configurable)',
+      holidays: 'US holidays skipped by default (configurable)'
+    },
     behavior: {
-      per_execution: '1 message',
-      rate: '1 message per minute = 60 messages per hour',
-      daily_max: '1440 messages per day (but limited by send_queue size)',
-      safety: 'Only processes 1 message at a time, slow and safe'
+      per_execution: '1 message (picks oldest due across all accounts)',
+      multi_tenant: 'Processes ALL workspaces in single run',
+      spacing_enforced: 'Checks last sent time per LinkedIn account'
     },
     requirements: {
       cron_secret: 'x-cron-secret header (matches CRON_SECRET env var)',
-      database: 'send_queue table must exist'
+      database: 'send_queue, campaigns, workspace_accounts tables'
     }
   });
 }
