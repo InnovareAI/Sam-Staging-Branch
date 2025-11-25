@@ -116,8 +116,9 @@ export async function POST(req: NextRequest) {
             const prospectName = `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim() || 'Unknown';
             console.log(`  → ${prospectName} at ${prospect.company_name || 'Unknown company'}`);
 
-            // Call direct Unipile API to send connection request
-            const response = await fetch(`${baseUrl}/api/campaigns/direct/send-connection-requests`, {
+            // Call queue-based API to send connection request
+            // CRITICAL FIX (Nov 25): Use -fast endpoint, not disabled direct endpoint
+            const response = await fetch(`${baseUrl}/api/campaigns/direct/send-connection-requests-fast`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

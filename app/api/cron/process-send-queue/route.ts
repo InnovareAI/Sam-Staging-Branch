@@ -215,16 +215,22 @@ export async function POST(req: NextRequest) {
     }
 
     // Filter by campaigns that use this LinkedIn account
+    // CRITICAL FIX (Nov 25): Count actual MESSAGES sent, not just campaigns
     let sentTodayCount = 0;
     if (sentTodayForAccount && sentTodayForAccount.length > 0) {
-      const campaignIds = sentTodayForAccount.map(item => item.campaign_id);
+      const campaignIds = [...new Set(sentTodayForAccount.map(item => item.campaign_id))];
       const { data: campaignsForAccount } = await supabase
         .from('campaigns')
         .select('id')
         .eq('linkedin_account_id', campaign.linkedin_account_id)
         .in('id', campaignIds);
 
-      sentTodayCount = campaignsForAccount?.length || 0;
+      // Count the NUMBER OF MESSAGES from campaigns using this LinkedIn account
+      // (not the number of campaigns, which was the bug)
+      const accountCampaignIds = new Set(campaignsForAccount?.map(c => c.id) || []);
+      sentTodayCount = sentTodayForAccount.filter(item =>
+        accountCampaignIds.has(item.campaign_id)
+      ).length;
     }
 
     console.log(`📊 Connection requests sent today for account "${linkedinAccount.account_name}": ${sentTodayCount}/${DAILY_LIMIT_PER_ACCOUNT}`);

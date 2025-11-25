@@ -52,8 +52,9 @@ export async function POST(request: NextRequest) {
           }, { status: 400 });
         }
 
-        // Call direct Unipile LinkedIn campaign execution
-        const campaignResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/campaigns/direct/send-connection-requests`, {
+        // Call queue-based Unipile LinkedIn campaign execution
+        // CRITICAL FIX (Nov 25): Use -fast endpoint, not disabled direct endpoint
+        const campaignResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/campaigns/direct/send-connection-requests-fast`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
