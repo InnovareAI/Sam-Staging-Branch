@@ -1,0 +1,154 @@
+            issue            | affected_records 
+-----------------------------+------------------
+ Orphaned campaign_prospects |                0
+(1 row)
+
+           issue            | affected_records 
+----------------------------+------------------
+ Orphaned campaign_messages |                0
+(1 row)
+
+               issue               | affected_records 
+-----------------------------------+------------------
+ Orphaned send_queue (no campaign) |                0
+(1 row)
+
+               issue               | affected_records 
+-----------------------------------+------------------
+ Orphaned send_queue (no prospect) |                0
+(1 row)
+
+              issue               | affected_records 
+----------------------------------+------------------
+ Campaigns with NULL workspace_id |                0
+(1 row)
+
+                     issue                     | affected_records 
+-----------------------------------------------+------------------
+ Campaign prospects with NULL linkedin_user_id |              138
+(1 row)
+
+                  issue                   | affected_records 
+------------------------------------------+------------------
+ Campaign prospects with NULL campaign_id |                0
+(1 row)
+
+              issue               | affected_records 
+----------------------------------+------------------
+ Duplicate prospects in campaigns |               12
+(1 row)
+
+                 issue                  | affected_records 
+----------------------------------------+------------------
+ Active campaigns with no queue entries |                0
+(1 row)
+
+psql:/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/temp/db_analysis.sql:84: ERROR:  column cp.connection_request_sent does not exist
+LINE 5: WHERE cp.connection_request_sent = 'pending'
+              ^
+                   issue                   | affected_records 
+-------------------------------------------+------------------
+ Stuck queue entries (past scheduled time) |                3
+(1 row)
+
+                 issue                 | affected_records 
+---------------------------------------+------------------
+ Queue entries with NULL scheduled_for |                0
+(1 row)
+
+psql:/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/temp/db_analysis.sql:108: ERROR:  column cp.connection_request_sent does not exist
+LINE 4: WHERE cp.connection_request_sent IN ('sent', 'accepted')
+              ^
+                issue                | affected_records 
+-------------------------------------+------------------
+ Campaigns with invalid workspace_id |                0
+(1 row)
+
+psql:/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/temp/db_analysis.sql:123: ERROR:  operator does not exist: uuid = text
+LINE 4: ...NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = wp.works...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+                 issue                  | affected_records 
+----------------------------------------+------------------
+ Workspace_members with invalid user_id |                1
+(1 row)
+
+                    issue                    | affected_records 
+---------------------------------------------+------------------
+ Workspace_members with invalid workspace_id |                0
+(1 row)
+
+           note           |        details         
+--------------------------+------------------------
+ Missing indexes analysis | See index report below
+(1 row)
+
+   analysis   | schemaname |          tablename          |  size   | index_count 
+--------------+------------+-----------------------------+---------+-------------
+ Large tables | public     | knowledge_base_vectors      | 13 MB   |           4
+ Large tables | public     | sam_conversation_messages   | 2480 kB |           5
+ Large tables | public     | sam_icp_knowledge_entries   | 2272 kB |           9
+ Large tables | public     | prospect_approval_data      | 1504 kB |           9
+ Large tables | public     | knowledge_base_documents    | 936 kB  |           3
+ Large tables | public     | campaign_prospects          | 912 kB  |          12
+ Large tables | public     | workspace_prospects         | 808 kB  |           6
+ Large tables | public     | prospect_approval_decisions | 696 kB  |           5
+ Large tables | public     | campaigns                   | 672 kB  |          14
+ Large tables | public     | knowledge_base              | 672 kB  |           5
+(10 rows)
+
+           issue            |             table_name             
+----------------------------+------------------------------------
+ Tables without RLS enabled | campaign_prospects_backup_20241124
+ Tables without RLS enabled | campaigns_backup_20241124
+ Tables without RLS enabled | document_ai_analysis
+ Tables without RLS enabled | knowledge_base_vectors
+ Tables without RLS enabled | password_reset_tokens
+ Tables without RLS enabled | sam_knowledge_summaries
+ Tables without RLS enabled | user_organizations
+(7 rows)
+
+           issue           | affected_records 
+---------------------------+------------------
+ Email queue stuck entries |                0
+(1 row)
+
+psql:/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/temp/db_analysis.sql:184: ERROR:  column eq.workspace_id does not exist
+LINE 4: ...T EXISTS (SELECT 1 FROM workspaces w WHERE w.id = eq.workspa...
+                                                             ^
+psql:/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/temp/db_analysis.sql:194: ERROR:  column "scheduled_for" does not exist
+LINE 5: AND scheduled_for < NOW() - INTERVAL '1 hour';
+            ^
+               issue                | affected_records 
+------------------------------------+------------------
+ Users without workspace membership |                2
+(1 row)
+
+                 issue                 | affected_records 
+---------------------------------------+------------------
+ Unipile accounts with invalid user_id |                0
+(1 row)
+
+             issue             | affected_records 
+-------------------------------+------------------
+ Unipile accounts disconnected |               18
+(1 row)
+
+          issue          | affected_records 
+-------------------------+------------------
+ Workspaces without tier |                9
+(1 row)
+
+                 issue                  | affected_records 
+----------------------------------------+------------------
+ Workspace_tiers with invalid workspace |                0
+(1 row)
+
+                     issue                     | affected_records 
+-----------------------------------------------+------------------
+ Knowledge base entries with invalid workspace |                0
+(1 row)
+
+psql:/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/temp/db_analysis.sql:249: ERROR:  column kbs.knowledge_base_id does not exist
+LINE 4: ...TS (SELECT 1 FROM knowledge_base kb WHERE kb.id = kbs.knowle...
+                                                             ^

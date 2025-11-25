@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const campaignName = formData.get('campaign_name') as string || 'CSV Upload';
+    const campaignId = formData.get('campaign_id') as string || null;
     const source = formData.get('source') as string || 'csv-upload';
     const workspaceId = formData.get('workspace_id') as string;
 
@@ -350,6 +351,7 @@ export async function POST(request: NextRequest) {
       .insert({
         workspace_id: workspaceId,
         user_id: user.id,
+        campaign_id: campaignId,
         campaign_name: campaignName,
         campaign_tag: 'csv-import',
         prospect_source: source,

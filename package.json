@@ -34,6 +34,7 @@
     "migrate:kb": "node scripts/migrate-legacy-knowledge-base.js",
     "fix-workspaces": "npx tsx scripts/fix-user-workspaces.ts",
     "check-workspaces": "npx tsx scripts/fix-user-workspaces.ts",
+    "backfill-linkedin-ids": "npx tsx scripts/backfill-linkedin-user-ids.ts",
     "pre-commit": "npm run lint && npm run update-docs"
   },
   "dependencies": {

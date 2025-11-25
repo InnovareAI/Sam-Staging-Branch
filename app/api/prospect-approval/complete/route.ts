@@ -78,13 +78,64 @@ export async function POST(request: NextRequest) {
 
     if (exportError) throw exportError
 
+    // CRITICAL FIX: Add approved prospects to campaign if campaign_id is specified
+    let addedToCampaign = 0;
+    if (session.campaign_id && approvedProspects && approvedProspects.length > 0) {
+      console.log(`Adding ${approvedProspects.length} approved prospects to campaign ${session.campaign_id}`);
+
+      // Transform prospects to campaign_prospects format
+      const campaignProspects = approvedProspects.map((prospect: any) => {
+        // Extract name parts
+        const nameParts = prospect.name?.split(' ') || ['Unknown'];
+        const firstName = nameParts[0] || 'Unknown';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        // Extract email and LinkedIn URL from contact object
+        const email = prospect.contact?.email || null;
+        const linkedinUrl = prospect.contact?.linkedin_url || null;
+
+        return {
+          campaign_id: session.campaign_id,
+          workspace_id: session.workspace_id,
+          first_name: firstName,
+          last_name: lastName,
+          email: email,
+          company_name: prospect.company?.name || '',
+          title: prospect.title || '',
+          location: prospect.location || null,
+          linkedin_url: linkedinUrl,
+          status: 'pending',
+          personalization_data: {
+            source: 'csv_upload_approval',
+            session_id: session_id,
+            approved_at: new Date().toISOString()
+          }
+        };
+      });
+
+      const { data: insertedProspects, error: insertError } = await supabase
+        .from('campaign_prospects')
+        .insert(campaignProspects)
+        .select('id');
+
+      if (insertError) {
+        console.error('Error adding prospects to campaign:', insertError);
+        // Don't throw - still complete the session but log the error
+      } else {
+        addedToCampaign = insertedProspects?.length || 0;
+        console.log(`✅ Successfully added ${addedToCampaign} prospects to campaign`);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       session_completed: true,
       approved_prospects: approvedProspects?.length || 0,
+      added_to_campaign: addedToCampaign,
+      campaign_id: session.campaign_id,
       learning_insights: learningInsights,
       export_id: exportRecord.id,
-      message: `Session completed with ${approvedProspects?.length || 0} approved prospects`
+      message: `Session completed with ${approvedProspects?.length || 0} approved prospects${addedToCampaign > 0 ? `, ${addedToCampaign} added to campaign` : ''}`
     })
 
   } catch (error) {
