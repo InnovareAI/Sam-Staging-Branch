@@ -100,6 +100,41 @@ async function unipileRequest(endpoint: string, options: RequestInit = {}) {
   return response.json();
 }
 
+/**
+ * Resolve LinkedIn URL or vanity to provider_id
+ * If already a provider_id (starts with ACo), return as-is
+ * Otherwise, extract vanity from URL and lookup via Unipile
+ */
+async function resolveToProviderId(linkedinUserIdOrUrl: string, accountId: string): Promise<string> {
+  // Already a provider_id (ACo format)
+  if (linkedinUserIdOrUrl.startsWith('ACo')) {
+    return linkedinUserIdOrUrl;
+  }
+
+  // Extract vanity from URL
+  let vanity = linkedinUserIdOrUrl;
+
+  // Handle full URLs
+  if (linkedinUserIdOrUrl.includes('linkedin.com')) {
+    const match = linkedinUserIdOrUrl.match(/linkedin\.com\/in\/([^\/\?#]+)/);
+    if (match) {
+      vanity = match[1];
+    }
+  }
+
+  console.log(`🔍 Resolving vanity "${vanity}" to provider_id...`);
+
+  // Use legacy endpoint (NOT /api/v1/users/profile?identifier= which is broken for vanities with numbers)
+  const profile = await unipileRequest(`/api/v1/users/${encodeURIComponent(vanity)}?account_id=${accountId}`);
+
+  if (!profile.provider_id) {
+    throw new Error(`Could not resolve provider_id for: ${vanity}`);
+  }
+
+  console.log(`✅ Resolved to provider_id: ${profile.provider_id}`);
+  return profile.provider_id;
+}
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -319,16 +354,37 @@ export async function POST(req: NextRequest) {
     console.log(`   Scheduled: ${queueItem.scheduled_for}`);
 
     try {
-      // 2. Send message via Unipile (CR or follow-up)
+      // 2. Resolve linkedin_user_id to provider_id (handles URLs and vanities)
+      let providerId = queueItem.linkedin_user_id;
+
+      // If it's a URL or vanity (not ACo format), resolve it
+      if (!providerId.startsWith('ACo')) {
+        console.log(`🔄 linkedin_user_id is URL/vanity, resolving to provider_id...`);
+        providerId = await resolveToProviderId(providerId, unipileAccountId);
+
+        // Update the queue record with resolved provider_id for future retries
+        await supabase
+          .from('send_queue')
+          .update({ linkedin_user_id: providerId })
+          .eq('id', queueItem.id);
+
+        // Also update the prospect record
+        await supabase
+          .from('campaign_prospects')
+          .update({ linkedin_user_id: providerId })
+          .eq('id', prospect.id);
+      }
+
+      // 3. Send message via Unipile (CR or follow-up)
       const payload = {
         account_id: unipileAccountId,
-        provider_id: queueItem.linkedin_user_id,
+        provider_id: providerId,
         message: queueItem.message
       };
 
       console.log(`📨 Unipile payload:`, JSON.stringify(payload, null, 2));
       console.log(`📨 Account ID: ${unipileAccountId}`);
-      console.log(`📨 Provider ID: ${queueItem.linkedin_user_id}`);
+      console.log(`📨 Provider ID: ${providerId}`);
 
       await unipileRequest('/api/v1/users/invite', {
         method: 'POST',

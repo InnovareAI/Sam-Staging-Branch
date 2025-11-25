@@ -57,6 +57,54 @@ function canSendNow(timezone = 'America/New_York'): boolean {
   return true;
 }
 
+/**
+ * Resolve LinkedIn URL or vanity to provider_id
+ * If already a provider_id (starts with ACo), return as-is
+ * Otherwise, extract vanity from URL and lookup via Unipile
+ */
+async function resolveToProviderId(linkedinUserIdOrUrl: string, accountId: string): Promise<string> {
+  // Already a provider_id (ACo format)
+  if (linkedinUserIdOrUrl.startsWith('ACo')) {
+    return linkedinUserIdOrUrl;
+  }
+
+  // Extract vanity from URL
+  let vanity = linkedinUserIdOrUrl;
+  if (linkedinUserIdOrUrl.includes('linkedin.com')) {
+    const match = linkedinUserIdOrUrl.match(/linkedin\.com\/in\/([^\/\?#]+)/);
+    if (match) {
+      vanity = match[1];
+    }
+  }
+
+  console.log(`🔍 Resolving vanity "${vanity}" to provider_id...`);
+
+  // Use legacy endpoint (NOT /api/v1/users/profile?identifier= which is broken for vanities with numbers)
+  const response = await fetch(
+    `${UNIPILE_BASE_URL}/api/v1/users/${encodeURIComponent(vanity)}?account_id=${accountId}`,
+    {
+      headers: {
+        'X-API-KEY': UNIPILE_API_KEY,
+        'Accept': 'application/json'
+      }
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+    throw new Error(error.title || error.message || `HTTP ${response.status}`);
+  }
+
+  const profile = await response.json();
+
+  if (!profile.provider_id) {
+    throw new Error(`Could not resolve provider_id for: ${vanity}`);
+  }
+
+  console.log(`✅ Resolved to provider_id: ${profile.provider_id}`);
+  return profile.provider_id;
+}
+
 // Send message via Unipile chat API
 async function sendFollowUpMessage(params: {
   account_id: string;
@@ -290,10 +338,30 @@ export async function POST(req: NextRequest) {
 
         console.log(`   Sending follow-up #${currentIndex + 1}: "${personalizedMessage.substring(0, 50)}..."`);
 
+        // Resolve linkedin_user_id to provider_id if needed
+        let providerId = prospect.linkedin_user_id;
+        if (!providerId.startsWith('ACo')) {
+          console.log(`🔄 Resolving URL/vanity to provider_id...`);
+          try {
+            providerId = await resolveToProviderId(providerId, linkedinAccount.unipile_account_id);
+
+            // Update DB with resolved provider_id for future use
+            await supabase
+              .from('campaign_prospects')
+              .update({ linkedin_user_id: providerId })
+              .eq('id', prospect.id);
+          } catch (resolveError) {
+            console.error(`❌ Failed to resolve provider_id: ${resolveError}`);
+            results.failed++;
+            results.errors.push({ prospect: prospectName, error: `Failed to resolve provider_id: ${resolveError}` });
+            continue;
+          }
+        }
+
         // Send follow-up message
         const sendResult = await sendFollowUpMessage({
           account_id: linkedinAccount.unipile_account_id,
-          attendee_provider_id: prospect.linkedin_user_id,
+          attendee_provider_id: providerId,
           text: personalizedMessage
         });
 

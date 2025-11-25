@@ -84,6 +84,7 @@ interface DataCollectionHubProps {
   initialUploadedData?: ProspectData[]
   userSession?: any  // Pass session from parent to avoid auth issues
   workspaceId?: string | null  // Pass workspace ID from parent
+  workspacesLoading?: boolean  // True while workspaces are being loaded
 }
 
 // REMOVED: Dummy prospect data generation function
@@ -253,6 +254,7 @@ export default function DataCollectionHub({
   className = '',
   userSession,
   workspaceId,
+  workspacesLoading = false,
   initialUploadedData = []
 }: DataCollectionHubProps) {
   // Initialize with uploaded data from chat only (no dummy data)
@@ -266,19 +268,21 @@ export default function DataCollectionHub({
   // Users can only upload to their own workspace
   const actualWorkspaceId = workspaceId
 
-  console.log('🔍 [DATA APPROVAL] Workspace ID from parent:', workspaceId)
+  console.log('🔍 [DATA APPROVAL] Workspace ID from parent:', workspaceId, 'Loading:', workspacesLoading)
 
-  // Show warning if no workspace after 2 seconds
+  // Show warning only if no workspace AND workspaces finished loading
+  // Don't show warning while workspaces are still being loaded
   useEffect(() => {
-    if (!actualWorkspaceId) {
+    if (!actualWorkspaceId && !workspacesLoading) {
+      // Only show warning after loading is complete and still no workspace
       const timer = setTimeout(() => {
         setShowWorkspaceWarning(true)
-      }, 2000)
+      }, 1000) // Reduced to 1 second since loading is complete
       return () => clearTimeout(timer)
     } else {
       setShowWorkspaceWarning(false)
     }
-  }, [actualWorkspaceId])
+  }, [actualWorkspaceId, workspacesLoading])
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)

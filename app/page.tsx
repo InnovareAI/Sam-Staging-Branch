@@ -3023,6 +3023,7 @@ export default function Page() {
           <DataCollectionHub
             userSession={session}
             workspaceId={currentWorkspace?.id || null}
+            workspacesLoading={workspacesLoading}
             onDataCollected={(data, source) => {
               // Handle data collected from DataCollectionHub
               console.log('Data collected:', data, 'Source:', source);
@@ -3043,6 +3044,7 @@ export default function Page() {
                 <DataCollectionHub
                   userSession={session}
                   workspaceId={currentWorkspace?.id || null}
+                  workspacesLoading={workspacesLoading}
                   onDataCollected={(data, source) => {
                     console.log('Data collected:', data, 'Source:', source);
                   }}
