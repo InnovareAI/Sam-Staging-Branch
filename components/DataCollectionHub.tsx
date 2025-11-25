@@ -1882,9 +1882,19 @@ export default function DataCollectionHub({
             {/* Info message about next steps */}
             {availableProspects.length > 0 && (
               <div className="text-sm text-gray-400 flex items-center gap-2">
-                <span>✓ {availableProspects.length} approved & saved to database</span>
-                <span className="text-gray-500">•</span>
-                <span className="text-blue-400">Optional: Create new or add to existing campaign</span>
+                {selectedProspectIds.size > 0 ? (
+                  <>
+                    <span className="text-blue-400 font-semibold">✓ {selectedProspectIds.size} selected</span>
+                    <span className="text-gray-500">•</span>
+                    <span>{availableProspects.length} total approved & saved</span>
+                  </>
+                ) : (
+                  <>
+                    <span>✓ {availableProspects.length} approved & saved to database</span>
+                    <span className="text-gray-500">•</span>
+                    <span className="text-blue-400">Select prospects or create campaign with all</span>
+                  </>
+                )}
               </div>
             )}
               </div>
