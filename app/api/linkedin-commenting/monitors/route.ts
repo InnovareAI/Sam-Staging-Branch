@@ -109,11 +109,29 @@ export async function POST(request: NextRequest) {
     console.log('✅ Workspace ID:', workspaceId);
 
     console.log('💾 Step 4: Inserting into database...');
-    const monitorData = {
-      ...body,
+
+    // Explicitly select only valid columns (defensive against schema mismatches)
+    const monitorData: Record<string, unknown> = {
       workspace_id: workspaceId,
-      created_by: user.id
+      created_by: user.id,
+      // Required fields
+      hashtags: body.hashtags || [],
+      keywords: body.keywords || [],
+      status: body.status || 'active',
     };
+
+    // Add optional fields only if provided
+    if (body.name) monitorData.name = body.name;
+    if (body.n8n_workflow_id) monitorData.n8n_workflow_id = body.n8n_workflow_id;
+    if (body.n8n_webhook_url) monitorData.n8n_webhook_url = body.n8n_webhook_url;
+    if (body.timezone) monitorData.timezone = body.timezone;
+    if (body.daily_start_time) monitorData.daily_start_time = body.daily_start_time;
+    if (body.auto_approve_enabled !== undefined) monitorData.auto_approve_enabled = body.auto_approve_enabled;
+    if (body.auto_approve_start_time) monitorData.auto_approve_start_time = body.auto_approve_start_time;
+    if (body.auto_approve_end_time) monitorData.auto_approve_end_time = body.auto_approve_end_time;
+    if (body.metadata) monitorData.metadata = body.metadata;
+
+    console.log('📝 Monitor data to insert:', JSON.stringify(monitorData, null, 2));
 
     const { data, error } = await supabase
       .from('linkedin_post_monitors')
