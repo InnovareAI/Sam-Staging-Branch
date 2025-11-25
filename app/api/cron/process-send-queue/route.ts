@@ -413,21 +413,44 @@ export async function POST(req: NextRequest) {
     } catch (sendError: any) {
       console.error(`❌ Failed to send CR:`, sendError.message);
 
-      // Mark as failed, but don't delete from queue
+      // Determine specific status based on error message
+      let prospectStatus = 'failed';
+      let queueStatus = 'failed';
+      const errorMsg = sendError.message?.toLowerCase() || '';
+
+      if (errorMsg.includes('should delay') || errorMsg.includes('invitation') || errorMsg.includes('already')) {
+        // Already has pending invitation
+        prospectStatus = 'already_invited';
+        queueStatus = 'skipped';
+      } else if (errorMsg.includes('withdrawn') || errorMsg.includes('declined')) {
+        // Previously withdrawn or declined
+        prospectStatus = 'invitation_declined';
+        queueStatus = 'failed';
+      } else if (errorMsg.includes('rate') || errorMsg.includes('limit') || errorMsg.includes('throttle')) {
+        // Rate limited - can retry later
+        prospectStatus = 'rate_limited';
+        queueStatus = 'pending'; // Keep in queue for retry
+      } else if (errorMsg.includes('connected') || errorMsg.includes('first_degree') || errorMsg.includes('1st degree')) {
+        // Already connected
+        prospectStatus = 'connected';
+        queueStatus = 'skipped';
+      }
+
+      // Mark queue item
       await supabase
         .from('send_queue')
         .update({
-          status: 'failed',
+          status: queueStatus,
           error_message: sendError.message,
           updated_at: new Date().toISOString()
         })
         .eq('id', queueItem.id);
 
-      // Update prospect as failed too
+      // Update prospect with specific status
       await supabase
         .from('campaign_prospects')
         .update({
-          status: 'failed',
+          status: prospectStatus,
           notes: `CR send failed: ${sendError.message}`,
           updated_at: new Date().toISOString()
         })
