@@ -41,7 +41,9 @@
 [functions."process-pending-prospects"]
   schedule = "*/5 * * * *"
 
-# Scheduled function: Process send queue every minute (sends 1 CR per run = 1440 CRs/day max)
+# Scheduled function: Process send queue every minute
+# Checks ALL workspaces for due messages (each user has 30-min spacing)
+# Limits: 20 CRs/day per LinkedIn account, business hours, no weekends/holidays
 [functions."process-send-queue"]
   schedule = "* * * * *"
 
@@ -49,3 +51,9 @@
 # Compliance: 40 emails/day, 8 AM - 5 PM business hours, no weekends/holidays
 [functions."process-email-queue"]
   schedule = "*/13 * * * *"
+
+# Scheduled function: Send follow-up messages every 30 minutes
+# Processes connected prospects with due follow-ups (10 per run)
+# Compliance: 9 AM - 5 PM business hours, no weekends/holidays
+[functions."send-follow-ups"]
+  schedule = "*/30 * * * *"

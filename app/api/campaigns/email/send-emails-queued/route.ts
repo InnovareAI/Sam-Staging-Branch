@@ -154,19 +154,28 @@ export async function POST(request: NextRequest) {
     console.log(`📧 Queueing ${prospectsToQueue.length} emails for campaign ${campaignId}`);
 
     // Get email account for this campaign
-    const { data: emailAccounts } = await supabase
-      .from('workspace_integration_accounts')
-      .select('*')
+    // Table: workspace_accounts (not workspace_integration_accounts)
+    // Filter: account_type='email', connection_status='connected'
+    const { data: emailAccounts, error: emailAccountError } = await supabase
+      .from('workspace_accounts')
+      .select('id, unipile_account_id, account_name, account_identifier')
       .eq('workspace_id', campaign.workspace_id)
-      .eq('provider', 'unipile')
       .eq('account_type', 'email')
-      .eq('status', 'connected')
+      .eq('connection_status', 'connected')
       .limit(1);
+
+    if (emailAccountError) {
+      console.error('Error fetching email account:', emailAccountError);
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to fetch email account'
+      }, { status: 500 });
+    }
 
     if (!emailAccounts || emailAccounts.length === 0) {
       return NextResponse.json({
         success: false,
-        error: 'No connected email account found for this workspace'
+        error: 'No connected email account found for this workspace. Please connect an email account in Settings → Integrations.'
       }, { status: 400 });
     }
 
@@ -190,7 +199,7 @@ export async function POST(request: NextRequest) {
       return {
         campaign_id: campaignId,
         prospect_id: prospect.id,
-        email_account_id: emailAccount.provider_account_id,
+        email_account_id: emailAccount.unipile_account_id, // Use unipile_account_id from workspace_accounts
         recipient_email: prospect.email,
         subject,
         body,

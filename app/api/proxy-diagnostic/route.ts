@@ -3,9 +3,8 @@ import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    
+    // Use new SSR auth pattern (fixes session mixing issue)
+    const supabase = await createSupabaseRouteClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {

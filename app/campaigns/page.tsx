@@ -184,7 +184,8 @@ export default function CampaignsPage() {
 
     setLoading(true);
     try {
-      const response = await fetch('/api/campaigns/direct/send-connection-requests', {
+      // CRITICAL FIX (Nov 25): Use -fast endpoint, not disabled direct endpoint
+      const response = await fetch('/api/campaigns/direct/send-connection-requests-fast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

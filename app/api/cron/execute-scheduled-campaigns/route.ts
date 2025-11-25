@@ -185,9 +185,10 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        // Trigger the direct Unipile API
+        // Trigger the queue-based Unipile API
+        // CRITICAL FIX (Nov 25): Use -fast endpoint, not disabled direct endpoint
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const response = await fetch(`${baseUrl}/api/campaigns/direct/send-connection-requests`, {
+        const response = await fetch(`${baseUrl}/api/campaigns/direct/send-connection-requests-fast`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

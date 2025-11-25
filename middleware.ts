@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { detectCorruptedCookiesInRequest, clearAllAuthCookies } from '@/lib/auth/cookie-cleanup';
+// NOTE: Cookie cleanup imports removed - aggressive cleanup was causing constant logouts
 
-// InnovareAI workspace ID - only members of this workspace can access /admin routes
-const INNOVARE_AI_WORKSPACE_ID = 'babdcab8-1a78-4b2f-913e-6e9fd9821009';
+// Super admin emails - only these users can access /admin routes
+// NOTE: No shared workspaces exist - each user has their own workspace
+const SUPER_ADMIN_EMAILS = ['tl@innovareai.com', 'cl@innovareai.com'];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -14,25 +15,9 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // TEMPORARY: Disable aggressive cookie cleanup to debug issue
-  // TODO: Re-enable once we verify cookie format is correct
-  /*
-  const allCookies = request.cookies.getAll();
-  const corruptedCookies = detectCorruptedCookiesInRequest(allCookies);
-
-  if (corruptedCookies.length > 0) {
-    console.warn('[Middleware] Detected corrupted cookies - clearing and redirecting to signin');
-
-    // Redirect to signin with cleared cookies
-    const loginUrl = new URL('/signin', request.url);
-    loginUrl.searchParams.set('message', 'Your session has expired. Please sign in again.');
-
-    response = NextResponse.redirect(loginUrl);
-    clearAllAuthCookies(response);
-
-    return response;
-  }
-  */
+  // NOTE: Aggressive cookie cleanup was disabled (Nov 2025) because it was
+  // causing constant logouts for users with valid sessions. If client creation
+  // fails (line 65-71), we allow the request through and let pages handle auth.
 
   // CRITICAL: Create Supabase client with middleware cookie handling
   let supabase;
@@ -73,10 +58,8 @@ export async function middleware(request: NextRequest) {
 
   // Check if this is an admin route
   if (request.nextUrl.pathname.startsWith('/admin')) {
-    // TEMPORARY: Bypass auth for /admin/superadmin to preview redesign
-    if (request.nextUrl.pathname === '/admin/superadmin' || request.nextUrl.pathname === '/admin/superadmin-modern') {
-      return response;
-    }
+    // All admin routes require authentication + InnovareAI workspace membership
+    // (bypass removed Nov 25, 2025 - was security vulnerability)
 
     try {
       // Get user from session
@@ -94,40 +77,16 @@ export async function middleware(request: NextRequest) {
         return response;
       }
 
-      // Check if user is a member of InnovareAI workspace
-      // CRITICAL: Use service role to bypass RLS for middleware auth check
-      const supabaseAdmin = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        {
-          cookies: {
-            getAll() {
-              return request.cookies.getAll();
-            },
-            setAll(cookiesToSet) {
-              cookiesToSet.forEach(({ name, value, options }) => {
-                request.cookies.set(name, value);
-                response.cookies.set(name, value, options);
-              });
-            }
-          }
-        }
-      );
+      // Check if user is a super admin (by email)
+      // NOTE: No shared workspaces - admin access is email-based only
+      const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(user.email?.toLowerCase() || '');
 
-      const { data: membership, error: memberError } = await supabaseAdmin
-        .from('workspace_members')
-        .select('role, status')
-        .eq('workspace_id', INNOVARE_AI_WORKSPACE_ID)
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .single();
-
-      if (memberError || !membership) {
-        // User is not a member of InnovareAI workspace - show 403 error
+      if (!isSuperAdmin) {
+        // User is not a super admin - show 403 error
         return new NextResponse(
           JSON.stringify({
             error: 'Forbidden',
-            message: 'Access to admin routes is restricted to InnovareAI workspace members only.'
+            message: 'Access to admin routes is restricted to super admins only.'
           }),
           {
             status: 403,
