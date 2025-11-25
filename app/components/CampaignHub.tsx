@@ -1354,6 +1354,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
 function CampaignBuilder({
   onClose,
   initialProspects,
+  initialCampaignType,
   draftToLoad,
   onPrepareForApproval,
   workspaceId,
@@ -1365,6 +1366,7 @@ function CampaignBuilder({
 }: {
   onClose?: () => void;
   initialProspects?: any[] | null;
+  initialCampaignType?: 'email' | 'linkedin';
   draftToLoad?: any;
   onPrepareForApproval?: (campaignData: any) => void;
   workspaceId?: string | null;
@@ -7496,6 +7498,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   onCampaignCreated?.();
                 }}
                 initialProspects={selectedCampaignProspects || initialProspects}
+                initialCampaignType={initialCampaignType}
                 draftToLoad={selectedDraft}
                 onPrepareForApproval={(campaignData) => {
                   setCampaignDataForApproval(campaignData);

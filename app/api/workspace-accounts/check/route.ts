@@ -21,14 +21,17 @@ export async function GET(request: NextRequest) {
       .eq('connection_status', 'connected')
       .maybeSingle();
 
-    // Check Email connection
-    const { data: emailAccount } = await supabase
+    // Check Email connection - use limit(1) instead of maybeSingle()
+    // because user may have multiple email accounts connected
+    const { data: emailAccounts } = await supabase
       .from('workspace_accounts')
       .select('id, unipile_account_id, connection_status')
       .eq('workspace_id', workspace_id)
       .eq('account_type', 'email')
       .eq('connection_status', 'connected')
-      .maybeSingle();
+      .limit(1);
+
+    const emailAccount = emailAccounts?.[0] || null;
 
     return NextResponse.json({
       success: true,
