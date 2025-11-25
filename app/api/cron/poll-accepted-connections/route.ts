@@ -161,10 +161,15 @@ export async function POST(req: NextRequest) {
 
     console.log('🔍 Polling for accepted LinkedIn connections...');
 
-    // Add random delay (0-10 minutes) to avoid fixed timing
-    const randomDelay = Math.floor(Math.random() * 10 * 60 * 1000);
-    console.log(`⏱️  Adding ${Math.floor(randomDelay / 1000)}s random delay...`);
-    await new Promise(resolve => setTimeout(resolve, randomDelay));
+    // Add random delay (0-10 minutes) to avoid fixed timing - skip for manual triggers
+    const skipDelay = req.headers.get('x-skip-delay') === 'true';
+    if (!skipDelay) {
+      const randomDelay = Math.floor(Math.random() * 10 * 60 * 1000);
+      console.log(`⏱️  Adding ${Math.floor(randomDelay / 1000)}s random delay...`);
+      await new Promise(resolve => setTimeout(resolve, randomDelay));
+    } else {
+      console.log('⏭️  Skipping random delay (manual trigger)');
+    }
 
     // Find prospects with pending connection requests
     const { data: prospects, error: prospectsError } = await supabase
