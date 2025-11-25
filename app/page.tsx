@@ -29,7 +29,7 @@ import AIConfiguration from '@/app/components/AIConfiguration';
 import CommentingCampaignModal from '@/app/components/CommentingCampaignModal';
 import CommentApprovalWorkflow from '@/app/components/CommentApprovalWorkflow';
 import { ManageSubscriptionModal } from '@/app/components/ManageSubscriptionModal';
-import SuperAdminPage from '@/app/admin/superadmin/page';
+// SuperAdminPage removed - no cross-workspace data access allowed
 import {
   Activity,
   Archive,
@@ -3968,10 +3968,7 @@ export default function Page() {
               </div>
             </div>
           </div>
-                ) : activeMenuItem === 'superadmin' ? (
-          /* SUPER ADMIN PAGE */
-          <SuperAdminPage />
-        ) : showStarterScreen ? (
+                ) : showStarterScreen ? (
           /* STARTER SCREEN */
           <div className="flex-1 flex flex-col items-center justify-end pb-32 p-6">
             <div className="mb-12">
