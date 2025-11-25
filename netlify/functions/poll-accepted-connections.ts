@@ -9,7 +9,7 @@
  * - This ensures we don't miss any accepted connections
  * - Enables timely follow-up scheduling
  *
- * Schedule: every 2 hours (cron: 0 */2 * * *) via netlify.toml
+ * Schedule: every 2 hours via netlify.toml
  */
 
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
