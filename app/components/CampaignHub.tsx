@@ -1391,10 +1391,16 @@ function CampaignBuilder({
   };
 
   const [name, setName] = useState(getInitialCampaignName());
-  // Default campaign type based on connected accounts:
-  // - If only email connected -> 'email'
-  // - If LinkedIn connected -> 'connector' (default for LinkedIn)
+  // Default campaign type based on:
+  // 1. initialCampaignType (from prospect approval modal)
+  // 2. Connected accounts (if only email -> 'email', else 'connector')
   const getDefaultCampaignType = () => {
+    // Priority 1: Use initialCampaignType if provided
+    if (initialCampaignType) {
+      // Map 'linkedin' to 'connector' (LinkedIn campaigns use connector type)
+      return initialCampaignType === 'linkedin' ? 'connector' : initialCampaignType;
+    }
+    // Priority 2: Auto-detect from connected accounts
     if (!connectedAccounts.linkedin && connectedAccounts.email) {
       return 'email';
     }
@@ -5803,10 +5809,11 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
 interface CampaignHubProps {
   workspaceId?: string | null;
   initialProspects?: any[] | null;
+  initialCampaignType?: 'email' | 'linkedin';
   onCampaignCreated?: () => void;
 }
 
-const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects, onCampaignCreated }) => {
+const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects, initialCampaignType, onCampaignCreated }) => {
   // Use workspaceId from props - no fallback to prevent loading wrong workspace data
   const actualWorkspaceId = workspaceId;
 

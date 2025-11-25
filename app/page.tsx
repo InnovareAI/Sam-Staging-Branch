@@ -167,6 +167,7 @@ export default function Page() {
 
   // Campaign state - for auto-proceed from approval to campaign
   const [pendingCampaignProspects, setPendingCampaignProspects] = useState<any[] | null>(null);
+  const [pendingCampaignType, setPendingCampaignType] = useState<'email' | 'linkedin' | undefined>(undefined);
   const [showCampaignApprovalView, setShowCampaignApprovalView] = useState(false);
 
   // Workspace state
@@ -3033,10 +3034,11 @@ export default function Page() {
               // Handle data collected from DataCollectionHub
               console.log('Data collected:', data, 'Source:', source);
             }}
-            onApprovalComplete={(approvedData) => {
+            onApprovalComplete={(approvedData, campaignType) => {
               // Store approved prospects and navigate to Campaigns
-              console.log('Approved prospects:', approvedData);
+              console.log('Approved prospects:', approvedData, 'Campaign type:', campaignType);
               setPendingCampaignProspects(approvedData);
+              setPendingCampaignType(campaignType);
               setActiveMenuItem('campaign');
             }}
             initialUploadedData={uploadedProspects}
@@ -3053,10 +3055,11 @@ export default function Page() {
                   onDataCollected={(data, source) => {
                     console.log('Data collected:', data, 'Source:', source);
                   }}
-                  onApprovalComplete={(approvedData) => {
+                  onApprovalComplete={(approvedData, campaignType) => {
                     // Store approved prospects and switch to campaign creation view
-                    console.log('Approved prospects:', approvedData);
+                    console.log('Approved prospects:', approvedData, 'Campaign type:', campaignType);
                     setPendingCampaignProspects(approvedData);
+                    setPendingCampaignType(campaignType);
                     setShowCampaignApprovalView(false); // Switch to campaign hub after approval
                   }}
                   initialUploadedData={uploadedProspects}
@@ -3065,7 +3068,11 @@ export default function Page() {
                 <CampaignHub
                   workspaceId={currentWorkspace?.id || null}
                   initialProspects={pendingCampaignProspects}
-                  onCampaignCreated={() => setPendingCampaignProspects(null)}
+                  initialCampaignType={pendingCampaignType}
+                  onCampaignCreated={() => {
+                    setPendingCampaignProspects(null);
+                    setPendingCampaignType(undefined);
+                  }}
                 />
               )}
             </div>

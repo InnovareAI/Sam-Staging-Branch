@@ -354,6 +354,20 @@ export async function POST(req: NextRequest) {
           console.log(`✅ ✅ ✅ AUTO-TRANSFERRED ${prospectsTransferred} PROSPECTS TO CAMPAIGN`);
           console.log(`   Campaign ID: ${campaignId}`);
           console.log(`   Session ID: ${session_id}`);
+
+          // Mark prospects as transferred to campaign in approval database
+          const prospectIds = approvedProspects.map((p: any) => p.prospect_id);
+          await supabase
+            .from('prospect_approval_data')
+            .update({
+              approval_status: 'transferred_to_campaign',
+              transferred_at: new Date().toISOString(),
+              transferred_to_campaign_id: campaignId
+            })
+            .in('prospect_id', prospectIds)
+            .eq('session_id', session_id);
+
+          console.log(`✅ Marked ${prospectIds.length} prospects as transferred to campaign in approval database`);
         }
       } else {
         console.log('📋 ===== AUTO-TRANSFER SUMMARY =====');

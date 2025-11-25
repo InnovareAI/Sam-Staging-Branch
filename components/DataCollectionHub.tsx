@@ -79,7 +79,7 @@ function getQualityBadge(score: number): { variant: 'default' | 'secondary' | 'd
 
 interface DataCollectionHubProps {
   onDataCollected: (data: ProspectData[], source: string) => void
-  onApprovalComplete?: (approvedData: ProspectData[]) => void
+  onApprovalComplete?: (approvedData: ProspectData[], campaignType?: 'email' | 'linkedin') => void
   className?: string
   initialUploadedData?: ProspectData[]
   userSession?: any  // Pass session from parent to avoid auth issues
@@ -182,31 +182,33 @@ async function fetchApprovalSessions(
       if (prospectsResponse.ok) {
         const prospectsData = await prospectsResponse.json()
         if (prospectsData.success && prospectsData.prospects) {
-          const mappedProspects = prospectsData.prospects.map((p: any) => ({
-            id: p.prospect_id,
-            name: p.name,
-            title: p.title || '',
-            company: p.company?.name || '',
-            industry: p.company?.industry || '',
-            location: p.location || '',
-            email: p.contact?.email || '',
-            linkedinUrl: p.contact?.linkedin_url || '',
-            phone: p.contact?.phone || '',
-            connectionDegree: p.connection_degree ? `${p.connection_degree}${p.connection_degree === 1 ? 'st' : p.connection_degree === 2 ? 'nd' : 'rd'}` : undefined,
-            source: p.source || 'linkedin',
-            enrichmentScore: p.enrichment_score || 0,
-            confidence: (p.enrichment_score || 80) / 100,
-            approvalStatus: (p.approval_status || 'pending') as 'pending' | 'approved' | 'rejected',
-            campaignName: session.campaign_name || `Session-${session.id.slice(0, 8)}`,
-            campaignTag: session.campaign_tag || session.campaign_name || session.prospect_source || 'linkedin',
-            sessionId: session.id,
-            uploaded: false,
-            qualityScore: 0,
-            createdAt: p.created_at ? new Date(p.created_at) : session.created_at ? new Date(session.created_at) : new Date(),
-            researchedBy: session.user_email || session.user_name || 'Unknown',
-            researchedByInitials: session.user_initials || getInitials(session.user_email || session.user_name || 'U'),
-            linkedinUserId: p.linkedin_user_id || p.contact?.linkedin_user_id || undefined
-          }))
+          const mappedProspects = prospectsData.prospects
+            .filter((p: any) => p.approval_status !== 'transferred_to_campaign') // Exclude prospects already in campaigns
+            .map((p: any) => ({
+              id: p.prospect_id,
+              name: p.name,
+              title: p.title || '',
+              company: p.company?.name || '',
+              industry: p.company?.industry || '',
+              location: p.location || '',
+              email: p.contact?.email || '',
+              linkedinUrl: p.contact?.linkedin_url || '',
+              phone: p.contact?.phone || '',
+              connectionDegree: p.connection_degree ? `${p.connection_degree}${p.connection_degree === 1 ? 'st' : p.connection_degree === 2 ? 'nd' : 'rd'}` : undefined,
+              source: p.source || 'linkedin',
+              enrichmentScore: p.enrichment_score || 0,
+              confidence: (p.enrichment_score || 80) / 100,
+              approvalStatus: (p.approval_status || 'pending') as 'pending' | 'approved' | 'rejected',
+              campaignName: session.campaign_name || `Session-${session.id.slice(0, 8)}`,
+              campaignTag: session.campaign_tag || session.campaign_name || session.prospect_source || 'linkedin',
+              sessionId: session.id,
+              uploaded: false,
+              qualityScore: 0,
+              createdAt: p.created_at ? new Date(p.created_at) : session.created_at ? new Date(session.created_at) : new Date(),
+              researchedBy: session.user_email || session.user_name || 'Unknown',
+              researchedByInitials: session.user_initials || getInitials(session.user_email || session.user_name || 'U'),
+              linkedinUserId: p.linkedin_user_id || p.contact?.linkedin_user_id || undefined
+            }))
 
           // DEBUG: Log mapped prospects to verify campaignName
           console.log(`📋 [DATA APPROVAL] Session ${session.id.substring(0, 8)} mapped ${mappedProspects.length} prospects with campaignName:`, mappedProspects[0]?.campaignName);
@@ -366,6 +368,10 @@ export default function DataCollectionHub({
   const [availableCampaigns, setAvailableCampaigns] = useState<any[]>([])
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>('')
   const [loadingCampaigns, setLoadingCampaigns] = useState(false)
+
+  // Campaign type selection modal
+  const [showCampaignTypeModal, setShowCampaignTypeModal] = useState(false)
+  const [selectedCampaignType, setSelectedCampaignType] = useState<'email' | 'linkedin' | null>(null)
 
   // Available prospects (approved but not in campaigns)
   const [availableProspects, setAvailableProspects] = useState<any[]>([])
@@ -1560,7 +1566,7 @@ export default function DataCollectionHub({
   }
 
   // Proceed to Campaign Hub with approved prospects ONLY (disregard rejected and pending)
-  const handleProceedToCampaignHub = async (prospectsOverride?: ProspectData[]) => {
+  const handleProceedToCampaignHub = async (prospectsOverride?: ProspectData[], campaignType?: 'email' | 'linkedin') => {
     // ALWAYS filter for approved prospects only, even if override is provided
     // This ensures rejected and pending prospects are never sent to Campaign Hub
     const approvedProspects = prospectsOverride && prospectsOverride.length > 0
@@ -1648,7 +1654,7 @@ export default function DataCollectionHub({
     // Call the onApprovalComplete callback to navigate to Campaign screen
     // Use savedProspects (with database IDs) instead of local approvedProspects
     if (onApprovalComplete) {
-      onApprovalComplete(savedProspects)
+      onApprovalComplete(savedProspects, campaignType || undefined)
     }
 
     toastSuccess(`✅ Success!\n\n${approvedProspects.length} approved prospects ready for campaign\n\nNext: Select or create a campaign to add them to`)
@@ -1838,9 +1844,9 @@ export default function DataCollectionHub({
             {/* SIMPLIFIED: Always show both "Create New Campaign" and "Add to Existing" options */}
             {prospectData.filter(p => p.approvalStatus === 'approved').length > 0 && (
               <div className="flex items-center gap-3">
-                {/* Option 1: Create New Campaign */}
+                {/* Option 1: Create New Campaign - Opens campaign type selection modal */}
                 <Button
-                  onClick={bulkApproveSelected}
+                  onClick={() => setShowCampaignTypeModal(true)}
                   size="sm"
                   className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
                   title={selectedProspectIds.size > 0 ? `Create new campaign with ${selectedProspectIds.size} selected prospects` : `Create new campaign with all ${prospectData.filter(p => p.approvalStatus === 'approved').length} approved prospects`}
@@ -2518,6 +2524,26 @@ export default function DataCollectionHub({
           }
         }}
       />
+
+      {/* Campaign Type Selection Modal */}
+      <CampaignTypeModal
+        isOpen={showCampaignTypeModal}
+        onClose={() => setShowCampaignTypeModal(false)}
+        onSelectType={(type) => {
+          setSelectedCampaignType(type);
+          setShowCampaignTypeModal(false);
+
+          // Get prospects to send (selected or all approved)
+          const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved');
+          const prospectsToSend = selectedProspectIds.size > 0
+            ? approvedProspects.filter(p => selectedProspectIds.has(p.id))
+            : approvedProspects;
+
+          // Forward to Campaign Hub with campaign type
+          handleProceedToCampaignHub(prospectsToSend, type);
+        }}
+        prospectCount={selectedProspectIds.size > 0 ? selectedProspectIds.size : prospectData.filter(p => p.approvalStatus === 'approved').length}
+      />
     </div>
   )
 }
@@ -2610,4 +2636,80 @@ async function collectBrightData(query: string): Promise<ProspectData[]> {
     confidence: Math.round((Math.random() * 0.3 + 0.7) * 100) / 100,
     complianceFlags: []
   }))
+}
+
+// Campaign Type Selection Modal Component
+function CampaignTypeModal({
+  isOpen,
+  onClose,
+  onSelectType,
+  prospectCount
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelectType: (type: 'email' | 'linkedin') => void;
+  prospectCount: number;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-700">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Choose Campaign Type</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <p className="text-gray-400 text-sm mb-6">
+          Select the type of campaign to create with {prospectCount} prospects
+        </p>
+
+        <div className="space-y-3">
+          {/* Email Campaign Option */}
+          <button
+            onClick={() => onSelectType('email')}
+            className="w-full p-4 rounded-lg border-2 border-gray-700 hover:border-blue-500 hover:bg-gray-750 transition-all group text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-600/20 text-blue-400 group-hover:bg-blue-600/30">
+                <Mail className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-white font-semibold">Email Campaign</div>
+                <div className="text-gray-400 text-sm">Send emails to prospects with email addresses</div>
+              </div>
+            </div>
+          </button>
+
+          {/* LinkedIn Campaign Option */}
+          <button
+            onClick={() => onSelectType('linkedin')}
+            className="w-full p-4 rounded-lg border-2 border-gray-700 hover:border-purple-500 hover:bg-gray-750 transition-all group text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-purple-600/20 text-purple-400 group-hover:bg-purple-600/30">
+                <Linkedin className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-white font-semibold">LinkedIn Campaign</div>
+                <div className="text-gray-400 text-sm">Send connection requests and messages on LinkedIn</div>
+              </div>
+            </div>
+          </button>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="mt-4 w-full px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
 }

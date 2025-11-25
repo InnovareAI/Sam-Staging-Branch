@@ -136,6 +136,20 @@ export async function POST(request: NextRequest) {
       } else {
         addedToCampaign = insertedProspects?.length || 0;
         console.log(`✅ Successfully added ${addedToCampaign} prospects to campaign`);
+
+        // Mark prospects as transferred to campaign in approval database
+        const prospectIds = approvedProspects.map((p: any) => p.prospect_id);
+        await supabase
+          .from('prospect_approval_data')
+          .update({
+            approval_status: 'transferred_to_campaign',
+            transferred_at: new Date().toISOString(),
+            transferred_to_campaign_id: targetCampaignId
+          })
+          .in('prospect_id', prospectIds)
+          .eq('session_id', session_id);
+
+        console.log(`✅ Marked ${prospectIds.length} prospects as transferred to campaign`);
       }
     }
 
