@@ -57,3 +57,9 @@
 # Compliance: 9 AM - 5 PM business hours, no weekends/holidays
 [functions."send-follow-ups"]
   schedule = "*/30 * * * *"
+
+# Scheduled function: Poll for accepted LinkedIn connections every 2 hours
+# Checks if pending CRs have been accepted and schedules follow-ups
+# Backup for webhook delays (Unipile webhooks can have 8hr latency)
+[functions."poll-accepted-connections"]
+  schedule = "0 */2 * * *"
