@@ -159,13 +159,13 @@ export async function POST(req: NextRequest) {
 
     console.log(`📧 [EMAIL EXECUTE] Processing ${prospectsToProcess.length} prospect(s)`);
 
-    // Get initial email template - for email campaigns, use alternative_message as initial email
-    const initialEmailTemplate = campaign.message_templates?.alternative_message ||
-                                  campaign.message_templates?.email_body ||
-                                  campaign.message_templates?.connection_request || '';
+    // Get initial email template - email campaigns use email_body field
+    const initialEmailTemplate = campaign.message_templates?.email_body ||
+                                  campaign.message_templates?.alternative_message || '';
 
-    // Generate email subject from campaign name
-    const subjectTemplate = campaign.message_templates?.email_subject ||
+    // Get email subject
+    const subjectTemplate = campaign.message_templates?.initial_subject ||
+                            campaign.message_templates?.email_subject ||
                             `Quick question about {company_name}`;
 
     if (!initialEmailTemplate) {
