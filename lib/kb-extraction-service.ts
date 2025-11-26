@@ -33,7 +33,7 @@ export async function extractKnowledgeFromConversation(
       headers: {
         'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
         'X-Title': 'SAM AI Knowledge Extraction'
       },
       body: JSON.stringify({

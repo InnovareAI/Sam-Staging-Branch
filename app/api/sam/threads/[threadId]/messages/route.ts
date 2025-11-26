@@ -667,7 +667,7 @@ export async function POST(
         // Forward authentication cookies from incoming request
         const cookieHeader = request.headers.get('cookie') || ''
 
-        const statusResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/status`, {
+        const statusResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/linkedin/status`, {
           method: 'GET',
           headers: {
             'Cookie': cookieHeader // Forward session cookies for auth
@@ -757,7 +757,7 @@ export async function POST(
         // Forward authentication cookies from incoming request
         const cookieHeader = request.headers.get('cookie') || ''
 
-        const linkedinResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/linkedin/pull-connections`, {
+        const linkedinResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/linkedin/pull-connections`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2075,7 +2075,7 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
 
           console.log('🔍 [4/8] Final search criteria being sent:', JSON.stringify(finalSearchCriteria, null, 2));
 
-          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com';
           const searchUrl = `${baseUrl}/api/linkedin/search/simple`;
           console.log('🔍 [5/8] Search API URL:', searchUrl);
           console.log('🔍 [5a/8] Thread workspace_id:', thread?.workspace_id);

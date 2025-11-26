@@ -157,7 +157,7 @@ async function scrapeProspects(
     console.log('🔍 BrightData search query:', searchQuery);
 
     // Call BrightData MCP via registry (NOT as global function)
-    const mcpResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/mcp`, {
+    const mcpResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/mcp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -220,7 +220,7 @@ async function scrapeProspects(
 
       if (params.scraping_options.include_emails || params.scraping_options.include_phone) {
         try {
-          const scrapeResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/mcp`, {
+          const scrapeResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/mcp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     // Create Unipile OAuth URL using DSN format
     const unipileBaseUrl = `https://${unipileDsn}`;
     const createAccountUrl = `${unipileBaseUrl}/api/v1/accounts/create`;
-    const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/unipile/callback`;
+    const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/unipile/callback`;
     
     console.log('🔗 Unipile API request:', {
       url: createAccountUrl,

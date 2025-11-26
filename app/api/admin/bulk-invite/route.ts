@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
             role: role,
             invited_by_email: user.email
           },
-          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?org=${org.slug}`
+          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/auth/callback?org=${org.slug}`
         });
 
         if (inviteError) {

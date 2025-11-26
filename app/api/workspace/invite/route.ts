@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     // Send invitation email
     try {
-      const inviteUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/signup/innovareai?invite=${token}`
+      const inviteUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/signup/innovareai?invite=${token}`
 
       await fetch('https://api.postmarkapp.com/email', {
         method: 'POST',

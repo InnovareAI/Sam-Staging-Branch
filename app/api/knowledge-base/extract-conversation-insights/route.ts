@@ -92,7 +92,7 @@ ${conversationText.substring(0, 12000)}${conversationText.length > 12000 ? '...'
       headers: {
         'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
         'X-Title': 'SAM AI Knowledge Base'
       },
       body: JSON.stringify({

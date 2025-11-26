@@ -290,7 +290,7 @@ export async function POST(request: NextRequest) {
       console.log(`🔍 Auto-enriching ${needsEnrichment.length} prospects with BrightData...`);
 
       // Call enrichment API asynchronously (don't block the response)
-      fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/prospects/enrich`, {
+      fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/prospects/enrich`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

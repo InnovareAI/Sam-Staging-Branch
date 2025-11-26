@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
           last_name: lastName,
         },
         // Configure email confirmation redirect
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/auth/callback`,
       }
     });
 
