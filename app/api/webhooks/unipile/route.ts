@@ -276,6 +276,7 @@ async function handleUsersWebhook(event: any) {
 
 /**
  * Handle MESSAGING_WEBHOOK events
+ * Supports both LinkedIn messages and Email replies
  */
 async function handleMessagingWebhook(event: any) {
   const { type, data } = event;
@@ -290,35 +291,76 @@ async function handleMessagingWebhook(event: any) {
       sender
     } = data;
 
-    // Check if this is a reply from a prospect
-    if (sender.provider_id) {
-      const { data: prospects } = await supabase
+    // Determine if this is LinkedIn or Email based on account type
+    const { data: account } = await supabase
+      .from('workspace_accounts')
+      .select('account_type')
+      .eq('unipile_account_id', account_id)
+      .single();
+
+    const isEmail = account?.account_type === 'email';
+    const senderEmail = sender?.email || sender?.identifier || message?.from?.email;
+    const senderLinkedInId = sender?.provider_id;
+
+    console.log(`📨 Message type: ${isEmail ? 'EMAIL' : 'LINKEDIN'}, sender: ${isEmail ? senderEmail : senderLinkedInId}`);
+
+    let prospects: any[] = [];
+
+    if (isEmail && senderEmail) {
+      // EMAIL: Match by email address
+      const { data: emailProspects } = await supabase
         .from('campaign_prospects')
-        .select('id, status')
-        .eq('linkedin_user_id', sender.provider_id)
-        .in('status', ['connected', 'messaging']);
+        .select('id, status, campaign_id')
+        .eq('email', senderEmail.toLowerCase())
+        .in('status', ['pending', 'email_sent', 'follow_up_sent']);
 
-      if (prospects && prospects.length > 0) {
-        // Update prospect status to 'replied' and STOP follow-up sequence
-        for (const prospect of prospects) {
-          await supabase
-            .from('campaign_prospects')
-            .update({
-              status: 'replied',
-              responded_at: new Date().toISOString(),
-              follow_up_due_at: null, // STOP follow-up sequence
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', prospect.id);
-        }
+      prospects = emailProspects || [];
+      console.log(`📧 Found ${prospects.length} email prospects matching ${senderEmail}`);
 
-        console.log(`✅ Updated ${prospects.length} prospects to replied status and stopped follow-up sequence`);
+    } else if (senderLinkedInId) {
+      // LINKEDIN: Match by LinkedIn provider_id
+      const { data: linkedinProspects } = await supabase
+        .from('campaign_prospects')
+        .select('id, status, campaign_id')
+        .eq('linkedin_user_id', senderLinkedInId)
+        .in('status', ['connected', 'messaging', 'follow_up_sent']);
+
+      prospects = linkedinProspects || [];
+      console.log(`💼 Found ${prospects.length} LinkedIn prospects matching ${senderLinkedInId}`);
+    }
+
+    if (prospects.length > 0) {
+      // Update all matching prospects to 'replied' and STOP sequences
+      for (const prospect of prospects) {
+        await supabase
+          .from('campaign_prospects')
+          .update({
+            status: 'replied',
+            responded_at: new Date().toISOString(),
+            follow_up_due_at: null, // STOP follow-up sequence
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', prospect.id);
+
+        // Cancel any pending emails for this prospect
+        await supabase
+          .from('email_send_queue')
+          .update({
+            status: 'cancelled',
+            error_message: 'Prospect replied - sequence stopped',
+            updated_at: new Date().toISOString()
+          })
+          .eq('prospect_id', prospect.id)
+          .eq('status', 'pending');
       }
+
+      console.log(`✅ Updated ${prospects.length} prospects to replied status, stopped follow-up sequences, and cancelled pending emails`);
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Message processed'
+      message: `${isEmail ? 'Email' : 'LinkedIn'} message processed`,
+      prospects_updated: prospects.length
     });
   }
 

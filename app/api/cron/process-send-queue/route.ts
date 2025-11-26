@@ -279,7 +279,7 @@ export async function POST(req: NextRequest) {
     // 2. Fetch campaign details (already validated in loop, but need full data)
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
-      .select('id, campaign_name, linkedin_account_id, schedule_settings, workspace_id')
+      .select('id, name, linkedin_account_id, schedule_settings, workspace_id')
       .eq('id', queueItem.campaign_id)
       .single();
 
@@ -349,7 +349,7 @@ export async function POST(req: NextRequest) {
 
     const messageType = queueItem.message_type || 'connection_request';
     console.log(`\n📤 Sending ${messageType} to ${prospect.first_name} ${prospect.last_name}`);
-    console.log(`   Campaign: ${campaign.campaign_name}`);
+    console.log(`   Campaign: ${campaign.name}`);
     console.log(`   Account: ${linkedinAccount.account_name}`);
     console.log(`   Scheduled: ${queueItem.scheduled_for}`);
 
@@ -461,7 +461,7 @@ export async function POST(req: NextRequest) {
         success: true,
         processed: 1,
         sent_to: `${prospect.first_name} ${prospect.last_name}`,
-        campaign: campaign.campaign_name,
+        campaign: campaign.name,
         remaining_in_queue: remainingCount,
         message: `✅ CR sent. ${remainingCount} messages remaining in queue`
       });

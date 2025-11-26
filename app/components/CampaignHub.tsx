@@ -392,6 +392,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
 
     console.log('✅ Opening edit modal for campaign:', campaign.id);
     console.log('📧 Campaign data:', {
+      campaign_type: campaign.campaign_type,
       direct_connection: campaign.connection_message,
       template_connection: campaign.message_templates?.connection_request,
       direct_alternative: campaign.alternative_message,
@@ -402,11 +403,28 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
 
     setCampaignToEdit(campaign);
 
+    const isEmailCampaign = campaign.campaign_type === 'email';
+
+    // Email campaigns use email_body field, LinkedIn uses connection_request
+    const emailBody = isEmailCampaign
+      ? (campaign.message_templates?.email_body || campaign.message_templates?.alternative_message || '')
+      : '';
+
+    const connectionMessage = isEmailCampaign
+      ? ''
+      : (campaign.connection_message || campaign.message_templates?.connection_request || '');
+
+    const alternativeMessage = isEmailCampaign
+      ? ''
+      : (campaign.alternative_message || campaign.message_templates?.alternative_message || '');
+
     // Load from message_templates if direct fields are empty
     setEditFormData({
       name: campaign.name || '',
-      connection_message: campaign.connection_message || campaign.message_templates?.connection_request || '',
-      alternative_message: campaign.alternative_message || campaign.message_templates?.alternative_message || '',
+      connection_message: connectionMessage,
+      alternative_message: alternativeMessage,
+      // NEW: email_body field for email campaigns
+      email_body: emailBody,
       follow_up_messages: campaign.follow_up_messages?.length > 0
         ? campaign.follow_up_messages
         : (campaign.message_templates?.follow_up_messages || []),
@@ -423,12 +441,17 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     if (!campaignToEdit) return;
 
     try {
-      // Build message_templates with all message content including subjects
+      const isEmailCampaign = campaignToEdit.campaign_type === 'email';
+
+      // Build message_templates - email uses email_body, LinkedIn uses connection_request
       const message_templates = {
-        connection_request: editFormData.connection_message || '',
-        alternative_message: editFormData.alternative_message || '',
+        // LinkedIn fields - empty for email campaigns
+        connection_request: isEmailCampaign ? '' : (editFormData.connection_message || ''),
+        alternative_message: isEmailCampaign ? '' : (editFormData.alternative_message || ''),
+        // Email field - empty for LinkedIn campaigns
+        email_body: isEmailCampaign ? (editFormData.email_body || '') : '',
+        // Shared fields
         follow_up_messages: editFormData.follow_up_messages || [],
-        // Email subject lines
         initial_subject: editFormData.initial_subject || '',
         follow_up_subjects: editFormData.follow_up_subjects || [],
         use_threaded_replies: editFormData.use_threaded_replies || false
@@ -436,8 +459,8 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
 
       const updatePayload = {
         name: editFormData.name,
-        connection_message: editFormData.connection_message,
-        alternative_message: editFormData.alternative_message,
+        connection_message: isEmailCampaign ? '' : editFormData.connection_message,
+        alternative_message: isEmailCampaign ? '' : editFormData.alternative_message,
         follow_up_messages: editFormData.follow_up_messages,
         message_templates
       };
@@ -968,14 +991,20 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                 <p className="text-xs text-gray-500 mt-1">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</p>
               </div>
 
-              {/* Alternative Message / Initial Email */}
+              {/* Email Body (for email campaigns) OR Alternative Message (for LinkedIn) */}
               <div>
                 <Label className="text-gray-300 mb-2 block">
                   {campaignToEdit?.campaign_type === 'email' ? 'Initial Email Body' : 'Alternative Message (Optional)'}
                 </Label>
                 <Textarea
-                  value={editFormData.alternative_message || ''}
-                  onChange={(e) => setEditFormData({ ...editFormData, alternative_message: e.target.value })}
+                  value={campaignToEdit?.campaign_type === 'email' ? (editFormData.email_body || '') : (editFormData.alternative_message || '')}
+                  onChange={(e) => setEditFormData({
+                    ...editFormData,
+                    // For email campaigns, update email_body. For LinkedIn, update alternative_message
+                    ...(campaignToEdit?.campaign_type === 'email'
+                      ? { email_body: e.target.value }
+                      : { alternative_message: e.target.value })
+                  })}
                   className="bg-gray-800 border-gray-700 text-white min-h-[120px]"
                   placeholder={campaignToEdit?.campaign_type === 'email' ? "Initial email body..." : "Alternative message if already connected..."}
                 />
@@ -7302,6 +7331,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
     console.log('✅ Opening edit modal for campaign:', campaign.id);
     console.log('📧 Campaign data:', {
+      campaign_type: campaign.campaign_type,
       direct_connection: campaign.connection_message,
       template_connection: campaign.message_templates?.connection_request,
       direct_alternative: campaign.alternative_message,
@@ -7312,11 +7342,28 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
     setCampaignToEdit(campaign);
 
+    const isEmailCampaign = campaign.campaign_type === 'email';
+
+    // Email campaigns use email_body field, LinkedIn uses connection_request
+    const emailBody = isEmailCampaign
+      ? (campaign.message_templates?.email_body || campaign.message_templates?.alternative_message || '')
+      : '';
+
+    const connectionMessage = isEmailCampaign
+      ? ''
+      : (campaign.connection_message || campaign.message_templates?.connection_request || '');
+
+    const alternativeMessage = isEmailCampaign
+      ? ''
+      : (campaign.alternative_message || campaign.message_templates?.alternative_message || '');
+
     // Load from message_templates if direct fields are empty
     setEditFormData({
       name: campaign.name || '',
-      connection_message: campaign.connection_message || campaign.message_templates?.connection_request || '',
-      alternative_message: campaign.alternative_message || campaign.message_templates?.alternative_message || '',
+      connection_message: connectionMessage,
+      alternative_message: alternativeMessage,
+      // NEW: email_body field for email campaigns
+      email_body: emailBody,
       follow_up_messages: campaign.follow_up_messages?.length > 0
         ? campaign.follow_up_messages
         : (campaign.message_templates?.follow_up_messages || []),
@@ -7334,12 +7381,17 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     if (!campaignToEdit) return;
 
     try {
-      // Build message_templates with all message content including subjects
+      const isEmailCampaign = campaignToEdit.campaign_type === 'email';
+
+      // Build message_templates - email uses email_body, LinkedIn uses connection_request
       const message_templates = {
-        connection_request: editFormData.connection_message || '',
-        alternative_message: editFormData.alternative_message || '',
+        // LinkedIn fields - empty for email campaigns
+        connection_request: isEmailCampaign ? '' : (editFormData.connection_message || ''),
+        alternative_message: isEmailCampaign ? '' : (editFormData.alternative_message || ''),
+        // Email field - empty for LinkedIn campaigns
+        email_body: isEmailCampaign ? (editFormData.email_body || '') : '',
+        // Shared fields
         follow_up_messages: editFormData.follow_up_messages || [],
-        // Email subject lines
         initial_subject: editFormData.initial_subject || '',
         follow_up_subjects: editFormData.follow_up_subjects || [],
         use_threaded_replies: editFormData.use_threaded_replies || false
@@ -7347,8 +7399,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
       const updatePayload = {
         name: editFormData.name,
-        connection_message: editFormData.connection_message,
-        alternative_message: editFormData.alternative_message,
+        connection_message: isEmailCampaign ? '' : editFormData.connection_message,
+        alternative_message: isEmailCampaign ? '' : editFormData.alternative_message,
         follow_up_messages: editFormData.follow_up_messages,
         message_templates
       };
@@ -9793,14 +9845,20 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 <p className="text-xs text-gray-500 mt-1">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</p>
               </div>
 
-              {/* Alternative Message / Initial Email */}
+              {/* Email Body (for email campaigns) OR Alternative Message (for LinkedIn) */}
               <div>
                 <Label className="text-gray-300 mb-2 block">
                   {campaignToEdit?.campaign_type === 'email' ? 'Initial Email Body' : 'Alternative Message (Optional)'}
                 </Label>
                 <Textarea
-                  value={editFormData.alternative_message || ''}
-                  onChange={(e) => setEditFormData({ ...editFormData, alternative_message: e.target.value })}
+                  value={campaignToEdit?.campaign_type === 'email' ? (editFormData.email_body || '') : (editFormData.alternative_message || '')}
+                  onChange={(e) => setEditFormData({
+                    ...editFormData,
+                    // For email campaigns, update email_body. For LinkedIn, update alternative_message
+                    ...(campaignToEdit?.campaign_type === 'email'
+                      ? { email_body: e.target.value }
+                      : { alternative_message: e.target.value })
+                  })}
                   className="bg-gray-800 border-gray-700 text-white min-h-[120px]"
                   placeholder={campaignToEdit?.campaign_type === 'email' ? "Initial email body..." : "Alternative message if already connected..."}
                 />

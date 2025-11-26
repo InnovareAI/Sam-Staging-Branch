@@ -142,15 +142,43 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Build comprehensive message_templates object
-    // Merge legacy fields with message_templates, and add email subject lines
+    // CRITICAL: For email campaigns, validate email body and subject exist
+    // Email campaigns use email_body field (NOT connection_request - that's LinkedIn)
+    if (campaign_type === 'email') {
+      const emailBody = message_templates?.email_body || message_templates?.alternative_message;
+      const emailSubject = initial_subject || message_templates?.initial_subject ||
+                          message_templates?.email_subject;
+
+      if (!emailBody || emailBody.trim() === '') {
+        return NextResponse.json({
+          error: 'Email campaigns require an email body. Please add email content.',
+          field: 'email_body'
+        }, { status: 400 });
+      }
+
+      if (!emailSubject || emailSubject.trim() === '') {
+        return NextResponse.json({
+          error: 'Email campaigns require a subject line. Please add an email subject.',
+          field: 'initial_subject'
+        }, { status: 400 });
+      }
+
+      console.log('✅ Email campaign validation passed:');
+      console.log('   Subject:', emailSubject.substring(0, 50) + '...');
+      console.log('   Body length:', emailBody.length, 'chars');
+    }
+
+    // Build message_templates - email uses email_body, LinkedIn uses connection_request
+    const isEmailCampaign = campaign_type === 'email';
     const finalMessageTemplates = {
       ...message_templates,
-      // Use directly passed values or fall back to message_templates
-      connection_request: connection_message || message_templates.connection_request || '',
-      alternative_message: alternative_message || message_templates.alternative_message || '',
+      // LinkedIn fields - empty for email campaigns
+      connection_request: isEmailCampaign ? '' : (connection_message || message_templates.connection_request || ''),
+      alternative_message: isEmailCampaign ? '' : (alternative_message || message_templates.alternative_message || ''),
+      // Email field - email_body for email campaigns
+      email_body: isEmailCampaign ? (message_templates.email_body || alternative_message || '') : '',
+      // Shared fields
       follow_up_messages: follow_up_messages.length > 0 ? follow_up_messages : (message_templates.follow_up_messages || []),
-      // Email subject lines
       initial_subject: initial_subject || message_templates.initial_subject || '',
       follow_up_subjects: follow_up_subjects.length > 0 ? follow_up_subjects : (message_templates.follow_up_subjects || []),
       use_threaded_replies: use_threaded_replies ?? message_templates.use_threaded_replies ?? false

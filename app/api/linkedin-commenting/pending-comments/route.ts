@@ -4,6 +4,7 @@
  */
 
 import { supabaseAdmin } from '@/app/lib/supabase';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,14 @@ export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   try {
+    // Authenticate user
+    const authClient = await createSupabaseRouteClient();
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const workspaceId = searchParams.get('workspace_id');
 
@@ -19,6 +28,18 @@ export async function GET(request: NextRequest) {
         { error: 'Missing workspace_id parameter' },
         { status: 400 }
       );
+    }
+
+    // Verify user has access to this workspace
+    const { data: membership } = await authClient
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!membership) {
+      return NextResponse.json({ error: 'Access denied to this workspace' }, { status: 403 });
     }
 
     console.log('📋 Fetching pending comments for workspace:', workspaceId);

@@ -28,6 +28,18 @@ export async function GET(
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
     }
 
+    // Verify user has access to this campaign's workspace
+    const { data: membership } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', campaign.workspace_id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!membership) {
+      return NextResponse.json({ error: 'Access denied to this campaign' }, { status: 403 });
+    }
+
     // Get campaign messages and replies
     const { data: messages, error: messagesError } = await supabase
       .from('campaign_messages')
@@ -110,6 +122,39 @@ export async function PUT(
     // Remove fields that shouldn't be updated directly
     const { id, created_at, created_by, workspace_id, ...updateData } = updates;
 
+    // CRITICAL: For email campaigns, validate email body and subject exist when updating messages
+    // Get the current campaign to check its type
+    const { data: currentCampaign } = await supabase
+      .from('campaigns')
+      .select('campaign_type, message_templates')
+      .eq('id', campaignId)
+      .single();
+
+    if (currentCampaign?.campaign_type === 'email') {
+      // Check if message_templates is being updated
+      if (updateData.message_templates) {
+        const templates = updateData.message_templates;
+        const emailBody = templates.email_body || templates.alternative_message;
+        const emailSubject = templates.initial_subject || templates.email_subject;
+
+        if (!emailBody || emailBody.trim() === '') {
+          return NextResponse.json({
+            error: 'Email campaigns require an email body. Please add email content.',
+            field: 'email_body'
+          }, { status: 400 });
+        }
+
+        if (!emailSubject || emailSubject.trim() === '') {
+          return NextResponse.json({
+            error: 'Email campaigns require a subject line. Please add an email subject.',
+            field: 'initial_subject'
+          }, { status: 400 });
+        }
+
+        console.log('✅ Email campaign update validation passed');
+      }
+    }
+
     console.log('Updating campaign with data:', updateData);
 
     // Update campaign
@@ -170,7 +215,7 @@ export async function DELETE(
 ) {
   try {
     const supabase = await createSupabaseRouteClient();
-    
+
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -178,6 +223,29 @@ export async function DELETE(
     }
 
     const campaignId = params.id;
+
+    // Get campaign to verify workspace access
+    const { data: campaign, error: fetchError } = await supabase
+      .from('campaigns')
+      .select('id, workspace_id')
+      .eq('id', campaignId)
+      .single();
+
+    if (fetchError || !campaign) {
+      return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
+    }
+
+    // Verify user has access to this campaign's workspace
+    const { data: membership } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', campaign.workspace_id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!membership) {
+      return NextResponse.json({ error: 'Access denied to this campaign' }, { status: 403 });
+    }
 
     // Check if campaign has sent messages (prevent deletion of active campaigns)
     const { data: messages, error: messagesError } = await supabase

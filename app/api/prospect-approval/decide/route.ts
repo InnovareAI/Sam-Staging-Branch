@@ -22,10 +22,10 @@ export async function POST(request: NextRequest) {
       const status = decision === 'approve_all' ? 'approved' : 'rejected'
       const count = decision === 'approve_all' ? 'approved_count' : 'rejected_count'
       
-      // Get session data
+      // Get session data including workspace_id
       const { data: session } = await supabase
         .from('data_approval_sessions')
-        .select('total_count, raw_data')
+        .select('total_count, raw_data, workspace_id')
         .eq('session_id', sessionId)
         .eq('user_id', user.id)
         .single()
@@ -61,10 +61,10 @@ export async function POST(request: NextRequest) {
       await supabase.from('data_record_decisions').insert(decisions)
 
       // Consume quota if approved
-      if (status === 'approved') {
+      if (status === 'approved' && session.workspace_id) {
         await supabase.rpc('consume_approval_quota', {
           p_user_id: user.id,
-          p_workspace_id: user.id, // TODO: Get actual workspace
+          p_workspace_id: session.workspace_id,
           p_quota_type: 'campaign_data',
           p_amount: session.total_count
         })

@@ -275,6 +275,7 @@ export async function POST(req: NextRequest) {
       sent: 0,
       completed: 0,
       failed: 0,
+      skipped: 0,
       errors: [] as Array<{ prospect: string; error: string }>
     };
 
@@ -327,7 +328,7 @@ export async function POST(req: NextRequest) {
             })
             .eq('id', prospect.id);
 
-          results.skipped = (results.skipped || 0) + 1;
+          results.skipped++;
           continue;
         }
 

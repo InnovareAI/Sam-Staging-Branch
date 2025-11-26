@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import moment from 'moment-timezone';
 
 /**
@@ -94,6 +95,17 @@ function calculateNextSendTime(baseTime: Date, prospectIndex: number, timezone =
 
 export async function POST(request: NextRequest) {
   try {
+    // Authenticate user
+    const authClient = await createSupabaseRouteClient();
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Unauthorized'
+      }, { status: 401 });
+    }
+
     const body = await request.json();
     const { campaignId } = body;
 
@@ -122,6 +134,21 @@ export async function POST(request: NextRequest) {
         success: false,
         error: 'Campaign not found'
       }, { status: 404 });
+    }
+
+    // Verify user has access to this campaign's workspace
+    const { data: membership } = await authClient
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', campaign.workspace_id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!membership) {
+      return NextResponse.json({
+        success: false,
+        error: 'Access denied to this campaign'
+      }, { status: 403 });
     }
 
     // Get pending prospects (haven't been sent email yet)
@@ -181,44 +208,38 @@ export async function POST(request: NextRequest) {
 
     const emailAccount = emailAccounts[0];
 
-    // Prepare queue records
+    // Get email content from campaign templates
+    // Email campaigns use email_body field (NOT connection_request - that's LinkedIn)
+    const templates = campaign.message_templates || {};
+    const emailBody = templates.email_body || templates.alternative_message;
+    const emailSubject = templates.initial_subject || templates.email_subject;
+
+    // Final safety check - should never happen if validation is working at creation
+    if (!emailBody || emailBody.trim() === '') {
+      console.error('❌ Campaign has no email body. This should have been caught at creation.');
+      return NextResponse.json({
+        success: false,
+        error: 'Campaign has no email body. Please edit the campaign to add email content.'
+      }, { status: 400 });
+    }
+
+    if (!emailSubject || emailSubject.trim() === '') {
+      console.error('❌ Campaign has no email subject. This should have been caught at creation.');
+      return NextResponse.json({
+        success: false,
+        error: 'Campaign has no email subject. Please edit the campaign to add a subject line.'
+      }, { status: 400 });
+    }
+
+    console.log('📧 Queueing emails with:');
+    console.log('   Subject:', emailSubject.substring(0, 50) + (emailSubject.length > 50 ? '...' : ''));
+    console.log('   Body length:', emailBody.length, 'chars');
+
+    // Prepare queue records using already-validated emailBody and emailSubject
     const queueRecords = prospectsToQueue.map((prospect, index) => {
       const scheduledFor = calculateNextSendTime(new Date(), index);
 
-      // Get first email message from campaign templates
-      // Campaign templates structure: { alternative_message, follow_up_messages: [...], initial_subject, follow_up_subjects: [...] }
-      // For email campaigns, use alternative_message for the first email
-      const templates = campaign.message_templates || {};
-      const firstEmailBody = templates.alternative_message ||
-                            templates.email_body ||
-                            (templates.follow_up_messages?.[0]) ||
-                            '';
-
-      // Get subject line - prioritize dedicated initial_subject field
-      let emailSubject = templates.initial_subject ||
-                        templates.email_subject ||
-                        '';
-
-      let emailBody = firstEmailBody;
-
-      // Fallback: Extract subject from the email body if it contains "Subject:" line (legacy format)
-      if (!emailSubject && firstEmailBody) {
-        const subjectMatch = firstEmailBody.match(/Subject:\s*(.+?)(?:\n|Body:|$)/i);
-        if (subjectMatch) {
-          emailSubject = subjectMatch[1].trim();
-          // Remove subject line from body
-          emailBody = firstEmailBody.replace(/Subject:\s*.+?(?:\n|$)/i, '').trim();
-          // Also remove "Body:" prefix if present
-          emailBody = emailBody.replace(/^Body:\s*/i, '').trim();
-        }
-      }
-
-      // Final fallback for subject
-      if (!emailSubject) {
-        emailSubject = 'Quick question';
-      }
-
-      // Personalize subject and body
+      // Personalize subject and body with prospect data
       const subject = personalizeMessage(emailSubject, prospect);
 
       const body = personalizeMessage(emailBody, prospect);
