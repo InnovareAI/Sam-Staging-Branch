@@ -8,7 +8,7 @@
  * - Business hours: 7 AM - 6 PM
  * - No weekends
  * - No US public holidays
- * - Rate limited: 10 follow-ups per run with 3-5 second delays
+ * - No rate limit on follow-up messages (unlike connection requests)
  *
  * Schedule: Every 30 minutes via Netlify scheduled function
  */
@@ -240,8 +240,7 @@ export async function POST(req: NextRequest) {
       .eq('status', 'connected')
       .lte('follow_up_due_at', new Date().toISOString())
       .not('linkedin_user_id', 'is', null)
-      .order('follow_up_due_at', { ascending: true })
-      .limit(10); // Process 10 per run
+      .order('follow_up_due_at', { ascending: true });
 
     if (prospectsError) {
       console.error('❌ Error fetching prospects:', prospectsError);
@@ -450,10 +449,6 @@ export async function POST(req: NextRequest) {
 
         results.sent++;
 
-        // Rate limiting: 3-5 seconds between messages
-        const delay = 3000 + Math.random() * 2000;
-        await new Promise(resolve => setTimeout(resolve, delay));
-
       } catch (error) {
         console.error(`❌ Error processing prospect:`, error);
         results.failed++;
@@ -526,7 +521,7 @@ export async function GET() {
       business_hours: '9 AM - 5 PM',
       skips_weekends: true,
       skips_holidays: true,
-      rate_limit: '10 prospects per run with 3-5s delays'
+      rate_limit: 'none (follow-ups are not rate limited)'
     },
     follow_up_schedule: {
       'follow_up_1': '1 day after connection',
