@@ -5,7 +5,7 @@
  * Detects when prospects reply to stop follow-up sequences
  *
  * Runs every 2 hours (same as poll-accepted-connections)
- * Schedule: 0 */2 * * * (see netlify.toml)
+ * Schedule: "30 *\/2 * * *" (see netlify.toml)
  */
 
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';

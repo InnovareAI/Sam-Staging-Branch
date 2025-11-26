@@ -268,8 +268,8 @@ export async function POST(req: NextRequest) {
     const results = {
       checked: 0,
       accepted: 0,
+      declined: 0, // Connection was declined/withdrawn/expired (not in pending + not in relations + 24h old)
       still_pending: 0,
-      not_connected: 0, // Not in pending but also not in relations (declined/withdrawn/expired)
       errors: [] as { prospect: string; error: string }[]
     };
 
@@ -358,9 +358,46 @@ export async function POST(req: NextRequest) {
             }
           } else {
             // NOT in pending AND NOT in relations = declined/withdrawn/expired
-            console.log(`   ⚠️  Not connected (declined/withdrawn/expired): ${prospect.first_name} ${prospect.last_name}`);
-            results.not_connected++;
-            // Don't change status - leave as connection_request_sent for manual review
+            // Only mark as declined if the CR was sent more than 24 hours ago
+            // (to avoid false positives from API delays)
+            const sentAt = prospect.contacted_at ? new Date(prospect.contacted_at) : null;
+            const hoursSinceSent = sentAt ? (Date.now() - sentAt.getTime()) / (1000 * 60 * 60) : 999;
+
+            if (hoursSinceSent >= 24) {
+              console.log(`   ❌ Connection DECLINED: ${prospect.first_name} ${prospect.last_name} (sent ${Math.floor(hoursSinceSent)}h ago)`);
+
+              // Update status to declined
+              const { error: declineError } = await supabase
+                .from('campaign_prospects')
+                .update({
+                  status: 'declined',
+                  follow_up_due_at: null, // Stop any follow-ups
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', prospect.id)
+                .eq('status', 'connection_request_sent'); // Only update if still pending
+
+              if (declineError) {
+                console.error(`      ❌ Error updating: ${declineError.message}`);
+                results.errors.push({ prospect: `${prospect.first_name} ${prospect.last_name}`, error: declineError.message });
+              } else {
+                results.declined++;
+
+                // Also cancel any pending emails for this prospect
+                await supabase
+                  .from('email_send_queue')
+                  .update({
+                    status: 'cancelled',
+                    error_message: 'Connection declined - sequence stopped',
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('prospect_id', prospect.id)
+                  .eq('status', 'pending');
+              }
+            } else {
+              console.log(`   ⏳ Waiting for response: ${prospect.first_name} ${prospect.last_name} (sent ${Math.floor(hoursSinceSent)}h ago, need 24h before marking declined)`);
+              results.still_pending++; // Count as still pending until 24h threshold
+            }
           }
         }
 
@@ -376,8 +413,8 @@ export async function POST(req: NextRequest) {
     console.log(`\n📊 Polling Summary:`);
     console.log(`   - Checked: ${results.checked}`);
     console.log(`   - Accepted (verified in relations): ${results.accepted}`);
+    console.log(`   - Declined (not in pending + not in relations): ${results.declined}`);
     console.log(`   - Still pending: ${results.still_pending}`);
-    console.log(`   - Not connected (declined/withdrawn/expired): ${results.not_connected}`);
     console.log(`   - Errors: ${results.errors.length}`);
 
     return NextResponse.json({
@@ -417,7 +454,7 @@ export async function GET(req: NextRequest) {
     results: {
       'still_pending': 'In pending invitations - waiting for response',
       'accepted': 'Verified in relations list - actually accepted',
-      'not_connected': 'Not pending but not in relations - declined/withdrawn/expired'
+      'declined': 'Not pending + not in relations + 24h old - marked as declined, follow-ups cancelled'
     }
   });
 }
