@@ -471,6 +471,10 @@ export default function DataCollectionHub({
       formData.append('campaign_name', `${today}-${workspaceCode}-CSV Upload`)
       formData.append('source', 'csv-upload')
       formData.append('workspace_id', actualWorkspaceId)
+      // CRITICAL: Include campaign_id so prospects get transferred to campaign after approval
+      if (selectedCampaignId) {
+        formData.append('campaign_id', selectedCampaignId)
+      }
 
       console.log('CSV upload request:', {
         fileName: file.name,
@@ -478,6 +482,7 @@ export default function DataCollectionHub({
         campaignName: `${today}-${workspaceCode}-CSV Upload`,
         workspaceId: actualWorkspaceId,
         workspaceIdFromProp: workspaceId,
+        campaignId: selectedCampaignId || 'none',
         hasSession: !!userSession
       })
 

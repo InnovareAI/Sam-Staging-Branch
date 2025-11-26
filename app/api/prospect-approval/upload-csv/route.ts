@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const campaignName = formData.get('campaign_name') as string || 'CSV Upload';
-    const campaignId = formData.get('campaign_id') as string || null;
+    let campaignId = formData.get('campaign_id') as string || null;
     const source = formData.get('source') as string || 'csv-upload';
     const workspaceId = formData.get('workspace_id') as string;
 
@@ -100,6 +100,50 @@ export async function POST(request: NextRequest) {
       workspaceId,
       role: memberCheck.role
     });
+
+    // AUTO-CREATE CAMPAIGN IF NONE PROVIDED
+    // This prevents prospects from being orphaned in prospect_approval_data
+    if (!campaignId) {
+      console.log('CSV Upload - No campaign_id provided, auto-creating campaign...');
+
+      // Generate a campaign name based on date if not provided
+      const today = new Date().toISOString().split('T')[0];
+      const autoCampaignName = campaignName || `${today} CSV Upload`;
+
+      const { data: newCampaign, error: campaignError } = await supabase
+        .from('campaigns')
+        .insert({
+          workspace_id: workspaceId,
+          user_id: user.id,
+          name: autoCampaignName,
+          campaign_type: 'email',  // CSV uploads are typically email campaigns
+          status: 'draft',
+          message_templates: {
+            connection_request: '',
+            follow_ups: []
+          },
+          settings: {
+            auto_created: true,
+            source: 'csv-upload'
+          }
+        })
+        .select()
+        .single();
+
+      if (campaignError) {
+        console.error('CSV Upload - Failed to auto-create campaign:', campaignError);
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to create campaign for prospects'
+        }, { status: 500 });
+      }
+
+      campaignId = newCampaign.id;
+      console.log('CSV Upload - Auto-created campaign:', {
+        campaignId: newCampaign.id,
+        campaignName: autoCampaignName
+      });
+    }
 
     if (!file) {
       return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 });
@@ -458,6 +502,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       session_id: session.id,
+      campaign_id: campaignId,  // Include campaign_id so frontend knows which campaign to use
       workspace_id: workspaceId,
       count: prospects.length,
       skipped_count: salesNavUrlsDetected,

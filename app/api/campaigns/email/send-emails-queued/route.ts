@@ -185,16 +185,43 @@ export async function POST(request: NextRequest) {
     const queueRecords = prospectsToQueue.map((prospect, index) => {
       const scheduledFor = calculateNextSendTime(new Date(), index);
 
-      // Personalize subject and body
-      const subject = personalizeMessage(
-        campaign.message_templates?.email_subject || 'Quick question',
-        prospect
-      );
+      // Get first email message from campaign templates
+      // Campaign templates structure: { alternative_message, follow_up_messages: [...], initial_subject, follow_up_subjects: [...] }
+      // For email campaigns, use alternative_message for the first email
+      const templates = campaign.message_templates || {};
+      const firstEmailBody = templates.alternative_message ||
+                            templates.email_body ||
+                            (templates.follow_up_messages?.[0]) ||
+                            '';
 
-      const body = personalizeMessage(
-        campaign.message_templates?.email_body || 'Hi {first_name},\n\nI wanted to reach out...',
-        prospect
-      );
+      // Get subject line - prioritize dedicated initial_subject field
+      let emailSubject = templates.initial_subject ||
+                        templates.email_subject ||
+                        '';
+
+      let emailBody = firstEmailBody;
+
+      // Fallback: Extract subject from the email body if it contains "Subject:" line (legacy format)
+      if (!emailSubject && firstEmailBody) {
+        const subjectMatch = firstEmailBody.match(/Subject:\s*(.+?)(?:\n|Body:|$)/i);
+        if (subjectMatch) {
+          emailSubject = subjectMatch[1].trim();
+          // Remove subject line from body
+          emailBody = firstEmailBody.replace(/Subject:\s*.+?(?:\n|$)/i, '').trim();
+          // Also remove "Body:" prefix if present
+          emailBody = emailBody.replace(/^Body:\s*/i, '').trim();
+        }
+      }
+
+      // Final fallback for subject
+      if (!emailSubject) {
+        emailSubject = 'Quick question';
+      }
+
+      // Personalize subject and body
+      const subject = personalizeMessage(emailSubject, prospect);
+
+      const body = personalizeMessage(emailBody, prospect);
 
       return {
         campaign_id: campaignId,
@@ -208,6 +235,23 @@ export async function POST(request: NextRequest) {
         status: 'pending'
       };
     });
+
+    // Validate that we have actual email content
+    const emptyEmails = queueRecords.filter(r => !r.body || r.body.trim() === '');
+    if (emptyEmails.length > 0) {
+      console.error('❌ Campaign has no email body configured. Cannot send empty emails.');
+      console.error('   Campaign templates:', JSON.stringify(campaign.message_templates, null, 2));
+      return NextResponse.json({
+        success: false,
+        error: 'Campaign has no email message configured. Please add an email message in the campaign settings before sending.',
+        debug: {
+          templates_found: Object.keys(campaign.message_templates || {}),
+          alternative_message: !!campaign.message_templates?.alternative_message,
+          email_body: !!campaign.message_templates?.email_body,
+          follow_up_messages: campaign.message_templates?.follow_up_messages?.length || 0
+        }
+      }, { status: 400 });
+    }
 
     // Insert into email_send_queue
     const { data: insertedRecords, error: insertError } = await supabase

@@ -361,6 +361,10 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
       follow_up_messages: campaign.follow_up_messages?.length > 0
         ? campaign.follow_up_messages
         : (campaign.message_templates?.follow_up_messages || []),
+      // Email subject lines
+      initial_subject: campaign.message_templates?.initial_subject || '',
+      follow_up_subjects: campaign.message_templates?.follow_up_subjects || [],
+      use_threaded_replies: campaign.message_templates?.use_threaded_replies || false,
       timing: campaign.timing || {}
     });
     setShowEditModal(true);
@@ -406,6 +410,10 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
       follow_up_messages: campaign.follow_up_messages?.length > 0
         ? campaign.follow_up_messages
         : (campaign.message_templates?.follow_up_messages || []),
+      // Email subject lines
+      initial_subject: campaign.message_templates?.initial_subject || '',
+      follow_up_subjects: campaign.message_templates?.follow_up_subjects || [],
+      use_threaded_replies: campaign.message_templates?.use_threaded_replies || false,
       timing: campaign.timing || {}
     });
     setShowEditModal(true);
@@ -415,10 +423,29 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     if (!campaignToEdit) return;
 
     try {
+      // Build message_templates with all message content including subjects
+      const message_templates = {
+        connection_request: editFormData.connection_message || '',
+        alternative_message: editFormData.alternative_message || '',
+        follow_up_messages: editFormData.follow_up_messages || [],
+        // Email subject lines
+        initial_subject: editFormData.initial_subject || '',
+        follow_up_subjects: editFormData.follow_up_subjects || [],
+        use_threaded_replies: editFormData.use_threaded_replies || false
+      };
+
+      const updatePayload = {
+        name: editFormData.name,
+        connection_message: editFormData.connection_message,
+        alternative_message: editFormData.alternative_message,
+        follow_up_messages: editFormData.follow_up_messages,
+        message_templates
+      };
+
       const response = await fetch(`/api/campaigns/${campaignToEdit.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editFormData)
+        body: JSON.stringify(updatePayload)
       });
 
       if (!response.ok) {
@@ -941,16 +968,83 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                 <p className="text-xs text-gray-500 mt-1">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</p>
               </div>
 
-              {/* Alternative Message */}
+              {/* Alternative Message / Initial Email */}
               <div>
-                <Label className="text-gray-300 mb-2 block">Alternative Message (Optional)</Label>
+                <Label className="text-gray-300 mb-2 block">
+                  {campaignToEdit?.campaign_type === 'email' ? 'Initial Email Body' : 'Alternative Message (Optional)'}
+                </Label>
                 <Textarea
                   value={editFormData.alternative_message || ''}
                   onChange={(e) => setEditFormData({ ...editFormData, alternative_message: e.target.value })}
                   className="bg-gray-800 border-gray-700 text-white min-h-[120px]"
-                  placeholder="Alternative message if already connected..."
+                  placeholder={campaignToEdit?.campaign_type === 'email' ? "Initial email body..." : "Alternative message if already connected..."}
                 />
               </div>
+
+              {/* Email Subject Lines - Only show for email campaigns */}
+              {campaignToEdit?.campaign_type === 'email' && (
+                <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 space-y-4">
+                  <h4 className="text-blue-400 font-medium flex items-center gap-2">
+                    <Mail size={18} />
+                    Email Subject Lines
+                  </h4>
+
+                  {/* Initial Subject */}
+                  <div>
+                    <Label className="text-gray-400 text-sm mb-1 block">Initial Email Subject</Label>
+                    <Input
+                      value={editFormData.initial_subject || ''}
+                      onChange={(e) => setEditFormData({ ...editFormData, initial_subject: e.target.value })}
+                      className="bg-gray-800 border-gray-700 text-white"
+                      placeholder="e.g., Quick question about {{company}}"
+                    />
+                  </div>
+
+                  {/* Threading Option */}
+                  <div className="flex items-center gap-3 bg-gray-800/50 rounded p-3">
+                    <input
+                      type="checkbox"
+                      id="edit-use-threaded-replies"
+                      checked={editFormData.use_threaded_replies || false}
+                      onChange={(e) => setEditFormData({ ...editFormData, use_threaded_replies: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded"
+                    />
+                    <div>
+                      <Label htmlFor="edit-use-threaded-replies" className="text-white cursor-pointer">
+                        Use threaded replies (RE:)
+                      </Label>
+                      <p className="text-xs text-gray-400">
+                        {editFormData.use_threaded_replies
+                          ? `Follow-ups will use "RE: ${editFormData.initial_subject || '[Initial Subject]'}"`
+                          : 'Each follow-up will have its own subject line'
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Follow-up Subjects (only if not using threaded replies) */}
+                  {!editFormData.use_threaded_replies && editFormData.follow_up_messages?.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-gray-400 text-sm block">Follow-up Subject Lines</Label>
+                      {editFormData.follow_up_messages.map((_: any, index: number) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 w-12">FU{index + 1}:</span>
+                          <Input
+                            value={editFormData.follow_up_subjects?.[index] || ''}
+                            onChange={(e) => {
+                              const updated = [...(editFormData.follow_up_subjects || [])];
+                              updated[index] = e.target.value;
+                              setEditFormData({ ...editFormData, follow_up_subjects: updated });
+                            }}
+                            className="bg-gray-800 border-gray-700 text-white text-sm"
+                            placeholder={`Subject for follow-up ${index + 1}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Follow-up Messages */}
               <div>
@@ -1585,6 +1679,12 @@ function CampaignBuilder({
   const [alternativeMessage, setAlternativeMessage] = useState('');
   // Initialize with 5 follow-up messages (Messages 2-6 in the sequence)
   const [followUpMessages, setFollowUpMessages] = useState<string[]>(['', '', '', '', '']);
+
+  // Email subject lines
+  const [initialSubject, setInitialSubject] = useState('');
+  const [followUpSubjects, setFollowUpSubjects] = useState<string[]>(['', '', '', '', '']);
+  const [useThreadedReplies, setUseThreadedReplies] = useState(false); // If true, follow-ups use "RE: {initialSubject}"
+
   const [activeField, setActiveField] = useState<{type: 'connection' | 'alternative' | 'followup', index?: number}>({type: 'connection'});
   const [activeTextarea, setActiveTextarea] = useState<HTMLTextAreaElement | null>(null);
 
@@ -2136,6 +2236,8 @@ function CampaignBuilder({
 
   const addFollowUpMessage = () => {
     setFollowUpMessages([...followUpMessages, '']);
+    // Also add empty subject for the new follow-up
+    setFollowUpSubjects([...followUpSubjects, '']);
     // Add default delay for new message
     const newDelays = [...(campaignSettings.message_delays || []), '2-3 days'];
     setCampaignSettings({...campaignSettings, message_delays: newDelays});
@@ -2147,10 +2249,17 @@ function CampaignBuilder({
     setFollowUpMessages(updated);
   };
 
+  const updateFollowUpSubject = (index: number, value: string) => {
+    const updated = [...followUpSubjects];
+    updated[index] = value;
+    setFollowUpSubjects(updated);
+  };
+
   const removeFollowUpMessage = (index: number) => {
     if (followUpMessages.length > 1) {
       setFollowUpMessages(followUpMessages.filter((_, i) => i !== index));
-      // Also remove the corresponding delay
+      // Also remove the corresponding subject and delay
+      setFollowUpSubjects(followUpSubjects.filter((_, i) => i !== index));
       const newDelays = (campaignSettings.message_delays || []).filter((_: any, i: number) => i !== index);
       setCampaignSettings({...campaignSettings, message_delays: newDelays});
     }
@@ -2918,6 +3027,10 @@ Would you like me to adjust these or create more variations?`
           connection_message: connectionMessage,
           alternative_message: alternativeMessage,
           follow_up_messages: followUpMessages.filter(msg => msg.trim()),
+          // Email subject lines
+          initial_subject: initialSubject,
+          follow_up_subjects: followUpSubjects.filter((_, i) => followUpMessages[i]?.trim()), // Only include subjects for non-empty follow-ups
+          use_threaded_replies: useThreadedReplies,
           session_id: sessionId // CRITICAL FIX: Include session_id for auto-transfer of approved prospects
         })
       });
@@ -4818,29 +4931,75 @@ Would you like me to adjust these or create more variations?`
           </div>
 
           {/* Initial Email */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label htmlFor="email-initial" className="text-gray-400">
               Initial Email
             </Label>
             <p className="text-xs text-gray-500">
               First email sent to your prospects
             </p>
-            <Textarea
-              id="email-initial"
-              className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
-              rows={6}
-              value={alternativeMessage}
-              onChange={e => setAlternativeMessage(e.target.value)}
-              onFocus={(e) => {
-                setActiveField({type: 'alternative'});
-                setActiveTextarea(e.target as HTMLTextAreaElement);
-              }}
-              placeholder="Hi {{first_name}},&#10;&#10;I noticed you're at {{company_name}} and thought you might be interested in...&#10;&#10;Would love to connect!"
-            />
+
+            {/* Subject Line */}
+            <div className="space-y-1">
+              <Label htmlFor="email-initial-subject" className="text-gray-500 text-xs">
+                Subject Line
+              </Label>
+              <input
+                id="email-initial-subject"
+                type="text"
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none"
+                value={initialSubject}
+                onChange={e => setInitialSubject(e.target.value)}
+                placeholder="e.g., Quick question about {{company_name}}"
+              />
+            </div>
+
+            {/* Email Body */}
+            <div className="space-y-1">
+              <Label htmlFor="email-initial-body" className="text-gray-500 text-xs">
+                Email Body
+              </Label>
+              <Textarea
+                id="email-initial-body"
+                className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+                rows={6}
+                value={alternativeMessage}
+                onChange={e => setAlternativeMessage(e.target.value)}
+                onFocus={(e) => {
+                  setActiveField({type: 'alternative'});
+                  setActiveTextarea(e.target as HTMLTextAreaElement);
+                }}
+                placeholder="Hi {{first_name}},&#10;&#10;I noticed you're at {{company_name}} and thought you might be interested in...&#10;&#10;Would love to connect!"
+              />
+            </div>
             <div className="flex justify-between items-center">
               <span className="text-xs text-gray-400">
                 Characters: {alternativeMessage.length}
               </span>
+            </div>
+          </div>
+
+          {/* Threading Option */}
+          <div className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="use-threaded-replies"
+                checked={useThreadedReplies}
+                onChange={e => setUseThreadedReplies(e.target.checked)}
+                className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+              />
+              <div>
+                <Label htmlFor="use-threaded-replies" className="text-white cursor-pointer">
+                  Use threaded replies (RE:)
+                </Label>
+                <p className="text-xs text-gray-400 mt-1">
+                  {useThreadedReplies
+                    ? `Follow-up emails will use "RE: ${initialSubject || '[Initial Subject]'}" as the subject line`
+                    : 'Each follow-up email will have its own unique subject line'
+                  }
+                </p>
+              </div>
             </div>
           </div>
 
@@ -4856,23 +5015,50 @@ Would you like me to adjust these or create more variations?`
             </p>
 
             {followUpMessages.map((message, index) => (
-              <div key={index} className="mb-4">
+              <div key={index} className="mb-4 bg-gray-800/50 rounded-lg p-4 border border-gray-700">
                 <Label className="text-gray-400 mb-2 block">
                   Follow-up Email {index + 1}
                 </Label>
+
+                {/* Subject Line for this follow-up (only if not using threaded replies) */}
+                {!useThreadedReplies && (
+                  <div className="mb-3">
+                    <Label className="text-gray-500 text-xs mb-1 block">
+                      Subject Line
+                    </Label>
+                    <input
+                      type="text"
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none text-sm"
+                      value={followUpSubjects[index] || ''}
+                      onChange={e => updateFollowUpSubject(index, e.target.value)}
+                      placeholder={`e.g., Following up on my previous email`}
+                    />
+                  </div>
+                )}
+                {useThreadedReplies && (
+                  <div className="mb-3 text-xs text-gray-500 italic">
+                    Subject: RE: {initialSubject || '[Initial Subject]'}
+                  </div>
+                )}
+
                 <div className="flex gap-3">
-                  <Textarea
-                    className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
-                    rows={4}
-                    value={message}
-                    onChange={e => updateFollowUpMessage(index, e.target.value)}
-                    onFocus={(e) => {
-                      setActiveField({type: 'followup', index});
-                      setActiveTextarea(e.target as HTMLTextAreaElement);
-                    }}
-                    placeholder={`Follow-up email ${index + 1}...`}
-                    data-followup-index={index}
-                  />
+                  <div className="flex-1">
+                    <Label className="text-gray-500 text-xs mb-1 block">
+                      Email Body
+                    </Label>
+                    <Textarea
+                      className="w-full bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+                      rows={4}
+                      value={message}
+                      onChange={e => updateFollowUpMessage(index, e.target.value)}
+                      onFocus={(e) => {
+                        setActiveField({type: 'followup', index});
+                        setActiveTextarea(e.target as HTMLTextAreaElement);
+                      }}
+                      placeholder={`Follow-up email ${index + 1}...`}
+                      data-followup-index={index}
+                    />
+                  </div>
                   <div className="flex flex-col gap-2 justify-center">
                     <span className="text-xs text-gray-400 text-center">Send after</span>
                     <input
@@ -7134,6 +7320,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       follow_up_messages: campaign.follow_up_messages?.length > 0
         ? campaign.follow_up_messages
         : (campaign.message_templates?.follow_up_messages || []),
+      // Email subject lines
+      initial_subject: campaign.message_templates?.initial_subject || '',
+      follow_up_subjects: campaign.message_templates?.follow_up_subjects || [],
+      use_threaded_replies: campaign.message_templates?.use_threaded_replies || false,
       timing: campaign.timing || {}
     });
     setShowEditModal(true);
@@ -7144,10 +7334,29 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     if (!campaignToEdit) return;
 
     try {
+      // Build message_templates with all message content including subjects
+      const message_templates = {
+        connection_request: editFormData.connection_message || '',
+        alternative_message: editFormData.alternative_message || '',
+        follow_up_messages: editFormData.follow_up_messages || [],
+        // Email subject lines
+        initial_subject: editFormData.initial_subject || '',
+        follow_up_subjects: editFormData.follow_up_subjects || [],
+        use_threaded_replies: editFormData.use_threaded_replies || false
+      };
+
+      const updatePayload = {
+        name: editFormData.name,
+        connection_message: editFormData.connection_message,
+        alternative_message: editFormData.alternative_message,
+        follow_up_messages: editFormData.follow_up_messages,
+        message_templates
+      };
+
       const response = await fetch(`/api/campaigns/${campaignToEdit.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editFormData)
+        body: JSON.stringify(updatePayload)
       });
 
       if (!response.ok) {
@@ -9584,16 +9793,83 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 <p className="text-xs text-gray-500 mt-1">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</p>
               </div>
 
-              {/* Alternative Message */}
+              {/* Alternative Message / Initial Email */}
               <div>
-                <Label className="text-gray-300 mb-2 block">Alternative Message (Optional)</Label>
+                <Label className="text-gray-300 mb-2 block">
+                  {campaignToEdit?.campaign_type === 'email' ? 'Initial Email Body' : 'Alternative Message (Optional)'}
+                </Label>
                 <Textarea
                   value={editFormData.alternative_message || ''}
                   onChange={(e) => setEditFormData({ ...editFormData, alternative_message: e.target.value })}
                   className="bg-gray-800 border-gray-700 text-white min-h-[120px]"
-                  placeholder="Alternative message if already connected..."
+                  placeholder={campaignToEdit?.campaign_type === 'email' ? "Initial email body..." : "Alternative message if already connected..."}
                 />
               </div>
+
+              {/* Email Subject Lines - Only show for email campaigns */}
+              {campaignToEdit?.campaign_type === 'email' && (
+                <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 space-y-4">
+                  <h4 className="text-blue-400 font-medium flex items-center gap-2">
+                    <Mail size={18} />
+                    Email Subject Lines
+                  </h4>
+
+                  {/* Initial Subject */}
+                  <div>
+                    <Label className="text-gray-400 text-sm mb-1 block">Initial Email Subject</Label>
+                    <Input
+                      value={editFormData.initial_subject || ''}
+                      onChange={(e) => setEditFormData({ ...editFormData, initial_subject: e.target.value })}
+                      className="bg-gray-800 border-gray-700 text-white"
+                      placeholder="e.g., Quick question about {{company}}"
+                    />
+                  </div>
+
+                  {/* Threading Option */}
+                  <div className="flex items-center gap-3 bg-gray-800/50 rounded p-3">
+                    <input
+                      type="checkbox"
+                      id="edit-use-threaded-replies"
+                      checked={editFormData.use_threaded_replies || false}
+                      onChange={(e) => setEditFormData({ ...editFormData, use_threaded_replies: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded"
+                    />
+                    <div>
+                      <Label htmlFor="edit-use-threaded-replies" className="text-white cursor-pointer">
+                        Use threaded replies (RE:)
+                      </Label>
+                      <p className="text-xs text-gray-400">
+                        {editFormData.use_threaded_replies
+                          ? `Follow-ups will use "RE: ${editFormData.initial_subject || '[Initial Subject]'}"`
+                          : 'Each follow-up will have its own subject line'
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Follow-up Subjects (only if not using threaded replies) */}
+                  {!editFormData.use_threaded_replies && editFormData.follow_up_messages?.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-gray-400 text-sm block">Follow-up Subject Lines</Label>
+                      {editFormData.follow_up_messages.map((_: any, index: number) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 w-12">FU{index + 1}:</span>
+                          <Input
+                            value={editFormData.follow_up_subjects?.[index] || ''}
+                            onChange={(e) => {
+                              const updated = [...(editFormData.follow_up_subjects || [])];
+                              updated[index] = e.target.value;
+                              setEditFormData({ ...editFormData, follow_up_subjects: updated });
+                            }}
+                            className="bg-gray-800 border-gray-700 text-white text-sm"
+                            placeholder={`Subject for follow-up ${index + 1}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Follow-up Messages */}
               <div>

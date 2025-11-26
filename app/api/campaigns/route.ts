@@ -125,7 +125,15 @@ export async function POST(req: NextRequest) {
       ab_test_variant,
       message_templates = {},
       status = 'draft', // Default to 'draft' - campaigns must be explicitly activated
-      session_id // Optional: if provided, auto-transfer approved prospects from this session
+      session_id, // Optional: if provided, auto-transfer approved prospects from this session
+      // Email subject line fields
+      initial_subject,
+      follow_up_subjects = [],
+      use_threaded_replies = false,
+      // Legacy fields that may be passed directly
+      connection_message,
+      alternative_message,
+      follow_up_messages = []
     } = await req.json();
 
     if (!workspace_id || !name) {
@@ -133,6 +141,27 @@ export async function POST(req: NextRequest) {
         error: 'Workspace ID and campaign name are required'
       }, { status: 400 });
     }
+
+    // Build comprehensive message_templates object
+    // Merge legacy fields with message_templates, and add email subject lines
+    const finalMessageTemplates = {
+      ...message_templates,
+      // Use directly passed values or fall back to message_templates
+      connection_request: connection_message || message_templates.connection_request || '',
+      alternative_message: alternative_message || message_templates.alternative_message || '',
+      follow_up_messages: follow_up_messages.length > 0 ? follow_up_messages : (message_templates.follow_up_messages || []),
+      // Email subject lines
+      initial_subject: initial_subject || message_templates.initial_subject || '',
+      follow_up_subjects: follow_up_subjects.length > 0 ? follow_up_subjects : (message_templates.follow_up_subjects || []),
+      use_threaded_replies: use_threaded_replies ?? message_templates.use_threaded_replies ?? false
+    };
+
+    console.log('📧 Campaign message_templates:', {
+      has_initial_subject: !!finalMessageTemplates.initial_subject,
+      initial_subject: finalMessageTemplates.initial_subject,
+      follow_up_subjects_count: finalMessageTemplates.follow_up_subjects?.length || 0,
+      use_threaded_replies: finalMessageTemplates.use_threaded_replies
+    });
 
     // Create campaign using database function
     const { data: campaignId, error } = await supabase
@@ -143,7 +172,7 @@ export async function POST(req: NextRequest) {
         p_campaign_type: campaign_type,
         p_target_icp: target_icp,
         p_ab_test_variant: ab_test_variant,
-        p_message_templates: message_templates
+        p_message_templates: finalMessageTemplates
       });
 
     if (error) {
@@ -192,13 +221,19 @@ export async function POST(req: NextRequest) {
       followup_wait_days: 5,
       message_wait_days: 5,
       messages: {
-        connection_request: message_templates.connection_request || null,
-        follow_up_1: message_templates.alternative_message || message_templates.follow_up_messages?.[0] || null,
-        follow_up_2: message_templates.follow_up_messages?.[0] || null,
-        follow_up_3: message_templates.follow_up_messages?.[1] || null,
-        follow_up_4: message_templates.follow_up_messages?.[2] || null,
-        follow_up_5: message_templates.follow_up_messages?.[3] || null,
-        goodbye: message_templates.follow_up_messages?.[4] || null
+        connection_request: finalMessageTemplates.connection_request || null,
+        follow_up_1: finalMessageTemplates.alternative_message || finalMessageTemplates.follow_up_messages?.[0] || null,
+        follow_up_2: finalMessageTemplates.follow_up_messages?.[0] || null,
+        follow_up_3: finalMessageTemplates.follow_up_messages?.[1] || null,
+        follow_up_4: finalMessageTemplates.follow_up_messages?.[2] || null,
+        follow_up_5: finalMessageTemplates.follow_up_messages?.[3] || null,
+        goodbye: finalMessageTemplates.follow_up_messages?.[4] || null
+      },
+      // Email subject configuration
+      subjects: {
+        initial: finalMessageTemplates.initial_subject || null,
+        follow_ups: finalMessageTemplates.follow_up_subjects || [],
+        use_threaded_replies: finalMessageTemplates.use_threaded_replies || false
       }
     };
 
