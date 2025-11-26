@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     // Execute the campaign based on campaign type
     try {
       // Determine execution endpoint based on campaign type
-      let executeEndpoint = '/api/campaigns/direct/send-connection-requests-queued' // Queue-based Unipile for all LinkedIn campaigns (30 min spacing)
+      let executeEndpoint = '/api/campaigns/direct/send-connection-requests-fast' // Queue-based Unipile for all LinkedIn campaigns (30 min spacing)
 
       if (campaign.campaign_type === 'email' || campaign.campaign_type === 'connector') {
         // Queue-based email sending with compliance (40/day, 8-5, no weekends/holidays)

@@ -5830,6 +5830,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const [selectedCampaignProspects, setSelectedCampaignProspects] = useState<any[] | null>(null);
   const [selectedDraft, setSelectedDraft] = useState<any>(null);
 
+  // Track when campaign was created from initialProspects to prevent showing in Campaign Creator
+  const [campaignCreatedFromInitial, setCampaignCreatedFromInitial] = useState(false);
+
   // Multi-select state
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -6118,8 +6121,18 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   });
   const [settingsChanged, setSettingsChanged] = useState(false);
 
+  // Track if campaign creation is in progress to prevent duplicate submissions
+  const [isCreatingCampaign, setIsCreatingCampaign] = useState(false);
+
   // Handle campaign approval and execution
   const handleApproveCampaign = async (finalCampaignData: any) => {
+    // CRITICAL FIX (Nov 26): Prevent duplicate campaign creation from double-clicks
+    if (isCreatingCampaign) {
+      console.log('⚠️ Campaign creation already in progress - ignoring duplicate call');
+      return;
+    }
+    setIsCreatingCampaign(true);
+
     console.log('🚀 [FIX DEPLOYED] handleApproveCampaign called - v2 with null checks');
     try {
       const { _executionData } = finalCampaignData;
@@ -6444,6 +6457,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       setCampaignDataForApproval(null);
       setShowBuilder(false);
 
+      // CRITICAL FIX (Nov 26): Mark that campaign was created from initialProspects
+      // This prevents the campaign from showing in BOTH Campaign Creator AND Active Campaigns
+      setCampaignCreatedFromInitial(true);
+
       // Invalidate caches to refresh campaign lists and counters
       queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
       queryClient.invalidateQueries({ queryKey: ['pendingCampaigns'] });
@@ -6459,6 +6476,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     } catch (error) {
       console.error('Campaign approval error:', error);
       toastError(`Error: ${error instanceof Error ? error.message : 'Failed to execute campaign'}`);
+    } finally {
+      // Reset the creating flag so user can retry if needed
+      setIsCreatingCampaign(false);
     }
   };
 
@@ -7575,9 +7595,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 }`}
               >
                 Campaign Creator
-                {((initialProspects?.filter(p => p.approvalStatus === 'approved').length || 0) + pendingCampaignsFromDB.length) > 0 && (
+                {/* CRITICAL FIX (Nov 26): Don't count initialProspects if campaign was created from them */}
+                {((!campaignCreatedFromInitial ? (initialProspects?.filter(p => p.approvalStatus === 'approved').length || 0) : 0) + pendingCampaignsFromDB.length) > 0 && (
                   <span className="px-2 py-0.5 bg-yellow-600 text-white text-xs rounded-full">
-                    {(initialProspects?.filter(p => p.approvalStatus === 'approved').length || 0) + pendingCampaignsFromDB.length}
+                    {(!campaignCreatedFromInitial ? (initialProspects?.filter(p => p.approvalStatus === 'approved').length || 0) : 0) + pendingCampaignsFromDB.length}
                   </span>
                 )}
               </button>
@@ -7713,7 +7734,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   const allCampaigns: any[] = [];
 
                   // Add temp campaigns from initialProspects - ONLY APPROVED ONES
-                  if (initialProspects && initialProspects.length > 0) {
+                  // CRITICAL FIX (Nov 26): Skip if campaign was already created from these prospects
+                  if (initialProspects && initialProspects.length > 0 && !campaignCreatedFromInitial) {
                     const approvedProspects = initialProspects.filter(p => p.approvalStatus === 'approved');
                     const campaignGroups = approvedProspects.reduce((acc: any, prospect: any) => {
                       const campaignName = prospect.campaignName || prospect.campaignTag || 'Unnamed Campaign';
@@ -8587,7 +8609,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                               let executeEndpoint = '/api/campaigns/direct/send-connection-requests-fast';
 
                               if (selectedCampaign.campaign_type === 'email') {
-                                executeEndpoint = '/api/campaigns/email/execute';
+                                // Use queue-based email sending (cron processes every 13 min)
+                                executeEndpoint = '/api/campaigns/email/send-emails-queued';
                               }
 
                               console.log(`Executing ${selectedCampaign.campaign_type || 'messenger'} campaign via ${executeEndpoint}`);

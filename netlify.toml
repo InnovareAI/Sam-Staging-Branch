@@ -63,3 +63,9 @@
 # Backup for webhook delays (Unipile webhooks can have 8hr latency)
 [functions."poll-accepted-connections"]
   schedule = "0 */2 * * *"
+
+# Scheduled function: Poll for message replies every 2 hours
+# CRITICAL: Backup for new_message webhook - stops follow-ups when prospect replies
+# Without this, prospects get follow-ups after they've already replied
+[functions."poll-message-replies"]
+  schedule = "30 */2 * * *"

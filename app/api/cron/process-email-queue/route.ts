@@ -152,6 +152,25 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    // COMPLIANCE: Check daily quota (40 emails max per day)
+    const today = moment().tz('America/New_York').startOf('day').toISOString();
+    const { count: sentToday } = await supabase
+      .from('email_send_queue')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'sent')
+      .gte('sent_at', today);
+
+    const DAILY_LIMIT = 40;
+    if ((sentToday || 0) >= DAILY_LIMIT) {
+      console.log(`⏸️  Daily email limit reached (${sentToday}/${DAILY_LIMIT}) - no more emails today`);
+      return NextResponse.json({
+        success: true,
+        message: `Daily email limit reached (${sentToday}/${DAILY_LIMIT})`,
+        processed: 0,
+        daily_sent: sentToday
+      });
+    }
+
     // Find next email to send (scheduled_for <= NOW, status = pending)
     const { data: nextEmail, error: fetchError } = await supabase
       .from('email_send_queue')
@@ -173,6 +192,35 @@ export async function POST(request: NextRequest) {
 
     console.log(`📤 Sending email to: ${nextEmail.recipient_email}`);
     console.log(`📧 Subject: ${nextEmail.subject}`);
+
+    // CRITICAL: Check if prospect has replied - stop messaging immediately
+    const { data: prospect } = await supabase
+      .from('campaign_prospects')
+      .select('status, responded_at')
+      .eq('id', nextEmail.prospect_id)
+      .single();
+
+    if (prospect?.responded_at || prospect?.status === 'replied') {
+      console.log(`⏹️  Prospect ${nextEmail.recipient_email} has replied - cancelling email`);
+
+      // Cancel this email and all future emails for this prospect
+      await supabase
+        .from('email_send_queue')
+        .update({
+          status: 'cancelled',
+          error_message: 'Prospect replied - sequence stopped',
+          updated_at: new Date().toISOString()
+        })
+        .eq('prospect_id', nextEmail.prospect_id)
+        .eq('status', 'pending');
+
+      return NextResponse.json({
+        success: true,
+        message: 'Email cancelled - prospect has replied',
+        processed: 0,
+        cancelled_for: nextEmail.recipient_email
+      });
+    }
 
     // Send email via Unipile
     const sendResult = await sendEmailViaUnipile({

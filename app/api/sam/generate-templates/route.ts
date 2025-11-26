@@ -115,11 +115,11 @@ async function generateLinkedInTemplates(context: any) {
       throw new Error('OpenRouter API key not configured');
     }
 
-    const prompt = `You are SAM, an expert LinkedIn messaging strategist. Generate compelling LinkedIn campaign templates based on the following context:
+    const prompt = `You are SAM, an expert outreach messaging strategist. Generate compelling ${context.campaign.type === 'email' ? 'email' : 'LinkedIn'} campaign templates based on the following context:
 
 **Campaign Details:**
 - Campaign Name: ${context.campaign.name}
-- Campaign Type: ${context.campaign.type === 'connector' ? 'Connector (2nd/3rd degree connections - needs connection request)' : 'Messenger (1st degree connections - direct messages only)'}
+- Campaign Type: ${context.campaign.type === 'connector' ? 'Connector (2nd/3rd degree LinkedIn connections - needs connection request)' : context.campaign.type === 'email' ? 'Email (cold email outreach - NOT LinkedIn)' : 'Messenger (1st degree LinkedIn connections - direct messages only)'}
 - Number of Prospects: ${context.campaign.prospect_count}
 
 **Prospect Profile:**${prospectContextStr}
@@ -152,6 +152,33 @@ ${context.campaign.type === 'connector'
 6. MESSAGE 6 - Goodbye message (no first name)
    - Polite closing if still no response
    - Leave door open for future connection`
+  : context.campaign.type === 'email'
+  ? `Generate a 6-step cold email outreach sequence:
+
+IMPORTANT: This is EMAIL outreach, NOT LinkedIn. Do NOT mention "connecting", "LinkedIn", or "thanks for connecting".
+
+1. INITIAL EMAIL
+   - Subject line + body
+   - Must include {first_name} personalization
+   - Professional cold email introduction
+
+2. FOLLOW-UP EMAIL 1 - Starts with "Hi {first_name},"
+   - Sent if no response to initial email
+   - Reference the previous email briefly
+   - Provide additional value
+
+3. FOLLOW-UP EMAIL 2 (no first name greeting)
+   - Another value-add follow-up
+
+4. FOLLOW-UP EMAIL 3 (no first name greeting)
+   - Continue building interest
+
+5. FOLLOW-UP EMAIL 4 (no first name greeting)
+   - Maintain engagement
+
+6. FOLLOW-UP EMAIL 5 - Goodbye email (no first name)
+   - Polite closing if still no response
+   - Leave door open for future contact`
   : `Generate a 6-step LinkedIn direct messaging sequence:
 
 1. INITIAL MESSAGE - Direct message for 1st degree connections
@@ -168,24 +195,33 @@ ${context.campaign.type === 'connector'
 
 **Template Requirements:**
 - Use personalization variables: {first_name}, {last_name}, {company_name}, {title}, {industry}
-- Connection Request: MUST be max 275 characters including all variables
-- Message 2: MUST start with "Hello {first_name},"
+${context.campaign.type === 'email'
+  ? `- Initial Email: Professional cold email introduction
+- Follow-up emails should NOT mention "connecting" or "LinkedIn"
+- Keep emails concise and scannable
+- Do NOT include placeholders like [Your name], [Link], [Calendar link], etc.
+- End emails with just "Best regards" - the sender's name will be added automatically
+- Do NOT include square bracket placeholders - these are not variables`
+  : `- Connection Request: MUST be max 275 characters including all variables`}
+- Message 2: MUST start with "Hello {first_name}," or "Hi {first_name},"
 - Messages 3-6: NO first name greeting
 - Message 6: Should be a polite goodbye/closing message
 - Be concise, professional, and value-focused
 - Avoid overly salesy language
-- Focus on genuine connection and value exchange
+- Focus on genuine ${context.campaign.type === 'email' ? 'outreach' : 'connection'} and value exchange
 - Match the tone requested by the user
 - Reference the user's Knowledge Base goals, ICP, and value proposition
+- ONLY use curly brace variables like {first_name} - NEVER use square bracket placeholders
 
 **Output Format:**
 Provide templates in this EXACT format:
 
-**Connection Request:**
-"[Your connection request here - max 275 characters with {first_name}]"
+${context.campaign.type === 'email' ? `**Initial Email:**
+"[Your cold email here with {first_name}]"` : `**Connection Request:**
+"[Your connection request here - max 275 characters with {first_name}]"`}
 
 **Follow-up Message 1:**
-"Hello {first_name}, [Your first follow-up message here]"
+"Hi {first_name}, [Your first follow-up message here]"
 
 **Follow-up Message 2:**
 "[Your second follow-up here - no first name]"
@@ -253,9 +289,18 @@ Then provide a brief explanation of your template strategy based on the Knowledg
 }
 
 function parseAITemplates(aiResponse: string, campaignType: string) {
-  // Extract connection message (for connector campaigns)
-  const connectionMatch = aiResponse.match(/\*\*Connection Request:?\*\*\s*\n?"([^"]+)"/i);
-  const connectionMessage = connectionMatch ? connectionMatch[1].trim() : '';
+  // Extract initial message based on campaign type
+  let connectionMessage = '';
+
+  if (campaignType === 'email') {
+    // For email campaigns, look for "Initial Email"
+    const emailMatch = aiResponse.match(/\*\*Initial Email:?\*\*\s*\n?"([^"]+)"/i);
+    connectionMessage = emailMatch ? emailMatch[1].trim() : '';
+  } else {
+    // For LinkedIn campaigns, look for "Connection Request"
+    const connectionMatch = aiResponse.match(/\*\*Connection Request:?\*\*\s*\n?"([^"]+)"/i);
+    connectionMessage = connectionMatch ? connectionMatch[1].trim() : '';
+  }
 
   // Extract all 5 follow-up messages (Messages 2-6)
   const followUpMessages: string[] = [];
@@ -373,6 +418,26 @@ function generateFallbackTemplates(context: any, industries: string[], jobTitles
       ];
     }
     // Note: connectionMessage stays empty for messenger campaigns
+  } else if (context.campaign.type === 'email') {
+    // Email campaigns: Cold email outreach (NO LinkedIn references)
+    // These are placeholder templates - SAM AI will generate better ones via OpenRouter
+    alternativeMessage = `Hi {first_name},
+
+I noticed you're leading ${jobTitles.length > 0 ? jobTitles[0].toLowerCase() : 'initiatives'} at {company_name} and wanted to reach out.
+
+We've been helping ${industries.length > 0 ? industries[0] : 'companies'} teams ${valueProp}.
+
+Would you be open to a 15-minute call to see if this might be relevant for {company_name}?
+
+Best regards`;
+
+    followUpMessages = [
+      `Hi {first_name}, wanted to follow up on my email from earlier this week. I'd love to share how we've helped similar ${industries.length > 0 ? industries[0] : 'companies'} achieve results. Would a quick call work for you?`,
+      `{first_name} - I know things get busy. Just wanted to bump this up in case it got buried. Happy to work around your schedule if there's interest.`,
+      `Quick question, {first_name} - is improving ${isLeadGen ? 'revenue growth' : 'operations'} something {company_name} is focused on right now? If so, I have some ideas that might help.`,
+      `Last note from me, {first_name}. If the timing isn't right, no problem at all. Feel free to reach out whenever it makes sense for {company_name}.`
+    ];
+    // For email, use alternativeMessage as the initial email and connectionMessage stays empty
   }
 
   // Adjust tone
@@ -427,6 +492,27 @@ ${kbContext.length > 0 ? `• Enhanced with ${kbContext.length} Knowledge Base i
 • ${isPartnership ? 'Partnership-oriented messaging for collaboration' : ''}
 • ${tone.charAt(0).toUpperCase() + tone.slice(1)} tone as requested
 • Direct messaging approach for existing connections
+• Industry-specific language for ${industries.length > 0 ? industries[0] : 'your target market'}
+• Personalized for ${jobTitles.length > 0 ? jobTitles[0] : 'your audience'}
+
+These templates are ready to use! Would you like me to adjust anything or shall we apply them to your campaign?`;
+  } else if (context.campaign.type === 'email') {
+    response = `Perfect! I've created personalized cold email templates for your "${context.campaign.name}" **email campaign**${kbContext.length > 0 ? ' using insights from your Knowledge Base' : ''}.
+
+**✨ Generated Email Templates:**
+
+**Initial Email:**
+"${alternativeMessage}"
+
+**Follow-up Emails:**
+${followUpMessages.map((msg, i) => `${i + 1}. "${msg}"`).join('\n')}
+
+**🎯 Template Strategy:**
+${kbContext.length > 0 ? `• Enhanced with ${kbContext.length} Knowledge Base insight(s)\n` : ''}• ${isLeadGen ? 'Lead generation focus with value proposition' : ''}
+• ${isNetworking ? 'Networking approach building professional relationships' : ''}
+• ${isPartnership ? 'Partnership-oriented messaging for collaboration' : ''}
+• ${tone.charAt(0).toUpperCase() + tone.slice(1)} tone as requested
+• Cold email best practices for high deliverability
 • Industry-specific language for ${industries.length > 0 ? industries[0] : 'your target market'}
 • Personalized for ${jobTitles.length > 0 ? jobTitles[0] : 'your audience'}
 

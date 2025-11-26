@@ -222,6 +222,8 @@ export async function POST(req: NextRequest) {
         linkedin_url,
         linkedin_user_id,
         follow_up_sequence_index,
+        status,
+        responded_at,
         campaign_id,
         campaigns (
           id,
@@ -290,6 +292,24 @@ export async function POST(req: NextRequest) {
           console.error(`❌ No linkedin_user_id for ${prospectName}`);
           results.failed++;
           results.errors.push({ prospect: prospectName, error: 'Missing linkedin_user_id' });
+          continue;
+        }
+
+        // CRITICAL: Check if prospect has replied - stop messaging immediately
+        if (prospect.responded_at || prospect.status === 'replied') {
+          console.log(`⏹️  ${prospectName} has replied - stopping follow-up sequence`);
+
+          // Mark sequence as stopped due to reply
+          await supabase
+            .from('campaign_prospects')
+            .update({
+              status: 'replied',
+              follow_up_due_at: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', prospect.id);
+
+          results.skipped = (results.skipped || 0) + 1;
           continue;
         }
 
