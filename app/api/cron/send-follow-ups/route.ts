@@ -8,7 +8,8 @@
  * - Business hours: 7 AM - 6 PM
  * - No weekends
  * - No US public holidays
- * - No rate limit on follow-up messages (unlike connection requests)
+ * - MAX 1 follow-up per prospect per day (prevents spam)
+ * - Skips prospects who already received follow-up today
  *
  * Schedule: Every 30 minutes via Netlify scheduled function
  */
@@ -208,7 +209,13 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    // Calculate start of today (midnight) for same-day check
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayStartISO = todayStart.toISOString();
+
     // Get prospects due for follow-up (status = 'connected', follow_up_due_at <= now)
+    // CRITICAL: Exclude prospects who already received a follow-up TODAY (prevents spam)
     const { data: prospects, error: prospectsError } = await supabase
       .from('campaign_prospects')
       .select(`
@@ -221,6 +228,7 @@ export async function POST(req: NextRequest) {
         linkedin_url,
         linkedin_user_id,
         follow_up_sequence_index,
+        last_follow_up_at,
         status,
         responded_at,
         campaign_id,
@@ -240,6 +248,7 @@ export async function POST(req: NextRequest) {
       .eq('status', 'connected')
       .lte('follow_up_due_at', new Date().toISOString())
       .not('linkedin_user_id', 'is', null)
+      .or(`last_follow_up_at.is.null,last_follow_up_at.lt.${todayStartISO}`)
       .order('follow_up_due_at', { ascending: true });
 
     if (prospectsError) {
@@ -291,6 +300,17 @@ export async function POST(req: NextRequest) {
           results.failed++;
           results.errors.push({ prospect: prospectName, error: 'Missing linkedin_user_id' });
           continue;
+        }
+
+        // CRITICAL: Double-check last_follow_up_at to prevent same-day spam
+        // This is a safety net in case the query filter didn't work
+        if (prospect.last_follow_up_at) {
+          const lastFollowUp = new Date(prospect.last_follow_up_at);
+          const now = new Date();
+          if (lastFollowUp.toDateString() === now.toDateString()) {
+            console.log(`⏸️  ${prospectName} already received follow-up today - SKIPPING`);
+            continue;
+          }
         }
 
         // CRITICAL: Check if prospect has replied - stop messaging immediately
@@ -420,6 +440,7 @@ export async function POST(req: NextRequest) {
             status: nextStatus,
             follow_up_sequence_index: currentIndex + 1,
             follow_up_due_at: nextFollowUpDue,
+            last_follow_up_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
           .eq('id', prospect.id);
@@ -521,7 +542,7 @@ export async function GET() {
       business_hours: '9 AM - 5 PM',
       skips_weekends: true,
       skips_holidays: true,
-      rate_limit: 'none (follow-ups are not rate limited)'
+      rate_limit: 'max 1 follow-up per prospect per day'
     },
     follow_up_schedule: {
       'follow_up_1': '1 day after connection',
