@@ -732,14 +732,16 @@ export async function POST(request: NextRequest) {
     const existingUrls = new Set((existingSearched || []).map(p => p.linkedin_url?.toLowerCase()));
     console.log(`🔍 Found ${existingUrls.size} previously searched prospects to exclude`);
 
-    // STEP 2: Paginated search - fetch ALL pages up to 500 results
-    const MAX_TOTAL_RESULTS = 500;
+    // STEP 2: Paginated search - fetch pages up to limit
+    // Note: Netlify functions have 10-26s timeout, so limit pagination
+    const MAX_TOTAL_RESULTS = Math.min(target_count, 200); // Cap at 200 for serverless
+    const MAX_PAGES = 4; // Max 4 pages to stay within timeout (50 * 4 = 200)
     const allItems: any[] = [];
     let cursor: string | null = null;
     let pageNumber = 0;
     let totalAvailable = 0;
 
-    while (allItems.length < MAX_TOTAL_RESULTS) {
+    while (allItems.length < MAX_TOTAL_RESULTS && pageNumber < MAX_PAGES) {
       pageNumber++;
 
       // Build URL with cursor for pagination
