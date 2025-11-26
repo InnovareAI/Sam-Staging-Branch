@@ -5,7 +5,7 @@
  * Progresses through campaign's follow-up sequence
  *
  * COMPLIANCE:
- * - Business hours: 9 AM - 5 PM
+ * - Business hours: 7 AM - 6 PM
  * - No weekends
  * - No US public holidays
  * - Rate limited: 10 follow-ups per run with 3-5 second delays
@@ -40,9 +40,9 @@ function canSendNow(timezone = 'America/New_York'): boolean {
     return false;
   }
 
-  // Check business hours (9 AM - 5 PM)
+  // Check business hours (7 AM - 6 PM)
   const hour = now.hour();
-  if (hour < 9 || hour >= 17) {
+  if (hour < 7 || hour >= 18) {
     console.log(`⏸️  Outside business hours (${hour}:00) - no follow-ups sent`);
     return false;
   }
@@ -106,75 +106,74 @@ async function resolveToProviderId(linkedinUserIdOrUrl: string, accountId: strin
 }
 
 // Send message via Unipile chat API
+// IMPORTANT: Unipile requires multipart/form-data, NOT application/json
+// And the text must be included when creating a new chat
 async function sendFollowUpMessage(params: {
   account_id: string;
   attendee_provider_id: string;
   text: string;
-}): Promise<{ success: boolean; message_id?: string; error?: string }> {
+}): Promise<{ success: boolean; message_id?: string; chat_id?: string; error?: string }> {
   try {
-    // First, try to find existing chat or create new one
-    // Unipile requires a chat_id to send messages
+    // Create FormData for multipart/form-data request
+    const formData = new FormData();
+    formData.append('account_id', params.account_id);
+    formData.append('attendees_ids', params.attendee_provider_id);
+    formData.append('text', params.text);
 
-    // Step 1: Get or create chat with this attendee
-    const chatResponse = await fetch(`${UNIPILE_BASE_URL}/api/v1/chats`, {
+    console.log(`📤 Sending follow-up via Unipile:`, {
+      account_id: params.account_id,
+      attendee_provider_id: params.attendee_provider_id,
+      text_length: params.text.length
+    });
+
+    // Start new chat with message (single API call)
+    const response = await fetch(`${UNIPILE_BASE_URL}/api/v1/chats`, {
       method: 'POST',
       headers: {
         'X-API-KEY': UNIPILE_API_KEY,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
+        'Accept': 'application/json'
+        // Note: Don't set Content-Type - fetch will set it automatically for FormData
       },
-      body: JSON.stringify({
-        account_id: params.account_id,
-        attendees_ids: [params.attendee_provider_id]
-      })
+      body: formData
     });
 
-    if (!chatResponse.ok) {
-      const error = await chatResponse.json().catch(() => ({ message: 'Unknown error' }));
+    const responseText = await response.text();
+    console.log(`📥 Unipile response status: ${response.status}`);
+
+    if (!response.ok) {
+      let error;
+      try {
+        error = JSON.parse(responseText);
+      } catch {
+        error = { message: responseText };
+      }
+      console.error(`❌ Unipile error:`, error);
       return {
         success: false,
-        error: `Failed to get/create chat: ${error.message || error.title || chatResponse.status}`
+        error: `Failed to send message: ${error.message || error.title || error.detail || response.status}`
       };
     }
 
-    const chatData = await chatResponse.json();
-    const chatId = chatData.id || chatData.chat_id;
-
-    if (!chatId) {
-      return {
-        success: false,
-        error: 'No chat_id returned from chat creation'
-      };
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      data = {};
     }
 
-    // Step 2: Send message to the chat
-    const messageResponse = await fetch(`${UNIPILE_BASE_URL}/api/v1/chats/${chatId}/messages`, {
-      method: 'POST',
-      headers: {
-        'X-API-KEY': UNIPILE_API_KEY,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        text: params.text
-      })
+    console.log(`✅ Message sent successfully:`, {
+      chat_id: data.chat_id || data.id,
+      message_id: data.message_id
     });
 
-    if (!messageResponse.ok) {
-      const error = await messageResponse.json().catch(() => ({ message: 'Unknown error' }));
-      return {
-        success: false,
-        error: `Failed to send message: ${error.message || error.title || messageResponse.status}`
-      };
-    }
-
-    const messageData = await messageResponse.json();
     return {
       success: true,
-      message_id: messageData.id || messageData.message_id
+      chat_id: data.chat_id || data.id,
+      message_id: data.message_id
     };
 
   } catch (error) {
+    console.error(`❌ Network error sending follow-up:`, error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Network error'
@@ -427,24 +426,27 @@ export async function POST(req: NextRequest) {
           .eq('id', prospect.id);
 
         // Store message in campaign_messages for tracking
-        await supabase
-          .from('campaign_messages')
-          .insert({
-            campaign_id: prospect.campaign_id,
-            workspace_id: campaign.workspace_id,
-            platform: 'linkedin',
-            platform_message_id: sendResult.message_id || `fu_${prospect.id}_${currentIndex}`,
-            recipient_linkedin_profile: prospect.linkedin_url,
-            recipient_name: prospectName,
-            prospect_id: prospect.id,
-            message_content: personalizedMessage,
-            message_template_variant: `follow_up_${currentIndex + 1}`,
-            sent_at: new Date().toISOString(),
-            sent_via: 'cron_follow_up',
-            sender_account: linkedinAccount.account_name,
-            delivery_status: 'sent'
-          })
-          .catch(err => console.warn('⚠️ Failed to store message:', err));
+        try {
+          await supabase
+            .from('campaign_messages')
+            .insert({
+              campaign_id: prospect.campaign_id,
+              workspace_id: campaign.workspace_id,
+              platform: 'linkedin',
+              platform_message_id: sendResult.message_id || `fu_${prospect.id}_${currentIndex}`,
+              recipient_linkedin_profile: prospect.linkedin_url,
+              recipient_name: prospectName,
+              prospect_id: prospect.id,
+              message_content: personalizedMessage,
+              message_template_variant: `follow_up_${currentIndex + 1}`,
+              sent_at: new Date().toISOString(),
+              sent_via: 'cron_follow_up',
+              sender_account: linkedinAccount.account_name,
+              delivery_status: 'sent'
+            });
+        } catch (err) {
+          console.warn('⚠️ Failed to store message:', err);
+        }
 
         results.sent++;
 
