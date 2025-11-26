@@ -973,8 +973,35 @@ export async function POST(request: NextRequest) {
 
     // Save to workspace_prospects with correct column names
     // Filter out prospects without LinkedIn URLs (required field)
-    const validProspects = prospects.filter((p: any) => p.linkedinUrl);
-    console.log(`🔵 Valid prospects with LinkedIn URLs: ${validProspects.length}/${prospects.length}`);
+    const prospectsWithUrls = prospects.filter((p: any) => p.linkedinUrl);
+    console.log(`🔵 Prospects with LinkedIn URLs: ${prospectsWithUrls.length}/${prospects.length}`);
+
+    // DEDUP: Exclude prospects already in campaign_prospects (pending CRs, previous contacts)
+    const { data: existingProspects } = await supabaseAdmin()
+      .from('campaign_prospects')
+      .select('linkedin_url')
+      .not('linkedin_url', 'is', null);
+
+    const existingUrls = new Set(
+      (existingProspects || [])
+        .map(p => p.linkedin_url?.toLowerCase())
+        .filter(Boolean)
+    );
+
+    const validProspects = prospectsWithUrls.filter((p: any) => {
+      const url = p.linkedinUrl?.toLowerCase();
+      if (existingUrls.has(url)) {
+        console.log(`   🔄 Skipping (already contacted): ${p.firstName} ${p.lastName}`);
+        return false;
+      }
+      return true;
+    });
+
+    const skippedCount = prospectsWithUrls.length - validProspects.length;
+    if (skippedCount > 0) {
+      console.log(`🔍 Excluded ${skippedCount} prospects already in campaigns`);
+    }
+    console.log(`🔵 Valid NEW prospects: ${validProspects.length}`);
 
     // Track persistence outcome to surface failures to caller
     let sessionId: string | null = null;
