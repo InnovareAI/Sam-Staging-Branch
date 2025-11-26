@@ -517,14 +517,25 @@ export async function POST(req: NextRequest) {
  * - Follow-up 5: 3 days after follow-up 4
  * - Goodbye: 3 days after follow-up 5
  */
+/**
+ * Get delay until next follow-up based on the NEW sequence index
+ *
+ * Schedule: 1 day (first FU after connection), then 3, 5, 5, 3, 3 days between subsequent FUs
+ *
+ * After FU1 sent (nextIndex = 1): wait 3 days for FU2
+ * After FU2 sent (nextIndex = 2): wait 5 days for FU3
+ * After FU3 sent (nextIndex = 3): wait 5 days for FU4
+ * After FU4 sent (nextIndex = 4): wait 3 days for FU5
+ * After FU5 sent (nextIndex = 5): wait 3 days for FU6 (goodbye)
+ * After FU6 sent (nextIndex = 6): null (sequence complete)
+ */
 function getFollowUpDelay(nextIndex: number): number | null {
   const delays: Record<number, number> = {
-    1: 1 * 24 * 60 * 60 * 1000,   // 1 day
-    2: 3 * 24 * 60 * 60 * 1000,   // 3 days
-    3: 5 * 24 * 60 * 60 * 1000,   // 5 days
-    4: 5 * 24 * 60 * 60 * 1000,   // 5 days
-    5: 3 * 24 * 60 * 60 * 1000,   // 3 days
-    6: 3 * 24 * 60 * 60 * 1000    // 3 days (goodbye)
+    1: 3 * 24 * 60 * 60 * 1000,   // 3 days until FU2
+    2: 5 * 24 * 60 * 60 * 1000,   // 5 days until FU3
+    3: 5 * 24 * 60 * 60 * 1000,   // 5 days until FU4
+    4: 3 * 24 * 60 * 60 * 1000,   // 3 days until FU5
+    5: 3 * 24 * 60 * 60 * 1000,   // 3 days until FU6 (goodbye)
   };
 
   return delays[nextIndex] || null;

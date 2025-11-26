@@ -93,14 +93,20 @@ function getNextBusinessDay(daysToAdd: number = 1): Date {
 
 /**
  * Calculate first follow-up time with smart scheduling:
- * - If currently in business hours (9 AM - 5 PM, Mon-Fri): Send in 1-2 hours
- * - If outside business hours or weekend: Next business day at 9 AM
+ *
+ * Schedule: First follow-up is 1 day after connection acceptance
+ * - Schedules for 1 day later at a random time within business hours (7 AM - 6 PM)
+ * - If that day is a weekend or holiday, moves to next business day
  */
 function getFirstFollowUpTime(): Date {
-  const now = new Date();
-  const currentHour = now.getHours();
-  const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
-  const dateStr = now.toISOString().split('T')[0];
+  // First follow-up is 1 day after connection
+  const followUpDate = new Date();
+  followUpDate.setDate(followUpDate.getDate() + 1); // Add 1 day
+
+  // Set a random time between 7 AM and 5 PM (to allow buffer before 6 PM)
+  const randomHour = 7 + Math.floor(Math.random() * 10); // 7-16 (7 AM - 4 PM)
+  const randomMinute = Math.floor(Math.random() * 60);
+  followUpDate.setHours(randomHour, randomMinute, 0, 0);
 
   const PUBLIC_HOLIDAYS = [
     '2025-01-01', '2025-01-20', '2025-02-17', '2025-03-17',
@@ -109,26 +115,22 @@ function getFirstFollowUpTime(): Date {
     '2026-01-01', '2026-01-19'
   ];
 
-  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-  const isHoliday = PUBLIC_HOLIDAYS.includes(dateStr);
-  const inBusinessHours = currentHour >= 9 && currentHour < 17; // 9 AM - 5 PM
+  // Advance past weekends and holidays while preserving time
+  while (true) {
+    const dayOfWeek = followUpDate.getDay();
+    const dateStr = followUpDate.toISOString().split('T')[0];
 
-  if (!isWeekend && !isHoliday && inBusinessHours) {
-    // We're in business hours - send in 1-2 hours
-    const followUpTime = new Date();
-    const randomMinutes = 60 + Math.floor(Math.random() * 60); // 60-120 minutes
-    followUpTime.setMinutes(followUpTime.getMinutes() + randomMinutes);
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const isHoliday = PUBLIC_HOLIDAYS.includes(dateStr);
 
-    // But don't go past 5 PM - if we would, schedule for next business day 9 AM
-    if (followUpTime.getHours() >= 17) {
-      return getNextBusinessDay(1);
+    if (!isWeekend && !isHoliday) {
+      break;
     }
 
-    return followUpTime;
-  } else {
-    // Outside business hours, weekend, or holiday - next business day at 9 AM
-    return getNextBusinessDay(1);
+    followUpDate.setDate(followUpDate.getDate() + 1);
   }
+
+  return followUpDate;
 }
 
 /**
