@@ -16,46 +16,43 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import moment from 'moment-timezone';
+import {
+  canSendNow as canSendNowCheck,
+  DEFAULT_TIMEZONE,
+  FOLLOW_UP_HOURS
+} from '@/lib/scheduling-config';
+
+// Type definitions for Supabase joined queries
+interface WorkspaceAccount {
+  id: string;
+  unipile_account_id: string;
+  account_name: string;
+}
+
+interface CampaignWithAccount {
+  id: string;
+  campaign_name: string;
+  workspace_id: string;
+  linkedin_account_id: string;
+  message_templates: {
+    follow_up_messages?: string[];
+    [key: string]: unknown;
+  };
+  workspace_accounts: WorkspaceAccount | null;
+}
 
 export const maxDuration = 120; // 2 minutes
 
 const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
 
-// Public holidays (US holidays 2025-2026)
-const PUBLIC_HOLIDAYS = [
-  '2025-01-01', '2025-01-20', '2025-02-17', '2025-05-26',
-  '2025-06-19', '2025-07-04', '2025-09-01', '2025-11-11',
-  '2025-11-27', '2025-12-25', '2026-01-01', '2026-01-19'
-];
-
-// Check if we can send now (business hours, not weekend/holiday)
-function canSendNow(timezone = 'America/New_York'): boolean {
-  const now = moment().tz(timezone);
-
-  // Check weekend
-  const day = now.day(); // 0=Sun, 6=Sat
-  if (day === 0 || day === 6) {
-    console.log(`⏸️  Weekend - no follow-ups sent (${now.format('llll')})`);
-    return false;
+// Use centralized scheduling config
+function canSendNow(timezone = DEFAULT_TIMEZONE): boolean {
+  const result = canSendNowCheck(timezone, FOLLOW_UP_HOURS);
+  if (!result.canSend && result.reason) {
+    console.log(`⏸️  ${result.reason}`);
   }
-
-  // Check business hours (7 AM - 6 PM)
-  const hour = now.hour();
-  if (hour < 7 || hour >= 18) {
-    console.log(`⏸️  Outside business hours (${hour}:00) - no follow-ups sent`);
-    return false;
-  }
-
-  // Check holidays
-  const dateStr = now.format('YYYY-MM-DD');
-  if (PUBLIC_HOLIDAYS.includes(dateStr)) {
-    console.log(`🎉 Holiday (${dateStr}) - no follow-ups sent`);
-    return false;
-  }
-
-  return true;
+  return result.canSend;
 }
 
 /**
@@ -281,8 +278,8 @@ export async function POST(req: NextRequest) {
 
     for (const prospect of prospects) {
       try {
-        const campaign = prospect.campaigns as any;
-        const linkedinAccount = campaign?.workspace_accounts as any;
+        const campaign = prospect.campaigns as CampaignWithAccount | null;
+        const linkedinAccount = campaign?.workspace_accounts;
         const prospectName = `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim() || 'Unknown';
 
         console.log(`\n📤 Processing follow-up for: ${prospectName}`);

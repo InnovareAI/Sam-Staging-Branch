@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import moment from 'moment-timezone';
+import {
+  PUBLIC_HOLIDAYS,
+  DEFAULT_TIMEZONE,
+  BUSINESS_HOURS,
+  type ScheduleSettings
+} from '@/lib/scheduling-config';
 
 /**
  * Cron Job: Process Send Queue
@@ -21,32 +28,13 @@ export const maxDuration = 60; // 60 seconds
 const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
 
-// Public holidays (US holidays 2025-2026)
-// Format: YYYY-MM-DD
-const PUBLIC_HOLIDAYS = [
-  '2025-01-01', // New Year's Day
-  '2025-01-20', // MLK Jr. Day
-  '2025-02-17', // Presidents' Day
-  '2025-03-17', // St. Patrick's Day (optional - adjust as needed)
-  '2025-05-26', // Memorial Day
-  '2025-06-19', // Juneteenth
-  '2025-07-04', // Independence Day
-  '2025-09-01', // Labor Day
-  '2025-10-13', // Columbus Day
-  '2025-11-11', // Veterans Day
-  '2025-11-27', // Thanksgiving
-  '2025-12-25', // Christmas
-  '2026-01-01', // New Year's Day
-  '2026-01-19', // MLK Jr. Day
-];
+// Uses centralized PUBLIC_HOLIDAYS from scheduling-config.ts
 
-import moment from 'moment-timezone';
-
-function canSendMessage(date: Date, settings?: any): boolean {
-  // Default settings
-  const timezone = settings?.timezone || 'America/New_York';
-  const startHour = settings?.working_hours_start ?? 7;
-  const endHour = settings?.working_hours_end ?? 18;
+function canSendMessage(date: Date, settings?: ScheduleSettings): boolean {
+  // Default settings from centralized config
+  const timezone = settings?.timezone || DEFAULT_TIMEZONE;
+  const startHour = settings?.working_hours_start ?? BUSINESS_HOURS.start;
+  const endHour = settings?.working_hours_end ?? BUSINESS_HOURS.end;
   const skipWeekends = settings?.skip_weekends ?? true;
   const skipHolidays = settings?.skip_holidays ?? true;
 
@@ -466,13 +454,14 @@ export async function POST(req: NextRequest) {
         message: `✅ CR sent. ${remainingCount} messages remaining in queue`
       });
 
-    } catch (sendError: any) {
-      console.error(`❌ Failed to send CR:`, sendError.message);
+    } catch (sendError: unknown) {
+      const errorMessage = sendError instanceof Error ? sendError.message : 'Unknown error';
+      console.error(`❌ Failed to send CR:`, errorMessage);
 
       // Determine specific status based on error message
       let prospectStatus = 'failed';
       let queueStatus = 'failed';
-      const errorMsg = sendError.message?.toLowerCase() || '';
+      const errorMsg = errorMessage.toLowerCase();
 
       if (errorMsg.includes('should delay') || errorMsg.includes('invitation') || errorMsg.includes('already')) {
         // Already has pending invitation
@@ -497,7 +486,7 @@ export async function POST(req: NextRequest) {
         .from('send_queue')
         .update({
           status: queueStatus,
-          error_message: sendError.message,
+          error_message: errorMessage,
           updated_at: new Date().toISOString()
         })
         .eq('id', queueItem.id);
@@ -507,7 +496,7 @@ export async function POST(req: NextRequest) {
         .from('campaign_prospects')
         .update({
           status: prospectStatus,
-          notes: `CR send failed: ${sendError.message}`,
+          notes: `CR send failed: ${errorMessage}`,
           updated_at: new Date().toISOString()
         })
         .eq('id', prospect.id);
@@ -515,15 +504,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: false,
         processed: 0,
-        error: sendError.message,
-        message: `❌ Failed to send CR to ${prospect.first_name}: ${sendError.message}`
+        error: errorMessage,
+        message: `❌ Failed to send CR to ${prospect.first_name}: ${errorMessage}`
       });
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Cron job failed';
     console.error('❌ Cron job error:', error);
     return NextResponse.json(
-      { error: error.message || 'Cron job failed' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

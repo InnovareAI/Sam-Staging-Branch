@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler';
 
 export async function GET(
   req: NextRequest,
@@ -11,7 +12,7 @@ export async function GET(
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw apiError.unauthorized();
     }
 
     const campaignId = params.id;
@@ -24,8 +25,7 @@ export async function GET(
       .single();
 
     if (error) {
-      console.error('Failed to fetch campaign:', error);
-      return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
+      throw apiError.notFound('Campaign');
     }
 
     // Verify user has access to this campaign's workspace
@@ -37,7 +37,7 @@ export async function GET(
       .single();
 
     if (!membership) {
-      return NextResponse.json({ error: 'Access denied to this campaign' }, { status: 403 });
+      throw apiError.forbidden('Access denied to this campaign');
     }
 
     // Get campaign messages and replies
@@ -54,19 +54,15 @@ export async function GET(
       console.error('Failed to fetch campaign messages:', messagesError);
     }
 
-    return NextResponse.json({ 
+    return apiSuccess({
       campaign: {
         ...campaign,
         messages: messages || []
       }
     });
 
-  } catch (error: any) {
-    console.error('Campaign fetch error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch campaign', details: error.message },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error, 'campaign_get');
   }
 }
 
@@ -80,7 +76,7 @@ export async function PUT(
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw apiError.unauthorized();
     }
 
     const campaignId = params.id;
@@ -96,11 +92,7 @@ export async function PUT(
       .single();
 
     if (fetchError || !existingCampaign) {
-      console.error('Campaign not found:', fetchError);
-      return NextResponse.json({
-        error: 'Campaign not found',
-        details: fetchError?.message || 'Campaign does not exist'
-      }, { status: 404 });
+      throw apiError.notFound('Campaign');
     }
 
     // Verify user is a member of the campaign's workspace
@@ -112,11 +104,7 @@ export async function PUT(
       .single();
 
     if (membershipError || !membership) {
-      console.error('Workspace access denied:', membershipError);
-      return NextResponse.json({
-        error: 'Access denied',
-        details: 'You do not have access to this campaign'
-      }, { status: 403 });
+      throw apiError.forbidden('You do not have access to this campaign');
     }
 
     // Remove fields that shouldn't be updated directly
@@ -138,17 +126,11 @@ export async function PUT(
         const emailSubject = templates.initial_subject || templates.email_subject;
 
         if (!emailBody || emailBody.trim() === '') {
-          return NextResponse.json({
-            error: 'Email campaigns require an email body. Please add email content.',
-            field: 'email_body'
-          }, { status: 400 });
+          throw apiError.validation('Email campaigns require an email body', 'Please add email content');
         }
 
         if (!emailSubject || emailSubject.trim() === '') {
-          return NextResponse.json({
-            error: 'Email campaigns require a subject line. Please add an email subject.',
-            field: 'initial_subject'
-          }, { status: 400 });
+          throw apiError.validation('Email campaigns require a subject line', 'Please add an email subject');
         }
 
         console.log('✅ Email campaign update validation passed');
@@ -169,35 +151,19 @@ export async function PUT(
       .single();
 
     if (error) {
-      console.error('Failed to update campaign:', error);
-      return NextResponse.json({
-        error: 'Failed to update campaign',
-        details: error.message,
-        hint: error.hint || 'Check database permissions'
-      }, { status: 500 });
+      throw apiError.database('update campaign', error);
     }
 
     if (!campaign) {
-      console.error('Campaign update returned no data');
-      return NextResponse.json({
-        error: 'Campaign update failed',
-        details: 'No data returned after update'
-      }, { status: 500 });
+      throw apiError.internal('Campaign update failed', 'No data returned after update');
     }
 
     console.log('Campaign updated successfully:', campaign.id);
 
-    return NextResponse.json({
-      message: 'Campaign updated successfully',
-      campaign
-    });
+    return apiSuccess({ campaign }, 'Campaign updated successfully');
 
-  } catch (error: any) {
-    console.error('Campaign update error:', error);
-    return NextResponse.json(
-      { error: 'Failed to update campaign', details: error.message },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error, 'campaign_put');
   }
 }
 
@@ -219,7 +185,7 @@ export async function DELETE(
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw apiError.unauthorized();
     }
 
     const campaignId = params.id;
@@ -232,7 +198,7 @@ export async function DELETE(
       .single();
 
     if (fetchError || !campaign) {
-      return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
+      throw apiError.notFound('Campaign');
     }
 
     // Verify user has access to this campaign's workspace
@@ -244,7 +210,7 @@ export async function DELETE(
       .single();
 
     if (!membership) {
-      return NextResponse.json({ error: 'Access denied to this campaign' }, { status: 403 });
+      throw apiError.forbidden('Access denied to this campaign');
     }
 
     // Check if campaign has sent messages (prevent deletion of active campaigns)
@@ -255,32 +221,24 @@ export async function DELETE(
       .limit(1);
 
     if (messagesError) {
-      console.error('Failed to check campaign messages:', messagesError);
-      return NextResponse.json({ 
-        error: 'Failed to verify campaign status' 
-      }, { status: 500 });
+      throw apiError.database('check campaign messages', messagesError);
     }
 
     if (messages && messages.length > 0) {
       // Archive instead of delete if messages exist
       const { error: archiveError } = await supabase
         .from('campaigns')
-        .update({ 
+        .update({
           status: 'archived',
           updated_at: new Date().toISOString()
         })
         .eq('id', campaignId);
 
       if (archiveError) {
-        console.error('Failed to archive campaign:', archiveError);
-        return NextResponse.json({ 
-          error: 'Failed to archive campaign' 
-        }, { status: 500 });
+        throw apiError.database('archive campaign', archiveError);
       }
 
-      return NextResponse.json({ 
-        message: 'Campaign archived (cannot delete campaigns with sent messages)' 
-      });
+      return apiSuccess({ archived: true }, 'Campaign archived (cannot delete campaigns with sent messages)');
     }
 
     // Delete campaign if no messages sent
@@ -290,22 +248,12 @@ export async function DELETE(
       .eq('id', campaignId);
 
     if (error) {
-      console.error('Failed to delete campaign:', error);
-      return NextResponse.json({ 
-        error: 'Failed to delete campaign',
-        details: error.message 
-      }, { status: 500 });
+      throw apiError.database('delete campaign', error);
     }
 
-    return NextResponse.json({ 
-      message: 'Campaign deleted successfully' 
-    });
+    return apiSuccess({ deleted: true }, 'Campaign deleted successfully');
 
-  } catch (error: any) {
-    console.error('Campaign deletion error:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete campaign', details: error.message },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error, 'campaign_delete');
   }
 }

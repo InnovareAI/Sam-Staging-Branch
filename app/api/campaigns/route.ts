@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler';
 
 export async function GET(req: NextRequest) {
   try {
@@ -8,7 +9,7 @@ export async function GET(req: NextRequest) {
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw apiError.unauthorized();
     }
 
     // Get workspace_id from URL params or user metadata
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
     const workspaceId = searchParams.get('workspace_id') || user.user_metadata.workspace_id;
 
     if (!workspaceId) {
-      return NextResponse.json({ error: 'Workspace ID required' }, { status: 400 });
+      throw apiError.validation('Workspace ID required');
     }
 
     // Get campaigns for this workspace with prospect counts
@@ -42,8 +43,7 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Failed to fetch campaigns:', error);
-      return NextResponse.json({ error: 'Failed to fetch campaigns' }, { status: 500 });
+      throw apiError.database('fetch campaigns', error);
     }
 
     // Enrich campaigns with prospect counts and metrics
@@ -95,14 +95,10 @@ export async function GET(req: NextRequest) {
       };
     }));
 
-    return NextResponse.json({ campaigns: enrichedCampaigns });
+    return apiSuccess({ campaigns: enrichedCampaigns });
 
-  } catch (error: any) {
-    console.error('Campaign fetch error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch campaigns', details: error.message },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error, 'campaigns_get');
   }
 }
 
@@ -113,7 +109,7 @@ export async function POST(req: NextRequest) {
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw apiError.unauthorized();
     }
 
     const {
@@ -137,9 +133,7 @@ export async function POST(req: NextRequest) {
     } = await req.json();
 
     if (!workspace_id || !name) {
-      return NextResponse.json({
-        error: 'Workspace ID and campaign name are required'
-      }, { status: 400 });
+      throw apiError.validation('Workspace ID and campaign name are required');
     }
 
     // CRITICAL: For email campaigns, validate email body and subject exist
@@ -150,17 +144,11 @@ export async function POST(req: NextRequest) {
                           message_templates?.email_subject;
 
       if (!emailBody || emailBody.trim() === '') {
-        return NextResponse.json({
-          error: 'Email campaigns require an email body. Please add email content.',
-          field: 'email_body'
-        }, { status: 400 });
+        throw apiError.validation('Email campaigns require an email body', 'Please add email content');
       }
 
       if (!emailSubject || emailSubject.trim() === '') {
-        return NextResponse.json({
-          error: 'Email campaigns require a subject line. Please add an email subject.',
-          field: 'initial_subject'
-        }, { status: 400 });
+        throw apiError.validation('Email campaigns require a subject line', 'Please add an email subject');
       }
 
       console.log('✅ Email campaign validation passed:');
@@ -461,16 +449,13 @@ export async function POST(req: NextRequest) {
     // Users may want to create multiple campaigns from the same prospect list
 
     return NextResponse.json({
+      success: true,
       message: 'Campaign created successfully',
-      campaign,
-      prospects_transferred: prospectsTransferred
+      data: { campaign, prospects_transferred: prospectsTransferred },
+      timestamp: new Date().toISOString()
     }, { status: 201 });
 
-  } catch (error: any) {
-    console.error('Campaign creation error:', error);
-    return NextResponse.json(
-      { error: 'Failed to create campaign', details: error.message },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error, 'campaigns_post');
   }
 }
