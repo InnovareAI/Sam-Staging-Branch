@@ -723,56 +723,118 @@ export async function POST(request: NextRequest) {
     console.log('🔵 Full Payload:', JSON.stringify(unipilePayload, null, 2));
     console.log('🔵 ═══════════════════════════════════════════════════');
 
-    const response = await fetch(`${unipileUrl}?${params}`, {
-      method: 'POST',
-      headers: {
-        'X-API-KEY': process.env.UNIPILE_API_KEY!,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'  // Per Unipile docs
-      },
-      body: JSON.stringify(unipilePayload)
-    });
+    // STEP 1: Fetch existing searched prospects for deduplication
+    const { data: existingSearched } = await supabaseAdmin()
+      .from('workspace_searched_prospects')
+      .select('linkedin_url')
+      .eq('workspace_id', workspaceId);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ ═══════════════════════════════════════════════════');
-      console.error('❌ UNIPILE API ERROR DETAILS');
-      console.error('❌ Status:', response.status);
-      console.error('❌ Status Text:', response.statusText);
-      console.error('❌ Error Body:', errorText);
-      console.error('❌ Request URL:', `${unipileUrl}?${params}`);
-      console.error('❌ Request Payload:', JSON.stringify(unipilePayload, null, 2));
-      console.error('❌ API Key (first 10 chars):', process.env.UNIPILE_API_KEY?.substring(0, 10));
-      console.error('❌ ═══════════════════════════════════════════════════');
+    const existingUrls = new Set((existingSearched || []).map(p => p.linkedin_url?.toLowerCase()));
+    console.log(`🔍 Found ${existingUrls.size} previously searched prospects to exclude`);
 
-      // Parse error if it's JSON
-      let errorDetails = errorText;
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorDetails = errorJson.message || errorJson.error || errorText;
-        console.error('❌ Parsed Error:', errorJson);
-      } catch {
-        // Not JSON, use raw text
+    // STEP 2: Paginated search - fetch ALL pages up to 500 results
+    const MAX_TOTAL_RESULTS = 500;
+    const allItems: any[] = [];
+    let cursor: string | null = null;
+    let pageNumber = 0;
+    let totalAvailable = 0;
+
+    while (allItems.length < MAX_TOTAL_RESULTS) {
+      pageNumber++;
+
+      // Build URL with cursor for pagination
+      const pageParams = new URLSearchParams(params);
+      if (cursor) {
+        pageParams.set('cursor', cursor);
       }
 
-      return NextResponse.json({
-        success: false,
-        error: `LinkedIn search failed: ${response.status}`,
-        details: errorDetails,
-        debug: {
-          url: `${unipileUrl}?${params}`,
-          payload: unipilePayload,
-          status: response.status
+      console.log(`📄 Fetching page ${pageNumber}... (cursor: ${cursor ? 'yes' : 'no'})`);
+
+      const response = await fetch(`${unipileUrl}?${pageParams}`, {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': process.env.UNIPILE_API_KEY!,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(unipilePayload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ ═══════════════════════════════════════════════════');
+        console.error('❌ UNIPILE API ERROR DETAILS');
+        console.error('❌ Status:', response.status);
+        console.error('❌ Status Text:', response.statusText);
+        console.error('❌ Error Body:', errorText);
+        console.error('❌ Request URL:', `${unipileUrl}?${pageParams}`);
+        console.error('❌ Request Payload:', JSON.stringify(unipilePayload, null, 2));
+        console.error('❌ API Key (first 10 chars):', process.env.UNIPILE_API_KEY?.substring(0, 10));
+        console.error('❌ ═══════════════════════════════════════════════════');
+
+        // Parse error if it's JSON
+        let errorDetails = errorText;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorDetails = errorJson.message || errorJson.error || errorText;
+          console.error('❌ Parsed Error:', errorJson);
+        } catch {
+          // Not JSON, use raw text
         }
-      }, { status: 500 });
+
+        // If first page fails, return error
+        if (pageNumber === 1) {
+          return NextResponse.json({
+            success: false,
+            error: `LinkedIn search failed: ${response.status}`,
+            details: errorDetails,
+            debug: {
+              url: `${unipileUrl}?${pageParams}`,
+              payload: unipilePayload,
+              status: response.status
+            }
+          }, { status: 500 });
+        }
+
+        // If subsequent page fails, stop pagination but return what we have
+        console.warn(`⚠️ Page ${pageNumber} failed, returning ${allItems.length} results from previous pages`);
+        break;
+      }
+
+      const pageData = await response.json();
+      const pageItems = pageData.items || [];
+
+      // Store total available count from first page
+      if (pageNumber === 1) {
+        totalAvailable = pageData.paging?.total_count || pageItems.length;
+        console.log(`📊 Total available in LinkedIn: ${totalAvailable}`);
+      }
+
+      console.log(`   Page ${pageNumber}: ${pageItems.length} items`);
+      allItems.push(...pageItems);
+
+      // Check for next page
+      cursor = pageData.paging?.cursor || null;
+
+      // Stop if no more pages or we've hit our limit
+      if (!cursor || pageItems.length === 0) {
+        console.log(`📄 No more pages (cursor: ${cursor ? 'exists' : 'none'}, items: ${pageItems.length})`);
+        break;
+      }
+
+      // Small delay between pages to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    const data = await response.json();
+    console.log(`✅ Pagination complete: ${allItems.length} total items from ${pageNumber} pages`);
+
+    // Use combined data from all pages
+    const data = { items: allItems, paging: { total_count: totalAvailable } };
     console.log('🔵 ═══════════════════════════════════════════════════');
     console.log('🔵 UNIPILE RESPONSE');
-    console.log('🔵 Status:', response.status);
+    console.log('🔵 Total pages fetched:', pageNumber);
     console.log('🔵 Items returned:', data.items?.length || 0);
-    console.log('🔵 Response preview:', JSON.stringify(data).substring(0, 500));
+    console.log('🔵 Total available in LinkedIn:', totalAvailable);
     console.log('🔵 ═══════════════════════════════════════════════════');
     
     // Log sample item structure to debug data issues
@@ -971,10 +1033,56 @@ export async function POST(request: NextRequest) {
       console.log(`✅ Data Quality: All prospects have company data`);
     }
 
+    // STEP 3: Filter out already-searched prospects (deduplication)
+    const beforeDedupCount = prospects.length;
+    const deduplicatedProspects = prospects.filter((p: any) => {
+      if (!p.linkedinUrl) return false; // Skip prospects without URLs
+      const normalizedUrl = p.linkedinUrl.toLowerCase();
+      if (existingUrls.has(normalizedUrl)) {
+        console.log(`   🔄 Duplicate excluded: ${p.firstName} ${p.lastName} (${normalizedUrl})`);
+        return false;
+      }
+      return true;
+    });
+
+    const duplicatesRemoved = beforeDedupCount - deduplicatedProspects.length;
+    console.log(`🔍 Deduplication: ${duplicatesRemoved} duplicates removed, ${deduplicatedProspects.length} new prospects`);
+
+    // STEP 4: Save new prospects to tracking table for future deduplication
+    if (deduplicatedProspects.length > 0) {
+      const searchSessionId = crypto.randomUUID();
+      const trackingRecords = deduplicatedProspects.map((p: any) => ({
+        workspace_id: workspaceId,
+        linkedin_url: p.linkedinUrl.toLowerCase(),
+        linkedin_provider_id: p.providerId || null,
+        first_name: p.firstName,
+        last_name: p.lastName,
+        search_session_id: searchSessionId,
+        source: `linkedin_search_${api}`
+      }));
+
+      try {
+        const { error: trackingError } = await supabaseAdmin()
+          .from('workspace_searched_prospects')
+          .upsert(trackingRecords, {
+            onConflict: 'workspace_id,linkedin_url',
+            ignoreDuplicates: true
+          });
+
+        if (trackingError) {
+          console.warn('⚠️ Failed to save to tracking table (non-fatal):', trackingError.message);
+        } else {
+          console.log(`✅ Saved ${trackingRecords.length} prospects to deduplication tracking table`);
+        }
+      } catch (e: any) {
+        console.warn('⚠️ Tracking table exception (non-fatal):', e?.message || e);
+      }
+    }
+
     // Save to workspace_prospects with correct column names
-    // Filter out prospects without LinkedIn URLs (required field)
-    const validProspects = prospects.filter((p: any) => p.linkedinUrl);
-    console.log(`🔵 Valid prospects with LinkedIn URLs: ${validProspects.length}/${prospects.length}`);
+    // Use deduplicated prospects (already filtered for LinkedIn URLs)
+    const validProspects = deduplicatedProspects;
+    console.log(`🔵 Valid prospects after deduplication: ${validProspects.length}`);
 
     // Track persistence outcome to surface failures to caller
     let sessionId: string | null = null;
@@ -1243,10 +1351,21 @@ export async function POST(request: NextRequest) {
       prospects: validProspects,
       count: validProspects.length,
       total_found: prospects.length,
+      total_available: totalAvailable,
       api: api,
       session_id: sessionId,
       persistence_warnings: persistenceErrors.length > 0 ? persistenceErrors : undefined,
       enrichment_triggered: enrichmentTriggered,
+      pagination: {
+        pages_fetched: pageNumber,
+        max_results: MAX_TOTAL_RESULTS,
+        total_available_in_linkedin: totalAvailable
+      },
+      deduplication: {
+        duplicates_removed: duplicatesRemoved,
+        new_prospects: validProspects.length,
+        previously_searched: existingUrls.size
+      },
       data_quality: {
         needsEnrichmentCount,
         enrichmentRate: prospects.length > 0 ? Math.round((needsEnrichmentCount / prospects.length) * 100) : 0,
