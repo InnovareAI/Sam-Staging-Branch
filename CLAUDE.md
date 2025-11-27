@@ -229,9 +229,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
-## 🔴 RECENT CRITICAL FIXES (Nov 10-22)
+## 🔴 RECENT CRITICAL FIXES (Nov 10-27)
 
 ### ✅ Resolved Issues
+
+0. **Campaigns Not Showing in UI** (Nov 27) - **CRITICAL**
+   - **Root cause:** API response format mismatch
+   - API returns `{ success: true, data: { campaigns: [...] } }` via `apiSuccess()`
+   - Frontend was reading `result.campaigns` (undefined) instead of `result.data.campaigns`
+   - Also fixed N+1 query timeout (4 queries/campaign → 2 batch queries total)
+   - Files fixed: `/app/api/campaigns/route.ts`, `/app/components/CampaignHub.tsx`
+   - **REMEMBER:** All APIs use `apiSuccess()` which wraps data in `{ success, data, timestamp }`
+   - Status: ✅ RESOLVED
 
 1. **RLS Infinite Recursion** (Nov 10)
    - Fixed workspace isolation (users were seeing all 12 workspaces)
@@ -467,6 +476,10 @@ pwd  # Must return: /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7
 - **`docs/fixes/COMPLETE_FIX_SUMMARY.md`** - Recent fixes summary (Nov 13)
 
 ### Technical Documentation
+- **`docs/INFRASTRUCTURE.md`** - **READ THIS FIRST** - Complete infrastructure guide (Nov 27)
+  - Architecture diagram, API endpoints, database tables
+  - Unipile integration, cron jobs, deployment
+  - Common issues & fixes, monitoring queries
 - **`SAM_SYSTEM_TECHNICAL_OVERVIEW.md`** - System architecture (1083 lines)
 - **`README.md`** - Quick start and deployment guide
 - **`TODO.md`** - Current tasks (last updated Oct 20)
