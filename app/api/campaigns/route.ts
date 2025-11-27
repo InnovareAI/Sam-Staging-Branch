@@ -57,6 +57,8 @@ export async function GET(req: NextRequest) {
     }
 
     // Get campaigns for this workspace with prospect counts
+    console.log('📊 [CAMPAIGNS API] Fetching campaigns for workspace:', workspaceId, 'user:', user.id, user.email);
+
     const { data: campaigns, error } = await supabaseAdmin
       .from('campaigns')
       .select(`
@@ -77,6 +79,13 @@ export async function GET(req: NextRequest) {
       `)
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false });
+
+    console.log('📊 [CAMPAIGNS API] Query result:', {
+      campaignCount: campaigns?.length || 0,
+      error: error?.message,
+      firstCampaign: campaigns?.[0]?.name,
+      allNames: campaigns?.map(c => c.name)
+    });
 
     if (error) {
       throw apiError.database('fetch campaigns', error);
