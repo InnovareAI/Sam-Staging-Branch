@@ -204,8 +204,6 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
     return score;
   };
 
-  const selectedComment = pendingComments[selectedIndex];
-
   const filteredComments = pendingComments
     .filter(c => filterConfidence === 'all' || c.confidence === filterConfidence)
     .sort((a, b) => {
@@ -218,6 +216,10 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
       }
       return 0; // age sorting
     });
+
+  // IMPORTANT: Use filteredComments, not pendingComments!
+  // The selectedIndex corresponds to the filtered/sorted list shown in the UI
+  const selectedComment = filteredComments[selectedIndex];
 
   // Keyboard shortcuts
   useEffect(() => {
