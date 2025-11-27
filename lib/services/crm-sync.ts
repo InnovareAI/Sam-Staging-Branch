@@ -94,6 +94,21 @@ export async function syncInterestedLeadToCRM(
       case 'airtable':
         result = await syncToAirtable(connection, lead, mappings || []);
         break;
+      case 'activecampaign':
+        result = await syncToActiveCampaign(connection, lead, mappings || []);
+        break;
+      case 'keap':
+        result = await syncToKeap(connection, lead, mappings || []);
+        break;
+      case 'close':
+        result = await syncToClose(connection, lead, mappings || []);
+        break;
+      case 'copper':
+        result = await syncToCopper(connection, lead, mappings || []);
+        break;
+      case 'freshsales':
+        result = await syncToFreshsales(connection, lead, mappings || []);
+        break;
       default:
         console.log(`⚠️ CRM type ${connection.crm_type} not yet implemented`);
         return { success: false, crmType: connection.crm_type, error: `CRM type ${connection.crm_type} not supported yet` };
@@ -540,5 +555,313 @@ async function syncToAirtable(
 
   } catch (error) {
     return { success: false, crmType: 'airtable', error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// ============ ACTIVECAMPAIGN ============
+
+async function syncToActiveCampaign(
+  connection: any,
+  lead: InterestedLead,
+  mappings: any[]
+): Promise<SyncResult> {
+  const apiKey = connection.access_token;
+  const baseUrl = connection.crm_account_id; // ActiveCampaign account URL
+
+  try {
+    // Create contact in ActiveCampaign
+    const contactData = {
+      contact: {
+        email: lead.email || `${lead.firstName.toLowerCase()}.${lead.lastName.toLowerCase()}@placeholder.com`,
+        firstName: lead.firstName,
+        lastName: lead.lastName,
+        phone: lead.phone || '',
+        fieldValues: [
+          { field: 'COMPANY', value: lead.company || '' },
+          { field: 'JOBTITLE', value: lead.jobTitle || '' },
+          { field: 'SAM_INTENT', value: lead.intent },
+          { field: 'SAM_CONFIDENCE', value: String(Math.round(lead.intentConfidence * 100)) },
+          { field: 'LINKEDIN_URL', value: lead.linkedInUrl || '' }
+        ]
+      }
+    };
+
+    const response = await fetch(`${baseUrl}/api/3/contacts`, {
+      method: 'POST',
+      headers: {
+        'Api-Token': apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(contactData)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { success: false, crmType: 'activecampaign', error: `Contact creation failed: ${errorText}` };
+    }
+
+    const data = await response.json();
+    const contactId = data.contact?.id;
+
+    // Create deal if contact was created
+    if (contactId) {
+      await fetch(`${baseUrl}/api/3/deals`, {
+        method: 'POST',
+        headers: { 'Api-Token': apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deal: {
+            title: `${lead.firstName} ${lead.lastName} - LinkedIn Interest`,
+            contact: contactId,
+            value: 0,
+            currency: 'usd',
+            description: `Intent: ${lead.intent}\nReply: "${lead.replyText}"`
+          }
+        })
+      });
+    }
+
+    return { success: true, crmType: 'activecampaign', contactId };
+
+  } catch (error) {
+    return { success: false, crmType: 'activecampaign', error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// ============ KEAP (INFUSIONSOFT) ============
+
+async function syncToKeap(
+  connection: any,
+  lead: InterestedLead,
+  mappings: any[]
+): Promise<SyncResult> {
+  const accessToken = connection.access_token;
+
+  try {
+    // Create contact in Keap
+    const contactData = {
+      given_name: lead.firstName,
+      family_name: lead.lastName,
+      email_addresses: lead.email ? [{ email: lead.email, field: 'EMAIL1' }] : [],
+      phone_numbers: lead.phone ? [{ number: lead.phone, field: 'PHONE1' }] : [],
+      company: lead.company ? { company_name: lead.company } : undefined,
+      job_title: lead.jobTitle,
+      source_type: 'OTHER',
+      custom_fields: [
+        { id: 1, content: lead.intent },
+        { id: 2, content: lead.linkedInUrl || '' }
+      ]
+    };
+
+    const response = await fetch('https://api.infusionsoft.com/crm/rest/v1/contacts', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(contactData)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { success: false, crmType: 'keap', error: `Contact creation failed: ${errorText}` };
+    }
+
+    const data = await response.json();
+    return { success: true, crmType: 'keap', contactId: data.id };
+
+  } catch (error) {
+    return { success: false, crmType: 'keap', error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// ============ CLOSE ============
+
+async function syncToClose(
+  connection: any,
+  lead: InterestedLead,
+  mappings: any[]
+): Promise<SyncResult> {
+  const apiKey = connection.access_token;
+
+  try {
+    // Create lead in Close (Close uses "leads" not "contacts")
+    const leadData = {
+      name: `${lead.firstName} ${lead.lastName}`,
+      contacts: [{
+        name: `${lead.firstName} ${lead.lastName}`,
+        title: lead.jobTitle,
+        emails: lead.email ? [{ email: lead.email, type: 'work' }] : [],
+        phones: lead.phone ? [{ phone: lead.phone, type: 'work' }] : [],
+        urls: lead.linkedInUrl ? [{ url: lead.linkedInUrl, type: 'linkedin' }] : []
+      }],
+      description: `SAM AI Lead\nIntent: ${lead.intent} (${Math.round(lead.intentConfidence * 100)}%)\n\nReply: "${lead.replyText}"\n\nCampaign: ${lead.campaignName || 'N/A'}`,
+      custom: {
+        'SAM Intent': lead.intent,
+        'SAM Campaign': lead.campaignName || ''
+      }
+    };
+
+    if (lead.company) {
+      leadData.name = lead.company;
+    }
+
+    const response = await fetch('https://api.close.com/api/v1/lead/', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(leadData)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { success: false, crmType: 'close', error: `Lead creation failed: ${errorText}` };
+    }
+
+    const data = await response.json();
+    return { success: true, crmType: 'close', contactId: data.id };
+
+  } catch (error) {
+    return { success: false, crmType: 'close', error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// ============ COPPER ============
+
+async function syncToCopper(
+  connection: any,
+  lead: InterestedLead,
+  mappings: any[]
+): Promise<SyncResult> {
+  const accessToken = connection.access_token;
+  const userEmail = connection.crm_account_name; // User's email for Copper
+
+  try {
+    // Create person in Copper
+    const personData = {
+      name: `${lead.firstName} ${lead.lastName}`,
+      emails: lead.email ? [{ email: lead.email, category: 'work' }] : [],
+      phone_numbers: lead.phone ? [{ number: lead.phone, category: 'work' }] : [],
+      socials: lead.linkedInUrl ? [{ url: lead.linkedInUrl, category: 'linkedin' }] : [],
+      title: lead.jobTitle,
+      details: `SAM AI Lead\nIntent: ${lead.intent} (${Math.round(lead.intentConfidence * 100)}%)\n\nReply: "${lead.replyText}"`
+    };
+
+    const response = await fetch('https://api.copper.com/developer_api/v1/people', {
+      method: 'POST',
+      headers: {
+        'X-PW-AccessToken': accessToken,
+        'X-PW-Application': 'developer_api',
+        'X-PW-UserEmail': userEmail,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(personData)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { success: false, crmType: 'copper', error: `Person creation failed: ${errorText}` };
+    }
+
+    const data = await response.json();
+    const personId = data.id;
+
+    // Create opportunity
+    if (personId) {
+      await fetch('https://api.copper.com/developer_api/v1/opportunities', {
+        method: 'POST',
+        headers: {
+          'X-PW-AccessToken': accessToken,
+          'X-PW-Application': 'developer_api',
+          'X-PW-UserEmail': userEmail,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: `${lead.firstName} ${lead.lastName} - LinkedIn Interest`,
+          primary_contact_id: personId,
+          details: `Campaign: ${lead.campaignName || 'N/A'}\nIntent: ${lead.intent}`
+        })
+      });
+    }
+
+    return { success: true, crmType: 'copper', contactId: personId };
+
+  } catch (error) {
+    return { success: false, crmType: 'copper', error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// ============ FRESHSALES ============
+
+async function syncToFreshsales(
+  connection: any,
+  lead: InterestedLead,
+  mappings: any[]
+): Promise<SyncResult> {
+  const apiKey = connection.access_token;
+  const domain = connection.crm_account_id; // Freshsales domain
+
+  try {
+    // Create contact in Freshsales
+    const contactData = {
+      contact: {
+        first_name: lead.firstName,
+        last_name: lead.lastName,
+        email: lead.email,
+        mobile_number: lead.phone,
+        job_title: lead.jobTitle,
+        linkedin: lead.linkedInUrl,
+        lead_source_id: null, // Would need to map to actual lead source
+        custom_field: {
+          cf_sam_intent: lead.intent,
+          cf_sam_confidence: Math.round(lead.intentConfidence * 100),
+          cf_sam_campaign: lead.campaignName
+        }
+      }
+    };
+
+    const response = await fetch(`https://${domain}.freshsales.io/api/contacts`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Token token=${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(contactData)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { success: false, crmType: 'freshsales', error: `Contact creation failed: ${errorText}` };
+    }
+
+    const data = await response.json();
+    const contactId = data.contact?.id;
+
+    // Create deal
+    if (contactId) {
+      await fetch(`https://${domain}.freshsales.io/api/deals`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token token=${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          deal: {
+            name: `${lead.firstName} ${lead.lastName} - LinkedIn Interest`,
+            contacts_id: [contactId],
+            custom_field: {
+              cf_sam_intent: lead.intent,
+              cf_reply_text: lead.replyText.substring(0, 500)
+            }
+          }
+        })
+      });
+    }
+
+    return { success: true, crmType: 'freshsales', contactId };
+
+  } catch (error) {
+    return { success: false, crmType: 'freshsales', error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }

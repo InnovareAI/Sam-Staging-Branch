@@ -10,7 +10,7 @@ interface CRMIntegrationModalProps {
   workspaceName: string;
 }
 
-type CRMType = 'hubspot' | 'salesforce' | 'pipedrive' | 'zoho' | 'activecampaign' | 'keap' | 'close' | 'copper' | 'freshsales';
+type CRMType = 'hubspot' | 'salesforce' | 'pipedrive' | 'zoho' | 'activecampaign' | 'keap' | 'close' | 'copper' | 'freshsales' | 'airtable';
 
 interface CRMOption {
   type: CRMType;
@@ -83,6 +83,13 @@ const CRM_OPTIONS: CRMOption[] = [
     logo: '🟣',
     description: 'AI-powered CRM from Freshworks',
     features: ['Contacts & Accounts', 'Deals', 'Freddy AI']
+  },
+  {
+    type: 'airtable',
+    name: 'Airtable',
+    logo: '📊',
+    description: 'Flexible database and project management',
+    features: ['Custom Tables', 'Rich Fields', 'Automation']
   }
 ];
 
