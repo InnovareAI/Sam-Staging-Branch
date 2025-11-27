@@ -140,7 +140,13 @@ export async function POST(request: NextRequest) {
     const unipileData = await unipileResponse.json();
     console.log('✅ Comment posted to LinkedIn:', unipileData);
 
-    // Update comment status to 'posted'
+    // Extract the LinkedIn comment ID from Unipile response
+    const linkedinCommentId = unipileData.id || unipileData.comment_id || unipileData.object_id || null;
+    if (linkedinCommentId) {
+      console.log('📋 LinkedIn comment ID:', linkedinCommentId);
+    }
+
+    // Update comment status to 'posted' with LinkedIn comment ID
     const { error: updateError } = await supabase
       .from('linkedin_post_comments')
       .update({
@@ -148,6 +154,7 @@ export async function POST(request: NextRequest) {
         approved_at: new Date().toISOString(),
         posted_at: new Date().toISOString(),
         post_response: unipileData,
+        linkedin_comment_id: linkedinCommentId,
         updated_at: new Date().toISOString()
       })
       .eq('id', comment_id);

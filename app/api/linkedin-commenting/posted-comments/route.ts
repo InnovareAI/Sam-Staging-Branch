@@ -48,17 +48,16 @@ export async function GET(request: NextRequest) {
 
     const supabase = supabaseAdmin();
 
-    // Fetch posted comments with engagement metrics
+    // Fetch posted comments with engagement metrics from the main table
     const { data: comments, error, count } = await supabase
-      .from('linkedin_comments_posted')
+      .from('linkedin_post_comments')
       .select(`
         id,
         comment_text,
         posted_at,
+        linkedin_comment_id,
         engagement_metrics,
-        replies_count,
-        user_replied,
-        last_reply_at,
+        engagement_checked_at,
         post:linkedin_posts_discovered!inner (
           id,
           author_name,
@@ -71,6 +70,7 @@ export async function GET(request: NextRequest) {
         )
       `, { count: 'exact' })
       .eq('workspace_id', workspaceId)
+      .eq('status', 'posted')
       .order('posted_at', { ascending: false })
       .range(offset, offset + limit - 1);
 

@@ -37,12 +37,13 @@ interface PostedComment {
   postUrl: string;
   generatedComment: string;
   postedAt: string;
+  linkedinCommentId?: string;
   engagementMetrics?: {
-    likes?: number;
-    replies?: number;
+    likes_count?: number;
+    replies_count?: number;
+    last_checked?: string;
   };
-  repliesCount: number;
-  userReplied: boolean;
+  engagementCheckedAt?: string;
 }
 
 interface PostComment {
@@ -72,6 +73,9 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
   const [sortBy, setSortBy] = useState<'confidence' | 'age' | 'engagement'>('confidence');
   const [loading, setLoading] = useState(true);
   const [loadingPosted, setLoadingPosted] = useState(false);
+
+  // Engagement tracking state
+  const [refreshingEngagement, setRefreshingEngagement] = useState(false);
 
   // Comments modal state
   const [showCommentsModal, setShowCommentsModal] = useState(false);
@@ -147,9 +151,9 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
           postUrl: c.post?.share_url || '',
           generatedComment: c.comment_text,
           postedAt: c.posted_at,
+          linkedinCommentId: c.linkedin_comment_id,
           engagementMetrics: c.engagement_metrics || {},
-          repliesCount: c.replies_count || 0,
-          userReplied: c.user_replied || false,
+          engagementCheckedAt: c.engagement_checked_at,
         }));
 
         setPostedComments(posted);
@@ -478,6 +482,50 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
     setPostComments([]);
     setReplyingToComment(null);
     setReplyText('');
+  };
+
+  // Refresh engagement metrics for all posted comments
+  const handleRefreshEngagement = async () => {
+    setRefreshingEngagement(true);
+    try {
+      const response = await fetch('/api/linkedin-commenting/refresh-engagement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspace_id: workspaceId })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to refresh engagement');
+      }
+
+      const result = await response.json();
+      toastSuccess(`Updated engagement for ${result.updated} comments`);
+
+      // Refetch posted comments to show updated engagement
+      const fetchResponse = await fetch(`/api/linkedin-commenting/posted-comments?workspace_id=${workspaceId}`);
+      if (fetchResponse.ok) {
+        const data = await fetchResponse.json();
+        const posted: PostedComment[] = data.comments.map((c: any) => ({
+          id: c.id,
+          postId: c.post?.id || '',
+          postAuthor: c.post?.author_name || 'Unknown',
+          postAuthorTitle: c.post?.author_title || '',
+          postContent: c.post?.post_content || '',
+          postUrl: c.post?.share_url || '',
+          generatedComment: c.comment_text,
+          postedAt: c.posted_at,
+          linkedinCommentId: c.linkedin_comment_id,
+          engagementMetrics: c.engagement_metrics || {},
+          engagementCheckedAt: c.engagement_checked_at,
+        }));
+        setPostedComments(posted);
+      }
+    } catch (error) {
+      console.error('Error refreshing engagement:', error);
+      toastError('Failed to refresh engagement metrics');
+    } finally {
+      setRefreshingEngagement(false);
+    }
   };
 
   const getConfidenceColor = (confidence: string) => {
@@ -860,7 +908,17 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
             <div className="max-w-4xl mx-auto space-y-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-white">Posted Comments History</h2>
-                <span className="text-sm text-gray-400">{postedComments.length} comments posted</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-400">{postedComments.length} comments posted</span>
+                  <button
+                    onClick={handleRefreshEngagement}
+                    disabled={refreshingEngagement}
+                    className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                  >
+                    <RefreshCw size={14} className={refreshingEngagement ? 'animate-spin' : ''} />
+                    {refreshingEngagement ? 'Refreshing...' : 'Refresh Engagement'}
+                  </button>
+                </div>
               </div>
 
               {postedComments.map((comment) => (
@@ -911,16 +969,15 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
                       <div className="flex items-center gap-4 text-xs text-gray-400">
                         <span className="flex items-center gap-1">
                           <ThumbsUp size={12} className="text-blue-400" />
-                          {comment.engagementMetrics?.likes || 0} likes
+                          {comment.engagementMetrics?.likes_count || 0} likes
                         </span>
                         <span className="flex items-center gap-1">
                           <MessageCircle size={12} className="text-green-400" />
-                          {comment.repliesCount} replies
+                          {comment.engagementMetrics?.replies_count || 0} replies
                         </span>
-                        {comment.userReplied && (
-                          <span className="flex items-center gap-1 text-green-400">
-                            <CheckCircle size={12} />
-                            You replied
+                        {comment.engagementCheckedAt && (
+                          <span className="text-gray-500">
+                            Updated {getTimeAgo(comment.engagementCheckedAt)}
                           </span>
                         )}
                       </div>

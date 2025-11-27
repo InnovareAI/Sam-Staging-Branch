@@ -100,12 +100,16 @@ export async function POST(request: NextRequest) {
 
         const unipileData = await unipileResponse.json();
 
-        // Update status
+        // Extract LinkedIn comment ID
+        const linkedinCommentId = unipileData.id || unipileData.comment_id || unipileData.object_id || null;
+
+        // Update status with LinkedIn comment ID
         await supabase.from('linkedin_post_comments').update({
           status: 'posted',
           approved_at: new Date().toISOString(),
           posted_at: new Date().toISOString(),
-          post_response: unipileData
+          post_response: unipileData,
+          linkedin_comment_id: linkedinCommentId
         }).eq('id', comment_id);
 
         await supabase.from('linkedin_posts_discovered')
