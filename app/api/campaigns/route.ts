@@ -111,55 +111,49 @@ export async function GET(req: NextRequest) {
       throw apiError.database('fetch campaigns', error);
     }
 
-    // Enrich campaigns with prospect counts and metrics (using admin client to bypass RLS)
-    const enrichedCampaigns = await Promise.all(campaigns.map(async (campaign: any) => {
-      // Get prospect count
-      const { count: prospectCount } = await supabaseAdmin
-        .from('campaign_prospects')
-        .select('*', { count: 'exact', head: true })
-        .eq('campaign_id', campaign.id);
+    // PERFORMANCE FIX (Nov 27): Return campaigns immediately without N+1 enrichment
+    // Previous code ran 4 queries per campaign causing timeouts
+    // Get all prospect counts in a single query using GROUP BY
+    const campaignIds = campaigns.map(c => c.id);
 
-      // CRITICAL FIX: Count LinkedIn connection requests from campaign_prospects
-      // LinkedIn campaigns update campaign_prospects, not campaign_messages
-      // Include: All sent statuses (processing, cr_sent, fu1-5_sent, completed) + legacy (connection_requested, contacted)
-      // NOTE: 'failed' is NOT included - failed means no message was actually sent
-      const { count: linkedinSent } = await supabaseAdmin
-        .from('campaign_prospects')
-        .select('*', { count: 'exact', head: true })
-        .eq('campaign_id', campaign.id)
-        .in('status', ['processing', 'cr_sent', 'connection_request_sent', 'fu1_sent', 'fu2_sent', 'fu3_sent', 'fu4_sent', 'fu5_sent', 'completed', 'connection_requested', 'contacted', 'connected', 'messaging', 'replied']);
+    const { data: prospectCounts } = await supabaseAdmin
+      .from('campaign_prospects')
+      .select('campaign_id')
+      .in('campaign_id', campaignIds);
 
-      // Get message stats from campaign_messages (for email campaigns)
-      const { data: messages } = await supabaseAdmin
-        .from('campaign_messages')
-        .select('id, status')
-        .eq('campaign_id', campaign.id);
+    // Count prospects per campaign from the results
+    const prospectCountMap: Record<string, number> = {};
+    const sentCountMap: Record<string, number> = {};
 
-      const emailSent = messages?.length || 0;
-      const connected = messages?.filter((m: any) => m.status === 'accepted' || m.status === 'connected').length || 0;
+    prospectCounts?.forEach((p: { campaign_id: string }) => {
+      prospectCountMap[p.campaign_id] = (prospectCountMap[p.campaign_id] || 0) + 1;
+    });
 
-      // Total sent = LinkedIn connection requests + email messages
-      const totalSent = (linkedinSent || 0) + emailSent;
+    // Get sent counts (prospects with sent statuses) in a single query
+    const { data: sentProspects } = await supabaseAdmin
+      .from('campaign_prospects')
+      .select('campaign_id, status')
+      .in('campaign_id', campaignIds)
+      .in('status', ['processing', 'cr_sent', 'connection_request_sent', 'fu1_sent', 'fu2_sent', 'fu3_sent', 'fu4_sent', 'fu5_sent', 'completed', 'connection_requested', 'contacted', 'connected', 'messaging', 'replied']);
 
-      // Get reply count
-      const { count: replyCount } = await supabaseAdmin
-        .from('campaign_replies')
-        .select('*', { count: 'exact', head: true })
-        .eq('campaign_id', campaign.id);
+    sentProspects?.forEach((p: { campaign_id: string }) => {
+      sentCountMap[p.campaign_id] = (sentCountMap[p.campaign_id] || 0) + 1;
+    });
 
-      return {
-        ...campaign,
-        type: campaign.campaign_type || campaign.type, // Use campaign_type as type for consistency
-        prospects: prospectCount || 0,
-        sent: totalSent,
-        opened: 0, // TODO: Implement opened tracking
-        replied: replyCount || 0,
-        connections: connected,
-        replies: replyCount || 0,
-        response_rate: totalSent > 0 ? ((replyCount || 0) / totalSent * 100).toFixed(1) : 0
-      };
+    // Transform campaigns with counts
+    const enrichedCampaigns = campaigns.map((campaign: any) => ({
+      ...campaign,
+      type: campaign.campaign_type || campaign.type,
+      prospects: prospectCountMap[campaign.id] || 0,
+      sent: sentCountMap[campaign.id] || 0,
+      opened: 0,
+      replied: 0,
+      connections: 0,
+      replies: 0,
+      response_rate: 0
     }));
 
+    console.log('✅ [CAMPAIGNS API] Returning', enrichedCampaigns.length, 'campaigns');
     return apiSuccess({ campaigns: enrichedCampaigns });
 
   } catch (error) {

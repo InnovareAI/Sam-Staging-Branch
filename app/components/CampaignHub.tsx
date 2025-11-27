@@ -6258,8 +6258,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       return result.campaigns || [];
     },
     enabled: (campaignFilter === 'active' || campaignFilter === 'inactive' || campaignFilter === 'archived' || campaignFilter === 'completed') && !!actualWorkspaceId,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 0, // Always fetch fresh - campaigns change frequently
+    gcTime: 0, // Don't cache stale data
     refetchOnWindowFocus: true,
+    refetchOnMount: 'always',
   });
 
   // Load approval messages when approval tab is selected
