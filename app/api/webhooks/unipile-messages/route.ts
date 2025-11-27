@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { classifyIntent } from '@/lib/services/intent-classifier';
 import { generateReplyDraft, getDefaultSettings } from '@/lib/services/reply-draft-generator';
+import { syncInterestedLeadToCRM } from '@/lib/services/crm-sync';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -196,6 +197,32 @@ export async function POST(request: NextRequest) {
       .eq('id', reply.id);
 
     console.log(`✅ Intent classified: ${intent.intent} (${(intent.confidence * 100).toFixed(0)}%)`);
+
+    // Sync to CRM if interested or curious (high-value leads)
+    if (['interested', 'curious'].includes(intent.intent)) {
+      console.log('📊 High-value lead detected - syncing to CRM...');
+      const crmResult = await syncInterestedLeadToCRM(account.workspace_id, {
+        prospectId: prospectId,
+        firstName: prospect?.first_name || senderName.split(' ')[0] || 'Unknown',
+        lastName: prospect?.last_name || senderName.split(' ').slice(1).join(' ') || '',
+        email: undefined, // LinkedIn doesn't provide email
+        phone: undefined,
+        company: prospectCompany,
+        jobTitle: prospect?.title,
+        linkedInUrl: prospect?.linkedin_url || senderProfileUrl,
+        replyText: messageText,
+        intent: intent.intent,
+        intentConfidence: intent.confidence,
+        campaignId: campaignId,
+        campaignName: prospect?.campaigns?.campaign_name
+      });
+
+      if (crmResult.success) {
+        console.log(`✅ CRM sync successful: ${crmResult.crmType} - Contact: ${crmResult.contactId}`);
+      } else if (crmResult.error !== 'No active CRM connection') {
+        console.log(`⚠️ CRM sync skipped: ${crmResult.error}`);
+      }
+    }
 
     // Generate draft with full research
     console.log('📝 Generating draft with Opus 4.5 research...');
