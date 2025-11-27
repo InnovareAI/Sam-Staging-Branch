@@ -86,6 +86,7 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
   const [replyingToComment, setReplyingToComment] = useState<PostComment | null>(null);
   const [replyText, setReplyText] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
+  const [generatingAiReply, setGeneratingAiReply] = useState(false);
 
   // Fetch real pending comments from database
   useEffect(() => {
@@ -482,6 +483,41 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
     setPostComments([]);
     setReplyingToComment(null);
     setReplyText('');
+  };
+
+  // Ask Sam - Generate AI-powered reply suggestion
+  const handleAskSam = async () => {
+    if (!replyingToComment || !commentsModalPostId) return;
+
+    setGeneratingAiReply(true);
+    try {
+      const response = await fetch('/api/linkedin-commenting/generate-reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          post_id: commentsModalPostId,
+          original_comment_text: replyingToComment.text,
+          original_comment_author: replyingToComment.author_name,
+          workspace_id: workspaceId
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to generate reply');
+      }
+
+      const data = await response.json();
+      if (data.reply) {
+        setReplyText(data.reply);
+        toastSuccess('Sam suggested a reply! Edit it if needed.');
+      }
+    } catch (error) {
+      console.error('Error generating AI reply:', error);
+      toastError(error instanceof Error ? error.message : 'Failed to generate reply');
+    } finally {
+      setGeneratingAiReply(false);
+    }
   };
 
   // Refresh engagement metrics for all posted comments
@@ -1097,11 +1133,28 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
                   <span className="text-sm text-gray-400">Replying to</span>
                   <span className="text-sm text-green-400 font-medium">{replyingToComment.author_name}</span>
                   <button
+                    onClick={handleAskSam}
+                    disabled={generatingAiReply}
+                    className="ml-auto px-3 py-1 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 disabled:from-gray-600 disabled:to-gray-600 text-white rounded-full text-xs font-medium transition-all flex items-center gap-1.5"
+                  >
+                    {generatingAiReply ? (
+                      <>
+                        <RefreshCw size={12} className="animate-spin" />
+                        Thinking...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={12} />
+                        Ask Sam
+                      </>
+                    )}
+                  </button>
+                  <button
                     onClick={() => {
                       setReplyingToComment(null);
                       setReplyText('');
                     }}
-                    className="ml-auto text-xs text-gray-500 hover:text-white"
+                    className="text-xs text-gray-500 hover:text-white"
                   >
                     Cancel
                   </button>
@@ -1110,7 +1163,7 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
                   <textarea
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Write your reply..."
+                    placeholder="Write your reply or click 'Ask Sam' for a suggestion..."
                     rows={2}
                     className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
                     autoFocus
