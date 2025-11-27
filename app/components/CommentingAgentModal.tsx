@@ -122,7 +122,7 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
         .select('*')
         .eq('workspace_id', workspaceId)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
       if (guidelines) {
         setBrandGuidelines({
