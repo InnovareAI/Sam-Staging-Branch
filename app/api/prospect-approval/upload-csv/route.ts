@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         .from('campaigns')
         .insert({
           workspace_id: workspaceId,
-          user_id: user.id,
+          created_by: user.id,  // Column is 'created_by', not 'user_id'
           name: autoCampaignName,
           campaign_type: 'email',  // CSV uploads are typically email campaigns
           status: 'draft',
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
             connection_request: '',
             follow_ups: []
           },
-          settings: {
+          metadata: {
             auto_created: true,
             source: 'csv-upload'
           }

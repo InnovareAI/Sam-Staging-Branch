@@ -170,6 +170,7 @@ GET  /api/v1/users/me/relations          # Get accepted connections
 |-----|----------|---------|
 | `process-send-queue` | Every 1 min | Send queued LinkedIn CRs |
 | `poll-accepted-connections` | Every 5 min | Check for accepted connections |
+| `poll-message-replies` | Every 15 min | Detect prospect replies, stop follow-ups |
 
 ### 6. N8N Workflows (NOT used for campaigns)
 

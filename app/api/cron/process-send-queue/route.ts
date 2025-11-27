@@ -421,22 +421,22 @@ export async function POST(req: NextRequest) {
       }
 
       // 4. Update prospect record
-      const nextActionAt = new Date();
-      nextActionAt.setDate(nextActionAt.getDate() + 3); // 3 days for acceptance
-
+      // NOTE: Do NOT set follow_up_due_at here!
+      // Follow-ups are scheduled by poll-accepted-connections AFTER prospect accepts CR
+      // Bug fix: Nov 27 - was incorrectly scheduling follow-ups before acceptance
       await supabase
         .from('campaign_prospects')
         .update({
           status: 'connection_request_sent',
           contacted_at: new Date().toISOString(),
           linkedin_user_id: queueItem.linkedin_user_id,
-          follow_up_due_at: nextActionAt.toISOString(),
+          // follow_up_due_at: NOT SET - wait for acceptance
           follow_up_sequence_index: 0,
           updated_at: new Date().toISOString()
         })
         .eq('id', prospect.id);
 
-      console.log(`⏰ Next follow-up scheduled for: ${nextActionAt.toISOString()}`);
+      console.log(`✅ CR sent - follow-up will be scheduled when prospect accepts`);
 
       // 5. Get count of remaining pending messages
       const { count: remainingCount } = await supabase

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle, XCircle, Edit3, ThumbsUp, MessageCircle, Eye, Clock, TrendingUp, ChevronRight, Sparkles, Filter, CheckSquare, Hash, Search, User as UserIcon, ArrowLeft } from 'lucide-react';
+import { toastSuccess, toastError } from '@/lib/toast';
 
 interface CommentApprovalWorkflowProps {
   workspaceId: string;
@@ -27,8 +28,27 @@ interface PendingComment {
   scheduledPostTime?: string;
 }
 
+interface PostedComment {
+  id: string;
+  postId: string;
+  postAuthor: string;
+  postAuthorTitle?: string;
+  postContent: string;
+  postUrl: string;
+  generatedComment: string;
+  postedAt: string;
+  engagementMetrics?: {
+    likes?: number;
+    replies?: number;
+  };
+  repliesCount: number;
+  userReplied: boolean;
+}
+
 export default function CommentApprovalWorkflow({ workspaceId, onBack }: CommentApprovalWorkflowProps) {
+  const [activeTab, setActiveTab] = useState<'pending' | 'posted'>('pending');
   const [pendingComments, setPendingComments] = useState<PendingComment[]>([]);
+  const [postedComments, setPostedComments] = useState<PostedComment[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -36,6 +56,7 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
   const [filterConfidence, setFilterConfidence] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [sortBy, setSortBy] = useState<'confidence' | 'age' | 'engagement'>('confidence');
   const [loading, setLoading] = useState(true);
+  const [loadingPosted, setLoadingPosted] = useState(false);
 
   // Fetch real pending comments from database
   useEffect(() => {
@@ -78,6 +99,45 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
 
     fetchPendingComments();
   }, [workspaceId]);
+
+  // Fetch posted comments history when tab changes
+  useEffect(() => {
+    const fetchPostedComments = async () => {
+      if (activeTab !== 'posted') return;
+
+      setLoadingPosted(true);
+      try {
+        const response = await fetch(`/api/linkedin-commenting/posted-comments?workspace_id=${workspaceId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch posted comments');
+        }
+        const data = await response.json();
+
+        const posted: PostedComment[] = data.comments.map((c: any) => ({
+          id: c.id,
+          postId: c.post?.id || '',
+          postAuthor: c.post?.author_name || 'Unknown',
+          postAuthorTitle: c.post?.author_title || '',
+          postContent: c.post?.post_content || '',
+          postUrl: c.post?.share_url || '',
+          generatedComment: c.comment_text,
+          postedAt: c.posted_at,
+          engagementMetrics: c.engagement_metrics || {},
+          repliesCount: c.replies_count || 0,
+          userReplied: c.user_replied || false,
+        }));
+
+        setPostedComments(posted);
+      } catch (error) {
+        console.error('Error fetching posted comments:', error);
+        toastError('Failed to load posted comments');
+      } finally {
+        setLoadingPosted(false);
+      }
+    };
+
+    fetchPostedComments();
+  }, [workspaceId, activeTab]);
 
   // Helper function to calculate time ago
   const getTimeAgo = (dateString: string) => {
@@ -168,20 +228,31 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
   const handleApprove = useCallback(async (id: string) => {
     console.log('Approving comment:', id);
 
+    // Get the current comment text (may have been edited)
+    const commentToApprove = pendingComments.find(c => c.id === id);
+    const editedText = commentToApprove?.generatedComment;
+
     try {
-      // Call API to approve comment
+      // Call API to approve comment, passing edited text if any
       const response = await fetch('/api/linkedin-commenting/approve-comment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comment_id: id })
+        body: JSON.stringify({
+          comment_id: id,
+          edited_text: editedText  // Send the possibly-edited text
+        })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to approve comment');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to approve comment');
       }
 
       // Remove from local state
       setPendingComments(prev => prev.filter(c => c.id !== id));
+
+      // Show success toast
+      toastSuccess('Comment posted to LinkedIn!');
 
       // Auto-advance to next
       if (selectedIndex >= filteredComments.length - 1) {
@@ -189,9 +260,9 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
       }
     } catch (error) {
       console.error('Error approving comment:', error);
-      alert('Failed to approve comment. Please try again.');
+      toastError(error instanceof Error ? error.message : 'Failed to approve comment');
     }
-  }, [selectedIndex, filteredComments.length]);
+  }, [selectedIndex, filteredComments.length, pendingComments]);
 
   const handleReject = useCallback(async (id: string) => {
     console.log('Rejecting comment:', id);
@@ -205,11 +276,15 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
       });
 
       if (!response.ok) {
-        throw new Error('Failed to reject comment');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to reject comment');
       }
 
       // Remove from local state
       setPendingComments(prev => prev.filter(c => c.id !== id));
+
+      // Show success toast
+      toastSuccess('Comment rejected');
 
       // Auto-advance to next
       if (selectedIndex >= filteredComments.length - 1) {
@@ -217,7 +292,7 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
       }
     } catch (error) {
       console.error('Error rejecting comment:', error);
-      alert('Failed to reject comment. Please try again.');
+      toastError(error instanceof Error ? error.message : 'Failed to reject comment');
     }
   }, [selectedIndex, filteredComments.length]);
 
@@ -247,18 +322,60 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
     });
   };
 
-  const handleBulkApprove = () => {
-    console.log('Bulk approving:', Array.from(selectedIds));
-    setPendingComments(prev => prev.filter(c => !selectedIds.has(c.id)));
-    setSelectedIds(new Set());
-    setSelectedIndex(0);
+  const handleBulkApprove = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+
+    console.log('Bulk approving:', ids);
+    try {
+      const response = await fetch('/api/linkedin-commenting/bulk-approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment_ids: ids })
+      });
+
+      if (!response.ok) {
+        throw new Error('Bulk approve failed');
+      }
+
+      const result = await response.json();
+      setPendingComments(prev => prev.filter(c => !selectedIds.has(c.id)));
+      setSelectedIds(new Set());
+      setSelectedIndex(0);
+      toastSuccess(`${result.success_count} comments posted to LinkedIn!`);
+    } catch (error) {
+      console.error('Bulk approve error:', error);
+      toastError('Failed to bulk approve comments');
+    }
   };
 
-  const handleApproveAllHigh = () => {
+  const handleApproveAllHigh = async () => {
     const highConfidenceIds = pendingComments.filter(c => c.confidence === 'high').map(c => c.id);
+    if (highConfidenceIds.length === 0) {
+      toastError('No high confidence comments to approve');
+      return;
+    }
+
     console.log('Approving all high confidence:', highConfidenceIds);
-    setPendingComments(prev => prev.filter(c => c.confidence !== 'high'));
-    setSelectedIndex(0);
+    try {
+      const response = await fetch('/api/linkedin-commenting/bulk-approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment_ids: highConfidenceIds })
+      });
+
+      if (!response.ok) {
+        throw new Error('Bulk approve failed');
+      }
+
+      const result = await response.json();
+      setPendingComments(prev => prev.filter(c => c.confidence !== 'high'));
+      setSelectedIndex(0);
+      toastSuccess(`${result.success_count} high confidence comments posted!`);
+    } catch (error) {
+      console.error('Approve all high error:', error);
+      toastError('Failed to approve high confidence comments');
+    }
   };
 
   const getConfidenceColor = (confidence: string) => {
@@ -318,12 +435,39 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
               </button>
             )}
             <div>
-              <h1 className="text-2xl font-bold text-white">Approve Comments</h1>
-              <p className="text-sm text-gray-400 mt-1">
-                {filteredComments.length} pending · Use ↑↓ arrows to navigate, Space to approve, X to reject
-              </p>
+              <h1 className="text-2xl font-bold text-white">Comment Management</h1>
+              {/* Tab Navigation */}
+              <div className="flex items-center gap-4 mt-2">
+                <button
+                  onClick={() => { setActiveTab('pending'); setSelectedIndex(0); }}
+                  className={`text-sm font-medium pb-1 border-b-2 transition-colors ${
+                    activeTab === 'pending'
+                      ? 'text-pink-400 border-pink-400'
+                      : 'text-gray-400 border-transparent hover:text-white'
+                  }`}
+                >
+                  Pending Approval ({filteredComments.length})
+                </button>
+                <button
+                  onClick={() => { setActiveTab('posted'); setSelectedIndex(0); }}
+                  className={`text-sm font-medium pb-1 border-b-2 transition-colors ${
+                    activeTab === 'posted'
+                      ? 'text-green-400 border-green-400'
+                      : 'text-gray-400 border-transparent hover:text-white'
+                  }`}
+                >
+                  Posted ({postedComments.length})
+                </button>
+              </div>
+              {activeTab === 'pending' && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Use ↑↓ arrows to navigate, Space to approve, X to reject
+                </p>
+              )}
             </div>
           </div>
+          {/* Controls - only show for pending tab */}
+          {activeTab === 'pending' && (
           <div className="flex items-center gap-3">
             {/* Filter */}
             <select
@@ -367,10 +511,12 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
               Approve All High ({pendingComments.filter(c => c.confidence === 'high').length})
             </button>
           </div>
+          )}
         </div>
       </div>
 
-      {/* Two-Pane Layout */}
+      {/* Two-Pane Layout - Pending Tab */}
+      {activeTab === 'pending' && (
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar - Compact List */}
         <div className="w-96 bg-gray-800 border-r border-gray-700 overflow-y-auto">
@@ -583,6 +729,98 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
           )}
         </div>
       </div>
+      )}
+
+      {/* Posted Comments History Tab */}
+      {activeTab === 'posted' && (
+        <div className="flex-1 overflow-y-auto p-6">
+          {loadingPosted ? (
+            <div className="flex items-center justify-center h-64">
+              <Clock size={32} className="animate-spin text-green-500 mr-3" />
+              <span className="text-gray-400">Loading posted comments...</span>
+            </div>
+          ) : postedComments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 text-center">
+              <MessageCircle size={48} className="text-gray-600 mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-2">No Posted Comments Yet</h3>
+              <p className="text-gray-400">Approved comments will appear here after they're posted to LinkedIn.</p>
+            </div>
+          ) : (
+            <div className="max-w-4xl mx-auto space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white">Posted Comments History</h2>
+                <span className="text-sm text-gray-400">{postedComments.length} comments posted</span>
+              </div>
+
+              {postedComments.map((comment) => (
+                <div key={comment.id} className="bg-gray-800 rounded-lg border border-gray-700 p-5 hover:border-green-700/50 transition-colors">
+                  <div className="flex items-start gap-4">
+                    {/* Author Avatar */}
+                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
+                      {comment.postAuthor[0]}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      {/* Header */}
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <span className="font-medium text-white">{comment.postAuthor}</span>
+                          {comment.postAuthorTitle && (
+                            <span className="text-sm text-gray-400 ml-2">· {comment.postAuthorTitle}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray-500 flex items-center gap-1">
+                            <Clock size={12} />
+                            {getTimeAgo(comment.postedAt)}
+                          </span>
+                          <a
+                            href={comment.postUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
+                          >
+                            <Eye size={12} />
+                            View
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Post Snippet */}
+                      <p className="text-xs text-gray-400 line-clamp-2 mb-3">
+                        {comment.postContent}
+                      </p>
+
+                      {/* Your Comment */}
+                      <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-3 mb-3">
+                        <p className="text-sm text-gray-200">{comment.generatedComment}</p>
+                      </div>
+
+                      {/* Engagement Stats */}
+                      <div className="flex items-center gap-4 text-xs text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <ThumbsUp size={12} className="text-blue-400" />
+                          {comment.engagementMetrics?.likes || 0} likes
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MessageCircle size={12} className="text-green-400" />
+                          {comment.repliesCount} replies
+                        </span>
+                        {comment.userReplied && (
+                          <span className="flex items-center gap-1 text-green-400">
+                            <CheckCircle size={12} />
+                            You replied
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

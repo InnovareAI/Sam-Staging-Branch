@@ -74,7 +74,9 @@ export async function POST(req: NextRequest) {
           )
         )
       `)
-      .in('status', ['connection_request_sent', 'connected', 'messaging'])
+      // Bug fix Nov 27: Only send follow-ups to accepted connections
+      // connection_request_sent should NOT receive follow-ups (they haven't accepted yet)
+      .in('status', ['connected', 'messaging'])
       .not('follow_up_due_at', 'is', null)
       .lte('follow_up_due_at', new Date().toISOString())
       .order('follow_up_due_at', { ascending: true })

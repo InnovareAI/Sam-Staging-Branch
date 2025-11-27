@@ -43,16 +43,39 @@ const TIMEZONES = [
   { value: 'UTC', label: 'UTC (Coordinated Universal Time)' },
 ];
 
-// Countries with holiday calendars
+// Countries with holiday calendars (sorted alphabetically by label)
 const COUNTRIES = [
-  { value: 'US', label: 'United States' },
-  { value: 'GB', label: 'United Kingdom' },
-  { value: 'CA', label: 'Canada' },
-  { value: 'DE', label: 'Germany' },
-  { value: 'FR', label: 'France' },
+  { value: 'AT', label: 'Austria' },
   { value: 'AU', label: 'Australia' },
+  { value: 'BE', label: 'Belgium' },
+  { value: 'BR', label: 'Brazil' },
+  { value: 'CA', label: 'Canada' },
+  { value: 'CN', label: 'China' },
+  { value: 'DK', label: 'Denmark' },
+  { value: 'FI', label: 'Finland' },
+  { value: 'FR', label: 'France' },
+  { value: 'DE', label: 'Germany' },
+  { value: 'GR', label: 'Greece' },
+  { value: 'IS', label: 'Iceland' },
+  { value: 'IN', label: 'India' },
+  { value: 'IE', label: 'Ireland' },
+  { value: 'IT', label: 'Italy' },
   { value: 'JP', label: 'Japan' },
+  { value: 'MX', label: 'Mexico' },
+  { value: 'NL', label: 'Netherlands' },
+  { value: 'NZ', label: 'New Zealand' },
+  { value: 'NO', label: 'Norway' },
+  { value: 'PL', label: 'Poland' },
+  { value: 'PT', label: 'Portugal' },
   { value: 'SG', label: 'Singapore' },
+  { value: 'ZA', label: 'South Africa' },
+  { value: 'KR', label: 'South Korea' },
+  { value: 'ES', label: 'Spain' },
+  { value: 'SE', label: 'Sweden' },
+  { value: 'CH', label: 'Switzerland' },
+  { value: 'GB', label: 'United Kingdom' },
+  { value: 'US', label: 'United States' },
+  { value: 'INTL', label: 'International (minimal)' },
 ];
 
 export default function CampaignScheduleSettingsModal({ isOpen, onClose, campaignId, currentSettings }: Props) {

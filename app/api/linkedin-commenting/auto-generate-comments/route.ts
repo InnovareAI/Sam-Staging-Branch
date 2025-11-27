@@ -50,6 +50,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Fetch brand guidelines for higher quality comments
+    const { data: brandGuidelines } = await supabase
+      .from('linkedin_brand_guidelines')
+      .select('*')
+      .eq('workspace_id', workspace_id)
+      .single();
+
+    console.log('📋 Brand guidelines loaded:', brandGuidelines ? 'Yes' : 'No (using defaults)');
+
     // Fetch monitor settings
     const { data: monitor, error: monitorError } = await supabase
       .from('linkedin_post_monitors')
@@ -101,8 +110,8 @@ export async function POST(request: NextRequest) {
             author: {
               linkedin_id: post.author_profile_id || '',
               name: post.author_name || 'Unknown Author',
-              title: undefined,
-              company: undefined,
+              title: post.author_title || undefined,
+              company: post.author_company || undefined,
               profile_url: `https://www.linkedin.com/in/${post.author_profile_id}`
             },
             engagement: {
@@ -120,8 +129,9 @@ export async function POST(request: NextRequest) {
             expertise_areas: monitor.expertise_areas || ['B2B Sales', 'Lead Generation'],
             products: monitor.products || [],
             value_props: monitor.value_props || [],
-            tone_of_voice: monitor.tone_of_voice || 'Professional and helpful',
-            knowledge_base_snippets: []
+            tone_of_voice: brandGuidelines?.tone_of_voice || monitor.tone_of_voice || 'Professional and helpful',
+            knowledge_base_snippets: [],
+            brand_guidelines: brandGuidelines || undefined
           }
         };
 

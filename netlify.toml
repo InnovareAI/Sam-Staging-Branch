@@ -58,14 +58,16 @@
 [functions."send-follow-ups"]
   schedule = "*/30 * * * *"
 
-# Scheduled function: Poll for accepted LinkedIn connections every 2 hours
+# Scheduled function: Poll for accepted LinkedIn connections every 15 minutes
 # Checks if pending CRs have been accepted and schedules follow-ups
 # Backup for webhook delays (Unipile webhooks can have 8hr latency)
+# Changed from 2 hours to 15 minutes (Nov 27) - faster follow-up scheduling
 [functions."poll-accepted-connections"]
-  schedule = "0 */2 * * *"
+  schedule = "*/15 * * * *"
 
-# Scheduled function: Poll for message replies every 2 hours
+# Scheduled function: Poll for message replies every 15 minutes
 # CRITICAL: Backup for new_message webhook - stops follow-ups when prospect replies
 # Without this, prospects get follow-ups after they've already replied
+# Changed from 2 hours to 15 minutes (Nov 27) - faster reply detection
 [functions."poll-message-replies"]
-  schedule = "30 */2 * * *"
+  schedule = "*/15 * * * *"

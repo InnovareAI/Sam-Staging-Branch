@@ -24,20 +24,13 @@ export const maxDuration = 10; // 10 seconds max
 const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
 
-// Public holidays (US holidays 2025-2026)
+// Public holidays - International only (most campaigns target global prospects)
+// Removed US-only holidays (Thanksgiving, MLK, Presidents Day, etc.)
 const PUBLIC_HOLIDAYS = [
-  '2025-01-01', // New Year's Day
-  '2025-01-20', // MLK Jr. Day
-  '2025-02-17', // Presidents' Day
-  '2025-05-26', // Memorial Day
-  '2025-06-19', // Juneteenth
-  '2025-07-04', // Independence Day
-  '2025-09-01', // Labor Day
-  '2025-11-11', // Veterans Day
-  '2025-11-27', // Thanksgiving
-  '2025-12-25', // Christmas
-  '2026-01-01', // New Year's Day
-  '2026-01-19', // MLK Jr. Day
+  '2025-01-01', // New Year's Day (International)
+  '2025-12-25', // Christmas (International)
+  '2025-12-26', // Boxing Day (International)
+  '2026-01-01', // New Year's Day (International)
 ];
 
 // Calculate next available send time (skip weekends/holidays, business hours 8-5)
