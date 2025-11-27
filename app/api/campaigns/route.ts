@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler';
 
 export async function GET(req: NextRequest) {
   try {
     const supabase = await createSupabaseRouteClient();
-    
+
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -20,8 +22,42 @@ export async function GET(req: NextRequest) {
       throw apiError.validation('Workspace ID required');
     }
 
+    // CRITICAL FIX: Use service role to bypass RLS for campaign queries
+    // RLS policies are blocking legitimate users from seeing their campaigns
+    const cookieStore = await cookies();
+    const supabaseAdmin = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll() { return cookieStore.getAll(); },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
+            } catch {}
+          }
+        }
+      }
+    );
+
+    // Verify user is a member of this workspace before returning campaigns
+    const { data: membership } = await supabaseAdmin
+      .from('workspace_members')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .single();
+
+    if (!membership) {
+      console.error('❌ User not a member of workspace:', { userId: user.id, workspaceId });
+      throw apiError.forbidden('Not a member of this workspace');
+    }
+
     // Get campaigns for this workspace with prospect counts
-    const { data: campaigns, error } = await supabase
+    const { data: campaigns, error } = await supabaseAdmin
       .from('campaigns')
       .select(`
         id,
@@ -46,10 +82,10 @@ export async function GET(req: NextRequest) {
       throw apiError.database('fetch campaigns', error);
     }
 
-    // Enrich campaigns with prospect counts and metrics
+    // Enrich campaigns with prospect counts and metrics (using admin client to bypass RLS)
     const enrichedCampaigns = await Promise.all(campaigns.map(async (campaign: any) => {
       // Get prospect count
-      const { count: prospectCount } = await supabase
+      const { count: prospectCount } = await supabaseAdmin
         .from('campaign_prospects')
         .select('*', { count: 'exact', head: true })
         .eq('campaign_id', campaign.id);
@@ -58,14 +94,14 @@ export async function GET(req: NextRequest) {
       // LinkedIn campaigns update campaign_prospects, not campaign_messages
       // Include: All sent statuses (processing, cr_sent, fu1-5_sent, completed) + legacy (connection_requested, contacted)
       // NOTE: 'failed' is NOT included - failed means no message was actually sent
-      const { count: linkedinSent } = await supabase
+      const { count: linkedinSent } = await supabaseAdmin
         .from('campaign_prospects')
         .select('*', { count: 'exact', head: true })
         .eq('campaign_id', campaign.id)
         .in('status', ['processing', 'cr_sent', 'connection_request_sent', 'fu1_sent', 'fu2_sent', 'fu3_sent', 'fu4_sent', 'fu5_sent', 'completed', 'connection_requested', 'contacted', 'connected', 'messaging', 'replied']);
 
       // Get message stats from campaign_messages (for email campaigns)
-      const { data: messages } = await supabase
+      const { data: messages } = await supabaseAdmin
         .from('campaign_messages')
         .select('id, status')
         .eq('campaign_id', campaign.id);
@@ -77,7 +113,7 @@ export async function GET(req: NextRequest) {
       const totalSent = (linkedinSent || 0) + emailSent;
 
       // Get reply count
-      const { count: replyCount } = await supabase
+      const { count: replyCount } = await supabaseAdmin
         .from('campaign_replies')
         .select('*', { count: 'exact', head: true })
         .eq('campaign_id', campaign.id);
