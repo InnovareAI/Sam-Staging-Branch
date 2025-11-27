@@ -559,18 +559,36 @@ Return ONLY a JSON object:
  * Build user prompt with post content
  */
 function buildCommentUserPrompt(post: LinkedInPost): string {
-  return `Generate a thoughtful LinkedIn comment for this post:
+  // Take meaningful snippet of post (not just first few words)
+  const postSnippet = post.post_text.length > 300
+    ? post.post_text.substring(0, 300) + '...'
+    : post.post_text;
 
-"${post.post_text}"
+  return `Generate a thoughtful LinkedIn comment for this post by ${post.author.name}${post.author.title ? ` (${post.author.title})` : ''}:
 
-Remember:
-- Reference a SPECIFIC point from the post
-- Add genuine value through insight or experience
-- 2-3 sentences maximum
-- Be conversational and natural
-- No sales pitch
+---
+${postSnippet}
+---
 
-Return JSON only.`;
+CRITICAL RULES:
+1. DO NOT start with "Great insights on..." - this is banned
+2. DO NOT use generic phrases like "aligns with what we're seeing"
+3. DO NOT mention "B2B space" or "enterprise customers" unless the post is about that
+4. DO reference a SPECIFIC idea, claim, or point from the post
+5. Add YOUR perspective - agree, disagree, expand, share experience
+6. Sound like a real person having a conversation, not a bot
+
+EXAMPLES OF BAD COMMENTS (DO NOT DO THIS):
+- "Great insights on [topic]! This aligns perfectly with..."
+- "Thanks for sharing! Would love to hear more..."
+- "Interesting perspective! In my experience..."
+
+EXAMPLES OF GOOD COMMENTS:
+- "The point about X really resonates - we tried Y and found Z"
+- "I'd push back slightly on the idea that... because in practice..."
+- "This is why I've been telling my team to focus on..."
+
+Return JSON with comment_text. Make it 2-3 sentences, conversational, specific.`;
 }
 
 /**
@@ -715,15 +733,25 @@ export function validateCommentQuality(comment: GeneratedComment): {
     }
   }
 
-  // Check for banned phrases
+  // Check for banned phrases (generic AI-generated junk)
   const bannedPhrases = [
     'great post',
+    'great insights',
     'thanks for sharing',
     'nice insights',
+    'interesting perspective',
+    'aligns perfectly',
+    'aligns with what we',
+    'b2b space',
+    'enterprise customers',
+    'would love to hear',
+    'love to connect',
     'check out our',
     'we can help',
     'contact us',
-    'book a demo'
+    'book a demo',
+    'resonate with me',
+    'resonates with what'
   ];
 
   const commentLower = comment.comment_text.toLowerCase();
