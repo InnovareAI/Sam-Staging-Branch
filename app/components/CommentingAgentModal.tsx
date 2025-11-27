@@ -25,6 +25,18 @@ interface AISettings {
   personalityDocument: string;
 }
 
+interface BrandGuidelines {
+  id?: string;
+  tone_of_voice: string;
+  writing_style: string;
+  topics_and_perspective: string;
+  dos_and_donts: string;
+  comment_framework: string;
+  max_characters: number;
+  system_prompt: string;
+  is_active: boolean;
+}
+
 const defaultAISettings: AISettings = {
   tone: 'professional',
   formality: 'semi-formal',
@@ -32,6 +44,17 @@ const defaultAISettings: AISettings = {
   questionFrequency: 'sometimes',
   useKnowledgeBase: true,
   personalityDocument: '',
+};
+
+const defaultBrandGuidelines: BrandGuidelines = {
+  tone_of_voice: '',
+  writing_style: '',
+  topics_and_perspective: '',
+  dos_and_donts: '',
+  comment_framework: 'ACA+I: Acknowledge, Add nuance, drop an I-statement, ask a warm question',
+  max_characters: 300,
+  system_prompt: 'You are an AI agent replying as a real person to LinkedIn posts. Write replies that sound like a sharp, trusted friend—confident, human, and curious. Professional but warm.',
+  is_active: true,
 };
 
 export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: CommentingAgentModalProps) {
@@ -42,7 +65,10 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
   const [enabled, setEnabled] = useState(false);
   const [hasLinkedInAccount, setHasLinkedInAccount] = useState(false);
   const [showAISettings, setShowAISettings] = useState(false);
+  const [showBrandGuidelines, setShowBrandGuidelines] = useState(false);
   const [aiSettings, setAISettings] = useState<AISettings>(defaultAISettings);
+  const [brandGuidelines, setBrandGuidelines] = useState<BrandGuidelines>(defaultBrandGuidelines);
+  const [savingBrandGuidelines, setSavingBrandGuidelines] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -89,6 +115,28 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
         .limit(1);
 
       setHasLinkedInAccount(linkedInAccounts && linkedInAccounts.length > 0);
+
+      // Load brand guidelines from linkedin_brand_guidelines table
+      const { data: guidelines } = await supabase
+        .from('linkedin_brand_guidelines')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .eq('is_active', true)
+        .single();
+
+      if (guidelines) {
+        setBrandGuidelines({
+          id: guidelines.id,
+          tone_of_voice: guidelines.tone_of_voice || '',
+          writing_style: guidelines.writing_style || '',
+          topics_and_perspective: guidelines.topics_and_perspective || '',
+          dos_and_donts: guidelines.dos_and_donts || '',
+          comment_framework: guidelines.comment_framework || defaultBrandGuidelines.comment_framework,
+          max_characters: guidelines.max_characters || 300,
+          system_prompt: guidelines.system_prompt || defaultBrandGuidelines.system_prompt,
+          is_active: guidelines.is_active ?? true,
+        });
+      }
     } catch (error) {
       console.error('Failed to load commenting agent config:', error);
     } finally {
@@ -133,6 +181,65 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
       setSaveMessage('❌ Failed to save settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveBrandGuidelines = async () => {
+    setSavingBrandGuidelines(true);
+    setSaveMessage('');
+
+    try {
+      const supabase = createClient();
+
+      // Validate required field
+      if (!brandGuidelines.tone_of_voice.trim()) {
+        setSaveMessage('❌ Tone of Voice is required');
+        setSavingBrandGuidelines(false);
+        return;
+      }
+
+      const guidelineData = {
+        workspace_id: workspaceId,
+        tone_of_voice: brandGuidelines.tone_of_voice,
+        writing_style: brandGuidelines.writing_style || null,
+        topics_and_perspective: brandGuidelines.topics_and_perspective || null,
+        dos_and_donts: brandGuidelines.dos_and_donts || null,
+        comment_framework: brandGuidelines.comment_framework,
+        max_characters: brandGuidelines.max_characters,
+        system_prompt: brandGuidelines.system_prompt,
+        is_active: true,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (brandGuidelines.id) {
+        // Update existing
+        const { error } = await supabase
+          .from('linkedin_brand_guidelines')
+          .update(guidelineData)
+          .eq('id', brandGuidelines.id);
+
+        if (error) throw error;
+      } else {
+        // Insert new
+        const { data, error } = await supabase
+          .from('linkedin_brand_guidelines')
+          .insert(guidelineData)
+          .select()
+          .single();
+
+        if (error) throw error;
+        if (data) {
+          setBrandGuidelines({ ...brandGuidelines, id: data.id });
+        }
+      }
+
+      setSaveMessage('✓ Brand guidelines saved successfully!');
+      setTimeout(() => setSaveMessage(''), 3000);
+    } catch (error) {
+      console.error('Failed to save brand guidelines:', error);
+      setSaveMessage('❌ Failed to save brand guidelines');
+    } finally {
+      setSavingBrandGuidelines(false);
     }
   };
 
@@ -463,54 +570,7 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
                         </label>
                       </div>
 
-                      {/* Tone of Voice & Personality Document */}
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <FileText size={16} className="text-purple-400" />
-                          <label className="text-sm font-medium text-gray-300">
-                            Tone of Voice & Personality Document
-                          </label>
-                        </div>
-                        <p className="text-xs text-gray-400 mb-3">
-                          Describe your brand voice, personality, and how you want SAM to engage on LinkedIn.
-                          Include examples of good/bad comments, key phrases to use or avoid, and any specific guidelines.
-                        </p>
-                        <textarea
-                          value={aiSettings.personalityDocument}
-                          onChange={(e) => setAISettings({ ...aiSettings, personalityDocument: e.target.value })}
-                          placeholder={`Example:
-
-We are InnovareAI - a B2B sales automation company. Our voice is confident but not arrogant, helpful but not pushy.
-
-DO:
-- Ask thoughtful questions that show genuine interest
-- Reference specific points from the post
-- Share relevant experiences or insights
-- Be conversational and human
-
-DON'T:
-- Use buzzwords like "synergy" or "leverage"
-- Make it about us or our product
-- Use generic praise like "Great post!"
-- Be salesy or push for demos
-
-Key phrases we like:
-- "That's an interesting perspective on..."
-- "We've seen similar results when..."
-- "What led you to that approach?"
-
-Personality traits: Curious, knowledgeable, approachable, slightly witty`}
-                          rows={12}
-                          className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none text-sm"
-                        />
-                        <div className="flex justify-between items-center mt-2">
-                          <span className="text-xs text-gray-500">
-                            {aiSettings.personalityDocument.length} characters
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Save Button */}
+                      {/* Save AI Settings Button */}
                       <div className="flex justify-end pt-2">
                         <button
                           onClick={saveAISettings}
@@ -523,6 +583,169 @@ Personality traits: Curious, knowledgeable, approachable, slightly witty`}
                             <Save size={16} />
                           )}
                           Save AI Settings
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Brand Guidelines Section */}
+              {enabled && (
+                <div className="border border-gray-600 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setShowBrandGuidelines(!showBrandGuidelines)}
+                    className="w-full flex items-center justify-between p-4 bg-gray-700 hover:bg-gray-600 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileText size={20} className="text-pink-400" />
+                      <div className="text-left">
+                        <span className="text-white font-medium block">Brand Guidelines</span>
+                        <span className="text-gray-400 text-xs">Define your unique voice and commenting style</span>
+                      </div>
+                    </div>
+                    {showBrandGuidelines ? (
+                      <ChevronUp size={20} className="text-gray-400" />
+                    ) : (
+                      <ChevronDown size={20} className="text-gray-400" />
+                    )}
+                  </button>
+
+                  {showBrandGuidelines && (
+                    <div className="p-4 bg-gray-800 space-y-5">
+                      {/* Tone of Voice (Required) */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Tone of Voice <span className="text-pink-400">*</span>
+                        </label>
+                        <p className="text-xs text-gray-400 mb-2">
+                          How should your comments sound? (e.g., "Professional but warm, confident but not arrogant")
+                        </p>
+                        <textarea
+                          value={brandGuidelines.tone_of_voice}
+                          onChange={(e) => setBrandGuidelines({ ...brandGuidelines, tone_of_voice: e.target.value })}
+                          placeholder="Professional and authentic. Confident but approachable. We sound like a knowledgeable friend, not a salesperson."
+                          rows={3}
+                          className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none text-sm"
+                        />
+                      </div>
+
+                      {/* Writing Style */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Writing Style
+                        </label>
+                        <p className="text-xs text-gray-400 mb-2">
+                          Describe sentence structure, vocabulary, and formatting preferences
+                        </p>
+                        <textarea
+                          value={brandGuidelines.writing_style}
+                          onChange={(e) => setBrandGuidelines({ ...brandGuidelines, writing_style: e.target.value })}
+                          placeholder="Concise and engaging. Use short sentences. Avoid jargon. No emojis or exclamation marks. Ask thoughtful questions."
+                          rows={3}
+                          className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none text-sm"
+                        />
+                      </div>
+
+                      {/* Topics & Perspective */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Topics & Perspective
+                        </label>
+                        <p className="text-xs text-gray-400 mb-2">
+                          What topics do you engage with? What's your unique viewpoint?
+                        </p>
+                        <textarea
+                          value={brandGuidelines.topics_and_perspective}
+                          onChange={(e) => setBrandGuidelines({ ...brandGuidelines, topics_and_perspective: e.target.value })}
+                          placeholder="We focus on B2B sales, automation, and AI. Our perspective: technology should enhance human connection, not replace it."
+                          rows={3}
+                          className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none text-sm"
+                        />
+                      </div>
+
+                      {/* Do's and Don'ts */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Do's and Don'ts
+                        </label>
+                        <p className="text-xs text-gray-400 mb-2">
+                          Specific rules for what to include or avoid in comments
+                        </p>
+                        <textarea
+                          value={brandGuidelines.dos_and_donts}
+                          onChange={(e) => setBrandGuidelines({ ...brandGuidelines, dos_and_donts: e.target.value })}
+                          placeholder={`DO: Reference specific points from the post, ask thoughtful questions, share relevant insights
+DON'T: Use "Great post!", mention our product, use buzzwords like "synergy", be generic`}
+                          rows={4}
+                          className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none text-sm"
+                        />
+                      </div>
+
+                      {/* Comment Framework */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Comment Framework
+                        </label>
+                        <p className="text-xs text-gray-400 mb-2">
+                          Structure for generating comments (e.g., ACA+I: Acknowledge, Add nuance, I-statement, Question)
+                        </p>
+                        <textarea
+                          value={brandGuidelines.comment_framework}
+                          onChange={(e) => setBrandGuidelines({ ...brandGuidelines, comment_framework: e.target.value })}
+                          placeholder="ACA+I: Acknowledge the post, Add nuance or insight, drop an I-statement from experience, ask a warm question"
+                          rows={2}
+                          className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none text-sm"
+                        />
+                      </div>
+
+                      {/* Max Characters */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Max Characters
+                        </label>
+                        <p className="text-xs text-gray-400 mb-2">
+                          Maximum length for generated comments (recommended: 200-400)
+                        </p>
+                        <input
+                          type="number"
+                          value={brandGuidelines.max_characters}
+                          onChange={(e) => setBrandGuidelines({ ...brandGuidelines, max_characters: parseInt(e.target.value) || 300 })}
+                          min={50}
+                          max={1000}
+                          className="w-32 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                        />
+                      </div>
+
+                      {/* System Prompt (Advanced) */}
+                      <div className="pt-4 border-t border-gray-700">
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          System Prompt <span className="text-gray-500 text-xs">(Advanced)</span>
+                        </label>
+                        <p className="text-xs text-gray-400 mb-2">
+                          The base instruction given to the AI. Only modify if you know what you're doing.
+                        </p>
+                        <textarea
+                          value={brandGuidelines.system_prompt}
+                          onChange={(e) => setBrandGuidelines({ ...brandGuidelines, system_prompt: e.target.value })}
+                          rows={3}
+                          className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none text-sm font-mono text-xs"
+                        />
+                      </div>
+
+                      {/* Save Brand Guidelines Button */}
+                      <div className="flex justify-end pt-2">
+                        <button
+                          onClick={saveBrandGuidelines}
+                          disabled={savingBrandGuidelines}
+                          className="px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+                        >
+                          {savingBrandGuidelines ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : (
+                            <Save size={16} />
+                          )}
+                          Save Brand Guidelines
                         </button>
                       </div>
                     </div>

@@ -118,7 +118,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=SELECT id FROM linkedin_posts_discovered WHERE workspace_id = '{{ $env.WORKSPACE_ID }}' AND social_id = '{{ $json.social_id }}'",
+        "query": "=SELECT id FROM linkedin_discovered_posts WHERE workspace_id = '{{ $env.WORKSPACE_ID }}' AND social_id = '{{ $json.social_id }}'",
         "options": {}
       },
       "id": "check-post-exists",
@@ -165,7 +165,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO linkedin_posts_discovered (\n  workspace_id,\n  monitor_id,\n  social_id,\n  share_url,\n  post_content,\n  author_name,\n  author_headline,\n  post_date,\n  engagement_metrics,\n  status\n) VALUES (\n  '{{ $env.WORKSPACE_ID }}',\n  '{{ $node[\"Loop: For Each Profile\"].json.id }}',\n  '{{ $json.social_id }}',\n  '{{ $json.share_url }}',\n  $${{ $json.text }}$$,\n  '{{ $json.author.first_name }} {{ $json.author.last_name }}',\n  $${{ $json.author.headline }}$$,\n  '{{ $json.date }}',\n  jsonb_build_object('comments', {{ $json.comment_counter || 0 }}, 'reactions', {{ $json.reaction_counter || 0 }}),\n  'discovered'\n)",
+        "query": "=INSERT INTO linkedin_discovered_posts (\n  workspace_id,\n  profile_id,\n  social_id,\n  post_url,\n  post_text,\n  author_name,\n  author_headline,\n  posted_date,\n  comment_count,\n  reaction_count,\n  comment_status\n) VALUES (\n  '{{ $env.WORKSPACE_ID }}',\n  '{{ $node[\"Loop: For Each Profile\"].json.id }}',\n  '{{ $json.social_id }}',\n  '{{ $json.share_url }}',\n  $${{ $json.text }}$$,\n  '{{ $json.author.first_name }} {{ $json.author.last_name }}',\n  $${{ $json.author.headline }}$$,\n  '{{ $json.date }}',\n  {{ $json.comment_counter || 0 }},\n  {{ $json.reaction_counter || 0 }},\n  'new'\n)",
         "options": {}
       },
       "id": "save-post-to-supabase",
@@ -183,7 +183,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=UPDATE linkedin_post_monitors SET updated_at = NOW() WHERE id = '{{ $json.id }}'",
+        "query": "=UPDATE linkedin_profiles_to_monitor SET last_scraped_at = NOW() WHERE id = '{{ $json.id }}'",
         "options": {}
       },
       "id": "update-profile-scraped-timestamp",
@@ -315,7 +315,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=UPDATE linkedin_posts_discovered SET\n  status = 'commented',\n  updated_at = NOW()\nWHERE id = '{{ $node['Supabase: Get Post Needing Comment'].json.id }}'",
+        "query": "=UPDATE linkedin_discovered_posts SET\n  ai_comment = $${{ $node['AI: Generate Comment (OpenRouter Claude)'].json.message.content }}$$,\n  comment_status = 'commented',\n  commented_at = NOW(),\n  updated_at = NOW()\nWHERE id = '{{ $node['Supabase: Get Post Needing Comment'].json.id }}'",
         "options": {}
       },
       "id": "update-post-status",
