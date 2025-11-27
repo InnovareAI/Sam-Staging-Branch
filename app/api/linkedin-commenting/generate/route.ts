@@ -9,8 +9,10 @@ import {
   generateLinkedInComment,
   CommentGenerationContext,
   shouldSkipPost,
-  validateCommentQuality
+  validateCommentQuality,
+  BrandGuidelines
 } from '@/lib/services/linkedin-commenting-agent';
+import { buildKBContextForSAM } from '@/lib/sam-kb-integration';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -72,12 +74,92 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get knowledge base snippets for context
-    const { data: knowledgeSnippets } = await supabase
-      .from('knowledge_base')
-      .select('content')
+    // Load brand guidelines from linkedin_brand_guidelines table (new comprehensive settings)
+    const { data: brandGuidelinesData } = await supabase
+      .from('linkedin_brand_guidelines')
+      .select('*')
       .eq('workspace_id', body.workspace_id)
-      .limit(3);
+      .eq('is_active', true)
+      .maybeSingle();
+
+    // Convert DB data to BrandGuidelines interface
+    const brandGuidelines: BrandGuidelines | undefined = brandGuidelinesData ? {
+      id: brandGuidelinesData.id,
+      // Quick Settings
+      tone: brandGuidelinesData.tone || 'professional',
+      formality: brandGuidelinesData.formality || 'semi_formal',
+      comment_length: brandGuidelinesData.comment_length || 'medium',
+      question_frequency: brandGuidelinesData.question_frequency || 'sometimes',
+      perspective_style: brandGuidelinesData.perspective_style || 'additive',
+      confidence_level: brandGuidelinesData.confidence_level || 'balanced',
+      use_workspace_knowledge: brandGuidelinesData.use_workspace_knowledge ?? false,
+      // Expertise
+      what_you_do: brandGuidelinesData.what_you_do,
+      what_youve_learned: brandGuidelinesData.what_youve_learned,
+      pov_on_future: brandGuidelinesData.pov_on_future,
+      industry_talking_points: brandGuidelinesData.industry_talking_points,
+      // Brand Voice
+      voice_reference: brandGuidelinesData.voice_reference,
+      tone_of_voice: brandGuidelinesData.tone_of_voice || '',
+      writing_style: brandGuidelinesData.writing_style,
+      dos_and_donts: brandGuidelinesData.dos_and_donts,
+      // Vibe Check
+      okay_funny: brandGuidelinesData.okay_funny ?? true,
+      okay_blunt: brandGuidelinesData.okay_blunt ?? true,
+      casual_openers: brandGuidelinesData.casual_openers ?? true,
+      personal_experience: brandGuidelinesData.personal_experience ?? true,
+      strictly_professional: brandGuidelinesData.strictly_professional ?? false,
+      // Comment Framework
+      framework_preset: brandGuidelinesData.framework_preset || 'aca_i',
+      custom_framework: brandGuidelinesData.custom_framework,
+      max_characters: brandGuidelinesData.max_characters || 300,
+      // Example Comments
+      example_comments: brandGuidelinesData.example_comments,
+      admired_comments: brandGuidelinesData.admired_comments,
+      // Relationship & Context
+      default_relationship_tag: brandGuidelinesData.default_relationship_tag || 'unknown',
+      comment_scope: brandGuidelinesData.comment_scope || 'my_expertise',
+      auto_skip_generic: brandGuidelinesData.auto_skip_generic ?? false,
+      post_age_awareness: brandGuidelinesData.post_age_awareness ?? true,
+      recent_comment_memory: brandGuidelinesData.recent_comment_memory ?? true,
+      // Guardrails
+      competitors_never_mention: brandGuidelinesData.competitors_never_mention,
+      end_with_cta: brandGuidelinesData.end_with_cta || 'never',
+      cta_style: brandGuidelinesData.cta_style || 'question_only',
+      // Scheduling
+      timezone: brandGuidelinesData.timezone,
+      posting_start_time: brandGuidelinesData.posting_start_time,
+      posting_end_time: brandGuidelinesData.posting_end_time,
+      post_on_weekends: brandGuidelinesData.post_on_weekends,
+      post_on_holidays: brandGuidelinesData.post_on_holidays,
+      // Advanced
+      system_prompt: brandGuidelinesData.system_prompt
+    } : undefined;
+
+    // Build Knowledge Base context if use_workspace_knowledge is enabled
+    let knowledgeBaseContext: string | undefined;
+    if (brandGuidelines?.use_workspace_knowledge) {
+      try {
+        knowledgeBaseContext = await buildKBContextForSAM(body.workspace_id);
+        console.log('📚 KB context loaded for commenting agent:', {
+          workspace_id: body.workspace_id,
+          context_length: knowledgeBaseContext?.length || 0
+        });
+      } catch (kbError) {
+        console.warn('⚠️ Failed to load KB context, continuing without it:', kbError);
+      }
+    }
+
+    // Fallback: Get basic knowledge base snippets if KB context not available
+    let knowledgeSnippets: string[] = [];
+    if (!knowledgeBaseContext) {
+      const { data: snippets } = await supabase
+        .from('knowledge_base')
+        .select('content')
+        .eq('workspace_id', body.workspace_id)
+        .limit(3);
+      knowledgeSnippets = snippets?.map(k => k.content) || [];
+    }
 
     // Check if post author is a prospect
     const { data: prospect } = await supabase
@@ -87,7 +169,7 @@ export async function POST(request: NextRequest) {
       .eq('linkedin_url', post.author_profile_url)
       .single();
 
-    // Build context for AI
+    // Build context for AI with both legacy and new settings
     const workspaceContext = {
       workspace_id: body.workspace_id,
       company_name: workspace.name || 'Our Company',
@@ -95,9 +177,14 @@ export async function POST(request: NextRequest) {
       products: workspace.metadata?.products || [],
       value_props: workspace.metadata?.value_propositions || [],
       tone_of_voice: workspace.metadata?.tone_of_voice || 'professional_friendly',
-      knowledge_base_snippets: knowledgeSnippets?.map(k => k.content) || [],
-      // Load AI settings from workspace metadata
-      commenting_agent_settings: workspace.metadata?.commenting_agent_settings || undefined
+      // Legacy: Basic KB snippets
+      knowledge_base_snippets: knowledgeSnippets,
+      // Legacy: AI settings from workspace metadata
+      commenting_agent_settings: workspace.metadata?.commenting_agent_settings || undefined,
+      // NEW: Comprehensive brand guidelines from linkedin_brand_guidelines table
+      brand_guidelines: brandGuidelines,
+      // NEW: Full KB context when use_workspace_knowledge is enabled
+      knowledge_base_context: knowledgeBaseContext
     };
 
     // Check if we should skip this post

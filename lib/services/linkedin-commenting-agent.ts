@@ -26,6 +26,73 @@ export interface LinkedInPost {
   matched_keywords?: string[];
 }
 
+/**
+ * Comprehensive Brand Guidelines from linkedin_brand_guidelines table
+ */
+export interface BrandGuidelines {
+  id?: string;
+
+  // Section 1: Quick Settings
+  tone: 'professional' | 'friendly' | 'casual' | 'passionate';
+  formality: 'formal' | 'semi_formal' | 'informal';
+  comment_length: 'short' | 'medium' | 'long';
+  question_frequency: 'frequently' | 'sometimes' | 'rarely' | 'never';
+  perspective_style: 'supportive' | 'additive' | 'thought_provoking';
+  confidence_level: 'assertive' | 'balanced' | 'humble';
+  use_workspace_knowledge: boolean;
+
+  // Section 2: Your Expertise
+  what_you_do?: string;
+  what_youve_learned?: string;
+  pov_on_future?: string;
+  industry_talking_points?: string;
+
+  // Section 3: Brand Voice
+  voice_reference?: string;
+  tone_of_voice: string;
+  writing_style?: string;
+  dos_and_donts?: string;
+
+  // Section 4: Vibe Check
+  okay_funny: boolean;
+  okay_blunt: boolean;
+  casual_openers: boolean;
+  personal_experience: boolean;
+  strictly_professional: boolean;
+
+  // Section 5: Comment Framework
+  framework_preset: 'aca_i' | 'var' | 'hook_value_bridge' | 'custom';
+  custom_framework?: string;
+  max_characters: number;
+
+  // Section 6: Example Comments
+  example_comments?: string[];
+  admired_comments?: string[];
+
+  // Section 7: Relationship & Context
+  default_relationship_tag: 'prospect' | 'client' | 'peer' | 'thought_leader' | 'unknown';
+  comment_scope: 'my_expertise' | 'expertise_adjacent' | 'anything_relevant';
+  auto_skip_generic: boolean;
+  post_age_awareness: boolean;
+  recent_comment_memory: boolean;
+
+  // Section 8: Guardrails
+  competitors_never_mention?: string[];
+  end_with_cta: 'never' | 'occasionally' | 'when_relevant';
+  cta_style: 'question_only' | 'soft_invitation' | 'direct_ask';
+
+  // Section 9: Scheduling
+  timezone?: string;
+  posting_start_time?: string;
+  posting_end_time?: string;
+  post_on_weekends?: boolean;
+  post_on_holidays?: boolean;
+
+  // Section 10: Advanced
+  system_prompt?: string;
+}
+
+// Legacy interface for backwards compatibility
 export interface CommentingAgentSettings {
   tone: 'professional' | 'friendly' | 'casual' | 'passionate';
   formality: 'formal' | 'semi-formal' | 'informal';
@@ -44,6 +111,10 @@ export interface WorkspaceContext {
   tone_of_voice: string;
   knowledge_base_snippets?: string[];
   commenting_agent_settings?: CommentingAgentSettings;
+  // New: Comprehensive brand guidelines from linkedin_brand_guidelines table
+  brand_guidelines?: BrandGuidelines;
+  // New: Full KB context when use_workspace_knowledge is enabled
+  knowledge_base_context?: string;
 }
 
 export interface ProspectContext {
@@ -180,12 +251,26 @@ export async function generateLinkedInComment(
 
 /**
  * Build system prompt for comment generation
+ * Uses comprehensive brand guidelines when available
  */
 function buildCommentSystemPrompt(context: CommentGenerationContext): string {
   const { workspace, prospect, post } = context;
-  const settings = workspace.commenting_agent_settings;
+  const bg = workspace.brand_guidelines;
+  const legacySettings = workspace.commenting_agent_settings;
 
-  // Determine tone description based on settings
+  // If we have a custom system prompt override, use it as the base
+  if (bg?.system_prompt && bg.system_prompt.trim().length > 0) {
+    return buildCustomSystemPrompt(context, bg.system_prompt);
+  }
+
+  // Determine settings (prefer brand_guidelines, fallback to legacy)
+  const tone = bg?.tone || legacySettings?.tone || 'professional';
+  const formality = bg?.formality || legacySettings?.formality?.replace('-', '_') || 'semi_formal';
+  const commentLength = bg?.comment_length || legacySettings?.commentLength || 'medium';
+  const questionFreq = bg?.question_frequency || legacySettings?.questionFrequency || 'sometimes';
+  const maxChars = bg?.max_characters || 300;
+
+  // Style descriptions
   const toneDescriptions: Record<string, string> = {
     professional: 'professional and business-like',
     friendly: 'warm, friendly, and approachable',
@@ -195,14 +280,14 @@ function buildCommentSystemPrompt(context: CommentGenerationContext): string {
 
   const formalityDescriptions: Record<string, string> = {
     formal: 'Use formal language and proper grammar. Avoid contractions and slang.',
-    'semi-formal': 'Use professional but conversational language. Contractions are fine.',
+    semi_formal: 'Use professional but conversational language. Contractions are fine.',
     informal: 'Use casual, everyday language. Be relaxed and natural.'
   };
 
   const lengthGuidelines: Record<string, string> = {
-    short: '1-2 sentences (under 100 characters)',
-    medium: '2-3 sentences (100-200 characters)',
-    long: '3-4 sentences (200-300 characters)'
+    short: `1-2 sentences (under ${Math.floor(maxChars * 0.5)} characters)`,
+    medium: `2-3 sentences (${Math.floor(maxChars * 0.5)}-${maxChars} characters)`,
+    long: `3-4 sentences (up to ${maxChars} characters)`
   };
 
   const questionGuidelines: Record<string, string> = {
@@ -212,46 +297,146 @@ function buildCommentSystemPrompt(context: CommentGenerationContext): string {
     never: 'Do not ask questions. Make statements and share insights instead.'
   };
 
-  const tone = settings?.tone || 'professional';
-  const formality = settings?.formality || 'semi-formal';
-  const commentLength = settings?.commentLength || 'medium';
-  const questionFreq = settings?.questionFrequency || 'sometimes';
-  const useKnowledge = settings?.useKnowledgeBase ?? true;
-  const personalityDoc = settings?.personalityDocument || '';
+  const perspectiveDescriptions: Record<string, string> = {
+    supportive: 'Be supportive and affirming. Validate the author\'s points and add encouragement.',
+    additive: 'Add new insight or perspective. Build on what they said with your own experience.',
+    thought_provoking: 'Challenge ideas constructively. Ask deeper questions that make people think.'
+  };
 
-  let prompt = `You are a B2B engagement specialist helping ${workspace.company_name} build relationships on LinkedIn through thoughtful commenting.
+  const confidenceDescriptions: Record<string, string> = {
+    assertive: 'Speak with confidence and authority. Use definitive statements.',
+    balanced: 'Share insights confidently while remaining open to other views.',
+    humble: 'Be curious and open. Use phrases like "I\'ve found that..." or "In my experience..."'
+  };
 
-## Company Context
-- Company: ${workspace.company_name}
-- Expertise: ${workspace.expertise_areas.join(', ') || 'B2B Sales'}
-- Products/Services: ${workspace.products.join(', ') || 'Not specified'}
-- Value Propositions: ${workspace.value_props.join(', ') || 'Not specified'}`;
+  // Comment framework descriptions
+  const frameworkDescriptions: Record<string, string> = {
+    aca_i: 'ACA+I Framework: Acknowledge their point → Add your insight/nuance → Drop an I-statement from experience → Ask a warm question',
+    var: 'VAR Framework: Validate their perspective → Add your own perspective → Relate it back to the original topic',
+    hook_value_bridge: 'Hook-Value-Bridge: Start with an intriguing hook → Deliver real value → Bridge to continued conversation',
+    custom: bg?.custom_framework || 'Use your best judgment for structure'
+  };
 
-  // Add personality document if provided (this is the key addition!)
-  if (personalityDoc && personalityDoc.trim().length > 0) {
-    prompt += `\n\n## Brand Voice & Personality Guidelines (FOLLOW CAREFULLY)
-${personalityDoc}`;
+  let prompt = `You are a LinkedIn engagement specialist helping ${workspace.company_name} build authentic relationships through thoughtful commenting.
+
+## Your Identity & Expertise`;
+
+  // Add expertise section if available
+  if (bg?.what_you_do) {
+    prompt += `\n\n**What You Do**: ${bg.what_you_do}`;
+  }
+  if (bg?.what_youve_learned) {
+    prompt += `\n\n**Key Lessons Learned**: ${bg.what_youve_learned}`;
+  }
+  if (bg?.pov_on_future) {
+    prompt += `\n\n**Your POV on the Future**: ${bg.pov_on_future}`;
+  }
+  if (bg?.industry_talking_points) {
+    prompt += `\n\n**Industry Talking Points**: ${bg.industry_talking_points}`;
   }
 
-  // Add knowledge base snippets if enabled and available
-  if (useKnowledge && workspace.knowledge_base_snippets && workspace.knowledge_base_snippets.length > 0) {
+  // Company context
+  prompt += `\n\n## Company Context
+- Company: ${workspace.company_name}
+- Expertise: ${workspace.expertise_areas.join(', ') || 'B2B Sales'}
+- Products/Services: ${workspace.products.join(', ') || 'Not specified'}`;
+
+  // Brand Voice section
+  if (bg?.tone_of_voice || bg?.writing_style || bg?.voice_reference) {
+    prompt += `\n\n## Brand Voice (FOLLOW CAREFULLY)`;
+    if (bg.voice_reference) {
+      prompt += `\n**Voice Reference**: ${bg.voice_reference}`;
+    }
+    if (bg.tone_of_voice) {
+      prompt += `\n**Tone of Voice**: ${bg.tone_of_voice}`;
+    }
+    if (bg.writing_style) {
+      prompt += `\n**Writing Style**: ${bg.writing_style}`;
+    }
+  }
+
+  // Dos and Don'ts
+  if (bg?.dos_and_donts) {
+    prompt += `\n\n## Do's and Don'ts (CRITICAL)
+${bg.dos_and_donts}`;
+  }
+
+  // Vibe Check - what's okay
+  if (bg) {
+    const vibeOkay: string[] = [];
+    const vibeNotOkay: string[] = [];
+
+    if (bg.okay_funny) vibeOkay.push('Light humor when appropriate');
+    else vibeNotOkay.push('No jokes or humor');
+
+    if (bg.okay_blunt) vibeOkay.push('Direct, blunt statements');
+    else vibeNotOkay.push('Avoid being too direct or blunt');
+
+    if (bg.casual_openers) vibeOkay.push('Casual, friendly openers');
+    else vibeNotOkay.push('Keep openers professional');
+
+    if (bg.personal_experience) vibeOkay.push('Share personal anecdotes and experiences');
+    else vibeNotOkay.push('Avoid personal anecdotes');
+
+    if (bg.strictly_professional) {
+      vibeNotOkay.push('Keep everything strictly professional - no casual elements');
+    }
+
+    if (vibeOkay.length > 0 || vibeNotOkay.length > 0) {
+      prompt += `\n\n## Vibe Check`;
+      if (vibeOkay.length > 0) {
+        prompt += `\n✅ **Okay**: ${vibeOkay.join(', ')}`;
+      }
+      if (vibeNotOkay.length > 0) {
+        prompt += `\n❌ **Avoid**: ${vibeNotOkay.join(', ')}`;
+      }
+    }
+  }
+
+  // Knowledge Base Context (when enabled)
+  if (bg?.use_workspace_knowledge && workspace.knowledge_base_context) {
+    prompt += `\n\n## Company Knowledge Base (Use for context and insights)
+${workspace.knowledge_base_context}`;
+  } else if (workspace.knowledge_base_snippets && workspace.knowledge_base_snippets.length > 0) {
     prompt += `\n\n## Company Knowledge (Use for context)
 ${workspace.knowledge_base_snippets.slice(0, 3).join('\n')}`;
   }
 
-  prompt += `\n\n## Communication Style Settings
+  // Example Comments
+  if (bg?.example_comments && bg.example_comments.length > 0) {
+    prompt += `\n\n## Example Comments (Mimic this style)
+${bg.example_comments.map((c, i) => `${i + 1}. "${c}"`).join('\n')}`;
+  }
+
+  if (bg?.admired_comments && bg.admired_comments.length > 0) {
+    prompt += `\n\n## Comments I Admire (Draw inspiration from)
+${bg.admired_comments.map((c, i) => `${i + 1}. "${c}"`).join('\n')}`;
+  }
+
+  // Communication Style Settings
+  prompt += `\n\n## Communication Style
 - **Tone**: ${toneDescriptions[tone]}
 - **Formality**: ${formalityDescriptions[formality]}
-- **Length**: ${lengthGuidelines[commentLength]}
-- **Questions**: ${questionGuidelines[questionFreq]}`;
+- **Length**: ${lengthGuidelines[commentLength]} (Max: ${maxChars} chars)
+- **Questions**: ${questionGuidelines[questionFreq]}
+- **Perspective**: ${perspectiveDescriptions[bg?.perspective_style || 'additive']}
+- **Confidence**: ${confidenceDescriptions[bg?.confidence_level || 'balanced']}`;
 
+  // Comment Framework
+  const framework = bg?.framework_preset || 'aca_i';
+  prompt += `\n\n## Comment Framework
+**Use**: ${frameworkDescriptions[framework]}`;
+
+  // Post Context
   prompt += `\n\n## Post Context
 Author: ${post.author.name}${post.author.title ? `, ${post.author.title}` : ''}${post.author.company ? ` at ${post.author.company}` : ''}
 Posted: ${getRelativeTime(post.posted_at)}
 Engagement: ${post.engagement.likes_count} likes, ${post.engagement.comments_count} comments`;
 
+  // Prospect handling
   if (prospect?.is_prospect) {
-    prompt += `\n\n## ⚠️ IMPORTANT: This is a PROSPECT
+    const relationshipTag = bg?.default_relationship_tag || 'prospect';
+    prompt += `\n\n## ⚠️ IMPORTANT: This is a ${relationshipTag.toUpperCase()}
 - Prospect Stage: ${prospect.relationship_stage || 'New'}
 - Campaign: ${prospect.campaign_id ? 'Active campaign' : 'No active campaign'}
 ${prospect.notes ? `- Notes: ${prospect.notes}` : ''}
@@ -259,6 +444,25 @@ ${prospect.notes ? `- Notes: ${prospect.notes}` : ''}
 **Extra care required**: This comment is building a relationship with a potential customer. Be especially thoughtful, personalized, and value-focused.`;
   }
 
+  // Guardrails
+  if (bg?.competitors_never_mention && bg.competitors_never_mention.length > 0) {
+    prompt += `\n\n## ⛔ NEVER Mention These Competitors
+${bg.competitors_never_mention.join(', ')}`;
+  }
+
+  // CTA Guidelines
+  if (bg?.end_with_cta && bg.end_with_cta !== 'never') {
+    const ctaStyleDesc: Record<string, string> = {
+      question_only: 'End with a genuine question only - no explicit CTAs',
+      soft_invitation: 'Soft invitations like "would love to chat more about this"',
+      direct_ask: 'Direct but not salesy - "let\'s connect to discuss"'
+    };
+    prompt += `\n\n## CTA Guidelines
+- Frequency: ${bg.end_with_cta}
+- Style: ${ctaStyleDesc[bg.cta_style || 'question_only']}`;
+  }
+
+  // Final Guidelines
   prompt += `\n\n## Comment Guidelines (CRITICAL)
 
 **Your goal**: Generate a LinkedIn comment that adds genuine value and builds relationship
@@ -266,10 +470,9 @@ ${prospect.notes ? `- Notes: ${prospect.notes}` : ''}
 **MUST DO**:
 1. Reference a SPECIFIC point from the post (not generic "great post!")
 2. Add genuine insight, experience, or helpful perspective
-3. Match the ${toneDescriptions[tone]} tone
-4. Follow the length guideline: ${lengthGuidelines[commentLength]}
+3. Follow the framework: ${frameworkDescriptions[framework]}
+4. Stay under ${maxChars} characters
 5. Be authentic - sound like a real person, not a bot
-${personalityDoc ? '6. Follow the Brand Voice & Personality Guidelines above' : ''}
 
 **MUST NOT DO**:
 1. ❌ Don't pitch products or services
@@ -281,7 +484,6 @@ ${personalityDoc ? '6. Follow the Brand Voice & Personality Guidelines above' : 
 **Quality Standards**:
 - If you can't add genuine value, return: { "skip": true, "reason": "Cannot add authentic value" }
 - Only generate comments you'd be proud to post yourself
-- Prioritize quality over quantity
 
 ## Output Format (JSON ONLY)
 
@@ -301,6 +503,53 @@ OR if the post isn't worth commenting on:
 {
   "skip": true,
   "reason": "Explanation why we shouldn't comment"
+}`;
+
+  return prompt;
+}
+
+/**
+ * Build prompt with custom system prompt override
+ */
+function buildCustomSystemPrompt(context: CommentGenerationContext, customPrompt: string): string {
+  const { post, prospect, workspace } = context;
+  const bg = workspace.brand_guidelines;
+
+  // Replace placeholders in custom prompt
+  let prompt = customPrompt
+    .replace(/\{\{company_name\}\}/g, workspace.company_name)
+    .replace(/\{\{expertise\}\}/g, workspace.expertise_areas.join(', '))
+    .replace(/\{\{products\}\}/g, workspace.products.join(', '))
+    .replace(/\{\{author_name\}\}/g, post.author.name)
+    .replace(/\{\{author_title\}\}/g, post.author.title || '')
+    .replace(/\{\{author_company\}\}/g, post.author.company || '')
+    .replace(/\{\{post_text\}\}/g, post.post_text)
+    .replace(/\{\{max_characters\}\}/g, String(bg?.max_characters || 300));
+
+  // Add KB context if enabled
+  if (bg?.use_workspace_knowledge && workspace.knowledge_base_context) {
+    prompt += `\n\n## Company Knowledge Base\n${workspace.knowledge_base_context}`;
+  }
+
+  // Add prospect context
+  if (prospect?.is_prospect) {
+    prompt += `\n\n## ⚠️ This is a PROSPECT - Extra care required
+- Stage: ${prospect.relationship_stage || 'New'}
+${prospect.notes ? `- Notes: ${prospect.notes}` : ''}`;
+  }
+
+  // Add JSON output format
+  prompt += `\n\n## Output Format (JSON ONLY)
+Return ONLY a JSON object:
+{
+  "comment_text": "Your comment here...",
+  "reasoning": "Why this comment adds value",
+  "adds_value": true,
+  "on_topic": true,
+  "appropriate_tone": true,
+  "avoids_sales_pitch": true,
+  "references_post_specifically": true,
+  "skip": false
 }`;
 
   return prompt;
