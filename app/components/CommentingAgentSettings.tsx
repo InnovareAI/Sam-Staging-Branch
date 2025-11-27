@@ -386,7 +386,7 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
     if (value.trim()) {
       setSettings(prev => ({
         ...prev,
-        [field]: [...prev[field], value.trim()]
+        [field]: [...(prev[field] || []), value.trim()]
       }));
       setter('');
     }
@@ -395,7 +395,7 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
   const removeArrayItem = (field: 'example_comments' | 'admired_comments' | 'competitors_never_mention', index: number) => {
     setSettings(prev => ({
       ...prev,
-      [field]: prev[field].filter((_, i) => i !== index)
+      [field]: (prev[field] || []).filter((_, i) => i !== index)
     }));
   };
 
@@ -718,7 +718,7 @@ DON'T: Use "Great post!", emojis, exclamation points, or buzzwords like "leverag
               <label className="block text-sm font-medium text-gray-300 mb-1">Your Best Comments</label>
               <p className="text-xs text-gray-400 mb-2">Paste 3-5 comments you've written that represent your voice</p>
               <div className="space-y-2 mb-2">
-                {settings.example_comments.map((comment, idx) => (
+                {(settings.example_comments || []).map((comment, idx) => (
                   <div key={idx} className="flex items-start gap-2 p-2 bg-gray-700 rounded-lg">
                     <p className="text-sm text-gray-300 flex-1">"{comment}"</p>
                     <button
@@ -751,7 +751,7 @@ DON'T: Use "Great post!", emojis, exclamation points, or buzzwords like "leverag
               <label className="block text-sm font-medium text-gray-300 mb-1">Comments You Admire</label>
               <p className="text-xs text-gray-400 mb-2">Paste comments from others that have the vibe you want</p>
               <div className="space-y-2 mb-2">
-                {settings.admired_comments.map((comment, idx) => (
+                {(settings.admired_comments || []).map((comment, idx) => (
                   <div key={idx} className="flex items-start gap-2 p-2 bg-gray-700 rounded-lg">
                     <p className="text-sm text-gray-300 flex-1">"{comment}"</p>
                     <button
@@ -847,7 +847,7 @@ DON'T: Use "Great post!", emojis, exclamation points, or buzzwords like "leverag
               <label className="block text-sm font-medium text-gray-300 mb-1">Competitors to Never Mention</label>
               <p className="text-xs text-gray-400 mb-2">Names you never want referenced</p>
               <div className="flex flex-wrap gap-2 mb-2">
-                {settings.competitors_never_mention.map((comp, idx) => (
+                {(settings.competitors_never_mention || []).map((comp, idx) => (
                   <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-gray-700 rounded-full text-sm text-gray-300">
                     {comp}
                     <button
