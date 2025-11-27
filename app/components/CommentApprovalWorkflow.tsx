@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { CheckCircle, XCircle, Edit3, ThumbsUp, MessageCircle, Eye, Clock, TrendingUp, ChevronRight, Sparkles, Filter, CheckSquare, Hash, Search, User as UserIcon, ArrowLeft } from 'lucide-react';
+import { CheckCircle, XCircle, Edit3, ThumbsUp, MessageCircle, Eye, Clock, TrendingUp, ChevronRight, Sparkles, Filter, CheckSquare, Hash, Search, User as UserIcon, ArrowLeft, MessageSquare, Send, X, RefreshCw } from 'lucide-react';
 import { toastSuccess, toastError } from '@/lib/toast';
 
 interface CommentApprovalWorkflowProps {
@@ -45,6 +45,21 @@ interface PostedComment {
   userReplied: boolean;
 }
 
+interface PostComment {
+  id: string;
+  author_name: string;
+  author_profile_id: string;
+  author_title?: string;
+  author_profile_url?: string;
+  author_avatar_url?: string;
+  text: string;
+  created_at: string;
+  likes_count: number;
+  replies_count: number;
+  is_reply: boolean;
+  parent_comment_id?: string;
+}
+
 export default function CommentApprovalWorkflow({ workspaceId, onBack }: CommentApprovalWorkflowProps) {
   const [activeTab, setActiveTab] = useState<'pending' | 'posted'>('pending');
   const [pendingComments, setPendingComments] = useState<PendingComment[]>([]);
@@ -57,6 +72,16 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
   const [sortBy, setSortBy] = useState<'confidence' | 'age' | 'engagement'>('confidence');
   const [loading, setLoading] = useState(true);
   const [loadingPosted, setLoadingPosted] = useState(false);
+
+  // Comments modal state
+  const [showCommentsModal, setShowCommentsModal] = useState(false);
+  const [commentsModalPostId, setCommentsModalPostId] = useState<string | null>(null);
+  const [commentsModalPostInfo, setCommentsModalPostInfo] = useState<{ author: string; content: string } | null>(null);
+  const [postComments, setPostComments] = useState<PostComment[]>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [replyingToComment, setReplyingToComment] = useState<PostComment | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
 
   // Fetch real pending comments from database
   useEffect(() => {
@@ -378,6 +403,83 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
     }
   };
 
+  // Open comments modal and fetch comments from LinkedIn
+  const handleViewComments = async (postId: string, postAuthor: string, postContent: string) => {
+    setCommentsModalPostId(postId);
+    setCommentsModalPostInfo({ author: postAuthor, content: postContent });
+    setShowCommentsModal(true);
+    setLoadingComments(true);
+    setPostComments([]);
+    setReplyingToComment(null);
+    setReplyText('');
+
+    try {
+      const response = await fetch(`/api/linkedin-commenting/get-post-comments?post_id=${postId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch comments');
+      }
+      const data = await response.json();
+      setPostComments(data.comments || []);
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+      toastError('Failed to load comments from LinkedIn');
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  // Send reply to a comment
+  const handleSendReply = async () => {
+    if (!replyingToComment || !replyText.trim() || !commentsModalPostId) return;
+
+    setSendingReply(true);
+    try {
+      const response = await fetch('/api/linkedin-commenting/reply-to-comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          post_id: commentsModalPostId,
+          comment_id: replyingToComment.id,
+          reply_text: replyText.trim(),
+          original_comment_text: replyingToComment.text,
+          original_comment_author_name: replyingToComment.author_name,
+          original_comment_author_profile_id: replyingToComment.author_profile_id,
+          mention_author: {
+            name: replyingToComment.author_name,
+            profile_id: replyingToComment.author_profile_id
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to send reply');
+      }
+
+      toastSuccess(`Reply sent to ${replyingToComment.author_name}!`);
+      setReplyingToComment(null);
+      setReplyText('');
+
+      // Refresh comments to show our reply
+      handleViewComments(commentsModalPostId, commentsModalPostInfo?.author || '', commentsModalPostInfo?.content || '');
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      toastError(error instanceof Error ? error.message : 'Failed to send reply');
+    } finally {
+      setSendingReply(false);
+    }
+  };
+
+  // Close comments modal
+  const handleCloseCommentsModal = () => {
+    setShowCommentsModal(false);
+    setCommentsModalPostId(null);
+    setCommentsModalPostInfo(null);
+    setPostComments([]);
+    setReplyingToComment(null);
+    setReplyText('');
+  };
+
   const getConfidenceColor = (confidence: string) => {
     switch(confidence) {
       case 'high': return 'text-green-400 bg-green-900/30';
@@ -601,15 +703,24 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
               <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-white">LinkedIn Post</h3>
-                  <a
-                    href={selectedComment.postUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1"
-                  >
-                    <Eye size={16} />
-                    View on LinkedIn
-                  </a>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => handleViewComments(selectedComment.postId, selectedComment.postAuthor, selectedComment.postContent)}
+                      className="text-green-400 hover:text-green-300 text-sm flex items-center gap-1"
+                    >
+                      <MessageSquare size={16} />
+                      View Comments ({selectedComment.postComments})
+                    </button>
+                    <a
+                      href={selectedComment.postUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1"
+                    >
+                      <Eye size={16} />
+                      View on LinkedIn
+                    </a>
+                  </div>
                 </div>
 
                 {/* Author */}
@@ -819,6 +930,149 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Comments Modal */}
+      {showCommentsModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-2xl max-h-[80vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-700">
+              <div>
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <MessageSquare size={20} className="text-green-400" />
+                  Comments on Post
+                </h3>
+                {commentsModalPostInfo && (
+                  <p className="text-sm text-gray-400 mt-1 truncate max-w-md">
+                    By {commentsModalPostInfo.author}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={handleCloseCommentsModal}
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors text-gray-400 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Comments List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {loadingComments ? (
+                <div className="flex items-center justify-center py-12">
+                  <RefreshCw size={24} className="animate-spin text-green-500 mr-3" />
+                  <span className="text-gray-400">Loading comments from LinkedIn...</span>
+                </div>
+              ) : postComments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <MessageCircle size={40} className="text-gray-600 mb-3" />
+                  <p className="text-gray-400">No comments yet on this post</p>
+                </div>
+              ) : (
+                postComments.map((comment) => (
+                  <div
+                    key={comment.id}
+                    className={`p-4 rounded-lg border transition-colors ${
+                      replyingToComment?.id === comment.id
+                        ? 'bg-green-900/20 border-green-700/50'
+                        : 'bg-gray-700/50 border-gray-600 hover:border-gray-500'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* Avatar */}
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
+                        {comment.author_name[0]}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        {/* Author Info */}
+                        <div className="flex items-center justify-between mb-1">
+                          <div>
+                            <span className="font-medium text-white">{comment.author_name}</span>
+                            {comment.author_title && (
+                              <span className="text-xs text-gray-400 ml-2">{comment.author_title}</span>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {getTimeAgo(comment.created_at)}
+                          </span>
+                        </div>
+
+                        {/* Comment Text */}
+                        <p className="text-gray-300 text-sm mb-2">{comment.text}</p>
+
+                        {/* Comment Stats & Actions */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4 text-xs text-gray-400">
+                            <span className="flex items-center gap-1">
+                              <ThumbsUp size={12} />
+                              {comment.likes_count}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MessageCircle size={12} />
+                              {comment.replies_count}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setReplyingToComment(comment);
+                              setReplyText(`@${comment.author_name} `);
+                            }}
+                            className="text-xs text-green-400 hover:text-green-300 flex items-center gap-1"
+                          >
+                            <MessageSquare size={12} />
+                            Reply
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Reply Input */}
+            {replyingToComment && (
+              <div className="p-4 border-t border-gray-700 bg-gray-800/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm text-gray-400">Replying to</span>
+                  <span className="text-sm text-green-400 font-medium">{replyingToComment.author_name}</span>
+                  <button
+                    onClick={() => {
+                      setReplyingToComment(null);
+                      setReplyText('');
+                    }}
+                    className="ml-auto text-xs text-gray-500 hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Write your reply..."
+                    rows={2}
+                    className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleSendReply}
+                    disabled={sendingReply || !replyText.trim()}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    {sendingReply ? (
+                      <RefreshCw size={16} className="animate-spin" />
+                    ) : (
+                      <Send size={16} />
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
