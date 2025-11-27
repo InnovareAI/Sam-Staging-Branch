@@ -34,6 +34,8 @@ export interface ReplyAgentSettings {
 export interface DraftContext {
   workspaceId: string;
   prospectReply: string;
+  // Unipile account ID for LinkedIn API access
+  unipileAccountId?: string;
   prospect: {
     name: string;
     role?: string;
@@ -92,7 +94,8 @@ export async function generateReplyDraft(context: DraftContext): Promise<Generat
       companyLinkedInUrl: context.prospect.companyLinkedInUrl,
       websiteUrl: context.prospect.websiteUrl,
       prospectReply: context.prospectReply,
-      originalOutreach: context.campaign.originalOutreach
+      originalOutreach: context.campaign.originalOutreach,
+      unipileAccountId: context.unipileAccountId
     });
     researchTimeMs = Date.now() - researchStart;
     console.log(`✅ Research complete in ${researchTimeMs}ms - ICP Fit: ${research.icpAnalysis?.fitScore || 'N/A'}%`);

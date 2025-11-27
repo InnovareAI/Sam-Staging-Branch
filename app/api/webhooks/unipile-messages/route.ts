@@ -197,11 +197,13 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Intent classified: ${intent.intent} (${(intent.confidence * 100).toFixed(0)}%)`);
 
-    // Generate draft
-    console.log('📝 Generating draft...');
+    // Generate draft with full research
+    console.log('📝 Generating draft with Opus 4.5 research...');
     const draftResult = await generateReplyDraft({
       workspaceId: account.workspace_id,
       prospectReply: messageText,
+      // Pass Unipile account ID for LinkedIn API access during research
+      unipileAccountId: payload.data.account_id,
       prospect: {
         name: prospectName,
         role: prospect?.title,

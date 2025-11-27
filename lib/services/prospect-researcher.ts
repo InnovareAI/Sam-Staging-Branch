@@ -64,6 +64,8 @@ export interface ResearchContext {
   websiteUrl?: string;
   prospectReply?: string;
   originalOutreach?: string;
+  // Unipile account ID for LinkedIn API access
+  unipileAccountId?: string;
 }
 
 /**
@@ -83,8 +85,8 @@ export async function researchProspect(context: ResearchContext): Promise<Prospe
 
   // Parallel fetch of all data sources
   const [linkedInData, companyLinkedInData, websiteData] = await Promise.all([
-    fetchLinkedInProfile(context.linkedInUrl),
-    fetchCompanyLinkedIn(context.companyLinkedInUrl, context.prospectCompany),
+    fetchLinkedInProfile(context.linkedInUrl, context.unipileAccountId),
+    fetchCompanyLinkedIn(context.companyLinkedInUrl, context.prospectCompany, context.unipileAccountId),
     fetchWebsiteContent(context.websiteUrl, context.prospectCompany)
   ]);
 
@@ -149,8 +151,9 @@ export async function researchProspect(context: ResearchContext): Promise<Prospe
 
 /**
  * Fetch LinkedIn profile data via Unipile
+ * Uses /api/v1/users/{vanity}?account_id={accountId} endpoint
  */
-async function fetchLinkedInProfile(linkedInUrl?: string): Promise<string | null> {
+async function fetchLinkedInProfile(linkedInUrl?: string, unipileAccountId?: string): Promise<string | null> {
   if (!linkedInUrl) return null;
 
   try {
@@ -158,17 +161,25 @@ async function fetchLinkedInProfile(linkedInUrl?: string): Promise<string | null
     const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
 
     if (!UNIPILE_DSN || !UNIPILE_API_KEY) {
+      console.log('⚠️ Unipile credentials not set');
       return null;
     }
 
     // Extract vanity from URL
     const vanityMatch = linkedInUrl.match(/linkedin\.com\/in\/([^\/\?#]+)/);
-    if (!vanityMatch) return null;
+    if (!vanityMatch) {
+      console.log('⚠️ Could not extract vanity from LinkedIn URL');
+      return null;
+    }
 
     const vanity = vanityMatch[1];
+    console.log(`📥 Fetching LinkedIn profile: ${vanity}`);
 
-    // Use legacy endpoint (more reliable for vanities with numbers)
-    const profileUrl = `https://${UNIPILE_DSN}/api/v1/users/${vanity}`;
+    // Use account_id if available (more reliable), otherwise try without
+    let profileUrl = `https://${UNIPILE_DSN}/api/v1/users/${encodeURIComponent(vanity)}`;
+    if (unipileAccountId) {
+      profileUrl += `?account_id=${unipileAccountId}`;
+    }
 
     const response = await fetch(profileUrl, {
       headers: {
@@ -178,11 +189,13 @@ async function fetchLinkedInProfile(linkedInUrl?: string): Promise<string | null
     });
 
     if (!response.ok) {
-      console.log(`⚠️ LinkedIn profile fetch failed: ${response.status}`);
+      const errorText = await response.text();
+      console.log(`⚠️ LinkedIn profile fetch failed: ${response.status} - ${errorText.substring(0, 100)}`);
       return null;
     }
 
     const profile = await response.json();
+    console.log(`✅ LinkedIn profile fetched for: ${profile.first_name || profile.name || vanity}`);
 
     // Format profile data for research
     return formatLinkedInProfile(profile);
@@ -235,7 +248,7 @@ function formatLinkedInProfile(profile: any): string {
 /**
  * Fetch company LinkedIn data
  */
-async function fetchCompanyLinkedIn(companyUrl?: string, companyName?: string): Promise<string | null> {
+async function fetchCompanyLinkedIn(companyUrl?: string, companyName?: string, unipileAccountId?: string): Promise<string | null> {
   if (!companyUrl && !companyName) return null;
 
   try {
@@ -253,9 +266,10 @@ async function fetchCompanyLinkedIn(companyUrl?: string, companyName?: string): 
       if (match) companyId = match[1];
     }
 
-    if (!companyId && companyName) {
-      // Search for company by name
-      const searchUrl = `https://${UNIPILE_DSN}/api/v1/linkedin/search?type=company&query=${encodeURIComponent(companyName)}`;
+    if (!companyId && companyName && unipileAccountId) {
+      // Search for company by name (requires account_id)
+      console.log(`📥 Searching company LinkedIn: ${companyName}`);
+      const searchUrl = `https://${UNIPILE_DSN}/api/v1/linkedin/search?type=company&query=${encodeURIComponent(companyName)}&account_id=${unipileAccountId}`;
       const searchResponse = await fetch(searchUrl, {
         headers: {
           'X-API-KEY': UNIPILE_API_KEY,
@@ -267,14 +281,21 @@ async function fetchCompanyLinkedIn(companyUrl?: string, companyName?: string): 
         const results = await searchResponse.json();
         if (results.items && results.items.length > 0) {
           companyId = results.items[0].id;
+          console.log(`✅ Found company: ${results.items[0].name || companyId}`);
         }
       }
     }
 
-    if (!companyId) return null;
+    if (!companyId) {
+      console.log(`⚠️ Could not find company LinkedIn page`);
+      return null;
+    }
 
     // Fetch company profile
-    const profileUrl = `https://${UNIPILE_DSN}/api/v1/companies/${companyId}`;
+    let profileUrl = `https://${UNIPILE_DSN}/api/v1/companies/${companyId}`;
+    if (unipileAccountId) {
+      profileUrl += `?account_id=${unipileAccountId}`;
+    }
     const response = await fetch(profileUrl, {
       headers: {
         'X-API-KEY': UNIPILE_API_KEY,
