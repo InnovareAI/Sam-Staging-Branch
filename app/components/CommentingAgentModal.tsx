@@ -1,61 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, MessageSquare, Save, Loader2, CheckCircle, AlertTriangle, Sparkles, TrendingUp, Users, Clock, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, MessageSquare, Loader2, CheckCircle, AlertTriangle, Sparkles, TrendingUp, Users, Clock, Settings } from 'lucide-react';
 import { createClient } from '@/app/lib/supabase';
 import { useRouter } from 'next/navigation';
+import CommentingAgentSettings from './CommentingAgentSettings';
 
 interface CommentingAgentModalProps {
   isOpen: boolean;
   onClose: () => void;
   workspaceId: string;
 }
-
-type Tone = 'professional' | 'friendly' | 'casual' | 'passionate';
-type Formality = 'formal' | 'semi-formal' | 'informal';
-type CommentLength = 'short' | 'medium' | 'long';
-type QuestionFrequency = 'frequently' | 'sometimes' | 'rarely' | 'never';
-
-interface AISettings {
-  tone: Tone;
-  formality: Formality;
-  commentLength: CommentLength;
-  questionFrequency: QuestionFrequency;
-  useKnowledgeBase: boolean;
-  personalityDocument: string;
-}
-
-interface BrandGuidelines {
-  id?: string;
-  tone_of_voice: string;
-  writing_style: string;
-  topics_and_perspective: string;
-  dos_and_donts: string;
-  comment_framework: string;
-  max_characters: number;
-  system_prompt: string;
-  is_active: boolean;
-}
-
-const defaultAISettings: AISettings = {
-  tone: 'professional',
-  formality: 'semi-formal',
-  commentLength: 'medium',
-  questionFrequency: 'sometimes',
-  useKnowledgeBase: true,
-  personalityDocument: '',
-};
-
-const defaultBrandGuidelines: BrandGuidelines = {
-  tone_of_voice: '',
-  writing_style: '',
-  topics_and_perspective: '',
-  dos_and_donts: '',
-  comment_framework: 'ACA+I: Acknowledge, Add nuance, drop an I-statement, ask a warm question',
-  max_characters: 300,
-  system_prompt: 'You are an AI agent replying as a real person to LinkedIn posts. Write replies that sound like a sharp, trusted friend—confident, human, and curious. Professional but warm.',
-  is_active: true,
-};
 
 export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: CommentingAgentModalProps) {
   const router = useRouter();
@@ -64,11 +19,7 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
   const [saveMessage, setSaveMessage] = useState('');
   const [enabled, setEnabled] = useState(false);
   const [hasLinkedInAccount, setHasLinkedInAccount] = useState(false);
-  const [showAISettings, setShowAISettings] = useState(false);
-  const [showBrandGuidelines, setShowBrandGuidelines] = useState(false);
-  const [aiSettings, setAISettings] = useState<AISettings>(defaultAISettings);
-  const [brandGuidelines, setBrandGuidelines] = useState<BrandGuidelines>(defaultBrandGuidelines);
-  const [savingBrandGuidelines, setSavingBrandGuidelines] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -81,28 +32,15 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
     try {
       const supabase = createClient();
 
-      // Check if commenting agent is enabled for workspace and load AI settings
+      // Check if commenting agent is enabled for workspace
       const { data: workspace } = await supabase
         .from('workspaces')
-        .select('commenting_agent_enabled, settings')
+        .select('commenting_agent_enabled')
         .eq('id', workspaceId)
         .single();
 
       if (workspace) {
         setEnabled(workspace.commenting_agent_enabled || false);
-
-        // Load AI settings from settings jsonb
-        const savedSettings = workspace.settings?.commenting_agent_settings;
-        if (savedSettings) {
-          setAISettings({
-            tone: savedSettings.tone || defaultAISettings.tone,
-            formality: savedSettings.formality || defaultAISettings.formality,
-            commentLength: savedSettings.commentLength || defaultAISettings.commentLength,
-            questionFrequency: savedSettings.questionFrequency || defaultAISettings.questionFrequency,
-            useKnowledgeBase: savedSettings.useKnowledgeBase ?? defaultAISettings.useKnowledgeBase,
-            personalityDocument: savedSettings.personalityDocument || defaultAISettings.personalityDocument,
-          });
-        }
       }
 
       // Check for connected LinkedIn accounts
@@ -115,131 +53,10 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
         .limit(1);
 
       setHasLinkedInAccount(linkedInAccounts && linkedInAccounts.length > 0);
-
-      // Load brand guidelines from linkedin_brand_guidelines table
-      const { data: guidelines } = await supabase
-        .from('linkedin_brand_guidelines')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (guidelines) {
-        setBrandGuidelines({
-          id: guidelines.id,
-          tone_of_voice: guidelines.tone_of_voice || '',
-          writing_style: guidelines.writing_style || '',
-          topics_and_perspective: guidelines.topics_and_perspective || '',
-          dos_and_donts: guidelines.dos_and_donts || '',
-          comment_framework: guidelines.comment_framework || defaultBrandGuidelines.comment_framework,
-          max_characters: guidelines.max_characters || 300,
-          system_prompt: guidelines.system_prompt || defaultBrandGuidelines.system_prompt,
-          is_active: guidelines.is_active ?? true,
-        });
-      }
     } catch (error) {
       console.error('Failed to load commenting agent config:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const saveAISettings = async () => {
-    setSaving(true);
-    setSaveMessage('');
-
-    try {
-      const supabase = createClient();
-
-      // Get current settings first
-      const { data: workspace } = await supabase
-        .from('workspaces')
-        .select('settings')
-        .eq('id', workspaceId)
-        .single();
-
-      const currentSettings = workspace?.settings || {};
-
-      // Update with new AI settings
-      const { error } = await supabase
-        .from('workspaces')
-        .update({
-          settings: {
-            ...currentSettings,
-            commenting_agent_settings: aiSettings,
-          },
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', workspaceId);
-
-      if (error) throw error;
-
-      setSaveMessage('✓ AI settings saved successfully!');
-      setTimeout(() => setSaveMessage(''), 3000);
-    } catch (error) {
-      console.error('Failed to save AI settings:', error);
-      setSaveMessage('❌ Failed to save settings');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const saveBrandGuidelines = async () => {
-    setSavingBrandGuidelines(true);
-    setSaveMessage('');
-
-    try {
-      const supabase = createClient();
-
-      // Validate required field
-      if (!brandGuidelines.tone_of_voice.trim()) {
-        setSaveMessage('❌ Tone of Voice is required');
-        setSavingBrandGuidelines(false);
-        return;
-      }
-
-      const guidelineData = {
-        workspace_id: workspaceId,
-        tone_of_voice: brandGuidelines.tone_of_voice,
-        writing_style: brandGuidelines.writing_style || null,
-        topics_and_perspective: brandGuidelines.topics_and_perspective || null,
-        dos_and_donts: brandGuidelines.dos_and_donts || null,
-        comment_framework: brandGuidelines.comment_framework,
-        max_characters: brandGuidelines.max_characters,
-        system_prompt: brandGuidelines.system_prompt,
-        is_active: true,
-        updated_at: new Date().toISOString(),
-      };
-
-      if (brandGuidelines.id) {
-        // Update existing
-        const { error } = await supabase
-          .from('linkedin_brand_guidelines')
-          .update(guidelineData)
-          .eq('id', brandGuidelines.id);
-
-        if (error) throw error;
-      } else {
-        // Insert new
-        const { data, error } = await supabase
-          .from('linkedin_brand_guidelines')
-          .insert(guidelineData)
-          .select()
-          .single();
-
-        if (error) throw error;
-        if (data) {
-          setBrandGuidelines({ ...brandGuidelines, id: data.id });
-        }
-      }
-
-      setSaveMessage('✓ Brand guidelines saved successfully!');
-      setTimeout(() => setSaveMessage(''), 3000);
-    } catch (error) {
-      console.error('Failed to save brand guidelines:', error);
-      setSaveMessage('❌ Failed to save brand guidelines');
-    } finally {
-      setSavingBrandGuidelines(false);
     }
   };
 
@@ -453,301 +270,31 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
                 </ol>
               </div>
 
-              {/* AI Settings Section */}
+              {/* Comprehensive Settings Section */}
               {enabled && (
                 <div className="border border-gray-600 rounded-lg overflow-hidden">
                   <button
-                    onClick={() => setShowAISettings(!showAISettings)}
+                    onClick={() => setShowSettings(!showSettings)}
                     className="w-full flex items-center justify-between p-4 bg-gray-700 hover:bg-gray-600 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <Sparkles size={20} className="text-purple-400" />
-                      <span className="text-white font-medium">AI Comment Settings</span>
-                    </div>
-                    {showAISettings ? (
-                      <ChevronUp size={20} className="text-gray-400" />
-                    ) : (
-                      <ChevronDown size={20} className="text-gray-400" />
-                    )}
-                  </button>
-
-                  {showAISettings && (
-                    <div className="p-4 bg-gray-800 space-y-6">
-                      {/* Tone */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Tone</label>
-                        <div className="grid grid-cols-4 gap-2">
-                          {(['professional', 'friendly', 'casual', 'passionate'] as Tone[]).map((t) => (
-                            <button
-                              key={t}
-                              onClick={() => setAISettings({ ...aiSettings, tone: t })}
-                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                                aiSettings.tone === t
-                                  ? 'bg-purple-600 text-white'
-                                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                              }`}
-                            >
-                              {t.charAt(0).toUpperCase() + t.slice(1)}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Formality */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Formality Level</label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {(['formal', 'semi-formal', 'informal'] as Formality[]).map((f) => (
-                            <button
-                              key={f}
-                              onClick={() => setAISettings({ ...aiSettings, formality: f })}
-                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                                aiSettings.formality === f
-                                  ? 'bg-purple-600 text-white'
-                                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                              }`}
-                            >
-                              {f.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('-')}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Comment Length */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Comment Length</label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {(['short', 'medium', 'long'] as CommentLength[]).map((l) => (
-                            <button
-                              key={l}
-                              onClick={() => setAISettings({ ...aiSettings, commentLength: l })}
-                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                                aiSettings.commentLength === l
-                                  ? 'bg-purple-600 text-white'
-                                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                              }`}
-                            >
-                              {l.charAt(0).toUpperCase() + l.slice(1)}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Question Frequency */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Ask Questions</label>
-                        <div className="grid grid-cols-4 gap-2">
-                          {(['frequently', 'sometimes', 'rarely', 'never'] as QuestionFrequency[]).map((q) => (
-                            <button
-                              key={q}
-                              onClick={() => setAISettings({ ...aiSettings, questionFrequency: q })}
-                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                                aiSettings.questionFrequency === q
-                                  ? 'bg-purple-600 text-white'
-                                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                              }`}
-                            >
-                              {q.charAt(0).toUpperCase() + q.slice(1)}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Use Knowledge Base */}
-                      <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
-                        <div>
-                          <div className="text-white font-medium text-sm">Use Workspace Knowledge</div>
-                          <div className="text-gray-400 text-xs">Include your company context in comments</div>
-                        </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={aiSettings.useKnowledgeBase}
-                            onChange={(e) => setAISettings({ ...aiSettings, useKnowledgeBase: e.target.checked })}
-                            className="sr-only peer"
-                          />
-                          <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                        </label>
-                      </div>
-
-                      {/* Save AI Settings Button */}
-                      <div className="flex justify-end pt-2">
-                        <button
-                          onClick={saveAISettings}
-                          disabled={saving}
-                          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
-                        >
-                          {saving ? (
-                            <Loader2 size={16} className="animate-spin" />
-                          ) : (
-                            <Save size={16} />
-                          )}
-                          Save AI Settings
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Brand Guidelines Section */}
-              {enabled && (
-                <div className="border border-gray-600 rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => setShowBrandGuidelines(!showBrandGuidelines)}
-                    className="w-full flex items-center justify-between p-4 bg-gray-700 hover:bg-gray-600 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <FileText size={20} className="text-pink-400" />
+                      <Settings size={20} className="text-pink-400" />
                       <div className="text-left">
-                        <span className="text-white font-medium block">Brand Guidelines</span>
-                        <span className="text-gray-400 text-xs">Define your unique voice and commenting style</span>
+                        <span className="text-white font-medium block">Brand Guidelines & AI Settings</span>
+                        <span className="text-gray-400 text-xs">Configure your voice, expertise, and commenting style</span>
                       </div>
                     </div>
-                    {showBrandGuidelines ? (
-                      <ChevronUp size={20} className="text-gray-400" />
-                    ) : (
-                      <ChevronDown size={20} className="text-gray-400" />
-                    )}
+                    <span className="text-pink-400 text-sm">
+                      {showSettings ? 'Hide' : 'Configure'}
+                    </span>
                   </button>
 
-                  {showBrandGuidelines && (
-                    <div className="p-4 bg-gray-800 space-y-5">
-                      {/* Tone of Voice (Required) */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Tone of Voice <span className="text-pink-400">*</span>
-                        </label>
-                        <p className="text-xs text-gray-400 mb-2">
-                          How should your comments sound? (e.g., "Professional but warm, confident but not arrogant")
-                        </p>
-                        <textarea
-                          value={brandGuidelines.tone_of_voice}
-                          onChange={(e) => setBrandGuidelines({ ...brandGuidelines, tone_of_voice: e.target.value })}
-                          placeholder="Professional and authentic. Confident but approachable. We sound like a knowledgeable friend, not a salesperson."
-                          rows={3}
-                          className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none text-sm"
-                        />
-                      </div>
-
-                      {/* Writing Style */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Writing Style
-                        </label>
-                        <p className="text-xs text-gray-400 mb-2">
-                          Describe sentence structure, vocabulary, and formatting preferences
-                        </p>
-                        <textarea
-                          value={brandGuidelines.writing_style}
-                          onChange={(e) => setBrandGuidelines({ ...brandGuidelines, writing_style: e.target.value })}
-                          placeholder="Concise and engaging. Use short sentences. Avoid jargon. No emojis or exclamation marks. Ask thoughtful questions."
-                          rows={3}
-                          className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none text-sm"
-                        />
-                      </div>
-
-                      {/* Topics & Perspective */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Topics & Perspective
-                        </label>
-                        <p className="text-xs text-gray-400 mb-2">
-                          What topics do you engage with? What's your unique viewpoint?
-                        </p>
-                        <textarea
-                          value={brandGuidelines.topics_and_perspective}
-                          onChange={(e) => setBrandGuidelines({ ...brandGuidelines, topics_and_perspective: e.target.value })}
-                          placeholder="We focus on B2B sales, automation, and AI. Our perspective: technology should enhance human connection, not replace it."
-                          rows={3}
-                          className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none text-sm"
-                        />
-                      </div>
-
-                      {/* Do's and Don'ts */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Do's and Don'ts
-                        </label>
-                        <p className="text-xs text-gray-400 mb-2">
-                          Specific rules for what to include or avoid in comments
-                        </p>
-                        <textarea
-                          value={brandGuidelines.dos_and_donts}
-                          onChange={(e) => setBrandGuidelines({ ...brandGuidelines, dos_and_donts: e.target.value })}
-                          placeholder={`DO: Reference specific points from the post, ask thoughtful questions, share relevant insights
-DON'T: Use "Great post!", mention our product, use buzzwords like "synergy", be generic`}
-                          rows={4}
-                          className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none text-sm"
-                        />
-                      </div>
-
-                      {/* Comment Framework */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Comment Framework
-                        </label>
-                        <p className="text-xs text-gray-400 mb-2">
-                          Structure for generating comments (e.g., ACA+I: Acknowledge, Add nuance, I-statement, Question)
-                        </p>
-                        <textarea
-                          value={brandGuidelines.comment_framework}
-                          onChange={(e) => setBrandGuidelines({ ...brandGuidelines, comment_framework: e.target.value })}
-                          placeholder="ACA+I: Acknowledge the post, Add nuance or insight, drop an I-statement from experience, ask a warm question"
-                          rows={2}
-                          className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none text-sm"
-                        />
-                      </div>
-
-                      {/* Max Characters */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Max Characters
-                        </label>
-                        <p className="text-xs text-gray-400 mb-2">
-                          Maximum length for generated comments (recommended: 200-400)
-                        </p>
-                        <input
-                          type="number"
-                          value={brandGuidelines.max_characters}
-                          onChange={(e) => setBrandGuidelines({ ...brandGuidelines, max_characters: parseInt(e.target.value) || 300 })}
-                          min={50}
-                          max={1000}
-                          className="w-32 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
-                        />
-                      </div>
-
-                      {/* System Prompt (Advanced) */}
-                      <div className="pt-4 border-t border-gray-700">
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          System Prompt <span className="text-gray-500 text-xs">(Advanced)</span>
-                        </label>
-                        <p className="text-xs text-gray-400 mb-2">
-                          The base instruction given to the AI. Only modify if you know what you're doing.
-                        </p>
-                        <textarea
-                          value={brandGuidelines.system_prompt}
-                          onChange={(e) => setBrandGuidelines({ ...brandGuidelines, system_prompt: e.target.value })}
-                          rows={3}
-                          className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none text-sm font-mono text-xs"
-                        />
-                      </div>
-
-                      {/* Save Brand Guidelines Button */}
-                      <div className="flex justify-end pt-2">
-                        <button
-                          onClick={saveBrandGuidelines}
-                          disabled={savingBrandGuidelines}
-                          className="px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
-                        >
-                          {savingBrandGuidelines ? (
-                            <Loader2 size={16} className="animate-spin" />
-                          ) : (
-                            <Save size={16} />
-                          )}
-                          Save Brand Guidelines
-                        </button>
-                      </div>
+                  {showSettings && (
+                    <div className="p-4 bg-gray-800">
+                      <CommentingAgentSettings
+                        workspaceId={workspaceId}
+                        onSaveSuccess={() => setSaveMessage('✓ Settings saved successfully!')}
+                      />
                     </div>
                   )}
                 </div>
