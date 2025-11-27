@@ -123,7 +123,8 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
       }
 
       const data = await response.json();
-      const campaigns = data.campaigns || [];
+      // API returns { success: true, data: { campaigns: [...] } } via apiSuccess()
+      const campaigns = data.data?.campaigns || data.campaigns || [];
       console.log(`✅ [CAMPAIGN HUB] Fetched ${campaigns.length} campaigns:`, campaigns.map((c: any) => ({ name: c.name, status: c.status })));
       return campaigns;
     },
@@ -6251,11 +6252,13 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       }
 
       const result = await response.json();
+      // API returns { success: true, data: { campaigns: [...] } } via apiSuccess()
+      const campaigns = result.data?.campaigns || result.campaigns || [];
       console.log('✅ [CAMPAIGN HUB MAIN] Fetched campaigns:', {
-        count: result.campaigns?.length || 0,
-        names: result.campaigns?.map((c: any) => c.name) || []
+        count: campaigns.length,
+        names: campaigns.map((c: any) => c.name)
       });
-      return result.campaigns || [];
+      return campaigns;
     },
     enabled: (campaignFilter === 'active' || campaignFilter === 'inactive' || campaignFilter === 'archived' || campaignFilter === 'completed') && !!actualWorkspaceId,
     staleTime: 0, // Always fetch fresh - campaigns change frequently

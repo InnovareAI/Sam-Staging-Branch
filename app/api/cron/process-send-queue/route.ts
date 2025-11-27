@@ -200,8 +200,9 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      // Check 30-min spacing for this account
-      const MIN_SPACING_MINUTES = 30;
+      // Check spacing for this account
+      // Reduced to 5 minutes - LinkedIn rate limits are daily (100/week), not per-hour
+      const MIN_SPACING_MINUTES = 5;
       const spacingCutoff = new Date(Date.now() - MIN_SPACING_MINUTES * 60 * 1000);
 
       const { data: accountCampaigns } = await supabase
