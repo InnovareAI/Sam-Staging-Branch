@@ -5,29 +5,43 @@ import { cookies } from 'next/headers';
 import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler';
 
 export async function GET(req: NextRequest) {
+  console.log('🚀 [CAMPAIGNS API] ===== REQUEST START =====');
   try {
     const supabase = await createSupabaseRouteClient();
 
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
+    console.log('👤 [CAMPAIGNS API] Auth check:', {
+      hasUser: !!user,
+      userId: user?.id,
+      email: user?.email,
+      authError: authError?.message
+    });
+
     if (authError || !user) {
+      console.error('❌ [CAMPAIGNS API] Auth failed:', authError);
       throw apiError.unauthorized();
     }
 
     // Get workspace_id from URL params or user metadata
     const { searchParams } = new URL(req.url);
     const workspaceId = searchParams.get('workspace_id') || user.user_metadata.workspace_id;
+    console.log('🏢 [CAMPAIGNS API] Workspace ID:', workspaceId, 'from URL:', searchParams.get('workspace_id'));
 
     if (!workspaceId) {
+      console.error('❌ [CAMPAIGNS API] No workspace ID');
       throw apiError.validation('Workspace ID required');
     }
 
     // CRITICAL FIX: Use service role to bypass RLS for campaign queries
     // RLS policies are blocking legitimate users from seeing their campaigns
     const cookieStore = await cookies();
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    console.log('🔑 [CAMPAIGNS API] Service role key exists:', !!serviceRoleKey, 'length:', serviceRoleKey?.length);
+
     const supabaseAdmin = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      serviceRoleKey!,
       {
         cookies: {
           getAll() { return cookieStore.getAll(); },
@@ -43,7 +57,7 @@ export async function GET(req: NextRequest) {
     );
 
     // Verify user is a member of this workspace before returning campaigns
-    const { data: membership } = await supabaseAdmin
+    const { data: membership, error: membershipError } = await supabaseAdmin
       .from('workspace_members')
       .select('id')
       .eq('workspace_id', workspaceId)
@@ -51,8 +65,14 @@ export async function GET(req: NextRequest) {
       .eq('status', 'active')
       .single();
 
+    console.log('👥 [CAMPAIGNS API] Membership check:', {
+      found: !!membership,
+      membershipId: membership?.id,
+      error: membershipError?.message
+    });
+
     if (!membership) {
-      console.error('❌ User not a member of workspace:', { userId: user.id, workspaceId });
+      console.error('❌ [CAMPAIGNS API] User not a member of workspace:', { userId: user.id, workspaceId });
       throw apiError.forbidden('Not a member of this workspace');
     }
 
