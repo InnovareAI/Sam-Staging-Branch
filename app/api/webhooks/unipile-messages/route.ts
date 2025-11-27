@@ -200,6 +200,7 @@ export async function POST(request: NextRequest) {
     // Generate draft
     console.log('📝 Generating draft...');
     const draftResult = await generateReplyDraft({
+      workspaceId: account.workspace_id,
       prospectReply: messageText,
       prospect: {
         name: prospectName,
@@ -207,7 +208,8 @@ export async function POST(request: NextRequest) {
         company: prospectCompany,
         industry: undefined,
         companySize: undefined,
-        crmContext: undefined
+        crmContext: undefined,
+        linkedInUrl: prospect?.linkedin_url || senderProfileUrl
       },
       campaign: {
         name: prospect?.campaigns?.campaign_name || 'LinkedIn Campaign',

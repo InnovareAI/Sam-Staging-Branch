@@ -1191,11 +1191,13 @@ async function generateBasicReplyDraft(
   // Step 4: Generate draft with full system prompt
   console.log('📝 Generating draft...')
   const draftResult = await generateReplyDraft({
+    workspaceId: campaign.workspace_id,
     prospectReply: email.TextBody,
     prospect: {
       name: prospectName,
       role: prospect.title,
-      company: prospect.company
+      company: prospect.company,
+      linkedInUrl: prospect.linkedin_url
     },
     campaign: {
       name: campaignName,

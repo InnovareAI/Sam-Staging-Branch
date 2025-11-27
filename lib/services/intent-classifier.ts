@@ -117,7 +117,7 @@ Return JSON only.`;
         'X-Title': 'SAM AI - Intent Classifier'
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-sonnet-4', // Using Sonnet 4 for speed, can upgrade to Opus
+        model: 'anthropic/claude-opus-4', // Using Opus 4.5 for highest accuracy
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }

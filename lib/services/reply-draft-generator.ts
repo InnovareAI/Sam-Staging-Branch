@@ -6,6 +6,7 @@
 
 import { classifyIntent, ReplyIntent, IntentClassification } from './intent-classifier';
 import { researchProspect, formatResearchForPrompt, ProspectResearch } from './prospect-researcher';
+import { findSimilarConversations, formatSimilarConversationsForPrompt, storeProspectResearch } from './reply-rag';
 
 export interface ReplyAgentSettings {
   enabled?: boolean;
@@ -31,6 +32,7 @@ export interface ReplyAgentSettings {
 }
 
 export interface DraftContext {
+  workspaceId: string;
   prospectReply: string;
   prospect: {
     name: string;
@@ -77,7 +79,7 @@ export async function generateReplyDraft(context: DraftContext): Promise<Generat
   let researchTimeMs = 0;
   let research: ProspectResearch | undefined;
 
-  // Step 0: Research prospect if enabled (uses Opus 4.5)
+  // Step 0a: Research prospect if enabled (uses Opus 4.5)
   const enableResearch = context.settings.enable_research !== false; // Default to enabled
   if (enableResearch) {
     const researchStart = Date.now();
@@ -94,6 +96,32 @@ export async function generateReplyDraft(context: DraftContext): Promise<Generat
     });
     researchTimeMs = Date.now() - researchStart;
     console.log(`✅ Research complete in ${researchTimeMs}ms - ICP Fit: ${research.icpAnalysis?.fitScore || 'N/A'}%`);
+
+    // Store research in RAG for future reference
+    if (context.workspaceId && research) {
+      storeProspectResearch(
+        context.workspaceId,
+        context.prospect.name,
+        context.prospect.company,
+        context.prospect.linkedInUrl,
+        research
+      ).catch(err => console.error('Failed to store research:', err));
+    }
+  }
+
+  // Step 0b: Find similar past conversations from RAG
+  let similarConversations: string = '';
+  if (context.workspaceId) {
+    console.log('📚 Querying RAG for similar conversations...');
+    const similar = await findSimilarConversations(context.workspaceId, context.prospectReply, {
+      channel: context.campaign.channel,
+      onlyApproved: true,
+      limit: 3
+    });
+    if (similar.length > 0) {
+      similarConversations = formatSimilarConversationsForPrompt(similar);
+      console.log(`✅ Found ${similar.length} similar past conversations`);
+    }
   }
 
   // Step 1: Classify intent
@@ -105,8 +133,8 @@ export async function generateReplyDraft(context: DraftContext): Promise<Generat
   });
   console.log(`✅ Intent: ${intent.intent} (${(intent.confidence * 100).toFixed(0)}% confidence)`);
 
-  // Step 2: Build system prompt (now includes research context)
-  const systemPrompt = buildSystemPrompt(context, intent, research);
+  // Step 2: Build system prompt (now includes research context and similar conversations)
+  const systemPrompt = buildSystemPrompt(context, intent, research, similarConversations);
 
   // Step 3: Generate draft
   const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
@@ -120,7 +148,7 @@ export async function generateReplyDraft(context: DraftContext): Promise<Generat
       'X-Title': 'SAM AI - Reply Draft Generator'
     },
     body: JSON.stringify({
-      model: 'anthropic/claude-sonnet-4', // Can upgrade to Opus for complex cases
+      model: 'anthropic/claude-opus-4', // Using Opus 4.5 for highest quality drafts
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `Generate a reply to this message:\n\n"${context.prospectReply}"` }
@@ -151,7 +179,7 @@ export async function generateReplyDraft(context: DraftContext): Promise<Generat
         'X-Title': 'SAM AI - Reply Draft Generator (Strict)'
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-sonnet-4',
+        model: 'anthropic/claude-opus-4',
         messages: [
           { role: 'system', content: systemPrompt + CHEESE_FILTER_ADDENDUM },
           { role: 'user', content: `Generate a reply to this message. Your previous draft was rejected for being too salesy: "${cheeseFilterResult.triggers.join(', ')}". Write something more natural.\n\nProspect's message: "${context.prospectReply}"` }
@@ -174,7 +202,7 @@ export async function generateReplyDraft(context: DraftContext): Promise<Generat
     draft,
     research,
     metadata: {
-      model: 'claude-sonnet-4',
+      model: 'claude-opus-4.5',
       tokensUsed: data.usage?.total_tokens || 0,
       generationTimeMs: generationTime,
       cheeseFilterPassed: cheeseFilterResult.passed,
@@ -186,13 +214,16 @@ export async function generateReplyDraft(context: DraftContext): Promise<Generat
 }
 
 /**
- * Build the full system prompt based on context, settings, and research
+ * Build the full system prompt based on context, settings, research, and similar conversations
  */
-function buildSystemPrompt(context: DraftContext, intent: IntentClassification, research?: ProspectResearch): string {
+function buildSystemPrompt(context: DraftContext, intent: IntentClassification, research?: ProspectResearch, similarConversations?: string): string {
   const { settings, prospect, campaign, userName } = context;
 
   // Format research insights for inclusion in prompt
   const researchContext = research ? formatResearchForPrompt(research) : '';
+
+  // Similar past conversations from RAG
+  const ragContext = similarConversations || '';
 
   // Check for system prompt override
   if (settings.system_prompt_override) {
@@ -267,6 +298,10 @@ ${researchContext ? `---
 ## DEEP RESEARCH INSIGHTS (Opus 4.5 Analysis)
 
 ${researchContext}` : ''}
+
+${ragContext ? `---
+
+${ragContext}` : ''}
 
 ---
 
