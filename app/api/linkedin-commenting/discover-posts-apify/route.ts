@@ -244,6 +244,8 @@ export async function POST(request: NextRequest) {
               post_content: post.text || '',
               author_name: post.author?.first_name ? `${post.author.first_name} ${post.author.last_name || ''}`.trim() : vanityName,
               author_profile_id: post.author?.username || vanityName,
+              author_title: post.author?.headline || post.author?.title || null,
+              author_headline: post.author?.headline || post.author?.title || null,
               hashtags: [],
               post_date: new Date(post.posted_at?.timestamp).toISOString(),
               engagement_metrics: {

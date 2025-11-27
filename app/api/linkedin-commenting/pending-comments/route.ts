@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
           id,
           author_name,
           author_profile_id,
+          author_title,
           post_content,
           share_url,
           post_date,
