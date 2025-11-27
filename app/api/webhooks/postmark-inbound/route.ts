@@ -715,21 +715,20 @@ async function sendApprovalConfirmation(to: string, data: { action: string, coun
 /**
  * Notify user of campaign reply (IMMEDIATE - Priority Email)
  * Sends email with SAM's draft and reply instructions
- * HITL replies from Outlook/Gmail with APPROVE, REFUSE, or edited message
+ * Now includes intent classification for smarter context
  */
 async function notifyUserOfReply(email: PostmarkInboundEmail, context: { campaignId: string, prospectId: string }, replyId: string) {
   const supabase = getServiceClient()
 
-  // Wait for draft to be generated
-  await new Promise(resolve => setTimeout(resolve, 2000))
+  // Wait for draft and intent to be generated
+  await new Promise(resolve => setTimeout(resolve, 3000))
 
-  // Get reply with draft
+  // Get reply with draft and intent
   const { data: reply } = await supabase
     .from('campaign_replies')
     .select(`
       *,
-      workspace_prospects(name, company, title),
-      campaigns(name, workspace_id)
+      campaigns(name, campaign_name, workspace_id)
     `)
     .eq('id', replyId)
     .single()
@@ -738,6 +737,17 @@ async function notifyUserOfReply(email: PostmarkInboundEmail, context: { campaig
     console.error('Reply or draft not found')
     return
   }
+
+  // Get prospect from campaign_prospects
+  const { data: prospect } = await supabase
+    .from('campaign_prospects')
+    .select('first_name, last_name, company, title')
+    .eq('id', context.prospectId)
+    .single()
+
+  const prospectName = prospect ? `${prospect.first_name} ${prospect.last_name}`.trim() : 'Prospect'
+  const prospectCompany = prospect?.company || 'Unknown'
+  const prospectTitle = prospect?.title
 
   // Get workspace members
   const { data: members } = await supabase
@@ -751,9 +761,21 @@ async function notifyUserOfReply(email: PostmarkInboundEmail, context: { campaig
     return
   }
 
-  // Detect sentiment
-  const sentiment = await detectSentiment(email.TextBody || '')
-  const urgencyEmoji = sentiment === 'positive' ? '🟢' : sentiment === 'negative' ? '🔴' : '🟡'
+  // Intent emoji and color mapping
+  const intentConfig: Record<string, { emoji: string; color: string; label: string; tip: string }> = {
+    interested: { emoji: '🟢', color: '#22c55e', label: 'INTERESTED', tip: 'High priority - they want to move forward' },
+    curious: { emoji: '🔵', color: '#3b82f6', label: 'CURIOUS', tip: 'Wants more info - answer concisely, then CTA' },
+    objection: { emoji: '🟠', color: '#f97316', label: 'OBJECTION', tip: 'Handle carefully - acknowledge, don\'t argue' },
+    timing: { emoji: '⏰', color: '#8b5cf6', label: 'TIMING', tip: 'Not now - respect it, offer to follow up' },
+    wrong_person: { emoji: '👤', color: '#6b7280', label: 'WRONG PERSON', tip: 'Ask for referral to right contact' },
+    not_interested: { emoji: '🔴', color: '#ef4444', label: 'NOT INTERESTED', tip: 'Exit gracefully - no begging' },
+    question: { emoji: '❓', color: '#0ea5e9', label: 'QUESTION', tip: 'Answer directly, then bridge to next step' },
+    vague_positive: { emoji: '🟡', color: '#eab308', label: 'VAGUE POSITIVE', tip: 'Mirror energy, ask soft clarifying question' }
+  }
+
+  const intent = reply.intent || 'curious'
+  const intentInfo = intentConfig[intent] || intentConfig.curious
+  const confidence = reply.intent_confidence ? Math.round(reply.intent_confidence * 100) : 0
 
   // Send email with draft to all team members
   const { ServerClient } = require('postmark')
@@ -765,60 +787,59 @@ async function notifyUserOfReply(email: PostmarkInboundEmail, context: { campaig
     await postmark.sendEmail({
       From: 'Sam <hello@sam.innovareai.com>',
       To: user.email,
-      // CRITICAL: Reply-To with draft ID for tracking HITL response
       ReplyTo: `draft+${replyId}@sam.innovareai.com`,
-      Subject: `${urgencyEmoji} ${reply.workspace_prospects.name} replied - Draft ready`,
+      Subject: `${intentInfo.emoji} ${prospectName} replied - ${intentInfo.label}`,
       HtmlBody: `
         <div style="font-family:system-ui,-apple-system,sans-serif;max-width:600px;margin:0 auto;">
-          <div style="background:#8907FF;color:white;padding:20px;border-radius:8px 8px 0 0;">
-            <h2 style="margin:0;">🚨 New Reply - Draft Ready for Your Approval</h2>
+          <div style="background:${intentInfo.color};color:white;padding:20px;border-radius:8px 8px 0 0;">
+            <h2 style="margin:0;">${intentInfo.emoji} ${intentInfo.label} - Draft Ready</h2>
           </div>
 
           <div style="background:#f9f9f9;padding:20px;border:1px solid #e0e0e0;border-top:none;">
             <p style="font-size:16px;margin:0 0 10px 0;">Hi ${user.first_name},</p>
 
             <p style="font-size:14px;margin:10px 0;">
-              <strong>${reply.workspace_prospects.name}</strong>
-              ${reply.workspace_prospects.title ? `(${reply.workspace_prospects.title})` : ''}
-              from <strong>${reply.workspace_prospects.company}</strong> just replied:
+              <strong>${prospectName}</strong>
+              ${prospectTitle ? `(${prospectTitle})` : ''}
+              from <strong>${prospectCompany}</strong> replied:
             </p>
 
-            <blockquote style="border-left:4px solid #8907FF;padding:15px;margin:20px 0;background:white;border-radius:4px;color:#333;">
+            <blockquote style="border-left:4px solid ${intentInfo.color};padding:15px;margin:20px 0;background:white;border-radius:4px;color:#333;">
               ${email.HtmlBody || email.TextBody.replace(/\n/g, '<br>')}
             </blockquote>
 
-            <div style="background:#fff;padding:15px;border-radius:4px;margin:20px 0;">
-              <p style="margin:0 0 5px 0;font-size:12px;color:#666;">Sentiment:</p>
-              <p style="margin:0;font-size:14px;">
-                ${sentiment === 'positive' ? '🟢 Positive - High interest' :
-                  sentiment === 'negative' ? '🔴 Negative - Needs careful response' :
-                  '🟡 Neutral - Review recommended'}
+            <div style="background:white;padding:15px;border-radius:4px;margin:20px 0;border-left:4px solid ${intentInfo.color};">
+              <p style="margin:0 0 5px 0;font-size:12px;color:#666;font-weight:600;">Detected Intent:</p>
+              <p style="margin:0 0 8px 0;font-size:16px;font-weight:600;color:${intentInfo.color};">
+                ${intentInfo.emoji} ${intentInfo.label}
+                <span style="font-weight:normal;color:#666;font-size:12px;"> (${confidence}% confidence)</span>
+              </p>
+              <p style="margin:0;font-size:13px;color:#666;font-style:italic;">
+                💡 ${intentInfo.tip}
               </p>
             </div>
 
-            <hr style="border:none;border-top:2px solid #8907FF;margin:30px 0;">
+            <hr style="border:none;border-top:2px solid ${intentInfo.color};margin:30px 0;">
 
-            <p style="font-size:16px;margin:20px 0 10px 0;font-weight:600;">Here's my suggested response:</p>
+            <p style="font-size:16px;margin:20px 0 10px 0;font-weight:600;">My suggested response:</p>
 
-            <div style="background:white;padding:20px;border-radius:4px;border:1px solid #ddd;margin:20px 0;font-family:inherit;">
+            <div style="background:white;padding:20px;border-radius:4px;border:1px solid #ddd;margin:20px 0;font-family:inherit;line-height:1.6;">
               ${reply.ai_suggested_response.replace(/\n/g, '<br>')}
             </div>
 
             <hr style="border:none;border-top:1px solid #e0e0e0;margin:30px 0;">
 
-            <p style="font-size:16px;margin:20px 0 10px 0;font-weight:600;">How to respond:</p>
-
             <div style="background:#fff3cd;padding:15px;border-radius:4px;border-left:4px solid #ffc107;margin:20px 0;">
-              <p style="margin:0 0 10px 0;font-weight:600;">Simply REPLY to this email from Outlook or Gmail:</p>
+              <p style="margin:0 0 10px 0;font-weight:600;">Reply to this email:</p>
               <ul style="margin:0;padding-left:20px;">
-                <li><strong>Type "APPROVE"</strong> - I'll send my draft as-is</li>
-                <li><strong>Edit the message</strong> - I'll send your edited version</li>
-                <li><strong>Type "REFUSE"</strong> - I won't send anything</li>
+                <li><strong>APPROVE</strong> - Send my draft as-is</li>
+                <li><strong>Edit the message</strong> - Send your version</li>
+                <li><strong>REFUSE</strong> - Don't send anything</li>
               </ul>
             </div>
 
             <p style="font-size:12px;color:#666;margin-top:30px;padding-top:20px;border-top:1px solid #e0e0e0;">
-              Your response will be processed immediately. No need to login to the dashboard.
+              Processed immediately. No login needed.
             </p>
 
             <p style="font-size:14px;margin-top:20px;">Sam</p>
@@ -827,38 +848,38 @@ async function notifyUserOfReply(email: PostmarkInboundEmail, context: { campaig
       `,
       TextBody: `Hi ${user.first_name},
 
-${reply.workspace_prospects.name} from ${reply.workspace_prospects.company} just replied:
+${prospectName} from ${prospectCompany} replied:
 
 "${email.TextBody}"
 
 ---
+INTENT: ${intentInfo.label} (${confidence}% confidence)
+TIP: ${intentInfo.tip}
+---
 
-Here's my suggested response:
+My suggested response:
 
 ${reply.ai_suggested_response}
 
 ---
 
-HOW TO RESPOND:
-Simply REPLY to this email from Outlook or Gmail:
+REPLY TO THIS EMAIL:
 - Type "APPROVE" to send my draft as-is
-- Edit the message and reply to send your version
+- Edit the message to send your version
 - Type "REFUSE" to not send anything
-
-Your response will be processed immediately.
 
 Sam`,
       MessageStream: 'outbound',
       Tag: 'reply-draft-notification',
       Metadata: {
         priority: 'urgent',
-        replyId: replyId,
-        campaignId: context.campaignId,
-        prospectId: context.prospectId
+        replyId,
+        intent,
+        intentConfidence: confidence
       }
     })
 
-    console.log(`📧 Draft notification sent to: ${user.email} (reply to draft+${replyId}@sam.innovareai.com)`)
+    console.log(`📧 Draft notification sent: ${user.email} | Intent: ${intent} (${confidence}%)`)
   }
 }
 
@@ -1101,7 +1122,8 @@ async function generateEnhancedReplyDraftWithScraping(
 }
 
 /**
- * Basic draft generation without scraping (ORIGINAL)
+ * Basic draft generation with intent classification (UPGRADED)
+ * Uses new intent classifier and full system prompt
  */
 async function generateBasicReplyDraft(
   replyId: string,
@@ -1109,18 +1131,22 @@ async function generateBasicReplyDraft(
   email: PostmarkInboundEmail,
   supabase: any
 ) {
-  console.log('🤖 Generating SAM draft response (basic):', replyId)
+  console.log('🤖 Generating SAM draft response with intent classification:', replyId)
+
+  // Import services
+  const { classifyIntent } = await import('@/lib/services/intent-classifier')
+  const { generateReplyDraft, getDefaultSettings } = await import('@/lib/services/reply-draft-generator')
 
   // Get campaign and prospect context
   const { data: campaign } = await supabase
     .from('campaigns')
-    .select('name, message_template, workspace_id')
+    .select('id, name, campaign_name, message_templates, workspace_id')
     .eq('id', context.campaignId)
     .single()
 
   const { data: prospect } = await supabase
-    .from('workspace_prospects')
-    .select('name, company, title, industry, notes')
+    .from('campaign_prospects')
+    .select('id, first_name, last_name, company, title, linkedin_url')
     .eq('id', context.prospectId)
     .single()
 
@@ -1129,69 +1155,81 @@ async function generateBasicReplyDraft(
     return
   }
 
-  // Call OpenRouter AI to generate response draft
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
-      'X-Title': 'SAM AI - Reply Draft Generation'
-    },
-    body: JSON.stringify({
-      model: 'anthropic/claude-3.5-sonnet',
-      messages: [
-        {
-          role: 'system',
-          content: `You are SAM, an expert B2B sales assistant. Generate a professional, personalized response to a prospect's reply.
+  const prospectName = `${prospect.first_name} ${prospect.last_name}`.trim()
+  const campaignName = campaign.campaign_name || campaign.name || 'Campaign'
+  const originalOutreach = campaign.message_templates?.connection_request || ''
 
-Your response should:
-- Address their specific message directly
-- Maintain a conversational, helpful tone
-- Move the conversation forward toward a meeting/call
-- Be concise (2-3 short paragraphs)
-- Include a clear call-to-action
-
-Context:
-- Campaign: ${campaign.name}
-- Prospect: ${prospect.name}, ${prospect.title || 'Professional'} at ${prospect.company}
-- Industry: ${prospect.industry || 'Not specified'}
-- Original message template: ${campaign.message_template || 'Not available'}`
-        },
-        {
-          role: 'user',
-          content: `The prospect (${prospect.name}) just replied with:\n\n"${email.TextBody}"\n\nGenerate a response draft.`
-        }
-      ],
-      max_tokens: 500,
-      temperature: 0.7
-    })
+  // Step 1: Classify intent
+  console.log('🎯 Classifying intent...')
+  const intent = await classifyIntent(email.TextBody, {
+    originalOutreach,
+    prospectName,
+    prospectCompany: prospect.company
   })
+  console.log(`✅ Intent: ${intent.intent} (${(intent.confidence * 100).toFixed(0)}%)`)
 
-  if (!response.ok) {
-    throw new Error(`OpenRouter API error: ${response.statusText}`)
-  }
-
-  const data = await response.json()
-  const draftResponse = data.choices[0].message.content
-
-  // Save draft to database
+  // Step 2: Update reply with intent
   await supabase
     .from('campaign_replies')
     .update({
-      ai_suggested_response: draftResponse,
+      intent: intent.intent,
+      intent_confidence: intent.confidence,
+      intent_reasoning: intent.reasoning,
+      reply_channel: 'email'
+    })
+    .eq('id', replyId)
+
+  // Step 3: Get reply agent settings
+  const { data: settings } = await supabase
+    .from('reply_agent_settings')
+    .select('*')
+    .eq('workspace_id', campaign.workspace_id)
+    .single()
+
+  const agentSettings = settings || getDefaultSettings()
+
+  // Step 4: Generate draft with full system prompt
+  console.log('📝 Generating draft...')
+  const draftResult = await generateReplyDraft({
+    prospectReply: email.TextBody,
+    prospect: {
+      name: prospectName,
+      role: prospect.title,
+      company: prospect.company
+    },
+    campaign: {
+      name: campaignName,
+      channel: 'email',
+      goal: 'Book a call',
+      originalOutreach
+    },
+    userName: 'SAM',
+    settings: agentSettings
+  })
+
+  // Step 5: Save draft to database
+  await supabase
+    .from('campaign_replies')
+    .update({
+      ai_suggested_response: draftResult.draft,
+      original_draft: draftResult.draft,
       draft_generated_at: new Date().toISOString(),
       metadata: {
-        model: 'claude-3.5-sonnet',
-        tokens_used: data.usage?.total_tokens || 0
+        model: draftResult.metadata.model,
+        tokens_used: draftResult.metadata.tokensUsed,
+        generation_time_ms: draftResult.metadata.generationTimeMs,
+        cheese_filter_passed: draftResult.metadata.cheeseFilterPassed,
+        intent: intent.intent,
+        intent_confidence: intent.confidence
       }
     })
     .eq('id', replyId)
 
-  console.log('✅ SAM draft response generated (basic):', {
+  console.log('✅ Draft generated with intent classification:', {
     replyId,
-    length: draftResponse.length,
-    model: 'claude-3.5-sonnet'
+    intent: intent.intent,
+    confidence: intent.confidence,
+    cheeseFilterPassed: draftResult.metadata.cheeseFilterPassed
   })
 }
 
