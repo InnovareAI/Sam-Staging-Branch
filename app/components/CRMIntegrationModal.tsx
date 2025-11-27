@@ -10,7 +10,7 @@ interface CRMIntegrationModalProps {
   workspaceName: string;
 }
 
-type CRMType = 'hubspot' | 'salesforce' | 'pipedrive' | 'zoho' | 'activecampaign' | 'keap' | 'close' | 'copper' | 'freshsales' | 'airtable';
+type CRMType = 'hubspot' | 'salesforce' | 'pipedrive' | 'zoho' | 'activecampaign' | 'keap' | 'close' | 'copper' | 'freshsales' | 'airtable' | 'google_sheets';
 
 interface CRMOption {
   type: CRMType;
@@ -90,6 +90,13 @@ const CRM_OPTIONS: CRMOption[] = [
     logo: '📊',
     description: 'Flexible database and project management',
     features: ['Custom Tables', 'Rich Fields', 'Automation']
+  },
+  {
+    type: 'google_sheets',
+    name: 'Google Sheets',
+    logo: '📗',
+    description: 'Simple spreadsheet-based lead tracking',
+    features: ['Custom Columns', 'Real-time Sync', 'Easy Export']
   }
 ];
 

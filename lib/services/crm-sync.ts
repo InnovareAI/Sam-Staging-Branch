@@ -109,6 +109,9 @@ export async function syncInterestedLeadToCRM(
       case 'freshsales':
         result = await syncToFreshsales(connection, lead, mappings || []);
         break;
+      case 'google_sheets':
+        result = await syncToGoogleSheets(connection, lead, mappings || []);
+        break;
       default:
         console.log(`⚠️ CRM type ${connection.crm_type} not yet implemented`);
         return { success: false, crmType: connection.crm_type, error: `CRM type ${connection.crm_type} not supported yet` };
@@ -864,4 +867,51 @@ async function syncToFreshsales(
   } catch (error) {
     return { success: false, crmType: 'freshsales', error: error instanceof Error ? error.message : 'Unknown error' };
   }
+}
+
+/**
+ * Sync to Google Sheets
+ * TODO: Implement Google OAuth and Sheets API integration
+ * Requires: Google Cloud project, OAuth 2.0 credentials, Sheets API enabled
+ */
+async function syncToGoogleSheets(
+  connection: any,
+  lead: InterestedLead,
+  mappings: any[]
+): Promise<SyncResult> {
+  // Placeholder - Google Sheets integration requires:
+  // 1. Google OAuth setup in Google Cloud Console
+  // 2. OAuth flow to get access_token + refresh_token
+  // 3. User selects which spreadsheet to sync to
+  // 4. Column mapping (which column = first_name, email, etc.)
+
+  console.log('📗 Google Sheets sync placeholder - not yet implemented');
+  console.log('   Lead:', lead.firstName, lead.lastName, lead.company);
+  console.log('   Spreadsheet ID:', connection.crm_account_id);
+
+  // TODO: Implement actual Google Sheets sync
+  // const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
+  // await sheets.spreadsheets.values.append({
+  //   spreadsheetId: connection.crm_account_id,
+  //   range: 'Sheet1!A:Z',
+  //   valueInputOption: 'USER_ENTERED',
+  //   requestBody: {
+  //     values: [[
+  //       lead.firstName,
+  //       lead.lastName,
+  //       lead.email,
+  //       lead.company,
+  //       lead.jobTitle,
+  //       lead.linkedInUrl,
+  //       lead.intent,
+  //       new Date().toISOString()
+  //     ]]
+  //   }
+  // });
+
+  return {
+    success: false,
+    crmType: 'google_sheets',
+    error: 'Google Sheets integration not yet configured. Please set up Google OAuth.'
+  };
 }
