@@ -285,17 +285,41 @@ async function notifyUserOfLinkedInReply(
     noDraft?: boolean;
   }
 ) {
-  // Get workspace members
-  const { data: members } = await supabase
+  // Get workspace members (no FK, so separate queries)
+  const { data: members, error: membersError } = await supabase
     .from('workspace_members')
-    .select('user_id, role, users(email, first_name)')
+    .select('user_id, role')
     .eq('workspace_id', workspaceId)
     .in('role', ['owner', 'admin', 'member']);
+
+  if (membersError) {
+    console.error('Error fetching workspace members:', membersError);
+    return;
+  }
 
   if (!members || members.length === 0) {
     console.error('No members found for workspace');
     return;
   }
+
+  // Get user details for each member
+  const userIds = members.map((m: any) => m.user_id);
+  const { data: users, error: usersError } = await supabase
+    .from('users')
+    .select('id, email, first_name')
+    .in('id', userIds);
+
+  if (usersError) {
+    console.error('Error fetching users:', usersError);
+    return;
+  }
+
+  // Map users to members
+  const userMap = new Map((users || []).map((u: any) => [u.id, u]));
+  const membersWithUsers = members.map((m: any) => ({
+    ...m,
+    users: userMap.get(m.user_id)
+  })).filter((m: any) => m.users); // Only include members with valid user data
 
   // Intent emoji mapping
   const intentEmoji: Record<string, string> = {
@@ -311,11 +335,16 @@ async function notifyUserOfLinkedInReply(
 
   const emoji = data.intent ? intentEmoji[data.intent] || '📩' : '📩';
 
-  // Send via Postmark
+  // Send via Postmark (use POSTMARK_SERVER_TOKEN which is set in production)
   const { ServerClient } = require('postmark');
-  const postmark = new ServerClient(process.env.POSTMARK_INNOVAREAI_API_KEY!);
+  const postmarkToken = process.env.POSTMARK_SERVER_TOKEN || process.env.POSTMARK_INNOVAREAI_API_KEY;
+  if (!postmarkToken) {
+    console.error('❌ Postmark token not configured');
+    return;
+  }
+  const postmark = new ServerClient(postmarkToken);
 
-  for (const member of members) {
+  for (const member of membersWithUsers) {
     const user = member.users;
 
     await postmark.sendEmail({
