@@ -84,15 +84,15 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
       // Check if commenting agent is enabled for workspace and load AI settings
       const { data: workspace } = await supabase
         .from('workspaces')
-        .select('commenting_agent_enabled, metadata')
+        .select('commenting_agent_enabled, settings')
         .eq('id', workspaceId)
         .single();
 
       if (workspace) {
         setEnabled(workspace.commenting_agent_enabled || false);
 
-        // Load AI settings from metadata
-        const savedSettings = workspace.metadata?.commenting_agent_settings;
+        // Load AI settings from settings jsonb
+        const savedSettings = workspace.settings?.commenting_agent_settings;
         if (savedSettings) {
           setAISettings({
             tone: savedSettings.tone || defaultAISettings.tone,
@@ -151,21 +151,21 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
     try {
       const supabase = createClient();
 
-      // Get current metadata first
+      // Get current settings first
       const { data: workspace } = await supabase
         .from('workspaces')
-        .select('metadata')
+        .select('settings')
         .eq('id', workspaceId)
         .single();
 
-      const currentMetadata = workspace?.metadata || {};
+      const currentSettings = workspace?.settings || {};
 
       // Update with new AI settings
       const { error } = await supabase
         .from('workspaces')
         .update({
-          metadata: {
-            ...currentMetadata,
+          settings: {
+            ...currentSettings,
             commenting_agent_settings: aiSettings,
           },
           updated_at: new Date().toISOString(),
