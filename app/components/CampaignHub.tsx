@@ -6235,15 +6235,26 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const { data: allCampaigns = [], isLoading: loadingAllCampaigns } = useQuery({
     queryKey: ['campaigns', actualWorkspaceId],
     queryFn: async () => {
-      if (!actualWorkspaceId) return [];
+      if (!actualWorkspaceId) {
+        console.log('📡 [CAMPAIGN HUB MAIN] No workspace ID, returning empty');
+        return [];
+      }
 
+      console.log('📡 [CAMPAIGN HUB MAIN] Fetching campaigns for workspace:', actualWorkspaceId);
       const response = await fetch(`/api/campaigns?workspace_id=${actualWorkspaceId}`);
+      console.log('📡 [CAMPAIGN HUB MAIN] Response status:', response.status, response.statusText);
+
       if (!response.ok) {
-        console.error('Failed to load campaigns:', response.statusText);
+        const errorText = await response.text();
+        console.error('❌ [CAMPAIGN HUB MAIN] Failed to load campaigns:', response.statusText, errorText);
         return [];
       }
 
       const result = await response.json();
+      console.log('✅ [CAMPAIGN HUB MAIN] Fetched campaigns:', {
+        count: result.campaigns?.length || 0,
+        names: result.campaigns?.map((c: any) => c.name) || []
+      });
       return result.campaigns || [];
     },
     enabled: (campaignFilter === 'active' || campaignFilter === 'inactive' || campaignFilter === 'archived' || campaignFilter === 'completed') && !!actualWorkspaceId,
@@ -6401,6 +6412,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       const campaignData = await campaignResponse.json();
       console.log('🔍 DEBUG: Campaign API Response:', {
         hasCampaign: !!campaignData.campaign,
+        hasDataCampaign: !!campaignData.data?.campaign,
         hasCampaignId: !!campaignData.campaign_id,
         hasError: !!campaignData.error,
         keys: Object.keys(campaignData),
@@ -6408,13 +6420,14 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       });
 
       // Handle case where API returned an error despite 201 status
-      if (campaignData.error && !campaignData.campaign) {
+      if (campaignData.error && !campaignData.campaign && !campaignData.data?.campaign) {
         console.warn('⚠️ API returned error with 201 status:', campaignData.error);
         // Still try to recover using campaign_id if provided
       }
 
       // Handle case where campaign was created but not returned
-      let campaign = campaignData.campaign;
+      // CRITICAL FIX: API returns { data: { campaign } }, not { campaign }
+      let campaign = campaignData.campaign || campaignData.data?.campaign;
 
       if (!campaign && campaignData.campaign_id) {
         // Campaign was created but not returned - try to fetch it
