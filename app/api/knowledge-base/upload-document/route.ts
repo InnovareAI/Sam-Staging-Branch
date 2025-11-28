@@ -200,6 +200,7 @@ export async function POST(request: NextRequest) {
     const url = formData.get('url') as string | null;
     const section = formData.get('section') as string;
     const uploadMode = formData.get('uploadMode') as string;
+    const icpId = formData.get('icp_id') as string | null; // Optional ICP assignment
 
     if (!section) {
       return NextResponse.json({ error: 'Section is required' }, { status: 400 });
@@ -247,6 +248,7 @@ export async function POST(request: NextRequest) {
     const documentId = uuidv4();
 
     // Store document in knowledge_base table (NOT knowledge_base_documents)
+    // icp_id: null = global content (all ICPs), UUID = ICP-specific content
     const { data: document, error: dbError } = await supabase
       .from('knowledge_base')
       .insert({
@@ -259,6 +261,7 @@ export async function POST(request: NextRequest) {
         tags: [],
         version: '1.0',
         is_active: true,
+        icp_id: icpId || null, // null = applies to all ICPs
         source_attachment_id: null,
         source_type: 'document_upload',
         source_metadata: {
@@ -267,10 +270,11 @@ export async function POST(request: NextRequest) {
           mime_type: mimeType || 'text/plain',
           file_size: fileSize,
           original_filename: filename,
-          uploaded_by: userId
+          uploaded_by: userId,
+          icp_id: icpId || null // Store in metadata for reference
         }
       })
-      .select('id, workspace_id, category')
+      .select('id, workspace_id, category, icp_id')
       .single();
 
     if (dbError) {

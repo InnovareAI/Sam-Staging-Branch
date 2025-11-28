@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const workspaceId = searchParams.get('workspace_id');
     const category = searchParams.get('category');
     const search = searchParams.get('search');
+    const icpId = searchParams.get('icp_id'); // Optional ICP filter
 
     if (!workspaceId) {
       return NextResponse.json({ error: 'Workspace ID is required' }, { status: 400 });
@@ -16,9 +17,14 @@ export async function GET(request: NextRequest) {
     // Build query for the correct knowledge_base table
     let query = supabase
       .from('knowledge_base')
-      .select('*')
+      .select('*, icp:knowledge_base_icps(id, icp_name)')
       .eq('is_active', true)
       .or(`workspace_id.eq.${workspaceId},workspace_id.is.null`);
+
+    // Filter by ICP: show ICP-specific content + global content (icp_id is null)
+    if (icpId) {
+      query = query.or(`icp_id.eq.${icpId},icp_id.is.null`);
+    }
 
     if (category) {
       query = query.eq('category', category);
@@ -59,13 +65,14 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createSupabaseRouteClient();
     const body = await request.json();
-    const { workspace_id, category, subcategory, title, content, tags } = body;
+    const { workspace_id, category, subcategory, title, content, tags, icp_id } = body;
 
     if (!workspace_id || !category || !title || !content) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     // Create new knowledge base entry
+    // icp_id: null = global (all ICPs), UUID = specific ICP only
     const { data: newEntry, error } = await supabase
       .from('knowledge_base')
       .insert({
@@ -74,9 +81,10 @@ export async function POST(request: NextRequest) {
         subcategory,
         title,
         content,
-        tags: tags || []
+        tags: tags || [],
+        icp_id: icp_id || null // null = applies to all ICPs
       })
-      .select()
+      .select('*, icp:knowledge_base_icps(id, icp_name)')
       .single();
 
     if (error) {

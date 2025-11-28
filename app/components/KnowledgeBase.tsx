@@ -151,7 +151,7 @@ const transformICPResponse = (icp: Record<string, unknown>): ICPProfile => {
 };
 
 // Enhanced AI-Powered Document Upload Component
-function DocumentUpload({ section, onComplete }: { section: string; onComplete?: () => void }) {
+function DocumentUpload({ section, onComplete, icpId }: { section: string; onComplete?: () => void; icpId?: string | null }) {
   const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState<string>('');
   const [uploadMode, setUploadMode] = useState<'file' | 'url'>('file');
@@ -183,6 +183,11 @@ function DocumentUpload({ section, onComplete }: { section: string; onComplete?:
       formData.append('uploadMode', uploadMode);
       if (url) {
         formData.append('url', url);
+      }
+      // Include ICP ID for ICP-specific content (null = global content)
+      if (icpId) {
+        formData.append('icp_id', icpId);
+        console.log('[KB Upload] ICP assigned:', icpId);
       }
 
       // Step 1: Upload and extract content
@@ -1641,6 +1646,7 @@ const KnowledgeBase: React.FC = () => {
   const [documentsError, setDocumentsError] = useState<string | null>(null);
   const [icpCount, setIcpCount] = useState<number | null>(null);
   const [icpProfiles, setIcpProfiles] = useState<Record<string, ICPProfile>>({});
+  const [selectedIcpId, setSelectedIcpId] = useState<string | null>(null); // null = show all ICPs (global + all ICP-specific)
   const [products, setProducts] = useState<KnowledgeBaseProduct[]>([]);
   const [competitors, setCompetitors] = useState<KnowledgeBaseCompetitor[]>([]);
   const [personas, setPersonas] = useState<KnowledgeBasePersona[]>([]);
@@ -1662,12 +1668,16 @@ const KnowledgeBase: React.FC = () => {
     }
   }, []);
 
-  const loadDocuments = useCallback(async () => {
-    console.log('[KB] Loading documents...');
+  const loadDocuments = useCallback(async (icpId?: string | null) => {
+    console.log('[KB] Loading documents...', icpId ? `for ICP: ${icpId}` : 'all ICPs');
     setDocumentsLoading(true);
     setDocumentsError(null);
     try {
-      const response = await fetch('/api/knowledge-base/documents');
+      // Build URL with optional ICP filter
+      const url = icpId
+        ? `/api/knowledge-base/documents?icp_id=${icpId}`
+        : '/api/knowledge-base/documents';
+      const response = await fetch(url);
       console.log('[KB] Documents API response status:', response.status);
 
       if (!response.ok) {
@@ -1718,7 +1728,7 @@ const KnowledgeBase: React.FC = () => {
       }
 
       // Reload documents after successful deletion
-      await loadDocuments();
+      await loadDocuments(selectedIcpId);
     } catch (error) {
       console.error('Error deleting document:', error);
       alert('Failed to delete document. Please try again.');
@@ -1907,12 +1917,18 @@ const KnowledgeBase: React.FC = () => {
   }, [icpProfiles, loadPersonas]);
 
   useEffect(() => {
-    loadDocuments();
+    loadDocuments(selectedIcpId);
     loadIcpProfiles();
     loadProducts();
     loadCompetitors();
     loadPersonas();
-  }, [loadDocuments, loadIcpProfiles, loadProducts, loadCompetitors, loadPersonas]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadIcpProfiles, loadProducts, loadCompetitors, loadPersonas]);
+
+  // Reload documents when selected ICP changes
+  useEffect(() => {
+    loadDocuments(selectedIcpId);
+  }, [selectedIcpId, loadDocuments]);
 
   const SECTION_ALIAS_MAP: Record<string, string[]> = {
     buying: ['buying-process', 'process'],
@@ -2373,6 +2389,35 @@ const KnowledgeBase: React.FC = () => {
         <div>
         {activeSection === 'overview' && (
           <div className="space-y-6">
+            {/* ICP Selector - Multi-ICP Support */}
+            {Object.keys(icpProfiles).length > 1 && (
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Target className="text-purple-400" size={20} />
+                    <span className="text-white font-medium">View Knowledge Base for:</span>
+                  </div>
+                  <select
+                    value={selectedIcpId || ''}
+                    onChange={(e) => setSelectedIcpId(e.target.value || null)}
+                    className="bg-gray-700 border border-gray-600 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">All ICPs (Global + Specific)</option>
+                    {Object.values(icpProfiles).map((icp) => (
+                      <option key={icp.id} value={icp.id}>
+                        {icp.name || icp.icp_name || 'Unnamed ICP'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-gray-400 text-xs mt-2">
+                  {selectedIcpId
+                    ? `Showing content specific to this ICP plus global content`
+                    : `Showing all knowledge base content across all ICPs`}
+                </p>
+              </div>
+            )}
+
             {/* Campaign Readiness Banner */}
             {!isKnowledgeLoading && (
               <motion.div
@@ -2812,7 +2857,7 @@ const KnowledgeBase: React.FC = () => {
                   Latest Knowledge Base Assets
                 </h3>
                 <button
-                  onClick={() => loadDocuments()}
+                  onClick={() => loadDocuments(selectedIcpId)}
                   className="text-blue-400 hover:text-blue-300 text-sm"
                 >
                   Refresh
@@ -2965,7 +3010,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="products" onComplete={loadDocuments} />
+                <DocumentUpload section="products" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
                 <p className="text-sm text-gray-400 mt-3">
                   📄 Product sheets, service descriptions, feature specs, pricing guides, demo scripts
                 </p>
@@ -3058,7 +3103,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="competition" onComplete={loadDocuments} />
+                <DocumentUpload section="competition" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
                 <p className="text-sm text-gray-400 mt-3">
                   🎯 Competitor analysis, battlecards, win/loss reports, market research, SWOT analysis
                 </p>
@@ -3161,7 +3206,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="messaging" onComplete={loadDocuments} />
+                <DocumentUpload section="messaging" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
                 <p className="text-sm text-gray-400 mt-3">
                   💬 Email templates, LinkedIn messages, objection handlers, value propositions, case studies
                 </p>
@@ -3201,7 +3246,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="tone-of-voice" onComplete={loadDocuments} />
+                <DocumentUpload section="tone-of-voice" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
                 <p className="text-sm text-gray-400 mt-3">
                   🎭 Brand voice guidelines, writing style guides, communication frameworks, persona-based messaging
                 </p>
@@ -3231,7 +3276,7 @@ const KnowledgeBase: React.FC = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
                   <h4 className="text-white font-medium mb-3">Upload Content</h4>
-                  <DocumentUpload section="sender-emails" onComplete={loadDocuments} />
+                  <DocumentUpload section="sender-emails" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
                   <p className="text-xs text-gray-400 mt-2">
                     📧 Email exports (.txt, .eml), blog posts, LinkedIn articles, newsletters, published content
                   </p>
@@ -3284,7 +3329,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="company-info" onComplete={loadDocuments} />
+                <DocumentUpload section="company-info" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
                 <p className="text-sm text-gray-400 mt-3">
                   🏢 Company overview, team bios, achievements, partnerships, brand guidelines
                 </p>
@@ -3324,7 +3369,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="success-stories" onComplete={loadDocuments} />
+                <DocumentUpload section="success-stories" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
                 <p className="text-sm text-gray-400 mt-3">
                   🏆 Case studies, customer testimonials, reference stories, ROI data, success metrics
                 </p>
@@ -3364,7 +3409,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="buying-process" onComplete={loadDocuments} />
+                <DocumentUpload section="buying-process" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
                 <p className="text-sm text-gray-400 mt-3">
                   🔄 Buying journey maps, decision criteria, approval processes, stakeholder analysis, procurement guides
                 </p>
@@ -3411,7 +3456,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="compliance" onComplete={loadDocuments} />
+                <DocumentUpload section="compliance" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
                 <p className="text-sm text-gray-400 mt-3">
                   🛡️ Industry regulations, compliance guidelines, approved/restricted phrases, HITL checkpoints
                 </p>
@@ -3459,7 +3504,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="personas" onComplete={loadDocuments} />
+                <DocumentUpload section="personas" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
                 <p className="text-sm text-gray-400 mt-3">
                   👥 Role profiles, pain points, motivations, communication preferences, decision-making patterns
                 </p>

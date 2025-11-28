@@ -27,8 +27,10 @@ async function getWorkspaceId(supabase: any, userId: string) {
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createSupabaseRouteClient();
+    const { searchParams } = new URL(request.url);
+    const icpId = searchParams.get('icp_id'); // Optional ICP filter
 
-    console.log('[KB Documents API] GET request started');
+    console.log('[KB Documents API] GET request started, icp_id:', icpId);
 
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) {
@@ -46,11 +48,21 @@ export async function GET(request: NextRequest) {
 
     console.log('[KB Documents API] Fetching documents for workspace:', workspaceId);
 
-    const { data: documents, error: docsError } = await supabase
+    // Build query with ICP filtering
+    // icp_id = null means global content (visible to all ICPs)
+    // icp_id = UUID means ICP-specific content
+    let query = supabase
       .from('knowledge_base')
-      .select('id, category, title, tags, source_metadata, created_at, updated_at')
+      .select('id, category, title, tags, source_metadata, created_at, updated_at, icp_id')
       .eq('workspace_id', workspaceId)
-      .eq('is_active', true)
+      .eq('is_active', true);
+
+    // Filter by ICP: show ICP-specific content + global content (icp_id is null)
+    if (icpId) {
+      query = query.or(`icp_id.eq.${icpId},icp_id.is.null`);
+    }
+
+    const { data: documents, error: docsError } = await query
       .order('updated_at', { ascending: false })
       .limit(20);
 
@@ -102,7 +114,8 @@ export async function GET(request: NextRequest) {
           tags: summary?.tags || doc.tags || [],
           vectorChunks: vectorization.vector_chunks || 0,
           updatedAt: doc.updated_at,
-          metadata: sourceMetadata
+          metadata: sourceMetadata,
+          icpId: doc.icp_id // null = global, UUID = ICP-specific
         };
       } catch (err) {
         console.error('[KB Documents API] Error processing document:', doc.id, err);
@@ -115,7 +128,8 @@ export async function GET(request: NextRequest) {
           tags: doc.tags || [],
           vectorChunks: 0,
           updatedAt: doc.updated_at,
-          metadata: {}
+          metadata: {},
+          icpId: doc.icp_id // null = global, UUID = ICP-specific
         };
       }
     });
