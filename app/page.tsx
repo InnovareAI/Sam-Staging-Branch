@@ -211,15 +211,9 @@ export default function Page() {
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'card' | 'info'>('info');
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(() => {
-    // Initialize from localStorage on mount
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('selectedWorkspaceId');
-      console.log('🔍 [INIT] Loading selectedWorkspaceId from localStorage:', saved);
-      return saved;
-    }
-    return null;
-  });
+  // CRITICAL: Do NOT initialize from localStorage here - wait for user verification
+  // This prevents stale workspace from previous user session being used
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<'all' | 'innovareai' | '3cubed'>('all');
 
   // Derive current workspace from selected ID
@@ -242,29 +236,27 @@ export default function Page() {
     return found || null;
   }, [selectedWorkspaceId, workspaces]);
 
-  // CRITICAL: Clear workspace selection when a DIFFERENT user logs in
-  // This prevents user A's workspace from persisting to user B's session
+  // CRITICAL: Only load workspace from localStorage if it belongs to the SAME user
+  // This prevents user A's workspace from being used by user B
   useEffect(() => {
     if (user?.id && typeof window !== 'undefined') {
       const lastUserId = localStorage.getItem('lastUserId');
       const storedWorkspaceId = localStorage.getItem('selectedWorkspaceId');
 
-      // Clear workspace if:
-      // 1. Different user than last time, OR
-      // 2. There's a stored workspace but no user tracking (old localStorage format)
-      const shouldClear = (lastUserId && lastUserId !== user.id) ||
-                          (storedWorkspaceId && !lastUserId);
+      console.log('🔐 [USER VERIFY] Checking user:', user.id, 'lastUserId:', lastUserId, 'storedWS:', storedWorkspaceId);
 
-      if (shouldClear) {
-        console.log('🔄 [USER CHANGE] Clearing workspace! lastUserId:', lastUserId, 'current:', user.id, 'storedWS:', storedWorkspaceId);
+      if (lastUserId === user.id && storedWorkspaceId) {
+        // SAME user - restore their workspace selection
+        console.log('✅ [USER VERIFY] Same user, restoring workspace:', storedWorkspaceId);
+        setSelectedWorkspaceId(storedWorkspaceId);
+      } else {
+        // Different user OR no previous user - clear and let auto-select handle it
+        console.log('🔄 [USER VERIFY] Different user or first time - clearing localStorage');
         localStorage.removeItem('selectedWorkspaceId');
-        localStorage.setItem('lastUserId', user.id); // Set current user as the new owner
-        setSelectedWorkspaceId(null);
-      } else if (!lastUserId) {
-        // First time with this fix - just record the user ID
-        console.log('📝 [USER TRACKING] Recording user ID for future sessions:', user.id);
         localStorage.setItem('lastUserId', user.id);
+        // selectedWorkspaceId stays null, will be auto-selected when workspaces load
       }
+
       // Mark user as verified so DataCollectionHub can start fetching
       setUserVerified(true);
     }
