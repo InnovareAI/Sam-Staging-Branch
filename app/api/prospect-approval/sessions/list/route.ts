@@ -40,17 +40,22 @@ export async function GET(request: NextRequest) {
 
     // CRITICAL FIX: Use admin client to bypass RLS when querying users table
     const adminClient = supabaseAdmin();
-    const { data: userProfile } = await adminClient
+    console.log(`🔐 [SESSIONS/LIST] Auth user: ${user.email}, id: ${user.id}`);
+
+    const { data: userProfile, error: userProfileError } = await adminClient
       .from('users')
       .select('current_workspace_id')
       .eq('id', user.id)
       .single();
 
+    console.log(`📋 [SESSIONS/LIST] User profile query result:`, { userProfile, error: userProfileError?.message });
+
     let workspaceId = userProfile?.current_workspace_id;
 
     // Fallback: get first workspace from memberships
+    // CRITICAL FIX: Use adminClient to bypass RLS (Nov 28)
     if (!workspaceId) {
-      const { data: membership } = await supabase
+      const { data: membership } = await adminClient
         .from('workspace_members')
         .select('workspace_id')
         .eq('user_id', user.id)
@@ -68,17 +73,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user's sessions (permanent sessions, visible across browsers/devices)
-    console.log(`🔍 Fetching sessions for workspace: ${workspaceId}, user: ${user.email}`);
+    const userEmail = user.email?.toLowerCase() || '';
+    const isSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(userEmail);
+    console.log(`🔍 Fetching sessions for workspace: ${workspaceId}, user: ${user.email}, isSuperAdmin: ${isSuperAdmin}`);
 
-    // Fetch sessions - Show ONLY user's own sessions
+    // Fetch sessions - Super admins see ALL sessions, regular users see only their own
     // CRITICAL: Show ALL sessions (not just active) to preserve approved prospects
-    // But we'll filter out sessions where ALL prospects are already in campaigns
-    const { data: sessions, error: sessionsError } = await supabase
+    // CRITICAL FIX: Use adminClient to bypass RLS (Nov 28) - RLS was blocking queries
+    let sessionsQuery = adminClient
       .from('prospect_approval_sessions')
       .select('*')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id) // CRITICAL: Only show user's own sessions
+      .eq('workspace_id', workspaceId);
+
+    // Super admins can see all sessions in any workspace
+    if (!isSuperAdmin) {
+      sessionsQuery = sessionsQuery.eq('user_id', user.id);
+    }
+
+    const { data: sessions, error: sessionsError } = await sessionsQuery
       .order('created_at', { ascending: false });
+
+    console.log(`📊 [SESSIONS/LIST] Sessions query for workspace ${workspaceId}: found ${sessions?.length || 0} sessions, error: ${sessionsError?.message || 'none'}`);
 
     // Enrich with user info (use admin client to bypass RLS on auth.users)
     if (sessions && sessions.length > 0) {

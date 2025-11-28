@@ -58,8 +58,9 @@ export async function DELETE(request: NextRequest) {
     let workspaceId = userProfile?.current_workspace_id
 
     // Fallback: get first workspace from memberships
+    // CRITICAL FIX: Use adminClient to bypass RLS (Nov 28)
     if (!workspaceId) {
-      const { data: membership } = await supabase
+      const { data: membership } = await adminClient
         .from('workspace_members')
         .select('workspace_id')
         .eq('user_id', user.id)

@@ -179,9 +179,18 @@ async function fetchApprovalSessions(
         `/api/prospect-approval/prospects?session_id=${session.id}&page=1&limit=1000&status=${statusFilter}`
       )
 
-      if (prospectsResponse.ok) {
-        const prospectsData = await prospectsResponse.json()
-        if (prospectsData.success && prospectsData.prospects) {
+      console.log(`🔍 [DATA APPROVAL] Prospects fetch for session ${session.id.substring(0, 8)}: status=${prospectsResponse.status}, ok=${prospectsResponse.ok}`);
+
+      if (!prospectsResponse.ok) {
+        const errorText = await prospectsResponse.text();
+        console.log(`❌ [DATA APPROVAL] Prospects API error for session ${session.id.substring(0, 8)}:`, errorText);
+        continue;
+      }
+
+      const prospectsData = await prospectsResponse.json()
+      console.log(`📊 [DATA APPROVAL] Prospects API response for session ${session.id.substring(0, 8)}:`, { success: prospectsData.success, count: prospectsData.prospects?.length || 0, error: prospectsData.error });
+
+      if (prospectsData.success && prospectsData.prospects) {
           const mappedProspects = prospectsData.prospects
             .filter((p: any) => p.approval_status !== 'transferred_to_campaign') // Exclude prospects already in campaigns
             .map((p: any) => ({
@@ -220,7 +229,6 @@ async function fetchApprovalSessions(
 
           allProspects.push(...mappedProspects)
         }
-      }
     }
 
     // Sort by created date (newest first) - NO PAGINATION, show all prospects

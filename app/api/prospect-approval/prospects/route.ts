@@ -68,8 +68,9 @@ export async function GET(request: NextRequest) {
     let workspaceId = userProfile?.current_workspace_id
 
     // Fallback: get first workspace from memberships
+    // CRITICAL FIX: Use adminClient to bypass RLS (Nov 28)
     if (!workspaceId) {
-      const { data: membership } = await supabase
+      const { data: membership } = await adminClient
         .from('workspace_members')
         .select('workspace_id')
         .eq('user_id', user.id)
@@ -87,7 +88,8 @@ export async function GET(request: NextRequest) {
     }
 
     // FIXED: Verify session belongs to user's workspace using workspace_id not organization_id
-    const { data: session, error: sessionError } = await supabase
+    // CRITICAL FIX: Use adminClient to bypass RLS (Nov 28)
+    const { data: session, error: sessionError } = await adminClient
       .from('prospect_approval_sessions')
       .select('user_id, workspace_id')
       .eq('id', sessionId)
@@ -104,7 +106,10 @@ export async function GET(request: NextRequest) {
     const userEmail = user.email?.toLowerCase() || ''
     const isSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(userEmail)
 
+    console.log(`🔐 [PROSPECTS] Auth check: user=${userEmail}, workspaceId=${workspaceId}, session.workspace_id=${session.workspace_id}, isSuperAdmin=${isSuperAdmin}`);
+
     if (!isSuperAdmin && session.workspace_id !== workspaceId) {
+      console.log(`❌ [PROSPECTS] Access denied - workspace mismatch`);
       return NextResponse.json({
         success: false,
         error: 'Access denied - session belongs to different workspace'
@@ -128,6 +133,8 @@ export async function GET(request: NextRequest) {
 
     // Build query - get ALL prospects first, we'll filter by status after joining decisions
     // USE ADMIN CLIENT to bypass RLS policies
+    console.log(`🔍 [PROSPECTS] Querying prospect_approval_data for session: ${sessionId}`);
+
     let query = adminClient
       .from('prospect_approval_data')
       .select('*', { count: 'exact' })
@@ -136,6 +143,8 @@ export async function GET(request: NextRequest) {
     // Apply sorting
     const { data: prospectsRaw, error } = await query
       .order(sortBy, { ascending: sortOrder === 'asc' })
+
+    console.log(`📊 [PROSPECTS] Query result: ${prospectsRaw?.length || 0} prospects, error: ${error?.message || 'none'}`);
 
     if (error) throw error
 
