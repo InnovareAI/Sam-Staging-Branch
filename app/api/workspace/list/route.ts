@@ -36,10 +36,6 @@ export async function GET() {
       return NextResponse.json({ workspaces: [] })
     }
 
-    // Note: users table doesn't have current_workspace_id
-    // We'll select the first workspace or use localStorage on client side
-    console.log('[workspace/list] Skipping users.current_workspace_id (column does not exist)')
-
     // CRITICAL FIX: Use service role to bypass RLS since policies are broken
     const supabaseAdmin = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -59,6 +55,15 @@ export async function GET() {
         }
       }
     )
+
+    // Get user's current_workspace_id from users table
+    const { data: userRecord } = await supabaseAdmin
+      .from('users')
+      .select('current_workspace_id')
+      .eq('id', session.user.id)
+      .single()
+
+    console.log('[workspace/list] User current_workspace_id:', userRecord?.current_workspace_id)
 
     // Fetch accessible workspaces using admin client to bypass RLS
     const { data: memberships, error: memberError } = await supabaseAdmin
@@ -106,10 +111,21 @@ export async function GET() {
     }
 
     const workspaces = workspaceData || []
-    // Default to first workspace since users table doesn't have current_workspace_id
-    const current = workspaces[0] || null
 
-    console.log('[workspace/list] Returning:', { workspaceCount: workspaces.length, current })
+    // Use current_workspace_id from users table if it exists and is in the workspace list
+    let current = null
+    if (userRecord?.current_workspace_id) {
+      current = workspaces.find(ws => ws.id === userRecord.current_workspace_id) || null
+      console.log('[workspace/list] Found current workspace from DB:', current?.name || 'not found in memberships')
+    }
+
+    // Fallback to first workspace if current_workspace_id not set or not in user's workspaces
+    if (!current && workspaces.length > 0) {
+      current = workspaces[0]
+      console.log('[workspace/list] Using first workspace as fallback:', current.name)
+    }
+
+    console.log('[workspace/list] Returning:', { workspaceCount: workspaces.length, current: current?.name })
 
     // TEMPORARY DEBUG: Return full debug info in response
     return NextResponse.json({

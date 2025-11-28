@@ -275,12 +275,28 @@ export default function Page() {
     }
   }, [selectedWorkspaceId, workspaces, workspacesLoading]);
 
-  // Persist selectedWorkspaceId to localStorage (with user tracking)
+  // Persist selectedWorkspaceId to localStorage AND database (with user tracking)
   useEffect(() => {
     if (selectedWorkspaceId && user?.id) {
       console.log('💾 [PERSIST] Saving selectedWorkspaceId to localStorage:', selectedWorkspaceId, 'for user:', user.id);
       localStorage.setItem('selectedWorkspaceId', selectedWorkspaceId);
       localStorage.setItem('lastUserId', user.id);
+
+      // CRITICAL FIX: Also persist to database so it survives across browsers/devices
+      // This fixes the bug where CSV uploads go to one workspace but UI shows another
+      fetch('/api/workspace/set-current', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspaceId: selectedWorkspaceId })
+      }).then(response => {
+        if (response.ok) {
+          console.log('✅ [PERSIST] Updated current_workspace_id in database');
+        } else {
+          console.error('❌ [PERSIST] Failed to update current_workspace_id in database');
+        }
+      }).catch(error => {
+        console.error('❌ [PERSIST] Error updating current_workspace_id:', error);
+      });
     } else if (!selectedWorkspaceId) {
       console.log('🗑️  [PERSIST] Removing selectedWorkspaceId from localStorage (null)');
       localStorage.removeItem('selectedWorkspaceId');
