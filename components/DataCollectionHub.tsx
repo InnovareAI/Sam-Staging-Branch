@@ -85,6 +85,7 @@ interface DataCollectionHubProps {
   userSession?: any  // Pass session from parent to avoid auth issues
   workspaceId?: string | null  // Pass workspace ID from parent
   workspacesLoading?: boolean  // True while workspaces are being loaded
+  userVerified?: boolean  // True after user change detection has run
 }
 
 // REMOVED: Dummy prospect data generation function
@@ -265,6 +266,7 @@ export default function DataCollectionHub({
   userSession,
   workspaceId,
   workspacesLoading = false,
+  userVerified = false,
   initialUploadedData = []
 }: DataCollectionHubProps) {
   // Initialize with uploaded data from chat only (no dummy data)
@@ -308,13 +310,13 @@ export default function DataCollectionHub({
     refetchInterval: 30000, // Auto-refresh every 30 seconds (was 5, too aggressive)
     refetchOnWindowFocus: true, // Auto-refresh when tab becomes visible
     keepPreviousData: true, // Smooth page transitions
-    enabled: !!actualWorkspaceId && !workspacesLoading, // Only fetch after workspace is validated (not just from localStorage)
+    enabled: !!actualWorkspaceId && !workspacesLoading && userVerified, // Only fetch after user verified AND workspace validated
   })
 
   // REAL-TIME SUBSCRIPTIONS: Invalidate cache when sessions change
   useEffect(() => {
-    // Wait for workspace to be validated before subscribing
-    if (!actualWorkspaceId || workspacesLoading) return
+    // Wait for user verified AND workspace validated before subscribing
+    if (!actualWorkspaceId || workspacesLoading || !userVerified) return
 
     console.log('📡 [REAL-TIME] Setting up Supabase subscription for prospect sessions')
 
@@ -356,7 +358,7 @@ export default function DataCollectionHub({
       console.log('📡 [REAL-TIME] Cleaning up subscription')
       channel.unsubscribe()
     }
-  }, [actualWorkspaceId, workspacesLoading, queryClient])
+  }, [actualWorkspaceId, workspacesLoading, userVerified, queryClient])
 
   const serverProspects = data?.prospects || []
   const pagination = data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 0, hasNext: false, hasPrev: false, showing: 0 }
@@ -721,8 +723,8 @@ export default function DataCollectionHub({
   // Fetch available campaigns for "Add to Existing Campaign" dropdown
   useEffect(() => {
     const fetchCampaigns = async () => {
-      // Wait for workspace validation before fetching
-      if (!actualWorkspaceId || workspacesLoading) return
+      // Wait for user verified AND workspace validation before fetching
+      if (!actualWorkspaceId || workspacesLoading || !userVerified) return
 
       setLoadingCampaigns(true)
       try {
@@ -744,13 +746,13 @@ export default function DataCollectionHub({
     }
 
     fetchCampaigns()
-  }, [actualWorkspaceId, workspacesLoading])
+  }, [actualWorkspaceId, workspacesLoading, userVerified])
 
   // Fetch available prospects (approved but not in campaigns)
   useEffect(() => {
     const fetchAvailableProspects = async () => {
-      // Wait for workspace validation before fetching
-      if (!actualWorkspaceId || workspacesLoading) return
+      // Wait for user verified AND workspace validation before fetching
+      if (!actualWorkspaceId || workspacesLoading || !userVerified) return
 
       setLoadingAvailableProspects(true)
       try {
@@ -777,7 +779,7 @@ export default function DataCollectionHub({
 
     // Clean up interval on unmount or dependency change
     return () => clearInterval(intervalId)
-  }, [actualWorkspaceId, workspacesLoading, activeTab, refreshTrigger]) // Refetch when tab changes or when explicitly triggered
+  }, [actualWorkspaceId, workspacesLoading, userVerified, activeTab, refreshTrigger]) // Refetch when tab changes or when explicitly triggered
 
   // CSV Upload Handler
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {

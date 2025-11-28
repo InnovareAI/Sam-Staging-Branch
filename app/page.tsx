@@ -175,6 +175,7 @@ export default function Page() {
   const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [workspacesLoading, setWorkspacesLoading] = useState(false);
+  const [userVerified, setUserVerified] = useState(false); // Becomes true after user change detection runs
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isWorkspaceAdmin, setIsWorkspaceAdmin] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<'All' | 'InnovareAI' | '3cubedai'>('All');
@@ -246,13 +247,26 @@ export default function Page() {
   useEffect(() => {
     if (user?.id && typeof window !== 'undefined') {
       const lastUserId = localStorage.getItem('lastUserId');
-      if (lastUserId && lastUserId !== user.id) {
-        console.log('🔄 [USER CHANGE] Different user detected! Previous:', lastUserId, 'Current:', user.id);
-        console.log('🗑️ [USER CHANGE] Clearing workspace selection from previous user');
+      const storedWorkspaceId = localStorage.getItem('selectedWorkspaceId');
+
+      // Clear workspace if:
+      // 1. Different user than last time, OR
+      // 2. There's a stored workspace but no user tracking (old localStorage format)
+      const shouldClear = (lastUserId && lastUserId !== user.id) ||
+                          (storedWorkspaceId && !lastUserId);
+
+      if (shouldClear) {
+        console.log('🔄 [USER CHANGE] Clearing workspace! lastUserId:', lastUserId, 'current:', user.id, 'storedWS:', storedWorkspaceId);
         localStorage.removeItem('selectedWorkspaceId');
-        localStorage.removeItem('lastUserId');
+        localStorage.setItem('lastUserId', user.id); // Set current user as the new owner
         setSelectedWorkspaceId(null);
+      } else if (!lastUserId) {
+        // First time with this fix - just record the user ID
+        console.log('📝 [USER TRACKING] Recording user ID for future sessions:', user.id);
+        localStorage.setItem('lastUserId', user.id);
       }
+      // Mark user as verified so DataCollectionHub can start fetching
+      setUserVerified(true);
     }
   }, [user?.id]);
 
@@ -3050,6 +3064,7 @@ export default function Page() {
             userSession={session}
             workspaceId={currentWorkspace?.id || null}
             workspacesLoading={workspacesLoading}
+            userVerified={userVerified}
             onDataCollected={(data, source) => {
               // Handle data collected from DataCollectionHub
               console.log('Data collected:', data, 'Source:', source);
