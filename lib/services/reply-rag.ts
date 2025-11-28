@@ -5,7 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 interface ProspectResearchData {
   personal?: {
@@ -87,34 +87,56 @@ function getServiceClient() {
 }
 
 /**
- * Generate embedding for text using OpenAI
+ * Generate embedding for text using Google Gemini text-embedding-004
  */
 async function generateEmbedding(text: string): Promise<number[] | null> {
-  if (!OPENAI_API_KEY) {
-    console.error('❌ OPENAI_API_KEY not set for embeddings');
+  if (!GEMINI_API_KEY) {
+    console.error('❌ GEMINI_API_KEY not set for embeddings');
     return null;
   }
 
   try {
-    const response = await fetch('https://api.openai.com/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'text-embedding-3-small',
-        input: text.slice(0, 8000) // Limit input size
-      })
-    });
+    const truncatedText = text.slice(0, 10000); // Limit input size
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          content: {
+            parts: [{
+              text: truncatedText
+            }]
+          }
+        })
+      }
+    );
 
     if (!response.ok) {
-      console.error('Embedding API error:', response.statusText);
+      const errorText = await response.text();
+      console.error('Gemini Embedding API error:', response.status, errorText);
       return null;
     }
 
     const data = await response.json();
-    return data.data[0].embedding;
+    const embedding = data.embedding?.values || [];
+
+    if (embedding.length === 0) {
+      console.error('Gemini returned empty embedding');
+      return null;
+    }
+
+    // Pad to 1536 dimensions to match vector column size (Gemini returns 768)
+    if (embedding.length < 1536) {
+      return [...embedding, ...Array(1536 - embedding.length).fill(0)];
+    } else if (embedding.length > 1536) {
+      return embedding.slice(0, 1536);
+    }
+
+    return embedding;
   } catch (error) {
     console.error('Embedding generation error:', error);
     return null;

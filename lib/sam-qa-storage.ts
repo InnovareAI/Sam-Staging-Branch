@@ -343,30 +343,49 @@ export async function getQANeedingClarification(
 // ================================================================
 
 /**
- * Generate vector embedding for RAG
+ * Generate vector embedding for RAG using Google Gemini text-embedding-004
  */
 async function generateEmbedding(text: string): Promise<number[]> {
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
-        'X-Title': 'SAM Q&A Knowledge Storage'
-      },
-      body: JSON.stringify({
-        model: 'openai/text-embedding-3-small',
-        input: text
-      })
-    });
+    const truncatedText = text.slice(0, 10000); // Limit input size
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          content: {
+            parts: [{
+              text: truncatedText
+            }]
+          }
+        })
+      }
+    );
 
     if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
-    return data.data[0].embedding;
+    const embedding = data.embedding?.values || [];
+
+    if (embedding.length === 0) {
+      throw new Error('Gemini returned empty embedding');
+    }
+
+    // Pad to 1536 dimensions to match vector column size (Gemini returns 768)
+    if (embedding.length < 1536) {
+      return [...embedding, ...Array(1536 - embedding.length).fill(0)];
+    } else if (embedding.length > 1536) {
+      return embedding.slice(0, 1536);
+    }
+
+    return embedding;
   } catch (error) {
     console.error('❌ Embedding generation failed:', error);
     // Return zero vector as fallback

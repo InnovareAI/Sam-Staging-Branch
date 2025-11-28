@@ -95,28 +95,47 @@ const supabaseAdmin = createSupabaseAdminClient(
 
 async function createQueryEmbedding(text: string): Promise<number[]> {
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
-        'X-Title': 'SAM AI Knowledge Retrieval'
-      },
-      body: JSON.stringify({
-        model: 'text-embedding-3-large',
-        input: text.substring(0, 8000),
-        encoding_format: 'float',
-        dimensions: 1536 // Reduced from 3072 due to pgvector 2000-dim limit
-      })
-    });
+    // Use Google Gemini text-embedding-004 for consistency with document embeddings
+    const truncatedText = text.substring(0, 10000);
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: {
+            parts: [{
+              text: truncatedText
+            }]
+          }
+        })
+      }
+    );
 
     if (!response.ok) {
-      throw new Error(`Embedding request failed: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('[SAM Query] Gemini API error:', response.status, errorText);
+      throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const data = await response.json();
-    return data.data[0]?.embedding || [];
+    const embedding = data.embedding?.values || [];
+
+    if (embedding.length === 0) {
+      throw new Error('Gemini returned empty embedding');
+    }
+
+    // Pad to 1536 dimensions to match vector column size (Gemini returns 768)
+    if (embedding.length < 1536) {
+      return [...embedding, ...Array(1536 - embedding.length).fill(0)];
+    } else if (embedding.length > 1536) {
+      return embedding.slice(0, 1536);
+    }
+
+    return embedding;
   } catch (error) {
     console.error('Embedding generation error:', error);
     return [];
