@@ -241,6 +241,21 @@ export default function Page() {
     return found || null;
   }, [selectedWorkspaceId, workspaces]);
 
+  // CRITICAL: Clear workspace selection when a DIFFERENT user logs in
+  // This prevents user A's workspace from persisting to user B's session
+  useEffect(() => {
+    if (user?.id && typeof window !== 'undefined') {
+      const lastUserId = localStorage.getItem('lastUserId');
+      if (lastUserId && lastUserId !== user.id) {
+        console.log('🔄 [USER CHANGE] Different user detected! Previous:', lastUserId, 'Current:', user.id);
+        console.log('🗑️ [USER CHANGE] Clearing workspace selection from previous user');
+        localStorage.removeItem('selectedWorkspaceId');
+        localStorage.removeItem('lastUserId');
+        setSelectedWorkspaceId(null);
+      }
+    }
+  }, [user?.id]);
+
   // Validate workspace ID from localStorage and clear if invalid
   useEffect(() => {
     if (selectedWorkspaceId && workspaces.length > 0 && !workspacesLoading) {
@@ -254,16 +269,17 @@ export default function Page() {
     }
   }, [selectedWorkspaceId, workspaces, workspacesLoading]);
 
-  // Persist selectedWorkspaceId to localStorage
+  // Persist selectedWorkspaceId to localStorage (with user tracking)
   useEffect(() => {
-    if (selectedWorkspaceId) {
-      console.log('💾 [PERSIST] Saving selectedWorkspaceId to localStorage:', selectedWorkspaceId);
+    if (selectedWorkspaceId && user?.id) {
+      console.log('💾 [PERSIST] Saving selectedWorkspaceId to localStorage:', selectedWorkspaceId, 'for user:', user.id);
       localStorage.setItem('selectedWorkspaceId', selectedWorkspaceId);
-    } else {
+      localStorage.setItem('lastUserId', user.id);
+    } else if (!selectedWorkspaceId) {
       console.log('🗑️  [PERSIST] Removing selectedWorkspaceId from localStorage (null)');
       localStorage.removeItem('selectedWorkspaceId');
     }
-  }, [selectedWorkspaceId]);
+  }, [selectedWorkspaceId, user?.id]);
 
   // Persist activeMenuItem to localStorage
   useEffect(() => {
