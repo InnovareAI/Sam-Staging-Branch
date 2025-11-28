@@ -2970,13 +2970,17 @@ export default function Page() {
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/25 text-sm font-semibold text-white">
-                    {testUser.email ? testUser.email.charAt(0).toUpperCase() : 'U'}
+                    {(testUser.user_metadata?.full_name || testUser.user_metadata?.first_name || testUser.email || 'U').charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1">
                     <p className="truncate text-sm font-medium text-white">
-                      {testUser.email || 'Authenticated User'}
+                      {testUser.user_metadata?.full_name ||
+                       (testUser.user_metadata?.first_name && testUser.user_metadata?.last_name
+                         ? `${testUser.user_metadata.first_name} ${testUser.user_metadata.last_name}`
+                         : testUser.email) || 'Authenticated User'}
                     </p>
-                    <p className="text-xs text-muted-foreground">Active session</p>
+                    <p className="truncate text-xs text-muted-foreground">{testUser.email}</p>
+                    <p className="text-xs text-green-500">Active session</p>
                   </div>
                 </div>
                 <button

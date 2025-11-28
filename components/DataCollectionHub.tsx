@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, ChevronDown, ChevronUp, ChevronRight, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star, Plus, CheckSquare } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, ChevronRight, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star, Plus, CheckSquare, Trash2 } from 'lucide-react';
 import { toastError, toastSuccess } from '@/lib/toast';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -1116,6 +1116,32 @@ export default function DataCollectionHub({
     toastSuccess(`All prospects rejected\n\nℹ️ Prospects will auto-delete after 7 days\n(View in "Dismissed" filter)`)
   }
 
+  const handleDeleteProspect = async (prospectId: string) => {
+    if (!confirm('Are you sure you want to permanently delete this prospect?')) return
+
+    try {
+      // Delete from database
+      const response = await fetch(`/api/prospect-approval/delete?prospect_id=${prospectId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete prospect')
+      }
+
+      // Remove from local state
+      setProspectData(prev => prev.filter(p => p.id !== prospectId))
+
+      // Refresh server data
+      queryClient.invalidateQueries({ queryKey: ['workspace-prospects', workspaceId] })
+
+      toastSuccess('Prospect deleted successfully')
+    } catch (error) {
+      console.error('Error deleting prospect:', error)
+      toastError('Failed to delete prospect')
+    }
+  }
+
   const handleCampaignTagChange = (prospectId: string, tag: string) => {
     setProspectData(prev => prev.map(p => 
       p.id === prospectId ? { ...p, campaignTag: tag } : p
@@ -2206,17 +2232,26 @@ export default function DataCollectionHub({
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => toggleExpanded(prospect.id)}
-                      className="p-1.5 text-gray-400 hover:text-white transition-colors"
-                      title="View Details"
-                    >
-                      {expandedProspect === prospect.id ? (
-                        <ChevronUp className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
-                    </button>
+                    <div className="flex items-center justify-center space-x-1">
+                      <button
+                        onClick={() => toggleExpanded(prospect.id)}
+                        className="p-1.5 text-gray-400 hover:text-white transition-colors"
+                        title="View Details"
+                      >
+                        {expandedProspect === prospect.id ? (
+                          <ChevronUp className="w-4 h-4" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteProspect(prospect.id)}
+                        className="p-1.5 text-gray-400 hover:text-red-400 transition-colors"
+                        title="Delete Prospect"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
                 {/* Expanded Detail Row */}
