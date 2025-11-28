@@ -308,12 +308,13 @@ export default function DataCollectionHub({
     refetchInterval: 30000, // Auto-refresh every 30 seconds (was 5, too aggressive)
     refetchOnWindowFocus: true, // Auto-refresh when tab becomes visible
     keepPreviousData: true, // Smooth page transitions
-    enabled: !!actualWorkspaceId, // Only fetch when workspace ID is available
+    enabled: !!actualWorkspaceId && !workspacesLoading, // Only fetch after workspace is validated (not just from localStorage)
   })
 
   // REAL-TIME SUBSCRIPTIONS: Invalidate cache when sessions change
   useEffect(() => {
-    if (!actualWorkspaceId) return
+    // Wait for workspace to be validated before subscribing
+    if (!actualWorkspaceId || workspacesLoading) return
 
     console.log('📡 [REAL-TIME] Setting up Supabase subscription for prospect sessions')
 
@@ -355,7 +356,7 @@ export default function DataCollectionHub({
       console.log('📡 [REAL-TIME] Cleaning up subscription')
       channel.unsubscribe()
     }
-  }, [actualWorkspaceId, queryClient])
+  }, [actualWorkspaceId, workspacesLoading, queryClient])
 
   const serverProspects = data?.prospects || []
   const pagination = data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 0, hasNext: false, hasPrev: false, showing: 0 }
@@ -720,7 +721,8 @@ export default function DataCollectionHub({
   // Fetch available campaigns for "Add to Existing Campaign" dropdown
   useEffect(() => {
     const fetchCampaigns = async () => {
-      if (!actualWorkspaceId) return
+      // Wait for workspace validation before fetching
+      if (!actualWorkspaceId || workspacesLoading) return
 
       setLoadingCampaigns(true)
       try {
@@ -742,12 +744,13 @@ export default function DataCollectionHub({
     }
 
     fetchCampaigns()
-  }, [actualWorkspaceId])
+  }, [actualWorkspaceId, workspacesLoading])
 
   // Fetch available prospects (approved but not in campaigns)
   useEffect(() => {
     const fetchAvailableProspects = async () => {
-      if (!actualWorkspaceId) return
+      // Wait for workspace validation before fetching
+      if (!actualWorkspaceId || workspacesLoading) return
 
       setLoadingAvailableProspects(true)
       try {
@@ -774,7 +777,7 @@ export default function DataCollectionHub({
 
     // Clean up interval on unmount or dependency change
     return () => clearInterval(intervalId)
-  }, [actualWorkspaceId, activeTab, refreshTrigger]) // Refetch when tab changes or when explicitly triggered
+  }, [actualWorkspaceId, workspacesLoading, activeTab, refreshTrigger]) // Refetch when tab changes or when explicitly triggered
 
   // CSV Upload Handler
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
