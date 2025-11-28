@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
 
     // CRITICAL FIX: Use admin client to bypass RLS when querying users table
     const adminClient = supabaseAdmin()
+    console.log(`🔑 [PROSPECTS] Service key prefix: ${process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 20) || 'NOT SET'}...`)
     const { data: userProfile } = await adminClient
       .from('users')
       .select('current_workspace_id')
