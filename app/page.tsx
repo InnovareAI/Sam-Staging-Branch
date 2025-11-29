@@ -3110,8 +3110,8 @@ export default function Page() {
               onBack={() => setCommentingAgentView('dashboard')}
             />
           ) : (
-            <div className="min-h-screen p-8 bg-gray-900">
-              <div className="max-w-[1400px] mx-auto space-y-6">
+            <div className="min-h-screen bg-gray-900">
+              <div className="w-full space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-end">
                   <button
@@ -3508,8 +3508,8 @@ export default function Page() {
         ) : activeMenuItem === 'audit' ? (
           <AuditTrail />
         ) : activeMenuItem === 'settings' ? (
-          <div className="min-h-screen p-8">
-            <div className="max-w-[1400px] mx-auto">
+          <div className="min-h-screen">
+            <div className="w-full">
             {/* Main Settings Tiles */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
@@ -3553,8 +3553,8 @@ export default function Page() {
             </div>
           </div>
         ) : activeMenuItem === 'workspace' ? (
-          <div className="min-h-screen p-8">
-            <div className="max-w-[1400px] mx-auto">
+          <div className="min-h-screen">
+            <div className="w-full">
             {/* Main Workspace Tiles */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
@@ -3660,8 +3660,8 @@ export default function Page() {
           </div>
         ) : activeMenuItem === 'admin' ? (
           /* WORKSPACE ADMIN PAGE */
-          <div className="flex-1 p-6 overflow-y-auto">
-            <div className="max-w-4xl mx-auto">
+          <div className="flex-1 overflow-y-auto">
+            <div className="w-full">
               <div className="flex items-center justify-between mb-8">
                 <h1 className="text-3xl font-bold text-white flex items-center">
                   <Shield className="mr-3 text-primary" size={36} />
@@ -3809,8 +3809,8 @@ export default function Page() {
             </div>
           </div>
         ) : activeMenuItem === 'profile' ? (
-          <div className="flex-1 p-6 overflow-y-auto">
-            <div className="max-w-4xl mx-auto">
+          <div className="flex-1 overflow-y-auto">
+            <div className="w-full">
               <div className="flex items-center justify-between mb-8">
                 <h1 className="text-3xl font-bold text-white flex items-center">
                   <User className="mr-3" size={36} />

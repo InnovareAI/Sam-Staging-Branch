@@ -126,7 +126,7 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
   return (
     <>
       <div>
-        <div className="max-w-[1400px] mx-auto">
+        <div className="w-full">
         {/* Agent Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {agents.map((agent) => (
