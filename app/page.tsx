@@ -3494,7 +3494,7 @@ export default function Page() {
                       </div>
                       <div>
                         <div className="text-pink-400 font-medium mb-1">2. AI Generates Comments</div>
-                        <div className="text-gray-300">Claude 3.5 Sonnet writes human-like comments using your brand voice. Comments sound natural, not robotic.</div>
+                        <div className="text-gray-300">Sam writes human-like comments using your brand voice. Comments sound natural, not robotic.</div>
                       </div>
                       <div>
                         <div className="text-pink-400 font-medium mb-1">3. Review & Post</div>
