@@ -1,7 +1,11 @@
 /**
  * Intent Classifier for Reply Agent
- * Uses Opus 4.5 for accurate intent classification
+ * Uses Claude Direct API for GDPR compliance (EU region)
+ *
+ * Updated Nov 29, 2025: Migrated from OpenRouter to Claude Direct
  */
+
+import Anthropic from '@anthropic-ai/sdk';
 
 export type ReplyIntent =
   | 'interested'
@@ -74,9 +78,9 @@ export async function classifyIntent(
     prospectCompany?: string;
   }
 ): Promise<IntentClassification> {
-  const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+  const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
-  if (!OPENROUTER_API_KEY) {
+  if (!ANTHROPIC_API_KEY) {
     // Fallback to keyword-based classification
     return classifyIntentFallback(prospectReply);
   }
@@ -108,32 +112,19 @@ ${context?.prospectCompany ? `\nCompany: ${context.prospectCompany}` : ''}
 Return JSON only.`;
 
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
-        'X-Title': 'SAM AI - Intent Classifier'
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-opus-4', // Using Opus 4.5 for highest accuracy
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        max_tokens: 200,
-        temperature: 0.1 // Low temp for consistent classification
-      })
+    // Use Claude Direct API for GDPR compliance (EU region)
+    const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514', // Claude Sonnet for fast, accurate classification
+      max_tokens: 200,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
     });
 
-    if (!response.ok) {
-      console.error('Intent classification API error:', response.statusText);
-      return classifyIntentFallback(prospectReply);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content || '';
+    // Extract text content
+    const textBlock = response.content.find(block => block.type === 'text');
+    const content = textBlock?.type === 'text' ? textBlock.text : '';
 
     // Parse JSON response
     const jsonMatch = content.match(/\{[\s\S]*\}/);

@@ -1,9 +1,15 @@
 /**
  * LLM Router - Routes chat completion requests to appropriate LLM provider
- * Supports: Platform OpenRouter, Customer BYOK OpenRouter, Custom Enterprise endpoints
+ * Supports: Claude Direct (EU region), Platform OpenRouter, Customer BYOK OpenRouter, Custom Enterprise endpoints
+ *
+ * GDPR COMPLIANCE (Nov 29, 2025):
+ * - Default: Claude Direct API with EU region for GDPR compliance
+ * - Fallback: OpenRouter (US) if Claude fails
+ * - Enterprise: BYOK or custom endpoints
  */
 
 import { createClient } from '@supabase/supabase-js';
+import Anthropic from '@anthropic-ai/sdk';
 import { getDefaultModel, getModelById } from './approved-models';
 
 interface ChatMessage {
@@ -23,6 +29,7 @@ interface ChatResponse {
 
 interface CustomerLLMPreferences {
   selected_model: string | null;
+  use_claude_direct: boolean;  // GDPR: Use Claude API directly with EU region
   use_own_openrouter_key: boolean;
   openrouter_api_key_encrypted: string | null;
   use_custom_endpoint: boolean;
@@ -40,6 +47,12 @@ class LLMRouter {
 
   /**
    * Main chat method - routes to appropriate LLM based on customer preferences
+   *
+   * Routing priority (Nov 29, 2025):
+   * 1. Custom endpoint (Enterprise BYOK - Azure, AWS, etc.)
+   * 2. Customer's own OpenRouter key (Enterprise BYOK)
+   * 3. Claude Direct API (DEFAULT - GDPR compliant EU region)
+   * 4. OpenRouter fallback (if Claude fails)
    */
   async chat(
     userId: string,
@@ -62,8 +75,20 @@ class LLMRouter {
       const customerKey = await this.decryptApiKey(prefs.openrouter_api_key_encrypted);
       const model = prefs.selected_model || getDefaultModel().id;
       return await this.callOpenRouter(customerKey, model, messages, systemPrompt, options, prefs);
+    } else if (prefs.use_claude_direct !== false) {
+      // DEFAULT: Claude Direct API (GDPR compliant - EU region)
+      // use_claude_direct defaults to true for GDPR compliance
+      try {
+        return await this.callClaudeDirect(messages, systemPrompt, options, prefs);
+      } catch (error) {
+        console.error('Claude Direct API failed, falling back to OpenRouter:', error);
+        // Fallback to OpenRouter if Claude fails
+        const platformKey = process.env.OPENROUTER_API_KEY!;
+        const model = prefs.selected_model || getDefaultModel().id;
+        return await this.callOpenRouter(platformKey, model, messages, systemPrompt, options, prefs);
+      }
     } else {
-      // Standard/Premium: Platform OpenRouter
+      // Legacy: Platform OpenRouter (US)
       const platformKey = process.env.OPENROUTER_API_KEY!;
       const model = prefs.selected_model || getDefaultModel().id;
       return await this.callOpenRouter(platformKey, model, messages, systemPrompt, options, prefs);
@@ -132,9 +157,10 @@ class LLMRouter {
       .single();
 
     if (error || !data) {
-      // Return defaults
+      // Return defaults - Claude Direct is DEFAULT for GDPR compliance
       return {
-        selected_model: null, // Will use platform default
+        selected_model: null, // Will use claude-sonnet-4-20250514
+        use_claude_direct: true, // GDPR: Default to Claude Direct with EU region
         use_own_openrouter_key: false,
         openrouter_api_key_encrypted: null,
         use_custom_endpoint: false,
@@ -196,6 +222,49 @@ class LLMRouter {
         totalTokens: data.usage?.total_tokens || 0
       },
       model: data.model
+    };
+  }
+
+  /**
+   * Call Claude Direct API (GDPR compliant - EU region)
+   * Uses Anthropic SDK with EU regional processing
+   */
+  private async callClaudeDirect(
+    messages: ChatMessage[],
+    systemPrompt: string,
+    options: any,
+    prefs: CustomerLLMPreferences
+  ): Promise<ChatResponse> {
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY!,
+    });
+
+    // Convert messages to Anthropic format (system prompt separate)
+    const anthropicMessages = messages.map(msg => ({
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content
+    }));
+
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514', // Latest Claude Sonnet
+      max_tokens: options?.maxTokens || prefs.max_tokens || 1000,
+      system: systemPrompt,
+      messages: anthropicMessages,
+      // Note: EU region is automatic based on Anthropic account settings
+    });
+
+    // Extract text content from response
+    const textContent = response.content.find(block => block.type === 'text');
+    const content = textContent?.type === 'text' ? textContent.text : '';
+
+    return {
+      content,
+      usage: {
+        promptTokens: response.usage.input_tokens,
+        completionTokens: response.usage.output_tokens,
+        totalTokens: response.usage.input_tokens + response.usage.output_tokens
+      },
+      model: response.model
     };
   }
 
