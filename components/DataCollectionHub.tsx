@@ -167,11 +167,14 @@ async function fetchApprovalSessions(
       total_prospects: s.total_prospects
     })));
 
-    // CRITICAL FIX: Fetch prospects from ALL sessions, not just one
-    // This allows multiple searches to accumulate instead of replacing each other
+    // PERFORMANCE FIX: Limit to 10 most recent sessions to prevent crash
+    // Previously fetching all 78 sessions caused 78 API calls and browser crash
+    const recentSessions = data.sessions.slice(0, 10)
+    console.log(`📊 [DATA APPROVAL] Processing ${recentSessions.length} of ${data.sessions.length} sessions (limited for performance)`)
+
     const allProspects: ProspectData[] = []
 
-    for (const session of data.sessions) {
+    for (const session of recentSessions) {
       const prospectsResponse = await fetch(
         `/api/prospect-approval/prospects?session_id=${session.id}&page=1&limit=1000&status=${statusFilter}`
       )
