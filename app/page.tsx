@@ -4004,6 +4004,108 @@ export default function Page() {
               </div>
             </div>
           </div>
+        ) : activeMenuItem === 'superadmin' ? (
+          /* SUPER ADMIN PAGE */
+          <div className="flex-1 p-6 overflow-y-auto">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center justify-between mb-8">
+                <h1 className="text-3xl font-bold text-white flex items-center">
+                  <Shield className="mr-3 text-purple-500" size={36} />
+                  Super Admin
+                </h1>
+                <button
+                  onClick={() => setActiveMenuItem('chat')}
+                  className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
+                >
+                  ← Back to Chat
+                </button>
+              </div>
+
+              {/* Super Admin Controls */}
+              <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 className="text-2xl font-semibold text-white mb-6">System Overview</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <div className="text-3xl font-bold text-white">{workspaces.length}</div>
+                    <div className="text-gray-400 text-sm">Total Workspaces</div>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <div className="text-3xl font-bold text-green-400">Active</div>
+                    <div className="text-gray-400 text-sm">System Status</div>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <div className="text-3xl font-bold text-purple-400">v2.0</div>
+                    <div className="text-gray-400 text-sm">Platform Version</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* All Workspaces */}
+              <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 className="text-2xl font-semibold text-white mb-6">All Workspaces</h2>
+                {workspacesLoading ? (
+                  <div className="text-center py-8">
+                    <div className="text-gray-400">Loading workspaces...</div>
+                  </div>
+                ) : workspaces.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-700 rounded-lg">
+                    <Building2 className="mx-auto mb-4 text-gray-600" size={48} />
+                    <p className="text-gray-400">No workspaces found</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {workspaces.map((workspace) => (
+                      <div key={workspace.id} className="bg-gray-700 rounded-lg p-4 flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <h3 className="text-white font-medium">{workspace.name}</h3>
+                            {workspace.slug && (
+                              <span className={`text-xs px-2 py-1 rounded ${
+                                workspace.slug === 'innovareai'
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-green-600 text-white'
+                              }`}>
+                                {workspace.slug}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-gray-400 text-sm">
+                            {workspace.workspace_members?.length || 0} members · Created {new Date(workspace.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="text-gray-400 text-sm">
+                          ID: {workspace.id.slice(0, 8)}...
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Admin Actions */}
+              <div className="bg-gray-800 rounded-lg p-6">
+                <h2 className="text-2xl font-semibold text-white mb-6">Admin Actions</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button
+                    onClick={() => {
+                      setShowCreateWorkspace(true);
+                    }}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <Plus size={20} />
+                    <span>Create Workspace</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveMenuItem('audit')}
+                    className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <FileText size={20} />
+                    <span>View Audit Trail</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
                 ) : showStarterScreen ? (
           /* STARTER SCREEN */
           <div className="flex-1 flex flex-col items-center justify-end pb-32 p-6">
