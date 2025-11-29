@@ -3660,8 +3660,8 @@ export default function Page() {
           </div>
         ) : activeMenuItem === 'admin' ? (
           /* WORKSPACE ADMIN PAGE */
-          <div className="flex-1 overflow-y-auto">
-            <div className="w-full">
+          <div className="flex-1 p-6 overflow-y-auto">
+            <div className="max-w-4xl mx-auto">
               <div className="flex items-center justify-between mb-8">
                 <h1 className="text-3xl font-bold text-white flex items-center">
                   <Shield className="mr-3 text-primary" size={36} />
@@ -3809,8 +3809,8 @@ export default function Page() {
             </div>
           </div>
         ) : activeMenuItem === 'profile' ? (
-          <div className="flex-1 overflow-y-auto">
-            <div className="w-full">
+          <div className="flex-1 p-6 overflow-y-auto">
+            <div className="max-w-4xl mx-auto">
               <div className="flex items-center justify-between mb-8">
                 <h1 className="text-3xl font-bold text-white flex items-center">
                   <User className="mr-3" size={36} />
