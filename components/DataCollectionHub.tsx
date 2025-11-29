@@ -1138,8 +1138,10 @@ export default function DataCollectionHub({
         method: 'DELETE',
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to delete prospect')
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete prospect')
       }
 
       // Remove from local state
@@ -1151,7 +1153,7 @@ export default function DataCollectionHub({
       toastSuccess('Prospect deleted successfully')
     } catch (error) {
       console.error('Error deleting prospect:', error)
-      toastError('Failed to delete prospect')
+      toastError(error instanceof Error ? error.message : 'Failed to delete prospect')
     }
   }
 
@@ -1527,20 +1529,35 @@ export default function DataCollectionHub({
     }
 
     try {
-      // Delete from database
-      const deletePromises = Array.from(selectedProspectIds).map(id =>
-        fetch(`/api/prospect-approval/delete?prospect_id=${id}`, { method: 'DELETE' })
+      // Delete from database and check each response
+      const deleteResults = await Promise.all(
+        Array.from(selectedProspectIds).map(async (id) => {
+          const response = await fetch(`/api/prospect-approval/delete?prospect_id=${id}`, { method: 'DELETE' })
+          const data = await response.json()
+          return { id, success: response.ok && data.success, error: data.error }
+        })
       )
 
-      await Promise.all(deletePromises)
+      const successIds = deleteResults.filter(r => r.success).map(r => r.id)
+      const failedResults = deleteResults.filter(r => !r.success)
 
-      // Remove from UI
-      setProspectData(prev => prev.filter(p => !selectedProspectIds.has(p.id)))
-      toastSuccess(`Deleted ${selectedProspectIds.size} prospects`)
+      // Only remove successfully deleted from UI
+      if (successIds.length > 0) {
+        setProspectData(prev => prev.filter(p => !successIds.includes(p.id)))
+      }
+
+      if (failedResults.length === 0) {
+        toastSuccess(`Deleted ${successIds.length} prospects`)
+      } else if (successIds.length > 0) {
+        toastError(`Deleted ${successIds.length}, but ${failedResults.length} failed: ${failedResults[0].error || 'Unknown error'}`)
+      } else {
+        toastError(`Failed to delete: ${failedResults[0].error || 'Unknown error'}`)
+      }
+
       deselectAll()
     } catch (error) {
       console.error('Error deleting prospects:', error)
-      toastError('Failed to delete some prospects')
+      toastError('Failed to delete prospects')
     }
   }
 
