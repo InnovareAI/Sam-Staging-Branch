@@ -19,7 +19,11 @@ The `prospect_approval_data` table has TWO ID columns:
 | `id` | UUID | `4256f10a-319f-44cd-a275-4e1f4187cd03` |
 | `prospect_id` | TEXT | `csv_1763400720708_yliptbkzi` |
 
-The UI sends `prospect_id` (client-generated IDs), but the delete API was querying by `id` (UUID) - hence nothing was found.
+**Initial bug:** UI sends `id` (UUID), but delete API searched by `id` column - worked.
+
+**After first "fix":** Changed API to search by `prospect_id` column, but UI still sends UUID - broke it again!
+
+**Real issue:** The frontend sends `prospect.id` (UUID) but the previous fix searched only by `prospect_id` column (expects text like `csv_xxx`).
 
 ## Fixes Applied
 
@@ -32,22 +36,32 @@ Previously, `bulkDeleteSelected` fired off DELETE requests without checking resp
 - Only remove successfully deleted items from UI
 - Show proper error messages for failures
 
-### 2. Backend - Correct Column Query (commit e481c45c)
+### 2. Backend - Search Both Columns (commit 0581e25d - FINAL FIX)
 
 **File**: `/app/api/prospect-approval/delete/route.ts`
 
-Changed from:
-```typescript
-// WRONG - queries UUID column
-.eq('id', prospectId)
-```
+The fix now tries BOTH columns:
 
-To:
 ```typescript
-// CORRECT - queries client-generated ID column
-.eq('prospect_id', prospectId)
-// Then delete by actual UUID
-.eq('id', approvalProspect.id)
+// Try 1: Search by UUID `id` column (frontend sends this)
+const { data: byId } = await adminClient
+  .from('prospect_approval_data')
+  .select('id, prospect_id, workspace_id')
+  .eq('id', prospectId)  // Frontend sends UUID
+  .maybeSingle()
+
+if (byId) {
+  approvalProspect = byId
+} else {
+  // Try 2: Search by text `prospect_id` column (legacy csv_xxx format)
+  const { data: byProspectId } = await adminClient
+    .from('prospect_approval_data')
+    .select('id, prospect_id, workspace_id')
+    .eq('prospect_id', prospectId)
+    .maybeSingle()
+
+  approvalProspect = byProspectId
+}
 ```
 
 ## Files Changed
@@ -80,7 +94,8 @@ title             TEXT
 ## Related Commits
 
 ```
-e481c45c Fix delete API to search by prospect_id instead of id
+0581e25d Fix delete API to search by UUID id, not just prospect_id (FINAL FIX)
+e481c45c Fix delete API to search by prospect_id instead of id (broke it!)
 ef4f2ee9 Move delete button to action bar for visibility
 c58f51ce Add bulk delete button for selected prospects
 ```
