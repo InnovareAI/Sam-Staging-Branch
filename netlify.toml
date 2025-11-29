@@ -71,3 +71,27 @@
 # Changed from 2 hours to 15 minutes (Nov 27) - faster reply detection
 [functions."poll-message-replies"]
   schedule = "*/15 * * * *"
+
+# ============================================
+# AI AGENT SCHEDULED FUNCTIONS (Nov 29, 2025)
+# ============================================
+
+# QA Monitor: Daily pipeline health check at 6 AM UTC
+# Checks queue consistency, orphaned records, cron gaps, stuck prospects
+[functions."qa-monitor"]
+  schedule = "0 6 * * *"
+
+# Daily Health Check: Comprehensive system health at 7 AM UTC
+# Checks database, campaigns, queue, Unipile accounts, error rates
+[functions."daily-health-check"]
+  schedule = "0 7 * * *"
+
+# Data Quality: Weekly cleanup on Monday at 8 AM UTC
+# Finds duplicates, invalid emails, missing fields, stale data
+[functions."data-quality-check"]
+  schedule = "0 8 * * 1"
+
+# Rate Limit Monitor: Track LinkedIn usage every 30 minutes
+# Monitors daily/weekly CR limits per account
+[functions."rate-limit-monitor"]
+  schedule = "*/30 * * * *"
