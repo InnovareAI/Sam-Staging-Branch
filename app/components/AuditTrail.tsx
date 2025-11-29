@@ -9,7 +9,7 @@ const AuditTrail: React.FC = () => {
     <div>
       <div className="w-full">
         {/* Coming Soon Content */}
-        <div className="flex items-start justify-start min-h-[500px]">
+        <div className="flex items-center justify-center min-h-[500px]">
           <Card className="max-w-2xl w-full">
             <CardHeader>
               <div className="flex justify-center mb-4">
