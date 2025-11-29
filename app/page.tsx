@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useSamThreadedChat } from '@/lib/hooks/useSamThreadedChat';
 import { useConfirm } from '@/hooks/useConfirm';
 import { DemoModeToggle } from '@/components/DemoModeToggle';
-// import { WorkspaceSelector } from '@/components/WorkspaceSelector'; // REMOVED - not needed
+// import { WorkspaceSelector } from '@/components/WorkspaceSelector'; // Users should NOT manually select workspace
 import ConnectionStatusBar from '@/components/ConnectionStatusBar';
 import ConversationHistory from '@/components/ConversationHistory';
 import InviteUserPopup from '@/components/InviteUserPopup';
@@ -236,28 +236,18 @@ export default function Page() {
     return found || null;
   }, [selectedWorkspaceId, workspaces]);
 
-  // CRITICAL: Only load workspace from localStorage if it belongs to the SAME user
-  // This prevents user A's workspace from being used by user B
+  // CRITICAL FIX (Nov 28): DO NOT restore workspace from localStorage
+  // Database's current_workspace_id is the source of truth - set by loadUserWorkspaces
   useEffect(() => {
     if (user?.id && typeof window !== 'undefined') {
       const lastUserId = localStorage.getItem('lastUserId');
-      const storedWorkspaceId = localStorage.getItem('selectedWorkspaceId');
+      console.log('🔐 [USER VERIFY] User logged in:', user.id, 'lastUserId:', lastUserId);
 
-      console.log('🔐 [USER VERIFY] Checking user:', user.id, 'lastUserId:', lastUserId, 'storedWS:', storedWorkspaceId);
-
-      if (lastUserId === user.id && storedWorkspaceId) {
-        // SAME user - restore their workspace selection
-        console.log('✅ [USER VERIFY] Same user, restoring workspace:', storedWorkspaceId);
-        setSelectedWorkspaceId(storedWorkspaceId);
-      } else {
-        // Different user OR no previous user - clear and let auto-select handle it
-        console.log('🔄 [USER VERIFY] Different user or first time - clearing localStorage');
-        localStorage.removeItem('selectedWorkspaceId');
-        localStorage.setItem('lastUserId', user.id);
-        // selectedWorkspaceId stays null, will be auto-selected when workspaces load
-      }
+      // Track current user for debugging, but don't restore workspace
+      localStorage.setItem('lastUserId', user.id);
 
       // Mark user as verified so DataCollectionHub can start fetching
+      // Workspace will be set by loadUserWorkspaces from database
       setUserVerified(true);
     }
   }, [user?.id]);
@@ -2248,32 +2238,25 @@ export default function Page() {
       console.log('📊 [WORKSPACE LOAD] Workspaces:', workspacesWithInvitations.map(w => ({ id: w.id, name: w.name })));
       setWorkspaces(workspacesWithInvitations);
 
-      // Validate current selectedWorkspaceId - if it doesn't exist in loaded workspaces, clear it
-      let workspaceToSelect = selectedWorkspaceId;
-      if (selectedWorkspaceId) {
-        const workspaceExists = workspacesWithInvitations.some(ws => ws.id === selectedWorkspaceId);
-        if (!workspaceExists) {
-          console.log('⚠️  [WORKSPACE LOAD] Selected workspace ID not found in loaded workspaces, clearing:', selectedWorkspaceId);
-          localStorage.removeItem('selectedWorkspaceId');
-          workspaceToSelect = null;
-        } else {
-          console.log('✅ [WORKSPACE LOAD] Selected workspace is valid:', selectedWorkspaceId);
+      // CRITICAL FIX (Nov 28): ALWAYS use API's current workspace (from database)
+      // This is the source of truth - ignore localStorage completely
+      if (current) {
+        console.log('✅ [WORKSPACE LOAD] Using API current workspace from database:', current.id, current.name);
+        setSelectedWorkspaceId(current.id);
+        // Sync localStorage with database value
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('selectedWorkspaceId', current.id);
         }
-      }
-
-      // Use current workspace from API if available, otherwise auto-select first
-      if (!workspaceToSelect) {
-        if (current) {
-          console.log('✅ [WORKSPACE LOAD] Using API current workspace:', current.id, current.name);
-          setSelectedWorkspaceId(current.id);
-        } else if (workspacesWithInvitations.length > 0) {
-          const firstWorkspaceId = workspacesWithInvitations[0].id;
-          console.log('✅ [WORKSPACE LOAD] Auto-selecting first workspace:', firstWorkspaceId, workspacesWithInvitations[0].name);
-          setSelectedWorkspaceId(firstWorkspaceId);
-          console.log('✅ [WORKSPACE LOAD] selectedWorkspaceId state updated to:', firstWorkspaceId);
-        } else {
-          console.warn('⚠️  [WORKSPACE LOAD] No workspaces found! User will have no workspace selected.');
+      } else if (workspacesWithInvitations.length > 0) {
+        // Fallback: No current_workspace_id in database, use first workspace
+        const firstWorkspaceId = workspacesWithInvitations[0].id;
+        console.log('✅ [WORKSPACE LOAD] No current in DB, auto-selecting first workspace:', firstWorkspaceId, workspacesWithInvitations[0].name);
+        setSelectedWorkspaceId(firstWorkspaceId);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('selectedWorkspaceId', firstWorkspaceId);
         }
+      } else {
+        console.warn('⚠️  [WORKSPACE LOAD] No workspaces found! User will have no workspace selected.');
       }
 
       // Check if user is workspace admin (owner or admin role in any workspace)
@@ -2978,7 +2961,7 @@ export default function Page() {
 
         {/* Sidebar Bottom */}
         <div className="space-y-0 border-t border-border/60">
-          {/* <WorkspaceSelector userEmail={testUser?.email} /> */}
+          {/* Workspace is auto-selected based on user's current_workspace_id */}
 
           <div className="space-y-4 px-5 py-5">
           <button
