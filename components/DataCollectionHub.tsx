@@ -1910,6 +1910,19 @@ export default function DataCollectionHub({
                   <span>Auto-Approve All ({prospectData.filter(p => p.approvalStatus === 'pending').length})</span>
                 </Button>
 
+                {/* Bulk Delete Button - always visible when prospects are selected */}
+                {selectedProspectIds.size > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={bulkDeleteSelected}
+                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Selected ({selectedProspectIds.size})</span>
+                  </Button>
+                )}
+
             {/* SIMPLIFIED: Always show both "Create New Campaign" and "Add to Existing" options */}
             {prospectData.filter(p => p.approvalStatus === 'approved').length > 0 && (
               <div className="flex items-center gap-3">
@@ -1973,18 +1986,6 @@ export default function DataCollectionHub({
               </div>
             )}
 
-            {/* Bulk Delete Button - shows when prospects are selected */}
-            {selectedProspectIds.size > 0 && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={bulkDeleteSelected}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete Selected ({selectedProspectIds.size})
-              </Button>
-            )}
               </div>
             </div>
           </div>
