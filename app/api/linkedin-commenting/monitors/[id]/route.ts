@@ -13,7 +13,7 @@ export async function GET(
     const supabase = await createServerSupabaseClient();
 
     const { data: monitor, error } = await supabase
-      .from('linkedin_commenting_monitors')
+      .from('linkedin_post_monitors')
       .select('*')
       .eq('id', monitorId)
       .single();
@@ -59,7 +59,7 @@ export async function PATCH(
     if (body.auto_approve_end_time !== undefined) updateData.auto_approve_end_time = body.auto_approve_end_time;
 
     const { data: monitor, error } = await supabase
-      .from('linkedin_commenting_monitors')
+      .from('linkedin_post_monitors')
       .update(updateData)
       .eq('id', monitorId)
       .select()
@@ -106,7 +106,7 @@ export async function DELETE(
 
     // Then delete the monitor
     const { error } = await supabase
-      .from('linkedin_commenting_monitors')
+      .from('linkedin_post_monitors')
       .delete()
       .eq('id', monitorId);
 

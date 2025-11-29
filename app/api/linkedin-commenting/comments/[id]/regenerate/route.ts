@@ -18,7 +18,7 @@ export async function POST(
       .from('linkedin_posts_discovered')
       .select(`
         *,
-        linkedin_commenting_monitors!inner(
+        linkedin_post_monitors!inner(
           workspace_id,
           name
         )
@@ -34,7 +34,7 @@ export async function POST(
     const { data: guidelines } = await supabase
       .from('linkedin_brand_guidelines')
       .select('*')
-      .eq('workspace_id', (post.linkedin_commenting_monitors as any).workspace_id)
+      .eq('workspace_id', (post.linkedin_post_monitors as any).workspace_id)
       .eq('is_active', true)
       .maybeSingle();
 

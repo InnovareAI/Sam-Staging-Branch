@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
         status,
         created_at,
         posted_at,
-        linkedin_commenting_monitors!inner(name)
+        linkedin_post_monitors!inner(name)
       `)
       .eq('workspace_id', workspaceId)
       .not('generated_comment', 'is', null);
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
       status: c.status,
       created_at: c.created_at,
       posted_at: c.posted_at,
-      campaign_name: (c.linkedin_commenting_monitors as any)?.name || 'Unknown Campaign'
+      campaign_name: (c.linkedin_post_monitors as any)?.name || 'Unknown Campaign'
     }));
 
     return NextResponse.json({ comments: transformedComments || [] });

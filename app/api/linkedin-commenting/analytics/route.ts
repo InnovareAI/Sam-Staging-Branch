@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
 
     // Get top campaigns
     const { data: campaigns } = await supabase
-      .from('linkedin_commenting_monitors')
+      .from('linkedin_post_monitors')
       .select(`
         id,
         name,

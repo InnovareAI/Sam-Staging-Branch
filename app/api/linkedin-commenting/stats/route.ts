@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createServerSupabaseClient();
 
-    // Get total and active campaigns (monitors)
+    // Get total and active profiles (monitors)
     const { data: monitors, error: monitorsError } = await supabase
-      .from('linkedin_commenting_monitors')
+      .from('linkedin_post_monitors')
       .select('id, status, hashtags')
       .eq('workspace_id', workspaceId);
 
