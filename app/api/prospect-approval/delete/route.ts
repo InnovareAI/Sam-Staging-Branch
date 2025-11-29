@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/app/lib/supabase'
 
 /**
  * DELETE /api/prospect-approval/delete?prospect_id=xxx
- * Permanently deletes a prospect from workspace_prospects
+ * Permanently deletes a prospect from prospect_approval_data OR workspace_prospects
  */
 export async function DELETE(request: NextRequest) {
   try {
@@ -77,51 +77,89 @@ export async function DELETE(request: NextRequest) {
       }, { status: 404 })
     }
 
-    // Verify prospect belongs to user's workspace before deleting
-    const { data: prospect, error: prospectError } = await adminClient
-      .from('workspace_prospects')
-      .select('id, workspace_id')
-      .eq('id', prospectId)
-      .single()
-
-    if (prospectError || !prospect) {
-      return NextResponse.json({
-        success: false,
-        error: 'Prospect not found'
-      }, { status: 404 })
-    }
-
-    // Security check: prospect must belong to user's workspace
     const userEmail = user.email?.toLowerCase() || ''
     const isSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(userEmail)
 
-    if (!isSuperAdmin && prospect.workspace_id !== workspaceId) {
+    // Try prospect_approval_data first (DataCollectionHub uses this table)
+    // CRITICAL FIX (Nov 29): Search by `prospect_id` column (client-generated IDs like csv_xxx)
+    // NOT by `id` column (which contains UUIDs)
+    const { data: approvalProspect } = await adminClient
+      .from('prospect_approval_data')
+      .select('id, prospect_id, workspace_id')
+      .eq('prospect_id', prospectId)
+      .maybeSingle()
+
+    if (approvalProspect) {
+      // Security check
+      if (!isSuperAdmin && approvalProspect.workspace_id !== workspaceId) {
+        return NextResponse.json({
+          success: false,
+          error: 'Access denied - prospect belongs to different workspace'
+        }, { status: 403 })
+      }
+
+      // Delete by the actual UUID `id`, not the text `prospect_id`
+      const { error: deleteError } = await adminClient
+        .from('prospect_approval_data')
+        .delete()
+        .eq('id', approvalProspect.id)
+
+      if (deleteError) {
+        console.error('Delete error (prospect_approval_data):', deleteError)
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to delete prospect'
+        }, { status: 500 })
+      }
+
+      console.log(`✅ Prospect ${approvalProspect.prospect_id} (UUID: ${approvalProspect.id}) deleted from prospect_approval_data by ${user.email}`)
       return NextResponse.json({
-        success: false,
-        error: 'Access denied - prospect belongs to different workspace'
-      }, { status: 403 })
+        success: true,
+        message: 'Prospect deleted successfully'
+      })
     }
 
-    // Delete the prospect
-    const { error: deleteError } = await adminClient
+    // Fallback: try workspace_prospects
+    const { data: workspaceProspect } = await adminClient
       .from('workspace_prospects')
-      .delete()
+      .select('id, workspace_id')
       .eq('id', prospectId)
+      .maybeSingle()
 
-    if (deleteError) {
-      console.error('Delete error:', deleteError)
+    if (workspaceProspect) {
+      // Security check
+      if (!isSuperAdmin && workspaceProspect.workspace_id !== workspaceId) {
+        return NextResponse.json({
+          success: false,
+          error: 'Access denied - prospect belongs to different workspace'
+        }, { status: 403 })
+      }
+
+      const { error: deleteError } = await adminClient
+        .from('workspace_prospects')
+        .delete()
+        .eq('id', prospectId)
+
+      if (deleteError) {
+        console.error('Delete error (workspace_prospects):', deleteError)
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to delete prospect'
+        }, { status: 500 })
+      }
+
+      console.log(`✅ Prospect ${prospectId} deleted from workspace_prospects by ${user.email}`)
       return NextResponse.json({
-        success: false,
-        error: 'Failed to delete prospect'
-      }, { status: 500 })
+        success: true,
+        message: 'Prospect deleted successfully'
+      })
     }
 
-    console.log(`✅ Prospect ${prospectId} deleted by ${user.email}`)
-
+    // Not found in either table
     return NextResponse.json({
-      success: true,
-      message: 'Prospect deleted successfully'
-    })
+      success: false,
+      error: 'Prospect not found'
+    }, { status: 404 })
 
   } catch (error) {
     console.error('Prospect delete error:', error)
