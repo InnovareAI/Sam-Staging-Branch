@@ -6,10 +6,13 @@
  * - Extracts relevant information based on document context
  * - Routes data to appropriate Knowledge Base sections
  * - Stores as Q&A pairs in dual storage system
+ *
+ * Updated Nov 29, 2025: Migrated to Claude Direct API for GDPR compliance
  */
 
 import { storeQAInKnowledgeBase } from './sam-kb-integration';
 import type { QuestionAnswer } from './sam-qa-storage';
+import { claudeClient } from '@/lib/llm/claude-client';
 
 // Document type classifications
 export type DocumentType =
@@ -123,41 +126,25 @@ IMPORTANT:
 - Confidence should reflect how certain you are about the classification
 - Extract all relevant structured data based on document type`;
 
-    // Call LLM for analysis
-    // For EU users: Use Mistral Medium 3.1 (EU-hosted, cost-efficient) for GDPR compliance
-    // For global users: Use Gemini 2.5 Flash for cost efficiency
-    // Model selection can be passed as parameter (defaults to Gemini)
-    const model = (process.env.FORCE_EU_COMPLIANCE === 'true' || extractedText.includes('[EU_USER]')) 
-      ? 'mistralai/mistral-medium-3.1' 
-      : 'google/gemini-2.5-flash-preview-09-2025';
-    
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
-        'X-Title': 'SAM Document Intelligence'
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: 'user',
-            content: analysisPrompt
-          }
-        ],
-        temperature: 0.3,
-        response_format: { type: 'json_object' }
-      })
+    // Use Claude Direct API for GDPR compliance
+    const response = await claudeClient.chat({
+      model: 'claude-haiku-4-20250514', // Fast and cost-efficient
+      messages: [
+        {
+          role: 'user',
+          content: analysisPrompt + '\n\nIMPORTANT: Return ONLY valid JSON, no markdown formatting or code blocks.'
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 2000
     });
 
-    if (!response.ok) {
-      throw new Error(`AI analysis failed: ${response.statusText}`);
+    // Parse JSON from response
+    const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('AI did not return valid JSON');
     }
-
-    const aiResponse = await response.json();
-    const analysisResult = JSON.parse(aiResponse.choices[0].message.content);
+    const analysisResult = JSON.parse(jsonMatch[0]);
 
     // Convert analysis to Q&A pairs based on document type
     const qaPairs = generateQAPairsFromAnalysis(analysisResult);

@@ -1,7 +1,11 @@
 /**
  * LinkedIn Commenting Agent Service
  * Generates AI-powered comments for LinkedIn posts
+ *
+ * Updated Nov 29, 2025: Migrated to Claude Direct API for GDPR compliance
  */
+
+import { claudeClient } from '@/lib/llm/claude-client';
 
 export interface LinkedInPost {
   id: string;
@@ -168,32 +172,17 @@ export async function generateLinkedInComment(
   const systemPrompt = buildCommentSystemPrompt(context);
   const userPrompt = buildCommentUserPrompt(context.post);
 
-  // Generate comment via Claude
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
-      'X-Title': 'SAM AI - LinkedIn Comment Generation'
-    },
-    body: JSON.stringify({
-      model: 'anthropic/claude-3.5-haiku-20241022',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      max_tokens: 300,
-      temperature: 0.7
-    })
+  // Generate comment via Claude Direct API (GDPR compliant)
+  const response = await claudeClient.chat({
+    system: systemPrompt,
+    messages: [
+      { role: 'user', content: userPrompt }
+    ],
+    max_tokens: 300,
+    temperature: 0.7
   });
 
-  if (!response.ok) {
-    throw new Error(`OpenRouter API error: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  const aiResponse = data.choices[0].message.content;
+  const aiResponse = response.content;
 
   // Parse AI response (expecting JSON)
   let parsedResponse: any;

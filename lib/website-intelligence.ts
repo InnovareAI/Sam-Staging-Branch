@@ -7,10 +7,13 @@
  * - Identifies pain points solved and key competitors
  * - Maps to appropriate industry blueprint
  * - Stores in workspace for SAM context
+ *
+ * Updated Nov 29, 2025: Migrated to Claude Direct API for GDPR compliance
  */
 
 import { INDUSTRY_BLUEPRINTS, findBlueprintByIndustry } from './templates/industry-blueprints'
 import { createClient } from '@supabase/supabase-js'
+import { claudeClient } from '@/lib/llm/claude-client'
 // import { addKnowledgeItem } from './supabase-knowledge' // TODO: Function not implemented yet
 
 // Website analysis result
@@ -140,36 +143,20 @@ Please analyze and return a JSON object with:
 
 Return ONLY valid JSON, no markdown formatting.`
 
-    // Call OpenRouter API (same as document intelligence)
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://meet-sam.com',
-        'X-Title': 'SAM AI - Website Intelligence'
-      },
-      body: JSON.stringify({
-        // For EU users: Use Mistral Medium 3.1 (EU-hosted, cost-efficient) for GDPR compliance
-        // For global users: Use Haiku for cost efficiency
-        model: process.env.FORCE_EU_COMPLIANCE === 'true' ? 'mistralai/mistral-medium-3.1' : 'anthropic/claude-haiku-4.5',
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 2000
-      })
+    // Use Claude Direct API for GDPR compliance
+    const response = await claudeClient.chat({
+      model: 'claude-haiku-4-20250514', // Fast and cost-efficient
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 2000
     })
 
-    if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.status}`)
-    }
-
-    const data = await response.json()
-    const aiResponse = data.choices[0]?.message?.content
+    const aiResponse = response.content
 
     if (!aiResponse) {
       throw new Error('No response from AI')

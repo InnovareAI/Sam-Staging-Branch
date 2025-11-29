@@ -7,6 +7,7 @@
 import { classifyIntent, ReplyIntent, IntentClassification } from './intent-classifier';
 import { researchProspect, formatResearchForPrompt, ProspectResearch } from './prospect-researcher';
 import { findSimilarConversations, formatSimilarConversationsForPrompt, storeProspectResearch } from './reply-rag';
+import { claudeClient } from '@/lib/llm/claude-client';
 
 export interface ReplyAgentSettings {
   enabled?: boolean;
@@ -139,62 +140,36 @@ export async function generateReplyDraft(context: DraftContext): Promise<Generat
   // Step 2: Build system prompt (now includes research context and similar conversations)
   const systemPrompt = buildSystemPrompt(context, intent, research, similarConversations);
 
-  // Step 3: Generate draft
-  const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
-      'X-Title': 'SAM AI - Reply Draft Generator'
-    },
-    body: JSON.stringify({
-      model: 'anthropic/claude-opus-4', // Using Opus 4.5 for highest quality drafts
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Generate a reply to this message:\n\n"${context.prospectReply}"` }
-      ],
-      max_tokens: 400,
-      temperature: 0.7
-    })
+  // Step 3: Generate draft using Claude Direct API (GDPR compliant)
+  const response = await claudeClient.chat({
+    system: systemPrompt,
+    messages: [
+      { role: 'user', content: `Generate a reply to this message:\n\n"${context.prospectReply}"` }
+    ],
+    max_tokens: 400,
+    temperature: 0.7
   });
 
-  if (!response.ok) {
-    throw new Error(`OpenRouter API error: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  let draft = data.choices[0]?.message?.content?.trim() || '';
+  let draft = response.content.trim();
+  const data = { usage: { total_tokens: response.usage.total_tokens } };
 
   // Step 4: Run Cheese Filter
   const cheeseFilterResult = runCheeseFilter(draft);
   if (!cheeseFilterResult.passed) {
     console.log('🧀 Cheese filter triggered, regenerating...');
-    // Regenerate with stricter prompt
-    const stricterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
-        'X-Title': 'SAM AI - Reply Draft Generator (Strict)'
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-opus-4',
+    // Regenerate with stricter prompt using Claude Direct API
+    try {
+      const stricterResponse = await claudeClient.chat({
+        system: systemPrompt + CHEESE_FILTER_ADDENDUM,
         messages: [
-          { role: 'system', content: systemPrompt + CHEESE_FILTER_ADDENDUM },
           { role: 'user', content: `Generate a reply to this message. Your previous draft was rejected for being too salesy: "${cheeseFilterResult.triggers.join(', ')}". Write something more natural.\n\nProspect's message: "${context.prospectReply}"` }
         ],
         max_tokens: 400,
         temperature: 0.8
-      })
-    });
-
-    if (stricterResponse.ok) {
-      const stricterData = await stricterResponse.json();
-      draft = stricterData.choices[0]?.message?.content?.trim() || draft;
+      });
+      draft = stricterResponse.content.trim() || draft;
+    } catch (error) {
+      console.error('Cheese filter regeneration failed:', error);
     }
   }
 

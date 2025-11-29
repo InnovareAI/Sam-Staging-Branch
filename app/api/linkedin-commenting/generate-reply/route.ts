@@ -8,13 +8,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { NextRequest, NextResponse } from 'next/server';
+import { claudeClient } from '@/lib/llm/claude-client';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
-
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
 interface GenerateReplyRequest {
   post_id: string;
@@ -103,37 +101,27 @@ Comment by ${original_comment_author} that we're replying to:
 
 Generate a thoughtful reply to ${original_comment_author}'s comment. The reply should feel natural and add to the conversation.`;
 
-    // Call OpenRouter API
-    const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://app.meet-sam.com',
-        'X-Title': 'SAM AI - LinkedIn Reply Generator'
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-3.5-haiku',
+    // Call Claude Direct API (GDPR compliant)
+    let aiResponse: string;
+    try {
+      const response = await claudeClient.chat({
+        system: systemPrompt,
         messages: [
-          { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
         max_tokens: 200,
         temperature: 0.7
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ OpenRouter error:', errorText);
+      });
+      aiResponse = response.content;
+    } catch (error) {
+      console.error('❌ Claude API error:', error);
       return NextResponse.json(
-        { error: 'Failed to generate reply', details: errorText },
+        { error: 'Failed to generate reply', details: error instanceof Error ? error.message : 'Unknown error' },
         { status: 500 }
       );
     }
 
-    const data = await response.json();
-    const generatedReply = data.choices?.[0]?.message?.content?.trim() || '';
+    const generatedReply = aiResponse.trim();
 
     if (!generatedReply) {
       return NextResponse.json(

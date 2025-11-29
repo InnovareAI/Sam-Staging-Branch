@@ -1,8 +1,12 @@
 /**
  * Prospect Researcher - Deep Research for Reply Agent
- * Uses Opus 4.5 to research prospect's website, company LinkedIn, and personal LinkedIn
+ * Uses Claude Direct API to research prospect's website, company LinkedIn, and personal LinkedIn
  * to understand ICP fit and generate highly relevant, engaging replies
+ *
+ * Updated Nov 29, 2025: Migrated to Claude Direct API for GDPR compliance
  */
+
+import { claudeClient } from '@/lib/llm/claude-client';
 
 export interface ProspectResearch {
   // Personal profile insights
@@ -76,13 +80,6 @@ export async function researchProspect(context: ResearchContext): Promise<Prospe
   const startTime = Date.now();
   console.log(`🔬 Starting prospect research for ${context.prospectName}...`);
 
-  const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-
-  if (!OPENROUTER_API_KEY) {
-    console.error('❌ OPENROUTER_API_KEY not set');
-    return getEmptyResearch(context);
-  }
-
   // Parallel fetch of all data sources
   const [linkedInData, companyLinkedInData, websiteData] = await Promise.all([
     fetchLinkedInProfile(context.linkedInUrl, context.unipileAccountId),
@@ -90,36 +87,21 @@ export async function researchProspect(context: ResearchContext): Promise<Prospe
     fetchWebsiteContent(context.websiteUrl, context.prospectCompany)
   ]);
 
-  // Build research prompt for Opus 4.5
+  // Build research prompt
   const researchPrompt = buildResearchPrompt(context, linkedInData, companyLinkedInData, websiteData);
 
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
-        'X-Title': 'SAM AI - Prospect Researcher (Opus 4.5)'
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-opus-4', // Using Opus 4.5 for deep research
-        messages: [
-          { role: 'system', content: RESEARCH_SYSTEM_PROMPT },
-          { role: 'user', content: researchPrompt }
-        ],
-        max_tokens: 2000,
-        temperature: 0.3 // Lower temperature for factual analysis
-      })
+    // Use Claude Direct API for GDPR compliance
+    const response = await claudeClient.chat({
+      system: RESEARCH_SYSTEM_PROMPT,
+      messages: [
+        { role: 'user', content: researchPrompt }
+      ],
+      max_tokens: 2000,
+      temperature: 0.3 // Lower temperature for factual analysis
     });
 
-    if (!response.ok) {
-      console.error(`❌ Opus API error: ${response.statusText}`);
-      return getEmptyResearch(context);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content || '';
+    const content = response.content;
 
     // Parse JSON from response
     const jsonMatch = content.match(/\{[\s\S]*\}/);

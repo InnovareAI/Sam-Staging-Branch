@@ -1,7 +1,11 @@
 /**
  * Knowledge Base Extraction Service
  * Extracts structured knowledge from SAM conversations and auto-populates KB
+ *
+ * Updated Nov 29, 2025: Migrated to Claude Direct API for GDPR compliance
  */
+
+import { claudeClient } from '@/lib/llm/claude-client';
 
 interface ExtractionResult {
   category: string;
@@ -27,21 +31,7 @@ export async function extractKnowledgeFromConversation(
   }
 
   try {
-    // Use OpenRouter to extract structured data
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
-        'X-Title': 'SAM AI Knowledge Extraction'
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-sonnet-4.5',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a knowledge extraction AI. Extract structured business information from sales conversations.
+    const systemPrompt = `You are a knowledge extraction AI. Extract structured business information from sales conversations.
 
 Extract the following categories if present:
 - ICP (ideal customer profile): industries, company sizes, job titles, locations
@@ -66,25 +56,22 @@ Return JSON array of extracted items:
   ]
 }
 
-Only extract if confidence >= 0.7. Return empty array if nothing found.`
-          },
-          {
-            role: 'user',
-            content: `Extract knowledge from this conversation:\n\n${conversationText}`
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 2000
-      })
+Only extract if confidence >= 0.7. Return empty array if nothing found.`;
+
+    // Use Claude Direct API for GDPR compliance
+    const response = await claudeClient.chat({
+      system: systemPrompt,
+      messages: [
+        {
+          role: 'user',
+          content: `Extract knowledge from this conversation:\n\n${conversationText}`
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 2000
     });
 
-    if (!response.ok) {
-      console.error('[KB Extract] OpenRouter error:', response.status);
-      return [];
-    }
-
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content;
+    const content = response.content;
 
     if (!content) {
       return [];

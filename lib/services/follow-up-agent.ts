@@ -1,8 +1,11 @@
 /**
  * Follow-up Agent Service
  * Re-engages prospects who went silent after Reply Agent
+ *
+ * Updated Nov 29, 2025: Migrated to Claude Direct API for GDPR compliance
  */
 
+import { claudeClient } from '@/lib/llm/claude-client';
 import { enrichProspectContext, ProspectEnrichmentData } from './reply-agent-enrichment';
 
 export interface FollowUpContext {
@@ -65,32 +68,18 @@ export async function generateFollowUpMessage(
   const systemPrompt = buildFollowUpSystemPrompt(context, tone);
   const userPrompt = buildFollowUpUserPrompt(context);
 
-  // Generate with Claude
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
-      'X-Title': 'SAM AI - Follow-up Generation'
-    },
-    body: JSON.stringify({
-      model: 'anthropic/claude-3.5-sonnet',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      max_tokens: 400,
-      temperature: 0.7
-    })
+  // Generate with Claude Direct API (GDPR compliant)
+  const response = await claudeClient.chat({
+    system: systemPrompt,
+    messages: [
+      { role: 'user', content: userPrompt }
+    ],
+    max_tokens: 400,
+    temperature: 0.7
   });
 
-  if (!response.ok) {
-    throw new Error(`OpenRouter API error: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  const fullMessage = data.choices[0].message.content;
+  const fullMessage = response.content;
+  const data = { usage: { total_tokens: response.usage.total_tokens } };
 
   // Extract subject and body
   const { subject, message } = extractSubjectAndBody(fullMessage);

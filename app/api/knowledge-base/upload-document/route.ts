@@ -1,50 +1,55 @@
+/**
+ * Knowledge Base Document Upload API
+ *
+ * Updated Nov 29, 2025: Migrated to Claude Direct API for GDPR compliance
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
+import Anthropic from '@anthropic-ai/sdk';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
-// OpenRouter API for vision/PDF extraction using Gemini
-async function callOpenRouterVision(base64Data: string, mimeType: string, prompt: string): Promise<string> {
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://app.meet-sam.com',
-      'X-Title': 'SAM AI Platform'
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-flash-1.5',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:${mimeType};base64,${base64Data}`
-              }
-            },
-            {
-              type: 'text',
-              text: prompt
+// Claude Direct API for vision/PDF extraction (GDPR compliant)
+async function callClaudeVision(base64Data: string, mimeType: string, prompt: string): Promise<string> {
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  // Map mime types to Claude's supported media types
+  const mediaType = mimeType.includes('pdf') ? 'application/pdf' :
+                    mimeType.includes('png') ? 'image/png' :
+                    mimeType.includes('gif') ? 'image/gif' :
+                    mimeType.includes('webp') ? 'image/webp' :
+                    'image/jpeg';
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 16000,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+              data: base64Data
             }
-          ]
-        }
-      ],
-      max_tokens: 16000
-    })
+          },
+          {
+            type: 'text',
+            text: prompt
+          }
+        ]
+      }
+    ]
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(`OpenRouter API error: ${JSON.stringify(error)}`);
-  }
-
-  const result = await response.json();
-  return result.choices?.[0]?.message?.content || '';
+  // Extract text content from response
+  const textBlock = response.content.find(block => block.type === 'text');
+  return textBlock?.type === 'text' ? textBlock.text : '';
 }
 
 // Document content extraction functions
@@ -56,35 +61,35 @@ async function extractContentFromFile(buffer: Buffer, mimeType: string): Promise
       return new TextDecoder().decode(buffer);
     } else if (mimeType.includes('image/')) {
       // Handle image files (PNG, JPG, GIF, WEBP, etc.)
-      console.log('[Upload] Processing image file with OpenRouter Gemini Vision...');
+      console.log('[Upload] Processing image file with Claude Vision...');
 
       try {
         const base64Image = buffer.toString('base64');
-        const content = await callOpenRouterVision(
+        const content = await callClaudeVision(
           base64Image,
           mimeType,
           'Extract all text from this image and describe its visual elements. Format your response as:\n\nText Content:\n[extracted text]\n\nVisual Elements:\n[describe key visual elements, diagrams, charts, etc.]'
         );
 
-        console.log('[Upload] Image processed with OpenRouter Gemini - Content length:', content.length);
+        console.log('[Upload] Image processed with Claude Vision - Content length:', content.length);
         return `[Visual Content]\n\n${content}`;
 
       } catch (error) {
-        console.error('[Upload] OpenRouter Vision API error for image:', error);
+        console.error('[Upload] Claude Vision API error for image:', error);
         return `[Image Uploaded]\n\nNote: Image analysis encountered an issue (${error instanceof Error ? error.message : 'Unknown error'}). The image has been stored and can be manually processed later.`;
       }
     } else if (mimeType.includes('application/pdf')) {
-      console.log('[Upload] Attempting PDF extraction with OpenRouter Gemini...');
+      console.log('[Upload] Attempting PDF extraction with Claude...');
 
       try {
         const base64Pdf = buffer.toString('base64');
-        const extractedText = await callOpenRouterVision(
+        const extractedText = await callClaudeVision(
           base64Pdf,
           'application/pdf',
           'Extract all text content from this PDF document. Return only the text, preserving the original structure and formatting as much as possible.'
         );
 
-        console.log('[Upload] PDF text extracted successfully with OpenRouter Gemini, length:', extractedText.length);
+        console.log('[Upload] PDF text extracted successfully with Claude, length:', extractedText.length);
 
         if (!extractedText || extractedText.trim().length === 0) {
           console.warn('[Upload] PDF appears to be empty or contains only images');
@@ -94,7 +99,7 @@ async function extractContentFromFile(buffer: Buffer, mimeType: string): Promise
         return extractedText;
 
       } catch (error) {
-        console.error('[Upload] OpenRouter Gemini PDF extraction error:', error);
+        console.error('[Upload] Claude PDF extraction error:', error);
         return `[PDF Document Uploaded]\n\nNote: Text extraction encountered an issue (${error instanceof Error ? error.message : 'Unknown error'}). The PDF has been stored and can be manually processed later.`;
       }
     } else if (mimeType.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document')) {

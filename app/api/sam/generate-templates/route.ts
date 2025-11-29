@@ -1,5 +1,12 @@
+/**
+ * SAM Template Generation API
+ *
+ * Updated Nov 29, 2025: Migrated to Claude Direct API for GDPR compliance
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { claudeClient } from '@/lib/llm/claude-client';
 
 export async function POST(req: NextRequest) {
   try {
@@ -110,9 +117,9 @@ async function generateLinkedInTemplates(context: any) {
       hasKB: kbContext.length > 0
     });
 
-    if (!process.env.OPENROUTER_API_KEY) {
-      console.error('❌ OPENROUTER_API_KEY is not set - falling back to rule-based generation');
-      throw new Error('OpenRouter API key not configured');
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('❌ ANTHROPIC_API_KEY is not set - falling back to rule-based generation');
+      throw new Error('Anthropic API key not configured');
     }
 
     const prompt = `You are SAM, an expert outreach messaging strategist. Generate compelling ${context.campaign.type === 'email' ? 'email' : 'LinkedIn'} campaign templates based on the following context:
@@ -237,37 +244,16 @@ ${context.campaign.type === 'email' ? `**Initial Email:**
 
 Then provide a brief explanation of your template strategy based on the Knowledge Base insights.`;
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet',
-        messages: [
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 2000
-      })
+    // Use Claude Direct API for GDPR compliance
+    const response = await claudeClient.chat({
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      max_tokens: 2000
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ OpenRouter API error:', response.status, errorText);
-      throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
-    }
+    console.log('✅ Claude Direct API response received');
 
-    const aiResult = await response.json();
-    console.log('✅ OpenRouter API response received');
-
-    if (!aiResult.choices || !aiResult.choices[0] || !aiResult.choices[0].message) {
-      console.error('❌ Invalid AI response structure:', aiResult);
-      throw new Error('Invalid response from OpenRouter API');
-    }
-
-    const aiResponse = aiResult.choices[0].message.content;
+    const aiResponse = response.content;
     console.log('📝 AI generated response length:', aiResponse.length);
 
     // Parse the AI response to extract templates

@@ -1,38 +1,36 @@
 /**
- * OpenRouter.ai Cost-Optimized LLM Integration
- * 
- * ULTRAHARD: 10x speed implementation with Mistral/Llama focus
+ * Cost-Optimized LLM Integration (Claude Direct API)
+ *
+ * Updated Nov 29, 2025: Migrated to Claude Direct API for GDPR compliance
  * Budget-first approach with template optimization
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { claudeClient } from '@/lib/llm/claude-client';
 
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-
-// Cost-optimized model configurations (Mistral/Llama focus)
-const COST_OPTIMIZED_MODELS = {
-  // Ultra-low cost for message personalization (80% of usage)
+// Cost-optimized model configurations (Claude models)
+const COST_OPTIMIZED_MODELS: Record<string, { model: string; max_tokens: number; cost_per_1k_tokens: number; use_case: string }> = {
+  // Fast/cheap for message personalization (80% of usage)
   'message_personalization': {
-    model: 'mistralai/mistral-7b-instruct',
+    model: 'claude-haiku-4-20250514',
     max_tokens: 200,
-    cost_per_1k_tokens: 0.0005,  // Ultra-cheap
+    cost_per_1k_tokens: 0.00025,  // Haiku is very cheap
     use_case: 'Template-based message personalization'
   },
-  
+
   // Mid-tier for prospect analysis
   'prospect_analysis': {
-    model: 'meta-llama/llama-3-8b-instruct',
+    model: 'claude-haiku-4-20250514',
     max_tokens: 400,
-    cost_per_1k_tokens: 0.0015,
+    cost_per_1k_tokens: 0.00025,
     use_case: 'ICP qualification and prospect scoring'
   },
-  
+
   // Premium for complex reasoning (limited usage)
   'sam_reasoning': {
-    model: 'anthropic/claude-haiku-4.5',
+    model: 'claude-sonnet-4-20250514',
     max_tokens: 800,
-    cost_per_1k_tokens: 0.003,  // $1/M input + $5/M output (avg)
+    cost_per_1k_tokens: 0.003,
     use_case: 'Complex campaign strategy only'
   }
 };
@@ -68,11 +66,11 @@ export async function POST(request: NextRequest) {
       finalMessages = [{ role: 'user', content: prompt }];
     }
 
-    // Check for OpenRouter API key
-    if (!OPENROUTER_API_KEY) {
-      return NextResponse.json({ 
+    // Check for Anthropic API key
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json({
         success: false,
-        error: 'OpenRouter API key not configured',
+        error: 'Anthropic API key not configured',
         fallback_response: 'API key required for cost-optimized LLM access'
       });
     }
@@ -101,65 +99,54 @@ export async function POST(request: NextRequest) {
     }
 
     const startTime = Date.now();
-    
-    // OpenRouter.ai API call
-    const response = await fetch(OPENROUTER_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'X-Title': 'Sam AI Cost-Optimized',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com'
-      },
-      body: JSON.stringify({
-        model: modelConfig.model,
-        messages: optimizedMessages,
-        max_tokens: max_tokens || modelConfig.max_tokens,
-        temperature,
-        top_p: 0.9,
-        frequency_penalty: 0.1,
-        presence_penalty: 0.1
-      })
+
+    // Extract system message if present
+    const systemMessage = optimizedMessages.find((m: any) => m.role === 'system');
+    const userMessages = optimizedMessages.filter((m: any) => m.role !== 'system');
+
+    // Claude Direct API call
+    const result = await claudeClient.chat({
+      model: modelConfig.model,
+      system: systemMessage?.content || '',
+      messages: userMessages.map((m: any) => ({ role: m.role, content: m.content })),
+      max_tokens: max_tokens || modelConfig.max_tokens,
+      temperature
     });
 
-    if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.status}`);
-    }
-
-    const result = await response.json();
     const responseTime = Date.now() - startTime;
 
     // Track usage for budget monitoring
+    const tokensUsed = (result.usage?.promptTokens || 0) + (result.usage?.completionTokens || 0);
     await trackUsage({
       workspace_id,
       model: modelConfig.model,
       use_case,
-      tokens_used: result.usage?.total_tokens || 0,
-      cost_estimate: calculateCost(result.usage?.total_tokens || 0, modelConfig.cost_per_1k_tokens),
+      tokens_used: tokensUsed,
+      cost_estimate: calculateCost(tokensUsed, modelConfig.cost_per_1k_tokens),
       response_time_ms: responseTime
     });
 
-    console.log(`✅ ULTRAHARD: ${modelConfig.model} response in ${responseTime}ms`);
+    console.log(`✅ Claude Direct: ${modelConfig.model} response in ${responseTime}ms`);
 
     return NextResponse.json({
       success: true,
-      message: result.choices[0]?.message?.content,
-      model_used: modelConfig.model,
+      message: result.content,
+      model_used: result.model || modelConfig.model,
       use_case,
       usage: result.usage,
-      cost_estimate: calculateCost(result.usage?.total_tokens || 0, modelConfig.cost_per_1k_tokens),
+      cost_estimate: calculateCost(tokensUsed, modelConfig.cost_per_1k_tokens),
       response_time_ms: responseTime,
       optimization_applied: use_case === 'message_personalization',
       budget_status: budgetOk
     });
 
   } catch (error: any) {
-    console.error('💥 ULTRAHARD: LLM request failed:', error);
-    
+    console.error('💥 Claude Direct API request failed:', error);
+
     return NextResponse.json({
       success: false,
       error: error.message,
-      fallback_model: 'mistralai/mistral-7b-instruct'
+      fallback_model: 'claude-haiku-4-20250514'
     }, { status: 500 });
   }
 }
