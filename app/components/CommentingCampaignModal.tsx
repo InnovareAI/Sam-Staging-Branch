@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Target, Shield, Clock, ChevronDown, ChevronUp, Settings } from 'lucide-react';
+import { X, Target, Shield, Clock, ChevronDown, ChevronUp, Settings, User, Building2 } from 'lucide-react';
 
 interface Monitor {
   id: string;
@@ -71,6 +71,17 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
 
       if (profiles.length > 0) {
         setProfileTargets(profiles);
+        setActiveTab('profiles');
+      }
+
+      // Extract company URLs from hashtags array (format: "COMPANY:company_slug")
+      const companies = existingMonitor.hashtags
+        .filter(tag => tag.startsWith('COMPANY:'))
+        .map(tag => `https://linkedin.com/company/${tag.replace('COMPANY:', '')}`);
+
+      if (companies.length > 0) {
+        setCompanyTargets(companies);
+        setActiveTab('companies');
       }
 
       // Set other fields if they exist
@@ -212,9 +223,11 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
         const data = await response.json();
         console.log('✅ Monitor created successfully:', data);
       } else if (targetingMode === 'profile') {
-        // For profile targeting mode, create ONE monitor per profile
-        // Using hashtags array format to store profile vanity names (compatible with existing schema)
-        for (const target of validTargets) {
+        // For profile targeting mode, create ONE monitor per profile/company
+        // Using hashtags array format to store profile/company names (compatible with existing schema)
+
+        // Create monitors for profiles
+        for (const target of allProfileTargets) {
           // Extract vanity name from LinkedIn URL or use as-is
           let vanityName = target.trim();
           if (vanityName.includes('linkedin.com/in/')) {
@@ -228,8 +241,6 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
             hashtags: [`PROFILE:${vanityName}`],
             keywords: [],
             status: 'active'
-            // Note: All other settings (timezone, auto_approve, etc.) should be stored in a future metadata JSONB column
-            // For now, they are only in the UI and will be used when N8N workflows are built
           };
 
           console.log('📤 Creating profile monitor:', monitor);
@@ -257,7 +268,52 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
           }
 
           const data = await response.json();
-          console.log('✅ Monitor created successfully:', data);
+          console.log('✅ Profile monitor created successfully:', data);
+        }
+
+        // Create monitors for company pages
+        for (const target of allCompanyTargets) {
+          // Extract company slug from LinkedIn URL or use as-is
+          let companySlug = target.trim();
+          if (companySlug.includes('linkedin.com/company/')) {
+            const match = companySlug.match(/linkedin\.com\/company\/([^\/\?#]+)/);
+            if (match) companySlug = match[1];
+          }
+
+          const monitor: any = {
+            name: campaignName || `Company Monitor - ${companySlug}`,
+            // Store company as special hashtag format: "COMPANY:company_slug"
+            hashtags: [`COMPANY:${companySlug}`],
+            keywords: [],
+            status: 'active'
+          };
+
+          console.log('📤 Creating company monitor:', monitor);
+
+          const response = await fetch('/api/linkedin-commenting/monitors', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(monitor),
+          });
+
+          if (!response.ok) {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const error = await response.json();
+              console.error('❌ API Error Details:', error);
+              const errorMsg = error.error || error.message || 'Failed to create monitor';
+              const errorDetails = error.details ? `\n\nDetails: ${error.details}` : '';
+              const errorHint = error.hint ? `\n\nHint: ${error.hint}` : '';
+              throw new Error(errorMsg + errorDetails + errorHint);
+            } else {
+              const text = await response.text();
+              console.error('Non-JSON error response:', text);
+              throw new Error(`Server error: ${response.status} ${response.statusText}\n\n${text}`);
+            }
+          }
+
+          const data = await response.json();
+          console.log('✅ Company monitor created successfully:', data);
         }
       } else {
         throw new Error('Unknown targeting mode: ' + targetingMode);
@@ -288,8 +344,8 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
               <Target size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-white">{editMode ? 'Edit Profile' : 'Add Profile'}</h2>
-              <p className="text-gray-400 text-sm">Monitor LinkedIn profiles for commenting opportunities</p>
+              <h2 className="text-xl font-semibold text-white">{editMode ? 'Edit Monitor' : 'Add Monitor'}</h2>
+              <p className="text-gray-400 text-sm">Monitor LinkedIn profiles or company pages for commenting opportunities</p>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-300 transition-colors">
@@ -299,13 +355,45 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
 
         {/* Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
-          {/* LinkedIn Profiles to Monitor */}
+          {/* Tab Switcher */}
+          <div className="flex gap-2 p-1 bg-gray-700/50 rounded-lg">
+            <button
+              onClick={() => setActiveTab('profiles')}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all ${
+                activeTab === 'profiles'
+                  ? 'bg-pink-600 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-600'
+              }`}
+            >
+              <User size={18} />
+              <span className="font-medium">Personal Profiles</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('companies')}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all ${
+                activeTab === 'companies'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-600'
+              }`}
+            >
+              <Building2 size={18} />
+              <span className="font-medium">Company Pages</span>
+            </button>
+          </div>
+
+          {/* LinkedIn Targets to Monitor */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              LinkedIn Profiles to Monitor (Max 30)
+              {activeTab === 'profiles'
+                ? 'LinkedIn Profiles to Monitor (Max 30)'
+                : 'LinkedIn Company Pages to Monitor (Max 30)'
+              }
             </label>
             <p className="text-sm text-gray-400 mb-3">
-              Enter LinkedIn profile vanity names (e.g., sama, andrewng, ylecun)
+              {activeTab === 'profiles'
+                ? 'Enter LinkedIn profile vanity names (e.g., sama, andrewng, ylecun)'
+                : 'Enter LinkedIn company page URLs or names (e.g., microsoft, google, linkedin.com/company/openai)'
+              }
             </p>
             {(activeTab === 'profiles' ? profileTargets : companyTargets).map((target, index) => (
               <div key={index} className="flex gap-2 mb-2">
@@ -313,7 +401,10 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
                   type="text"
                   value={target}
                   onChange={(e) => handleTargetChange(index, e.target.value)}
-                  placeholder="e.g., sama, andrewng, or linkedin.com/in/username"
+                  placeholder={activeTab === 'profiles'
+                    ? 'e.g., sama, andrewng, or linkedin.com/in/username'
+                    : 'e.g., microsoft, openai, or linkedin.com/company/google'
+                  }
                   className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
                 />
                 <button
@@ -329,7 +420,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
               onClick={handleAddTarget}
               className="text-sm text-pink-400 hover:text-pink-300 transition-colors"
             >
-              + Add another profile
+              + Add another {activeTab === 'profiles' ? 'profile' : 'company page'}
             </button>
           </div>
 
@@ -595,7 +686,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
         {/* Footer */}
         <div className="p-6 border-t border-gray-700 flex items-center justify-between">
           <div className="text-sm text-gray-400">
-            Profiles will start being monitored after saving
+            {activeTab === 'profiles' ? 'Profiles' : 'Company pages'} will start being monitored after saving
           </div>
           <div className="flex gap-3">
             <button
@@ -617,7 +708,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
               ) : (
                 <>
                   <Target size={16} />
-                  {editMode ? 'Save Changes' : 'Add Profile'}
+                  {editMode ? 'Save Changes' : 'Add Monitor'}
                 </>
               )}
             </button>
