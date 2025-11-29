@@ -112,13 +112,13 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
 
   const handleRemoveTarget = (index: number) => {
     if (activeTab === 'profiles') {
-      if (profileTargets.length > 1) {
-        setProfileTargets(profileTargets.filter((_, i) => i !== index));
-      }
+      const newTargets = profileTargets.filter((_, i) => i !== index);
+      // Keep at least one empty input field
+      setProfileTargets(newTargets.length > 0 ? newTargets : ['']);
     } else {
-      if (companyTargets.length > 1) {
-        setCompanyTargets(companyTargets.filter((_, i) => i !== index));
-      }
+      const newTargets = companyTargets.filter((_, i) => i !== index);
+      // Keep at least one empty input field
+      setCompanyTargets(newTargets.length > 0 ? newTargets : ['']);
     }
   };
 
@@ -316,14 +316,13 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
                   placeholder="e.g., sama, andrewng, or linkedin.com/in/username"
                   className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
                 />
-                {(activeTab === 'profiles' ? profileTargets : companyTargets).length > 1 && (
-                  <button
-                    onClick={() => handleRemoveTarget(index)}
-                    className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-400 rounded-lg transition-colors"
-                  >
-                    <X size={18} />
-                  </button>
-                )}
+                <button
+                  onClick={() => handleRemoveTarget(index)}
+                  className="px-3 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 hover:text-red-300 rounded-lg transition-colors flex items-center gap-1.5 text-sm"
+                >
+                  <X size={16} />
+                  Remove
+                </button>
               </div>
             ))}
             <button
