@@ -1,12 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Clock, Calendar, Globe, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Clock, Calendar, Globe, AlertCircle, X } from 'lucide-react';
 import { toastSuccess, toastError } from '@/lib/toast';
 
 interface CampaignScheduleSettings {
@@ -80,10 +75,10 @@ const COUNTRIES = [
 
 export default function CampaignScheduleSettingsModal({ isOpen, onClose, campaignId, currentSettings }: Props) {
   const [settings, setSettings] = useState<CampaignScheduleSettings>({
-    timezone: 'America/Los_Angeles',  // Pacific Time for US/CAN (matches backend default)
-    working_hours_start: 5,    // 5 AM PT - covers 8 AM ET (matches backend default)
-    working_hours_end: 18,      // 6 PM PT - covers 9 PM ET (matches backend default)
-    skip_weekends: true,        // Monday-Friday only (matches backend default)
+    timezone: 'America/Los_Angeles',
+    working_hours_start: 5,
+    working_hours_end: 18,
+    skip_weekends: true,
     skip_holidays: true,
     country_code: 'US',
     ...currentSettings
@@ -114,41 +109,48 @@ export default function CampaignScheduleSettingsModal({ isOpen, onClose, campaig
     }
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] bg-gray-800 text-white">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Campaign Schedule Settings
-          </DialogTitle>
-          <DialogDescription className="text-gray-400">
-            Configure when your campaign messages are sent. All times are converted to your selected timezone.
-          </DialogDescription>
-        </DialogHeader>
+  if (!isOpen) return null;
 
-        <div className="space-y-6 py-4">
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-800 border border-gray-700 rounded-lg max-w-[500px] w-full max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Campaign Schedule Settings
+              </h3>
+              <p className="text-gray-400 text-sm mt-1">
+                Configure when your campaign messages are sent. All times are converted to your selected timezone.
+              </p>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+              <X size={24} />
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 overflow-y-auto flex-1 space-y-6">
           {/* Timezone Selector */}
           <div className="space-y-2">
-            <Label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
               <Globe className="h-4 w-4" />
               Timezone
-            </Label>
-            <Select
+            </label>
+            <select
               value={settings.timezone}
-              onValueChange={(value) => setSettings({ ...settings, timezone: value })}
+              onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
-              <SelectTrigger className="bg-gray-700 border-gray-600">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-700 border-gray-600">
-                {TIMEZONES.map((tz) => (
-                  <SelectItem key={tz.value} value={tz.value} className="text-white">
-                    {tz.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {TIMEZONES.map((tz) => (
+                <option key={tz.value} value={tz.value}>
+                  {tz.label}
+                </option>
+              ))}
+            </select>
             <p className="text-xs text-gray-400">
               Campaign messages will be sent according to this timezone
             </p>
@@ -156,48 +158,40 @@ export default function CampaignScheduleSettingsModal({ isOpen, onClose, campaig
 
           {/* Working Hours */}
           <div className="space-y-4">
-            <Label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
               <Clock className="h-4 w-4" />
               Working Hours
-            </Label>
+            </label>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-sm text-gray-400">Start Time</Label>
-                <Select
+                <label className="text-sm text-gray-400">Start Time</label>
+                <select
                   value={settings.working_hours_start.toString()}
-                  onValueChange={(value) => setSettings({ ...settings, working_hours_start: parseInt(value) })}
+                  onChange={(e) => setSettings({ ...settings, working_hours_start: parseInt(e.target.value) })}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
-                  <SelectTrigger className="bg-gray-700 border-gray-600">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-700 border-gray-600 max-h-[200px]">
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <SelectItem key={i} value={i.toString()} className="text-white">
-                        {i.toString().padStart(2, '0')}:00
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i.toString()}>
+                      {i.toString().padStart(2, '0')}:00
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm text-gray-400">End Time</Label>
-                <Select
+                <label className="text-sm text-gray-400">End Time</label>
+                <select
                   value={settings.working_hours_end.toString()}
-                  onValueChange={(value) => setSettings({ ...settings, working_hours_end: parseInt(value) })}
+                  onChange={(e) => setSettings({ ...settings, working_hours_end: parseInt(e.target.value) })}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
-                  <SelectTrigger className="bg-gray-700 border-gray-600">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-700 border-gray-600 max-h-[200px]">
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <SelectItem key={i} value={i.toString()} className="text-white">
-                        {i.toString().padStart(2, '0')}:00
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i.toString()}>
+                      {i.toString().padStart(2, '0')}:00
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -210,18 +204,29 @@ export default function CampaignScheduleSettingsModal({ isOpen, onClose, campaig
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label className="flex items-center gap-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
                   <Calendar className="h-4 w-4" />
                   Skip Weekends
-                </Label>
+                </label>
                 <p className="text-xs text-gray-400">
                   Don't send messages on Saturday and Sunday
                 </p>
               </div>
-              <Switch
-                checked={settings.skip_weekends}
-                onCheckedChange={(checked) => setSettings({ ...settings, skip_weekends: checked })}
-              />
+              <button
+                type="button"
+                role="switch"
+                aria-checked={settings.skip_weekends}
+                onClick={() => setSettings({ ...settings, skip_weekends: !settings.skip_weekends })}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  settings.skip_weekends ? 'bg-purple-600' : 'bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    settings.skip_weekends ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
             </div>
 
             {/* Warning when skip_weekends is disabled */}
@@ -229,7 +234,7 @@ export default function CampaignScheduleSettingsModal({ isOpen, onClose, campaig
               <div className="flex items-start gap-2 p-3 bg-red-900/20 border border-red-500/50 rounded">
                 <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
                 <div className="text-xs text-red-200">
-                  <strong>⚠️ Warning:</strong> Sending messages on weekends may appear unnatural and could flag your LinkedIn account. Only change this if you are 100% confident in what you are doing. Use at your own risk.
+                  <strong>Warning:</strong> Sending messages on weekends may appear unnatural and could flag your LinkedIn account. Only change this if you are 100% confident in what you are doing. Use at your own risk.
                 </div>
               </div>
             )}
@@ -239,18 +244,29 @@ export default function CampaignScheduleSettingsModal({ isOpen, onClose, campaig
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label className="flex items-center gap-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
                   <Calendar className="h-4 w-4" />
                   Skip Public Holidays
-                </Label>
+                </label>
                 <p className="text-xs text-gray-400">
                   Don't send messages on public holidays
                 </p>
               </div>
-              <Switch
-                checked={settings.skip_holidays}
-                onCheckedChange={(checked) => setSettings({ ...settings, skip_holidays: checked })}
-              />
+              <button
+                type="button"
+                role="switch"
+                aria-checked={settings.skip_holidays}
+                onClick={() => setSettings({ ...settings, skip_holidays: !settings.skip_holidays })}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  settings.skip_holidays ? 'bg-purple-600' : 'bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    settings.skip_holidays ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
             </div>
 
             {/* Warning when skip_holidays is disabled */}
@@ -258,29 +274,25 @@ export default function CampaignScheduleSettingsModal({ isOpen, onClose, campaig
               <div className="flex items-start gap-2 p-3 bg-red-900/20 border border-red-500/50 rounded">
                 <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
                 <div className="text-xs text-red-200">
-                  <strong>⚠️ Warning:</strong> Sending messages on holidays may appear unnatural and could flag your LinkedIn account. Only change this if you are 100% confident in what you are doing. Use at your own risk.
+                  <strong>Warning:</strong> Sending messages on holidays may appear unnatural and could flag your LinkedIn account. Only change this if you are 100% confident in what you are doing. Use at your own risk.
                 </div>
               </div>
             )}
 
             {settings.skip_holidays && (
               <div className="space-y-2 ml-6">
-                <Label className="text-sm text-gray-400">Holiday Calendar</Label>
-                <Select
+                <label className="text-sm text-gray-400">Holiday Calendar</label>
+                <select
                   value={settings.country_code}
-                  onValueChange={(value) => setSettings({ ...settings, country_code: value })}
+                  onChange={(e) => setSettings({ ...settings, country_code: e.target.value })}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
-                  <SelectTrigger className="bg-gray-700 border-gray-600">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-700 border-gray-600">
-                    {COUNTRIES.map((country) => (
-                      <SelectItem key={country.value} value={country.value} className="text-white">
-                        {country.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {COUNTRIES.map((country) => (
+                    <option key={country.value} value={country.value}>
+                      {country.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
           </div>
@@ -295,23 +307,25 @@ export default function CampaignScheduleSettingsModal({ isOpen, onClose, campaig
           </div>
         </div>
 
-        <DialogFooter>
-          <Button
-            variant="ghost"
+        {/* Footer */}
+        <div className="p-6 border-t border-gray-700 flex justify-end gap-3">
+          <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-white"
+            className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
           >
             Cancel
-          </Button>
-          <Button
+          </button>
+          <button
+            type="button"
             onClick={handleSave}
             disabled={saving}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? 'Saving...' : 'Save Settings'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
