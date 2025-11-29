@@ -128,7 +128,7 @@ IMPORTANT:
 
     // Use Claude Direct API for GDPR compliance
     const response = await claudeClient.chat({
-      model: 'claude-haiku-4-20250514', // Fast and cost-efficient
+      model: 'claude-opus-4-5-20250514', // Opus 4.5 for document analysis
       messages: [
         {
           role: 'user',

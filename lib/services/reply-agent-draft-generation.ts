@@ -2,10 +2,13 @@
  * Enhanced Reply Agent Draft Generation with Web Scraping
  * Integrates BrightData website scraping and LinkedIn enrichment
  * Includes calendar link detection and injection
+ *
+ * Updated Nov 29, 2025: Migrated to Claude Direct API for GDPR compliance
  */
 
 import { enrichProspectContext, matchQuestionToOffer, ProspectEnrichmentData } from './reply-agent-enrichment';
 import { getWorkspaceCalendarSettings, enhanceSystemPromptWithCalendar, enhanceDraftWithCalendarLink, CalendarSettings } from './calendar-link-helper';
+import { claudeClient } from '@/lib/llm/claude-client';
 
 export interface DraftGenerationContext {
   replyId: string;
@@ -108,31 +111,15 @@ export async function generateEnhancedReplyDraft(
 
   const userPrompt = buildUserPrompt(context.prospectReply, context.prospect);
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
-      'X-Title': 'SAM AI - Enhanced Reply Draft'
-    },
-    body: JSON.stringify({
-      model: 'anthropic/claude-3.5-sonnet',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      max_tokens: 600,
-      temperature: 0.7
-    })
+  // Use Claude Direct API for GDPR compliance
+  const response = await claudeClient.chat({
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userPrompt }],
+    max_tokens: 600,
+    temperature: 0.7
   });
 
-  if (!response.ok) {
-    throw new Error(`OpenRouter API error: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  let draftContent = data.choices[0].message.content;
+  let draftContent = response.content;
 
   // Step 5: Check if calendar link should be added (fallback if AI didn't include it)
   if (calendarSettings) {
@@ -165,8 +152,8 @@ export async function generateEnhancedReplyDraft(
     matched_offers: matchResult.matched_offers,
     confidence_score: matchResult.relevance_score,
     generation_metadata: {
-      model: 'claude-3.5-sonnet',
-      tokens_used: data.usage?.total_tokens || 0,
+      model: response.model,
+      tokens_used: response.usage.totalTokens,
       generation_time_ms: totalTime,
       scraping_time_ms: scrapingTime
     }

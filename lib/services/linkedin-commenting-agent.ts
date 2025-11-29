@@ -222,8 +222,8 @@ export async function generateLinkedInComment(
     },
     should_auto_post: confidenceScore >= 0.80,
     generation_metadata: {
-      model: 'claude-3.5-sonnet',
-      tokens_used: data.usage?.total_tokens || 0,
+      model: response.model,
+      tokens_used: response.usage.totalTokens,
       generation_time_ms: generationTime
     }
   };

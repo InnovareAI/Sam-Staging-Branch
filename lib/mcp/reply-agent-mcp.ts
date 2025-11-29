@@ -1,14 +1,16 @@
 /**
  * Reply Agent MCP Server for SAM AI Platform
- * 
- * Intelligent response generation using multi-model approach
+ *
+ * Intelligent response generation using Claude Direct API
  * Specialized for sales conversations, support, and professional communication
+ *
+ * Updated Nov 29, 2025: Migrated to Claude Direct API for GDPR compliance
  */
 
 import { MCPTool, MCPCallToolRequest, MCPCallToolResult } from './types'
+import { claudeClient } from '@/lib/llm/claude-client'
 
 export interface ReplyAgentMCPConfig {
-  model: 'claude-sonnet' | 'gpt-4o' | 'gemini-pro'
   maxTokens?: number
   temperature?: number
   organizationId: string
@@ -60,15 +62,9 @@ export interface GeneratedReply {
 
 export class ReplyAgentMCPServer {
   private config: ReplyAgentMCPConfig
-  private modelEndpoints: Record<string, string>
 
   constructor(config: ReplyAgentMCPConfig) {
     this.config = config
-    this.modelEndpoints = {
-      'claude-sonnet': 'https://api.anthropic.com/v1/messages',
-      'gpt-4o': 'https://api.openai.com/v1/chat/completions', 
-      'gemini-pro': 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent'
-    }
   }
 
   async listTools(): Promise<{ tools: MCPTool[] }> {
@@ -390,29 +386,36 @@ Return a JSON response with:
   }
 
   private async callLLM(prompt: string): Promise<any> {
-    // This would integrate with the actual LLM APIs
-    // For now, returning a structured mock response
-    return {
-      primary_response: "Thanks for sharing that insight about your Q4 priorities. Given your focus on reducing operational costs, I'd love to show you how companies like yours typically save 20-30% in the first quarter after implementation. Would you be open to a 15-minute call this week to explore how this might apply to your specific situation?",
-      alternative_responses: [
-        "I appreciate you mentioning your Q4 cost reduction goals. Based on what you've shared, I think there's a compelling ROI story here. Could we schedule a brief call to walk through a relevant case study?",
-        "Your focus on operational efficiency really resonates - it's exactly why similar companies in your industry have seen significant results. Would a quick 15-minute conversation this week work to explore the possibilities?"
-      ],
-      personalization_elements: ["Q4 priorities", "operational costs", "industry-specific reference"],
-      call_to_action: "15-minute call this week",
-      follow_up_questions: [
-        "What's your timeline for evaluating new solutions?",
-        "Who else would be involved in this decision process?",
-        "What would success look like in your first quarter?"
-      ],
-      confidence_score: 0.87,
-      compliance_status: "approved",
-      suggested_timing: "Tuesday or Wednesday morning",
-      channel_optimizations: {
-        linkedin: "Shortened version with LinkedIn-friendly formatting",
-        email: "Expanded version with case study attachment offer",
-        whatsapp: "Casual, conversational tone adaptation"
+    try {
+      const response = await claudeClient.chat({
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: this.config.maxTokens || 1500,
+        temperature: this.config.temperature || 0.7
+      })
+
+      const content = response.content || ''
+
+      // Parse JSON response from Claude
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0])
       }
+
+      // Fallback: return structured response from raw text
+      return {
+        primary_response: content,
+        alternative_responses: [],
+        personalization_elements: [],
+        call_to_action: '',
+        follow_up_questions: [],
+        confidence_score: 0.7,
+        compliance_status: 'approved',
+        suggested_timing: 'Within business hours',
+        channel_optimizations: {}
+      }
+    } catch (error) {
+      console.error('Claude API error in Reply Agent MCP:', error)
+      throw error
     }
   }
 
@@ -435,28 +438,39 @@ Return a JSON response with:
 
   private async analyzeSentiment(context: ConversationContext): Promise<MCPCallToolResult> {
     try {
-      const analysis = {
-        overall_sentiment: 'positive',
-        sentiment_score: 0.72,
-        engagement_indicators: {
-          responsiveness: 'high',
-          question_asking: 'medium',
-          detail_sharing: 'high',
-          objection_level: 'low'
-        },
-        buying_signals: [
-          'Asked about implementation timeline',
-          'Mentioned budget allocation',
-          'Requested case studies'
-        ],
-        conversation_momentum: 'accelerating',
-        next_best_action: 'propose_demo',
-        confidence_assessment: {
-          interest_level: 'high',
-          decision_authority: 'medium',
-          timeline_urgency: 'medium'
-        }
-      }
+      const prompt = `Analyze this B2B sales conversation for sentiment and engagement signals.
+
+CONVERSATION:
+${context.messages.slice(-10).map(m => `${m.role}: ${m.content}`).join('\n')}
+
+PROSPECT PROFILE:
+${context.prospect_profile ? `
+Name: ${context.prospect_profile.name}
+Title: ${context.prospect_profile.title}
+Company: ${context.prospect_profile.company}
+Industry: ${context.prospect_profile.industry}
+` : 'Limited prospect information'}
+
+Analyze and return a JSON object with:
+- overall_sentiment: "positive", "neutral", or "negative"
+- sentiment_score: 0-1 score
+- engagement_indicators: { responsiveness, question_asking, detail_sharing, objection_level } (each: "low", "medium", "high")
+- buying_signals: Array of detected buying signals
+- conversation_momentum: "accelerating", "steady", "stalling", or "declining"
+- next_best_action: Recommended next action
+- confidence_assessment: { interest_level, decision_authority, timeline_urgency } (each: "low", "medium", "high")
+
+Return ONLY valid JSON.`
+
+      const response = await claudeClient.chat({
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1000,
+        temperature: 0.3
+      })
+
+      const content = response.content || ''
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      const analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : { error: 'Failed to parse response' }
 
       return {
         content: [{
@@ -477,41 +491,49 @@ Return a JSON response with:
 
   private async suggestNextSteps(context: ConversationContext, objectives?: string[]): Promise<MCPCallToolResult> {
     try {
-      const nextSteps = {
-        immediate_actions: [
-          {
-            action: 'send_case_study',
-            priority: 'high',
-            timing: 'within_2_hours',
-            rationale: 'Prospect explicitly asked for examples'
-          },
-          {
-            action: 'schedule_demo',
-            priority: 'high', 
-            timing: 'this_week',
-            rationale: 'High engagement and buying signals detected'
-          }
-        ],
-        medium_term_actions: [
-          {
-            action: 'connect_with_stakeholders',
-            priority: 'medium',
-            timing: 'next_week',
-            rationale: 'Need to identify decision-making unit'
-          }
-        ],
-        conversation_strategy: {
-          current_stage: context.conversation_stage,
-          recommended_next_stage: 'qualification',
-          key_questions_to_ask: [
-            'What\'s your evaluation process like?',
-            'Who else would be involved in this decision?',
-            'What would success look like in 90 days?'
-          ],
-          potential_obstacles: ['Budget approval timing', 'Stakeholder alignment'],
-          success_probability: 0.78
-        }
-      }
+      const prompt = `Analyze this B2B sales conversation and suggest strategic next steps.
+
+CONVERSATION:
+${context.messages.slice(-10).map(m => `${m.role}: ${m.content}`).join('\n')}
+
+CURRENT STAGE: ${context.conversation_stage}
+SALES METHODOLOGY: ${context.sales_methodology || 'value_selling'}
+OBJECTIVE: ${context.objective}
+${objectives ? `ADDITIONAL OBJECTIVES: ${objectives.join(', ')}` : ''}
+
+PROSPECT PROFILE:
+${context.prospect_profile ? `
+Name: ${context.prospect_profile.name}
+Title: ${context.prospect_profile.title}
+Company: ${context.prospect_profile.company}
+Industry: ${context.prospect_profile.industry}
+Pain Points: ${context.prospect_profile.pain_points?.join(', ') || 'Unknown'}
+` : 'Limited prospect information'}
+
+Suggest strategic next steps as JSON:
+{
+  "immediate_actions": [{ "action": "...", "priority": "high/medium/low", "timing": "...", "rationale": "..." }],
+  "medium_term_actions": [{ "action": "...", "priority": "...", "timing": "...", "rationale": "..." }],
+  "conversation_strategy": {
+    "current_stage": "${context.conversation_stage}",
+    "recommended_next_stage": "...",
+    "key_questions_to_ask": ["..."],
+    "potential_obstacles": ["..."],
+    "success_probability": 0.0-1.0
+  }
+}
+
+Return ONLY valid JSON.`
+
+      const response = await claudeClient.chat({
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1200,
+        temperature: 0.5
+      })
+
+      const content = response.content || ''
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      const nextSteps = jsonMatch ? JSON.parse(jsonMatch[0]) : { error: 'Failed to parse response' }
 
       return {
         content: [{
@@ -532,34 +554,47 @@ Return a JSON response with:
 
   private async handleObjection(objectionText: string, objectionType: string, context?: ConversationContext): Promise<MCPCallToolResult> {
     try {
-      const objectionResponse = {
-        objection_analysis: {
-          type: objectionType,
-          severity: 'medium',
-          underlying_concern: this.identifyUnderlyingConcern(objectionType),
-          response_strategy: 'acknowledge_and_reframe'
-        },
-        suggested_responses: [
-          {
-            approach: 'acknowledge_and_understand',
-            response: `I completely understand your concern about ${objectionType}. This is actually something many of our clients initially raised, and I'd love to share how we've addressed similar situations. Can you help me understand what specifically about ${objectionType} is most important to your decision?`
-          },
-          {
-            approach: 'provide_evidence',
-            response: `That's a fair point about ${objectionType}. Let me share some relevant data - 85% of our clients had the same initial concern, but after implementation, 94% said it exceeded their expectations. Would it help to speak with a client in a similar situation?`
-          },
-          {
-            approach: 'reframe_value',
-            response: `I appreciate you bringing up ${objectionType}. When we look at the total cost of inaction versus the investment, most companies find the ROI compelling. Would it be helpful to walk through a quick ROI analysis specific to your situation?`
-          }
-        ],
-        follow_up_actions: [
-          'Send relevant case study',
-          'Provide ROI calculator',
-          'Offer customer reference call'
-        ],
-        success_probability: 0.65
-      }
+      const prompt = `You are an expert B2B sales coach. Generate responses to handle this objection.
+
+OBJECTION: "${objectionText}"
+OBJECTION TYPE: ${objectionType}
+
+${context ? `
+CONVERSATION CONTEXT:
+Stage: ${context.conversation_stage}
+Prospect: ${context.prospect_profile?.name || 'Unknown'} at ${context.prospect_profile?.company || 'Unknown company'}
+Industry: ${context.prospect_profile?.industry || 'Unknown'}
+Recent messages: ${context.messages.slice(-3).map(m => `${m.role}: ${m.content}`).join('\n')}
+` : ''}
+
+Generate objection handling responses as JSON:
+{
+  "objection_analysis": {
+    "type": "${objectionType}",
+    "severity": "low/medium/high",
+    "underlying_concern": "What they're really worried about",
+    "response_strategy": "acknowledge_and_reframe/provide_evidence/ask_questions"
+  },
+  "suggested_responses": [
+    { "approach": "acknowledge_and_understand", "response": "..." },
+    { "approach": "provide_evidence", "response": "..." },
+    { "approach": "reframe_value", "response": "..." }
+  ],
+  "follow_up_actions": ["..."],
+  "success_probability": 0.0-1.0
+}
+
+Make responses specific, empathetic, and consultative. Return ONLY valid JSON.`
+
+      const response = await claudeClient.chat({
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1500,
+        temperature: 0.6
+      })
+
+      const content = response.content || ''
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      const objectionResponse = jsonMatch ? JSON.parse(jsonMatch[0]) : { error: 'Failed to parse response' }
 
       return {
         content: [{
@@ -578,46 +613,68 @@ Return a JSON response with:
     }
   }
 
-  private identifyUnderlyingConcern(objectionType: string): string {
-    const concernMap: Record<string, string> = {
-      'price': 'ROI and budget allocation',
-      'timing': 'Resource availability and priorities',
-      'authority': 'Decision-making process and stakeholders',
-      'need': 'Problem recognition and urgency',
-      'trust': 'Vendor credibility and risk mitigation',
-      'competition': 'Comparative advantage and differentiation'
-    }
-    return concernMap[objectionType] || 'General uncertainty'
-  }
-
   private async generateFollowupSequence(
     context: ConversationContext,
     sequenceLength: number = 3,
     intervalDays: number[] = [3, 7, 14]
   ): Promise<MCPCallToolResult> {
     try {
-      const followupSequence = {
-        sequence_id: `followup-${Date.now()}`,
-        total_messages: sequenceLength,
-        interval_days: intervalDays,
-        messages: intervalDays.slice(0, sequenceLength).map((days, index) => ({
-          sequence_number: index + 1,
-          send_after_days: days,
-          subject: `Follow-up ${index + 1}: ${this.generateSubjectLine(context, index)}`,
-          message: this.generateFollowupMessage(context, index, days),
-          call_to_action: this.generateCTA(index),
-          personalization_notes: [
-            'Reference previous conversation points',
-            'Include relevant industry insight',
-            'Mention specific company challenges discussed'
-          ]
-        })),
-        sequence_strategy: {
-          approach: 'value_first_nurturing',
-          escalation_path: 'increase_urgency_gradually',
-          exit_criteria: 'response_received_or_unsubscribe'
-        }
-      }
+      const prompt = `Generate a personalized follow-up sequence for a B2B sales conversation.
+
+CONVERSATION CONTEXT:
+Stage: ${context.conversation_stage}
+Objective: ${context.objective}
+Tone: ${context.tone || 'professional'}
+
+PROSPECT PROFILE:
+${context.prospect_profile ? `
+Name: ${context.prospect_profile.name}
+Title: ${context.prospect_profile.title}
+Company: ${context.prospect_profile.company}
+Industry: ${context.prospect_profile.industry}
+Pain Points: ${context.prospect_profile.pain_points?.join(', ') || 'Unknown'}
+` : 'Limited prospect information'}
+
+RECENT MESSAGES:
+${context.messages.slice(-5).map(m => `${m.role}: ${m.content}`).join('\n')}
+
+SEQUENCE REQUIREMENTS:
+- Number of follow-ups: ${sequenceLength}
+- Intervals (days): ${intervalDays.slice(0, sequenceLength).join(', ')}
+
+Generate a follow-up sequence as JSON:
+{
+  "sequence_id": "followup-${Date.now()}",
+  "total_messages": ${sequenceLength},
+  "interval_days": ${JSON.stringify(intervalDays.slice(0, sequenceLength))},
+  "messages": [
+    {
+      "sequence_number": 1,
+      "send_after_days": ${intervalDays[0] || 3},
+      "subject": "Subject line",
+      "message": "Full follow-up message",
+      "call_to_action": "Specific CTA",
+      "personalization_notes": ["..."]
+    }
+  ],
+  "sequence_strategy": {
+    "approach": "value_first_nurturing/urgency_based/social_proof",
+    "escalation_path": "Description of how urgency increases",
+    "exit_criteria": "When to stop following up"
+  }
+}
+
+Make each message unique, value-adding, and personalized. Return ONLY valid JSON.`
+
+      const response = await claudeClient.chat({
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 2000,
+        temperature: 0.7
+      })
+
+      const content = response.content || ''
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      const followupSequence = jsonMatch ? JSON.parse(jsonMatch[0]) : { error: 'Failed to parse response' }
 
       return {
         content: [{
@@ -636,54 +693,61 @@ Return a JSON response with:
     }
   }
 
-  private generateSubjectLine(context: ConversationContext, index: number): string {
-    const subjects = [
-      `Quick follow-up on our ${context.conversation_stage} discussion`,
-      `Thought you'd find this interesting - ${context.prospect_profile?.company || 'your industry'} insights`,
-      `Final follow-up - ${context.objective}`
-    ]
-    return subjects[index] || subjects[0]
-  }
-
-  private generateFollowupMessage(context: ConversationContext, index: number, days: number): string {
-    const messages = [
-      `Hi ${context.prospect_profile?.name || 'there'}, I wanted to follow up on our conversation about ${context.objective}. I've been thinking about what you mentioned regarding [specific pain point], and I came across something that might be relevant...`,
-      `I hope you're doing well! I saw some interesting industry news about ${context.prospect_profile?.industry || 'your sector'} and thought you might find it relevant to our previous discussion...`,
-      `Hi ${context.prospect_profile?.name || 'there'}, I don't want to be a pest, but I genuinely believe there's value here for ${context.prospect_profile?.company || 'your organization'}. If now isn't the right time, I completely understand...`
-    ]
-    return messages[index] || messages[0]
-  }
-
-  private generateCTA(index: number): string {
-    const ctas = [
-      "Would a brief 15-minute call this week work to discuss?",
-      "I'd love to get your thoughts - worth a quick conversation?",
-      "If there's interest, I'm happy to send over some relevant resources."
-    ]
-    return ctas[index] || ctas[0]
-  }
-
   private async optimizeForPlatform(
     message: string,
     platform: string,
     constraints?: any
   ): Promise<MCPCallToolResult> {
     try {
-      const optimizations: Record<string, string> = {
-        linkedin: this.optimizeForLinkedIn(message, constraints),
-        email: this.optimizeForEmail(message, constraints),
-        whatsapp: this.optimizeForWhatsApp(message, constraints),
-        slack: this.optimizeForSlack(message, constraints),
-        twitter: this.optimizeForTwitter(message, constraints)
+      const platformConstraints: Record<string, { charLimit: number; tone: string; features: string[] }> = {
+        linkedin: { charLimit: 3000, tone: 'professional', features: ['hashtags', 'line breaks', 'connection references'] },
+        email: { charLimit: 5000, tone: 'professional', features: ['subject line', 'signature', 'html formatting'] },
+        whatsapp: { charLimit: 4096, tone: 'casual', features: ['emojis', 'short paragraphs', 'voice note option'] },
+        slack: { charLimit: 4000, tone: 'casual', features: ['mentions', 'threading', 'reactions'] },
+        twitter: { charLimit: 280, tone: 'concise', features: ['hashtags', 'mentions', 'thread'] }
       }
 
-      const optimizedMessage = {
+      const platformConfig = platformConstraints[platform] || { charLimit: 1000, tone: 'neutral', features: [] }
+
+      const prompt = `Optimize this message for ${platform}.
+
+ORIGINAL MESSAGE:
+${message}
+
+PLATFORM: ${platform}
+CHARACTER LIMIT: ${constraints?.character_limit || platformConfig.charLimit}
+TONE: ${platformConfig.tone}
+PLATFORM FEATURES: ${platformConfig.features.join(', ')}
+
+${constraints ? `ADDITIONAL CONSTRAINTS: ${JSON.stringify(constraints)}` : ''}
+
+Return optimized message as JSON:
+{
+  "original_message": "${message.substring(0, 100)}...",
+  "platform": "${platform}",
+  "optimized_message": "The fully optimized message for ${platform}",
+  "optimization_notes": ["What was changed and why"],
+  "character_count": number,
+  "platform_specific_features": ["Features used"]
+}
+
+Return ONLY valid JSON.`
+
+      const response = await claudeClient.chat({
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1000,
+        temperature: 0.5
+      })
+
+      const content = response.content || ''
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      const optimizedMessage = jsonMatch ? JSON.parse(jsonMatch[0]) : {
         original_message: message,
-        platform: platform,
-        optimized_message: optimizations[platform] || message,
-        optimization_notes: this.getOptimizationNotes(platform),
-        character_count: optimizations[platform]?.length || message.length,
-        platform_specific_features: this.getPlatformFeatures(platform)
+        platform,
+        optimized_message: message,
+        optimization_notes: ['Failed to optimize'],
+        character_count: message.length,
+        platform_specific_features: []
       }
 
       return {
@@ -701,52 +765,5 @@ Return a JSON response with:
         isError: true
       }
     }
-  }
-
-  private optimizeForLinkedIn(message: string, constraints?: any): string {
-    // LinkedIn optimization: Professional tone, mention connection, use hashtags
-    return message.replace(/\n/g, '\n\n') + '\n\n#SalesStrategy #B2BSales'
-  }
-
-  private optimizeForEmail(message: string, constraints?: any): string {
-    // Email optimization: Add subject line context, professional signature
-    return message + '\n\nBest regards,\nSAM AI Assistant'
-  }
-
-  private optimizeForWhatsApp(message: string, constraints?: any): string {
-    // WhatsApp optimization: Casual tone, emojis, shorter paragraphs
-    return message.replace(/\./g, '.\n').substring(0, 200) + ' 👍'
-  }
-
-  private optimizeForSlack(message: string, constraints?: any): string {
-    // Slack optimization: Use threading, mentions, casual tone
-    return message.replace(/\n/g, '\n> ') 
-  }
-
-  private optimizeForTwitter(message: string, constraints?: any): string {
-    // Twitter optimization: Character limit, hashtags, concise
-    return message.substring(0, 240) + ' #B2BSales'
-  }
-
-  private getOptimizationNotes(platform: string): string[] {
-    const notes: Record<string, string[]> = {
-      linkedin: ['Added line breaks for readability', 'Added relevant hashtags', 'Maintained professional tone'],
-      email: ['Added professional signature', 'Email-friendly formatting'],
-      whatsapp: ['Shortened for mobile reading', 'Added emoji for engagement', 'Casual tone adaptation'],
-      slack: ['Optimized for threading', 'Team communication style'],
-      twitter: ['Trimmed to character limit', 'Added hashtags for discovery']
-    }
-    return notes[platform] || ['Standard optimization applied']
-  }
-
-  private getPlatformFeatures(platform: string): string[] {
-    const features: Record<string, string[]> = {
-      linkedin: ['Rich text formatting', 'Hashtag support', 'Professional network context'],
-      email: ['HTML formatting', 'Attachments', 'Subject lines', 'CC/BCC'],
-      whatsapp: ['Emoji support', 'Voice messages', 'Group messaging'],
-      slack: ['Threading', 'Mentions', 'Channel context', 'Integrations'],
-      twitter: ['Character limit', 'Hashtags', 'Mentions', 'Public visibility']
-    }
-    return features[platform] || ['Basic text messaging']
   }
 }

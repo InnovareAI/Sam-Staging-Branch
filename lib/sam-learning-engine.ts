@@ -1,17 +1,20 @@
 /**
  * SAM AI Learning Engine
- * 
+ *
  * Continuous learning system that improves Sam's accuracy and recommendations:
  * 1. Extracts validated insights from client conversations
  * 2. Identifies patterns across workspaces (industry-specific)
  * 3. Builds global knowledge base from successful strategies
  * 4. Applies learned insights to new clients
- * 
+ *
  * Privacy: Only validated, non-sensitive insights are shared across workspaces
+ *
+ * Updated Nov 29, 2025: Migrated to Claude Direct API for GDPR compliance
  */
 
 import { createClient } from '@supabase/supabase-js';
 import { Industry } from './signup-intelligence';
+import { claudeClient } from '@/lib/llm/claude-client';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -152,28 +155,14 @@ Return as JSON array:
 Only return insights that are truly valuable and reusable. Minimum 0.7 confidence.`;
 
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com',
-        'X-Title': 'SAM AI Learning Engine'
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
-        max_tokens: 2000
-      })
+    // Use Claude Direct API for GDPR compliance
+    const response = await claudeClient.chat({
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: 2000
     });
 
-    if (!response.ok) {
-      throw new Error(`AI extraction failed: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const aiResponse = data.choices[0]?.message?.content || '[]';
+    const aiResponse = response.content || '[]';
     
     const jsonMatch = aiResponse.match(/\[[\s\S]*\]/);
     const insights = JSON.parse(jsonMatch ? jsonMatch[0] : aiResponse);
