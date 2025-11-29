@@ -9420,6 +9420,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             // TODO: Save steps to database
             setShowStepsEditor(false);
           }}
+          workspaceId={actualWorkspaceId || undefined}
         />
       )}
 
@@ -10016,6 +10017,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       <UnipileModal
         isOpen={showUnipileWizard}
         provider={unipileProvider}
+        workspaceId={actualWorkspaceId || undefined}
         onClose={() => {
           setShowUnipileWizard(false);
           // Recheck accounts after closing

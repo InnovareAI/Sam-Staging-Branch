@@ -4772,6 +4772,7 @@ export default function Page() {
       <UnipileModal
         isOpen={showUnipileModal}
         onClose={() => setShowUnipileModal(false)}
+        workspaceId={selectedWorkspaceId || undefined}
       />
 
       {/* Channel Selection Modal - Triggered by SAM when needed */}
@@ -4860,9 +4861,10 @@ export default function Page() {
       )}
 
       {/* Email Integration Modal */}
-      <EmailProvidersModal 
-        isOpen={showEmailIntegrationModal} 
-        onClose={() => setShowEmailIntegrationModal(false)} 
+      <EmailProvidersModal
+        isOpen={showEmailIntegrationModal}
+        onClose={() => setShowEmailIntegrationModal(false)}
+        workspaceId={selectedWorkspaceId || undefined}
       />
 
       {/* LLM Model Configuration Modal */}

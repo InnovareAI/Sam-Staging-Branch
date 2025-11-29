@@ -7,9 +7,10 @@ interface UnipileModalProps {
   isOpen: boolean;
   onClose: () => void;
   provider?: 'LINKEDIN' | 'GOOGLE' | 'OUTLOOK'; // Support LinkedIn and Email providers
+  workspaceId?: string; // Required for workspace-scoped account checking
 }
 
-export function UnipileModal({ isOpen, onClose, provider = 'LINKEDIN' }: UnipileModalProps) {
+export function UnipileModal({ isOpen, onClose, provider = 'LINKEDIN', workspaceId }: UnipileModalProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -97,7 +98,12 @@ export function UnipileModal({ isOpen, onClose, provider = 'LINKEDIN' }: Unipile
     const checkStatus = async () => {
       try {
         // Use workspace-accounts check endpoint for all providers
-        const response = await fetch(`/api/workspace-accounts/check?workspace_id=${localStorage.getItem('currentWorkspaceId')}`);
+        // FIXED (Nov 29): Use workspaceId prop instead of localStorage (which used wrong key)
+        if (!workspaceId) {
+          console.warn('⚠️ UnipileModal: workspaceId prop not provided, skipping status check');
+          return;
+        }
+        const response = await fetch(`/api/workspace-accounts/check?workspace_id=${workspaceId}`);
         if (!response.ok) {
           throw new Error(`Status check failed (${response.status})`);
         }
@@ -137,7 +143,7 @@ export function UnipileModal({ isOpen, onClose, provider = 'LINKEDIN' }: Unipile
       active = false;
       clearInterval(interval);
     };
-  }, [pollingStatus]);
+  }, [pollingStatus, workspaceId, provider]);
 
   useEffect(() => {
     if (!connectionComplete) return;

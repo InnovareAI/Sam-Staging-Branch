@@ -328,6 +328,7 @@ export default function CampaignApprovalScreen({
       <UnipileModal
         isOpen={showLinkedInWizard}
         onClose={handleWizardClose}
+        workspaceId={workspaceId}
       />
 
       {/* Email Providers Wizard */}

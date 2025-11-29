@@ -43,6 +43,7 @@ interface CampaignStepsEditorProps {
   campaignType: 'connector' | 'messenger' | 'open_inmail' | 'builder' | 'group' | 'event_invite' | 'inbound' | 'event_participants' | 'recovery' | 'company_follow' | 'email';
   onClose: () => void;
   onSave: (steps: CampaignStep[]) => void;
+  workspaceId?: string; // Required for loading email accounts
 }
 
 export default function CampaignStepsEditor({
@@ -50,7 +51,8 @@ export default function CampaignStepsEditor({
   campaignName,
   campaignType,
   onClose,
-  onSave
+  onSave,
+  workspaceId
 }: CampaignStepsEditorProps) {
   const [steps, setSteps] = useState<CampaignStep[]>([
     {
@@ -132,11 +134,9 @@ export default function CampaignStepsEditor({
   const loadEmailAccounts = async () => {
     try {
       setLoadingEmailAccounts(true);
-      // Get workspace_id from current user's metadata (would be passed from parent in real scenario)
-      const workspaceId = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('workspace_id');
-
+      // FIXED (Nov 29): Use workspaceId prop instead of URL params
       if (!workspaceId) {
-        console.warn('Workspace ID not found in URL');
+        console.warn('⚠️ CampaignStepsEditor: workspaceId prop not provided, cannot load email accounts');
         return;
       }
 

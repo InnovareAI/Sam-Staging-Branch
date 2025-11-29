@@ -37,9 +37,10 @@ interface SMTPFormData {
 interface EmailProvidersModalProps {
   isOpen: boolean;
   onClose: () => void;
+  workspaceId?: string; // Required for workspace-scoped account checking
 }
 
-const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClose }) => {
+const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClose, workspaceId }) => {
   const [providers, setProviders] = useState<EmailProvider[]>([]);
   const [loading, setLoading] = useState(true);
   const [addProviderType, setAddProviderType] = useState<'google' | 'microsoft' | 'smtp' | null>(null);
@@ -237,9 +238,15 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
 
   // Poll for email connection (like LinkedIn modal)
   const startPollingConnection = (accountType: 'email') => {
+    // FIXED (Nov 29): Use workspaceId prop instead of localStorage (which used wrong key)
+    if (!workspaceId) {
+      console.warn('⚠️ EmailProvidersModal: workspaceId prop not provided, skipping connection polling');
+      setIsConnecting(false);
+      return;
+    }
     const pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/workspace-accounts/check?workspace_id=${localStorage.getItem('currentWorkspaceId')}`);
+        const response = await fetch(`/api/workspace-accounts/check?workspace_id=${workspaceId}`);
         const data = await response.json();
 
         if (data.success && data.email_connected) {
