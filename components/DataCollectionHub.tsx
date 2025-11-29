@@ -1519,6 +1519,31 @@ export default function DataCollectionHub({
     deselectAll()
   }
 
+  const bulkDeleteSelected = async () => {
+    if (selectedProspectIds.size === 0) return
+
+    if (!confirm(`Are you sure you want to permanently delete ${selectedProspectIds.size} prospects? This cannot be undone.`)) {
+      return
+    }
+
+    try {
+      // Delete from database
+      const deletePromises = Array.from(selectedProspectIds).map(id =>
+        fetch(`/api/prospect-approval/delete?prospect_id=${id}`, { method: 'DELETE' })
+      )
+
+      await Promise.all(deletePromises)
+
+      // Remove from UI
+      setProspectData(prev => prev.filter(p => !selectedProspectIds.has(p.id)))
+      toastSuccess(`Deleted ${selectedProspectIds.size} prospects`)
+      deselectAll()
+    } catch (error) {
+      console.error('Error deleting prospects:', error)
+      toastError('Failed to delete some prospects')
+    }
+  }
+
   // Dismiss-based approval handlers
   const dismissProspect = (prospectId: string) => {
     setDismissedProspectIds(prev => {
@@ -1946,6 +1971,19 @@ export default function DataCollectionHub({
                   </>
                 )}
               </div>
+            )}
+
+            {/* Bulk Delete Button - shows when prospects are selected */}
+            {selectedProspectIds.size > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={bulkDeleteSelected}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Selected ({selectedProspectIds.size})
+              </Button>
             )}
               </div>
             </div>
