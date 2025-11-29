@@ -81,13 +81,29 @@ export async function DELETE(request: NextRequest) {
     const isSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(userEmail)
 
     // Try prospect_approval_data first (DataCollectionHub uses this table)
-    // CRITICAL FIX (Nov 29): Search by `prospect_id` column (client-generated IDs like csv_xxx)
-    // NOT by `id` column (which contains UUIDs)
-    const { data: approvalProspect } = await adminClient
+    // CRITICAL FIX (Nov 29): Frontend sends UUID `id`, but we also support legacy `prospect_id` (csv_xxx)
+    // Try both columns - first by UUID `id`, then by text `prospect_id`
+    let approvalProspect = null
+
+    // Try 1: Search by UUID `id` column (frontend sends this)
+    const { data: byId } = await adminClient
       .from('prospect_approval_data')
       .select('id, prospect_id, workspace_id')
-      .eq('prospect_id', prospectId)
+      .eq('id', prospectId)
       .maybeSingle()
+
+    if (byId) {
+      approvalProspect = byId
+    } else {
+      // Try 2: Search by text `prospect_id` column (legacy csv_xxx format)
+      const { data: byProspectId } = await adminClient
+        .from('prospect_approval_data')
+        .select('id, prospect_id, workspace_id')
+        .eq('prospect_id', prospectId)
+        .maybeSingle()
+
+      approvalProspect = byProspectId
+    }
 
     if (approvalProspect) {
       // Security check
