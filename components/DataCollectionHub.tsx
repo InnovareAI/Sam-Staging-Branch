@@ -9,12 +9,8 @@ import { ProspectData as BaseProspectData } from '@/components/ProspectApprovalM
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/app/lib/supabase-client';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+// Custom Tailwind components - no shadcn imports needed
 import ImportProspectsModal from '@/components/ImportProspectsModal'
-import { Checkbox } from '@/components/ui/checkbox'
 // import EnrichProspectsButton from '@/components/EnrichProspectsButton' // REMOVED: Users bring their own enriched data
 
 
@@ -1882,7 +1878,8 @@ export default function DataCollectionHub({
                 )}
 
                 {/* Auto-Approve All Pending - Quick bulk approve without modal */}
-                <Button
+                <button
+                  type="button"
                   onClick={async () => {
                     const pendingProspects = prospectData.filter(p => p.approvalStatus === 'pending')
                     if (pendingProspects.length === 0) {
@@ -1920,39 +1917,37 @@ export default function DataCollectionHub({
                     }
                   }}
                   disabled={prospectData.filter(p => p.approvalStatus === 'pending').length === 0}
-                  size="sm"
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
                 >
                   <CheckSquare className="w-3.5 h-3.5" />
                   <span>Auto-Approve All ({prospectData.filter(p => p.approvalStatus === 'pending').length})</span>
-                </Button>
+                </button>
 
                 {/* Bulk Delete Button - always visible when prospects are selected */}
                 {selectedProspectIds.size > 0 && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
+                  <button
+                    type="button"
                     onClick={bulkDeleteSelected}
-                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700"
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md text-white bg-red-600 hover:bg-red-700 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Delete Selected ({selectedProspectIds.size})</span>
-                  </Button>
+                  </button>
                 )}
 
             {/* SIMPLIFIED: Always show both "Create New Campaign" and "Add to Existing" options */}
             {prospectData.filter(p => p.approvalStatus === 'approved').length > 0 && (
               <div className="flex items-center gap-3">
                 {/* Option 1: Create New Campaign - Opens campaign type selection modal */}
-                <Button
+                <button
+                  type="button"
                   onClick={() => setShowCampaignTypeModal(true)}
-                  size="sm"
-                  className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-colors"
                   title={selectedProspectIds.size > 0 ? `Create new campaign with ${selectedProspectIds.size} selected prospects` : `Create new campaign with all ${prospectData.filter(p => p.approvalStatus === 'approved').length} approved prospects`}
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Create New Campaign ({selectedProspectIds.size > 0 ? selectedProspectIds.size : prospectData.filter(p => p.approvalStatus === 'approved').length})</span>
-                </Button>
+                </button>
 
                 <span className="text-gray-500">or</span>
 
@@ -1971,16 +1966,16 @@ export default function DataCollectionHub({
                   ))}
                 </select>
 
-                <Button
+                <button
+                  type="button"
                   onClick={addApprovedToExistingCampaign}
                   disabled={!selectedCampaignId}
-                  size="sm"
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
                   title={selectedProspectIds.size > 0 ? `Add ${selectedProspectIds.size} selected prospects to existing campaign` : `Add all ${prospectData.filter(p => p.approvalStatus === 'approved').length} approved prospects to existing campaign`}
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Add ({selectedProspectIds.size > 0 ? selectedProspectIds.size : prospectData.filter(p => p.approvalStatus === 'approved').length})</span>
-                </Button>
+                </button>
               </div>
             )}
 
@@ -2013,15 +2008,14 @@ export default function DataCollectionHub({
         <div className="flex items-center space-x-2">
           {/* CSV Upload */}
           {/* Unified Import Prospects Button */}
-          <Button
-            variant="default"
-            size="default"
+          <button
+            type="button"
             onClick={() => { setImportInitialTab('url'); setShowImportModal(true); }}
-            className="bg-purple-600 hover:bg-purple-700"
+            className="flex items-center gap-2 px-4 py-2 text-sm rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors"
           >
-            <Upload className="w-4 h-4 mr-2" />
+            <Upload className="w-4 h-4" />
             Import Prospects
-          </Button>
+          </button>
         </div>
       </div>
 

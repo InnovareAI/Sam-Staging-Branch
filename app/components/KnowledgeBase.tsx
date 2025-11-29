@@ -1585,8 +1585,8 @@ function DocumentsTable() {
           </p>
         </div>
       )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -1598,18 +1598,18 @@ function ChunkDrawer() {
   const [chunks] = useState<Chunk[]>([]);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-white">Document Chunks</CardTitle>
+    <div className="bg-gray-800 rounded-lg border border-gray-700">
+      <div className="p-6 border-b border-gray-700 flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-white">Document Chunks</h3>
         <button
           className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
           onClick={() => setOpen(!open)}
         >
           {open ? 'Close' : 'Open'}
         </button>
-      </CardHeader>
+      </div>
       {open && (
-        <CardContent>
+        <div className="p-6">
         <div className="p-4 space-y-3 max-h-72 overflow-auto">
           {chunks.length > 0 ? (
             chunks.map((c, i) => (
@@ -1632,9 +1632,9 @@ function ChunkDrawer() {
             </div>
           )}
         </div>
-        </CardContent>
+        </div>
       )}
-    </Card>
+    </div>
   );
 }
 
