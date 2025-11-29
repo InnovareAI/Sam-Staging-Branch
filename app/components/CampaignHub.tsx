@@ -46,18 +46,7 @@ import {
   UserPlus
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
+// Custom Tailwind components - no shadcn imports needed
 import CampaignApprovalScreen from '@/app/components/CampaignApprovalScreen';
 import { UnipileModal } from '@/components/integrations/UnipileModal';
 
@@ -752,17 +741,15 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {[1, 2, 3].map(i => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="pt-6">
-              <div className="h-6 bg-gray-600 rounded mb-4"></div>
-              <div className="h-4 bg-gray-600 rounded w-1/3 mb-4"></div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="h-8 bg-gray-600 rounded"></div>
-                <div className="h-8 bg-gray-600 rounded"></div>
-                <div className="h-8 bg-gray-600 rounded"></div>
-              </div>
-            </CardContent>
-          </Card>
+          <div key={i} className="animate-pulse bg-gray-800 rounded-lg border border-gray-700 p-6">
+            <div className="h-6 bg-gray-700 rounded mb-4"></div>
+            <div className="h-4 bg-gray-700 rounded w-1/3 mb-4"></div>
+            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-700">
+              <div className="h-8 bg-gray-700 rounded"></div>
+              <div className="h-8 bg-gray-700 rounded"></div>
+              <div className="h-8 bg-gray-700 rounded"></div>
+            </div>
+          </div>
         ))}
       </div>
     );
@@ -782,75 +769,71 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
             boxShadow: "0 25px 50px -12px rgba(168, 85, 247, 0.25)"
           }}
         >
-        <Card
-          className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm border-gray-700 hover:border-purple-500/50 hover:bg-gradient-to-br hover:from-purple-600/20 hover:to-purple-900/20 shadow-xl hover:shadow-purple-500/20 group transition-all duration-300"
+        <div
+          className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm border border-gray-700 rounded-lg hover:border-purple-500/50 hover:bg-gradient-to-br hover:from-purple-600/20 hover:to-purple-900/20 shadow-xl hover:shadow-purple-500/20 group transition-all duration-300"
         >
-          <CardHeader>
+          <div className="p-6 pb-4">
             <div className="flex justify-between items-start">
               <div className="flex-1">
-                <CardTitle className="text-white font-semibold text-lg group-hover:text-white mb-2">
+                <h3 className="text-white font-semibold text-lg group-hover:text-white mb-2">
                   {c.name}
-                </CardTitle>
-                <Badge className={`${getStatusColor(c.status)}`}>
+                </h3>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full border ${getStatusColor(c.status)}`}>
                   {getStatusIcon(c.status)}
                   {getStatusLabel(c.status)}
-                </Badge>
+                </span>
               </div>
               <div className="flex gap-2 ml-4 relative z-10">
                 {c.status === 'active' ? (
-                  <Button
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleCampaignStatus(c.id, c.status);
                     }}
-                    variant="ghost"
-                    size="icon"
-                    className="text-yellow-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
+                    className="p-2 rounded-md text-yellow-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white transition-colors"
                     title="Pause campaign"
+                    type="button"
                   >
                     <Pause size={16} />
-                  </Button>
+                  </button>
                 ) : (
-                  <Button
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleCampaignStatus(c.id, c.status);
                     }}
-                    variant="ghost"
-                    size="icon"
-                    className="text-green-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
+                    className="p-2 rounded-md text-green-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white transition-colors"
                     title="Resume campaign"
+                    type="button"
                   >
                     <Play size={16} />
-                  </Button>
+                  </button>
                 )}
                 {(c.status === 'active' || c.status === 'paused') && (
-                  <Button
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       executeCampaign(c.id);
                     }}
-                    variant="ghost"
-                    size="icon"
-                    className="text-purple-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
+                    className="p-2 rounded-md text-purple-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white transition-colors"
                     title="Launch campaign now"
+                    type="button"
                   >
                     <Rocket size={16} />
-                  </Button>
+                  </button>
                 )}
                 {c.status !== 'archived' && (
-                  <Button
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       archiveCampaign(c.id);
                     }}
-                    variant="ghost"
-                    size="icon"
-                    className="text-gray-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white"
+                    className="p-2 rounded-md text-gray-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white transition-colors"
                     title="Archive campaign"
+                    type="button"
                   >
                     <Archive size={16} />
-                  </Button>
+                  </button>
                 )}
                 <button
                   onClick={(e) => {
@@ -922,9 +905,9 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                 </button>
               </div>
             </div>
-          </CardHeader>
+          </div>
 
-          <CardContent>
+          <div className="px-6 pb-6">
             {c.status !== 'draft' && (
               <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-700 group-hover:border-purple-400">
                 <div className="text-center">
@@ -949,44 +932,54 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
         </motion.div>
       ))}
 
       {/* Edit Campaign Modal */}
       {showEditModal && campaignToEdit && (
-        <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-purple-500">
-            <DialogHeader>
-              <DialogTitle className="text-2xl text-white flex items-center gap-2">
-                <Edit className="text-purple-400" size={24} />
-                Edit Campaign: {campaignToEdit.name}
-              </DialogTitle>
-              <DialogDescription className="text-gray-400">
-                Update campaign messages and settings
-              </DialogDescription>
-            </DialogHeader>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 my-8 max-h-[90vh] overflow-hidden flex flex-col border border-purple-500">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-700">
+              <div>
+                <h2 className="text-2xl text-white flex items-center gap-2">
+                  <Edit className="text-purple-400" size={24} />
+                  Edit Campaign: {campaignToEdit.name}
+                </h2>
+                <p className="text-gray-400 text-sm mt-1">
+                  Update campaign messages and settings
+                </p>
+              </div>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="text-gray-400 hover:text-gray-300 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
 
-            <div className="space-y-6 mt-4">
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
               {/* Campaign Name */}
               <div>
-                <Label className="text-gray-300 mb-2 block">Campaign Name</Label>
-                <Input
+                <label className="block text-sm font-medium text-gray-300 mb-2">Campaign Name</label>
+                <input
+                  type="text"
                   value={editFormData.name || ''}
                   onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                  className="bg-gray-800 border-gray-700 text-white"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   placeholder="Campaign name"
                 />
               </div>
 
               {/* Connection Message */}
               <div>
-                <Label className="text-gray-300 mb-2 block">Connection Request Message</Label>
-                <Textarea
+                <label className="block text-sm font-medium text-gray-300 mb-2">Connection Request Message</label>
+                <textarea
                   value={editFormData.connection_message || ''}
                   onChange={(e) => setEditFormData({ ...editFormData, connection_message: e.target.value })}
-                  className="bg-gray-800 border-gray-700 text-white min-h-[120px]"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[120px] resize-none"
                   placeholder="Hi {{firstName}}, I noticed..."
                 />
                 <p className="text-xs text-gray-500 mt-1">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</p>
@@ -994,10 +987,10 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
 
               {/* Email Body (for email campaigns) OR Alternative Message (for LinkedIn) */}
               <div>
-                <Label className="text-gray-300 mb-2 block">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   {campaignToEdit?.campaign_type === 'email' ? 'Initial Email Body' : 'Alternative Message (Optional)'}
-                </Label>
-                <Textarea
+                </label>
+                <textarea
                   value={campaignToEdit?.campaign_type === 'email' ? (editFormData.email_body || '') : (editFormData.alternative_message || '')}
                   onChange={(e) => setEditFormData({
                     ...editFormData,
@@ -1006,7 +999,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                       ? { email_body: e.target.value }
                       : { alternative_message: e.target.value })
                   })}
-                  className="bg-gray-800 border-gray-700 text-white min-h-[120px]"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[120px] resize-none"
                   placeholder={campaignToEdit?.campaign_type === 'email' ? "Initial email body..." : "Alternative message if already connected..."}
                 />
               </div>
@@ -1021,28 +1014,29 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
 
                   {/* Initial Subject */}
                   <div>
-                    <Label className="text-gray-400 text-sm mb-1 block">Initial Email Subject</Label>
-                    <Input
+                    <label className="block text-sm text-gray-400 mb-1">Initial Email Subject</label>
+                    <input
+                      type="text"
                       value={editFormData.initial_subject || ''}
                       onChange={(e) => setEditFormData({ ...editFormData, initial_subject: e.target.value })}
-                      className="bg-gray-800 border-gray-700 text-white"
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="e.g., Quick question about {{company}}"
                     />
                   </div>
 
                   {/* Threading Option */}
-                  <div className="flex items-center gap-3 bg-gray-800/50 rounded p-3">
+                  <div className="flex items-center gap-3 bg-gray-700/50 rounded-lg p-3">
                     <input
                       type="checkbox"
                       id="edit-use-threaded-replies"
                       checked={editFormData.use_threaded_replies || false}
                       onChange={(e) => setEditFormData({ ...editFormData, use_threaded_replies: e.target.checked })}
-                      className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded"
+                      className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
                     />
                     <div>
-                      <Label htmlFor="edit-use-threaded-replies" className="text-white cursor-pointer">
+                      <label htmlFor="edit-use-threaded-replies" className="text-white cursor-pointer font-medium text-sm">
                         Use threaded replies (RE:)
-                      </Label>
+                      </label>
                       <p className="text-xs text-gray-400">
                         {editFormData.use_threaded_replies
                           ? `Follow-ups will use "RE: ${editFormData.initial_subject || '[Initial Subject]'}"`
@@ -1055,18 +1049,19 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                   {/* Follow-up Subjects (only if not using threaded replies) */}
                   {!editFormData.use_threaded_replies && editFormData.follow_up_messages?.length > 0 && (
                     <div className="space-y-2">
-                      <Label className="text-gray-400 text-sm block">Follow-up Subject Lines</Label>
+                      <label className="block text-sm text-gray-400">Follow-up Subject Lines</label>
                       {editFormData.follow_up_messages.map((_: any, index: number) => (
                         <div key={index} className="flex items-center gap-2">
                           <span className="text-xs text-gray-500 w-12">FU{index + 1}:</span>
-                          <Input
+                          <input
+                            type="text"
                             value={editFormData.follow_up_subjects?.[index] || ''}
                             onChange={(e) => {
                               const updated = [...(editFormData.follow_up_subjects || [])];
                               updated[index] = e.target.value;
                               setEditFormData({ ...editFormData, follow_up_subjects: updated });
                             }}
-                            className="bg-gray-800 border-gray-700 text-white text-sm"
+                            className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder={`Subject for follow-up ${index + 1}`}
                           />
                         </div>
@@ -1078,63 +1073,61 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
 
               {/* Follow-up Messages */}
               <div>
-                <Label className="text-gray-300 mb-2 block">Follow-up Messages</Label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Follow-up Messages</label>
                 <div className="space-y-3">
                   {(editFormData.follow_up_messages || []).map((msg: any, index: number) => (
-                    <div key={index} className="bg-gray-800/50 border border-gray-700 rounded p-3">
+                    <div key={index} className="bg-gray-700/50 border border-gray-600 rounded-lg p-3">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-gray-400">Follow-up #{index + 1}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                        <button
+                          type="button"
                           onClick={() => {
                             const updated = [...editFormData.follow_up_messages];
                             updated.splice(index, 1);
                             setEditFormData({ ...editFormData, follow_up_messages: updated });
                           }}
-                          className="text-red-400 hover:text-red-300 h-6"
+                          className="p-1 text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded transition-colors"
                         >
                           <X size={14} />
-                        </Button>
+                        </button>
                       </div>
-                      <Textarea
+                      <textarea
                         value={typeof msg === 'string' ? msg : (msg.message || msg.content || '')}
                         onChange={(e) => {
                           const updated = [...editFormData.follow_up_messages];
                           updated[index] = typeof msg === 'string' ? e.target.value : { ...msg, message: e.target.value };
                           setEditFormData({ ...editFormData, follow_up_messages: updated });
                         }}
-                        className="bg-gray-900 border-gray-700 text-white min-h-[80px]"
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[80px] resize-none"
                       />
                     </div>
                   ))}
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <button
+                    type="button"
                     onClick={() => {
                       setEditFormData({
                         ...editFormData,
                         follow_up_messages: [...(editFormData.follow_up_messages || []), '']
                       });
                     }}
-                    className="border-purple-500 text-purple-400 hover:bg-purple-500/10"
+                    className="flex items-center gap-1 px-4 py-2 border border-purple-500 text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors text-sm"
                   >
-                    <Plus size={14} className="mr-1" />
+                    <Plus size={14} />
                     Add Follow-up
-                  </Button>
+                  </button>
                 </div>
               </div>
 
               {/* Messaging Cadence */}
               <div>
-                <Label className="text-gray-300 mb-3 block flex items-center gap-2">
+                <div className="flex items-center gap-2 mb-3">
                   <Clock size={18} className="text-purple-400" />
-                  Messaging Cadence (Days Between Follow-ups)
-                </Label>
+                  <label className="text-sm font-medium text-gray-300">Messaging Cadence (Days Between Follow-ups)</label>
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div>
-                    <Label className="text-xs text-gray-400 mb-1 block">FU1 Delay</Label>
-                    <Input
+                    <label className="block text-xs text-gray-400 mb-1">FU1 Delay</label>
+                    <input
                       type="number"
                       min="1"
                       value={editFormData.timing?.fu1_delay_days || 2}
@@ -1142,12 +1135,12 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                         ...editFormData,
                         timing: { ...(editFormData.timing || {}), fu1_delay_days: parseInt(e.target.value) }
                       })}
-                      className="bg-gray-800 border-gray-700 text-white"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-gray-400 mb-1 block">FU2 Delay</Label>
-                    <Input
+                    <label className="block text-xs text-gray-400 mb-1">FU2 Delay</label>
+                    <input
                       type="number"
                       min="1"
                       value={editFormData.timing?.fu2_delay_days || 5}
@@ -1155,12 +1148,12 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                         ...editFormData,
                         timing: { ...(editFormData.timing || {}), fu2_delay_days: parseInt(e.target.value) }
                       })}
-                      className="bg-gray-800 border-gray-700 text-white"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-gray-400 mb-1 block">FU3 Delay</Label>
-                    <Input
+                    <label className="block text-xs text-gray-400 mb-1">FU3 Delay</label>
+                    <input
                       type="number"
                       min="1"
                       value={editFormData.timing?.fu3_delay_days || 7}
@@ -1168,12 +1161,12 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                         ...editFormData,
                         timing: { ...(editFormData.timing || {}), fu3_delay_days: parseInt(e.target.value) }
                       })}
-                      className="bg-gray-800 border-gray-700 text-white"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-gray-400 mb-1 block">FU4 Delay</Label>
-                    <Input
+                    <label className="block text-xs text-gray-400 mb-1">FU4 Delay</label>
+                    <input
                       type="number"
                       min="1"
                       value={editFormData.timing?.fu4_delay_days || 5}
@@ -1181,12 +1174,12 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                         ...editFormData,
                         timing: { ...(editFormData.timing || {}), fu4_delay_days: parseInt(e.target.value) }
                       })}
-                      className="bg-gray-800 border-gray-700 text-white"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-gray-400 mb-1 block">Goodbye Delay</Label>
-                    <Input
+                    <label className="block text-xs text-gray-400 mb-1">Goodbye Delay</label>
+                    <input
                       type="number"
                       min="1"
                       value={editFormData.timing?.gb_delay_days || 7}
@@ -1194,7 +1187,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                         ...editFormData,
                         timing: { ...(editFormData.timing || {}), gb_delay_days: parseInt(e.target.value) }
                       })}
-                      className="bg-gray-800 border-gray-700 text-white"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                 </div>
@@ -1204,72 +1197,83 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
               </div>
             </div>
 
-            <DialogFooter className="mt-6 gap-2">
-              <Button
+            {/* Footer */}
+            <div className="p-6 border-t border-gray-700 flex items-center justify-end gap-3">
+              <button
+                type="button"
                 onClick={() => setShowEditModal(false)}
-                variant="outline"
-                className="border-gray-600 text-gray-300"
+                className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
               >
                 Cancel
-              </Button>
-              <Button
+              </button>
+              <button
+                type="button"
                 onClick={handleSaveCampaignEdit}
-                className="bg-purple-600 hover:bg-purple-700"
+                className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
               >
                 Save Changes
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Prospects Modal */}
       {showProspectsModal && selectedCampaignForProspects && (
-        <Dialog open={showProspectsModal} onOpenChange={setShowProspectsModal}>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-gray-900 border-purple-500">
-            <DialogHeader>
-              <DialogTitle className="text-2xl text-white flex items-center gap-2">
-                <Users className="text-orange-400" size={24} />
-                Campaign Prospects
-              </DialogTitle>
-              <DialogDescription className="text-gray-400">
-                {loadingProspects ? 'Loading prospects...' : `${campaignProspects.length} prospects in this campaign`}
-              </DialogDescription>
-            </DialogHeader>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full mx-4 my-8 max-h-[90vh] overflow-hidden flex flex-col border border-orange-500">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-700">
+              <div>
+                <h2 className="text-2xl text-white flex items-center gap-2">
+                  <Users className="text-orange-400" size={24} />
+                  Campaign Prospects
+                </h2>
+                <p className="text-gray-400 text-sm mt-1">
+                  {loadingProspects ? 'Loading prospects...' : `${campaignProspects.length} prospects in this campaign`}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowProspectsModal(false)}
+                className="text-gray-400 hover:text-gray-300 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
 
-            <div className="mt-4">
+            <div className="p-6 overflow-y-auto flex-1">
               {loadingProspects ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="animate-spin text-purple-400" size={48} />
                 </div>
               ) : campaignProspects.length > 0 ? (
                 <div className="border border-gray-700 rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-gray-800 border-gray-700">
-                        <TableHead className="text-gray-300">Name</TableHead>
-                        <TableHead className="text-gray-300">Title</TableHead>
-                        <TableHead className="text-gray-300">Company</TableHead>
-                        <TableHead className="text-gray-300">Status</TableHead>
-                        <TableHead className="text-gray-300 text-center">CR Sent</TableHead>
-                        <TableHead className="text-gray-300 text-center">Connected</TableHead>
-                        <TableHead className="text-gray-300 text-center">FU Sent</TableHead>
-                        <TableHead className="text-gray-300 text-center">Replied</TableHead>
-                        <TableHead className="text-gray-300 text-center">Opted Out</TableHead>
-                        <TableHead className="text-gray-300">LinkedIn</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-700 border-b border-gray-600">
+                        <th className="text-left text-gray-300 font-medium px-4 py-3 text-sm">Name</th>
+                        <th className="text-left text-gray-300 font-medium px-4 py-3 text-sm">Title</th>
+                        <th className="text-left text-gray-300 font-medium px-4 py-3 text-sm">Company</th>
+                        <th className="text-left text-gray-300 font-medium px-4 py-3 text-sm">Status</th>
+                        <th className="text-center text-gray-300 font-medium px-4 py-3 text-sm">CR Sent</th>
+                        <th className="text-center text-gray-300 font-medium px-4 py-3 text-sm">Connected</th>
+                        <th className="text-center text-gray-300 font-medium px-4 py-3 text-sm">FU Sent</th>
+                        <th className="text-center text-gray-300 font-medium px-4 py-3 text-sm">Replied</th>
+                        <th className="text-center text-gray-300 font-medium px-4 py-3 text-sm">Opted Out</th>
+                        <th className="text-left text-gray-300 font-medium px-4 py-3 text-sm">LinkedIn</th>
+                      </tr>
+                    </thead>
+                    <tbody>
                       {campaignProspects.map((prospect: any) => (
-                        <TableRow key={prospect.id} className="border-gray-700 hover:bg-gray-800/50">
-                          <TableCell className="text-white">
+                        <tr key={prospect.id} className="border-b border-gray-700 hover:bg-gray-700/50 transition-colors">
+                          <td className="text-white px-4 py-3">
                             {prospect.first_name} {prospect.last_name}
-                          </TableCell>
-                          <TableCell className="text-gray-300">{prospect.title || '-'}</TableCell>
-                          <TableCell className="text-gray-300">{prospect.company || '-'}</TableCell>
-                          <TableCell>
-                            <Badge
-                              className={
+                          </td>
+                          <td className="text-gray-300 px-4 py-3">{prospect.title || '-'}</td>
+                          <td className="text-gray-300 px-4 py-3">{prospect.company || '-'}</td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full border ${
                                 prospect.status === 'cr_sent' ? 'bg-green-900/20 text-green-400 border-green-500' :
                                 prospect.status === 'fu1_sent' ? 'bg-blue-900/20 text-blue-400 border-blue-500' :
                                 prospect.status === 'fu2_sent' ? 'bg-blue-900/20 text-blue-400 border-blue-500' :
@@ -1283,24 +1287,24 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                                 prospect.status === 'approved' ? 'bg-yellow-900/20 text-yellow-400 border-yellow-500' :
                                 prospect.status === 'pending' ? 'bg-gray-900/20 text-gray-400 border-gray-500' :
                                 'bg-gray-900/20 text-gray-400 border-gray-500'
-                              }
+                              }`}
                             >
-                              {prospect.status === 'daily_limit_exceeded' ? '⏸️ Daily Limit' :
-                               prospect.status === 'weekly_limit_exceeded' ? '🚫 Weekly Limit' :
+                              {prospect.status === 'daily_limit_exceeded' ? 'Daily Limit' :
+                               prospect.status === 'weekly_limit_exceeded' ? 'Weekly Limit' :
                                prospect.status?.replace(/_/g, ' ') || 'pending'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
+                            </span>
+                          </td>
+                          <td className="text-center px-4 py-3">
                             <span className={prospect.status === 'cr_sent' || prospect.status?.startsWith('fu') ? "text-green-400 font-semibold" : "text-gray-500"}>
                               {prospect.status === 'cr_sent' || prospect.status?.startsWith('fu') ? "✓" : "-"}
                             </span>
-                          </TableCell>
-                          <TableCell className="text-center">
+                          </td>
+                          <td className="text-center px-4 py-3">
                             <span className={prospect.connection_accepted_at ? "text-green-400 font-semibold" : "text-gray-500"}>
                               {prospect.connection_accepted_at ? "✓" : "-"}
                             </span>
-                          </TableCell>
-                          <TableCell className="text-center">
+                          </td>
+                          <td className="text-center px-4 py-3">
                             <span className={prospect.status?.startsWith('fu') ? "text-purple-400 font-semibold" : "text-gray-500"}>
                               {prospect.status === 'fu1_sent' ? '1' :
                                prospect.status === 'fu2_sent' ? '2' :
@@ -1309,18 +1313,18 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                                prospect.status === 'fu5_sent' ? '5' :
                                prospect.status === 'completed' ? '5' : '0'}
                             </span>
-                          </TableCell>
-                          <TableCell className="text-center">
+                          </td>
+                          <td className="text-center px-4 py-3">
                             <span className={prospect.responded_at ? "text-blue-400 font-semibold" : "text-gray-500"}>
                               {prospect.responded_at ? "✓" : "-"}
                             </span>
-                          </TableCell>
-                          <TableCell className="text-center">
+                          </td>
+                          <td className="text-center px-4 py-3">
                             <span className={prospect.status === 'opted_out' ? "text-red-400 font-semibold" : "text-gray-500"}>
                               {prospect.status === 'opted_out' ? "✓" : "-"}
                             </span>
-                          </TableCell>
-                          <TableCell>
+                          </td>
+                          <td className="px-4 py-3">
                             {prospect.linkedin_url ? (
                               <a
                                 href={prospect.linkedin_url}
@@ -1334,11 +1338,11 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                             ) : (
                               <span className="text-gray-600">-</span>
                             )}
-                          </TableCell>
-                        </TableRow>
+                          </td>
+                        </tr>
                       ))}
-                    </TableBody>
-                  </Table>
+                    </tbody>
+                  </table>
                 </div>
               ) : (
                 <div className="text-center py-12 text-gray-400">
@@ -1348,39 +1352,51 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
               )}
             </div>
 
-            <DialogFooter className="mt-6">
-              <Button
+            {/* Footer */}
+            <div className="p-6 border-t border-gray-700 flex justify-end">
+              <button
+                type="button"
                 onClick={() => setShowProspectsModal(false)}
-                className="bg-purple-600 hover:bg-purple-700"
+                className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
               >
                 Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Add Prospects Modal */}
       {showAddProspects && selectedCampaignForAdd && (
-        <Dialog open={showAddProspects} onOpenChange={setShowAddProspects}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-green-500">
-            <DialogHeader>
-              <DialogTitle className="text-2xl text-white flex items-center gap-2">
-                <UserPlus className="text-green-400" size={24} />
-                Add Prospects to Campaign
-              </DialogTitle>
-              <DialogDescription className="text-gray-400">
-                Select prospects from your database to add to "{selectedCampaignForAdd.name}"
-              </DialogDescription>
-            </DialogHeader>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 my-8 max-h-[90vh] overflow-hidden flex flex-col border border-green-500">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-700">
+              <div>
+                <h2 className="text-2xl text-white flex items-center gap-2">
+                  <UserPlus className="text-green-400" size={24} />
+                  Add Prospects to Campaign
+                </h2>
+                <p className="text-gray-400 text-sm mt-1">
+                  Select prospects from your database to add to "{selectedCampaignForAdd.name}"
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddProspects(false)}
+                className="text-gray-400 hover:text-gray-300 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
 
-            <div className="space-y-4 mt-4">
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
               {/* Search/Filter */}
-              <Input
+              <input
+                type="text"
                 placeholder="Search prospects by name, company, title..."
                 value={prospectSearchTerm}
                 onChange={(e) => setProspectSearchTerm(e.target.value)}
-                className="bg-gray-800 border-gray-700 text-white"
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
               />
 
               {/* Prospect List */}
@@ -1404,11 +1420,14 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                     .map((prospect) => (
                       <div
                         key={prospect.id}
-                        className="flex items-center gap-3 p-3 border-b border-gray-700 hover:bg-gray-800/50"
+                        className="flex items-center gap-3 p-3 border-b border-gray-700 hover:bg-gray-700/50 transition-colors cursor-pointer"
+                        onClick={() => toggleProspectSelection(prospect.id)}
                       >
-                        <Checkbox
+                        <input
+                          type="checkbox"
                           checked={selectedProspectIds.includes(prospect.id)}
-                          onCheckedChange={() => toggleProspectSelection(prospect.id)}
+                          onChange={() => toggleProspectSelection(prospect.id)}
+                          className="w-4 h-4 text-green-600 bg-gray-700 border-gray-600 rounded focus:ring-green-500"
                         />
                         <div className="flex-1">
                           <div className="font-semibold text-white">
@@ -1440,35 +1459,35 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
               )}
             </div>
 
-            <DialogFooter className="mt-6">
-              <div className="flex justify-between items-center w-full">
-                <div className="text-sm text-gray-400">
-                  {selectedProspectIds.length} prospect(s) selected
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowAddProspects(false);
-                      setSelectedProspectIds([]);
-                      setProspectSearchTerm('');
-                    }}
-                    className="border-gray-700 text-gray-300 hover:bg-gray-800"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleAddProspects}
-                    disabled={selectedProspectIds.length === 0}
-                    className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
-                  >
-                    Add {selectedProspectIds.length} Prospect{selectedProspectIds.length !== 1 ? 's' : ''}
-                  </Button>
-                </div>
+            {/* Footer */}
+            <div className="p-6 border-t border-gray-700 flex justify-between items-center">
+              <div className="text-sm text-gray-400">
+                {selectedProspectIds.length} prospect(s) selected
               </div>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddProspects(false);
+                    setSelectedProspectIds([]);
+                    setProspectSearchTerm('');
+                  }}
+                  className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddProspects}
+                  disabled={selectedProspectIds.length === 0}
+                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Add {selectedProspectIds.length} Prospect{selectedProspectIds.length !== 1 ? 's' : ''}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -9843,22 +9862,23 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             <div className="p-6 space-y-6">
               {/* Campaign Name */}
               <div>
-                <Label className="text-gray-300 mb-2 block">Campaign Name</Label>
-                <Input
+                <label className="block text-sm font-medium text-gray-300 mb-2">Campaign Name</label>
+                <input
+                  type="text"
                   value={editFormData.name || ''}
                   onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                  className="bg-gray-800 border-gray-700 text-white"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   placeholder="Campaign name"
                 />
               </div>
 
               {/* Connection Message */}
               <div>
-                <Label className="text-gray-300 mb-2 block">Connection Request Message</Label>
-                <Textarea
+                <label className="block text-sm font-medium text-gray-300 mb-2">Connection Request Message</label>
+                <textarea
                   value={editFormData.connection_message || ''}
                   onChange={(e) => setEditFormData({ ...editFormData, connection_message: e.target.value })}
-                  className="bg-gray-800 border-gray-700 text-white min-h-[120px]"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[120px] resize-none"
                   placeholder="Hi {{firstName}}, I noticed..."
                 />
                 <p className="text-xs text-gray-500 mt-1">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</p>
@@ -9866,10 +9886,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
               {/* Email Body (for email campaigns) OR Alternative Message (for LinkedIn) */}
               <div>
-                <Label className="text-gray-300 mb-2 block">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   {campaignToEdit?.campaign_type === 'email' ? 'Initial Email Body' : 'Alternative Message (Optional)'}
-                </Label>
-                <Textarea
+                </label>
+                <textarea
                   value={campaignToEdit?.campaign_type === 'email' ? (editFormData.email_body || '') : (editFormData.alternative_message || '')}
                   onChange={(e) => setEditFormData({
                     ...editFormData,
@@ -9878,7 +9898,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                       ? { email_body: e.target.value }
                       : { alternative_message: e.target.value })
                   })}
-                  className="bg-gray-800 border-gray-700 text-white min-h-[120px]"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[120px] resize-none"
                   placeholder={campaignToEdit?.campaign_type === 'email' ? "Initial email body..." : "Alternative message if already connected..."}
                 />
               </div>
@@ -9893,28 +9913,29 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
                   {/* Initial Subject */}
                   <div>
-                    <Label className="text-gray-400 text-sm mb-1 block">Initial Email Subject</Label>
-                    <Input
+                    <label className="block text-sm text-gray-400 mb-1">Initial Email Subject</label>
+                    <input
+                      type="text"
                       value={editFormData.initial_subject || ''}
                       onChange={(e) => setEditFormData({ ...editFormData, initial_subject: e.target.value })}
-                      className="bg-gray-800 border-gray-700 text-white"
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="e.g., Quick question about {{company}}"
                     />
                   </div>
 
                   {/* Threading Option */}
-                  <div className="flex items-center gap-3 bg-gray-800/50 rounded p-3">
+                  <div className="flex items-center gap-3 bg-gray-700/50 rounded-lg p-3">
                     <input
                       type="checkbox"
                       id="edit-use-threaded-replies"
                       checked={editFormData.use_threaded_replies || false}
                       onChange={(e) => setEditFormData({ ...editFormData, use_threaded_replies: e.target.checked })}
-                      className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded"
+                      className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
                     />
                     <div>
-                      <Label htmlFor="edit-use-threaded-replies" className="text-white cursor-pointer">
+                      <label htmlFor="edit-use-threaded-replies" className="text-white cursor-pointer font-medium text-sm">
                         Use threaded replies (RE:)
-                      </Label>
+                      </label>
                       <p className="text-xs text-gray-400">
                         {editFormData.use_threaded_replies
                           ? `Follow-ups will use "RE: ${editFormData.initial_subject || '[Initial Subject]'}"`
@@ -9927,18 +9948,19 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   {/* Follow-up Subjects (only if not using threaded replies) */}
                   {!editFormData.use_threaded_replies && editFormData.follow_up_messages?.length > 0 && (
                     <div className="space-y-2">
-                      <Label className="text-gray-400 text-sm block">Follow-up Subject Lines</Label>
+                      <label className="block text-sm text-gray-400">Follow-up Subject Lines</label>
                       {editFormData.follow_up_messages.map((_: any, index: number) => (
                         <div key={index} className="flex items-center gap-2">
                           <span className="text-xs text-gray-500 w-12">FU{index + 1}:</span>
-                          <Input
+                          <input
+                            type="text"
                             value={editFormData.follow_up_subjects?.[index] || ''}
                             onChange={(e) => {
                               const updated = [...(editFormData.follow_up_subjects || [])];
                               updated[index] = e.target.value;
                               setEditFormData({ ...editFormData, follow_up_subjects: updated });
                             }}
-                            className="bg-gray-800 border-gray-700 text-white text-sm"
+                            className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder={`Subject for follow-up ${index + 1}`}
                           />
                         </div>

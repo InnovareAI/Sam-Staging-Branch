@@ -7,8 +7,7 @@ import { motion } from 'framer-motion';
 import SAMOnboarding from './SAMOnboarding';
 import KnowledgeBaseAnalytics from './KnowledgeBaseAnalytics';
 import ICPConfigEditable from './ICPConfigEditable';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+// Custom Tailwind components - no shadcn imports needed
 
 type KnowledgeDocument = {
   id: string;
@@ -1449,11 +1448,11 @@ function VectorTest() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-white">Test Knowledgebase Retrieval</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <div className="bg-gray-800 rounded-lg border border-gray-700">
+      <div className="p-6 border-b border-gray-700">
+        <h3 className="text-lg font-semibold text-white">Test Knowledgebase Retrieval</h3>
+      </div>
+      <div className="p-6">
         <div className="flex gap-2">
           <input
             className="bg-gray-700 border border-gray-600 px-3 py-2 rounded text-white placeholder-gray-400 w-full focus:border-purple-500 focus:outline-none"
@@ -1505,8 +1504,8 @@ function VectorTest() {
           </div>
         )}
       </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -1517,11 +1516,11 @@ function DocumentsTable() {
   const [documents] = useState<Doc[]>([]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-white">Documents</CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">
+    <div className="bg-gray-800 rounded-lg border border-gray-700">
+      <div className="p-6 border-b border-gray-700">
+        <h3 className="text-lg font-semibold text-white">Documents</h3>
+      </div>
+      <div>
         {documents.length > 0 ? (
         <table className="w-full text-sm">
           <thead className="bg-gray-750 text-gray-400">
