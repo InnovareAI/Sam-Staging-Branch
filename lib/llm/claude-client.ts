@@ -24,28 +24,61 @@ interface ClaudeRequest {
 interface ClaudeResponse {
   content: string;
   usage: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    // Also provide snake_case for compatibility
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
   };
   model: string;
 }
 
+interface VisionRequest {
+  imageBase64: string;
+  mimeType: string;
+  prompt: string;
+  model?: string;
+  maxTokens?: number;
+}
+
+// Available Claude models (Nov 2025)
+// Strategy: Haiku 4.5 for chat interface, Opus 4.5 for everything else
+export const CLAUDE_MODELS = {
+  HAIKU: 'claude-haiku-4-5-20250514',      // For chat interface (fast, cheap)
+  SONNET: 'claude-sonnet-4-5-20250929',    // Backup/legacy
+  OPUS: 'claude-opus-4-5-20250514',        // For all processing (most capable)
+} as const;
+
+// Default model for different use cases
+export const MODEL_FOR = {
+  CHAT: CLAUDE_MODELS.HAIKU,               // Chat interface - fast responses
+  PROCESSING: CLAUDE_MODELS.OPUS,          // Template gen, research, analysis
+  VISION: CLAUDE_MODELS.OPUS,              // Image/PDF extraction
+} as const;
+
 // Model mapping: OpenRouter model IDs -> Claude model IDs
 const MODEL_MAP: Record<string, string> = {
-  'anthropic/claude-3.5-sonnet': 'claude-sonnet-4-20250514',
-  'anthropic/claude-3-haiku': 'claude-sonnet-4-20250514',
-  'anthropic/claude-haiku-4.5': 'claude-sonnet-4-20250514',
-  'anthropic/claude-opus-4': 'claude-sonnet-4-20250514',
-  'anthropic/claude-sonnet-3.5': 'claude-sonnet-4-20250514',
-  'meta-llama/llama-3.1-8b-instruct': 'claude-sonnet-4-20250514',
-  'mistralai/mistral-7b-instruct': 'claude-sonnet-4-20250514',
-  // Default to Sonnet for any unrecognized model
+  // Anthropic models
+  'anthropic/claude-3.5-sonnet': CLAUDE_MODELS.SONNET,
+  'anthropic/claude-3-haiku': CLAUDE_MODELS.HAIKU,
+  'anthropic/claude-haiku-4.5': CLAUDE_MODELS.HAIKU,
+  'anthropic/claude-opus-4': CLAUDE_MODELS.OPUS,
+  'anthropic/claude-sonnet-3.5': CLAUDE_MODELS.SONNET,
+  // Internal aliases
+  'claude-haiku-4-20250514': CLAUDE_MODELS.HAIKU,  // Fix invalid model name
+  'claude-sonnet-4-20250514': CLAUDE_MODELS.SONNET,
+  // Non-Claude models -> default to Haiku (fast/cheap)
+  'meta-llama/llama-3.1-8b-instruct': CLAUDE_MODELS.HAIKU,
+  'mistralai/mistral-7b-instruct': CLAUDE_MODELS.HAIKU,
+  'google/gemini-flash-1.5': CLAUDE_MODELS.HAIKU,
+  'google/gemini-2.5-flash-preview-09-2025': CLAUDE_MODELS.HAIKU,
 };
 
 export class ClaudeClient {
   private anthropic: Anthropic;
-  private defaultModel = 'claude-sonnet-4-20250514';
+  private defaultModel = CLAUDE_MODELS.OPUS; // Default to Opus for processing tasks
 
   constructor(apiKey?: string) {
     this.anthropic = new Anthropic({
@@ -83,6 +116,7 @@ export class ClaudeClient {
     const response = await this.anthropic.messages.create({
       model,
       max_tokens: request.max_tokens || 1000,
+      temperature: request.temperature,
       system: systemPrompt || undefined,
       messages,
     });
@@ -91,15 +125,61 @@ export class ClaudeClient {
     const textBlock = response.content.find(block => block.type === 'text');
     const content = textBlock?.type === 'text' ? textBlock.text : '';
 
+    const totalTokens = response.usage.input_tokens + response.usage.output_tokens;
     return {
       content,
       usage: {
+        promptTokens: response.usage.input_tokens,
+        completionTokens: response.usage.output_tokens,
+        totalTokens,
+        // Snake_case aliases for compatibility
         prompt_tokens: response.usage.input_tokens,
         completion_tokens: response.usage.output_tokens,
-        total_tokens: response.usage.input_tokens + response.usage.output_tokens
+        total_tokens: totalTokens
       },
       model: response.model
     };
+  }
+
+  /**
+   * Vision analysis - for images and PDFs
+   */
+  async vision(request: VisionRequest): Promise<string> {
+    // Map mime types to Claude's supported media types
+    const mediaType = request.mimeType.includes('pdf') ? 'application/pdf' :
+                      request.mimeType.includes('png') ? 'image/png' :
+                      request.mimeType.includes('gif') ? 'image/gif' :
+                      request.mimeType.includes('webp') ? 'image/webp' :
+                      'image/jpeg';
+
+    const model = this.mapModel(request.model) || MODEL_FOR.VISION;
+
+    const response = await this.anthropic.messages.create({
+      model,
+      max_tokens: request.maxTokens || 16000,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+                data: request.imageBase64
+              }
+            },
+            {
+              type: 'text',
+              text: request.prompt
+            }
+          ]
+        }
+      ]
+    });
+
+    const textBlock = response.content.find(block => block.type === 'text');
+    return textBlock?.type === 'text' ? textBlock.text : '';
   }
 
   /**

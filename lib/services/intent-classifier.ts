@@ -116,7 +116,7 @@ Return JSON only.`;
     const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514', // Claude Sonnet for fast, accurate classification
+      model: 'claude-haiku-4-5-20250514', // Haiku 4.5 for fast classification
       max_tokens: 200,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],

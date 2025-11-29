@@ -8,48 +8,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
-import Anthropic from '@anthropic-ai/sdk';
+import { claudeClient } from '@/lib/llm/claude-client';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
-// Claude Direct API for vision/PDF extraction (GDPR compliant)
+// Use shared Claude client for vision/PDF extraction
 async function callClaudeVision(base64Data: string, mimeType: string, prompt: string): Promise<string> {
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-  // Map mime types to Claude's supported media types
-  const mediaType = mimeType.includes('pdf') ? 'application/pdf' :
-                    mimeType.includes('png') ? 'image/png' :
-                    mimeType.includes('gif') ? 'image/gif' :
-                    mimeType.includes('webp') ? 'image/webp' :
-                    'image/jpeg';
-
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 16000,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-              data: base64Data
-            }
-          },
-          {
-            type: 'text',
-            text: prompt
-          }
-        ]
-      }
-    ]
+  return claudeClient.vision({
+    imageBase64: base64Data,
+    mimeType,
+    prompt,
+    maxTokens: 16000
   });
-
-  // Extract text content from response
-  const textBlock = response.content.find(block => block.type === 'text');
-  return textBlock?.type === 'text' ? textBlock.text : '';
 }
 
 // Document content extraction functions

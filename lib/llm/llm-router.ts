@@ -246,7 +246,7 @@ class LLMRouter {
     }));
 
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514', // Latest Claude Sonnet
+      model: 'claude-haiku-4-5-20250514', // Haiku 4.5 for chat interface (fast, cheap)
       max_tokens: options?.maxTokens || prefs.max_tokens || 1000,
       system: systemPrompt,
       messages: anthropicMessages,
