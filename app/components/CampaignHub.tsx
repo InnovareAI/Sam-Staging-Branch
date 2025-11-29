@@ -46,14 +46,7 @@ import {
   UserPlus
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-// CampaignList uses custom Tailwind, CampaignBuilder still uses shadcn
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+// All UI components now use custom Tailwind (shadcn removed)
 import CampaignApprovalScreen from '@/app/components/CampaignApprovalScreen';
 import { UnipileModal } from '@/components/integrations/UnipileModal';
 
@@ -3406,14 +3399,15 @@ Would you like me to adjust these or create more variations?`
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="campaign-name" className="text-gray-400">
+            <label htmlFor="campaign-name" className="block text-sm font-medium text-gray-400">
               Campaign Name
-            </Label>
-            <Input 
+            </label>
+            <input
               id="campaign-name"
-              className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500" 
-              value={name} 
-              onChange={e => setName(e.target.value)} 
+              type="text"
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+              value={name}
+              onChange={e => setName(e.target.value)}
               placeholder="Enter campaign name..."
             />
           </div>
@@ -3745,10 +3739,10 @@ Would you like me to adjust these or create more variations?`
           <div className="bg-gray-700 rounded-lg p-4 mb-6">
             <h4 className="text-white font-medium mb-3">Choose Prospect Data Source</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Button
+              <button
+                type="button"
                 onClick={() => setDataSource('approved')}
-                variant="outline"
-                className={`h-auto p-4 flex flex-col items-start ${
+                className={`h-auto p-4 flex flex-col items-start border rounded-lg transition-colors ${
                   dataSource === 'approved'
                     ? 'border-purple-500 bg-purple-600/20 text-purple-300'
                     : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500'
@@ -3757,12 +3751,12 @@ Would you like me to adjust these or create more variations?`
                 <Users className="mb-2" size={24} />
                 <div className="font-medium">Use Approved Prospects</div>
                 <div className="text-xs text-gray-400 mt-1">Select from previously approved prospect data</div>
-              </Button>
+              </button>
 
-              <Button
+              <button
+                type="button"
                 onClick={() => setDataSource('quick-add')}
-                variant="outline"
-                className={`h-auto p-4 flex flex-col items-start ${
+                className={`h-auto p-4 flex flex-col items-start border rounded-lg transition-colors ${
                   dataSource === 'quick-add'
                     ? 'border-purple-500 bg-purple-600/20 text-purple-300'
                     : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500'
@@ -3771,7 +3765,7 @@ Would you like me to adjust these or create more variations?`
                 <Link className="mb-2" size={24} />
                 <div className="font-medium">Quick Add LinkedIn URL</div>
                 <div className="text-xs text-gray-400 mt-1">Paste a LinkedIn profile URL to add instantly</div>
-              </Button>
+              </button>
             </div>
           </div>
           )}
@@ -3793,28 +3787,27 @@ Would you like me to adjust these or create more variations?`
                   <div>
                     <div className="flex justify-between items-center mb-4">
                       <span className="text-white font-medium">{approvalSessions.length} Approval List{approvalSessions.length !== 1 ? 's' : ''} Available</span>
-                <Button
-                  onClick={() => {
-                    const allSelected = selectedSessions.length === approvalSessions.length;
-                    if (allSelected) {
-                      setSelectedSessions([]);
-                      setSelectedProspects([]);
-                      setName(generateDefaultCampaignName());
-                    } else {
-                      setSelectedSessions(approvalSessions.map(s => s.id));
-                      setSelectedProspects([...approvedProspects]);
-                      // Use first session's name when selecting all
-                      if (approvalSessions.length > 0 && approvalSessions[0].name) {
-                        setName(approvalSessions[0].name);
-                      }
-                    }
-                  }}
-                  variant="link"
-                  size="sm"
-                  className="text-purple-400 hover:text-purple-300"
-                >
-                  {selectedSessions.length === approvalSessions.length ? 'Deselect All' : 'Select All'}
-                </Button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allSelected = selectedSessions.length === approvalSessions.length;
+                          if (allSelected) {
+                            setSelectedSessions([]);
+                            setSelectedProspects([]);
+                            setName(generateDefaultCampaignName());
+                          } else {
+                            setSelectedSessions(approvalSessions.map(s => s.id));
+                            setSelectedProspects([...approvedProspects]);
+                            // Use first session's name when selecting all
+                            if (approvalSessions.length > 0 && approvalSessions[0].name) {
+                              setName(approvalSessions[0].name);
+                            }
+                          }
+                        }}
+                        className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
+                      >
+                        {selectedSessions.length === approvalSessions.length ? 'Deselect All' : 'Select All'}
+                      </button>
                     </div>
                     <div className="max-h-64 overflow-y-auto space-y-2">
                       {approvalSessions.map((session) => {
@@ -3930,7 +3923,7 @@ Would you like me to adjust these or create more variations?`
             <div className="bg-gray-700 rounded-lg p-4 mb-6">
               <h4 className="text-white font-medium mb-3">Add LinkedIn Profile</h4>
               <div className="flex gap-2">
-                <Input
+                <input
                   type="text"
                   placeholder="https://linkedin.com/in/username"
                   value={quickAddUrl}
@@ -3940,17 +3933,18 @@ Would you like me to adjust these or create more variations?`
                       handleQuickAddProspect();
                     }
                   }}
-                  className="flex-1 bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                  className="flex-1 px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 disabled:opacity-50"
                   disabled={isAddingQuickProspect}
                 />
-                <Button
+                <button
+                  type="button"
                   onClick={() => {
                     if (quickAddUrl && quickAddUrl.trim()) {
                       handleQuickAddProspect();
                     }
                   }}
                   disabled={typeof quickAddUrl !== 'string' || quickAddUrl.trim().length === 0 || isAddingQuickProspect}
-                  className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600"
+                  className="flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
                 >
                   {isAddingQuickProspect ? (
                     <>
@@ -3963,7 +3957,7 @@ Would you like me to adjust these or create more variations?`
                       Add
                     </>
                   )}
-                </Button>
+                </button>
               </div>
               <p className="text-gray-400 text-xs mt-2">
                 Paste a LinkedIn profile URL and we'll automatically detect if they're a 1st degree connection
@@ -3974,14 +3968,13 @@ Would you like me to adjust these or create more variations?`
                 <div className="mt-4">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-gray-400 text-sm">Added Prospects ({csvData.length})</span>
-                    <Button
-                      variant="link"
-                      size="sm"
+                    <button
+                      type="button"
                       onClick={() => setCsvData([])}
-                      className="text-red-400 hover:text-red-300"
+                      className="text-sm text-red-400 hover:text-red-300 transition-colors"
                     >
                       Clear All
-                    </Button>
+                    </button>
                   </div>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {csvData.map((prospect, index) => (
@@ -3997,16 +3990,15 @@ Would you like me to adjust these or create more variations?`
                             {prospect.linkedin_user_id && ' • Ready for Messenger'}
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                        <button
+                          type="button"
                           onClick={() => {
                             setCsvData(csvData.filter((_, i) => i !== index));
                           }}
-                          className="text-gray-400 hover:text-red-400"
+                          className="p-1 text-gray-400 hover:text-red-400 transition-colors"
                         >
                           <X size={16} />
-                        </Button>
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -4031,10 +4023,9 @@ Would you like me to adjust these or create more variations?`
               Let SAM create personalized messaging sequences based on your campaign goals and target audience.
             </p>
             <div className="flex gap-2 flex-wrap">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-gray-700 hover:bg-gray-600 text-gray-300"
+              <button
+                type="button"
+                className="flex items-center px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
                 onClick={() => {
                   setManualConnection('');
                   setManualAlternative('');
@@ -4044,8 +4035,9 @@ Would you like me to adjust these or create more variations?`
               >
                 <Edit size={16} className="mr-1" />
                 Create Manually
-              </Button>
-              <Button
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   const campaignTypeLabel = campaignType === 'connector' ? '**connector campaign** (for 2nd/3rd degree LinkedIn connections)' : '**messenger campaign** (for 1st degree connections - already connected)';
                   const messageType = campaignType === 'connector' ? 'connection request + follow-up messages' : 'direct messages (no connection request needed)';
@@ -4056,63 +4048,58 @@ Would you like me to adjust these or create more variations?`
                   }]);
                   setShowSamGenerationModal(true);
                 }}
-                className="bg-purple-600 hover:bg-purple-700"
-                size="sm"
+                className="flex items-center px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
               >
                 <Zap size={16} className="mr-1" />
                 Generate Messaging with SAM
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30"
+              </button>
+              <button
+                type="button"
+                className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
                 onClick={openKBModal}
               >
                 <Brain size={16} className="mr-1" />
                 Load from Knowledgebase
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500/30"
+              </button>
+              <button
+                type="button"
+                className="flex items-center px-3 py-1.5 text-sm bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500/30 rounded-lg transition-colors"
                 onClick={openPreviousMessagesModal}
               >
                 <Clock size={16} className="mr-1" />
                 Load Previous Messages
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-pink-600/20 hover:bg-pink-600/30 text-pink-400 border border-pink-500/30"
+              </button>
+              <button
+                type="button"
+                className="flex items-center px-3 py-1.5 text-sm bg-pink-600/20 hover:bg-pink-600/30 text-pink-400 border border-pink-500/30 rounded-lg transition-colors"
                 onClick={() => setShowTemplateLibraryModal(true)}
               >
                 <FileText size={16} className="mr-1" />
                 Load from Template
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30"
+              </button>
+              <button
+                type="button"
+                className="flex items-center px-3 py-1.5 text-sm bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30 rounded-lg transition-colors"
                 onClick={() => setShowPasteModal(true)}
               >
                 <Upload size={16} className="mr-1" />
                 Paste Template
-              </Button>
+              </button>
             </div>
           </div>
 
           {/* ONLY show Connection Request for Connector campaigns */}
           {campaignType === 'connector' && (
             <div className="space-y-2">
-              <Label htmlFor="connection-message" className="text-gray-400">
+              <label htmlFor="connection-message" className="block text-sm font-medium text-gray-400">
                 Connection Request Message
-              </Label>
+              </label>
               <p className="text-xs text-gray-500">
                 This message will be sent with your connection request
               </p>
-              <Textarea
+              <textarea
                 id="connection-message"
-                className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
                 rows={4}
                 value={connectionMessage}
                 onChange={e => setConnectionMessage(e.target.value)}
@@ -4135,10 +4122,9 @@ Would you like me to adjust these or create more variations?`
                   )}
                 </span>
                 {connectionMessage.length > 0 && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
+                  <button
+                    type="button"
+                    className="flex items-center px-2 py-1 text-xs bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 rounded-lg transition-colors"
                     onClick={async () => {
                       // Call SAM API directly to improve the message
                       try {
@@ -4197,7 +4183,7 @@ Would you like me to adjust these or create more variations?`
                   >
                     <Zap size={12} className="mr-1" />
                     Improve with SAM
-                  </Button>
+                  </button>
                 )}
               </div>
             </div>
@@ -4206,15 +4192,15 @@ Would you like me to adjust these or create more variations?`
           {/* ONLY show Alternative Message for Connector campaigns */}
           {campaignType === 'connector' && (
             <div className="space-y-2">
-              <Label htmlFor="alternative-message" className="text-gray-400">
+              <label htmlFor="alternative-message" className="block text-sm font-medium text-gray-400">
                 Alternative Message (Optional)
-              </Label>
+              </label>
               <p className="text-xs text-gray-500">
                 Shorter alternative message for connection requests
               </p>
-              <Textarea
+              <textarea
                 id="alternative-message"
-                className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
                 rows={2}
                 value={alternativeMessage}
                 onChange={e => setAlternativeMessage(e.target.value)}
@@ -4230,10 +4216,9 @@ Would you like me to adjust these or create more variations?`
                   Characters remaining: {115 - alternativeMessage.length}/115
                 </span>
                 {alternativeMessage.length > 0 && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
+                  <button
+                    type="button"
+                    className="flex items-center px-2 py-1 text-xs bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 rounded-lg transition-colors"
                     onClick={async () => {
                       // Call SAM API directly to improve the message
                       try {
@@ -4280,7 +4265,7 @@ Would you like me to adjust these or create more variations?`
                   >
                     <Zap size={12} className="mr-1" />
                     Improve with SAM
-                  </Button>
+                  </button>
                 )}
               </div>
             </div>
@@ -4288,9 +4273,9 @@ Would you like me to adjust these or create more variations?`
 
           <div>
             <div className="flex items-center justify-between mb-3">
-              <Label className="text-gray-400">
+              <label className="block text-sm font-medium text-gray-400">
                 6-Step Messaging Sequence (5 Follow-ups)
-              </Label>
+              </label>
             </div>
             <p className="text-xs text-gray-500 mb-3">
               Messages 2-6 sent after connection is accepted
@@ -4314,9 +4299,9 @@ Would you like me to adjust these or create more variations?`
                 <div key={index} className="mb-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <Label className="text-gray-400">
+                      <label className="text-sm font-medium text-gray-400">
                         {getMessageLabel()}
-                      </Label>
+                      </label>
                       <span className="text-xs text-gray-500">• Wait:</span>
                     </div>
                     <select
@@ -4332,8 +4317,8 @@ Would you like me to adjust these or create more variations?`
                       <option value="2 weeks">2 weeks</option>
                     </select>
                   </div>
-                  <Textarea
-                    className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+                  <textarea
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
                     rows={3}
                     value={message}
                     onChange={e => updateFollowUpMessage(index, e.target.value)}
@@ -4348,10 +4333,9 @@ Would you like me to adjust these or create more variations?`
                     <div className="flex justify-between items-center mt-2">
                       {/* Remove button */}
                       {followUpMessages.length > 1 && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 text-xs px-2 py-1"
+                        <button
+                          type="button"
+                          className="flex items-center px-2 py-1 text-xs bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg transition-colors"
                           onClick={() => {
                             if (confirm(`Remove Message ${index + 2}?`)) {
                               removeFollowUpMessage(index);
@@ -4361,13 +4345,12 @@ Would you like me to adjust these or create more variations?`
                         >
                           <X size={12} className="mr-1" />
                           Remove
-                        </Button>
+                        </button>
                       )}
                       <div className="flex-grow"></div>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
+                      <button
+                        type="button"
+                        className="flex items-center px-2 py-1 text-xs bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 rounded-lg transition-colors"
                         onClick={async () => {
                           // Call SAM API directly to improve the message
                           try {
@@ -4417,7 +4400,7 @@ Would you like me to adjust these or create more variations?`
                       >
                         <Zap size={12} className="mr-1" />
                         Improve with SAM
-                      </Button>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -4426,15 +4409,14 @@ Would you like me to adjust these or create more variations?`
 
             {/* Add Follow-Up Message Button */}
             <div className="mt-4">
-              <Button
+              <button
+                type="button"
                 onClick={addFollowUpMessage}
-                variant="secondary"
-                size="sm"
-                className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30"
+                className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
               >
                 <Plus size={16} className="mr-2" />
                 Add Follow-Up Message
-              </Button>
+              </button>
               <p className="text-xs text-gray-500 mt-2">
                 Add additional steps to your messaging sequence (currently {followUpMessages.length} follow-up{followUpMessages.length !== 1 ? 's' : ''})
               </p>
@@ -4481,9 +4463,9 @@ Would you like me to adjust these or create more variations?`
               <div>
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1">
-                    <Label className="text-white text-sm font-medium">
+                    <label className="block text-sm font-medium text-white">
                       Connection Request Delay
-                    </Label>
+                    </label>
                     <p className="text-xs text-gray-400 mt-1">
                       Time to wait between sending connection requests
                     </p>
@@ -4513,9 +4495,9 @@ Would you like me to adjust these or create more variations?`
               <div>
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1">
-                    <Label className="text-white text-sm font-medium">
+                    <label className="block text-sm font-medium text-white">
                       Follow-up Message Delay
-                    </Label>
+                    </label>
                     <p className="text-xs text-gray-400 mt-1">
                       Time to wait between follow-up messages after connection is accepted
                     </p>
@@ -4558,10 +4540,9 @@ Would you like me to adjust these or create more variations?`
               Let SAM create personalized messaging sequences for your 1st degree connections.
             </p>
             <div className="flex gap-2 flex-wrap">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-gray-700 hover:bg-gray-600 text-gray-300"
+              <button
+                type="button"
+                className="flex items-center px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
                 onClick={() => {
                   setManualConnection('');
                   setManualAlternative('');
@@ -4571,8 +4552,9 @@ Would you like me to adjust these or create more variations?`
               >
                 <Edit size={16} className="mr-1" />
                 Create Manually
-              </Button>
-              <Button
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   setSamMessages([{
                     role: 'assistant',
@@ -4580,52 +4562,48 @@ Would you like me to adjust these or create more variations?`
                   }]);
                   setShowSamGenerationModal(true);
                 }}
-                className="bg-purple-600 hover:bg-purple-700"
-                size="sm"
+                className="flex items-center px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
               >
                 <Zap size={16} className="mr-1" />
                 Generate Messaging with SAM
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30"
+              </button>
+              <button
+                type="button"
+                className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
                 onClick={openKBModal}
               >
                 <Brain size={16} className="mr-1" />
                 Load from Knowledgebase
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500/30"
+              </button>
+              <button
+                type="button"
+                className="flex items-center px-3 py-1.5 text-sm bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500/30 rounded-lg transition-colors"
                 onClick={openPreviousMessagesModal}
               >
                 <Clock size={16} className="mr-1" />
                 Load Previous Messages
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30"
+              </button>
+              <button
+                type="button"
+                className="flex items-center px-3 py-1.5 text-sm bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30 rounded-lg transition-colors"
                 onClick={() => setShowPasteModal(true)}
               >
                 <Upload size={16} className="mr-1" />
                 Paste Template
-              </Button>
+              </button>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="messenger-initial-message" className="text-gray-400">
+            <label htmlFor="messenger-initial-message" className="block text-sm font-medium text-gray-400">
               Initial Message
-            </Label>
+            </label>
             <p className="text-xs text-gray-500">
               First message sent to your 1st degree connections (no connection request needed)
             </p>
-            <Textarea
+            <textarea
               id="messenger-initial-message"
-              className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
               rows={4}
               value={alternativeMessage}
               onChange={e => setAlternativeMessage(e.target.value)}
@@ -4640,10 +4618,9 @@ Would you like me to adjust these or create more variations?`
                 Characters: {alternativeMessage.length}
               </span>
               {alternativeMessage.length > 0 && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
+                <button
+                  type="button"
+                  className="flex items-center px-2 py-1 text-xs bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 rounded-lg transition-colors"
                   onClick={async () => {
                     // Call SAM API directly to improve the message
                     try {
@@ -4685,16 +4662,16 @@ Would you like me to adjust these or create more variations?`
                 >
                   <Zap size={12} className="mr-1" />
                   Improve with SAM
-                </Button>
+                </button>
               )}
             </div>
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-3">
-              <Label className="text-gray-400">
+              <label className="block text-sm font-medium text-gray-400">
                 6-Step Messaging Sequence (5 Follow-ups)
-              </Label>
+              </label>
             </div>
             <p className="text-xs text-gray-500 mb-3">
               Messages 2-6 sent to your 1st degree connections
@@ -4718,9 +4695,9 @@ Would you like me to adjust these or create more variations?`
                 <div key={index} className="mb-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <Label className="text-gray-400">
+                      <label className="text-sm font-medium text-gray-400">
                         {getMessageLabel()}
-                      </Label>
+                      </label>
                       <span className="text-xs text-gray-500">• Wait:</span>
                     </div>
                     <select
@@ -4736,8 +4713,8 @@ Would you like me to adjust these or create more variations?`
                       <option value="2 weeks">2 weeks</option>
                     </select>
                   </div>
-                  <Textarea
-                    className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+                  <textarea
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
                     rows={4}
                     value={message}
                     onChange={e => updateFollowUpMessage(index, e.target.value)}
@@ -4752,10 +4729,9 @@ Would you like me to adjust these or create more variations?`
                     <div className="flex justify-between items-center mt-2">
                       {/* Remove button */}
                       {followUpMessages.length > 1 && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 text-xs px-2 py-1"
+                        <button
+                          type="button"
+                          className="flex items-center px-2 py-1 text-xs bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg transition-colors"
                           onClick={() => {
                             if (confirm(`Remove Message ${index + 2}?`)) {
                               removeFollowUpMessage(index);
@@ -4765,13 +4741,12 @@ Would you like me to adjust these or create more variations?`
                         >
                           <X size={12} className="mr-1" />
                           Remove
-                        </Button>
+                        </button>
                       )}
                       <div className="flex-grow"></div>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 text-xs px-2 py-1"
+                      <button
+                        type="button"
+                        className="flex items-center px-2 py-1 text-xs bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 rounded-lg transition-colors"
                         onClick={async () => {
                           // Call SAM API directly to improve the message
                           try {
@@ -4821,7 +4796,7 @@ Would you like me to adjust these or create more variations?`
                       >
                         <Zap size={12} className="mr-1" />
                         Improve with SAM
-                      </Button>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -4830,15 +4805,14 @@ Would you like me to adjust these or create more variations?`
 
             {/* Add Follow-Up Message Button */}
             <div className="mt-4">
-              <Button
+              <button
+                type="button"
                 onClick={addFollowUpMessage}
-                variant="secondary"
-                size="sm"
-                className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30"
+                className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
               >
                 <Plus size={16} className="mr-2" />
                 Add Follow-Up Message
-              </Button>
+              </button>
               <p className="text-xs text-gray-500 mt-2">
                 Add additional steps to your messaging sequence (currently {followUpMessages.length} follow-up{followUpMessages.length !== 1 ? 's' : ''})
               </p>
@@ -4878,9 +4852,9 @@ Would you like me to adjust these or create more variations?`
             <div className="space-y-4">
               {/* Initial Message Delay (for Messenger campaigns) */}
               <div>
-                <Label className="text-gray-400 text-sm mb-2 block">
+                <label className="block text-sm font-medium text-gray-400 mb-2">
                   Initial Message Delay
-                </Label>
+                </label>
                 <select
                   className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
                   value={campaignSettings.connection_request_delay || '1-3 hours'}
@@ -4900,9 +4874,9 @@ Would you like me to adjust these or create more variations?`
 
               {/* Follow-up Message Delay */}
               <div>
-                <Label className="text-gray-400 text-sm mb-2 block">
+                <label className="block text-sm font-medium text-gray-400 mb-2">
                   Follow-up Message Delay
-                </Label>
+                </label>
                 <select
                   className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
                   value={campaignSettings.follow_up_delay || '2-3 days'}
@@ -4937,10 +4911,9 @@ Would you like me to adjust these or create more variations?`
               Let SAM create personalized email sequences for your outreach campaign.
             </p>
             <div className="flex gap-2 flex-wrap">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-gray-700 hover:bg-gray-600 text-gray-300"
+              <button
+                type="button"
+                className="flex items-center px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
                 onClick={() => {
                   setManualConnection('');
                   setManualAlternative('');
@@ -4950,8 +4923,9 @@ Would you like me to adjust these or create more variations?`
               >
                 <Edit size={16} className="mr-1" />
                 Create Manually
-              </Button>
-              <Button
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   setSamMessages([{
                     role: 'assistant',
@@ -4959,47 +4933,44 @@ Would you like me to adjust these or create more variations?`
                   }]);
                   setShowSamGenerationModal(true);
                 }}
-                className="bg-purple-600 hover:bg-purple-700"
-                size="sm"
+                className="flex items-center px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
               >
                 <Zap size={16} className="mr-1" />
                 Generate with SAM
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30"
+              </button>
+              <button
+                type="button"
+                className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
                 onClick={openKBModal}
               >
                 <Brain size={16} className="mr-1" />
                 Load from KB
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30"
+              </button>
+              <button
+                type="button"
+                className="flex items-center px-3 py-1.5 text-sm bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30 rounded-lg transition-colors"
                 onClick={() => setShowPasteModal(true)}
               >
                 <Upload size={16} className="mr-1" />
                 Paste Template
-              </Button>
+              </button>
             </div>
           </div>
 
           {/* Initial Email */}
           <div className="space-y-3">
-            <Label htmlFor="email-initial" className="text-gray-400">
+            <label htmlFor="email-initial" className="block text-sm font-medium text-gray-400">
               Initial Email
-            </Label>
+            </label>
             <p className="text-xs text-gray-500">
               First email sent to your prospects
             </p>
 
             {/* Subject Line */}
             <div className="space-y-1">
-              <Label htmlFor="email-initial-subject" className="text-gray-500 text-xs">
+              <label htmlFor="email-initial-subject" className="block text-xs text-gray-500">
                 Subject Line
-              </Label>
+              </label>
               <input
                 id="email-initial-subject"
                 type="text"
@@ -5012,12 +4983,12 @@ Would you like me to adjust these or create more variations?`
 
             {/* Email Body */}
             <div className="space-y-1">
-              <Label htmlFor="email-initial-body" className="text-gray-500 text-xs">
+              <label htmlFor="email-initial-body" className="block text-xs text-gray-500">
                 Email Body
-              </Label>
-              <Textarea
+              </label>
+              <textarea
                 id="email-initial-body"
-                className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
                 rows={6}
                 value={alternativeMessage}
                 onChange={e => setAlternativeMessage(e.target.value)}
@@ -5046,9 +5017,9 @@ Would you like me to adjust these or create more variations?`
                 className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
               />
               <div>
-                <Label htmlFor="use-threaded-replies" className="text-white cursor-pointer">
+                <label htmlFor="use-threaded-replies" className="text-white cursor-pointer">
                   Use threaded replies (RE:)
-                </Label>
+                </label>
                 <p className="text-xs text-gray-400 mt-1">
                   {useThreadedReplies
                     ? `Follow-up emails will use "RE: ${initialSubject || '[Initial Subject]'}" as the subject line`
@@ -5062,9 +5033,9 @@ Would you like me to adjust these or create more variations?`
           {/* Email Follow-ups */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <Label className="text-gray-400">
+              <label className="block text-sm font-medium text-gray-400">
                 Follow-up Emails ({followUpMessages.length})
-              </Label>
+              </label>
             </div>
             <p className="text-xs text-gray-500 mb-3">
               Automated follow-up sequence
@@ -5072,16 +5043,16 @@ Would you like me to adjust these or create more variations?`
 
             {followUpMessages.map((message, index) => (
               <div key={index} className="mb-4 bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-                <Label className="text-gray-400 mb-2 block">
+                <label className="block text-sm font-medium text-gray-400 mb-2">
                   Follow-up Email {index + 1}
-                </Label>
+                </label>
 
                 {/* Subject Line for this follow-up (only if not using threaded replies) */}
                 {!useThreadedReplies && (
                   <div className="mb-3">
-                    <Label className="text-gray-500 text-xs mb-1 block">
+                    <label className="block text-xs text-gray-500 mb-1">
                       Subject Line
-                    </Label>
+                    </label>
                     <input
                       type="text"
                       className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none text-sm"
@@ -5099,11 +5070,11 @@ Would you like me to adjust these or create more variations?`
 
                 <div className="flex gap-3">
                   <div className="flex-1">
-                    <Label className="text-gray-500 text-xs mb-1 block">
+                    <label className="block text-xs text-gray-500 mb-1">
                       Email Body
-                    </Label>
-                    <Textarea
-                      className="w-full bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 resize-none"
+                    </label>
+                    <textarea
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
                       rows={4}
                       value={message}
                       onChange={e => updateFollowUpMessage(index, e.target.value)}
@@ -5137,10 +5108,9 @@ Would you like me to adjust these or create more variations?`
                 </div>
                 {message.length > 0 && followUpMessages.length > 1 && (
                   <div className="flex justify-between items-center mt-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 text-xs px-2 py-1"
+                    <button
+                      type="button"
+                      className="flex items-center px-2 py-1 text-xs bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg transition-colors"
                       onClick={() => {
                         if (confirm(`Remove Follow-up ${index + 1}?`)) {
                           removeFollowUpMessage(index);
@@ -5150,7 +5120,7 @@ Would you like me to adjust these or create more variations?`
                     >
                       <X size={12} className="mr-1" />
                       Remove
-                    </Button>
+                    </button>
                   </div>
                 )}
               </div>
@@ -5158,15 +5128,14 @@ Would you like me to adjust these or create more variations?`
 
             {/* Add Follow-Up Button */}
             <div className="mt-4">
-              <Button
+              <button
+                type="button"
                 onClick={addFollowUpMessage}
-                variant="secondary"
-                size="sm"
-                className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30"
+                className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
               >
                 <Plus size={16} className="mr-2" />
                 Add Follow-Up Email
-              </Button>
+              </button>
               <p className="text-xs text-gray-500 mt-2">
                 Currently {followUpMessages.length} follow-up{followUpMessages.length !== 1 ? 's' : ''}
               </p>
@@ -5178,16 +5147,15 @@ Would you like me to adjust these or create more variations?`
             <h4 className="text-white font-medium mb-3">Personalization Placeholders</h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {placeholders.map((placeholder) => (
-                <Button
+                <button
                   key={placeholder.key}
+                  type="button"
                   onClick={() => insertPlaceholder(placeholder.key)}
-                  variant="secondary"
-                  size="sm"
-                  className="text-xs bg-purple-600 hover:bg-purple-700 text-white"
+                  className="text-xs px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
                   title={placeholder.description}
                 >
                   {placeholder.key}
-                </Button>
+                </button>
               ))}
             </div>
             <p className="text-xs text-gray-500 mt-2">
@@ -5199,7 +5167,8 @@ Would you like me to adjust these or create more variations?`
 
       {/* Navigation Buttons */}
       <div className="flex justify-between mt-8">
-        <Button
+        <button
+          type="button"
           onClick={() => {
             // If on Step 3 and we have initialProspects (meaning we skipped Step 2), go back to Step 1
             if (currentStep === 3 && initialProspects && initialProspects.length > 0) {
@@ -5209,16 +5178,16 @@ Would you like me to adjust these or create more variations?`
             }
           }}
           disabled={currentStep === 1}
-          variant="secondary"
-          className="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 text-gray-300"
+          className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 disabled:cursor-not-allowed text-gray-300 rounded-lg transition-colors"
         >
           Previous
-        </Button>
+        </button>
 
         <div className="flex gap-3">
           {currentStep < 3 ? (
             <>
-              <Button
+              <button
+                type="button"
                 onClick={() => {
                   // Validate connection degree for LinkedIn campaigns before proceeding
                   if (currentStep === 1 && (campaignType === 'connector' || campaignType === 'messenger')) {
@@ -5237,14 +5206,15 @@ Would you like me to adjust these or create more variations?`
                   }
                 }}
                 disabled={currentStep === 2 && !csvData.length && !selectedProspects.length && !initialProspects?.length}
-                className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:text-gray-400"
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
               >
                 {currentStep === 1 && initialProspects && initialProspects.length > 0
                   ? 'Continue to Messages'
                   : 'Next Step'}
-              </Button>
+              </button>
               {currentStep === 2 && (
-                <Button
+                <button
+                  type="button"
                   onClick={() => {
                     // Validate connection degree for LinkedIn campaigns
                     if ((campaignType === 'connector' || campaignType === 'messenger') && !hasConnectionDegreeData) {
@@ -5253,36 +5223,37 @@ Would you like me to adjust these or create more variations?`
                     }
                     setCurrentStep(3);
                   }}
-                  variant="secondary"
-                  className="bg-gray-700 hover:bg-gray-600 text-gray-300"
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
                   title="Skip prospect data - you can add prospects later"
                 >
                   Skip for Now
-                </Button>
+                </button>
               )}
             </>
           ) : (
             <>
-              <Button
+              <button
+                type="button"
                 onClick={submit}
-                className="bg-green-600 hover:bg-green-700 font-medium"
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 font-medium text-white rounded-lg transition-colors"
               >
                 Create Campaign
-              </Button>
-              <Button
+              </button>
+              <button
+                type="button"
                 onClick={async () => {
                   await saveDraft(true);
                   toastSuccess('Campaign draft saved successfully');
                 }}
-                variant="secondary"
                 disabled={isSavingDraft || !name.trim()}
-                className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 disabled:opacity-50"
+                className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
               >
                 {isSavingDraft ? 'Saving...' : 'Save Draft'}
-              </Button>
+              </button>
             </>
           )}
-          <Button
+          <button
+            type="button"
             onClick={() => {
               if (currentStep > 1) {
                 // Go back one step
@@ -5292,11 +5263,10 @@ Would you like me to adjust these or create more variations?`
                 onClose();
               }
             }}
-            variant="secondary"
-            className="bg-gray-700 hover:bg-gray-600 text-gray-300"
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
           >
             {currentStep > 1 ? 'Back' : 'Cancel'}
-          </Button>
+          </button>
         </div>
       </div>
     </div>
@@ -5441,10 +5411,10 @@ Would you like me to adjust these or create more variations?`
                 /* Input Step */
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="paste-text" className="text-gray-300 mb-2 block">
+                    <label htmlFor="paste-text" className="block text-sm font-medium text-gray-300 mb-2">
                       Paste your message template(s)
-                    </Label>
-                    <Textarea
+                    </label>
+                    <textarea
                       id="paste-text"
                       value={pastedText}
                       onChange={(e) => setPastedText(e.target.value)}
@@ -5455,7 +5425,7 @@ Hi Sarah, I noticed you're the VP of Sales at Acme Corp. I'd love to connect and
 Follow-up: Hey Sarah, wanted to circle back on connecting.
 
 Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
-                      className="min-h-[300px] bg-gray-900 border-gray-600 text-white"
+                      className="w-full min-h-[300px] px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                     />
                   </div>
                   <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
@@ -5493,7 +5463,7 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
 
                   {parsedPreview.connectionMessage && campaignType === 'connector' && (
                     <div>
-                      <Label className="text-gray-300 mb-2 block">Connection Message</Label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Connection Message</label>
                       <div className="bg-gray-900 border border-gray-600 rounded-lg p-4">
                         <p className="text-white whitespace-pre-wrap">{parsedPreview.connectionMessage}</p>
                       </div>
@@ -5502,9 +5472,9 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
 
                   {parsedPreview.alternativeMessage && (
                     <div>
-                      <Label className="text-gray-300 mb-2 block">
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
                         {campaignType === 'messenger' ? 'Initial Message' : 'Alternative Message'}
-                      </Label>
+                      </label>
                       <div className="bg-gray-900 border border-gray-600 rounded-lg p-4">
                         <p className="text-white whitespace-pre-wrap">{parsedPreview.alternativeMessage}</p>
                       </div>
@@ -5513,7 +5483,7 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
 
                   {parsedPreview.followUpMessages && parsedPreview.followUpMessages.length > 0 && (
                     <div>
-                      <Label className="text-gray-300 mb-2 block">Follow-up Messages</Label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Follow-up Messages</label>
                       <div className="space-y-3">
                         {parsedPreview.followUpMessages.map((msg, idx) => (
                           <div key={idx} className="bg-gray-900 border border-gray-600 rounded-lg p-4">
@@ -5530,31 +5500,33 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
 
             {/* Footer */}
             <div className="p-6 border-t border-gray-700 flex justify-between">
-              <Button
-                variant="secondary"
+              <button
+                type="button"
                 onClick={() => {
                   setShowPasteModal(false);
                   setPastedText('');
                   setParsedPreview(null);
                 }}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
               >
                 Cancel
-              </Button>
+              </button>
               <div className="flex gap-2">
                 {parsedPreview && (
                   <>
-                    <Button
-                      variant="secondary"
+                    <button
+                      type="button"
                       onClick={() => setParsedPreview(null)}
                       disabled={isImprovingCopy}
+                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
                     >
                       Back to Edit
-                    </Button>
-                    <Button
-                      variant="secondary"
+                    </button>
+                    <button
+                      type="button"
                       onClick={improveParsedCopy}
                       disabled={isImprovingCopy}
-                      className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30"
+                      className="flex items-center px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
                     >
                       {isImprovingCopy ? (
                         <>
@@ -5567,13 +5539,14 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
                           Improve Copy
                         </>
                       )}
-                    </Button>
+                    </button>
                   </>
                 )}
-                <Button
+                <button
+                  type="button"
                   onClick={parsedPreview ? applyParsedTemplate : parsePastedTemplate}
                   disabled={isParsing || isImprovingCopy || (!pastedText.trim() && !parsedPreview)}
-                  className="bg-green-600 hover:bg-green-700"
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
                 >
                   {isParsing ? (
                     <>Processing...</>
@@ -5588,7 +5561,7 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
                       Process with SAM AI
                     </>
                   )}
-                </Button>
+                </button>
               </div>
             </div>
           </div>
@@ -5687,21 +5660,21 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
 
             {/* Footer */}
             <div className="p-6 border-t border-gray-700 flex justify-end gap-3">
-              <Button
-                variant="secondary"
+              <button
+                type="button"
                 onClick={() => {
                   setShowKBModal(false);
                   setSelectedKBTemplate(null);
                 }}
-                className="bg-gray-700 hover:bg-gray-600"
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
               >
                 Cancel
-              </Button>
-              <Button
-                variant="primary"
+              </button>
+              <button
+                type="button"
                 onClick={() => selectedKBTemplate && applyKBTemplate(selectedKBTemplate)}
                 disabled={!selectedKBTemplate || isParsing}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
               >
                 {isParsing ? (
                   <>
@@ -5714,7 +5687,7 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
                     Apply Template
                   </>
                 )}
-              </Button>
+              </button>
             </div>
           </div>
         </div>
@@ -5933,20 +5906,20 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
                     </div>
                   </div>
                 ))}
-                <Button
+                <button
+                  type="button"
                   onClick={() => setManualFollowUps([...manualFollowUps, ''])}
-                  variant="secondary"
-                  size="sm"
-                  className="bg-gray-700 hover:bg-gray-600"
+                  className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
                 >
                   + Add Follow-up
-                </Button>
+                </button>
               </div>
             </div>
 
             <div className="p-6 border-t border-gray-700 flex justify-end gap-3">
-              <Button variant="secondary" onClick={() => setShowManualTemplateModal(false)}>Cancel</Button>
-              <Button
+              <button type="button" className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors" onClick={() => setShowManualTemplateModal(false)}>Cancel</button>
+              <button
+                type="button"
                 onClick={() => {
                   // Only set connection message for Connector campaigns
                   if (campaignType === 'connector') {
@@ -5957,11 +5930,11 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
                   setShowManualTemplateModal(false);
                   toastSuccess('Templates applied to campaign!');
                 }}
-                className="bg-green-600 hover:bg-green-700"
+                className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
               >
                 <CheckCircle size={16} className="mr-2" />
                 Apply Templates
-              </Button>
+              </button>
             </div>
           </div>
         </div>
@@ -6015,33 +5988,34 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
               </div>
 
               <div className="flex gap-2">
-                <Input
+                <input
                   type="text"
                   value={samInput}
                   onChange={e => setSamInput(e.target.value)}
                   onKeyPress={e => e.key === 'Enter' && sendSamMessage()}
                   placeholder="Tell SAM about your campaign goals..."
-                  className="flex-1 bg-gray-600 border-gray-500 text-white"
+                  className="flex-1 px-4 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                 />
-                <Button onClick={sendSamMessage} disabled={isGeneratingTemplates || !samInput.trim()} className="bg-purple-600 hover:bg-purple-700">
+                <button type="button" onClick={sendSamMessage} disabled={isGeneratingTemplates || !samInput.trim()} className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   Submit
-                </Button>
+                </button>
               </div>
             </div>
 
             <div className="p-6 border-t border-gray-700 flex justify-end gap-3">
-              <Button variant="secondary" onClick={() => setShowSamGenerationModal(false)}>Cancel</Button>
-              <Button
+              <button type="button" className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors" onClick={() => setShowSamGenerationModal(false)}>Cancel</button>
+              <button
+                type="button"
                 onClick={() => {
                   applySamTemplates();
                   setShowSamGenerationModal(false);
                 }}
-                className="bg-green-600 hover:bg-green-700"
+                className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={samMessages.length < 3}
               >
                 <CheckCircle size={16} className="mr-2" />
                 Apply Templates
-              </Button>
+              </button>
             </div>
           </div>
         </div>
@@ -9979,7 +9953,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
               {/* Follow-up Messages */}
               <div>
-                <Label className="text-gray-300 mb-2 block">Follow-up Messages</Label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Follow-up Messages</label>
                 <div className="space-y-3">
                   {(editFormData.follow_up_messages || []).map((msg: any, index: number) => (
                     <div key={index} className="bg-gray-800/50 border border-gray-700 rounded p-3">
@@ -9996,47 +9970,47 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                           Remove
                         </button>
                       </div>
-                      <Textarea
+                      <textarea
                         value={typeof msg === 'string' ? msg : (msg.message || msg.content || '')}
                         onChange={(e) => {
                           const updated = [...editFormData.follow_up_messages];
                           updated[index] = typeof msg === 'string' ? e.target.value : { ...msg, message: e.target.value };
                           setEditFormData({ ...editFormData, follow_up_messages: updated });
                         }}
-                        className="bg-gray-900 border-gray-700 text-white min-h-[80px]"
+                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none min-h-[80px]"
                       />
                     </div>
                   ))}
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <button
+                    type="button"
                     onClick={() => {
                       const updated = [...(editFormData.follow_up_messages || []), ''];
                       setEditFormData({ ...editFormData, follow_up_messages: updated });
                     }}
-                    className="w-full border-gray-700 text-gray-300 hover:bg-gray-800"
+                    className="w-full flex items-center justify-center px-3 py-1.5 text-sm border border-gray-700 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors"
                   >
                     <Plus size={16} className="mr-2" />
                     Add Follow-up Message
-                  </Button>
+                  </button>
                 </div>
               </div>
             </div>
 
             <div className="sticky bottom-0 bg-gray-900 border-t border-gray-700 p-6 flex gap-3">
-              <Button
+              <button
+                type="button"
                 onClick={() => setShowEditModal(false)}
-                variant="outline"
-                className="flex-1 border-gray-700 text-gray-300 hover:bg-gray-800"
+                className="flex-1 px-4 py-2 border border-gray-700 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors"
               >
                 Cancel
-              </Button>
-              <Button
+              </button>
+              <button
+                type="button"
                 onClick={handleSaveCampaignEdit}
-                className="flex-1 bg-purple-600 hover:bg-purple-700"
+                className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
               >
                 Save Changes
-              </Button>
+              </button>
             </div>
           </div>
         </div>
