@@ -3123,7 +3123,7 @@ export default function Page() {
                     className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                   >
                     <Plus size={20} />
-                    New Campaign
+                    Add Profile
                   </button>
                 </div>
 
@@ -3131,11 +3131,11 @@ export default function Page() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-400 text-sm">Active Campaigns</span>
+                    <span className="text-gray-400 text-sm">Active Profiles</span>
                     <Target size={20} className="text-blue-400" />
                   </div>
                   <div className="text-3xl font-bold text-white">{commentingCampaigns.filter(c => c.status === 'active').length}</div>
-                  <div className="text-xs text-gray-500 mt-1">{commentingCampaigns.filter(c => c.status === 'active').length === 0 ? 'No campaigns running' : `${commentingCampaigns.length} total`}</div>
+                  <div className="text-xs text-gray-500 mt-1">{commentingCampaigns.filter(c => c.status === 'active').length === 0 ? 'No profiles active' : `${commentingCampaigns.length} total`}</div>
                 </div>
 
                 <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
@@ -3243,7 +3243,7 @@ export default function Page() {
                 )}
               </div>
 
-              {/* Active Campaigns */}
+              {/* Monitored Profiles */}
               <div className="bg-gray-800 rounded-lg border border-gray-700">
                 <div className="p-6 border-b border-gray-700">
                   <div className="flex items-center justify-between">
@@ -3252,8 +3252,8 @@ export default function Page() {
                         <Target size={20} className="text-pink-400" />
                       </div>
                       <div>
-                        <h2 className="text-xl font-semibold text-white">Active Campaigns</h2>
-                        <p className="text-sm text-gray-400">Manage your commenting campaigns</p>
+                        <h2 className="text-xl font-semibold text-white">Monitored Profiles</h2>
+                        <p className="text-sm text-gray-400">Manage profiles you're monitoring for comments</p>
                       </div>
                     </div>
                   </div>
@@ -3263,20 +3263,20 @@ export default function Page() {
                     <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Clock size={32} className="text-gray-500 animate-spin" />
                     </div>
-                    <p className="text-gray-400">Loading campaigns...</p>
+                    <p className="text-gray-400">Loading profiles...</p>
                   </div>
                 ) : commentingCampaigns.length === 0 ? (
                   <div className="p-8 text-center">
                     <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Target size={32} className="text-gray-500" />
                     </div>
-                    <p className="text-gray-400 mb-4">No campaigns created yet</p>
+                    <p className="text-gray-400 mb-4">No profiles added yet</p>
                     <button
                       onClick={() => setShowCommentingCampaignModal(true)}
                       className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto"
                     >
                       <Plus size={20} />
-                      Create Your First Campaign
+                      Add Your First Profile
                     </button>
                     <p className="text-sm text-gray-500 mt-4">
                       Monitor LinkedIn profiles and auto-comment with AI
@@ -3325,7 +3325,7 @@ export default function Page() {
                                 }}
                                 className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white rounded text-xs transition-colors"
                               >
-                                Edit Campaign
+                                Edit
                               </button>
                             </div>
                           </div>
@@ -3367,7 +3367,7 @@ export default function Page() {
                                 </button>
                               ))
                             ) : (
-                              <div className="text-sm text-gray-500 italic">No profiles yet - click Edit Campaign to add</div>
+                              <div className="text-sm text-gray-500 italic">No profiles yet - click Edit to add</div>
                             )}
                           </div>
 
