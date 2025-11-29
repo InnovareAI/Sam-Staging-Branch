@@ -46,7 +46,14 @@ import {
   UserPlus
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-// Custom Tailwind components - no shadcn imports needed
+// CampaignList uses custom Tailwind, CampaignBuilder still uses shadcn
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import CampaignApprovalScreen from '@/app/components/CampaignApprovalScreen';
 import { UnipileModal } from '@/components/integrations/UnipileModal';
 
