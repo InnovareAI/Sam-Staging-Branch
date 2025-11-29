@@ -60,12 +60,15 @@ interface Settings {
   end_with_cta: string;
   cta_style: string;
 
-  // Section 9: Scheduling
+  // Section 9: Scheduling & Limits
   timezone: string;
   posting_start_time: string;
   posting_end_time: string;
   post_on_weekends: boolean;
   post_on_holidays: boolean;
+  daily_comment_limit: number;
+  min_days_between_profile_comments: number;
+  max_days_between_profile_comments: number;
 
   // Section 10: Advanced
   system_prompt: string;
@@ -110,6 +113,9 @@ const defaultSettings: Settings = {
   posting_end_time: '17:00',
   post_on_weekends: false,
   post_on_holidays: false,
+  daily_comment_limit: 30,
+  min_days_between_profile_comments: 1,
+  max_days_between_profile_comments: 7,
   system_prompt: '',
 };
 
@@ -201,6 +207,9 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
           posting_end_time: data.posting_end_time || defaultSettings.posting_end_time,
           post_on_weekends: data.post_on_weekends ?? defaultSettings.post_on_weekends,
           post_on_holidays: data.post_on_holidays ?? defaultSettings.post_on_holidays,
+          daily_comment_limit: data.daily_comment_limit ?? defaultSettings.daily_comment_limit,
+          min_days_between_profile_comments: data.min_days_between_profile_comments ?? defaultSettings.min_days_between_profile_comments,
+          max_days_between_profile_comments: data.max_days_between_profile_comments ?? defaultSettings.max_days_between_profile_comments,
           system_prompt: data.system_prompt || '',
         });
       }
@@ -265,6 +274,9 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
         posting_end_time: settings.posting_end_time,
         post_on_weekends: settings.post_on_weekends,
         post_on_holidays: settings.post_on_holidays,
+        daily_comment_limit: settings.daily_comment_limit,
+        min_days_between_profile_comments: settings.min_days_between_profile_comments,
+        max_days_between_profile_comments: settings.max_days_between_profile_comments,
         system_prompt: settings.system_prompt || null,
         is_active: true,
         updated_at: new Date().toISOString(),
@@ -913,11 +925,74 @@ DON'T: Use "Great post!", emojis, exclamation points, or buzzwords like "leverag
         )}
       </div>
 
-      {/* Section 9: Scheduling */}
+      {/* Section 9: Scheduling & Limits */}
       <div className="border border-gray-600 rounded-lg overflow-hidden">
-        <SectionHeader title="Scheduling" section="scheduling" description="When to post comments" />
+        <SectionHeader title="Scheduling & Limits" section="scheduling" description="When and how often to post comments" />
         {expandedSections.scheduling && (
           <div className="p-4 bg-gray-800 space-y-5">
+            {/* Rate Limits */}
+            <div className="p-4 bg-red-900/20 rounded-lg border border-red-700/50">
+              <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                Daily Comment Limit (Hard Limit)
+              </h4>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Maximum Comments Per Day</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      value={settings.daily_comment_limit}
+                      onChange={(e) => setSettings({ ...settings, daily_comment_limit: Math.min(30, Math.max(1, parseInt(e.target.value) || 1)) })}
+                      min={1}
+                      max={30}
+                      className="w-24 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                    />
+                    <span className="text-gray-400 text-sm">/ day (max 30 enforced)</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Hard limit to protect your account. We recommend 20-30 comments per day.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Commenting Cadence */}
+            <div className="p-4 bg-blue-900/20 rounded-lg border border-blue-700/50">
+              <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                Commenting Cadence Per Profile
+              </h4>
+              <p className="text-xs text-gray-400 mb-4">How often to comment on posts from the same monitored profile</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Minimum Days Between</label>
+                  <input
+                    type="number"
+                    value={settings.min_days_between_profile_comments}
+                    onChange={(e) => setSettings({ ...settings, min_days_between_profile_comments: Math.max(0, parseInt(e.target.value) || 0) })}
+                    min={0}
+                    max={30}
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Wait at least this many days</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Maximum Days Between</label>
+                  <input
+                    type="number"
+                    value={settings.max_days_between_profile_comments}
+                    onChange={(e) => setSettings({ ...settings, max_days_between_profile_comments: Math.max(settings.min_days_between_profile_comments, parseInt(e.target.value) || 1) })}
+                    min={settings.min_days_between_profile_comments}
+                    max={30}
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Don't wait longer than this</p>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 mt-3">
+                Example: {settings.min_days_between_profile_comments}-{settings.max_days_between_profile_comments} days means you'll comment on the same profile every {settings.min_days_between_profile_comments === settings.max_days_between_profile_comments ? `${settings.min_days_between_profile_comments} days` : `${settings.min_days_between_profile_comments} to ${settings.max_days_between_profile_comments} days`}.
+              </p>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Time Zone</label>
               <select
