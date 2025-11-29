@@ -9,7 +9,6 @@ import {
   BarChart3,
   Settings,
   Shield,
-  Users,
   Building2,
   Brain,
   Linkedin,
