@@ -21,8 +21,8 @@ import CommentingCampaignModal from '@/app/components/CommentingCampaignModal';
 import CommentingAgentSettings from '@/app/components/CommentingAgentSettings';
 
 interface DashboardStats {
-  total_campaigns: number;
-  active_campaigns: number;
+  total_profiles: number;
+  active_profiles: number;
   pending_comments: number;
   posted_today: number;
   posted_this_week: number;
@@ -153,7 +153,7 @@ export default function CommentingAgentDashboard() {
           />
           <QuickActionButton
             icon={Plus}
-            label="New Campaign"
+            label="Add Profile"
             onClick={() => setShowCampaignModal(true)}
             variant="primary"
           />
@@ -183,9 +183,9 @@ export default function CommentingAgentDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <StatCard
           icon={Target}
-          label="Active Campaigns"
-          value={stats?.active_campaigns || 0}
-          subtext={`${stats?.total_campaigns || 0} total`}
+          label="Active Profiles"
+          value={stats?.active_profiles || 0}
+          subtext={`${stats?.total_profiles || 0} total`}
           color="bg-pink-600"
         />
         <StatCard
@@ -234,7 +234,7 @@ export default function CommentingAgentDashboard() {
             </button>
 
             <button
-              onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/campaigns`)}
+              onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/profiles`)}
               className="w-full flex items-center justify-between p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors group"
             >
               <div className="flex items-center gap-3">
@@ -242,8 +242,8 @@ export default function CommentingAgentDashboard() {
                   <Target size={16} className="text-pink-400" />
                 </div>
                 <div className="text-left">
-                  <p className="text-white font-medium">Manage Campaigns</p>
-                  <p className="text-gray-400 text-sm">{stats?.active_campaigns || 0} active</p>
+                  <p className="text-white font-medium">Manage Profiles</p>
+                  <p className="text-gray-400 text-sm">{stats?.active_profiles || 0} active</p>
                 </div>
               </div>
               <ExternalLink size={16} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
@@ -284,7 +284,7 @@ export default function CommentingAgentDashboard() {
               <MessageSquare size={40} className="mx-auto text-gray-600 mb-3" />
               <p className="text-gray-400">No recent activity</p>
               <p className="text-gray-500 text-sm mt-1">
-                Create a campaign to start discovering posts
+                Add profiles to start discovering posts
               </p>
             </div>
           ) : (
@@ -334,7 +334,7 @@ export default function CommentingAgentDashboard() {
         <h2 className="text-lg font-semibold text-white mb-4">How It Works</h2>
         <div className="grid md:grid-cols-4 gap-4">
           {[
-            { step: 1, title: 'Create Campaign', desc: 'Add LinkedIn profiles to monitor' },
+            { step: 1, title: 'Add Profiles', desc: 'Add LinkedIn profiles to monitor' },
             { step: 2, title: 'Discover Posts', desc: 'Agent finds new posts from profiles' },
             { step: 3, title: 'Generate Comments', desc: 'AI creates relevant, on-brand comments' },
             { step: 4, title: 'Review & Post', desc: 'Approve or edit before posting' },

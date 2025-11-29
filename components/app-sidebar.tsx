@@ -113,8 +113,8 @@ const getNavigationData = (workspaceId?: string) => {
             url: `${wsPrefix}/commenting-agent`,
           },
           {
-            title: "Campaigns",
-            url: `${wsPrefix}/commenting-agent/campaigns`,
+            title: "Profiles",
+            url: `${wsPrefix}/commenting-agent/profiles`,
           },
           {
             title: "Approve Comments",

@@ -32,7 +32,7 @@ interface AnalyticsData {
     posts_discovered: number;
     comments_posted: number;
   }[];
-  top_campaigns: {
+  top_monitored_profiles: {
     id: string;
     name: string;
     posts_discovered: number;
@@ -130,7 +130,7 @@ export default function AnalyticsPage() {
       avg_comments_per_day: 0
     },
     trends: [],
-    top_campaigns: [],
+    top_monitored_profiles: [],
     top_profiles: []
   };
 
@@ -322,19 +322,19 @@ export default function AnalyticsPage() {
 
       {/* Tables Section */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Top Campaigns */}
+        {/* Top Monitored Profiles */}
         <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
-          <h2 className="text-lg font-semibold text-white mb-4">Top Campaigns</h2>
-          {analytics.top_campaigns.length === 0 ? (
+          <h2 className="text-lg font-semibold text-white mb-4">Top Monitored Profiles</h2>
+          {analytics.top_monitored_profiles.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-center">
               <Target size={32} className="text-gray-600 mb-2" />
-              <p className="text-gray-400">No campaign data yet</p>
+              <p className="text-gray-400">No profile data yet</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {analytics.top_campaigns.map((campaign, idx) => (
+              {analytics.top_monitored_profiles.map((profile, idx) => (
                 <div
-                  key={campaign.id}
+                  key={profile.id}
                   className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg"
                 >
                   <div className="flex items-center gap-3">
@@ -342,14 +342,14 @@ export default function AnalyticsPage() {
                       {idx + 1}
                     </div>
                     <div>
-                      <p className="text-white font-medium truncate max-w-[200px]">{campaign.name}</p>
+                      <p className="text-white font-medium truncate max-w-[200px]">{profile.name}</p>
                       <p className="text-gray-400 text-sm">
-                        {campaign.posts_discovered} posts, {campaign.comments_posted} comments
+                        {profile.posts_discovered} posts, {profile.comments_posted} comments
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-green-400 font-medium">{campaign.approval_rate}%</p>
+                    <p className="text-green-400 font-medium">{profile.approval_rate}%</p>
                     <p className="text-gray-500 text-xs">approval</p>
                   </div>
                 </div>

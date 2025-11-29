@@ -24,8 +24,8 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching monitors:', monitorsError);
     }
 
-    const totalCampaigns = monitors?.length || 0;
-    const activeCampaigns = monitors?.filter(m => m.status === 'active').length || 0;
+    const totalProfiles = monitors?.length || 0;
+    const activeProfiles = monitors?.filter(m => m.status === 'active').length || 0;
 
     // Count profiles monitored (extract from hashtags with PROFILE: prefix)
     let profilesMonitored = 0;
@@ -93,8 +93,8 @@ export async function GET(request: NextRequest) {
       : 0;
 
     return NextResponse.json({
-      total_campaigns: totalCampaigns,
-      active_campaigns: activeCampaigns,
+      total_profiles: totalProfiles,
+      active_profiles: activeProfiles,
       pending_comments: pendingComments || 0,
       posted_today: postedToday || 0,
       posted_this_week: postedThisWeek || 0,
