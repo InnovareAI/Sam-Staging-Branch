@@ -3113,17 +3113,13 @@ export default function Page() {
             <div className="min-h-screen p-8 bg-gray-900">
               <div className="max-w-[1400px] mx-auto space-y-6">
                 {/* Header */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Commenting Agent</h1>
-                    <p className="text-gray-400">Automated LinkedIn engagement with anti-bot detection</p>
-                  </div>
+                <div className="flex items-center justify-end">
                   <button
                     onClick={() => setShowCommentingCampaignModal(true)}
                     className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                   >
                     <Plus size={20} />
-                    Add Profile
+                    Add Monitor
                   </button>
                 </div>
 
