@@ -2076,7 +2076,6 @@ export default function DataCollectionHub({
                   aria-label="Select all"
                 />
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Quality</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Name</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Company</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Title</th>
@@ -2092,7 +2091,7 @@ export default function DataCollectionHub({
             {sortedSearchGroups.flatMap(([searchName, prospects]) => [
               // Group header row
               <tr key={`header-${searchName}`} className="bg-gray-800/80 border-b-2 border-purple-500/30">
-                <td colSpan={10} className="px-4 py-3">
+                <td colSpan={9} className="px-4 py-3">
                   <div className="flex items-center justify-between w-full">
                     <button
                       onClick={() => toggleSearchGroup(searchName)}
@@ -2119,36 +2118,36 @@ export default function DataCollectionHub({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        const approvedProspectIds = prospects.filter(p => p.approvalStatus === 'approved').map(p => p.id);
-                        const allSelected = approvedProspectIds.every(id => selectedProspectIds.has(id));
+                        const allProspectIds = prospects.map(p => p.id);
+                        const allSelected = allProspectIds.every(id => selectedProspectIds.has(id));
 
                         if (allSelected) {
                           // Deselect all from this campaign
                           setSelectedProspectIds(prev => {
                             const newSet = new Set(prev);
-                            approvedProspectIds.forEach(id => newSet.delete(id));
+                            allProspectIds.forEach(id => newSet.delete(id));
                             return newSet;
                           });
                         } else {
-                          // Select all approved from this campaign
+                          // Select all from this campaign
                           setSelectedProspectIds(prev => {
                             const newSet = new Set(prev);
-                            approvedProspectIds.forEach(id => newSet.add(id));
+                            allProspectIds.forEach(id => newSet.add(id));
                             return newSet;
                           });
                         }
                       }}
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 transition-colors"
                       title={
-                        prospects.filter(p => p.approvalStatus === 'approved').every(p => selectedProspectIds.has(p.id))
-                          ? "Deselect all approved prospects from this campaign"
-                          : "Select all approved prospects from this campaign"
+                        prospects.every(p => selectedProspectIds.has(p.id))
+                          ? "Deselect all prospects from this campaign"
+                          : "Select all prospects from this campaign"
                       }
                     >
-                      {prospects.filter(p => p.approvalStatus === 'approved').every(p => selectedProspectIds.has(p.id)) ? (
-                        <>✓ Selected ({prospects.filter(p => p.approvalStatus === 'approved').length})</>
+                      {prospects.every(p => selectedProspectIds.has(p.id)) ? (
+                        <>✓ Selected ({prospects.length})</>
                       ) : (
-                        <>Select All ({prospects.filter(p => p.approvalStatus === 'approved').length})</>
+                        <>Select All ({prospects.length})</>
                       )}
                     </button>
                   </div>
@@ -2156,7 +2155,6 @@ export default function DataCollectionHub({
               </tr>,
               // Render prospects if group is expanded
               ...(expandedSearchGroups.has(searchName) ? prospects.map((prospect) => {
-                const qualityBadge = getQualityBadge(prospect.qualityScore ?? 0)
                 return (
               <React.Fragment key={prospect.id}>
                 <tr className={`hover:bg-gray-750 transition-colors ${
@@ -2172,14 +2170,6 @@ export default function DataCollectionHub({
                       onChange={() => toggleSelectProspect(prospect.id)}
                       aria-label={`Select ${prospect.name}`}
                     />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center space-x-1">
-                      {qualityBadge.icon}
-                      <Badge variant={qualityBadge.variant} className="text-xs">
-                        {prospect.qualityScore}
-                      </Badge>
-                    </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-white font-medium">{prospect.name}</td>
                   <td className="px-4 py-3 text-sm text-gray-300">{prospect.company}</td>
