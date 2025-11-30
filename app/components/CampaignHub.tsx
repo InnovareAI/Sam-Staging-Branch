@@ -296,8 +296,20 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     mutationFn: async (campaignId: string) => {
       console.log(`🚀 Executing campaign ${campaignId} (fast queue mode)...`);
 
+      // Find campaign to determine its type
+      const campaign = campaigns.find((c: any) => c.id === campaignId);
+      const isMessengerCampaign = campaign?.campaign_type === 'messenger';
+
+      // Use appropriate endpoint based on campaign type
+      const endpoint = isMessengerCampaign
+        ? '/api/campaigns/direct/send-messages-queued'
+        : '/api/campaigns/direct/send-connection-requests-fast';
+
+      console.log(`📍 Campaign type: ${campaign?.campaign_type || 'unknown'}`);
+      console.log(`🔗 Using endpoint: ${endpoint}`);
+
       // Use fast endpoint that returns immediately (no validation - happens in background)
-      const response = await fetch('/api/campaigns/direct/send-connection-requests-fast', {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

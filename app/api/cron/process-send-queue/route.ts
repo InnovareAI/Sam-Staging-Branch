@@ -337,10 +337,14 @@ export async function POST(req: NextRequest) {
     }
 
     const messageType = queueItem.message_type || 'connection_request';
+    const isMessengerMessage = messageType.startsWith('direct_message_');
+    const isConnectionRequest = messageType === 'connection_request';
+
     console.log(`\n📤 Sending ${messageType} to ${prospect.first_name} ${prospect.last_name}`);
     console.log(`   Campaign: ${campaign.name}`);
     console.log(`   Account: ${linkedinAccount.account_name}`);
     console.log(`   Scheduled: ${queueItem.scheduled_for}`);
+    console.log(`   Type: ${isMessengerMessage ? 'Direct Message' : isConnectionRequest ? 'Connection Request' : 'Follow-up'}`);
 
     try {
       // 2. Resolve linkedin_user_id to provider_id (handles URLs and vanities)
@@ -364,23 +368,57 @@ export async function POST(req: NextRequest) {
           .eq('id', prospect.id);
       }
 
-      // 3. Send message via Unipile (CR or follow-up)
-      const payload = {
-        account_id: unipileAccountId,
-        provider_id: providerId,
-        message: queueItem.message
-      };
+      // 3. Send message via Unipile
+      // CRITICAL: Different endpoints for different message types
+      // - Connection Request: POST /api/v1/users/invite
+      // - Messenger/Follow-up: POST /api/v1/chats/{chatId}/messages
 
-      console.log(`📨 Unipile payload:`, JSON.stringify(payload, null, 2));
-      console.log(`📨 Account ID: ${unipileAccountId}`);
-      console.log(`📨 Provider ID: ${providerId}`);
+      if (isConnectionRequest) {
+        // Send connection request
+        const payload = {
+          account_id: unipileAccountId,
+          provider_id: providerId,
+          message: queueItem.message
+        };
 
-      await unipileRequest('/api/v1/users/invite', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
+        console.log(`📨 Sending connection request:`, JSON.stringify(payload, null, 2));
 
-      console.log(`✅ CR sent successfully`);
+        await unipileRequest('/api/v1/users/invite', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+
+        console.log(`✅ Connection request sent successfully`);
+
+      } else {
+        // Send direct message or follow-up (requires existing chat)
+        console.log(`💬 Sending ${isMessengerMessage ? 'direct message' : 'follow-up message'}...`);
+
+        // Find existing chat with this prospect
+        const chatsResponse = await unipileRequest(
+          `/api/v1/chats?account_id=${unipileAccountId}`
+        );
+
+        const chat = chatsResponse.items?.find((c: any) =>
+          c.attendees?.some((a: any) => a.provider_id === providerId)
+        );
+
+        if (!chat) {
+          throw new Error(`No chat found for prospect ${prospect.first_name} - connection may not be accepted yet`);
+        }
+
+        console.log(`💬 Found chat ID: ${chat.id}`);
+
+        // Send message to chat
+        await unipileRequest(`/api/v1/chats/${chat.id}/messages`, {
+          method: 'POST',
+          body: JSON.stringify({
+            text: queueItem.message
+          })
+        });
+
+        console.log(`✅ Message sent successfully via chat`);
+      }
 
       // 3. Mark queue item as sent
       await supabase
@@ -396,12 +434,12 @@ export async function POST(req: NextRequest) {
         campaign_id: queueItem.campaign_id,
         workspace_id: campaign.workspace_id,
         platform: 'linkedin',
-        platform_message_id: `linkedin_cr_${queueItem.id}`,
+        platform_message_id: `linkedin_${messageType}_${queueItem.id}`,
         recipient_linkedin_profile: prospect.linkedin_url,
         recipient_name: `${prospect.first_name} ${prospect.last_name}`,
         prospect_id: prospect.id,
         message_content: queueItem.message,
-        message_template_variant: 'connection_request',
+        message_template_variant: messageType,
         sent_at: new Date().toISOString(),
         sent_via: 'queue_cron',
         sender_account: linkedinAccount.account_name,
@@ -421,22 +459,38 @@ export async function POST(req: NextRequest) {
       }
 
       // 4. Update prospect record
-      // NOTE: Do NOT set follow_up_due_at here!
-      // Follow-ups are scheduled by poll-accepted-connections AFTER prospect accepts CR
-      // Bug fix: Nov 27 - was incorrectly scheduling follow-ups before acceptance
-      await supabase
-        .from('campaign_prospects')
-        .update({
-          status: 'connection_request_sent',
-          contacted_at: new Date().toISOString(),
-          linkedin_user_id: queueItem.linkedin_user_id,
-          // follow_up_due_at: NOT SET - wait for acceptance
-          follow_up_sequence_index: 0,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', prospect.id);
+      if (isConnectionRequest) {
+        // Connection request sent - wait for acceptance before scheduling follow-ups
+        // Bug fix: Nov 27 - was incorrectly scheduling follow-ups before acceptance
+        await supabase
+          .from('campaign_prospects')
+          .update({
+            status: 'connection_request_sent',
+            contacted_at: new Date().toISOString(),
+            linkedin_user_id: queueItem.linkedin_user_id,
+            // follow_up_due_at: NOT SET - wait for acceptance
+            follow_up_sequence_index: 0,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', prospect.id);
 
-      console.log(`✅ CR sent - follow-up will be scheduled when prospect accepts`);
+        console.log(`✅ CR sent - follow-up will be scheduled when prospect accepts`);
+
+      } else {
+        // Messenger message or follow-up sent - update status
+        await supabase
+          .from('campaign_prospects')
+          .update({
+            status: 'messaging',
+            contacted_at: prospect.contacted_at || new Date().toISOString(),
+            last_follow_up_at: new Date().toISOString(),
+            linkedin_user_id: queueItem.linkedin_user_id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', prospect.id);
+
+        console.log(`✅ ${isMessengerMessage ? 'Direct message' : 'Follow-up'} sent`);
+      }
 
       // 5. Get count of remaining pending messages
       const { count: remainingCount } = await supabase
