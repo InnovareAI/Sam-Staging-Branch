@@ -15,6 +15,87 @@ const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
  *
  * This function queries Unipile to get the correct URN for posting comments.
  */
+/**
+ * ENGAGEMENT BAIT FILTER
+ *
+ * Detects posts where the author requests one-word engagement bait comments
+ * like "yes", "No", "send it", "like if you agree", etc.
+ *
+ * These posts should be IGNORED because:
+ * 1. They're low-value engagement farming
+ * 2. Any thoughtful comment would look out of place
+ * 3. Our AI comments are designed for genuine engagement, not one-word responses
+ */
+const ENGAGEMENT_BAIT_PATTERNS = [
+  // Direct requests for one-word comments
+  /\b(comment|drop|type|say|reply|respond)[\s:]+["']?(yes|no|send|agree|done|interested|ready|me|want|need|please|now|true|info)["']?\b/i,
+  /\b(yes|no|send it|interested)[\s:]+in[\s:]+the[\s:]+comments?\b/i,
+
+  // "Like/Comment if..." patterns
+  /\b(like|comment|share|repost)[\s:]+if[\s:]+you[\s:]+(agree|want|need|like|love)\b/i,
+  /\bif[\s:]+you[\s:]+(agree|want)[\s:,]+comment/i,
+
+  // "Drop a..." patterns
+  /\bdrop[\s:]+a?[\s:]?["']?[🔥💯👇✅❤️💪🙌🎯⬇️yes]+["']?\b/i,
+  /\bdrop[\s:]+["']?(yes|no|me|send|want|need|agree|interested|info)["']?\b/i,
+
+  // "Comment [emoji]" patterns
+  /\bcomment[\s:]+["']?[🔥💯👇✅❤️💪🙌🎯⬇️]+["']?\s*(if|to|for|and)?\b/i,
+
+  // "Say/Type [word]" patterns
+  /\b(say|type)[\s:]+["']?(yes|no|me|send|agree|ready|want|need|interested)["']?\b/i,
+
+  // "Reply with..." patterns
+  /\breply[\s:]+with[\s:]+(yes|no|me|a\s+)?["']?\w{1,10}["']?\b/i,
+
+  // Generic engagement farming
+  /\bwho[\s:]+wants?[\s:]+this[\s:]*\??\s*(comment|drop|type)/i,
+  /\bcomment[\s:]["']?[\w]{1,8}["']?[\s:]+(below|here|now)/i,
+
+  // "I'll send..." patterns (common DM bait)
+  /\b(i'll|ill|i will)[\s:]+send[\s:]+.{0,20}(comment|drop|type|say)/i,
+
+  // Poll-like requests
+  /\b(yes|no)\s+or\s+(yes|no)[\s:]*\??\s*(in|below|here)?/i,
+
+  // "Who's in?" / "Who wants?" bait
+  /\bwho['']?s[\s:]+in\??\s*(comment|drop|reply)?/i,
+  /\bwho[\s:]+needs?[\s:]+this\??\s*(comment|type|drop)?/i,
+
+  // Simple one-word CTAs
+  /^[\s\S]*?(comment|type|drop)[\s:]+["']?(yes|no|me|send|want|now|info)["']?[\s:]*[!.?]*$/i
+];
+
+/**
+ * Check if a post is engagement bait requesting one-word comments
+ */
+function isEngagementBait(postContent: string): { isBait: boolean; matchedPattern?: string } {
+  if (!postContent || typeof postContent !== 'string') {
+    return { isBait: false };
+  }
+
+  // Normalize content - lowercase and collapse whitespace
+  const normalizedContent = postContent.toLowerCase().trim();
+
+  // Skip very short posts (likely not enough context to determine)
+  if (normalizedContent.length < 20) {
+    return { isBait: false };
+  }
+
+  for (const pattern of ENGAGEMENT_BAIT_PATTERNS) {
+    if (pattern.test(normalizedContent)) {
+      // Extract matched portion for logging
+      const match = normalizedContent.match(pattern);
+      return {
+        isBait: true,
+        matchedPattern: match ? match[0].substring(0, 50) : 'pattern matched'
+      };
+    }
+  }
+
+  return { isBait: false };
+}
+
 async function resolveCorrectUrn(
   activityUrn: string,
   unipileAccountId: string
@@ -316,7 +397,7 @@ export async function POST(request: NextRequest) {
           }).filter(Boolean) || []
         );
 
-        const newPosts = recentPosts.filter((p: any) => {
+        const newPostsRaw = recentPosts.filter((p: any) => {
           // Check URL first
           if (existingUrlSet.has(p.url)) return false;
 
@@ -332,7 +413,25 @@ export async function POST(request: NextRequest) {
           return true;
         });
 
-        console.log(`🆕 Found ${newPosts.length} new posts to store (${recentPosts.length - newPosts.length} already exist)`);
+        // FILTER OUT ENGAGEMENT BAIT POSTS
+        // Skip posts requesting one-word comments like "yes", "No", "send it", etc.
+        let engagementBaitSkipped = 0;
+        const newPosts = newPostsRaw.filter((p: any) => {
+          const postContent = p.text || '';
+          const baitCheck = isEngagementBait(postContent);
+          if (baitCheck.isBait) {
+            engagementBaitSkipped++;
+            console.log(`🚫 Skipping engagement bait post: "${baitCheck.matchedPattern}" - ${postContent.substring(0, 80)}...`);
+            return false;
+          }
+          return true;
+        });
+
+        if (engagementBaitSkipped > 0) {
+          console.log(`🚫 Filtered out ${engagementBaitSkipped} engagement bait posts`);
+        }
+
+        console.log(`🆕 Found ${newPosts.length} new posts to store (${recentPosts.length - newPostsRaw.length} already exist, ${engagementBaitSkipped} engagement bait skipped)`);
 
         // Store new posts
         if (newPosts.length > 0) {
@@ -605,7 +704,7 @@ export async function POST(request: NextRequest) {
           }).filter(Boolean) || []
         );
 
-        const newPosts = recentPosts.filter((p: any) => {
+        const newPostsRaw = recentPosts.filter((p: any) => {
           const url = p.url || p.postUrl;
           if (existingUrlSet.has(url)) return false;
 
@@ -621,7 +720,25 @@ export async function POST(request: NextRequest) {
           return true;
         });
 
-        console.log(`🆕 Found ${newPosts.length} new hashtag posts to store (${recentPosts.length - newPosts.length} already exist)`);
+        // FILTER OUT ENGAGEMENT BAIT POSTS
+        // Skip posts requesting one-word comments like "yes", "No", "send it", etc.
+        let engagementBaitSkipped = 0;
+        const newPosts = newPostsRaw.filter((p: any) => {
+          const postContent = p.text || p.content || '';
+          const baitCheck = isEngagementBait(postContent);
+          if (baitCheck.isBait) {
+            engagementBaitSkipped++;
+            console.log(`🚫 Skipping engagement bait hashtag post: "${baitCheck.matchedPattern}" - ${postContent.substring(0, 80)}...`);
+            return false;
+          }
+          return true;
+        });
+
+        if (engagementBaitSkipped > 0) {
+          console.log(`🚫 Filtered out ${engagementBaitSkipped} engagement bait hashtag posts`);
+        }
+
+        console.log(`🆕 Found ${newPosts.length} new hashtag posts to store (${recentPosts.length - newPostsRaw.length} already exist, ${engagementBaitSkipped} engagement bait skipped)`);
 
         // Store new posts
         if (newPosts.length > 0) {
