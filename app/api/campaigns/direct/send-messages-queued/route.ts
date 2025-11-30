@@ -223,10 +223,28 @@ export async function POST(req: NextRequest) {
     console.log(`📊 Found ${prospects.length} prospects to queue`);
 
     // 3. Extract messages from campaign
+    // MESSENGER CAMPAIGNS: Use direct_message_1/2/3 keys (NO connection request)
+    // CONNECTOR CAMPAIGNS: Use connection_request + follow_ups (legacy support)
     const messageTemplates = campaign.message_templates || {};
-    const firstMessage = messageTemplates.connection_request || messageTemplates.first_message || '';
-    const followUpMessages = messageTemplates.follow_up_messages || [];
-    const allMessages = [firstMessage, ...followUpMessages].filter(m => m && m.trim() !== '');
+
+    // Check for messenger-style keys first (direct_message_1, direct_message_2, etc.)
+    const messengerMessages = [];
+    for (let i = 1; i <= 5; i++) {
+      const msg = messageTemplates[`direct_message_${i}`];
+      if (msg && msg.trim()) messengerMessages.push(msg);
+    }
+
+    // Fallback to connector-style keys if no messenger keys found
+    let allMessages: string[];
+    if (messengerMessages.length > 0) {
+      allMessages = messengerMessages;
+      console.log(`📝 Using messenger template format (${allMessages.length} direct messages)`);
+    } else {
+      const firstMessage = messageTemplates.connection_request || messageTemplates.first_message || '';
+      const followUpMessages = messageTemplates.follow_up_messages || [];
+      allMessages = [firstMessage, ...followUpMessages].filter(m => m && m.trim() !== '');
+      console.log(`📝 Using connector template format (first + ${followUpMessages.length} follow-ups)`);
+    }
 
     if (allMessages.length === 0) {
       return NextResponse.json({

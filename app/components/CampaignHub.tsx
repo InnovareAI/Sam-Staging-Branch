@@ -6398,7 +6398,15 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           campaign_type: approvedCampaignType,
           status: 'active', // Set to active after user approves in modal so it can execute immediately
           session_id: sessionId, // CRITICAL: Pass session_id to auto-transfer approved prospects
-          message_templates: {
+          // MESSENGER: Use direct_message_1/2/3 (no CR)
+          // CONNECTOR: Use connection_request + follow_ups
+          message_templates: approvedCampaignType === 'messenger' ? {
+            direct_message_1: finalCampaignData.messages.connection_request, // First message (no CR for messenger)
+            direct_message_2: finalCampaignData.messages.follow_up_1,
+            direct_message_3: finalCampaignData.messages.follow_up_2,
+            direct_message_4: finalCampaignData.messages.follow_up_3,
+            direct_message_5: finalCampaignData.messages.follow_up_4
+          } : {
             connection_request: finalCampaignData.messages.connection_request,
             alternative_message: _executionData?.alternativeMessage || finalCampaignData.messages.follow_up_1,
             follow_up_messages: [
