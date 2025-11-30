@@ -2123,10 +2123,12 @@ export default function DataCollectionHub({
           <thead className="bg-gray-750 border-b border-gray-700">
             <tr>
               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider w-12">
-                <Checkbox
+                <input
+                  type="checkbox"
                   checked={selectedProspectIds.size === filteredProspects.length && filteredProspects.length > 0}
                   onChange={selectedProspectIds.size === filteredProspects.length ? deselectAll : selectAllVisible}
                   aria-label="Select all"
+                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500 focus:ring-offset-gray-800"
                 />
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Name</th>
@@ -2218,10 +2220,12 @@ export default function DataCollectionHub({
                     : ''
                 }`}>
                   <td className="px-4 py-3 text-center">
-                    <Checkbox
+                    <input
+                      type="checkbox"
                       checked={selectedProspectIds.has(prospect.id)}
                       onChange={() => toggleSelectProspect(prospect.id)}
                       aria-label={`Select ${prospect.name}`}
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500 focus:ring-offset-gray-800"
                     />
                   </td>
                   <td className="px-4 py-3 text-sm text-white font-medium">{prospect.name}</td>
