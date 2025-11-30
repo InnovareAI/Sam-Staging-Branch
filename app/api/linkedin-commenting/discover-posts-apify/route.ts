@@ -402,6 +402,10 @@ export async function POST(request: NextRequest) {
 
         const startRunUrl = `https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}`;
 
+        // IMPORTANT: This Apify actor charges per result
+        // We request 5 posts max to stay economical
+        const POSTS_PER_HASHTAG = 5;
+
         const startResponse = await fetch(startRunUrl, {
           method: 'POST',
           headers: {
@@ -409,7 +413,11 @@ export async function POST(request: NextRequest) {
           },
           body: JSON.stringify({
             keyword: keyword,
-            maxResults: 10,  // Limit to 10 posts per hashtag
+            // Try multiple parameter names - Apify actors vary
+            maxResults: POSTS_PER_HASHTAG,
+            resultsLimit: POSTS_PER_HASHTAG,
+            limit: POSTS_PER_HASHTAG,
+            maxPosts: POSTS_PER_HASHTAG,
             searchAge: 24    // Last 24 hours
           })
         });
@@ -471,9 +479,11 @@ export async function POST(request: NextRequest) {
         console.log(`📦 Raw Apify hashtag response:`, JSON.stringify(data).substring(0, 500));
 
         // Hashtag search actor returns array of posts
-        const posts = Array.isArray(data) ? data : [];
+        // SAFETY: Slice to our limit even if Apify returns more (they charge per result!)
+        const rawPosts = Array.isArray(data) ? data : [];
+        const posts = rawPosts.slice(0, POSTS_PER_HASHTAG);
 
-        console.log(`📦 Apify hashtag search returned ${posts.length} posts`);
+        console.log(`📦 Apify hashtag search returned ${rawPosts.length} posts, using first ${posts.length}`);
 
         if (!posts || posts.length === 0) {
           console.log(`⚠️ No posts found for hashtag #${keyword}`);
