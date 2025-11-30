@@ -741,7 +741,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {[1, 2, 3].map(i => (
-          <div key={i} className="animate-pulse bg-gray-800 rounded-lg border border-gray-700 p-6">
+          <div key={i} className="animate-pulse bg-gray-800 rounded-xl border border-gray-700 p-6">
             <div className="h-6 bg-gray-700 rounded mb-4"></div>
             <div className="h-4 bg-gray-700 rounded w-1/3 mb-4"></div>
             <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-700">
@@ -770,7 +770,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
           }}
         >
         <div
-          className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm border border-gray-700 rounded-lg hover:border-purple-500/50 hover:bg-gradient-to-br hover:from-purple-600/20 hover:to-purple-900/20 shadow-xl hover:shadow-purple-500/20 group transition-all duration-300"
+          className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm rounded-xl border border-gray-700 hover:border-purple-500/50 hover:bg-gradient-to-br hover:from-purple-600/20 hover:to-purple-900/20 shadow-xl hover:shadow-purple-500/20 group transition-all duration-300"
         >
           <div className="p-6 pb-4">
             <div className="flex justify-between items-start">

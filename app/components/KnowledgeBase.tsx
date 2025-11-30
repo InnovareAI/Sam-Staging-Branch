@@ -542,7 +542,7 @@ function ICPConfiguration({
   ];
 
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
           {onBack && (
@@ -2467,7 +2467,7 @@ const KnowledgeBase: React.FC = () => {
             {/* KB Completeness and Health - First Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* KB Completeness Meter */}
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-white text-lg font-semibold">Knowledgebase Completeness</span>
                   <span className="text-white text-2xl font-bold">{completionDisplay}</span>
@@ -2686,7 +2686,7 @@ const KnowledgeBase: React.FC = () => {
               </div>
 
               {/* KB Health */}
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
                 <h3 className="text-white text-lg font-semibold mb-4">Knowledgebase Health</h3>
                 <div className="space-y-4">
                   {healthMetrics.map((metric) => (
@@ -2715,7 +2715,7 @@ const KnowledgeBase: React.FC = () => {
             </div>
 
             {/* Quick Actions & Navigation */}
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
               <h3 className="text-white text-lg font-semibold mb-4">Quick Actions</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                 {sections.slice(1).filter(s => s.id !== 'analytics').map((section) => {
@@ -2801,7 +2801,7 @@ const KnowledgeBase: React.FC = () => {
             </div>
 
             {/* Recent SAM Insights from Conversations */}
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-white text-lg font-semibold flex items-center">
                   <Brain className="mr-2 text-orange-400" size={20} />
@@ -2843,7 +2843,7 @@ const KnowledgeBase: React.FC = () => {
             </div>
 
             {/* Latest Knowledge Assets */}
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-white text-lg font-semibold flex items-center">
                   <FileText className="mr-2 text-blue-400" size={20} />
@@ -2966,7 +2966,7 @@ const KnowledgeBase: React.FC = () => {
         )}
         
         {activeSection === 'products' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <button
@@ -3076,7 +3076,7 @@ const KnowledgeBase: React.FC = () => {
         )}
 
         {activeSection === 'competition' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <button
@@ -3179,7 +3179,7 @@ const KnowledgeBase: React.FC = () => {
         )}
 
         {activeSection === 'messaging' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <button
@@ -3219,7 +3219,7 @@ const KnowledgeBase: React.FC = () => {
         )}
 
         {activeSection === 'tone' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <button
@@ -3302,7 +3302,7 @@ const KnowledgeBase: React.FC = () => {
         )}
 
         {activeSection === 'company' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <button
@@ -3342,7 +3342,7 @@ const KnowledgeBase: React.FC = () => {
         )}
 
         {activeSection === 'success' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <button
@@ -3382,7 +3382,7 @@ const KnowledgeBase: React.FC = () => {
         )}
 
         {activeSection === 'buying' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <button
@@ -3429,7 +3429,7 @@ const KnowledgeBase: React.FC = () => {
         )}
 
         {activeSection === 'compliance' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <button
@@ -3477,7 +3477,7 @@ const KnowledgeBase: React.FC = () => {
         )}
 
         {activeSection === 'personas' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <button
@@ -3602,7 +3602,7 @@ const KnowledgeBase: React.FC = () => {
         )}
 
         {activeSection === 'objections' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <button
@@ -3653,7 +3653,7 @@ const KnowledgeBase: React.FC = () => {
         )}
 
         {activeSection === 'pricing' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <button
@@ -3707,7 +3707,7 @@ const KnowledgeBase: React.FC = () => {
 
 
         {activeSection === 'metrics' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <button
@@ -3826,7 +3826,7 @@ const KnowledgeBase: React.FC = () => {
         )}
 
         {activeSection === 'setup' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <button
@@ -4007,7 +4007,7 @@ const KnowledgeBase: React.FC = () => {
         )}
 
         {activeSection === 'sam_onboarding' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <button
@@ -4029,7 +4029,7 @@ const KnowledgeBase: React.FC = () => {
         )}
 
         {activeSection === 'documents' && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <button
