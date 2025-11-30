@@ -1935,17 +1935,16 @@ export default function DataCollectionHub({
                 </button>
               )}
 
-              {/* Button: Delete Selected (conditional) */}
-              {selectedProspectIds.size > 0 && (
-                <button
-                  type="button"
-                  onClick={bulkDeleteSelected}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg text-white bg-red-600 hover:bg-red-700 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>Delete ({selectedProspectIds.size})</span>
-                </button>
-              )}
+              {/* Button: Delete Selected - always visible */}
+              <button
+                type="button"
+                onClick={bulkDeleteSelected}
+                disabled={selectedProspectIds.size === 0}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete{selectedProspectIds.size > 0 ? ` (${selectedProspectIds.size})` : ''}</span>
+              </button>
             </div>
 
             {/* Row 2: Campaign Actions - Only show when there are approved prospects */}
