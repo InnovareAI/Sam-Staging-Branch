@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Target, Shield, Clock, ChevronDown, ChevronUp, Settings, User, Building2, Hash } from 'lucide-react';
+import { X, Target, Clock, Settings, User, Building2, Hash } from 'lucide-react';
 
 interface Monitor {
   id: string;
@@ -35,26 +35,6 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
   const [companyTargets, setCompanyTargets] = useState<string[]>(['']);
   const [hashtagTargets, setHashtagTargets] = useState<string[]>(['']);
 
-  // Anti-bot Detection Settings
-  const [minExistingComments, setMinExistingComments] = useState(2);
-  const [minPostReactions, setMinPostReactions] = useState(5);
-  const [minPostAgeMinutes, setMinPostAgeMinutes] = useState(30);
-  const [maxPostAgeHours, setMaxPostAgeHours] = useState(24);
-  const [dailyLimit, setDailyLimit] = useState(30);
-  const [minDelayMinutes, setMinDelayMinutes] = useState(20);
-
-  // Advanced Settings
-  const [tagAuthors, setTagAuthors] = useState(true);
-  const [blacklistedProfiles, setBlacklistedProfiles] = useState('');
-  const [monitorComments, setMonitorComments] = useState(false);
-  const [replyToComments, setReplyToComments] = useState(false);
-  const [timezone, setTimezone] = useState('America/New_York');
-  const [dailyStartTime, setDailyStartTime] = useState('09:00');
-  const [autoApproveEnabled, setAutoApproveEnabled] = useState(false);
-  const [autoApproveStartTime, setAutoApproveStartTime] = useState('09:00');
-  const [autoApproveEndTime, setAutoApproveEndTime] = useState('17:00');
-
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Load existing monitor data in edit mode
@@ -93,21 +73,6 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
       if (hashtags.length > 0) {
         setHashtagTargets(hashtags);
         setActiveTab('hashtags');
-      }
-
-      // Set other fields if they exist
-      if (existingMonitor.timezone) setTimezone(existingMonitor.timezone);
-      if (existingMonitor.daily_start_time) {
-        setDailyStartTime(existingMonitor.daily_start_time.slice(0, 5)); // Remove seconds
-      }
-      if (existingMonitor.auto_approve_enabled !== undefined) {
-        setAutoApproveEnabled(existingMonitor.auto_approve_enabled);
-      }
-      if (existingMonitor.auto_approve_start_time) {
-        setAutoApproveStartTime(existingMonitor.auto_approve_start_time.slice(0, 5));
-      }
-      if (existingMonitor.auto_approve_end_time) {
-        setAutoApproveEndTime(existingMonitor.auto_approve_end_time.slice(0, 5));
       }
     }
   }, [editMode, existingMonitor]);
@@ -168,11 +133,6 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
           hashtags: validTargets.map(t => t.replace(/^#/, '')), // Remove # prefix
           keywords: [],
           status: 'active',
-          timezone: timezone,
-          daily_start_time: dailyStartTime + ':00',
-          auto_approve_enabled: autoApproveEnabled,
-          auto_approve_start_time: autoApproveStartTime + ':00',
-          auto_approve_end_time: autoApproveEndTime + ':00',
         };
 
         console.log('📤 Creating hashtag monitor:', monitor);
@@ -208,11 +168,6 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
           hashtags: [],
           keywords: validTargets,
           status: 'active',
-          timezone: timezone,
-          daily_start_time: dailyStartTime + ':00',
-          auto_approve_enabled: autoApproveEnabled,
-          auto_approve_start_time: autoApproveStartTime + ':00',
-          auto_approve_end_time: autoApproveEndTime + ':00',
         };
 
         console.log('📤 Creating keyword monitor:', monitor);
@@ -506,258 +461,14 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
           <div className="p-4 bg-purple-900/20 rounded-lg border border-purple-700/50">
             <div className="flex items-center gap-2 mb-2">
               <Settings size={20} className="text-purple-400" />
-              <h3 className="text-sm font-semibold text-white">AI Comment Settings</h3>
+              <h3 className="text-sm font-semibold text-white">Comment Settings</h3>
             </div>
             <p className="text-sm text-gray-300">
-              Tone, formality, and personality settings are configured at the workspace level.
+              Comment tone, scheduling, auto-approval, and blacklists are configured at the workspace level.
             </p>
             <p className="text-xs text-gray-400 mt-1">
-              Go to <span className="text-purple-400">Settings &rarr; AI Configuration &rarr; LinkedIn Commenting Agent</span> to customize how comments are generated for all campaigns.
+              Go to <span className="text-purple-400">Settings &rarr; AI Configuration &rarr; LinkedIn Commenting Agent</span> to customize these settings.
             </p>
-          </div>
-
-          {/* Anti-bot Detection */}
-          <div className="p-4 bg-green-900/20 rounded-lg border border-green-700/50">
-            <div className="flex items-center gap-2 mb-4">
-              <Shield size={20} className="text-green-400" />
-              <h3 className="text-lg font-semibold text-white">Anti-Bot Detection</h3>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm text-gray-300 mb-1">Min Existing Comments</label>
-                <input
-                  type="number"
-                  value={minExistingComments}
-                  onChange={(e) => setMinExistingComments(parseInt(e.target.value))}
-                  min="0"
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">Never be first to comment</p>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-300 mb-1">Min Post Reactions</label>
-                <input
-                  type="number"
-                  value={minPostReactions}
-                  onChange={(e) => setMinPostReactions(parseInt(e.target.value))}
-                  min="0"
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">Wait for organic engagement</p>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-300 mb-1">Min Post Age (minutes)</label>
-                <input
-                  type="number"
-                  value={minPostAgeMinutes}
-                  onChange={(e) => setMinPostAgeMinutes(parseInt(e.target.value))}
-                  min="0"
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">Avoid fresh posts</p>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-300 mb-1">Max Post Age (hours)</label>
-                <input
-                  type="number"
-                  value={maxPostAgeHours}
-                  onChange={(e) => setMaxPostAgeHours(parseInt(e.target.value))}
-                  min="1"
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">Skip old posts</p>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-300 mb-1">Daily Comment Limit</label>
-                <input
-                  type="number"
-                  value={dailyLimit}
-                  onChange={(e) => setDailyLimit(parseInt(e.target.value))}
-                  min="1"
-                  max="50"
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">Max 30-50 recommended</p>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-300 mb-1">Min Delay (minutes)</label>
-                <input
-                  type="number"
-                  value={minDelayMinutes}
-                  onChange={(e) => setMinDelayMinutes(parseInt(e.target.value))}
-                  min="5"
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">Gap between comments</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Advanced Settings (Collapsible) */}
-          <div>
-            <button
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center justify-between w-full p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-            >
-              <span className="text-white font-medium">Advanced Settings</span>
-              {showAdvanced ? <ChevronUp size={20} className="text-gray-400" /> : <ChevronDown size={20} className="text-gray-400" />}
-            </button>
-
-            {showAdvanced && (
-              <div className="mt-3 p-4 bg-gray-700/50 rounded-lg border border-gray-600 space-y-4">
-                {/* Tag Authors */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-white font-medium text-sm">Tag Post Authors</div>
-                    <div className="text-gray-400 text-xs">Mention authors in comments (@username)</div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={tagAuthors}
-                      onChange={(e) => setTagAuthors(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600"></div>
-                  </label>
-                </div>
-
-                {/* Blacklisted Profiles */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Blacklisted Profiles (comma-separated)</label>
-                  <textarea
-                    value={blacklistedProfiles}
-                    onChange={(e) => setBlacklistedProfiles(e.target.value)}
-                    placeholder="https://linkedin.com/in/user1, https://linkedin.com/in/user2"
-                    rows={2}
-                    className="w-full px-4 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
-                  />
-                </div>
-
-                {/* Monitor Comments */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-white font-medium text-sm">Monitor Comments on Posts</div>
-                    <div className="text-gray-400 text-xs">Track individual comments to find reply opportunities</div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={monitorComments}
-                      onChange={(e) => setMonitorComments(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600"></div>
-                  </label>
-                </div>
-
-                {/* Reply to Comments */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-white font-medium text-sm">Reply to High-Engagement Comments</div>
-                    <div className="text-gray-400 text-xs">Generate replies to comments on posts (requires monitoring)</div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={replyToComments}
-                      onChange={(e) => setReplyToComments(e.target.checked)}
-                      disabled={!monitorComments}
-                      className="sr-only peer"
-                    />
-                    <div className={`w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600 ${!monitorComments ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
-                  </label>
-                </div>
-
-                {/* Timezone */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Timezone for Scheduling</label>
-                  <select
-                    value={timezone}
-                    onChange={(e) => setTimezone(e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  >
-                    <option value="America/New_York">Eastern Time (ET)</option>
-                    <option value="America/Chicago">Central Time (CT)</option>
-                    <option value="America/Denver">Mountain Time (MT)</option>
-                    <option value="America/Los_Angeles">Pacific Time (PT)</option>
-                    <option value="Europe/London">London (GMT)</option>
-                    <option value="Europe/Paris">Paris (CET)</option>
-                    <option value="Europe/Berlin">Berlin (CET)</option>
-                    <option value="Asia/Tokyo">Tokyo (JST)</option>
-                    <option value="Asia/Shanghai">Shanghai (CST)</option>
-                    <option value="Asia/Dubai">Dubai (GST)</option>
-                    <option value="Australia/Sydney">Sydney (AEDT)</option>
-                  </select>
-                </div>
-
-                {/* Daily Start Time */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Daily Start Time</label>
-                  <input
-                    type="time"
-                    value={dailyStartTime}
-                    onChange={(e) => setDailyStartTime(e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">Commenting will start at this time each day (in selected timezone)</p>
-                </div>
-
-                {/* Auto-Approval Window */}
-                <div className="p-4 bg-blue-900/20 rounded-lg border border-blue-700/50">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <div className="text-white font-medium text-sm">Auto-Approve Comments</div>
-                      <div className="text-gray-400 text-xs">Automatically approve comments generated during active hours</div>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={autoApproveEnabled}
-                        onChange={(e) => setAutoApproveEnabled(e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                  </div>
-
-                  {autoApproveEnabled && (
-                    <div className="grid grid-cols-2 gap-3 mt-3">
-                      <div>
-                        <label className="block text-xs text-gray-300 mb-1">Start Time</label>
-                        <input
-                          type="time"
-                          value={autoApproveStartTime}
-                          onChange={(e) => setAutoApproveStartTime(e.target.value)}
-                          className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-300 mb-1">End Time</label>
-                        <input
-                          type="time"
-                          value={autoApproveEndTime}
-                          onChange={(e) => setAutoApproveEndTime(e.target.value)}
-                          className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {autoApproveEnabled && (
-                    <p className="text-xs text-gray-400 mt-2">
-                      Comments generated between {autoApproveStartTime} - {autoApproveEndTime} will be auto-approved
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 

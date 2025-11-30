@@ -72,6 +72,15 @@ interface Settings {
 
   // Section 10: Advanced
   system_prompt: string;
+
+  // Section 11: Engagement & Automation
+  tag_post_authors: boolean;
+  blacklisted_profiles: string[];
+  monitor_comments: boolean;
+  reply_to_high_engagement: boolean;
+  auto_approve_enabled: boolean;
+  auto_approve_start_time: string;
+  auto_approve_end_time: string;
 }
 
 const defaultSettings: Settings = {
@@ -117,6 +126,14 @@ const defaultSettings: Settings = {
   min_days_between_profile_comments: 1,
   max_days_between_profile_comments: 7,
   system_prompt: '',
+  // Section 11: Engagement & Automation
+  tag_post_authors: true,
+  blacklisted_profiles: [],
+  monitor_comments: false,
+  reply_to_high_engagement: false,
+  auto_approve_enabled: false,
+  auto_approve_start_time: '09:00',
+  auto_approve_end_time: '17:00',
 };
 
 const frameworkDescriptions: Record<string, string> = {
@@ -143,6 +160,7 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
     context: false,
     guardrails: false,
     scheduling: false,
+    automation: false,
     advanced: false,
   });
 
@@ -150,6 +168,7 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
   const [newExampleComment, setNewExampleComment] = useState('');
   const [newAdmiredComment, setNewAdmiredComment] = useState('');
   const [newCompetitor, setNewCompetitor] = useState('');
+  const [newBlacklistedProfile, setNewBlacklistedProfile] = useState('');
 
   useEffect(() => {
     loadSettings();
@@ -211,6 +230,14 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
           min_days_between_profile_comments: data.min_days_between_profile_comments ?? defaultSettings.min_days_between_profile_comments,
           max_days_between_profile_comments: data.max_days_between_profile_comments ?? defaultSettings.max_days_between_profile_comments,
           system_prompt: data.system_prompt || '',
+          // Section 11: Engagement & Automation
+          tag_post_authors: data.tag_post_authors ?? defaultSettings.tag_post_authors,
+          blacklisted_profiles: data.blacklisted_profiles || [],
+          monitor_comments: data.monitor_comments ?? defaultSettings.monitor_comments,
+          reply_to_high_engagement: data.reply_to_high_engagement ?? defaultSettings.reply_to_high_engagement,
+          auto_approve_enabled: data.auto_approve_enabled ?? defaultSettings.auto_approve_enabled,
+          auto_approve_start_time: data.auto_approve_start_time || defaultSettings.auto_approve_start_time,
+          auto_approve_end_time: data.auto_approve_end_time || defaultSettings.auto_approve_end_time,
         });
       }
     } catch (error) {
@@ -278,6 +305,14 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
         min_days_between_profile_comments: settings.min_days_between_profile_comments,
         max_days_between_profile_comments: settings.max_days_between_profile_comments,
         system_prompt: settings.system_prompt || null,
+        // Section 11: Engagement & Automation
+        tag_post_authors: settings.tag_post_authors,
+        blacklisted_profiles: settings.blacklisted_profiles.length > 0 ? settings.blacklisted_profiles : null,
+        monitor_comments: settings.monitor_comments,
+        reply_to_high_engagement: settings.reply_to_high_engagement,
+        auto_approve_enabled: settings.auto_approve_enabled,
+        auto_approve_start_time: settings.auto_approve_start_time,
+        auto_approve_end_time: settings.auto_approve_end_time,
         is_active: true,
         updated_at: new Date().toISOString(),
       };
@@ -394,7 +429,7 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
     </button>
   );
 
-  const addArrayItem = (field: 'example_comments' | 'admired_comments' | 'competitors_never_mention', value: string, setter: (v: string) => void) => {
+  const addArrayItem = (field: 'example_comments' | 'admired_comments' | 'competitors_never_mention' | 'blacklisted_profiles', value: string, setter: (v: string) => void) => {
     if (value.trim()) {
       setSettings(prev => ({
         ...prev,
@@ -404,7 +439,7 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
     }
   };
 
-  const removeArrayItem = (field: 'example_comments' | 'admired_comments' | 'competitors_never_mention', index: number) => {
+  const removeArrayItem = (field: 'example_comments' | 'admired_comments' | 'competitors_never_mention' | 'blacklisted_profiles', index: number) => {
     setSettings(prev => ({
       ...prev,
       [field]: (prev[field] || []).filter((_, i) => i !== index)
@@ -1054,7 +1089,126 @@ DON'T: Use "Great post!", emojis, exclamation points, or buzzwords like "leverag
         )}
       </div>
 
-      {/* Section 10: Advanced */}
+      {/* Section 10: Engagement & Automation */}
+      <div className="border border-gray-600 rounded-lg overflow-hidden">
+        <SectionHeader title="Engagement & Automation" section="automation" description="Auto-posting, blacklists, and reply settings" />
+        {expandedSections.automation && (
+          <div className="p-4 bg-gray-800 space-y-5">
+            {/* Tag Post Authors */}
+            <Toggle
+              checked={settings.tag_post_authors}
+              onChange={(v) => setSettings({ ...settings, tag_post_authors: v })}
+              label="Tag Post Authors"
+              description="Mention authors in comments with @username"
+            />
+
+            {/* Monitor Comments */}
+            <Toggle
+              checked={settings.monitor_comments}
+              onChange={(v) => setSettings({ ...settings, monitor_comments: v })}
+              label="Monitor Comments on Posts"
+              description="Track comments to find reply opportunities"
+            />
+
+            {/* Reply to High-Engagement Comments */}
+            <Toggle
+              checked={settings.reply_to_high_engagement}
+              onChange={(v) => setSettings({ ...settings, reply_to_high_engagement: v })}
+              label="Reply to High-Engagement Comments"
+              description="Generate replies to popular comments on posts"
+            />
+
+            {/* Blacklisted Profiles */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Blacklisted Profiles</label>
+              <p className="text-xs text-gray-400 mb-2">LinkedIn profiles you never want to engage with</p>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {(settings.blacklisted_profiles || []).map((profile, idx) => (
+                  <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-gray-700 rounded-full text-sm text-gray-300">
+                    {profile}
+                    <button
+                      onClick={() => removeArrayItem('blacklisted_profiles', idx)}
+                      className="text-gray-400 hover:text-red-400"
+                    >
+                      <X size={14} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newBlacklistedProfile}
+                  onChange={(e) => setNewBlacklistedProfile(e.target.value)}
+                  placeholder="linkedin.com/in/username or vanity name..."
+                  className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addArrayItem('blacklisted_profiles', newBlacklistedProfile, setNewBlacklistedProfile);
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => addArrayItem('blacklisted_profiles', newBlacklistedProfile, setNewBlacklistedProfile)}
+                  className="px-3 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Auto-Approval Window */}
+            <div className="p-4 bg-blue-900/20 rounded-lg border border-blue-700/50">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <div className="text-white font-medium text-sm">Auto-Approve Comments</div>
+                  <div className="text-gray-400 text-xs">Automatically post comments without manual review</div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.auto_approve_enabled}
+                    onChange={(e) => setSettings({ ...settings, auto_approve_enabled: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
+              {settings.auto_approve_enabled && (
+                <>
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <div>
+                      <label className="block text-xs text-gray-300 mb-1">Auto-Approve Start Time</label>
+                      <input
+                        type="time"
+                        value={settings.auto_approve_start_time}
+                        onChange={(e) => setSettings({ ...settings, auto_approve_start_time: e.target.value })}
+                        className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-300 mb-1">Auto-Approve End Time</label>
+                      <input
+                        type="time"
+                        value={settings.auto_approve_end_time}
+                        onChange={(e) => setSettings({ ...settings, auto_approve_end_time: e.target.value })}
+                        className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Comments generated between {settings.auto_approve_start_time} - {settings.auto_approve_end_time} will be auto-approved and posted.
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Section 11: Advanced */}
       <div className="border border-gray-600 rounded-lg overflow-hidden">
         <SectionHeader title="Advanced" section="advanced" description="System prompt override (experts only)" />
         {expandedSections.advanced && (
