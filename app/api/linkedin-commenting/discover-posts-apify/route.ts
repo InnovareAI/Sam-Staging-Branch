@@ -3,6 +3,59 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
+const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
+const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
+
+/**
+ * CRITICAL: Resolve the correct URN from Unipile
+ *
+ * Apify returns activity URNs from LinkedIn URLs (e.g., urn:li:activity:7400583686523469824)
+ * But Unipile needs the actual post URN (e.g., urn:li:ugcPost:7400583515781890048)
+ * These have DIFFERENT numeric IDs!
+ *
+ * This function queries Unipile to get the correct URN for posting comments.
+ */
+async function resolveCorrectUrn(
+  activityUrn: string,
+  unipileAccountId: string
+): Promise<{ socialId: string; authorName?: string; authorHeadline?: string } | null> {
+  try {
+    // Query Unipile with the activity URN to get the actual post details
+    const response = await fetch(
+      `${UNIPILE_BASE_URL}/api/v1/posts/${encodeURIComponent(activityUrn)}?account_id=${unipileAccountId}`,
+      {
+        method: 'GET',
+        headers: {
+          'X-API-KEY': UNIPILE_API_KEY,
+          'Accept': 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      console.warn(`⚠️ Could not resolve URN from Unipile: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+
+    // Unipile returns the correct social_id (usually ugcPost format)
+    if (data.social_id) {
+      console.log(`✅ Resolved URN: ${activityUrn} → ${data.social_id}`);
+      return {
+        socialId: data.social_id,
+        authorName: data.author?.name,
+        authorHeadline: data.author?.headline
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error(`❌ Error resolving URN:`, error);
+    return null;
+  }
+}
+
 /**
  * LinkedIn Post Discovery using Apify
  *
@@ -224,30 +277,54 @@ export async function POST(request: NextRequest) {
 
         // Store new posts
         if (newPosts.length > 0) {
-          const postsToInsert = newPosts.map((post: any) => {
-            // CRITICAL: Preserve original URN format for Unipile API compatibility
-            // Unipile's /api/v1/posts/{socialId}/comments endpoint REQUIRES the original URN type
-            // LinkedIn uses: urn:li:activity:, urn:li:ugcPost:, urn:li:share:
-            // Converting to urn:li:activity: breaks Unipile's ability to find the post
-            // For duplicate detection, we use the numeric ID, but store the ORIGINAL URN
-            let socialId = post.urn?.activity_urn || post.full_urn;
+          // Get Unipile account for this workspace to resolve correct URNs
+          const { data: linkedinAccount } = await supabase
+            .from('workspace_accounts')
+            .select('unipile_account_id')
+            .eq('workspace_id', monitor.workspace_id)
+            .eq('account_type', 'linkedin')
+            .eq('connection_status', 'connected')
+            .limit(1)
+            .single();
 
-            // Keep the original URN format - DO NOT normalize to urn:li:activity:
-            // If it's just a number, wrap it in the default format
-            if (socialId && /^\d+$/.test(socialId)) {
-              socialId = `urn:li:activity:${socialId}`;
+          const unipileAccountId = linkedinAccount?.unipile_account_id;
+
+          // CRITICAL: Resolve correct URNs from Unipile before storing
+          // Apify returns activity URNs from URLs, but Unipile needs ugcPost URNs to post comments
+          // These have DIFFERENT numeric IDs!
+          const postsToInsert = await Promise.all(newPosts.map(async (post: any) => {
+            let apifySocialId = post.urn?.activity_urn || post.full_urn;
+
+            // Normalize to URN format if just a number
+            if (apifySocialId && /^\d+$/.test(apifySocialId)) {
+              apifySocialId = `urn:li:activity:${apifySocialId}`;
+            }
+
+            // Resolve the correct URN from Unipile (activity → ugcPost)
+            let finalSocialId = apifySocialId;
+            let resolvedAuthor: { authorName?: string; authorHeadline?: string } = {};
+
+            if (unipileAccountId && apifySocialId) {
+              const resolved = await resolveCorrectUrn(apifySocialId, unipileAccountId);
+              if (resolved) {
+                finalSocialId = resolved.socialId;
+                resolvedAuthor = {
+                  authorName: resolved.authorName,
+                  authorHeadline: resolved.authorHeadline
+                };
+              }
             }
 
             return {
               workspace_id: monitor.workspace_id,
               monitor_id: monitor.id,
-              social_id: socialId,
+              social_id: finalSocialId,
               share_url: post.url || `https://www.linkedin.com/feed/update/${post.full_urn}`,
               post_content: post.text || '',
-              author_name: post.author?.first_name ? `${post.author.first_name} ${post.author.last_name || ''}`.trim() : vanityName,
+              author_name: resolvedAuthor.authorName || (post.author?.first_name ? `${post.author.first_name} ${post.author.last_name || ''}`.trim() : vanityName),
               author_profile_id: post.author?.username || vanityName,
-              author_title: post.author?.headline || post.author?.title || null,
-              author_headline: post.author?.headline || post.author?.title || null,
+              author_title: resolvedAuthor.authorHeadline || post.author?.headline || post.author?.title || null,
+              author_headline: resolvedAuthor.authorHeadline || post.author?.headline || post.author?.title || null,
               hashtags: [],
               post_date: new Date(post.posted_at?.timestamp).toISOString(),
               engagement_metrics: {
@@ -257,7 +334,7 @@ export async function POST(request: NextRequest) {
               },
               status: 'discovered'
             };
-          });
+          }));
 
           const { data: insertedPosts, error: insertError } = await supabase
             .from('linkedin_posts_discovered')
@@ -460,28 +537,54 @@ export async function POST(request: NextRequest) {
 
         // Store new posts
         if (newPosts.length > 0) {
-          const postsToInsert = newPosts.map((post: any) => {
-            // CRITICAL: Preserve original URN format for Unipile API compatibility
-            // Unipile's /api/v1/posts/{socialId}/comments endpoint REQUIRES the original URN type
-            // LinkedIn uses: urn:li:activity:, urn:li:ugcPost:, urn:li:share:
-            // Converting to urn:li:activity: breaks Unipile's ability to find posts
-            let socialId = post.urn || post.postUrn || post.id;
+          // Get Unipile account for this workspace to resolve correct URNs
+          const { data: linkedinAccount } = await supabase
+            .from('workspace_accounts')
+            .select('unipile_account_id')
+            .eq('workspace_id', monitor.workspace_id)
+            .eq('account_type', 'linkedin')
+            .eq('connection_status', 'connected')
+            .limit(1)
+            .single();
 
-            // Only wrap bare numbers - preserve all other URN formats
-            if (socialId && /^\d+$/.test(String(socialId))) {
-              socialId = `urn:li:activity:${socialId}`;
+          const unipileAccountId = linkedinAccount?.unipile_account_id;
+
+          // CRITICAL: Resolve correct URNs from Unipile before storing
+          // Apify returns activity URNs from URLs, but Unipile needs ugcPost URNs to post comments
+          // These have DIFFERENT numeric IDs!
+          const postsToInsert = await Promise.all(newPosts.map(async (post: any) => {
+            let apifySocialId = post.urn || post.postUrn || post.id;
+
+            // Normalize to URN format if just a number
+            if (apifySocialId && /^\d+$/.test(String(apifySocialId))) {
+              apifySocialId = `urn:li:activity:${apifySocialId}`;
+            }
+
+            // Resolve the correct URN from Unipile (activity → ugcPost)
+            let finalSocialId = apifySocialId;
+            let resolvedAuthor: { authorName?: string; authorHeadline?: string } = {};
+
+            if (unipileAccountId && apifySocialId) {
+              const resolved = await resolveCorrectUrn(apifySocialId, unipileAccountId);
+              if (resolved) {
+                finalSocialId = resolved.socialId;
+                resolvedAuthor = {
+                  authorName: resolved.authorName,
+                  authorHeadline: resolved.authorHeadline
+                };
+              }
             }
 
             return {
               workspace_id: monitor.workspace_id,
               monitor_id: monitor.id,
-              social_id: socialId,
-              share_url: post.url || post.postUrl || `https://www.linkedin.com/feed/update/${socialId}`,
+              social_id: finalSocialId,
+              share_url: post.url || post.postUrl || `https://www.linkedin.com/feed/update/${apifySocialId}`,
               post_content: post.text || post.content || '',
-              author_name: post.authorName || post.author?.name || post.author?.first_name || 'Unknown',
+              author_name: resolvedAuthor.authorName || post.authorName || post.author?.name || post.author?.first_name || 'Unknown',
               author_profile_id: post.authorProfileId || post.author?.username || post.author?.vanityName || null,
-              author_title: post.authorTitle || post.author?.headline || null,
-              author_headline: post.authorHeadline || post.author?.headline || null,
+              author_title: resolvedAuthor.authorHeadline || post.authorTitle || post.author?.headline || null,
+              author_headline: resolvedAuthor.authorHeadline || post.authorHeadline || post.author?.headline || null,
               hashtags: [keyword],
               post_date: post.postedAt || post.posted_at?.timestamp
                 ? new Date(post.postedAt || post.posted_at?.timestamp).toISOString()
@@ -493,7 +596,7 @@ export async function POST(request: NextRequest) {
               },
               status: 'discovered'
             };
-          });
+          }));
 
           const { data: insertedPosts, error: insertError } = await supabase
             .from('linkedin_posts_discovered')
