@@ -84,6 +84,10 @@ export async function POST(request: NextRequest) {
     const followupCheck = await checkFollowupScheduling(supabase);
     allChecks.push(followupCheck);
 
+    // 7.5. CRITICAL: Same-Day Follow-up Check
+    const sameDayCheck = await checkSameDayFollowups(supabase);
+    allChecks.push(sameDayCheck);
+
     // 8. Duplicate Detection
     const duplicateCheck = await checkDuplicateRecords(supabase);
     allChecks.push(duplicateCheck);
@@ -388,6 +392,68 @@ async function checkFollowupScheduling(supabase: any): Promise<QACheck> {
       : 'All accepted connections have follow-ups scheduled',
     affected_records: count,
     suggested_fix: count > 0 ? 'Run follow-up scheduling job for accepted connections' : undefined
+  };
+}
+
+async function checkSameDayFollowups(supabase: any): Promise<QACheck> {
+  // CRITICAL: Find prospects with multiple messages scheduled on same day
+  // Rule: Follow-ups must NEVER be on the same day as first message
+  const { data: sameDayViolations } = await supabase.rpc('find_same_day_followups');
+
+  // Fallback query if RPC doesn't exist
+  if (!sameDayViolations) {
+    // Check for same-day messages manually
+    const { data: queueItems } = await supabase
+      .from('send_queue')
+      .select('id, campaign_id, prospect_id, scheduled_for, message_type')
+      .eq('status', 'pending')
+      .order('prospect_id')
+      .order('scheduled_for');
+
+    // Group by prospect and check for same-day
+    const prospectDates = new Map<string, Set<string>>();
+    let violations = 0;
+    const violatingProspects: string[] = [];
+
+    for (const item of queueItems || []) {
+      const key = `${item.campaign_id}-${item.prospect_id}`;
+      const date = new Date(item.scheduled_for).toISOString().split('T')[0];
+
+      if (!prospectDates.has(key)) {
+        prospectDates.set(key, new Set());
+      }
+
+      const dates = prospectDates.get(key)!;
+      if (dates.has(date)) {
+        violations++;
+        if (!violatingProspects.includes(item.prospect_id)) {
+          violatingProspects.push(item.prospect_id);
+        }
+      }
+      dates.add(date);
+    }
+
+    return {
+      check_name: 'Same-Day Follow-up Check',
+      category: 'messaging',
+      status: violations > 0 ? 'fail' : 'pass',
+      details: violations > 0
+        ? `CRITICAL: ${violations} messages scheduled same day as another message for same prospect`
+        : 'All follow-ups scheduled on different days',
+      affected_records: violations,
+      sample_ids: violatingProspects.slice(0, 5),
+      suggested_fix: violations > 0
+        ? 'UPDATE send_queue SET scheduled_for = scheduled_for + interval \'1 day\' WHERE prospect_id IN (...) AND message_type != \'direct_message_1\''
+        : undefined
+    };
+  }
+
+  return {
+    check_name: 'Same-Day Follow-up Check',
+    category: 'messaging',
+    status: (sameDayViolations?.length || 0) > 0 ? 'fail' : 'pass',
+    details: `${sameDayViolations?.length || 0} same-day violations found`,
+    affected_records: sameDayViolations?.length || 0
   };
 }
 
