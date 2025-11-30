@@ -1853,95 +1853,99 @@ export default function DataCollectionHub({
       <div className="max-w-[1400px] mx-auto">
         {/* Prospect Approval Dashboard */}
         <div>
-          {/* Action Bar - Reorganized for clarity */}
+          {/* Action Bar - All items on one line */}
           <div className="mb-6 space-y-4">
-            {/* Row 1: Status badges + Primary actions */}
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              {/* Badge Counters */}
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-sm font-medium border border-green-500/40">
-                  {filteredProspects.filter(p => !dismissedProspectIds.has(p.id) && p.approvalStatus === 'pending').length} pending
-                </span>
-                <span className="px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-sm font-medium border border-blue-500/40">
-                  {prospectData.filter(p => p.approvalStatus === 'approved').length} approved
-                </span>
-                {dismissedProspectIds.size > 0 && (
-                  <span className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-sm font-medium border border-red-500/40">
-                    {dismissedProspectIds.size} dismissed
-                  </span>
-                )}
-                {selectedProspectIds.size > 0 && (
-                  <span className="px-3 py-1.5 bg-purple-500/20 text-purple-400 rounded-lg text-sm font-medium border border-purple-500/40">
-                    {selectedProspectIds.size} selected
-                  </span>
-                )}
-              </div>
+            {/* Row 1: Status badges + Actions - all inline */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Badge: Pending */}
+              <span className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-sm font-medium border border-green-500/40">
+                {filteredProspects.filter(p => !dismissedProspectIds.has(p.id) && p.approvalStatus === 'pending').length} pending
+              </span>
 
-              {/* Primary Action Buttons */}
-              <div className="flex items-center gap-2">
-                {/* Undo All Dismissals */}
-                {dismissedProspectIds.size > 0 && (
-                  <button
-                    onClick={clearAllDismissals}
-                    className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 border border-gray-600 text-gray-300 rounded-lg transition-colors text-sm font-medium"
-                  >
-                    Undo Dismissals
-                  </button>
-                )}
+              {/* Badge: Approved */}
+              <span className="px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-sm font-medium border border-blue-500/40">
+                {prospectData.filter(p => p.approvalStatus === 'approved').length} approved
+              </span>
 
-                {/* Auto-Approve All */}
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const pendingProspects = prospectData.filter(p => p.approvalStatus === 'pending')
-                    if (pendingProspects.length === 0) {
-                      toastError('No pending prospects to approve')
-                      return
-                    }
-                    setProspectData(prev => prev.map(p =>
-                      p.approvalStatus === 'pending'
-                        ? { ...p, approvalStatus: 'approved' as const }
-                        : p
-                    ))
-                    toastSuccess(`✅ Auto-approved ${pendingProspects.length} prospects`)
-                    for (const prospect of pendingProspects) {
-                      const sessionId = (prospect as any)?.session_id || (prospect as any)?.sessionId
-                      if (sessionId) {
-                        try {
-                          await fetch('/api/prospect-approval/decisions', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              session_id: sessionId,
-                              prospect_id: prospect.id,
-                              decision: 'approved'
-                            })
+              {/* Badge: Dismissed (conditional) */}
+              {dismissedProspectIds.size > 0 && (
+                <span className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-sm font-medium border border-red-500/40">
+                  {dismissedProspectIds.size} dismissed
+                </span>
+              )}
+
+              {/* Badge: Selected (conditional) */}
+              {selectedProspectIds.size > 0 && (
+                <span className="px-3 py-1.5 bg-purple-500/20 text-purple-400 rounded-lg text-sm font-medium border border-purple-500/40">
+                  {selectedProspectIds.size} selected
+                </span>
+              )}
+
+              {/* Separator */}
+              <div className="w-px h-6 bg-gray-700 mx-1" />
+
+              {/* Button: Approve All */}
+              <button
+                type="button"
+                onClick={async () => {
+                  const pendingProspects = prospectData.filter(p => p.approvalStatus === 'pending')
+                  if (pendingProspects.length === 0) {
+                    toastError('No pending prospects to approve')
+                    return
+                  }
+                  setProspectData(prev => prev.map(p =>
+                    p.approvalStatus === 'pending'
+                      ? { ...p, approvalStatus: 'approved' as const }
+                      : p
+                  ))
+                  toastSuccess(`✅ Auto-approved ${pendingProspects.length} prospects`)
+                  for (const prospect of pendingProspects) {
+                    const sessionId = (prospect as any)?.session_id || (prospect as any)?.sessionId
+                    if (sessionId) {
+                      try {
+                        await fetch('/api/prospect-approval/decisions', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            session_id: sessionId,
+                            prospect_id: prospect.id,
+                            decision: 'approved'
                           })
-                        } catch (error) {
-                          console.error('Error approving prospect:', prospect.id, error)
-                        }
+                        })
+                      } catch (error) {
+                        console.error('Error approving prospect:', prospect.id, error)
                       }
                     }
-                  }}
-                  disabled={prospectData.filter(p => p.approvalStatus === 'pending').length === 0}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
-                >
-                  <CheckSquare className="w-4 h-4" />
-                  <span>Approve All</span>
-                </button>
+                  }
+                }}
+                disabled={prospectData.filter(p => p.approvalStatus === 'pending').length === 0}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
+              >
+                <CheckSquare className="w-4 h-4" />
+                <span>Approve All</span>
+              </button>
 
-                {/* Delete Selected */}
-                {selectedProspectIds.size > 0 && (
-                  <button
-                    type="button"
-                    onClick={bulkDeleteSelected}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg text-white bg-red-600 hover:bg-red-700 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span>Delete ({selectedProspectIds.size})</span>
-                  </button>
-                )}
-              </div>
+              {/* Button: Undo Dismissals (conditional) */}
+              {dismissedProspectIds.size > 0 && (
+                <button
+                  onClick={clearAllDismissals}
+                  className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 border border-gray-600 text-gray-300 rounded-lg transition-colors text-sm font-medium"
+                >
+                  Undo Dismissals
+                </button>
+              )}
+
+              {/* Button: Delete Selected (conditional) */}
+              {selectedProspectIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={bulkDeleteSelected}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg text-white bg-red-600 hover:bg-red-700 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete ({selectedProspectIds.size})</span>
+                </button>
+              )}
             </div>
 
             {/* Row 2: Campaign Actions - Only show when there are approved prospects */}
