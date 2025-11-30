@@ -2284,13 +2284,7 @@ const KnowledgeBase: React.FC = () => {
   };
 
   const getQuickActionDescription = (sectionId: string) => {
-    const docs = getDocumentsForSection(sectionId);
-    if (docs.length > 0) {
-      return `Latest: ${docs[0].title}`;
-    }
-    if (sectionId === 'icp' && icpCount) {
-      return `${icpCount} ICP profile${icpCount === 1 ? '' : 's'} configured`;
-    }
+    // Only show static default descriptions - no external content
     return defaultActionDescriptions[sectionId] || 'Open section';
   };
 
