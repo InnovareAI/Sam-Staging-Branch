@@ -70,6 +70,10 @@ interface Settings {
   min_days_between_profile_comments: number;
   max_days_between_profile_comments: number;
 
+  // Profile scraping limits
+  profile_scrape_interval_days: number;
+  max_profile_scrapes_per_day: number;
+
   // Section 10: Advanced
   system_prompt: string;
 
@@ -125,6 +129,8 @@ const defaultSettings: Settings = {
   daily_comment_limit: 30,
   min_days_between_profile_comments: 1,
   max_days_between_profile_comments: 7,
+  profile_scrape_interval_days: 1,
+  max_profile_scrapes_per_day: 20,
   system_prompt: '',
   // Section 11: Engagement & Automation
   tag_post_authors: true,
@@ -229,6 +235,8 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
           daily_comment_limit: data.daily_comment_limit ?? defaultSettings.daily_comment_limit,
           min_days_between_profile_comments: data.min_days_between_profile_comments ?? defaultSettings.min_days_between_profile_comments,
           max_days_between_profile_comments: data.max_days_between_profile_comments ?? defaultSettings.max_days_between_profile_comments,
+          profile_scrape_interval_days: data.profile_scrape_interval_days ?? defaultSettings.profile_scrape_interval_days,
+          max_profile_scrapes_per_day: data.max_profile_scrapes_per_day ?? defaultSettings.max_profile_scrapes_per_day,
           system_prompt: data.system_prompt || '',
           // Section 11: Engagement & Automation
           tag_post_authors: data.tag_post_authors ?? defaultSettings.tag_post_authors,
@@ -304,6 +312,8 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
         daily_comment_limit: settings.daily_comment_limit,
         min_days_between_profile_comments: settings.min_days_between_profile_comments,
         max_days_between_profile_comments: settings.max_days_between_profile_comments,
+        profile_scrape_interval_days: settings.profile_scrape_interval_days,
+        max_profile_scrapes_per_day: settings.max_profile_scrapes_per_day,
         system_prompt: settings.system_prompt || null,
         // Section 11: Engagement & Automation
         tag_post_authors: settings.tag_post_authors,
@@ -1025,6 +1035,44 @@ DON'T: Use "Great post!", emojis, exclamation points, or buzzwords like "leverag
               </div>
               <p className="text-xs text-gray-400 mt-3">
                 Example: {settings.min_days_between_profile_comments}-{settings.max_days_between_profile_comments} days means you'll comment on the same profile every {settings.min_days_between_profile_comments === settings.max_days_between_profile_comments ? `${settings.min_days_between_profile_comments} days` : `${settings.min_days_between_profile_comments} to ${settings.max_days_between_profile_comments} days`}.
+              </p>
+            </div>
+
+            {/* Profile Scraping Limits */}
+            <div className="p-4 bg-purple-900/20 rounded-lg border border-purple-700/50">
+              <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                Profile Scraping Limits
+              </h4>
+              <p className="text-xs text-gray-400 mb-4">Control how often we check monitored profiles for new posts</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Days Between Profile Scrapes</label>
+                  <input
+                    type="number"
+                    value={settings.profile_scrape_interval_days}
+                    onChange={(e) => setSettings({ ...settings, profile_scrape_interval_days: Math.min(30, Math.max(1, parseInt(e.target.value) || 1)) })}
+                    min={1}
+                    max={30}
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">1 = daily, 7 = weekly, 30 = monthly</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Max Profile Scrapes Per Day</label>
+                  <input
+                    type="number"
+                    value={settings.max_profile_scrapes_per_day}
+                    onChange={(e) => setSettings({ ...settings, max_profile_scrapes_per_day: Math.min(20, Math.max(1, parseInt(e.target.value) || 1)) })}
+                    min={1}
+                    max={20}
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Max 20 profiles per day</p>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 mt-3">
+                With {settings.profile_scrape_interval_days} day interval and {settings.max_profile_scrapes_per_day} max per day, you can monitor up to ~{Math.floor(settings.max_profile_scrapes_per_day * settings.profile_scrape_interval_days)} profiles.
               </p>
             </div>
 

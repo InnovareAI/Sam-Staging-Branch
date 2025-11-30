@@ -113,9 +113,68 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Apify API token not configured' }, { status: 500 });
     }
 
-    // Process each profile monitor
+    // Get unique workspace IDs from profile monitors
+    const workspaceIds = [...new Set(profileMonitors.map(m => m.workspace_id))];
+
+    // Load settings for each workspace
+    const { data: workspaceSettings } = await supabase
+      .from('linkedin_brand_guidelines')
+      .select('workspace_id, profile_scrape_interval_days, max_profile_scrapes_per_day')
+      .in('workspace_id', workspaceIds);
+
+    const settingsMap = new Map(
+      (workspaceSettings || []).map(s => [s.workspace_id, s])
+    );
+
+    // Track scrapes per workspace today
+    const scrapesPerWorkspace = new Map<string, number>();
+    const today = new Date().toISOString().split('T')[0];
+
+    // Process each profile monitor with rate limiting
+    let profilesScrapedThisRun = 0;
+    const MAX_PROFILES_PER_RUN = 20; // Hard limit per run
+
     for (const monitor of profileMonitors) {
       try {
+        // Check hard limit per run
+        if (profilesScrapedThisRun >= MAX_PROFILES_PER_RUN) {
+          console.log(`⏸️ Reached max profiles per run (${MAX_PROFILES_PER_RUN}), stopping`);
+          break;
+        }
+
+        const settings = settingsMap.get(monitor.workspace_id) || {
+          profile_scrape_interval_days: 1,
+          max_profile_scrapes_per_day: 20
+        };
+
+        // Check if we've hit the daily limit for this workspace
+        const workspaceScrapes = scrapesPerWorkspace.get(monitor.workspace_id) || 0;
+        if (workspaceScrapes >= settings.max_profile_scrapes_per_day) {
+          console.log(`⏸️ Workspace ${monitor.workspace_id} hit daily limit (${settings.max_profile_scrapes_per_day})`);
+          continue;
+        }
+
+        // Check if this monitor was scraped recently
+        const lastScrapedAt = monitor.last_scraped_at ? new Date(monitor.last_scraped_at) : null;
+        if (lastScrapedAt) {
+          const daysSinceLastScrape = (Date.now() - lastScrapedAt.getTime()) / (1000 * 60 * 60 * 24);
+          if (daysSinceLastScrape < settings.profile_scrape_interval_days) {
+            console.log(`⏸️ Skipping monitor ${monitor.id} - scraped ${daysSinceLastScrape.toFixed(1)} days ago (interval: ${settings.profile_scrape_interval_days} days)`);
+            continue;
+          }
+        }
+
+        // Reset daily counter if it's a new day
+        if (monitor.scrape_count_reset_date !== today) {
+          await supabase
+            .from('linkedin_post_monitors')
+            .update({
+              scrapes_today: 0,
+              scrape_count_reset_date: today
+            })
+            .eq('id', monitor.id);
+        }
+
         const profileHashtag = monitor.hashtags.find((h: string) => h.startsWith('PROFILE:'));
         if (!profileHashtag) continue;
 
@@ -381,6 +440,25 @@ export async function POST(request: NextRequest) {
             }
           }
         }
+
+        // Update monitor tracking after successful scrape
+        await supabase
+          .from('linkedin_post_monitors')
+          .update({
+            last_scraped_at: new Date().toISOString(),
+            scrapes_today: (monitor.scrapes_today || 0) + 1,
+            scrape_count_reset_date: today
+          })
+          .eq('id', monitor.id);
+
+        // Update tracking counters
+        profilesScrapedThisRun++;
+        scrapesPerWorkspace.set(
+          monitor.workspace_id,
+          (scrapesPerWorkspace.get(monitor.workspace_id) || 0) + 1
+        );
+
+        console.log(`📊 Profile scrapes this run: ${profilesScrapedThisRun}, workspace today: ${scrapesPerWorkspace.get(monitor.workspace_id)}`);
 
       } catch (error) {
         console.error(`❌ Error processing monitor ${monitor.id}:`, error);
