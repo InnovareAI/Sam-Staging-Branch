@@ -6611,9 +6611,16 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
       // Step 3: AUTOMATED EXECUTION - Execute campaign automatically for ALL approved campaigns
       // Queue-based Unipile integration (30 min spacing) - no workflow engine needed
+      // CRITICAL FIX: Use correct endpoint based on campaign type
+      const executeEndpoint = approvedCampaignType === 'messenger'
+        ? '/api/campaigns/direct/send-messages-queued'
+        : '/api/campaigns/direct/send-connection-requests-fast';
+
+      console.log(`🚀 Executing ${approvedCampaignType} campaign via ${executeEndpoint}`);
+
       if (mappedProspects.length > 0) {
         try {
-          const executeResponse = await fetch('/api/campaigns/direct/send-connection-requests-fast', {
+          const executeResponse = await fetch(executeEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
