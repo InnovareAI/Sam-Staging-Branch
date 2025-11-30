@@ -1853,34 +1853,43 @@ export default function DataCollectionHub({
       <div className="max-w-[1400px] mx-auto">
         {/* Prospect Approval Dashboard */}
         <div>
-          {/* Action Bar */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between">
+          {/* Action Bar - Reorganized for clarity */}
+          <div className="mb-6 space-y-4">
+            {/* Row 1: Status badges + Primary actions */}
+            <div className="flex items-center justify-between flex-wrap gap-3">
               {/* Badge Counters */}
-              <div className="flex items-center space-x-2">
-                <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm font-medium border border-green-500/40">
-                  {filteredProspects.filter(p => !dismissedProspectIds.has(p.id) && p.approvalStatus === 'pending').length} to approve
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-sm font-medium border border-green-500/40">
+                  {filteredProspects.filter(p => !dismissedProspectIds.has(p.id) && p.approvalStatus === 'pending').length} pending
+                </span>
+                <span className="px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-sm font-medium border border-blue-500/40">
+                  {prospectData.filter(p => p.approvalStatus === 'approved').length} approved
                 </span>
                 {dismissedProspectIds.size > 0 && (
-                  <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-sm font-medium border border-red-500/40">
+                  <span className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-sm font-medium border border-red-500/40">
                     {dismissedProspectIds.size} dismissed
+                  </span>
+                )}
+                {selectedProspectIds.size > 0 && (
+                  <span className="px-3 py-1.5 bg-purple-500/20 text-purple-400 rounded-lg text-sm font-medium border border-purple-500/40">
+                    {selectedProspectIds.size} selected
                   </span>
                 )}
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center space-x-4">
-                {/* Undo All Dismissals Button */}
+              {/* Primary Action Buttons */}
+              <div className="flex items-center gap-2">
+                {/* Undo All Dismissals */}
                 {dismissedProspectIds.size > 0 && (
                   <button
                     onClick={clearAllDismissals}
-                    className="px-3 py-1.5 bg-surface-highlight hover:bg-surface border border-border/60 text-gray-300 rounded-lg transition-colors text-sm font-medium"
+                    className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 border border-gray-600 text-gray-300 rounded-lg transition-colors text-sm font-medium"
                   >
-                    Undo All Dismissals
+                    Undo Dismissals
                   </button>
                 )}
 
-                {/* Auto-Approve All Pending - Quick bulk approve without modal */}
+                {/* Auto-Approve All */}
                 <button
                   type="button"
                   onClick={async () => {
@@ -1889,18 +1898,13 @@ export default function DataCollectionHub({
                       toastError('No pending prospects to approve')
                       return
                     }
-
-                    // Update UI first
                     setProspectData(prev => prev.map(p =>
                       p.approvalStatus === 'pending'
                         ? { ...p, approvalStatus: 'approved' as const }
                         : p
                     ))
                     toastSuccess(`✅ Auto-approved ${pendingProspects.length} prospects`)
-
-                    // Save all approval decisions to database
                     for (const prospect of pendingProspects) {
-                      // CRITICAL FIX: Database returns snake_case 'session_id', not camelCase 'sessionId'
                       const sessionId = (prospect as any)?.session_id || (prospect as any)?.sessionId
                       if (sessionId) {
                         try {
@@ -1920,89 +1924,79 @@ export default function DataCollectionHub({
                     }
                   }}
                   disabled={prospectData.filter(p => p.approvalStatus === 'pending').length === 0}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
                 >
-                  <CheckSquare className="w-3.5 h-3.5" />
-                  <span>Auto-Approve All ({prospectData.filter(p => p.approvalStatus === 'pending').length})</span>
+                  <CheckSquare className="w-4 h-4" />
+                  <span>Approve All</span>
                 </button>
 
-                {/* Bulk Delete Button - always visible when prospects are selected */}
+                {/* Delete Selected */}
                 {selectedProspectIds.size > 0 && (
                   <button
                     type="button"
                     onClick={bulkDeleteSelected}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md text-white bg-red-600 hover:bg-red-700 transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg text-white bg-red-600 hover:bg-red-700 transition-colors"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Delete Selected ({selectedProspectIds.size})</span>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete ({selectedProspectIds.size})</span>
                   </button>
                 )}
-
-            {/* SIMPLIFIED: Always show both "Create New Campaign" and "Add to Existing" options */}
-            {prospectData.filter(p => p.approvalStatus === 'approved').length > 0 && (
-              <div className="flex items-center gap-3">
-                {/* Option 1: Create New Campaign - Opens campaign type selection modal */}
-                <button
-                  type="button"
-                  onClick={() => setShowCampaignTypeModal(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-colors"
-                  title={selectedProspectIds.size > 0 ? `Create new campaign with ${selectedProspectIds.size} selected prospects` : `Create new campaign with all ${prospectData.filter(p => p.approvalStatus === 'approved').length} approved prospects`}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Create New Campaign ({selectedProspectIds.size > 0 ? selectedProspectIds.size : prospectData.filter(p => p.approvalStatus === 'approved').length})</span>
-                </button>
-
-                <span className="text-gray-500">or</span>
-
-                {/* Option 2: Add to Existing Campaign */}
-                <select
-                  value={selectedCampaignId}
-                  onChange={(e) => setSelectedCampaignId(e.target.value)}
-                  disabled={loadingCampaigns}
-                  className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
-                >
-                  <option value="">Add to existing campaign...</option>
-                  {availableCampaigns.map(campaign => (
-                    <option key={campaign.id} value={campaign.id}>
-                      {campaign.name} ({campaign.status})
-                    </option>
-                  ))}
-                </select>
-
-                <button
-                  type="button"
-                  onClick={addApprovedToExistingCampaign}
-                  disabled={!selectedCampaignId}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
-                  title={selectedProspectIds.size > 0 ? `Add ${selectedProspectIds.size} selected prospects to existing campaign` : `Add all ${prospectData.filter(p => p.approvalStatus === 'approved').length} approved prospects to existing campaign`}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add ({selectedProspectIds.size > 0 ? selectedProspectIds.size : prospectData.filter(p => p.approvalStatus === 'approved').length})</span>
-                </button>
-              </div>
-            )}
-
-            {/* Info message about next steps */}
-            {availableProspects.length > 0 && (
-              <div className="text-sm text-gray-400 flex items-center gap-2">
-                {selectedProspectIds.size > 0 ? (
-                  <>
-                    <span className="text-blue-400 font-semibold">✓ {selectedProspectIds.size} selected</span>
-                    <span className="text-gray-500">•</span>
-                    <span>{availableProspects.length} total approved & saved</span>
-                  </>
-                ) : (
-                  <>
-                    <span>✓ {availableProspects.length} approved & saved to database</span>
-                    <span className="text-gray-500">•</span>
-                    <span className="text-blue-400">Select prospects or create campaign with all</span>
-                  </>
-                )}
-              </div>
-            )}
-
               </div>
             </div>
+
+            {/* Row 2: Campaign Actions - Only show when there are approved prospects */}
+            {prospectData.filter(p => p.approvalStatus === 'approved').length > 0 && (
+              <div className="flex items-center justify-between bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+                <div className="flex items-center gap-4">
+                  {/* Create New Campaign */}
+                  <button
+                    type="button"
+                    onClick={() => setShowCampaignTypeModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-colors font-medium"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Create Campaign ({selectedProspectIds.size > 0 ? selectedProspectIds.size : prospectData.filter(p => p.approvalStatus === 'approved').length})</span>
+                  </button>
+
+                  <span className="text-gray-500 text-sm">or add to existing:</span>
+
+                  {/* Add to Existing */}
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={selectedCampaignId}
+                      onChange={(e) => setSelectedCampaignId(e.target.value)}
+                      disabled={loadingCampaigns}
+                      className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                    >
+                      <option value="">Select campaign...</option>
+                      {availableCampaigns.map(campaign => (
+                        <option key={campaign.id} value={campaign.id}>
+                          {campaign.name} ({campaign.status})
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={addApprovedToExistingCampaign}
+                      disabled={!selectedCampaignId}
+                      className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors font-medium"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Status text */}
+                <div className="text-sm text-gray-400">
+                  {selectedProspectIds.size > 0
+                    ? `${selectedProspectIds.size} selected for campaign`
+                    : `${prospectData.filter(p => p.approvalStatus === 'approved').length} prospects ready`
+                  }
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Add Prospects Section - CSV, Copy/Paste, LinkedIn URL */}
