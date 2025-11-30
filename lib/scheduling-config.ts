@@ -22,18 +22,18 @@ export interface BusinessHours {
 }
 
 // Default timezone (can be overridden per workspace)
-export const DEFAULT_TIMEZONE = 'America/New_York';
+export const DEFAULT_TIMEZONE = 'America/Los_Angeles'; // Pacific Time
 
 // Business hours configuration
 export const BUSINESS_HOURS = {
-  start: 8,  // 8 AM
-  end: 17,   // 5 PM (exclusive)
+  start: 5,  // 5 AM PT - early to catch East Coast business hours
+  end: 17,   // 5 PM PT
 };
 
 // Follow-up business hours (slightly wider)
 export const FOLLOW_UP_HOURS = {
-  start: 7,  // 7 AM
-  end: 18,   // 6 PM (exclusive)
+  start: 5,  // 5 AM PT
+  end: 18,   // 6 PM PT
 };
 
 // Country-specific public holidays (2025-2026)

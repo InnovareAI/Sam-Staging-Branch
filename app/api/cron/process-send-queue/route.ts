@@ -306,7 +306,36 @@ export async function POST(req: NextRequest) {
 
     const unipileAccountId = linkedinAccount.unipile_account_id;
 
-    // 4.5 Check if message requires connection (follow-ups only send if connected)
+    // 4.5 CRITICAL: Check if prospect has replied or opted out - STOP all messaging
+    const stopStatuses = ['replied', 'opted_out', 'converted', 'not_interested'];
+    if (stopStatuses.includes(prospect.status)) {
+      console.log(`🛑 Prospect has ${prospect.status} - cancelling all pending messages`);
+
+      // Cancel ALL pending messages for this prospect in this campaign
+      const { data: cancelledMessages } = await supabase
+        .from('send_queue')
+        .update({
+          status: 'cancelled',
+          error_message: `Prospect ${prospect.status} - messaging stopped`,
+          updated_at: new Date().toISOString()
+        })
+        .eq('campaign_id', queueItem.campaign_id)
+        .eq('prospect_id', queueItem.prospect_id)
+        .eq('status', 'pending')
+        .select('id');
+
+      const cancelledCount = cancelledMessages?.length || 0;
+      console.log(`✅ Cancelled ${cancelledCount} pending messages for ${prospect.first_name}`);
+
+      return NextResponse.json({
+        success: true,
+        processed: 0,
+        cancelled: cancelledCount,
+        message: `Prospect ${prospect.status} - all pending messages cancelled`
+      });
+    }
+
+    // 4.6 Check if message requires connection (follow-ups only send if connected)
     if (queueItem.requires_connection) {
       console.log(`🔍 Message requires connection - checking prospect status`);
       console.log(`   Prospect status: ${prospect.status}`);
