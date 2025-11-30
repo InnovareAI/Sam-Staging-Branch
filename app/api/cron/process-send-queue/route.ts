@@ -391,33 +391,26 @@ export async function POST(req: NextRequest) {
         console.log(`✅ Connection request sent successfully`);
 
       } else {
-        // Send direct message or follow-up (requires existing chat)
+        // Send direct message or follow-up
         console.log(`💬 Sending ${isMessengerMessage ? 'direct message' : 'follow-up message'}...`);
 
-        // Find existing chat with this prospect
-        const chatsResponse = await unipileRequest(
-          `/api/v1/chats?account_id=${unipileAccountId}`
-        );
+        // Use POST /api/v1/chats to start a new chat or message existing connection
+        // This is more reliable than searching for existing chats
+        // Unipile automatically handles finding/creating the chat thread
+        const payload = {
+          account_id: unipileAccountId,
+          attendees_ids: [providerId], // Array of provider_ids for attendees
+          text: queueItem.message
+        };
 
-        const chat = chatsResponse.items?.find((c: any) =>
-          c.attendees?.some((a: any) => a.provider_id === providerId)
-        );
+        console.log(`📨 Starting chat/sending message:`, JSON.stringify(payload, null, 2));
 
-        if (!chat) {
-          throw new Error(`No chat found for prospect ${prospect.first_name} - connection may not be accepted yet`);
-        }
-
-        console.log(`💬 Found chat ID: ${chat.id}`);
-
-        // Send message to chat
-        await unipileRequest(`/api/v1/chats/${chat.id}/messages`, {
+        await unipileRequest('/api/v1/chats', {
           method: 'POST',
-          body: JSON.stringify({
-            text: queueItem.message
-          })
+          body: JSON.stringify(payload)
         });
 
-        console.log(`✅ Message sent successfully via chat`);
+        console.log(`✅ Message sent successfully`);
       }
 
       // 3. Mark queue item as sent
