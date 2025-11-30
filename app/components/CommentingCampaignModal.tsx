@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Target, Shield, Clock, ChevronDown, ChevronUp, Settings, User, Building2 } from 'lucide-react';
+import { X, Target, Shield, Clock, ChevronDown, ChevronUp, Settings, User, Building2, Hash } from 'lucide-react';
 
 interface Monitor {
   id: string;
@@ -25,7 +25,7 @@ interface CommentingCampaignModalProps {
 }
 
 type TargetingMode = 'hashtag' | 'keyword' | 'profile';
-type TargetTab = 'profiles' | 'companies';
+type TargetTab = 'profiles' | 'companies' | 'hashtags';
 
 export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, editMode = false, existingMonitor }: CommentingCampaignModalProps) {
   const [campaignName, setCampaignName] = useState('');
@@ -33,6 +33,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
   const [activeTab, setActiveTab] = useState<TargetTab>('profiles');
   const [profileTargets, setProfileTargets] = useState<string[]>(['']);
   const [companyTargets, setCompanyTargets] = useState<string[]>(['']);
+  const [hashtagTargets, setHashtagTargets] = useState<string[]>(['']);
 
   // Anti-bot Detection Settings
   const [minExistingComments, setMinExistingComments] = useState(2);
@@ -84,6 +85,16 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
         setActiveTab('companies');
       }
 
+      // Extract hashtags from hashtags array (format: "HASHTAG:keyword")
+      const hashtags = existingMonitor.hashtags
+        .filter(tag => tag.startsWith('HASHTAG:'))
+        .map(tag => tag.replace('HASHTAG:', ''));
+
+      if (hashtags.length > 0) {
+        setHashtagTargets(hashtags);
+        setActiveTab('hashtags');
+      }
+
       // Set other fields if they exist
       if (existingMonitor.timezone) setTimezone(existingMonitor.timezone);
       if (existingMonitor.daily_start_time) {
@@ -104,8 +115,10 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
   const handleAddTarget = () => {
     if (activeTab === 'profiles') {
       setProfileTargets([...profileTargets, '']);
-    } else {
+    } else if (activeTab === 'companies') {
       setCompanyTargets([...companyTargets, '']);
+    } else {
+      setHashtagTargets([...hashtagTargets, '']);
     }
   };
 
@@ -114,22 +127,27 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
       const newTargets = [...profileTargets];
       newTargets[index] = value;
       setProfileTargets(newTargets);
-    } else {
+    } else if (activeTab === 'companies') {
       const newTargets = [...companyTargets];
       newTargets[index] = value;
       setCompanyTargets(newTargets);
+    } else {
+      const newTargets = [...hashtagTargets];
+      newTargets[index] = value;
+      setHashtagTargets(newTargets);
     }
   };
 
   const handleRemoveTarget = (index: number) => {
     if (activeTab === 'profiles') {
       const newTargets = profileTargets.filter((_, i) => i !== index);
-      // Keep at least one empty input field
       setProfileTargets(newTargets.length > 0 ? newTargets : ['']);
-    } else {
+    } else if (activeTab === 'companies') {
       const newTargets = companyTargets.filter((_, i) => i !== index);
-      // Keep at least one empty input field
       setCompanyTargets(newTargets.length > 0 ? newTargets : ['']);
+    } else {
+      const newTargets = hashtagTargets.filter((_, i) => i !== index);
+      setHashtagTargets(newTargets.length > 0 ? newTargets : ['']);
     }
   };
 
@@ -137,9 +155,10 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
     setSaving(true);
 
     try {
-      // Combine profile and company targets
+      // Get all targets
       const allProfileTargets = profileTargets.filter(t => t.trim());
       const allCompanyTargets = companyTargets.filter(t => t.trim());
+      const allHashtagTargets = hashtagTargets.filter(t => t.trim());
       const validTargets = [...allProfileTargets, ...allCompanyTargets];
 
       // For hashtag targeting mode, create ONE monitor with ALL hashtags
@@ -315,6 +334,48 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
           const data = await response.json();
           console.log('✅ Company monitor created successfully:', data);
         }
+
+        // Create monitors for hashtags
+        for (const target of allHashtagTargets) {
+          // Clean up hashtag - remove # prefix if present
+          let keyword = target.trim().replace(/^#/, '');
+          if (!keyword) continue;
+
+          const monitor: any = {
+            name: campaignName || `Hashtag Monitor - #${keyword}`,
+            // Store hashtag with special format: "HASHTAG:keyword"
+            hashtags: [`HASHTAG:${keyword}`],
+            keywords: [],
+            status: 'active'
+          };
+
+          console.log('📤 Creating hashtag monitor:', monitor);
+
+          const response = await fetch('/api/linkedin-commenting/monitors', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(monitor),
+          });
+
+          if (!response.ok) {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const error = await response.json();
+              console.error('❌ API Error Details:', error);
+              const errorMsg = error.error || error.message || 'Failed to create monitor';
+              const errorDetails = error.details ? `\n\nDetails: ${error.details}` : '';
+              const errorHint = error.hint ? `\n\nHint: ${error.hint}` : '';
+              throw new Error(errorMsg + errorDetails + errorHint);
+            } else {
+              const text = await response.text();
+              console.error('Non-JSON error response:', text);
+              throw new Error(`Server error: ${response.status} ${response.statusText}\n\n${text}`);
+            }
+          }
+
+          const data = await response.json();
+          console.log('✅ Hashtag monitor created successfully:', data);
+        }
       } else {
         throw new Error('Unknown targeting mode: ' + targetingMode);
       }
@@ -345,7 +406,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
             </div>
             <div>
               <h2 className="text-xl font-semibold text-white">{editMode ? 'Edit Monitor' : 'Add Monitor'}</h2>
-              <p className="text-gray-400 text-sm">Monitor LinkedIn profiles or company pages for commenting opportunities</p>
+              <p className="text-gray-400 text-sm">Monitor LinkedIn profiles, company pages, or hashtags for commenting opportunities</p>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-300 transition-colors">
@@ -379,6 +440,17 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
               <Building2 size={18} />
               <span className="font-medium">Company Pages</span>
             </button>
+            <button
+              onClick={() => setActiveTab('hashtags')}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all ${
+                activeTab === 'hashtags'
+                  ? 'bg-green-600 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-600'
+              }`}
+            >
+              <Hash size={18} />
+              <span className="font-medium">Hashtags</span>
+            </button>
           </div>
 
           {/* LinkedIn Targets to Monitor */}
@@ -386,16 +458,20 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
             <label className="block text-sm font-medium text-gray-300 mb-2">
               {activeTab === 'profiles'
                 ? 'LinkedIn Profiles to Monitor (Max 30)'
-                : 'LinkedIn Company Pages to Monitor (Max 30)'
+                : activeTab === 'companies'
+                ? 'LinkedIn Company Pages to Monitor (Max 30)'
+                : 'Hashtags to Monitor (Max 10)'
               }
             </label>
             <p className="text-sm text-gray-400 mb-3">
               {activeTab === 'profiles'
                 ? 'Enter LinkedIn profile vanity names (e.g., sama, andrewng, ylecun)'
-                : 'Enter LinkedIn company page URLs or names (e.g., microsoft, google, linkedin.com/company/openai)'
+                : activeTab === 'companies'
+                ? 'Enter LinkedIn company page URLs or names (e.g., microsoft, google, linkedin.com/company/openai)'
+                : 'Enter hashtags to search for posts (e.g., #genAI, #sales, #marketing)'
               }
             </p>
-            {(activeTab === 'profiles' ? profileTargets : companyTargets).map((target, index) => (
+            {(activeTab === 'profiles' ? profileTargets : activeTab === 'companies' ? companyTargets : hashtagTargets).map((target, index) => (
               <div key={index} className="flex gap-2 mb-2">
                 <input
                   type="text"
@@ -403,7 +479,9 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
                   onChange={(e) => handleTargetChange(index, e.target.value)}
                   placeholder={activeTab === 'profiles'
                     ? 'e.g., sama, andrewng, or linkedin.com/in/username'
-                    : 'e.g., microsoft, openai, or linkedin.com/company/google'
+                    : activeTab === 'companies'
+                    ? 'e.g., microsoft, openai, or linkedin.com/company/google'
+                    : 'e.g., genAI, sales, or #marketing'
                   }
                   className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
                 />
@@ -420,7 +498,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
               onClick={handleAddTarget}
               className="text-sm text-pink-400 hover:text-pink-300 transition-colors"
             >
-              + Add another {activeTab === 'profiles' ? 'profile' : 'company page'}
+              + Add another {activeTab === 'profiles' ? 'profile' : activeTab === 'companies' ? 'company page' : 'hashtag'}
             </button>
           </div>
 
@@ -686,7 +764,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
         {/* Footer */}
         <div className="p-6 border-t border-gray-700 flex items-center justify-between">
           <div className="text-sm text-gray-400">
-            {activeTab === 'profiles' ? 'Profiles' : 'Company pages'} will start being monitored after saving
+            {activeTab === 'profiles' ? 'Profiles' : activeTab === 'companies' ? 'Company pages' : 'Hashtags'} will start being monitored after saving
           </div>
           <div className="flex gap-3">
             <button
@@ -697,7 +775,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
             </button>
             <button
               onClick={handleCreate}
-              disabled={saving || (profileTargets.filter(t => t.trim()).length === 0 && companyTargets.filter(t => t.trim()).length === 0)}
+              disabled={saving || (profileTargets.filter(t => t.trim()).length === 0 && companyTargets.filter(t => t.trim()).length === 0 && hashtagTargets.filter(t => t.trim()).length === 0)}
               className="px-6 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {saving ? (

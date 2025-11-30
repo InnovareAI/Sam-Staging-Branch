@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/app/lib/supabase-client';
 // Custom Tailwind components - no shadcn imports needed
 import ImportProspectsModal from '@/components/ImportProspectsModal'
+import ConfirmModal from '@/components/ConfirmModal'
 // import EnrichProspectsButton from '@/components/EnrichProspectsButton' // REMOVED: Users bring their own enriched data
 
 
@@ -428,6 +429,21 @@ export default function DataCollectionHub({
   const [isAddingQuickProspect, setIsAddingQuickProspect] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [importInitialTab, setImportInitialTab] = useState<'url' | 'paste' | 'csv' | 'quick-add'>('url')
+
+  // Confirm modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: 'danger' | 'warning' | 'info' | 'success';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    type: 'warning'
+  })
 
   // Update campaign name
   const updateCampaignName = async (sessionId: string, newCampaignName: string) => {
@@ -1096,9 +1112,7 @@ export default function DataCollectionHub({
     toastSuccess(`✅ Approved ${pendingProspects.length} prospect(s)\n\nClick "Send Approved to Campaign" when ready to create campaigns`)
   }
 
-  const handleRejectAll = async () => {
-    if (!confirm('Are you sure you want to reject all prospects?\n\nThey will be kept for 7 days before auto-deletion.')) return
-
+  const performRejectAll = async () => {
     const allProspects = prospectData
 
     // Save rejections (but don't delete - let them auto-expire after 7 days)
@@ -1128,9 +1142,17 @@ export default function DataCollectionHub({
     toastSuccess(`All prospects rejected\n\nℹ️ Prospects will auto-delete after 7 days\n(View in "Dismissed" filter)`)
   }
 
-  const handleDeleteProspect = async (prospectId: string) => {
-    if (!confirm('Are you sure you want to permanently delete this prospect?')) return
+  const handleRejectAll = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Reject All Prospects',
+      message: 'Are you sure you want to reject all prospects?\n\nThey will be kept for 7 days before auto-deletion.',
+      onConfirm: performRejectAll,
+      type: 'warning'
+    })
+  }
 
+  const performDeleteProspect = async (prospectId: string) => {
     try {
       // Delete from database
       const response = await fetch(`/api/prospect-approval/delete?prospect_id=${prospectId}`, {
@@ -1154,6 +1176,16 @@ export default function DataCollectionHub({
       console.error('Error deleting prospect:', error)
       toastError(error instanceof Error ? error.message : 'Failed to delete prospect')
     }
+  }
+
+  const handleDeleteProspect = (prospectId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Prospect',
+      message: 'Are you sure you want to permanently delete this prospect?\n\nThis action cannot be undone.',
+      onConfirm: () => performDeleteProspect(prospectId),
+      type: 'danger'
+    })
   }
 
   const handleCampaignTagChange = (prospectId: string, tag: string) => {
@@ -1520,13 +1552,7 @@ export default function DataCollectionHub({
     deselectAll()
   }
 
-  const bulkDeleteSelected = async () => {
-    if (selectedProspectIds.size === 0) return
-
-    if (!confirm(`Are you sure you want to permanently delete ${selectedProspectIds.size} prospects? This cannot be undone.`)) {
-      return
-    }
-
+  const performBulkDelete = async () => {
     try {
       // Delete from database and check each response
       const deleteResults = await Promise.all(
@@ -1558,6 +1584,18 @@ export default function DataCollectionHub({
       console.error('Error deleting prospects:', error)
       toastError('Failed to delete prospects')
     }
+  }
+
+  const bulkDeleteSelected = () => {
+    if (selectedProspectIds.size === 0) return
+
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Prospects',
+      message: `Are you sure you want to permanently delete ${selectedProspectIds.size} prospect${selectedProspectIds.size > 1 ? 's' : ''}?\n\nThis action cannot be undone.`,
+      onConfirm: performBulkDelete,
+      type: 'danger'
+    })
   }
 
   // Dismiss-based approval handlers
@@ -1650,27 +1688,8 @@ export default function DataCollectionHub({
     toastSuccess(`✅ Approved ${nonDismissed.length} prospect(s), dismissed ${dismissed.length}\n\nClick "Send Approved to Campaign" when ready to create campaigns`)
   }
 
-  // Proceed to Campaign Hub with approved prospects ONLY (disregard rejected and pending)
-  const handleProceedToCampaignHub = async (prospectsOverride?: ProspectData[], campaignType?: 'email' | 'linkedin') => {
-    // ALWAYS filter for approved prospects only, even if override is provided
-    // This ensures rejected and pending prospects are never sent to Campaign Hub
-    const approvedProspects = prospectsOverride && prospectsOverride.length > 0
-      ? prospectsOverride.filter(p => p.approvalStatus === 'approved')
-      : prospectData.filter(p => p.approvalStatus === 'approved')
-
-    if (approvedProspects.length === 0) {
-      toastError('⚠️ No approved prospects found. Please approve at least one prospect before proceeding to Campaign Hub.')
-      return
-    }
-
-    // Check if all approved prospects have campaign tags
-    const untaggedCount = approvedProspects.filter(p => !p.campaignTag || p.campaignTag.trim() === '').length
-    if (untaggedCount > 0) {
-      if (!confirm(`⚠️ ${untaggedCount} approved prospect(s) don't have campaign tags assigned.\n\nDo you want to proceed anyway?`)) {
-        return
-      }
-    }
-
+  // Helper function to perform the actual navigation to Campaign Hub
+  const performCampaignHubNavigation = async (approvedProspects: ProspectData[], campaignType?: 'email' | 'linkedin') => {
     // CRITICAL FIX: Save approved prospects to database FIRST to get prospect_ids
     setLoading(true)
     setLoadingMessage(`Saving ${approvedProspects.length} approved prospects...`)
@@ -1743,6 +1762,37 @@ export default function DataCollectionHub({
     }
 
     toastSuccess(`✅ Success!\n\n${approvedProspects.length} approved prospects ready for campaign\n\nNext: Select or create a campaign to add them to`)
+  }
+
+  // Proceed to Campaign Hub with approved prospects ONLY (disregard rejected and pending)
+  const handleProceedToCampaignHub = async (prospectsOverride?: ProspectData[], campaignType?: 'email' | 'linkedin') => {
+    // ALWAYS filter for approved prospects only, even if override is provided
+    // This ensures rejected and pending prospects are never sent to Campaign Hub
+    const approvedProspects = prospectsOverride && prospectsOverride.length > 0
+      ? prospectsOverride.filter(p => p.approvalStatus === 'approved')
+      : prospectData.filter(p => p.approvalStatus === 'approved')
+
+    if (approvedProspects.length === 0) {
+      toastError('⚠️ No approved prospects found. Please approve at least one prospect before proceeding to Campaign Hub.')
+      return
+    }
+
+    // Check if all approved prospects have campaign tags
+    const untaggedCount = approvedProspects.filter(p => !p.campaignTag || p.campaignTag.trim() === '').length
+    if (untaggedCount > 0) {
+      // Show confirm modal - navigation will continue in onConfirm callback
+      setConfirmModal({
+        isOpen: true,
+        title: 'Missing Campaign Tags',
+        message: `${untaggedCount} approved prospect(s) don't have campaign tags assigned.\n\nDo you want to proceed anyway?`,
+        onConfirm: () => performCampaignHubNavigation(approvedProspects, campaignType),
+        type: 'warning'
+      })
+      return
+    }
+
+    // All prospects have tags, proceed directly
+    await performCampaignHubNavigation(approvedProspects, campaignType)
   }
 
   // Download only approved prospects
@@ -1855,8 +1905,21 @@ export default function DataCollectionHub({
         <div>
           {/* Action Bar - All items on one line */}
           <div className="mb-6 space-y-4">
-            {/* Row 1: Status badges + Actions - all inline */}
+            {/* Row 1: Import button + Status badges + Actions - all inline */}
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Button: Import Prospects */}
+              <button
+                type="button"
+                onClick={() => { setImportInitialTab('url'); setShowImportModal(true); }}
+                className="flex items-center gap-2 px-4 py-2 text-sm rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors"
+              >
+                <Upload className="w-4 h-4" />
+                Import Prospects
+              </button>
+
+              {/* Separator */}
+              <div className="w-px h-6 bg-gray-700 mx-1" />
+
               {/* Badge: Pending */}
               <span className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-sm font-medium border border-green-500/40">
                 {filteredProspects.filter(p => !dismissedProspectIds.has(p.id) && p.approvalStatus === 'pending').length} pending
@@ -2001,23 +2064,6 @@ export default function DataCollectionHub({
               </div>
             )}
           </div>
-
-          {/* Add Prospects Section - CSV, Copy/Paste, LinkedIn URL */}
-          <div className="border-b border-gray-700 px-6 py-4">
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Add Prospects</h3>
-        <div className="flex items-center space-x-2">
-          {/* CSV Upload */}
-          {/* Unified Import Prospects Button */}
-          <button
-            type="button"
-            onClick={() => { setImportInitialTab('url'); setShowImportModal(true); }}
-            className="flex items-center gap-2 px-4 py-2 text-sm rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors"
-          >
-            <Upload className="w-4 h-4" />
-            Import Prospects
-          </button>
-        </div>
-      </div>
 
       {/* Workflow Guide Banner */}
       <div className="border-b border-gray-700 px-6 py-4 bg-blue-500/10">
@@ -2620,6 +2666,17 @@ export default function DataCollectionHub({
             setIsProcessingUrl(false)
           }
         }}
+      />
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText={confirmModal.type === 'danger' ? 'Delete' : 'Confirm'}
       />
 
       {/* Campaign Type Selection Modal */}

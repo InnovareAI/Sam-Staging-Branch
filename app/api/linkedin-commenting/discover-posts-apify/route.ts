@@ -6,8 +6,10 @@ export const dynamic = 'force-dynamic';
 /**
  * LinkedIn Post Discovery using Apify
  *
- * This endpoint scrapes LinkedIn profiles using Apify and stores posts.
- * Replaces the broken Unipile-based discovery system.
+ * This endpoint scrapes LinkedIn profiles AND hashtags using Apify and stores posts.
+ * Supports two monitor types:
+ * - PROFILE:vanity_name - Scrapes posts from a specific LinkedIn profile
+ * - HASHTAG:keyword - Searches posts by hashtag/keyword (e.g., #genAI, #sales)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -39,8 +41,19 @@ export async function POST(request: NextRequest) {
 
     console.log(`👤 Processing ${profileMonitors.length} profile monitors`);
 
+    // Filter for hashtag monitors (HASHTAG:keyword)
+    const hashtagMonitors = monitors.filter(m =>
+      m.hashtags?.some((h: string) => h.startsWith('HASHTAG:'))
+    );
+
+    console.log(`#️⃣ Processing ${hashtagMonitors.length} hashtag monitors`);
+
     let totalDiscovered = 0;
     const APIFY_API_TOKEN = process.env.APIFY_API_TOKEN;
+
+    // Actor URLs - replace with custom actors when ready
+    const PROFILE_ACTOR = 'apimaestro~linkedin-profile-posts';
+    const HASHTAG_ACTOR = 'apimaestro~linkedin-posts-search-scraper-no-cookies';
 
     if (!APIFY_API_TOKEN) {
       console.error('❌ Missing APIFY_API_TOKEN');
@@ -59,7 +72,7 @@ export async function POST(request: NextRequest) {
         // Start Apify actor run (asynchronous)
         console.log(`📡 Starting Apify actor for ${vanityName}...`);
 
-        const startRunUrl = `https://api.apify.com/v2/acts/apimaestro~linkedin-profile-posts/runs?token=${APIFY_API_TOKEN}`;
+        const startRunUrl = `https://api.apify.com/v2/acts/${PROFILE_ACTOR}/runs?token=${APIFY_API_TOKEN}`;
 
         const startResponse = await fetch(startRunUrl, {
           method: 'POST',
@@ -159,34 +172,23 @@ export async function POST(request: NextRequest) {
         // Check which posts already exist (check both URL and social_id)
         const existingUrls = recentPosts.map((p: any) => p.url).filter(Boolean);
 
-        // Normalize social_ids to URN format for duplicate checking
-        // Extract numeric ID from any URN format and normalize to urn:li:activity:NUMBER
+        // Extract original social_ids from Apify response for duplicate checking
+        // We preserve the original URN format but also extract numeric IDs for robust matching
         const existingSocialIds = recentPosts
+          .map((p: any) => p.urn?.activity_urn || p.full_urn)
+          .filter(Boolean);
+
+        // Also extract numeric IDs for comparison (handles format variations)
+        const existingNumericIds = recentPosts
           .map((p: any) => {
-            let socialId = p.urn?.activity_urn || p.full_urn;
+            const socialId = p.urn?.activity_urn || p.full_urn;
             if (!socialId) return null;
-
-            // Extract numeric ID from any URN format
-            // Handles: urn:li:activity:123, urn:li:ugcPost:123, or plain 123
-            const numericMatch = socialId.match(/(\d{16,20})/); // LinkedIn IDs are 16-20 digits
-            if (numericMatch) {
-              return `urn:li:activity:${numericMatch[1]}`;
-            }
-
-            // Fallback: if already starts with urn:li:activity, keep it
-            if (socialId.startsWith('urn:li:activity:')) {
-              return socialId;
-            }
-
-            // Last resort: assume it's a plain number
-            if (/^\d+$/.test(socialId)) {
-              return `urn:li:activity:${socialId}`;
-            }
-
-            return socialId;
+            const numericMatch = String(socialId).match(/(\d{16,20})/);
+            return numericMatch ? numericMatch[1] : null;
           })
           .filter(Boolean);
 
+        // Query existing posts - check by URL or by original social_id
         const { data: existingPosts } = await supabase
           .from('linkedin_posts_discovered')
           .select('share_url, social_id')
@@ -194,24 +196,28 @@ export async function POST(request: NextRequest) {
           .or(`share_url.in.(${existingUrls.join(',')}),social_id.in.(${existingSocialIds.join(',')})`);
 
         const existingUrlSet = new Set(existingPosts?.map(p => p.share_url) || []);
-        const existingSocialIdSet = new Set(existingPosts?.map(p => p.social_id) || []);
+        // Extract numeric IDs from existing DB records for robust comparison
+        const existingDbNumericIds = new Set(
+          existingPosts?.map(p => {
+            const match = String(p.social_id || '').match(/(\d{16,20})/);
+            return match ? match[1] : null;
+          }).filter(Boolean) || []
+        );
 
         const newPosts = recentPosts.filter((p: any) => {
-          // Normalize social_id for comparison using same logic
-          let socialId = p.urn?.activity_urn || p.full_urn;
-          if (!socialId) return !existingUrlSet.has(p.url);
+          // Check URL first
+          if (existingUrlSet.has(p.url)) return false;
 
-          // Extract numeric ID and normalize
-          const numericMatch = socialId.match(/(\d{16,20})/);
-          if (numericMatch) {
-            socialId = `urn:li:activity:${numericMatch[1]}`;
-          } else if (socialId.startsWith('urn:li:activity:')) {
-            // Already normalized
-          } else if (/^\d+$/.test(socialId)) {
-            socialId = `urn:li:activity:${socialId}`;
+          // Compare using numeric ID (handles any URN format variation)
+          const socialId = p.urn?.activity_urn || p.full_urn;
+          if (!socialId) return true; // No social_id, assume new
+
+          const numericMatch = String(socialId).match(/(\d{16,20})/);
+          if (numericMatch && existingDbNumericIds.has(numericMatch[1])) {
+            return false; // Numeric ID already exists
           }
 
-          return !existingUrlSet.has(p.url) && !existingSocialIdSet.has(socialId);
+          return true;
         });
 
         console.log(`🆕 Found ${newPosts.length} new posts to store (${recentPosts.length - newPosts.length} already exist)`);
@@ -219,21 +225,17 @@ export async function POST(request: NextRequest) {
         // Store new posts
         if (newPosts.length > 0) {
           const postsToInsert = newPosts.map((post: any) => {
-            // Normalize social_id to always use URN format (urn:li:activity:NUMBER)
-            // Extracts numeric ID from ANY URN type (activity, ugcPost, share, etc.)
-            // Prevents duplicates from different URN format variations
+            // CRITICAL: Preserve original URN format for Unipile API compatibility
+            // Unipile's /api/v1/posts/{socialId}/comments endpoint REQUIRES the original URN type
+            // LinkedIn uses: urn:li:activity:, urn:li:ugcPost:, urn:li:share:
+            // Converting to urn:li:activity: breaks Unipile's ability to find the post
+            // For duplicate detection, we use the numeric ID, but store the ORIGINAL URN
             let socialId = post.urn?.activity_urn || post.full_urn;
 
-            if (socialId) {
-              // Extract numeric ID from any URN format
-              const numericMatch = socialId.match(/(\d{16,20})/);
-              if (numericMatch) {
-                socialId = `urn:li:activity:${numericMatch[1]}`;
-              } else if (socialId.startsWith('urn:li:activity:')) {
-                // Already in correct format
-              } else if (/^\d+$/.test(socialId)) {
-                socialId = `urn:li:activity:${socialId}`;
-              }
+            // Keep the original URN format - DO NOT normalize to urn:li:activity:
+            // If it's just a number, wrap it in the default format
+            if (socialId && /^\d+$/.test(socialId)) {
+              socialId = `urn:li:activity:${socialId}`;
             }
 
             return {
@@ -309,11 +311,235 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Process hashtag monitors
+    for (const monitor of hashtagMonitors) {
+      try {
+        const hashtagEntry = monitor.hashtags.find((h: string) => h.startsWith('HASHTAG:'));
+        if (!hashtagEntry) continue;
+
+        const keyword = hashtagEntry.replace('HASHTAG:', '').trim();
+        console.log(`\n#️⃣ Searching hashtag: ${keyword}`);
+
+        // Start Apify actor run for hashtag search
+        console.log(`📡 Starting Apify hashtag search actor for #${keyword}...`);
+
+        const startRunUrl = `https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}`;
+
+        const startResponse = await fetch(startRunUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            keyword: keyword,
+            maxResults: 10,  // Limit to 10 posts per hashtag
+            searchAge: 24    // Last 24 hours
+          })
+        });
+
+        if (!startResponse.ok) {
+          console.error(`❌ Failed to start Apify hashtag actor: ${startResponse.status}`);
+          const errorText = await startResponse.text();
+          console.error(`   Error: ${errorText}`);
+          continue;
+        }
+
+        const runData = await startResponse.json();
+        const runId = runData.data.id;
+        const defaultDatasetId = runData.data.defaultDatasetId;
+
+        console.log(`⏳ Waiting for hashtag search run ${runId} to complete...`);
+
+        // Poll for completion (wait up to 90 seconds for hashtag searches)
+        let attempts = 0;
+        let runComplete = false;
+
+        while (attempts < 90 && !runComplete) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          const statusResponse = await fetch(
+            `https://api.apify.com/v2/actor-runs/${runId}?token=${APIFY_API_TOKEN}`
+          );
+
+          if (statusResponse.ok) {
+            const status = await statusResponse.json();
+            if (status.data.status === 'SUCCEEDED') {
+              runComplete = true;
+              console.log(`✅ Hashtag search completed successfully`);
+            } else if (status.data.status === 'FAILED') {
+              console.error(`❌ Hashtag search run failed`);
+              break;
+            }
+          }
+          attempts++;
+        }
+
+        if (!runComplete) {
+          console.error(`❌ Hashtag search timed out after 90 seconds`);
+          continue;
+        }
+
+        // Get dataset items
+        const datasetUrl = `https://api.apify.com/v2/datasets/${defaultDatasetId}/items?token=${APIFY_API_TOKEN}`;
+        const dataResponse = await fetch(datasetUrl);
+
+        if (!dataResponse.ok) {
+          console.error(`❌ Failed to get hashtag dataset items: ${dataResponse.status}`);
+          continue;
+        }
+
+        const data = await dataResponse.json();
+
+        // Log the raw response structure for debugging
+        console.log(`📦 Raw Apify hashtag response:`, JSON.stringify(data).substring(0, 500));
+
+        // Hashtag search actor returns array of posts
+        const posts = Array.isArray(data) ? data : [];
+
+        console.log(`📦 Apify hashtag search returned ${posts.length} posts`);
+
+        if (!posts || posts.length === 0) {
+          console.log(`⚠️ No posts found for hashtag #${keyword}`);
+          continue;
+        }
+
+        // Filter posts by age (last 24 hours)
+        const maxAgeHours = 24;
+        const cutoffDate = Date.now() - (maxAgeHours * 60 * 60 * 1000);
+
+        const recentPosts = posts.filter((post: any) => {
+          // Hashtag actor may use different timestamp field
+          const postTimestamp = post.postedAt || post.posted_at?.timestamp || post.timestamp;
+          if (!postTimestamp) return true; // Include if no timestamp (let DB dedup handle it)
+          const ts = typeof postTimestamp === 'number' ? postTimestamp : new Date(postTimestamp).getTime();
+          return ts >= cutoffDate;
+        });
+
+        console.log(`⏰ Found ${recentPosts.length} posts from last ${maxAgeHours} hours`);
+
+        // Check which posts already exist
+        const existingUrls = recentPosts.map((p: any) => p.url || p.postUrl).filter(Boolean);
+
+        // Extract original social_ids for duplicate checking (preserve format)
+        const existingSocialIds = recentPosts
+          .map((p: any) => p.urn || p.postUrn || p.id)
+          .filter(Boolean);
+
+        const { data: existingPosts } = await supabase
+          .from('linkedin_posts_discovered')
+          .select('share_url, social_id')
+          .eq('workspace_id', monitor.workspace_id)
+          .or(`share_url.in.(${existingUrls.join(',')}),social_id.in.(${existingSocialIds.join(',')})`);
+
+        const existingUrlSet = new Set(existingPosts?.map(p => p.share_url) || []);
+        // Extract numeric IDs from DB for robust comparison across URN formats
+        const existingDbNumericIds = new Set(
+          existingPosts?.map(p => {
+            const match = String(p.social_id || '').match(/(\d{16,20})/);
+            return match ? match[1] : null;
+          }).filter(Boolean) || []
+        );
+
+        const newPosts = recentPosts.filter((p: any) => {
+          const url = p.url || p.postUrl;
+          if (existingUrlSet.has(url)) return false;
+
+          // Compare using numeric ID (handles any URN format variation)
+          const socialId = p.urn || p.postUrn || p.id;
+          if (!socialId) return true; // No social_id, assume new
+
+          const numericMatch = String(socialId).match(/(\d{16,20})/);
+          if (numericMatch && existingDbNumericIds.has(numericMatch[1])) {
+            return false; // Numeric ID already exists
+          }
+
+          return true;
+        });
+
+        console.log(`🆕 Found ${newPosts.length} new hashtag posts to store (${recentPosts.length - newPosts.length} already exist)`);
+
+        // Store new posts
+        if (newPosts.length > 0) {
+          const postsToInsert = newPosts.map((post: any) => {
+            // CRITICAL: Preserve original URN format for Unipile API compatibility
+            // Unipile's /api/v1/posts/{socialId}/comments endpoint REQUIRES the original URN type
+            // LinkedIn uses: urn:li:activity:, urn:li:ugcPost:, urn:li:share:
+            // Converting to urn:li:activity: breaks Unipile's ability to find posts
+            let socialId = post.urn || post.postUrn || post.id;
+
+            // Only wrap bare numbers - preserve all other URN formats
+            if (socialId && /^\d+$/.test(String(socialId))) {
+              socialId = `urn:li:activity:${socialId}`;
+            }
+
+            return {
+              workspace_id: monitor.workspace_id,
+              monitor_id: monitor.id,
+              social_id: socialId,
+              share_url: post.url || post.postUrl || `https://www.linkedin.com/feed/update/${socialId}`,
+              post_content: post.text || post.content || '',
+              author_name: post.authorName || post.author?.name || post.author?.first_name || 'Unknown',
+              author_profile_id: post.authorProfileId || post.author?.username || post.author?.vanityName || null,
+              author_title: post.authorTitle || post.author?.headline || null,
+              author_headline: post.authorHeadline || post.author?.headline || null,
+              hashtags: [keyword],
+              post_date: post.postedAt || post.posted_at?.timestamp
+                ? new Date(post.postedAt || post.posted_at?.timestamp).toISOString()
+                : new Date().toISOString(),
+              engagement_metrics: {
+                comments: post.numComments || post.stats?.comments_count || 0,
+                reactions: post.numLikes || post.stats?.total_reactions || 0,
+                reposts: post.numReposts || post.stats?.reposts_count || 0
+              },
+              status: 'discovered'
+            };
+          });
+
+          const { data: insertedPosts, error: insertError } = await supabase
+            .from('linkedin_posts_discovered')
+            .insert(postsToInsert)
+            .select();
+
+          if (insertError) {
+            if (insertError.code === '23505') {
+              console.warn(`⚠️ Some hashtag posts already exist (duplicate prevented by database constraint)`);
+            } else {
+              console.error(`❌ Error inserting hashtag posts:`, insertError);
+            }
+          } else {
+            totalDiscovered += newPosts.length;
+            console.log(`✅ Stored ${newPosts.length} new hashtag posts`);
+
+            // Auto-generate comments for new posts
+            if (insertedPosts && insertedPosts.length > 0) {
+              console.log(`🤖 Auto-generating comments for ${insertedPosts.length} new hashtag posts...`);
+
+              fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/linkedin-commenting/auto-generate-comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  post_ids: insertedPosts.map(p => p.id),
+                  workspace_id: monitor.workspace_id,
+                  monitor_id: monitor.id
+                })
+              }).catch(err => console.error('❌ Error triggering auto-comment generation:', err));
+            }
+          }
+        }
+
+      } catch (error) {
+        console.error(`❌ Error processing hashtag monitor ${monitor.id}:`, error);
+        continue;
+      }
+    }
+
     console.log(`\n✅ Discovery complete: ${totalDiscovered} new posts discovered`);
 
     return NextResponse.json({
       success: true,
-      monitorsProcessed: profileMonitors.length,
+      monitorsProcessed: profileMonitors.length + hashtagMonitors.length,
+      profileMonitorsProcessed: profileMonitors.length,
+      hashtagMonitorsProcessed: hashtagMonitors.length,
       postsDiscovered: totalDiscovered
     });
 

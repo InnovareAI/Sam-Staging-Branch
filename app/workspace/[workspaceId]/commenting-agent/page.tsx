@@ -113,13 +113,13 @@ export default function CommentingAgentDashboard() {
   }) => (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors ${
+      className={`flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors ${
         variant === 'primary'
           ? 'bg-pink-600 hover:bg-pink-700 text-white'
           : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
       }`}
     >
-      <Icon size={18} />
+      <Icon size={16} />
       {label}
     </button>
   );
@@ -135,7 +135,7 @@ export default function CommentingAgentDashboard() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
             <MessageSquare className="text-pink-500" />
@@ -172,7 +172,7 @@ export default function CommentingAgentDashboard() {
           </div>
           <button
             onClick={() => setShowSettingsModal(true)}
-            className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-medium transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-yellow-600 hover:bg-yellow-700 text-white transition-colors"
           >
             Enable Agent
           </button>
