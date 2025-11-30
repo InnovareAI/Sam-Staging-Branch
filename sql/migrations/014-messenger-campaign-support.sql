@@ -38,7 +38,7 @@ BEGIN
     WHERE constraint_name = 'campaigns_campaign_type_check'
   ) THEN
     ALTER TABLE campaigns ADD CONSTRAINT campaigns_campaign_type_check
-    CHECK (campaign_type IN ('connector', 'messenger', 'email', 'multi_channel', 'builder', 'inbound', 'company_follow', 'open_inmail', 'group', 'event_invite', 'event_participants', 'recovery'));
+    CHECK (campaign_type IN ('connector', 'messenger', 'email', 'multi_channel', 'builder', 'inbound', 'company_follow', 'open_inmail', 'group', 'event_invite', 'event_participants', 'recovery', 'linkedin'));
   END IF;
 END $$;
 
