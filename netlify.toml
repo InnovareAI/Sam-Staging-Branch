@@ -106,3 +106,17 @@
 # Syncs any missing records and sends summary to Google Chat
 [functions."daily-sync-verification"]
   schedule = "0 5 * * *"
+
+# ============================================
+# LINKEDIN COMMENTING AGENT (Dec 1, 2025)
+# ============================================
+
+# Discover Posts: Find new posts from monitored profiles/companies every 2 hours
+# Uses Apify to scrape LinkedIn posts for commenting agent
+[functions."discover-posts"]
+  schedule = "0 */2 * * *"
+
+# Auto-Generate Comments: Create AI comments every 30 minutes
+# Generates thoughtful comments for discovered posts (pending approval)
+[functions."auto-generate-comments"]
+  schedule = "*/30 * * * *"
