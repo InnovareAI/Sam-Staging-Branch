@@ -580,8 +580,8 @@ export async function POST(request: NextRequest) {
         const startRunUrl = `https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}`;
 
         // IMPORTANT: This Apify actor charges per result
-        // We request 5 posts max to stay economical
-        const POSTS_PER_HASHTAG = 5;
+        // We request 20 posts max to get enough variety after filtering
+        const POSTS_PER_HASHTAG = 20;
 
         const startResponse = await fetch(startRunUrl, {
           method: 'POST',
