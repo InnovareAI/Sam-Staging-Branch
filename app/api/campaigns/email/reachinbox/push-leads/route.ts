@@ -4,19 +4,81 @@
  * POST /api/campaigns/email/reachinbox/push-leads
  *
  * Pushes approved prospects from SAM to an existing ReachInbox campaign.
- * The ReachInbox campaign should be pre-configured with email templates,
- * sequences, and warmup settings.
+ * Uses workspace-level ReachInbox API key from workspace_tiers.integration_config.
+ *
+ * Note: Users can EITHER use Unipile (Google/Microsoft) OR ReachInbox, not both.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/app/lib/supabase/server';
-import { reachInboxService, ReachInboxLead } from '@/lib/reachinbox';
+
+const REACHINBOX_API_URL = 'https://api.reachinbox.ai/api/v1';
 
 interface PushLeadsRequest {
   reachinbox_campaign_id: string;
   sam_campaign_id?: string;
   prospect_ids?: string[];
   custom_fields?: Record<string, string>;
+}
+
+interface ReachInboxLead {
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  company_name?: string;
+  job_title?: string;
+  linkedin_url?: string;
+  phone?: string;
+  website?: string;
+  location?: string;
+  [key: string]: string | undefined;
+}
+
+/**
+ * Get workspace's ReachInbox API key from database
+ */
+async function getWorkspaceReachInboxKey(supabase: any, workspaceId: string): Promise<string | null> {
+  const { data: tierConfig } = await supabase
+    .from('workspace_tiers')
+    .select('integration_config')
+    .eq('workspace_id', workspaceId)
+    .single();
+
+  return tierConfig?.integration_config?.reachinbox_api_key || null;
+}
+
+/**
+ * Make ReachInbox API request with workspace key
+ */
+async function reachInboxRequest(
+  apiKey: string,
+  endpoint: string,
+  method: 'GET' | 'POST' = 'GET',
+  data?: any
+) {
+  const url = `${REACHINBOX_API_URL}${endpoint}`;
+
+  const options: RequestInit = {
+    method,
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+  };
+
+  if (data && method === 'POST') {
+    options.body = JSON.stringify(data);
+  }
+
+  const response = await fetch(url, options);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`ReachInbox API error (${response.status}): ${errorText}`);
+  }
+
+  const text = await response.text();
+  return text ? JSON.parse(text) : {};
 }
 
 export async function POST(req: NextRequest) {
@@ -33,7 +95,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get workspace from user metadata or workspace_members
+    // Get workspace from user
     const { data: workspaceMember } = await supabase
       .from('workspace_members')
       .select('workspace_id')
@@ -45,6 +107,19 @@ export async function POST(req: NextRequest) {
     }
 
     const workspaceId = workspaceMember.workspace_id;
+
+    // Get workspace's ReachInbox API key
+    const apiKey = await getWorkspaceReachInboxKey(supabase, workspaceId);
+
+    if (!apiKey) {
+      return NextResponse.json(
+        {
+          error: 'ReachInbox not configured',
+          details: 'Please add your ReachInbox API key in Settings > Integrations',
+        },
+        { status: 400 }
+      );
+    }
 
     // Parse request body
     const request: PushLeadsRequest = await req.json();
@@ -60,24 +135,13 @@ export async function POST(req: NextRequest) {
     let prospects: any[] = [];
 
     if (request.prospect_ids && request.prospect_ids.length > 0) {
-      // Fetch specific prospects by ID
       const { data: prospectData, error: prospectError } = await supabase
         .from('campaign_prospects')
-        .select(
-          `
-          id,
-          first_name,
-          last_name,
-          email,
-          title,
-          company_name,
-          linkedin_url,
-          phone,
-          website,
-          country,
+        .select(`
+          id, first_name, last_name, email, title, company_name,
+          linkedin_url, phone, website, country,
           campaigns(campaign_name)
-        `
-        )
+        `)
         .eq('workspace_id', workspaceId)
         .in('id', request.prospect_ids);
 
@@ -91,24 +155,13 @@ export async function POST(req: NextRequest) {
 
       prospects = prospectData || [];
     } else if (request.sam_campaign_id) {
-      // Fetch all pending prospects from a SAM campaign
       const { data: prospectData, error: prospectError } = await supabase
         .from('campaign_prospects')
-        .select(
-          `
-          id,
-          first_name,
-          last_name,
-          email,
-          title,
-          company_name,
-          linkedin_url,
-          phone,
-          website,
-          country,
+        .select(`
+          id, first_name, last_name, email, title, company_name,
+          linkedin_url, phone, website, country,
           campaigns(campaign_name)
-        `
-        )
+        `)
         .eq('campaign_id', request.sam_campaign_id)
         .in('status', ['pending', 'approved'])
         .not('email', 'is', null);
@@ -144,37 +197,53 @@ export async function POST(req: NextRequest) {
     // Convert to ReachInbox lead format
     const reachInboxLeads: ReachInboxLead[] = validProspects.map((prospect) => ({
       email: prospect.email,
-      firstName: prospect.first_name || '',
-      lastName: prospect.last_name || '',
-      companyName: prospect.company_name || '',
-      jobTitle: prospect.title || '',
-      linkedinUrl: prospect.linkedin_url || '',
+      first_name: prospect.first_name || '',
+      last_name: prospect.last_name || '',
+      company_name: prospect.company_name || '',
+      job_title: prospect.title || '',
+      linkedin_url: prospect.linkedin_url || '',
       phone: prospect.phone || '',
       website: prospect.website || '',
       location: prospect.country || '',
-      customFields: {
-        sam_prospect_id: prospect.id,
-        sam_campaign: (prospect.campaigns as any)?.campaign_name || '',
-        ...request.custom_fields,
-      },
+      custom_sam_prospect_id: prospect.id,
+      custom_sam_campaign: (prospect.campaigns as any)?.campaign_name || '',
     }));
 
     // Push leads to ReachInbox
-    const result = await reachInboxService.pushLeadsToCampaign(
-      request.reachinbox_campaign_id,
-      reachInboxLeads
-    );
-
-    if (!result.success) {
+    let result;
+    try {
+      result = await reachInboxRequest(
+        apiKey,
+        `/campaigns/${request.reachinbox_campaign_id}/leads`,
+        'POST',
+        { leads: reachInboxLeads }
+      );
+    } catch (error: any) {
+      console.error('❌ ReachInbox push failed:', error);
       return NextResponse.json(
         {
           success: false,
           error: 'Failed to push leads to ReachInbox',
-          details: result.errors,
+          details: error.message,
         },
         { status: 500 }
       );
     }
+
+    // Get campaign name
+    let campaignName = request.reachinbox_campaign_id;
+    try {
+      const campaignInfo = await reachInboxRequest(
+        apiKey,
+        `/campaigns/${request.reachinbox_campaign_id}`
+      );
+      campaignName = campaignInfo.data?.name || campaignInfo.name || request.reachinbox_campaign_id;
+    } catch {
+      // Ignore campaign name fetch error
+    }
+
+    const leadsPushed = result.data?.added || result.added || validProspects.length;
+    const leadsSkipped = result.data?.skipped || result.skipped || 0;
 
     // Update prospect status in SAM database
     const prospectIds = validProspects.map((p) => p.id);
@@ -197,26 +266,23 @@ export async function POST(req: NextRequest) {
       entity_id: request.sam_campaign_id || request.reachinbox_campaign_id,
       metadata: {
         reachinbox_campaign_id: request.reachinbox_campaign_id,
-        reachinbox_campaign_name: result.campaignName,
-        leads_pushed: result.leadsPushed,
-        leads_skipped: result.leadsSkipped,
+        reachinbox_campaign_name: campaignName,
+        leads_pushed: leadsPushed,
+        leads_skipped: leadsSkipped,
         prospect_ids: prospectIds,
       },
     });
 
-    console.log(
-      `✅ Successfully pushed ${result.leadsPushed} leads to ReachInbox campaign "${result.campaignName}"`
-    );
+    console.log(`✅ Successfully pushed ${leadsPushed} leads to ReachInbox campaign "${campaignName}"`);
 
     return NextResponse.json({
       success: true,
-      message: `Successfully pushed ${result.leadsPushed} leads to ReachInbox`,
+      message: `Successfully pushed ${leadsPushed} leads to ReachInbox`,
       data: {
-        reachinbox_campaign_id: result.campaignId,
-        reachinbox_campaign_name: result.campaignName,
-        leads_pushed: result.leadsPushed,
-        leads_skipped: result.leadsSkipped,
-        errors: result.errors.length > 0 ? result.errors : undefined,
+        reachinbox_campaign_id: request.reachinbox_campaign_id,
+        reachinbox_campaign_name: campaignName,
+        leads_pushed: leadsPushed,
+        leads_skipped: leadsSkipped,
       },
     });
   } catch (error: any) {
@@ -245,34 +311,58 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Test connection and list campaigns
-    const connectionTest = await reachInboxService.testConnection();
+    // Get workspace
+    const { data: workspaceMember } = await supabase
+      .from('workspace_members')
+      .select('workspace_id')
+      .eq('user_id', user.id)
+      .single();
 
-    if (!connectionTest.success) {
+    if (!workspaceMember) {
+      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
+    }
+
+    // Get workspace's ReachInbox API key
+    const apiKey = await getWorkspaceReachInboxKey(supabase, workspaceMember.workspace_id);
+
+    if (!apiKey) {
       return NextResponse.json(
         {
           success: false,
-          error: 'ReachInbox connection failed',
-          details: connectionTest.error,
+          error: 'ReachInbox not configured',
+          details: 'Please add your ReachInbox API key in Settings > Integrations',
+        },
+        { status: 400 }
+      );
+    }
+
+    // List campaigns from ReachInbox
+    try {
+      const response = await reachInboxRequest(apiKey, '/campaigns');
+      const campaigns = response.data || response.campaigns || [];
+
+      return NextResponse.json({
+        success: true,
+        campaigns: campaigns.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          status: c.status,
+          type: c.type,
+          leads_count: c.leadsCount || c.leads_count || 0,
+          created_at: c.createdAt || c.created_at,
+        })),
+      });
+    } catch (error: any) {
+      console.error('❌ Failed to list ReachInbox campaigns:', error);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to connect to ReachInbox',
+          details: error.message,
         },
         { status: 500 }
       );
     }
-
-    // List campaigns
-    const campaigns = await reachInboxService.listCampaigns();
-
-    return NextResponse.json({
-      success: true,
-      campaigns: campaigns.map((c) => ({
-        id: c.id,
-        name: c.name,
-        status: c.status,
-        type: c.type,
-        leads_count: c.leadsCount,
-        created_at: c.createdAt,
-      })),
-    });
   } catch (error: any) {
     console.error('❌ List ReachInbox campaigns error:', error);
     return NextResponse.json(

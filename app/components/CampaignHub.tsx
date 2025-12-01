@@ -96,6 +96,22 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   const [selectedReachInboxCampaign, setSelectedReachInboxCampaign] = useState<string>('');
   const [loadingReachInbox, setLoadingReachInbox] = useState(false);
   const [pushingToReachInbox, setPushingToReachInbox] = useState(false);
+  const [reachInboxConfigured, setReachInboxConfigured] = useState(false);
+
+  // Check if ReachInbox is configured for this workspace
+  useEffect(() => {
+    const checkReachInboxConfig = async () => {
+      try {
+        const response = await fetch('/api/workspace-settings/reachinbox');
+        const data = await response.json();
+        setReachInboxConfigured(data.configured || false);
+      } catch (error) {
+        console.error('Failed to check ReachInbox config:', error);
+        setReachInboxConfigured(false);
+      }
+    };
+    checkReachInboxConfig();
+  }, []);
 
   console.log('🏢 [CAMPAIGN HUB] Workspace ID being used:', actualWorkspaceId, 'from prop:', workspaceId);
 
@@ -965,7 +981,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                     <UserPlus size={16} />
                   </button>
                 )}
-                {c.campaign_type === 'email' && c.status !== 'archived' && (
+                {c.campaign_type === 'email' && c.status !== 'archived' && reachInboxConfigured && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
