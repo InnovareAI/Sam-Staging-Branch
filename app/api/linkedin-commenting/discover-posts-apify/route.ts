@@ -16,6 +16,69 @@ const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
  * This function queries Unipile to get the correct URN for posting comments.
  */
 /**
+ * HIRING POST FILTER
+ *
+ * Detects job posting/hiring posts that should not be commented on.
+ * These posts are typically recruiting announcements where promotional
+ * comments would be inappropriate and spammy.
+ */
+const HIRING_POST_PATTERNS = [
+  // Direct hiring announcements
+  /\b(we['']?re|we are|i['']?m|i am)\s+hiring\b/i,
+  /\bhiring\s+(now|immediately|urgently|asap)\b/i,
+  /\b(job|position|role)\s+(opening|available|vacancy|opportunity)\b/i,
+  /\bnow\s+hiring\b/i,
+  /\bcurrently\s+hiring\b/i,
+
+  // Job application requests
+  /\b(apply|applications?)\s+(now|here|below|today)\b/i,
+  /\bsend\s+(your\s+)?(cv|resume|application)\b/i,
+  /\b(dm|message)\s+(me|us)\s+(for|if|to)\s+(apply|application|details|info)\b/i,
+
+  // Job postings with specific roles
+  /\blooking\s+for\s+(a|an)\s+[\w\s]*(developer|engineer|designer|manager|analyst|specialist|coordinator|assistant|intern)\b/i,
+  /\bseeking\s+(a|an)?\s*[\w\s]*(developer|engineer|designer|manager|analyst|specialist|coordinator|assistant|intern)\b/i,
+
+  // Generic recruitment language
+  /\bjoin\s+(our|my|the)\s+team\b/i,
+  /\b(come|want\s+to)\s+work\s+(with|for)\s+(us|me)\b/i,
+  /\bopen\s+(position|role)s?\b/i,
+  /\bcareer\s+opportunit(y|ies)\b/i,
+  /\b#hiring\b/i,
+  /\b#job(s|opening|alert)?\b/i,
+  /\b#careers?\b/i,
+  /\b#nowhiring\b/i,
+  /\b#opentowork\b/i,
+
+  // Remote/location-based job posts
+  /\b(remote|hybrid|onsite)\s+(position|role|job|opportunity)\b/i,
+  /\b(full[-\s]?time|part[-\s]?time|contract|freelance)\s+(position|role|opportunity|opening)\b/i
+];
+
+/**
+ * Check if a post is a hiring/job posting
+ */
+function isHiringPost(postContent: string): { isHiring: boolean; matchedPattern?: string } {
+  if (!postContent || typeof postContent !== 'string') {
+    return { isHiring: false };
+  }
+
+  const normalizedContent = postContent.toLowerCase().trim();
+
+  for (const pattern of HIRING_POST_PATTERNS) {
+    if (pattern.test(normalizedContent)) {
+      const match = normalizedContent.match(pattern);
+      return {
+        isHiring: true,
+        matchedPattern: match ? match[0].substring(0, 50) : 'hiring pattern matched'
+      };
+    }
+  }
+
+  return { isHiring: false };
+}
+
+/**
  * ENGAGEMENT BAIT FILTER
  *
  * Detects posts where the author requests one-word engagement bait comments
@@ -420,11 +483,23 @@ export async function POST(request: NextRequest) {
           return true;
         });
 
-        // FILTER OUT ENGAGEMENT BAIT POSTS
-        // Skip posts requesting one-word comments like "yes", "No", "send it", etc.
+        // FILTER OUT UNWANTED POSTS
+        // Skip hiring posts and engagement bait posts
+        let hiringSkipped = 0;
         let engagementBaitSkipped = 0;
+
         const newPosts = newPostsRaw.filter((p: any) => {
           const postContent = p.text || '';
+
+          // Check for hiring posts first
+          const hiringCheck = isHiringPost(postContent);
+          if (hiringCheck.isHiring) {
+            hiringSkipped++;
+            console.log(`💼 Skipping hiring post: "${hiringCheck.matchedPattern}" - ${postContent.substring(0, 80)}...`);
+            return false;
+          }
+
+          // Check for engagement bait
           const baitCheck = isEngagementBait(postContent);
           if (baitCheck.isBait) {
             engagementBaitSkipped++;
@@ -434,11 +509,14 @@ export async function POST(request: NextRequest) {
           return true;
         });
 
+        if (hiringSkipped > 0) {
+          console.log(`💼 Filtered out ${hiringSkipped} hiring posts`);
+        }
         if (engagementBaitSkipped > 0) {
           console.log(`🚫 Filtered out ${engagementBaitSkipped} engagement bait posts`);
         }
 
-        console.log(`🆕 Found ${newPosts.length} new posts to store (${recentPosts.length - newPostsRaw.length} already exist, ${engagementBaitSkipped} engagement bait skipped)`);
+        console.log(`🆕 Found ${newPosts.length} new posts to store (${recentPosts.length - newPostsRaw.length} already exist, ${hiringSkipped} hiring skipped, ${engagementBaitSkipped} engagement bait skipped)`);
 
         // Store new posts
         if (newPosts.length > 0) {
@@ -721,11 +799,23 @@ export async function POST(request: NextRequest) {
           return true;
         });
 
-        // FILTER OUT ENGAGEMENT BAIT POSTS
-        // Skip posts requesting one-word comments like "yes", "No", "send it", etc.
+        // FILTER OUT UNWANTED POSTS
+        // Skip hiring posts and engagement bait posts
+        let hiringSkipped = 0;
         let engagementBaitSkipped = 0;
+
         const newPosts = newPostsRaw.filter((p: any) => {
           const postContent = p.text || p.content || '';
+
+          // Check for hiring posts first
+          const hiringCheck = isHiringPost(postContent);
+          if (hiringCheck.isHiring) {
+            hiringSkipped++;
+            console.log(`💼 Skipping hiring hashtag post: "${hiringCheck.matchedPattern}" - ${postContent.substring(0, 80)}...`);
+            return false;
+          }
+
+          // Check for engagement bait
           const baitCheck = isEngagementBait(postContent);
           if (baitCheck.isBait) {
             engagementBaitSkipped++;
@@ -735,11 +825,14 @@ export async function POST(request: NextRequest) {
           return true;
         });
 
+        if (hiringSkipped > 0) {
+          console.log(`💼 Filtered out ${hiringSkipped} hiring hashtag posts`);
+        }
         if (engagementBaitSkipped > 0) {
           console.log(`🚫 Filtered out ${engagementBaitSkipped} engagement bait hashtag posts`);
         }
 
-        console.log(`🆕 Found ${newPosts.length} new hashtag posts to store (${recentPosts.length - newPostsRaw.length} already exist, ${engagementBaitSkipped} engagement bait skipped)`);
+        console.log(`🆕 Found ${newPosts.length} new hashtag posts to store (${recentPosts.length - newPostsRaw.length} already exist, ${hiringSkipped} hiring skipped, ${engagementBaitSkipped} engagement bait skipped)`);
 
         // Store new posts
         if (newPosts.length > 0) {
