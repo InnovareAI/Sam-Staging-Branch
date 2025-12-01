@@ -4,7 +4,7 @@
  * Discovers new posts from monitored profiles and companies using Apify
  * Runs every 2 hours to find fresh content for commenting
  *
- * Scheduled to run: 0 */2 * * * (every 2 hours) via netlify.toml
+ * Scheduled to run: every 2 hours via netlify.toml
  */
 
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
