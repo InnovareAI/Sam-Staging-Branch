@@ -120,10 +120,49 @@ export async function POST(request: NextRequest) {
     let prospectName = prospect ? `${prospect.first_name} ${prospect.last_name}` : senderName;
     let prospectCompany = prospect?.company;
     let originalOutreach = '';
+    const isFromCampaign = !!prospect;
 
     if (prospect?.campaigns?.message_templates) {
       const templates = prospect.campaigns.message_templates as any;
       originalOutreach = templates.connection_request || templates.initial_message || '';
+    }
+
+    // NON-CAMPAIGN MESSAGE FILTER (Added Dec 1, 2025)
+    // If this message is NOT from a campaign prospect, check if it's worth processing
+    // Only process organic leads who show clear business intent
+    if (!isFromCampaign) {
+      console.log('📋 Non-campaign message received, checking business intent...');
+
+      // Quick intent check for non-campaign messages
+      const lowerMessage = messageText.toLowerCase();
+
+      // High-value signals: demo requests, service inquiries, pricing questions
+      const businessIntentPatterns = [
+        /\b(demo|meeting|call|schedule|book|calendar)\b/i,
+        /\b(interested|interest|curious|learn more|tell me more)\b/i,
+        /\b(pricing|price|cost|plans?|subscription)\b/i,
+        /\b(sam|your service|your product|your platform|your tool)\b/i,
+        /\b(linkedin automation|outreach|campaigns?|leads?|prospecting)\b/i,
+        /\b(how does it work|how do you|what do you offer)\b/i,
+        /\b(sign up|get started|trial|free trial)\b/i,
+        /\b(sales|business development|b2b|lead gen)\b/i,
+      ];
+
+      const hasBusinessIntent = businessIntentPatterns.some(pattern => pattern.test(lowerMessage));
+
+      if (!hasBusinessIntent) {
+        console.log('⏭️ Ignoring non-campaign message without business intent:', {
+          sender: senderName,
+          preview: messageText.substring(0, 100)
+        });
+        return NextResponse.json({
+          success: true,
+          message: 'Non-campaign message without business intent - ignored',
+          reason: 'no_business_intent'
+        });
+      }
+
+      console.log('✅ Non-campaign message has business intent - processing as organic lead');
     }
 
     // Store the reply
@@ -276,7 +315,8 @@ export async function POST(request: NextRequest) {
       messageText,
       intent: intent.intent,
       intentConfidence: intent.confidence,
-      draft: draftResult.draft
+      draft: draftResult.draft,
+      isFromCampaign,  // Flag to indicate organic vs campaign lead
     });
 
     return NextResponse.json({
@@ -310,6 +350,7 @@ async function notifyUserOfLinkedInReply(
     intentConfidence?: number;
     draft?: string;
     noDraft?: boolean;
+    isFromCampaign?: boolean;  // false = organic lead not in any campaign
   }
 ) {
   // Get workspace members (no FK, so separate queries)
@@ -378,12 +419,21 @@ async function notifyUserOfLinkedInReply(
       From: 'Sam <hello@sam.innovareai.com>',
       To: user.email,
       ReplyTo: `draft+${replyId}@sam.innovareai.com`,
-      Subject: `${emoji} ${data.prospectName} replied on LinkedIn${data.intent ? ` - ${data.intent.replace('_', ' ')}` : ''}`,
+      Subject: `${emoji} ${data.isFromCampaign === false ? '🌟 Organic Lead: ' : ''}${data.prospectName} ${data.isFromCampaign === false ? 'messaged you' : 'replied'} on LinkedIn${data.intent ? ` - ${data.intent.replace('_', ' ')}` : ''}`,
       HtmlBody: `
         <div style="font-family:system-ui,-apple-system,sans-serif;max-width:600px;margin:0 auto;">
           <div style="background:#0077B5;color:white;padding:20px;border-radius:8px 8px 0 0;">
             <h2 style="margin:0;">💼 LinkedIn Reply${data.intent ? ` - ${data.intent.replace('_', ' ').toUpperCase()}` : ''}</h2>
           </div>
+
+          ${data.isFromCampaign === false ? `
+          <div style="background:#fef3c7;padding:15px 20px;border:1px solid #f59e0b;border-top:none;border-bottom:none;">
+            <p style="margin:0;font-size:14px;color:#92400e;">
+              <strong>🌟 Organic Lead</strong> — This person is NOT in any active campaign.
+              They reached out on their own showing interest in your services. I drafted a reply based on their intent.
+            </p>
+          </div>
+          ` : ''}
 
           <div style="background:#f9f9f9;padding:20px;border:1px solid #e0e0e0;border-top:none;">
             <p style="font-size:16px;margin:0 0 10px 0;">Hi ${user.first_name},</p>
@@ -391,7 +441,7 @@ async function notifyUserOfLinkedInReply(
             <p style="font-size:14px;margin:10px 0;">
               <strong>${data.prospectName}</strong>
               ${data.prospectCompany ? `from <strong>${data.prospectCompany}</strong>` : ''}
-              replied on LinkedIn:
+              ${data.isFromCampaign === false ? 'messaged you' : 'replied'} on LinkedIn:
             </p>
 
             <blockquote style="border-left:4px solid #0077B5;padding:15px;margin:20px 0;background:white;border-radius:4px;color:#333;">
@@ -445,8 +495,11 @@ async function notifyUserOfLinkedInReply(
         </div>
       `,
       TextBody: `Hi ${user.first_name},
-
-${data.prospectName}${data.prospectCompany ? ` from ${data.prospectCompany}` : ''} replied on LinkedIn:
+${data.isFromCampaign === false ? `
+🌟 ORGANIC LEAD - This person is NOT in any active campaign.
+They reached out on their own showing interest in your services. I drafted a reply based on their intent.
+` : ''}
+${data.prospectName}${data.prospectCompany ? ` from ${data.prospectCompany}` : ''} ${data.isFromCampaign === false ? 'messaged you' : 'replied'} on LinkedIn:
 
 "${data.messageText}"
 
