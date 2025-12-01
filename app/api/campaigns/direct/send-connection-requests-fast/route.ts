@@ -40,13 +40,24 @@ function isPublicHoliday(date: Date): boolean {
 
 export async function POST(req: NextRequest) {
   try {
-    // CRITICAL: Authenticate user
-    const supabase = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Check if this is an internal cron trigger
+    const internalTrigger = req.headers.get('x-internal-trigger');
+    const isCronTrigger = internalTrigger === 'cron-pending-prospects';
 
-    if (authError || !user) {
-      console.error('❌ Authentication failed:', authError);
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    let user = null;
+
+    if (!isCronTrigger) {
+      // User-initiated request: require authentication
+      const supabase = await createSupabaseRouteClient();
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+
+      if (authError || !authUser) {
+        console.error('❌ Authentication failed:', authError);
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      user = authUser;
+    } else {
+      console.log('🤖 Internal cron trigger - bypassing user auth');
     }
 
     const { campaignId } = await req.json();
@@ -55,10 +66,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'campaignId required' }, { status: 400 });
     }
 
-    console.log(`🚀 FAST queue creation for campaign: ${campaignId} (user: ${user.email})`);
+    console.log(`🚀 FAST queue creation for campaign: ${campaignId} (${isCronTrigger ? 'cron' : `user: ${user?.email}`})`);
 
-    // 1. Fetch campaign (RLS verifies user owns it)
-    const { data: campaign, error: campaignError } = await supabase
+    // 1. Fetch campaign - use admin client for cron, or user client for RLS check
+    const { data: campaign, error: campaignError } = await supabaseAdmin
       .from('campaigns')
       .select('id, campaign_name, message_templates, workspace_id')
       .eq('id', campaignId)
