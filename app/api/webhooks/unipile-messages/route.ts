@@ -239,9 +239,12 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Intent classified: ${intent.intent} (${(intent.confidence * 100).toFixed(0)}%)`);
 
-    // Sync to CRM if interested or curious (high-value leads)
-    if (['interested', 'curious'].includes(intent.intent)) {
-      console.log('📊 High-value lead detected - syncing to CRM...');
+    // Sync to CRM and ActiveCampaign if positive intent
+    // Positive: interested, curious, question, vague_positive (engaged leads)
+    // Negative: objection, timing, wrong_person, not_interested (skip sync)
+    const positiveIntents = ['interested', 'curious', 'question', 'vague_positive'];
+    if (positiveIntents.includes(intent.intent)) {
+      console.log(`📊 Positive intent (${intent.intent}) detected - syncing to CRM & ActiveCampaign...`);
       const crmResult = await syncInterestedLeadToCRM(account.workspace_id, {
         prospectId: prospectId,
         firstName: prospect?.first_name || senderName.split(' ')[0] || 'Unknown',
