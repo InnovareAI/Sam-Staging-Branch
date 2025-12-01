@@ -21,6 +21,7 @@ import {
   DEFAULT_TIMEZONE,
   FOLLOW_UP_HOURS
 } from '@/lib/scheduling-config';
+import { airtableService } from '@/lib/airtable';
 
 // Type definitions for Supabase joined queries
 interface WorkspaceAccount {
@@ -337,7 +338,7 @@ export async function POST(req: NextRequest) {
 
         // Check if all follow-ups have been sent
         if (currentIndex >= followUpMessages.length) {
-          console.log(`✅ All follow-ups completed for ${prospectName}`);
+          console.log(`✅ All follow-ups completed for ${prospectName} - marking as Went Silent`);
 
           // Mark as sequence complete
           await supabase
@@ -348,6 +349,21 @@ export async function POST(req: NextRequest) {
               updated_at: new Date().toISOString()
             })
             .eq('id', prospect.id);
+
+          // Sync to Airtable as "Went Silent" - no response after all follow-ups
+          try {
+            await airtableService.syncLinkedInLead({
+              profileUrl: prospect.linkedin_url,
+              name: prospectName,
+              jobTitle: prospect.title,
+              companyName: prospect.company_name,
+              linkedInAccount: campaign?.campaign_name,
+              intent: 'went_silent',
+            });
+            console.log(`📊 Updated Airtable status to "Went Silent" for ${prospectName}`);
+          } catch (airtableErr) {
+            console.error(`⚠️ Airtable sync failed for ${prospectName}:`, airtableErr);
+          }
 
           results.completed++;
           continue;

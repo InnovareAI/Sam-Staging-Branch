@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { createClient } from '@supabase/supabase-js';
+import { airtableService } from '@/lib/airtable';
 
 /**
  * FAST Queue-Based Campaign Execution
@@ -163,6 +164,12 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Queued ${queueRecords.length} prospects successfully (${skippedCount} already in queue)`);
 
+    // Sync prospects to Airtable with "No Response" status (initial state)
+    // This runs async in background - don't block the response
+    syncProspectsToAirtable(newProspects, campaign.campaign_name).catch(err => {
+      console.error('❌ Background Airtable sync failed:', err);
+    });
+
     return NextResponse.json({
       success: true,
       queued: queueRecords.length,
@@ -176,4 +183,40 @@ export async function POST(req: NextRequest) {
     console.error('❌ Queue creation error:', error);
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
+}
+
+/**
+ * Sync prospects to Airtable with "No Response" status
+ * Runs in background to not block the queue creation response
+ */
+async function syncProspectsToAirtable(prospects: any[], campaignName: string) {
+  console.log(`📊 Syncing ${prospects.length} prospects to Airtable (No Response)...`);
+
+  let successCount = 0;
+  let errorCount = 0;
+
+  for (const prospect of prospects) {
+    try {
+      const result = await airtableService.syncLinkedInLead({
+        profileUrl: prospect.linkedin_url,
+        name: `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim() || 'Unknown',
+        jobTitle: prospect.title,
+        companyName: prospect.company_name || prospect.company,
+        linkedInAccount: campaignName,
+        intent: 'no_response', // Initial status - they haven't responded yet
+      });
+
+      if (result.success) {
+        successCount++;
+      } else {
+        errorCount++;
+        console.log(`⚠️ Airtable sync failed for ${prospect.first_name}: ${result.error}`);
+      }
+    } catch (err) {
+      errorCount++;
+      console.error(`❌ Airtable sync error for ${prospect.first_name}:`, err);
+    }
+  }
+
+  console.log(`✅ Airtable sync complete: ${successCount} synced, ${errorCount} errors`);
 }

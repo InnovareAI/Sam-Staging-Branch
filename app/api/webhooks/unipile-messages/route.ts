@@ -313,31 +313,33 @@ export async function POST(request: NextRequest) {
         console.error('❌ ActiveCampaign sync error:', acError);
       }
 
-      // Sync to Airtable LinkedIn Positive Leads table
-      try {
-        const firstName = prospect?.first_name || senderName.split(' ')[0] || 'Unknown';
-        const lastName = prospect?.last_name || senderName.split(' ').slice(1).join(' ') || '';
+    }
 
-        console.log(`📊 Syncing positive lead to Airtable: ${firstName} ${lastName}`);
+    // Sync ALL replies to Airtable (full pipeline visibility)
+    // This updates status based on intent - positive, negative, or neutral
+    try {
+      const firstName = prospect?.first_name || senderName.split(' ')[0] || 'Unknown';
+      const lastName = prospect?.last_name || senderName.split(' ').slice(1).join(' ') || '';
 
-        const airtableResult = await airtableService.syncLinkedInLead({
-          profileUrl: prospect?.linkedin_url || senderProfileUrl,
-          name: `${firstName} ${lastName}`.trim(),
-          jobTitle: prospect?.title,
-          companyName: prospectCompany,
-          linkedInAccount: account.account_email,
-          intent: intent.intent,
-          replyText: messageText,
-        });
+      console.log(`📊 Syncing reply to Airtable: ${firstName} ${lastName} (${intent.intent})`);
 
-        if (airtableResult.success) {
-          console.log(`✅ Airtable sync successful - Record ID: ${airtableResult.recordId}`);
-        } else {
-          console.log(`⚠️ Airtable sync failed: ${airtableResult.error}`);
-        }
-      } catch (airtableError) {
-        console.error('❌ Airtable sync error:', airtableError);
+      const airtableResult = await airtableService.syncLinkedInLead({
+        profileUrl: prospect?.linkedin_url || senderProfileUrl,
+        name: `${firstName} ${lastName}`.trim(),
+        jobTitle: prospect?.title,
+        companyName: prospectCompany,
+        linkedInAccount: account.account_email,
+        intent: intent.intent,
+        replyText: messageText,
+      });
+
+      if (airtableResult.success) {
+        console.log(`✅ Airtable sync successful - Record ID: ${airtableResult.recordId}`);
+      } else {
+        console.log(`⚠️ Airtable sync failed: ${airtableResult.error}`);
       }
+    } catch (airtableError) {
+      console.error('❌ Airtable sync error:', airtableError);
     }
 
     // Generate draft with full research
