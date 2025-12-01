@@ -128,22 +128,58 @@ export async function POST(req: NextRequest) {
 
     console.log(`📊 Queueing ${newProspects.length} NEW prospects (${skippedCount} already queued)...`);
 
-    // 3. Create queue records (30 min spacing, skip weekends/holidays)
+    // 3. Create queue records
+    // LIMITS: 25 per day per workspace, spaced within business hours (8 AM - 6 PM UTC)
+    const MAX_PER_DAY = 25;
+    const BUSINESS_START_HOUR = 8;  // 8 AM UTC
+    const BUSINESS_END_HOUR = 18;   // 6 PM UTC
+    const MINUTES_PER_DAY = (BUSINESS_END_HOUR - BUSINESS_START_HOUR) * 60; // 600 minutes
+    const SPACING_MINUTES = Math.floor(MINUTES_PER_DAY / MAX_PER_DAY); // ~24 minutes between each
+
     const queueRecords = [];
     const connectionMessage = campaign.message_templates?.connection_request ||
       'Hi {first_name}, I\'d like to connect!';
 
+    // Start scheduling from now or next business hour
     let scheduledTime = new Date();
+    const currentHour = scheduledTime.getUTCHours();
+
+    // If outside business hours, start at next business day 8 AM
+    if (currentHour < BUSINESS_START_HOUR) {
+      scheduledTime.setUTCHours(BUSINESS_START_HOUR, 0, 0, 0);
+    } else if (currentHour >= BUSINESS_END_HOUR) {
+      scheduledTime.setUTCDate(scheduledTime.getUTCDate() + 1);
+      scheduledTime.setUTCHours(BUSINESS_START_HOUR, 0, 0, 0);
+    }
+
+    // Skip to next business day if weekend/holiday
+    while (isWeekend(scheduledTime) || isPublicHoliday(scheduledTime)) {
+      scheduledTime.setUTCDate(scheduledTime.getUTCDate() + 1);
+      scheduledTime.setUTCHours(BUSINESS_START_HOUR, 0, 0, 0);
+    }
+
+    let dailyCount = 0;
 
     for (let i = 0; i < newProspects.length; i++) {
       const prospect = newProspects[i];
 
-      // Add 30 minutes for each prospect
-      scheduledTime = new Date(scheduledTime.getTime() + (i * 30 * 60 * 1000));
+      // Check if we've hit daily limit
+      if (dailyCount >= MAX_PER_DAY) {
+        // Move to next business day
+        scheduledTime.setUTCDate(scheduledTime.getUTCDate() + 1);
+        scheduledTime.setUTCHours(BUSINESS_START_HOUR, 0, 0, 0);
+        dailyCount = 0;
 
-      // Skip weekends/holidays
-      while (isWeekend(scheduledTime) || isPublicHoliday(scheduledTime)) {
-        scheduledTime = new Date(scheduledTime.getTime() + (24 * 60 * 60 * 1000));
+        // Skip weekends/holidays
+        while (isWeekend(scheduledTime) || isPublicHoliday(scheduledTime)) {
+          scheduledTime.setUTCDate(scheduledTime.getUTCDate() + 1);
+          scheduledTime.setUTCHours(BUSINESS_START_HOUR, 0, 0, 0);
+        }
+      }
+
+      // Add spacing within the day (after first prospect)
+      if (dailyCount > 0) {
+        scheduledTime = new Date(scheduledTime.getTime() + (SPACING_MINUTES * 60 * 1000));
       }
 
       // Personalize message
@@ -161,6 +197,8 @@ export async function POST(req: NextRequest) {
         scheduled_for: scheduledTime.toISOString(),
         status: 'pending'
       });
+
+      dailyCount++;
     }
 
     // 4. Bulk insert (fast - single transaction)
