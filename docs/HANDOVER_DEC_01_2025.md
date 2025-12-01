@@ -194,6 +194,89 @@ User asked about query capabilities. Current state:
 | `netlify.toml` | MODIFIED | Added daily-campaign-summary schedule |
 | `scripts/js/check-weekend-execution.mjs` | NEW | Weekend verification script |
 | `docs/GOOGLE_CHAT_NOTIFICATIONS.md` | NEW | Setup documentation |
+| `app/api/workspace-settings/reachinbox/route.ts` | NEW | ReachInbox API key management |
+| `app/api/campaigns/email/reachinbox/push-leads/route.ts` | NEW | Push leads to ReachInbox |
+| `lib/reachinbox.ts` | NEW | ReachInbox service helper |
+| `app/components/CampaignHub.tsx` | MODIFIED | Added ReachInbox button + modal |
+
+---
+
+## 5. ReachInbox Integration
+
+**Purpose:** Allow users to push email campaigns from SAM to existing ReachInbox campaigns instead of using Unipile for email.
+
+**Key Principle:** Users can EITHER use Unipile (Google/Microsoft) OR ReachInbox for email - never both (mutual exclusivity).
+
+### New Files Created
+
+| File | Purpose |
+|------|---------|
+| [app/api/workspace-settings/reachinbox/route.ts](../app/api/workspace-settings/reachinbox/route.ts) | Workspace ReachInbox API key management |
+| [app/api/campaigns/email/reachinbox/push-leads/route.ts](../app/api/campaigns/email/reachinbox/push-leads/route.ts) | Push leads to ReachInbox campaigns |
+| [lib/reachinbox.ts](../lib/reachinbox.ts) | ReachInbox service helper (standalone) |
+
+### Workspace Settings API
+
+**Endpoint:** `/api/workspace-settings/reachinbox`
+
+| Method | Description |
+|--------|-------------|
+| GET | Check if ReachInbox is configured (returns `configured: boolean`) |
+| POST | Save API key `{ "api_key": "your-key" }` |
+| DELETE | Remove ReachInbox configuration |
+
+**Storage Location:** `workspace_tiers.integration_config.reachinbox_api_key`
+
+### Push Leads API
+
+**Endpoint:** `POST /api/campaigns/email/reachinbox/push-leads`
+
+**Request Body:**
+```json
+{
+  "reachinbox_campaign_id": "campaign-uuid",
+  "sam_campaign_id": "sam-campaign-uuid",
+  "prospect_ids": ["id1", "id2"]  // Optional - alternative to sam_campaign_id
+}
+```
+
+**Behavior:**
+- Uses workspace's ReachInbox API key (not environment variable)
+- Returns 400 error if no API key configured
+- Updates prospect status to `email_scheduled` after successful push
+- Logs sync event to `activity_logs` table
+
+### CampaignHub Changes
+
+**File Modified:** [app/components/CampaignHub.tsx](../app/components/CampaignHub.tsx)
+
+**Changes:**
+1. Added state `reachInboxConfigured` - checks workspace config on mount
+2. "Push to ReachInbox" button (pink Send icon) only appears when:
+   - Campaign type is `email`
+   - Campaign status is not `archived`
+   - Workspace has ReachInbox API key configured
+3. Modal for selecting target ReachInbox campaign and pushing leads
+
+### How to Enable ReachInbox for a Workspace
+
+**Option 1: API Call**
+```bash
+curl -X POST "https://app.meet-sam.com/api/workspace-settings/reachinbox" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: your-auth-cookie" \
+  -d '{"api_key": "your-reachinbox-api-key"}'
+```
+
+**Option 2: Future UI**
+Add a settings page input field (not yet implemented)
+
+### Business Logic
+
+1. **Default behavior:** If no ReachInbox API key → Unipile only
+2. **Mutual exclusivity:** Users choose Unipile OR ReachInbox, not both
+3. **Workspace-level config:** Each workspace manages their own API key
+4. **Admin only:** Only workspace admins/owners can configure ReachInbox
 
 ---
 
@@ -203,6 +286,7 @@ User asked about query capabilities. Current state:
 2. **Add IA7 workspace ID** when created - update `IA_WORKSPACE_IDS` array
 3. **Consider adding more metrics** to daily summary (campaign-level stats, top performers)
 4. **Optional: Add campaign search** functionality if users request it
+5. **Optional: Add ReachInbox settings UI** in Settings page for users to add their API key
 
 ---
 
@@ -212,6 +296,8 @@ User asked about query capabilities. Current state:
 2. **Daily summary runs at end of day PT** - 8 AM PT captures previous day's activity
 3. **Health checks have their own channel** - Separate from reply notifications
 4. **Organic leads get special formatting** - "🌟 Organic Lead" banner for non-campaign contacts
+5. **ReachInbox is workspace-level config** - API key stored in `workspace_tiers.integration_config`
+6. **Unipile vs ReachInbox is mutually exclusive** - Users must choose one for email campaigns
 
 ---
 
