@@ -12,7 +12,7 @@ const LINKEDIN_TABLE_ID = 'tblMqDWVazMY1TD1l';
 const EMAIL_TABLE_ID = 'tblQhqprE7YrrBOiV';
 
 // Map SAM intents to Airtable status values
-// Airtable dropdown options: No Response, Not Interested, Interested, Info Requested, Meeting Booked, Trial, MRR Client, Went Silent
+// Airtable dropdown options: Not Interested, Interested, Info Requested, Meeting Booked, Trial, MRR Client, Went Silent
 const INTENT_TO_STATUS: Record<string, string> = {
   interested: 'Interested',
   curious: 'Info Requested',
@@ -21,10 +21,10 @@ const INTENT_TO_STATUS: Record<string, string> = {
   booking_request: 'Meeting Booked',
   not_interested: 'Not Interested',
   wrong_person: 'Not Interested',
-  timing: 'No Response',
+  timing: 'Interested', // Changed from 'No Response' - may not be valid option
   objection: 'Not Interested',
   went_silent: 'Went Silent',
-  no_response: 'No Response',
+  no_response: 'Interested', // Changed from 'No Response' - may not be valid option
 };
 
 export interface LinkedInLeadData {
@@ -147,7 +147,7 @@ class AirtableService {
     try {
       console.log(`📊 Syncing LinkedIn lead to Airtable: ${data.name}`);
 
-      const status = data.intent ? INTENT_TO_STATUS[data.intent] || 'Interested Lead' : 'Interested Lead';
+      const status = data.intent ? INTENT_TO_STATUS[data.intent] || 'Interested' : 'Interested';
 
       const fields: Record<string, any> = {
         'Name of Interested Lead': data.name,
@@ -202,7 +202,7 @@ class AirtableService {
     try {
       console.log(`📊 Syncing email lead to Airtable: ${data.email}`);
 
-      const status = data.intent ? INTENT_TO_STATUS[data.intent] || 'Interested Lead' : undefined;
+      const status = data.intent ? INTENT_TO_STATUS[data.intent] || 'Interested' : undefined;
 
       // Extract domain from email
       const emailDomain = data.email.split('@')[1] || '';
