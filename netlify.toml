@@ -95,3 +95,8 @@
 # Monitors daily/weekly CR limits per account
 [functions."rate-limit-monitor"]
   schedule = "*/30 * * * *"
+
+# Daily Campaign Summary: Posted to Google Chat at 4 PM UTC (8 AM PT)
+# Reports CRs sent, accepts, replies for IA1-IA7 workspaces
+[functions."daily-campaign-summary"]
+  schedule = "0 16 * * *"

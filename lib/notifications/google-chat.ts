@@ -452,3 +452,197 @@ export async function sendCampaignReplyNotification(
     };
   }
 }
+
+// ============================================
+// DAILY CAMPAIGN SUMMARY NOTIFICATIONS
+// ============================================
+
+export interface DailyCampaignSummary {
+  period: string; // e.g., "Last 24 hours"
+  totalConnectionRequests: number;
+  totalAccepted: number;
+  totalReplies: number;
+  totalMessages: number;
+  acceptRate: number;
+  replyRate: number;
+  byWorkspace: {
+    workspaceId: string;
+    workspaceName: string;
+    connectionRequests: number;
+    accepted: number;
+    replies: number;
+    messages: number;
+  }[];
+  byIntent?: {
+    intent: string;
+    count: number;
+  }[];
+  topPerformingCampaigns?: {
+    name: string;
+    acceptRate: number;
+    replyRate: number;
+  }[];
+}
+
+/**
+ * Send daily campaign summary to the replies channel
+ */
+export async function sendDailyCampaignSummary(
+  summary: DailyCampaignSummary
+): Promise<{ success: boolean; error?: string }> {
+  const webhookUrl = process.env.GOOGLE_CHAT_REPLIES_WEBHOOK_URL;
+
+  if (!webhookUrl) {
+    console.warn('⚠️ GOOGLE_CHAT_REPLIES_WEBHOOK_URL not configured - skipping summary');
+    return { success: false, error: 'Replies webhook URL not configured' };
+  }
+
+  const timestamp = new Date().toLocaleString('en-US', {
+    timeZone: 'America/Los_Angeles',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+
+  // Build workspace breakdown
+  const workspaceWidgets: any[] = summary.byWorkspace.map((ws) => ({
+    decoratedText: {
+      topLabel: ws.workspaceName,
+      text: `📤 ${ws.connectionRequests} CRs | ✅ ${ws.accepted} accepts | 💬 ${ws.replies} replies`,
+    },
+  }));
+
+  // Build intent breakdown if available
+  const intentWidgets: any[] = [];
+  if (summary.byIntent && summary.byIntent.length > 0) {
+    const intentEmojis: Record<string, string> = {
+      interested: '🟢',
+      booking_request: '🔥',
+      question: '❓',
+      not_interested: '🔴',
+      out_of_office: '🏖️',
+      other: '💬',
+    };
+
+    summary.byIntent.forEach((item) => {
+      intentWidgets.push({
+        decoratedText: {
+          text: `${intentEmojis[item.intent] || '💬'} ${item.intent.replace('_', ' ')}: ${item.count}`,
+        },
+      });
+    });
+  }
+
+  const sections: any[] = [
+    {
+      widgets: [
+        {
+          decoratedText: {
+            topLabel: 'Period',
+            text: summary.period,
+          },
+        },
+        {
+          decoratedText: {
+            topLabel: 'Connection Requests Sent',
+            text: `<b>${summary.totalConnectionRequests}</b>`,
+          },
+        },
+        {
+          decoratedText: {
+            topLabel: 'Connections Accepted',
+            text: `<b>${summary.totalAccepted}</b> (${summary.acceptRate.toFixed(1)}% rate)`,
+          },
+        },
+        {
+          decoratedText: {
+            topLabel: 'Replies Received',
+            text: `<b>${summary.totalReplies}</b> (${summary.replyRate.toFixed(1)}% rate)`,
+          },
+        },
+        {
+          decoratedText: {
+            topLabel: 'Follow-up Messages Sent',
+            text: `<b>${summary.totalMessages}</b>`,
+          },
+        },
+      ],
+    },
+  ];
+
+  // Add workspace breakdown
+  if (workspaceWidgets.length > 0) {
+    sections.push({
+      header: '📊 By Workspace',
+      widgets: workspaceWidgets.slice(0, 7), // Max 7 workspaces
+    });
+  }
+
+  // Add intent breakdown
+  if (intentWidgets.length > 0) {
+    sections.push({
+      header: '🎯 Reply Intents',
+      widgets: intentWidgets.slice(0, 6), // Max 6 intents
+    });
+  }
+
+  // Add timestamp
+  sections.push({
+    widgets: [
+      {
+        decoratedText: {
+          topLabel: 'Report Generated',
+          text: `${timestamp} PT`,
+        },
+      },
+    ],
+  });
+
+  const message: GoogleChatMessage = {
+    cardsV2: [
+      {
+        cardId: `daily-summary-${Date.now()}`,
+        card: {
+          header: {
+            title: '📈 Daily Campaign Summary',
+            subtitle: summary.period,
+            imageUrl: 'https://app.meet-sam.com/sam-icon.png',
+            imageType: 'CIRCLE',
+          },
+          sections,
+        },
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(message),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Google Chat daily summary failed:', errorText);
+      return { success: false, error: errorText };
+    }
+
+    console.log('✅ Google Chat daily campaign summary sent');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Google Chat daily summary error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Get the list of IA workspace IDs for summary queries
+ */
+export function getIAWorkspaceIds(): string[] {
+  return [...IA_WORKSPACE_IDS];
+}
