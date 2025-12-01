@@ -280,6 +280,109 @@ Add a settings page input field (not yet implemented)
 
 ---
 
+---
+
+## 6. Critical Bug Fixes (Session 2 - Dec 1, 2025)
+
+### Bug 1: Reply Detection Not Matching Prospects
+
+**Problem:** Webhook was trying to match `linkedin_user_id` (like `ACoAACdjLnEBtUCnPv7YryyTFPsdpWlhzqFLKe0`) inside `linkedin_url` (like `https://www.linkedin.com/in/chetas-patel`) - this **never matched**.
+
+**File:** [app/api/webhooks/unipile-messages/route.ts](../app/api/webhooks/unipile-messages/route.ts)
+
+**Fix:**
+```typescript
+// OLD (broken) - searched provider_id inside URL string
+.ilike('linkedin_url', `%${payload.data.sender?.id || 'nomatch'}%`)
+
+// NEW (fixed) - match by linkedin_user_id first, then fallback to vanity URL
+const senderId = payload.data.sender?.id;
+const { data: prospectByUserId } = await supabase
+  .from('campaign_prospects')
+  .select(...)
+  .eq('linkedin_user_id', senderId)  // Correct match!
+```
+
+### Bug 2: Follow-ups Continuing After Prospect Replies
+
+**Problem:** When a prospect replied, the automation kept sending follow-up messages (Chetas Patel case).
+
+**Fix Added:** When campaign prospect replies, immediately:
+- Set `status = 'replied'`
+- Set `responded_at = now`
+- Set `follow_up_due_at = null` (STOPS follow-ups)
+- Cancel any pending queued messages
+
+```typescript
+// CRITICAL: Stop follow-up sequence when prospect replies
+if (isFromCampaign && prospectId) {
+  await supabase
+    .from('campaign_prospects')
+    .update({
+      status: 'replied',
+      responded_at: new Date().toISOString(),
+      follow_up_due_at: null,  // STOP follow-ups
+    })
+    .eq('id', prospectId);
+
+  // Also cancel pending queued messages
+  await supabase
+    .from('linkedin_message_queue')
+    .update({ status: 'cancelled' })
+    .eq('prospect_id', prospectId)
+    .eq('status', 'pending');
+}
+```
+
+### Bug 3: Campaign Modal Stats Showing Zeros
+
+**Problem:** Campaign modal stats were hardcoded to 0 instead of showing actual data.
+
+**File:** [app/api/campaigns/route.ts](../app/api/campaigns/route.ts)
+
+**Before (broken):**
+```typescript
+opened: 0,      // HARDCODED
+replied: 0,     // HARDCODED
+connections: 0, // HARDCODED
+replies: 0,     // HARDCODED
+response_rate: 0
+```
+
+**After (fixed):**
+```typescript
+// Now calculates real counts from campaign_prospects table
+const connections = connectedCountMap[campaign.id] || 0;
+const replied = repliedCountMap[campaign.id] || 0;
+const responseRate = sent > 0 ? Math.round((replied / sent) * 100) : 0;
+```
+
+| Stat | What It Shows |
+|------|---------------|
+| `prospects` | Total prospects in campaign |
+| `sent` | CR sent or beyond (connection_request_sent, connected, etc.) |
+| `connections` | Prospects connected/messaging/replied/follow_up_sent |
+| `replied` | Has `responded_at` OR status is 'replied' |
+| `response_rate` | (replied / sent) × 100 |
+
+### Manual Fix Applied
+
+**Chetas Patel** - Manually fixed his record:
+```sql
+UPDATE campaign_prospects
+SET status = 'replied', responded_at = NOW(), follow_up_due_at = NULL
+WHERE first_name ILIKE '%chetas%';
+```
+
+---
+
+## Commits (Session 2)
+
+1. `4fcad0d0` - Fix reply detection to properly match prospects and stop follow-ups
+2. `53180087` - Fix campaign modal stats - show actual counts instead of hardcoded zeros
+
+---
+
 ## Next Steps
 
 1. **Monitor daily summary** - First automatic run at 4 PM UTC (8 AM PT)
@@ -298,8 +401,9 @@ Add a settings page input field (not yet implemented)
 4. **Organic leads get special formatting** - "🌟 Organic Lead" banner for non-campaign contacts
 5. **ReachInbox is workspace-level config** - API key stored in `workspace_tiers.integration_config`
 6. **Unipile vs ReachInbox is mutually exclusive** - Users must choose one for email campaigns
+7. **Reply detection now stops follow-ups** - Prospects who reply won't get more automated messages
 
 ---
 
-**Last Updated:** December 1, 2025
+**Last Updated:** December 1, 2025 (Session 2)
 **Author:** Claude Code
