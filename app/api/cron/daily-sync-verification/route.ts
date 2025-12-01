@@ -86,7 +86,8 @@ export async function GET(request: NextRequest) {
     // ============================================
     console.log('\n📊 Verifying LinkedIn leads sync...');
 
-    // Get all LinkedIn prospects from Supabase with connected/replied status
+    // Get LinkedIn prospects who have REPLIED (not just connected)
+    // Only sync actual replies to "Positive Leads" Airtable table
     const { data: linkedInProspects, error: linkedInError } = await supabase
       .from('campaign_prospects')
       .select(`
@@ -101,7 +102,7 @@ export async function GET(request: NextRequest) {
         campaigns(campaign_name, campaign_type)
       `)
       .not('linkedin_url', 'is', null)
-      .in('status', ['connected', 'replied', 'interested', 'follow_up_complete', 'meeting_booked']);
+      .in('status', ['replied', 'interested', 'follow_up_complete', 'meeting_booked']);
 
     if (linkedInError) {
       console.error('❌ Failed to fetch LinkedIn prospects:', linkedInError);
@@ -322,17 +323,18 @@ async function checkContactExistsInActiveCampaign(email: string): Promise<boolea
 }
 
 /**
- * Map prospect status to intent
+ * Map prospect status to Airtable intent
+ * Only maps statuses for prospects who have replied
  */
 function mapStatusToIntent(status: string): string {
   const statusMap: Record<string, string> = {
-    connected: 'no_response',
     replied: 'interested',
     interested: 'interested',
+    meeting_booked: 'booking_request',
     follow_up_complete: 'went_silent',
     not_interested: 'not_interested',
   };
-  return statusMap[status] || 'no_response';
+  return statusMap[status] || 'interested';
 }
 
 
