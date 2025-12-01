@@ -18,6 +18,7 @@ import AuthModal from '@/components/AuthModal';
 import LLMConfigModal from '@/components/LLMConfigModal';
 import { ChannelSelectionModal } from '@/components/campaign/ChannelSelectionModal';
 import EmailProvidersModal from '@/app/components/EmailProvidersModal';
+import ReachInboxModal from '@/app/components/ReachInboxModal';
 import { WorkspaceSettingsModal } from '@/app/components/WorkspaceSettingsModal';
 import { CRMIntegrationModal } from '@/app/components/CRMIntegrationModal';
 import KnowledgeBase from '@/app/components/KnowledgeBase';
@@ -319,6 +320,7 @@ export default function Page() {
   
   // Detail modal states
   const [showEmailIntegrationModal, setShowEmailIntegrationModal] = useState(false);
+  const [showReachInboxModal, setShowReachInboxModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [showApiKeysModal, setShowApiKeysModal] = useState(false);
   const [showDataPreferencesModal, setShowDataPreferencesModal] = useState(false);
@@ -3531,6 +3533,15 @@ export default function Page() {
                   onClick={() => setShowEmailIntegrationModal(true)}
                 />
 
+                {/* ReachInbox Integration */}
+                <SimpleTileCard
+                  title="ReachInbox"
+                  description="Configure ReachInbox API integration for email campaigns. Push leads to existing ReachInbox campaigns."
+                  icon={Send}
+                  color="pink"
+                  onClick={() => setShowReachInboxModal(true)}
+                />
+
                 {/* User Profile & Country */}
                 <SimpleTileCard
                   title="User Profile"
@@ -4963,6 +4974,13 @@ export default function Page() {
         isOpen={showEmailIntegrationModal}
         onClose={() => setShowEmailIntegrationModal(false)}
         workspaceId={selectedWorkspaceId || undefined}
+      />
+
+      {/* ReachInbox Modal */}
+      <ReachInboxModal
+        isOpen={showReachInboxModal}
+        onClose={() => setShowReachInboxModal(false)}
+        workspaceId={selectedWorkspaceId || ''}
       />
 
       {/* LLM Model Configuration Modal */}
