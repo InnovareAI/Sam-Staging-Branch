@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/app/lib/supabase/server';
+import { airtableService } from '@/lib/airtable';
 
 // ReachInbox webhook event types
 interface ReachInboxWebhook {
@@ -154,6 +155,19 @@ async function handleEmailSent(webhook: ReachInboxWebhook, supabase: any) {
       });
 
       console.log(`Email sent tracked: ${data.recipient_email} via ${webhook.account_email}`);
+
+      // Sync to Airtable Cold Email table with "No Response" status
+      try {
+        await airtableService.syncEmailLead({
+          email: data.recipient_email || '',
+          name: 'Unknown', // Will be updated when prospect data is available
+          campaignName: `ReachInbox: ${webhook.campaign_id}`,
+          intent: 'no_response',
+        });
+        console.log(`📊 Synced to Airtable: ${data.recipient_email} (No Response)`);
+      } catch (airtableErr) {
+        console.error('Airtable sync error:', airtableErr);
+      }
     }
 
   } catch (error) {
@@ -344,6 +358,43 @@ async function handleEmailReplied(webhook: ReachInboxWebhook, supabase: any) {
       }, supabase);
 
       console.log(`Email reply tracked and HITL session created for campaign ${message.campaign_id}`);
+
+      // Sync to Airtable - classify reply as positive or negative
+      try {
+        const replyLower = (data.reply_body || '').toLowerCase();
+        let intent = 'interested'; // Default for replies
+
+        // Classify reply intent
+        if (replyLower.includes('not interested') || replyLower.includes('no thank') ||
+            replyLower.includes('remove') || replyLower.includes('unsubscribe')) {
+          intent = 'not_interested';
+        } else if (replyLower.includes('wrong person') || replyLower.includes('not the right')) {
+          intent = 'wrong_person';
+        } else if (replyLower.includes('busy') || replyLower.includes('later') ||
+                   replyLower.includes('not now') || replyLower.includes('next quarter')) {
+          intent = 'timing';
+        } else if (replyLower.includes('meeting') || replyLower.includes('call') ||
+                   replyLower.includes('schedule') || replyLower.includes('demo')) {
+          intent = 'booking_request';
+        } else if (replyLower.includes('tell me more') || replyLower.includes('interested') ||
+                   replyLower.includes('learn more') || replyLower.includes('sounds good')) {
+          intent = 'interested';
+        } else if (replyLower.includes('pricing') || replyLower.includes('cost') ||
+                   replyLower.includes('how much') || replyLower.includes('?')) {
+          intent = 'question';
+        }
+
+        await airtableService.syncEmailLead({
+          email: data.reply_from_email || message.recipient_email,
+          name: data.reply_from_name || 'Unknown',
+          campaignName: message.campaigns?.name || `ReachInbox Campaign`,
+          replyText: data.reply_body,
+          intent: intent,
+        });
+        console.log(`📊 Airtable updated: ${data.reply_from_email} → ${intent}`);
+      } catch (airtableErr) {
+        console.error('Airtable sync error:', airtableErr);
+      }
     }
 
   } catch (error) {
@@ -396,6 +447,28 @@ async function handleEmailBounced(webhook: ReachInboxWebhook, supabase: any) {
       });
 
       console.log(`Email bounce tracked: ${data.bounce_type} - ${data.bounce_reason}`);
+
+      // Sync bounce to Airtable as "Not Interested" (invalid email)
+      try {
+        const { data: messageData } = await supabase
+          .from('campaign_messages')
+          .select('recipient_email')
+          .eq('platform_message_id', webhook.message_id)
+          .single();
+
+        if (messageData?.recipient_email) {
+          await airtableService.syncEmailLead({
+            email: messageData.recipient_email,
+            name: 'Unknown',
+            campaignName: `ReachInbox (Bounced)`,
+            intent: 'not_interested',
+            replyText: `Bounced: ${data.bounce_type} - ${data.bounce_reason}`,
+          });
+          console.log(`📊 Airtable updated: ${messageData.recipient_email} → Not Interested (bounced)`);
+        }
+      } catch (airtableErr) {
+        console.error('Airtable sync error:', airtableErr);
+      }
     }
 
   } catch (error) {
@@ -451,6 +524,20 @@ async function handleUnsubscribed(webhook: ReachInboxWebhook, supabase: any) {
         }, { onConflict: 'email' });
 
       console.log(`Unsubscribe tracked and added to suppression list: ${message.recipient_email}`);
+
+      // Sync to Airtable as "Not Interested"
+      try {
+        await airtableService.syncEmailLead({
+          email: message.recipient_email,
+          name: 'Unknown',
+          campaignName: `ReachInbox (Unsubscribed)`,
+          intent: 'not_interested',
+          replyText: `Unsubscribed via ${data.unsubscribe_method}`,
+        });
+        console.log(`📊 Airtable updated: ${message.recipient_email} → Not Interested (unsubscribed)`);
+      } catch (airtableErr) {
+        console.error('Airtable sync error:', airtableErr);
+      }
     }
 
   } catch (error) {
