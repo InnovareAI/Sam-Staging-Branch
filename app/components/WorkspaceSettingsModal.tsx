@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Settings, Building2, Brain, Mail, Save, Loader2, MessageCircle } from 'lucide-react';
+import { X, Settings, Building2, Brain, Mail, Save, Loader2, MessageCircle, Send } from 'lucide-react';
 import { createClient } from '@/app/lib/supabase';
 import LLMConfigModal from '@/components/LLMConfigModal';
 import EmailProvidersModal from '@/app/components/EmailProvidersModal';
 import ReplyAgentModal from '@/app/components/ReplyAgentModal';
+import ReachInboxModal from '@/app/components/ReachInboxModal';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 
 interface WorkspaceSettingsModalProps {
@@ -23,6 +24,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
   const [isLLMModalOpen, setIsLLMModalOpen] = useState(false);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [isReplyAgentModalOpen, setIsReplyAgentModalOpen] = useState(false);
+  const [isReachInboxModalOpen, setIsReachInboxModalOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -219,6 +221,24 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
                     <path d="m9 18 6-6-6-6"/>
                   </svg>
                 </button>
+
+                {/* ReachInbox */}
+                <button
+                  onClick={() => setIsReachInboxModalOpen(true)}
+                  className="w-full flex items-center justify-between p-3 bg-card hover:bg-accent border border-border rounded-xl transition-all hover:border-primary/50 group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-pink-600/20 rounded-lg flex items-center justify-center">
+                      <Send className="text-pink-400 h-5 w-5" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-semibold text-sm">ReachInbox</div>
+                    </div>
+                  </div>
+                  <svg className="text-muted-foreground group-hover:translate-x-1 transition-transform" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="m9 18 6-6-6-6"/>
+                  </svg>
+                </button>
               </div>
             )}
           </CardContent>
@@ -256,6 +276,13 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
       <ReplyAgentModal
         isOpen={isReplyAgentModalOpen}
         onClose={() => setIsReplyAgentModalOpen(false)}
+        workspaceId={workspaceId}
+      />
+
+      {/* ReachInbox Modal */}
+      <ReachInboxModal
+        isOpen={isReachInboxModalOpen}
+        onClose={() => setIsReachInboxModalOpen(false)}
         workspaceId={workspaceId}
       />
     </>
