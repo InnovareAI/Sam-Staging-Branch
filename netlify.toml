@@ -100,3 +100,9 @@
 # Reports CRs sent, accepts, replies for IA1-IA7 workspaces
 [functions."daily-campaign-summary"]
   schedule = "0 16 * * *"
+
+# Daily Sync Verification: Check data consistency at 5 AM UTC (6 AM CET)
+# Verifies: LinkedIn → Airtable, Email → Airtable, Positive replies → ActiveCampaign
+# Syncs any missing records and sends summary to Google Chat
+[functions."daily-sync-verification"]
+  schedule = "0 5 * * *"

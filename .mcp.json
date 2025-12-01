@@ -81,6 +81,11 @@
         "N8N_API_KEY": "${N8N_API_KEY}"
       },
       "description": "N8N workflow automation MCP"
+    },
+    "activecampaign": {
+      "transport": "http",
+      "url": "${ACTIVECAMPAIGN_MCP_URL}",
+      "description": "ActiveCampaign MCP for automations, workflows, contacts, and campaigns"
     }
   }
 }
