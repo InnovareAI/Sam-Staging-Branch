@@ -95,39 +95,123 @@ export async function POST(request: NextRequest) {
     const senderProfileUrl = payload.data.sender?.profile_url;
 
     // Check if this is a reply to one of our campaigns
-    // Match by sender profile URL to campaign_prospects
-    const { data: prospect } = await supabase
-      .from('campaign_prospects')
-      .select(`
-        id,
-        first_name,
-        last_name,
-        title,
-        company,
-        linkedin_url,
-        campaign_id,
-        campaigns (
+    // Match by linkedin_user_id (provider_id) OR by vanity URL
+    const senderId = payload.data.sender?.id;
+    const senderVanity = payload.data.sender?.profile_url?.split('/in/')[1]?.split('/')[0]?.split('?')[0];
+
+    let prospect = null;
+
+    // First try matching by linkedin_user_id (most reliable)
+    if (senderId) {
+      const { data: prospectByUserId } = await supabase
+        .from('campaign_prospects')
+        .select(`
           id,
-          campaign_name,
-          workspace_id,
-          message_templates
-        )
-      `)
-      .eq('campaigns.workspace_id', account.workspace_id)
-      .ilike('linkedin_url', `%${payload.data.sender?.id || 'nomatch'}%`)
-      .single();
+          first_name,
+          last_name,
+          title,
+          company_name,
+          linkedin_url,
+          linkedin_user_id,
+          campaign_id,
+          status,
+          campaigns (
+            id,
+            name,
+            workspace_id,
+            message_templates
+          )
+        `)
+        .eq('linkedin_user_id', senderId)
+        .in('status', ['connected', 'messaging', 'follow_up_sent', 'connection_request_sent'])
+        .limit(1)
+        .maybeSingle();
+
+      if (prospectByUserId) {
+        prospect = prospectByUserId;
+        console.log(`✅ Matched prospect by linkedin_user_id: ${prospect.first_name} ${prospect.last_name}`);
+      }
+    }
+
+    // Fallback: try matching by vanity URL
+    if (!prospect && senderVanity) {
+      const { data: prospectByVanity } = await supabase
+        .from('campaign_prospects')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          title,
+          company_name,
+          linkedin_url,
+          linkedin_user_id,
+          campaign_id,
+          status,
+          campaigns (
+            id,
+            name,
+            workspace_id,
+            message_templates
+          )
+        `)
+        .ilike('linkedin_url', `%${senderVanity}%`)
+        .in('status', ['connected', 'messaging', 'follow_up_sent', 'connection_request_sent'])
+        .limit(1)
+        .maybeSingle();
+
+      if (prospectByVanity) {
+        prospect = prospectByVanity;
+        console.log(`✅ Matched prospect by vanity URL: ${prospect.first_name} ${prospect.last_name}`);
+      }
+    }
 
     // If we can't match by prospect ID, try matching by conversation
     let campaignId = prospect?.campaign_id;
     let prospectId = prospect?.id;
     let prospectName = prospect ? `${prospect.first_name} ${prospect.last_name}` : senderName;
-    let prospectCompany = prospect?.company;
+    let prospectCompany = prospect?.company_name;
     let originalOutreach = '';
     const isFromCampaign = !!prospect;
 
     if (prospect?.campaigns?.message_templates) {
       const templates = prospect.campaigns.message_templates as any;
       originalOutreach = templates.connection_request || templates.initial_message || '';
+    }
+
+    // CRITICAL: If this is a campaign prospect, IMMEDIATELY stop follow-up sequence
+    if (isFromCampaign && prospectId) {
+      console.log(`🛑 STOPPING follow-up sequence for ${prospectName} - they replied!`);
+
+      const { error: stopError } = await supabase
+        .from('campaign_prospects')
+        .update({
+          status: 'replied',
+          responded_at: new Date().toISOString(),
+          follow_up_due_at: null, // STOP follow-ups
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', prospectId);
+
+      if (stopError) {
+        console.error(`❌ Failed to stop follow-up sequence:`, stopError);
+      } else {
+        console.log(`✅ Follow-up sequence STOPPED for prospect ${prospectId}`);
+      }
+
+      // Also cancel any pending queued messages
+      const { error: cancelError } = await supabase
+        .from('linkedin_message_queue')
+        .update({
+          status: 'cancelled',
+          error_message: 'Prospect replied - sequence stopped',
+          updated_at: new Date().toISOString()
+        })
+        .eq('prospect_id', prospectId)
+        .eq('status', 'pending');
+
+      if (!cancelError) {
+        console.log(`✅ Cancelled pending queued messages for prospect`);
+      }
     }
 
     // NON-CAMPAIGN MESSAGE FILTER (Added Dec 1, 2025)
