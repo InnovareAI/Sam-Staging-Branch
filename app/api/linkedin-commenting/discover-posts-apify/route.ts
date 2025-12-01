@@ -265,8 +265,8 @@ export async function POST(request: NextRequest) {
     // Actor URLs - replace with custom actors when ready
     const PROFILE_ACTOR = 'apimaestro~linkedin-profile-posts';
     const HASHTAG_ACTOR = 'apimaestro~linkedin-posts-search-scraper-no-cookies';
-    // Company actor: curious_coder's actor supports company profile URLs
-    const COMPANY_ACTOR = 'curious_coder~linkedin-post-search-scraper';
+    // Company actor: Use same profile actor - it works with company vanity names too
+    const COMPANY_ACTOR = 'apimaestro~linkedin-profile-posts';
 
     if (!APIFY_API_TOKEN) {
       console.error('❌ Missing APIFY_API_TOKEN');
@@ -980,13 +980,10 @@ export async function POST(request: NextRequest) {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              // curious_coder actor expects profile URLs or search URLs
-              urls: [`https://www.linkedin.com/company/${companySlug}/posts/`],
-              profileUrls: [`https://www.linkedin.com/company/${companySlug}/posts/`],
-              // Limit results
-              maxPosts: 3,
-              postsPerProfile: 3,
-              maxResults: 3
+              // apimaestro profile actor works with company vanity names too
+              username: companySlug,
+              page_number: 1,
+              total_posts: 3
             })
           });
 
