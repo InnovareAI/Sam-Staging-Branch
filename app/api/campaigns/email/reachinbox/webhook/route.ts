@@ -100,26 +100,13 @@ const SYNC_ALL_ACCOUNTS = false;
  * This filters out client campaigns that use the same email accounts.
  *
  * Patterns are case-insensitive and match the START of campaign names.
+ *
+ * NAMING CONVENTION: All InnovareAI campaigns should start with "InnovareAI -"
+ * Example: "InnovareAI - Financial US", "InnovareAI - SMEs DACH"
  */
 const CAMPAIGN_WHITELIST_PATTERNS = [
-  'AI Sales Automation/',     // Main InnovareAI campaigns
-  '1/24',                     // Date-based campaigns (Jan 2024)
-  '2/24',                     // Feb 2024
-  '3/24',                     // etc.
-  '4/24',
-  '5/24',
-  '6/24',
-  '7/24',
-  '8/24',
-  '9/24',
-  '10/24',
-  '11/24',
-  '12/24',
-  '1/25',                     // 2025 campaigns
-  '2/25',
-  '3/25',
-  'CompuSafe',                // CompuSafe campaigns
-  'InnovareAI',               // InnovareAI campaigns
+  'InnovareAI',               // All InnovareAI campaigns (new naming convention)
+  'AI Sales Automation/',     // Legacy campaigns (existing)
 ];
 
 /**
