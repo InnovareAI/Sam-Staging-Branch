@@ -185,6 +185,13 @@ export async function POST(request: NextRequest) {
     let totalDiscovered = 0;
     const APIFY_API_TOKEN = process.env.APIFY_API_TOKEN;
 
+    // Debug: Log hashtag monitors configuration
+    const hashtagsBeingSearched = hashtagMonitors.map(m => ({
+      id: m.id,
+      hashtags: m.hashtags?.filter((h: string) => h.startsWith('HASHTAG:')).map((h: string) => h.replace('HASHTAG:', ''))
+    }));
+    console.log('🔍 Hashtags being searched:', JSON.stringify(hashtagsBeingSearched));
+
     // Actor URLs - replace with custom actors when ready
     const PROFILE_ACTOR = 'apimaestro~linkedin-profile-posts';
     const HASHTAG_ACTOR = 'apimaestro~linkedin-posts-search-scraper-no-cookies';
@@ -848,7 +855,10 @@ export async function POST(request: NextRequest) {
       monitorsProcessed: profileMonitors.length + hashtagMonitors.length,
       profileMonitorsProcessed: profileMonitors.length,
       hashtagMonitorsProcessed: hashtagMonitors.length,
-      postsDiscovered: totalDiscovered
+      postsDiscovered: totalDiscovered,
+      debug: {
+        hashtagsSearched: hashtagsBeingSearched
+      }
     });
 
   } catch (error) {
