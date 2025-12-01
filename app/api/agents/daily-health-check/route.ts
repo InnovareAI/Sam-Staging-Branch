@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/app/lib/supabase';
 import { claudeClient } from '@/lib/llm/claude-client';
+import { sendHealthCheckNotification } from '@/lib/notifications/google-chat';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes
@@ -82,6 +83,21 @@ export async function POST(request: NextRequest) {
     if (analysis.overall_status === 'critical') {
       await sendCriticalAlert(analysis);
     }
+
+    // Send Google Chat notification
+    await sendHealthCheckNotification({
+      type: 'daily-health-check',
+      status: analysis.overall_status,
+      summary: analysis.summary,
+      checks: checks.map(c => ({
+        name: c.check_name,
+        status: c.status,
+        details: c.details,
+      })),
+      recommendations: analysis.recommendations,
+      duration_ms: Date.now() - startTime,
+      timestamp: new Date().toISOString(),
+    });
 
     console.log('✅ Daily health check complete:', {
       status: analysis.overall_status,

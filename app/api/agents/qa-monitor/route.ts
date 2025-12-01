@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/app/lib/supabase';
 import { claudeClient } from '@/lib/llm/claude-client';
+import { sendHealthCheckNotification } from '@/lib/notifications/google-chat';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -128,6 +129,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Store results
+    const overallStatus = failedChecks.length > 0 ? 'critical' : warningChecks.length > 0 ? 'warning' : 'healthy';
+
     await supabase
       .from('system_health_checks')
       .insert({
@@ -135,10 +138,25 @@ export async function POST(request: NextRequest) {
         checks: allChecks,
         ai_analysis: aiAnalysis?.summary || 'All checks passed',
         recommendations: aiAnalysis?.recommendations || [],
-        overall_status: failedChecks.length > 0 ? 'critical' : warningChecks.length > 0 ? 'warning' : 'healthy',
+        overall_status: overallStatus,
         fixes_proposed: aiAnalysis?.proposed_fixes || [],
         duration_ms: Date.now() - startTime
       });
+
+    // Send Google Chat notification
+    await sendHealthCheckNotification({
+      type: 'qa-monitor',
+      status: overallStatus as 'healthy' | 'warning' | 'critical',
+      summary: aiAnalysis?.summary || `QA Monitor: ${allChecks.filter(c => c.status === 'pass').length}/${allChecks.length} checks passed`,
+      checks: allChecks.map(c => ({
+        name: c.check_name,
+        status: c.status,
+        details: c.details,
+      })),
+      recommendations: aiAnalysis?.recommendations || [],
+      duration_ms: Date.now() - startTime,
+      timestamp: new Date().toISOString(),
+    });
 
     console.log('✅ QA Monitor complete:', {
       total_checks: allChecks.length,
