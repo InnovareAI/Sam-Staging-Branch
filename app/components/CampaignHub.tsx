@@ -89,6 +89,14 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
 
+  // ReachInbox push state
+  const [showReachInboxModal, setShowReachInboxModal] = useState(false);
+  const [selectedCampaignForReachInbox, setSelectedCampaignForReachInbox] = useState<any>(null);
+  const [reachInboxCampaigns, setReachInboxCampaigns] = useState<any[]>([]);
+  const [selectedReachInboxCampaign, setSelectedReachInboxCampaign] = useState<string>('');
+  const [loadingReachInbox, setLoadingReachInbox] = useState(false);
+  const [pushingToReachInbox, setPushingToReachInbox] = useState(false);
+
   console.log('🏢 [CAMPAIGN HUB] Workspace ID being used:', actualWorkspaceId, 'from prop:', workspaceId);
 
   // REACT QUERY: Fetch and cache campaigns
@@ -591,6 +599,75 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     }
   };
 
+  // ReachInbox push handlers
+  const openReachInboxModal = async (campaign: any) => {
+    console.log('📧 Push to ReachInbox clicked:', campaign.id);
+
+    setSelectedCampaignForReachInbox(campaign);
+    setShowReachInboxModal(true);
+    setLoadingReachInbox(true);
+
+    // Fetch available ReachInbox campaigns
+    try {
+      const response = await fetch('/api/campaigns/email/reachinbox/push-leads');
+      const data = await response.json();
+
+      if (data.success && data.campaigns) {
+        console.log('✅ Loaded', data.campaigns.length, 'ReachInbox campaigns');
+        setReachInboxCampaigns(data.campaigns);
+      } else {
+        console.error('Failed to fetch ReachInbox campaigns:', data.error);
+        toastError(data.error || 'Failed to load ReachInbox campaigns');
+        setReachInboxCampaigns([]);
+      }
+    } catch (error) {
+      console.error('Error fetching ReachInbox campaigns:', error);
+      toastError('Failed to connect to ReachInbox');
+      setReachInboxCampaigns([]);
+    } finally {
+      setLoadingReachInbox(false);
+    }
+  };
+
+  const handlePushToReachInbox = async () => {
+    if (!selectedCampaignForReachInbox || !selectedReachInboxCampaign) {
+      toastError('Please select a ReachInbox campaign');
+      return;
+    }
+
+    setPushingToReachInbox(true);
+
+    try {
+      const response = await fetch('/api/campaigns/email/reachinbox/push-leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reachinbox_campaign_id: selectedReachInboxCampaign,
+          sam_campaign_id: selectedCampaignForReachInbox.id
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toastSuccess(`Pushed ${data.data.leads_pushed} leads to ReachInbox campaign "${data.data.reachinbox_campaign_name}"`);
+        setShowReachInboxModal(false);
+        setSelectedReachInboxCampaign('');
+        setSelectedCampaignForReachInbox(null);
+
+        // Refresh campaigns list
+        queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+      } else {
+        toastError(data.error || 'Failed to push leads to ReachInbox');
+      }
+    } catch (error) {
+      console.error('Error pushing to ReachInbox:', error);
+      toastError('Failed to push leads to ReachInbox');
+    } finally {
+      setPushingToReachInbox(false);
+    }
+  };
+
   // Multi-select handlers
   const toggleCampaignSelection = (campaignId: string) => {
     setSelectedCampaigns(prev => {
@@ -886,6 +963,21 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                     type="button"
                   >
                     <UserPlus size={16} />
+                  </button>
+                )}
+                {c.campaign_type === 'email' && c.status !== 'archived' && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      console.log('📧 Push to ReachInbox button clicked!', c.id);
+                      openReachInboxModal(c);
+                    }}
+                    className="p-2 rounded-md text-pink-400 hover:bg-gray-700 hover:text-white transition-colors"
+                    title="Push to ReachInbox"
+                    type="button"
+                  >
+                    <Send size={16} />
                   </button>
                 )}
                 <button
@@ -1497,6 +1589,119 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                   Add {selectedProspectIds.length} Prospect{selectedProspectIds.length !== 1 ? 's' : ''}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ReachInbox Push Modal */}
+      {showReachInboxModal && selectedCampaignForReachInbox && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-gray-800 rounded-lg shadow-xl max-w-lg w-full mx-4 my-8 border border-pink-500">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-700">
+              <div>
+                <h2 className="text-2xl text-white flex items-center gap-2">
+                  <Send className="text-pink-400" size={24} />
+                  Push to ReachInbox
+                </h2>
+                <p className="text-gray-400 text-sm mt-1">
+                  Push leads from "{selectedCampaignForReachInbox.name}" to a ReachInbox campaign
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowReachInboxModal(false);
+                  setSelectedReachInboxCampaign('');
+                }}
+                className="text-gray-400 hover:text-gray-300 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {loadingReachInbox ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="animate-spin text-pink-400" size={48} />
+                  <span className="ml-3 text-gray-400">Loading ReachInbox campaigns...</span>
+                </div>
+              ) : reachInboxCampaigns.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <Mail size={48} className="mx-auto mb-4 text-gray-600" />
+                  <p>No ReachInbox campaigns found</p>
+                  <p className="text-sm mt-2">Create a campaign in ReachInbox first</p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Select ReachInbox Campaign
+                    </label>
+                    <select
+                      value={selectedReachInboxCampaign}
+                      onChange={(e) => setSelectedReachInboxCampaign(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    >
+                      <option value="">Select a campaign...</option>
+                      {reachInboxCampaigns.map((campaign) => (
+                        <option key={campaign.id} value={campaign.id}>
+                          {campaign.name} ({campaign.status}) - {campaign.leads_count || 0} leads
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="bg-gray-700/50 rounded-lg p-4">
+                    <div className="text-sm text-gray-300">
+                      <p className="flex justify-between mb-2">
+                        <span>SAM Campaign:</span>
+                        <span className="text-white">{selectedCampaignForReachInbox.name}</span>
+                      </p>
+                      <p className="flex justify-between">
+                        <span>Prospects to push:</span>
+                        <span className="text-white">{selectedCampaignForReachInbox.prospects_count || selectedCampaignForReachInbox.total_prospects || 'All pending'}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-gray-500">
+                    Leads will be pushed with email, name, company, and job title. Only prospects with valid email addresses will be included.
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-gray-700 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReachInboxModal(false);
+                  setSelectedReachInboxCampaign('');
+                }}
+                className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handlePushToReachInbox}
+                disabled={!selectedReachInboxCampaign || pushingToReachInbox || loadingReachInbox}
+                className="px-6 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {pushingToReachInbox ? (
+                  <>
+                    <Loader2 className="animate-spin" size={16} />
+                    Pushing...
+                  </>
+                ) : (
+                  <>
+                    <Send size={16} />
+                    Push to ReachInbox
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
