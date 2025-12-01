@@ -584,7 +584,8 @@ export async function POST(request: NextRequest) {
         // Start Apify actor run for hashtag search
         console.log(`📡 Starting Apify hashtag search actor for #${keyword}...`);
 
-        const startRunUrl = `https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}`;
+        // Use waitForFinish to avoid polling (Netlify timeouts)
+        const startRunUrl = `https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}&waitForFinish=120`;
 
         // IMPORTANT: This Apify actor charges per result
         // We request 20 posts max to get enough variety after filtering
@@ -601,8 +602,8 @@ export async function POST(request: NextRequest) {
             maxResults: POSTS_PER_HASHTAG,
             resultsLimit: POSTS_PER_HASHTAG,
             limit: POSTS_PER_HASHTAG,
-            maxPosts: POSTS_PER_HASHTAG,
-            searchAge: 24    // Last 24 hours
+            maxPosts: POSTS_PER_HASHTAG
+            // Note: We filter by age (7 days) in our code, not at Apify level
           })
         });
 
@@ -614,39 +615,19 @@ export async function POST(request: NextRequest) {
         }
 
         const runData = await startResponse.json();
-        const runId = runData.data.id;
-        const defaultDatasetId = runData.data.defaultDatasetId;
+        const runId = runData.data?.id;
+        const defaultDatasetId = runData.data?.defaultDatasetId;
+        const runStatus = runData.data?.status;
 
-        console.log(`⏳ Waiting for hashtag search run ${runId} to complete...`);
+        console.log(`📊 Apify run ${runId}: status=${runStatus}, dataset=${defaultDatasetId}`);
 
-        // Poll for completion (wait up to 90 seconds for hashtag searches)
-        let attempts = 0;
-        let runComplete = false;
-
-        while (attempts < 90 && !runComplete) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-
-          const statusResponse = await fetch(
-            `https://api.apify.com/v2/actor-runs/${runId}?token=${APIFY_API_TOKEN}`
-          );
-
-          if (statusResponse.ok) {
-            const status = await statusResponse.json();
-            if (status.data.status === 'SUCCEEDED') {
-              runComplete = true;
-              console.log(`✅ Hashtag search completed successfully`);
-            } else if (status.data.status === 'FAILED') {
-              console.error(`❌ Hashtag search run failed`);
-              break;
-            }
-          }
-          attempts++;
-        }
-
-        if (!runComplete) {
-          console.error(`❌ Hashtag search timed out after 90 seconds`);
+        // With waitForFinish, the run should already be complete
+        if (runStatus !== 'SUCCEEDED') {
+          console.error(`❌ Hashtag search run did not succeed: ${runStatus}`);
           continue;
         }
+
+        console.log(`✅ Hashtag search completed successfully`);
 
         // Get dataset items
         const datasetUrl = `https://api.apify.com/v2/datasets/${defaultDatasetId}/items?token=${APIFY_API_TOKEN}`;
