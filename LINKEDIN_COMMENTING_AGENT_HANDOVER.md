@@ -624,7 +624,7 @@ netlify deploy --prod
 ## Netlify Scheduled Functions (Cron Jobs)
 
 ### Purpose
-Netlify scheduled functions handle periodic background tasks for the commenting agent without external dependencies (like cron-job.org). They run on a schedule to:
+Netlify scheduled functions handle periodic background tasks for the commenting agent without external dependencies (like Netlify scheduled functions). They run on a schedule to:
 
 1. **Poll for discovered posts** - Check for new posts to comment on
 2. **Auto-generate comments** - Generate AI comments on schedule (not just on-demand)

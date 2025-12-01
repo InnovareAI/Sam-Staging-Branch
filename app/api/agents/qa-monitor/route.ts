@@ -4,7 +4,7 @@
  * Detects bugs, gaps, and inconsistencies between DB, messaging, and cron jobs
  *
  * POST /api/agents/qa-monitor
- * Trigger: cron-job.org every 6 hours
+ * Trigger: Netlify scheduled functions every 6 hours
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -281,7 +281,7 @@ async function checkCronJobGaps(supabase: any): Promise<QACheck> {
       : `Queue processing active. ${recentQueueActivity || 0} items processed in last hour.`,
     affected_records: overdueCount,
     sample_ids: overdueItems?.slice(0, 5).map((i: any) => i.id),
-    suggested_fix: overdueCount > 0 ? 'Check cron-job.org status and Netlify function logs' : undefined
+    suggested_fix: overdueCount > 0 ? 'Check Netlify scheduled functions status and Netlify function logs' : undefined
   };
 }
 

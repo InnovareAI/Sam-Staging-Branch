@@ -21,7 +21,7 @@ User clicks "Start Campaign"
     - Creates send_queue records (1 every 30 min)
     - Skips weekends/holidays
     ↓
-[2] CRON JOB (every minute via cron-job.org)
+[2] CRON JOB (every minute via Netlify scheduled functions)
     - Finds next message due
     - Checks if it's a business day (skip weekends/holidays)
     - Sends via Unipile API
@@ -43,7 +43,7 @@ User clicks "Start Campaign"
 - Response: Queued count, skip reasons, estimated completion time
 
 **2. `/app/api/cron/process-send-queue/route.ts` (258 lines)**
-- Cron job endpoint (triggered by cron-job.org every minute)
+- Cron job endpoint (triggered by Netlify scheduled functions every minute)
 - Processes exactly 1 message per execution
 - Checks if message falls on weekend/holiday (skips if so)
 - Sends CR via Unipile
@@ -62,12 +62,12 @@ User clicks "Start Campaign"
 
 **4. `docs/QUEUE_TESTING_SETUP.md`**
 - Step-by-step testing guide
-- Cron-job.org configuration instructions
+- Netlify scheduled functions configuration instructions
 - Success criteria
 - Troubleshooting
 
 **5. `docs/CRON_JOB_ORG_SETUP.md`**
-- Detailed cron-job.org setup
+- Detailed Netlify scheduled functions setup
 - Header authentication
 - Monitoring and verification
 - Advanced configuration
@@ -153,11 +153,11 @@ Messages preserve their scheduled time but move to the next business day.
    }
 ```
 
-### Processing Phase (Cron-Job.org)
+### Processing Phase (Netlify scheduled functions)
 
 ```
 EVERY MINUTE:
-1. Cron-Job.org sends HTTP POST to /api/cron/process-send-queue
+1. Netlify scheduled functions sends HTTP POST to /api/cron/process-send-queue
 2. Endpoint checks:
    ✓ x-cron-secret header matches CRON_SECRET
    ✓ Finds next pending message
@@ -196,12 +196,12 @@ Example timeline:
 - [x] Production build passed tenant isolation verification
 - [x] Deployed to production (app.meet-sam.com)
 - [x] Comprehensive documentation created
-- [x] Cron-job.org setup guide created
+- [x] Netlify scheduled functions setup guide created
 
 ### ⏳ Pending
 
 - [ ] Create send_queue table in Supabase (SQL execution)
-- [ ] Set up cron-job.org job (manual setup)
+- [ ] Set up Netlify scheduled functions job (manual setup)
 - [ ] Create test campaign (user action)
 - [ ] Queue test campaign (verify system works)
 - [ ] Monitor and validate CRs sent to LinkedIn
@@ -251,12 +251,12 @@ CREATE POLICY "Users can view send_queue for their campaigns"
 
 **Then click "Run"**
 
-### 2. Set Up Cron-Job.org
+### 2. Set Up Netlify scheduled functions
 
 **Read:** `/docs/CRON_JOB_ORG_SETUP.md` (detailed step-by-step guide)
 
 **Quick version:**
-1. Go to https://cron-job.org/en/members/
+1. Go to Netlify dashboard
 2. Click "Create Cronjob"
 3. Fill in:
    - Title: `SAM - Process Send Queue`
@@ -365,7 +365,7 @@ All 5 sent over 2-3 days (spans weekend, doesn't violate 20/day limit)
 
 ### Change Frequency
 
-Edit cron-job.org Schedule field:
+Edit Netlify scheduled functions Schedule field:
 - `* * * * *` = Every minute (1 per min max)
 - `*/5 * * * *` = Every 5 minutes
 - `0 9 * * *` = Every day at 9 AM
@@ -427,8 +427,8 @@ A: 20 CRs per 10 hours = safe, human-like pace. No automation detection risk.
 **Q: Why separate queue creation from sending?**
 A: Instant feedback to user. No timeouts. Safe for large campaigns.
 
-**Q: What if cron-job.org is down?**
-A: Queue persists. Messages wait. When cron-job.org resumes, they'll send.
+**Q: What if Netlify scheduled functions is down?**
+A: Queue persists. Messages wait. When Netlify scheduled functions resumes, they'll send.
 
 **Q: Can I pause a campaign mid-queue?**
 A: Yes, but not in current UI. Workaround: Update campaign status to 'paused' in database.
@@ -449,16 +449,16 @@ A: No, they're always skipped. Messages move to Monday (or next business day).
 ### If Something Goes Wrong
 
 1. **Check Netlify logs:** `netlify logs --function process-send-queue --tail`
-2. **Check cron-job.org:** Visit https://cron-job.org/en/members/ → Execution log
+2. **Check Netlify scheduled functions:** Visit Netlify dashboard → Execution log
 3. **Check queue table:** Query send_queue directly in Supabase
-4. **Verify CRON_SECRET:** `netlify env:list | grep CRON_SECRET` (must match cron-job.org)
+4. **Verify CRON_SECRET:** `netlify env:list | grep CRON_SECRET` (must match Netlify scheduled functions)
 5. **Check prospect data:** Verify prospects have linkedin_url, status = approved
 
 ### Common Errors
 
 **"Unauthorized cron request"**
 - CRON_SECRET doesn't match
-- Fix: Update header in cron-job.org
+- Fix: Update header in Netlify scheduled functions
 
 **"No messages due"**
 - Queue is empty or all messages are in future
@@ -472,4 +472,4 @@ A: No, they're always skipped. Messages move to Monday (or next business day).
 
 **Last Updated:** November 22, 2025
 **Status:** ✅ PRODUCTION READY
-**Next:** Create send_queue table & set up cron-job.org
+**Next:** Create send_queue table & set up Netlify scheduled functions

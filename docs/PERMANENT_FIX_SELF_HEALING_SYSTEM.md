@@ -301,7 +301,7 @@ export async function POST(req: NextRequest) {
 
 ### Cron Configuration
 
-**Provider:** cron-job.org
+**Provider:** Netlify scheduled functions
 **URL:** `https://app.meet-sam.com/api/cron/cleanup-corrupted-statuses`
 **Method:** POST
 **Schedule:** `0 * * * *` (every hour)

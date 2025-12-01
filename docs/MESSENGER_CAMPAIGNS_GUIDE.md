@@ -337,7 +337,7 @@ netlify deploy --prod
 
 ### 3. Verify Cron Job
 
-Ensure cron-job.org is configured:
+Ensure Netlify scheduled functions is configured:
 - URL: `https://app.meet-sam.com/api/cron/process-send-queue`
 - Schedule: `* * * * *` (every minute)
 - Header: `x-cron-secret: ${CRON_SECRET}`

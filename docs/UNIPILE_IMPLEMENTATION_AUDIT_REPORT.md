@@ -113,7 +113,7 @@ if (profile.network_distance === 'FIRST_DEGREE') {
    ```
 
 3. **Update Cron Jobs:**
-   - Remove old `/api/cron/check-accepted-connections` from cron-job.org
+   - Remove old `/api/cron/check-accepted-connections` from Netlify scheduled functions
    - Add new `/api/cron/poll-accepted-connections` (3 times daily)
    - Keep `/api/campaigns/direct/process-follow-ups` (hourly)
 

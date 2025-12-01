@@ -89,7 +89,7 @@ The two new endpoints are now live:
 
 ### Step 3: Set Up Cron Job
 
-Go to **cron-job.org** and create a new job:
+Go to **Netlify scheduled functions** and create a new job:
 
 **Job Details:**
 - **URL:** `https://app.meet-sam.com/api/cron/process-send-queue`
@@ -108,7 +108,7 @@ Value: <your CRON_SECRET value from netlify env:list>
 netlify env:list | grep CRON_SECRET
 ```
 
-**Example cron-job.org setup:**
+**Example Netlify scheduled functions setup:**
 ```
 Title: SAM - Process Send Queue (1 min interval)
 URL: https://app.meet-sam.com/api/cron/process-send-queue
@@ -309,7 +309,7 @@ Daily capacity:        20 CRs (enough for full day)
 
 ### Check Cron Job Execution
 
-In cron-job.org dashboard:
+In Netlify scheduled functions dashboard:
 1. Go to "Cronjobs" → "Process Send Queue"
 2. Click "Execution log"
 3. See execution history and any errors
@@ -353,7 +353,7 @@ SELECT * FROM send_queue WHERE status = 'sent' ORDER BY sent_at DESC;
 ### Issue: Queue not processing
 
 **Check 1:** Is cron job running?
-- Go to cron-job.org
+- Go to Netlify scheduled functions
 - Check if job is enabled
 - Check execution log for errors
 
@@ -362,7 +362,7 @@ SELECT * FROM send_queue WHERE status = 'sent' ORDER BY sent_at DESC;
 # Get the secret
 netlify env:list | grep CRON_SECRET
 
-# Compare with cron-job.org header value
+# Compare with Netlify scheduled functions header value
 # They must match exactly
 ```
 
@@ -399,7 +399,7 @@ netlify logs --function process-send-queue --tail
 
 1. ✅ Create send_queue table (SQL above)
 2. ✅ Deploy code (`npm run build && netlify deploy --prod`)
-3. ✅ Set up cron-job.org job
+3. ✅ Set up Netlify scheduled functions job
 4. ✅ Create test campaign (5-10 prospects)
 5. ✅ Queue campaign (`POST /api/campaigns/direct/send-connection-requests-queued`)
 6. ✅ Monitor progress (check send_queue and prospect status)

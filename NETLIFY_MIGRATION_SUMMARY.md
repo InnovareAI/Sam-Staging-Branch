@@ -2,7 +2,7 @@
 
 ## ✅ What Was Done
 
-Successfully replaced the unreliable cron-job.org external scheduler with native Netlify scheduled functions for processing LinkedIn connection request queues.
+Successfully replaced the unreliable Netlify scheduled functions external scheduler with native Netlify scheduled functions for processing LinkedIn connection request queues.
 
 ## 🔍 Problem Identified
 
@@ -16,12 +16,12 @@ Timeline of Test Campaign (5 prospects):
 - 20:17 | Rolf Hancke       → STUCK (pending for 2+ hours)
 - 20:22 | Emily Dart        → STUCK (pending for 2+ hours)
 
-Root Cause: cron-job.org stopped calling the endpoint after 3 messages
+Root Cause: Netlify scheduled functions stopped calling the endpoint after 3 messages
 ```
 
 ## 🚀 Solution Implemented
 
-Created a native Netlify scheduled function that replaces cron-job.org:
+Created a native Netlify scheduled function that replaces Netlify scheduled functions:
 
 ### Files Added/Modified
 
@@ -107,7 +107,7 @@ node scripts/js/test-netlify-queue-live.mjs
 
 Shows recent messages sent in the last 3 minutes
 
-## 🔄 Advantages Over cron-job.org
+## 🔄 Advantages Over Netlify scheduled functions
 
 | Feature | Before | After |
 |---------|--------|-------|
@@ -117,7 +117,7 @@ Shows recent messages sent in the last 3 minutes
 | **Setup Time** | ~10 minutes + external account | ~5 minutes, automatic |
 | **Maintenance** | Manual management | Zero maintenance |
 | **Cost** | Free but quality issues | Included in Netlify plan |
-| **Deployment** | Manual cron-job.org setup | Automatic with git push |
+| **Deployment** | Manual Netlify scheduled functions setup | Automatic with git push |
 
 ## 🛡️ Fallback Plan
 
@@ -136,7 +136,7 @@ curl -X POST 'https://app.meet-sam.com/api/cron/process-send-queue' \
    # [functions."process-send-queue"]
    # schedule = "* * * * *"
    ```
-2. Re-enable cron-job.org with same endpoint
+2. Re-enable Netlify scheduled functions with same endpoint
 3. Deploy to production
 
 ## 📝 Testing the Queue
@@ -181,7 +181,7 @@ Detailed documentation available in:
 
 ## 🎉 Summary
 
-The LinkedIn connection request queue system is now more reliable using Netlify native scheduled functions instead of external cron-job.org. The system:
+The LinkedIn connection request queue system is now more reliable using Netlify native scheduled functions instead of external Netlify scheduled functions. The system:
 
 - ✅ Processes messages every minute reliably
 - ✅ No external service dependencies

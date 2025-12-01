@@ -54,7 +54,7 @@ POST /api/campaigns/email/send-emails-queued
 • Inserts into email_send_queue table
 • Returns success in <2 seconds
   ↓
-Cron-job.org calls POST /api/cron/process-email-queue every 13 minutes
+Netlify scheduled functions calls POST /api/cron/process-email-queue every 13 minutes
   ↓
 • Checks: Is it 8-5? Not weekend? Not holiday?
 • If YES: Send next email via Unipile API
@@ -71,7 +71,7 @@ Email sent, prospect status updated
 
 **The system is deployed but the cron job is NOT configured yet.**
 
-Go to https://cron-job.org and create:
+Go to https://Netlify scheduled functions and create:
 
 - **Title:** SAM Email Queue Processor
 - **URL:** `https://app.meet-sam.com/api/cron/process-email-queue`
@@ -220,7 +220,7 @@ Summary of what was built and next steps required.
 
 **Cause:** Cron job not configured
 
-**Solution:** Configure cron-job.org as described above
+**Solution:** Configure Netlify scheduled functions as described above
 
 ### Issue: Campaign shows 0 prospects after activation
 
@@ -242,7 +242,7 @@ Should return: 5
 After completing next steps:
 
 1. **Verify cron job configured**
-   - Check cron-job.org dashboard shows job enabled
+   - Check Netlify scheduled functions dashboard shows job enabled
    - Verify first execution succeeded
 
 2. **Verify queue created**
@@ -299,7 +299,7 @@ The 5 prospects in JF's campaign were added via the emergency bypass script from
 
 ## 📞 When You Return
 
-1. **Configure cron-job.org** (5 min)
+1. **Configure Netlify scheduled functions** (5 min)
 2. **Re-activate JF's campaign** (2 min)
 3. **Verify email account connected** (check Supabase)
 4. **Monitor first email send** (check logs)
@@ -313,4 +313,4 @@ Everything else is deployed and ready.
 **Campaign Status:** ✅ ACTIVE (needs re-activation to trigger queue)
 **Cron Job Status:** ⚠️ NOT CONFIGURED YET
 
-**Next Agent:** Start by configuring cron-job.org, then re-activate JF's campaign.
+**Next Agent:** Start by configuring Netlify scheduled functions, then re-activate JF's campaign.

@@ -5,14 +5,14 @@
 
 ## Overview
 
-Successfully migrated from unreliable external cron-job.org service to native Netlify scheduled functions for processing the LinkedIn connection request queue.
+Successfully migrated from unreliable external Netlify scheduled functions service to native Netlify scheduled functions for processing the LinkedIn connection request queue.
 
 ## What Changed
 
 ### ❌ Previous System (Deprecated)
-- **Provider**: cron-job.org (external third-party service)
+- **Provider**: Netlify scheduled functions (external third-party service)
 - **Reliability**: ⚠️ Unreliable - jobs stop being called without warning
-- **Configuration**: Manual setup in cron-job.org dashboard
+- **Configuration**: Manual setup in Netlify scheduled functions dashboard
 - **Monitoring**: Limited visibility into execution
 - **Cost**: Free tier (but quality issues)
 
@@ -52,7 +52,7 @@ Successfully migrated from unreliable external cron-job.org service to native Ne
 **File**: `netlify.toml`
 
 ```toml
-# Scheduled function: Process send queue every minute (replaces cron-job.org)
+# Scheduled function: Process send queue every minute (replaces Netlify scheduled functions)
 [functions."process-send-queue"]
   schedule = "* * * * *"
 ```
@@ -184,20 +184,20 @@ node scripts/js/test-netlify-queue-live.mjs
      -H 'x-cron-secret: 792e0c09eeee1a229b78a6341739613177fad24f401b1c82f2673bbb9ee806a0'
    ```
 4. Check send_queue table for stuck messages
-5. If needed, revert to cron-job.org (configuration still available)
+5. If needed, revert to Netlify scheduled functions (configuration still available)
 
-### Reverting to cron-job.org (If Needed)
+### Reverting to Netlify scheduled functions (If Needed)
 1. Remove from `netlify.toml`:
    ```toml
    # [functions."process-send-queue"]
    # schedule = "* * * * *"
    ```
-2. Set up cron-job.org again with URL and secret
+2. Set up Netlify scheduled functions again with URL and secret
 3. Deploy to production
 
-## Advantages Over cron-job.org
+## Advantages Over Netlify scheduled functions
 
-| Aspect | cron-job.org | Netlify Functions |
+| Aspect | Netlify scheduled functions | Netlify Functions |
 |--------|-------------|-------------------|
 | **Reliability** | ⚠️ Issues observed | ✅ Guaranteed |
 | **Configuration** | External dashboard | Version controlled |

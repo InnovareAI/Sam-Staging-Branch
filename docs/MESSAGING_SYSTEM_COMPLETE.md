@@ -840,7 +840,7 @@ NODE_ENV=production
 Schedule: Daily at 9 AM and 9 PM UTC
 URL: https://app.meet-sam.com/api/cron/check-relations
 Header: x-cron-secret: <value>
-Service: cron-job.org or similar
+Service: Netlify scheduled functions or similar
 ```
 
 **Follow-Ups (Send messages):**
@@ -848,7 +848,7 @@ Service: cron-job.org or similar
 Schedule: Every hour at :00
 URL: https://app.meet-sam.com/api/campaigns/direct/process-follow-ups
 Header: x-cron-secret: <value>
-Service: cron-job.org or similar
+Service: Netlify scheduled functions or similar
 ```
 
 ---

@@ -1,7 +1,7 @@
 /**
  * Netlify Scheduled Function: Process Send Queue
  *
- * Replaces external cron-job.org with native Netlify scheduling
+ * Native Netlify scheduling for queue processing
  * Runs every minute to send queued connection requests
  *
  * Scheduled to run: * * * * * (every minute) via netlify.toml

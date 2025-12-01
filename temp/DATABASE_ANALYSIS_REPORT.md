@@ -235,7 +235,7 @@ WHERE id IN (
 -- Check:
 --   1. Netlify function logs for errors
 --   2. Unipile API rate limit responses
---   3. Cron-job.org execution frequency (should be every 1 minute)
+--   3. Netlify scheduled functions execution frequency (should be every 1 minute)
 --   4. Whether cron secret header is correct
 ```
 
@@ -601,7 +601,7 @@ DROP TABLE campaigns_backup_20241124;
 # Check Netlify function logs
 netlify logs --function process-send-queue --tail
 
-# Check cron-job.org execution frequency
+# Check Netlify scheduled functions execution frequency
 # Should be running every 1 minute, processing 1 message per run
 
 # Check Unipile API rate limits
@@ -630,7 +630,7 @@ netlify logs --function process-send-queue --tail
 
 **P0-3: Fix Stuck Queue Processing**
 - **Action:** Investigate cron job execution and Unipile rate limits
-- **Files:** `/app/api/cron/process-send-queue/route.ts`, cron-job.org settings
+- **Files:** `/app/api/cron/process-send-queue/route.ts`, Netlify scheduled functions settings
 - **Estimated Time:** 1-2 hours
 - **Risk:** High (campaign execution blocked)
 

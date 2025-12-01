@@ -144,13 +144,13 @@ Follow-up intervals: [5, 7, 5, 7] days
 - **Endpoint:** `POST /api/cron/check-relations`
 - **Schedule:** 1-2 times per day (e.g., 9 AM and 9 PM UTC)
 - **Headers:** `x-cron-secret: <value from env>`
-- **Service:** Use cron-job.org or similar
+- **Service:** Use Netlify scheduled functions or similar
 
 **Follow-Up Messages:**
 - **Endpoint:** `POST /api/campaigns/direct/process-follow-ups`
 - **Schedule:** Every hour
 - **Headers:** `x-cron-secret: <value from env>`
-- **Service:** Use cron-job.org or similar
+- **Service:** Use Netlify scheduled functions or similar
 
 ---
 

@@ -215,7 +215,7 @@ POST /api/campaigns/email/send-emails-queued
 • Inserts into email_send_queue table
 • Returns success in <2 seconds
   ↓
-Cron-job.org calls POST /api/cron/process-email-queue every 13 minutes
+Netlify scheduled functions calls POST /api/cron/process-email-queue every 13 minutes
   ↓
 • Checks: Is it 8-5? Not weekend? Not holiday?
 • If YES: Send next email via Unipile API
@@ -249,7 +249,7 @@ Email sent, prospect status updated
 #### Helper Scripts
 
 **`/scripts/setup-email-cron.sh`**
-- Displays complete cron-job.org configuration
+- Displays complete Netlify scheduled functions configuration
 - Shows exact header values with CRON_SECRET
 - Tests endpoint to verify it's working
 - Usage: `bash scripts/setup-email-cron.sh`
@@ -340,7 +340,7 @@ Email sent, prospect status updated
 
 ### Cron Job Configuration
 
-**Service:** cron-job.org
+**Service:** Netlify scheduled functions
 
 **Configuration:**
 ```
@@ -463,7 +463,7 @@ SELECT COUNT(*) FROM email_send_queue;
    bash scripts/setup-email-cron.sh
    ```
 
-2. Go to: https://cron-job.org/en/members/
+2. Go to: Netlify dashboard
 
 3. Create new cron job:
    - Title: `SAM Email Queue Processor`
@@ -475,7 +475,7 @@ SELECT COUNT(*) FROM email_send_queue;
 
 4. Enable the job
 
-5. Verify first execution in cron-job.org logs
+5. Verify first execution in Netlify scheduled functions logs
 
 **Expected Result:** Job runs every 13 minutes, returns "No emails ready to send" until queue is populated
 
@@ -677,7 +677,7 @@ AND status = 'pending';
    - Helper script to add prospects via Supabase SDK
 
 6. **`/scripts/setup-email-cron.sh`** (executable)
-   - Displays cron-job.org configuration details
+   - Displays Netlify scheduled functions configuration details
 
 7. **`/scripts/check-email-queue.sh`** (executable)
    - Monitors email queue status in real-time
@@ -756,7 +756,7 @@ AND status = 'pending';
 ### Helper Scripts
 
 1. **`/scripts/setup-email-cron.sh`**
-   - Displays complete cron-job.org configuration
+   - Displays complete Netlify scheduled functions configuration
    - Shows exact header values
    - Tests endpoint to verify working
    - Usage: `bash scripts/setup-email-cron.sh`
@@ -843,9 +843,9 @@ AND status = 'pending';
 
 ### Issue 4: Cron Job Not Configured (CRITICAL)
 
-**Problem:** Cron-job.org not configured yet
+**Problem:** Netlify scheduled functions not configured yet
 
-**Location:** External service (cron-job.org)
+**Location:** External service (Netlify scheduled functions)
 
 **Impact:** No emails will be sent from queue
 
@@ -871,7 +871,7 @@ AND status = 'pending';
    Should return: `{"success": true, "message": "No emails ready to send", "processed": 0}`
 
 3. **Check if cron job configured:**
-   - Ask user if they configured cron-job.org
+   - Ask user if they configured Netlify scheduled functions
    - If not, guide them through `bash scripts/setup-email-cron.sh`
 
 4. **Check if campaign re-activated:**
@@ -923,7 +923,7 @@ netlify logs --function process-email-queue --tail
 
 ### Priority Tasks
 
-1. **HIGH:** Configure cron-job.org (5 minutes)
+1. **HIGH:** Configure Netlify scheduled functions (5 minutes)
 2. **HIGH:** Verify email account connected
 3. **MEDIUM:** Re-activate JF's campaign to populate queue
 4. **MEDIUM:** Monitor first email send
@@ -973,7 +973,7 @@ netlify logs --function process-email-queue --tail
 ### External Links
 
 - **Production:** https://app.meet-sam.com
-- **Cron service:** https://cron-job.org
+- **Cron service:** https://Netlify scheduled functions
 - **Supabase:** https://latxadqrvrrrcvkktrog.supabase.co
 - **GitHub:** https://github.com/InnovareAI/Sam-New-Sep-7
 
@@ -998,7 +998,7 @@ netlify logs --function process-email-queue --tail
 
 ### Pending ⏳
 
-- [ ] Cron job configured on cron-job.org (manual step)
+- [ ] Cron job configured on Netlify scheduled functions (manual step)
 - [ ] JF's campaign re-activated to populate queue
 - [ ] Email account verified and connected
 - [ ] First email sent and verified
@@ -1040,7 +1040,7 @@ netlify logs --function process-email-queue --tail
 ### If Emails Not Sending
 
 1. **Check cron job configured:**
-   - Go to cron-job.org
+   - Go to Netlify scheduled functions
    - Verify job is enabled
    - Check execution log
 
@@ -1133,7 +1133,7 @@ This session successfully:
 7. ✅ Tested and verified endpoint working
 
 **Next steps:**
-1. Configure cron-job.org (5 min)
+1. Configure Netlify scheduled functions (5 min)
 2. Re-activate JF's campaign (2 min)
 3. Verify email account connected
 4. Monitor first email send

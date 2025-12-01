@@ -37,13 +37,13 @@
                     ┌───────────────┼───────────────┐
                     ▼               ▼               ▼
 ┌──────────────────────┐  ┌─────────────────┐  ┌─────────────────────────────┐
-│     SUPABASE         │  │    UNIPILE      │  │         CRON-JOB.ORG        │
+│     SUPABASE         │  │    UNIPILE      │  │   NETLIFY SCHEDULED FUNCS   │
 │                      │  │                 │  │                             │
-│  PostgreSQL + Auth   │  │  LinkedIn API   │  │  External scheduler         │
+│  PostgreSQL + Auth   │  │  LinkedIn API   │  │  Native Netlify scheduling  │
 │  + Row Level Security│  │  + Email API    │  │  Calls /api/cron/* every    │
 │                      │  │                 │  │  minute                     │
 │  URL: supabase.co    │  │  api6.unipile   │  │                             │
-│  Project: latxad...  │  │  .com:13670     │  │  Secret: 792e0c09...        │
+│  Project: latxad...  │  │  .com:13670     │  │  See netlify/functions/     │
 └──────────────────────┘  └─────────────────┘  └─────────────────────────────┘
 ```
 
@@ -152,25 +152,24 @@ POST /api/v1/messages/send               # Send connection request/message
 GET  /api/v1/users/me/relations          # Get accepted connections
 ```
 
-### 5. External Cron (cron-job.org)
+### 5. Netlify Scheduled Functions
 
-**Why External Cron:**
-- Netlify serverless functions timeout after 10 seconds (default)
-- Need reliable scheduling for message queue processing
-- External trigger ensures consistent execution
+**Location:** `/netlify/functions/`
 
-**Configuration:**
-- URL: `https://app.meet-sam.com/api/cron/process-send-queue`
-- Method: POST
-- Schedule: `* * * * *` (every minute)
-- Header: `x-cron-secret: 792e0c09eeee1a229b78a6341739613177fad24f401b1c82f2673bbb9ee806a0`
+**How it works:**
+- Native Netlify scheduled functions (no external service needed)
+- Uses `schedule` property in function config
+- Calls internal `/api/cron/*` endpoints with auth header
 
 **Jobs:**
-| Job | Schedule | Purpose |
-|-----|----------|---------|
-| `process-send-queue` | Every 1 min | Send queued LinkedIn CRs |
-| `poll-accepted-connections` | Every 5 min | Check for accepted connections |
-| `poll-message-replies` | Every 15 min | Detect prospect replies, stop follow-ups |
+| Function | Schedule | Purpose |
+|----------|----------|---------|
+| `process-send-queue.ts` | Every 1 min | Send queued LinkedIn CRs |
+| `poll-accepted-connections.ts` | Every 5 min | Check for accepted connections |
+| `poll-message-replies.ts` | Every 15 min | Detect prospect replies, stop follow-ups |
+
+**Authentication:**
+- Functions use `CRON_SECRET` env var to authenticate with API routes
 
 ### 6. N8N Workflows (NOT used for campaigns)
 

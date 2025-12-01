@@ -81,7 +81,7 @@ DELETE FROM campaign_prospects WHERE id IN (...);
 
 **Fix:** Investigate cron job and Unipile rate limits.
 - **File:** `/app/api/cron/process-send-queue/route.ts`
-- **Check:** Netlify function logs, cron-job.org settings
+- **Check:** Netlify function logs, Netlify scheduled functions settings
 - **Time:** 1-2 hours
 - **Risk:** Medium (requires debugging)
 
@@ -90,7 +90,7 @@ DELETE FROM campaign_prospects WHERE id IN (...);
 # Check Netlify logs for errors
 netlify logs --function process-send-queue --tail
 
-# Check cron-job.org execution frequency
+# Check Netlify scheduled functions execution frequency
 # Should be: Every 1 minute, processing 1 message per run
 # Current config: 1 message every 30 minutes = 48 messages/day max
 ```
@@ -162,7 +162,7 @@ netlify logs --function process-send-queue --tail
 ### Today (2-3 hours)
 1. ✅ Run `critical_fixes.sql` (fixes duplicates, orphaned records, assigns tiers)
 2. ✅ Run `backfill-linkedin-user-ids.ts --execute` (fixes 138 missing IDs)
-3. 🔍 Investigate queue processing slowdown (check Netlify logs + cron-job.org)
+3. 🔍 Investigate queue processing slowdown (check Netlify logs + Netlify scheduled functions)
 
 ### This Week (1 hour)
 4. 🧪 Test `workspace_prospects.workspace_id` type change in staging

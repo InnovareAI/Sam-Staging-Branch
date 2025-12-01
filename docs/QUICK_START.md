@@ -16,7 +16,7 @@ Done! ✅
 
 ### Task 2: Set Up Cron Job (2 min)
 
-Go to: https://cron-job.org/en/members/
+Go to: Netlify dashboard
 
 Click "Create Cronjob"
 
@@ -104,8 +104,8 @@ netlify logs --function process-send-queue --tail
 # Check queue status
 # Supabase: SELECT * FROM send_queue ORDER BY scheduled_for;
 
-# Check cron-job.org
-# https://cron-job.org/en/members/ → Click job → Execution log
+# Check Netlify scheduled functions
+# Netlify dashboard → Click job → Execution log
 
 # Check LinkedIn
 # LinkedIn → My Network → Invitations sent
@@ -117,8 +117,8 @@ netlify logs --function process-send-queue --tail
 
 | Problem | Solution |
 |---------|----------|
-| "Unauthorized" in logs | x-cron-secret doesn't match. Update cron-job.org header |
-| No messages sending | Cron job might be disabled. Check https://cron-job.org/en/members/ status |
+| "Unauthorized" in logs | x-cron-secret doesn't match. Update Netlify scheduled functions header |
+| No messages sending | Cron job might be disabled. Check Netlify dashboard status |
 | Messages stuck pending | Check if it's weekend/holiday. Message will send next business day |
 | Database error | Execute the SQL table creation (Step 1 above) |
 
@@ -128,7 +128,6 @@ netlify logs --function process-send-queue --tail
 
 - **Full Details:** `docs/IMPLEMENTATION_COMPLETE.md`
 - **Testing Guide:** `docs/QUEUE_TESTING_SETUP.md`
-- **Cron-Job Setup:** `docs/CRON_JOB_ORG_SETUP.md`
 - **System Overview:** `docs/QUEUE_SYSTEM_COMPLETE.md`
 
 ---

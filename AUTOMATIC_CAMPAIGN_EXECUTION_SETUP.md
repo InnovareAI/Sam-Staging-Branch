@@ -7,9 +7,9 @@ Netlify scheduled functions are NOT running automatically. Connection requests o
 
 Use a free service to automatically call your API every 2 minutes.
 
-### Option 1: cron-job.org (Recommended - FREE)
+### Option 1: Netlify scheduled functions (Recommended - FREE)
 
-1. Go to: https://cron-job.org/en/
+1. Go to: https://Netlify scheduled functions/en/
 2. Sign up for free account
 3. Create new cron job:
    - **Title:** SAM Campaign Execution

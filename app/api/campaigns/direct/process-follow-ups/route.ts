@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 /**
  * Direct Campaign Execution - Process Follow-Ups
  *
- * Called by cron-job.org every hour:
+ * Called by Netlify scheduled functions every hour:
  * 1. Find prospects where follow_up_due_at <= NOW
  * 2. Check if connection accepted
  * 3. Send next follow-up message

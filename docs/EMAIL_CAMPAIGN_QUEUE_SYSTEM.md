@@ -70,7 +70,7 @@ External cron job sends emails from the queue:
 
 ```typescript
 // Endpoint: /api/cron/process-email-queue
-// Called by: cron-job.org every 13 minutes
+// Called by: Netlify scheduled functions every 13 minutes
 
 1. Check if now is valid send time:
    - Between 8 AM - 5 PM?
@@ -127,7 +127,7 @@ CREATE TABLE email_send_queue (
 
 ### Required Configuration
 
-**Service:** cron-job.org
+**Service:** Netlify scheduled functions
 **URL:** `https://app.meet-sam.com/api/cron/process-email-queue`
 **Method:** POST
 **Schedule:** Every 13 minutes
@@ -135,7 +135,7 @@ CREATE TABLE email_send_queue (
 
 ### Steps to Configure
 
-1. Go to https://cron-job.org
+1. Go to https://Netlify scheduled functions
 2. Create new cron job
 3. Configure:
    - Title: "SAM Email Queue Processor"
@@ -311,7 +311,7 @@ LIMIT 1;
 ### Issue: No emails being sent
 
 **Check:**
-1. Is cron job enabled? (cron-job.org dashboard)
+1. Is cron job enabled? (Netlify scheduled functions dashboard)
 2. Is `CRON_SECRET` set? (`netlify env:get CRON_SECRET`)
 3. Are we in business hours? (8 AM - 5 PM, weekday, not holiday)
 4. Are there pending emails? (query `email_send_queue` table)
@@ -367,7 +367,7 @@ LIMIT 1;
 
 1. ✅ Database migration applied
 2. ✅ Queue endpoints deployed
-3. ⚠️ **TODO:** Configure cron-job.org with correct secret
+3. ⚠️ **TODO:** Configure Netlify scheduled functions with correct secret
 4. ⚠️ **TODO:** Test with real campaign (5 prospects)
 5. ⚠️ **TODO:** Monitor first 24 hours of production usage
 
@@ -383,4 +383,4 @@ LIMIT 1;
 
 **Last Updated:** November 24, 2025, 19:30 UTC
 **Status:** ✅ PRODUCTION READY
-**Next Action:** Configure cron-job.org
+**Next Action:** Configure Netlify scheduled functions

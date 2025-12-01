@@ -344,14 +344,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - Cron processing endpoint `/api/cron/process-send-queue` (258 lines)
    - Database schema (`send_queue` table) created and tested in Supabase
    - Weekend/holiday blocking with 11+ US holidays (2025-2026)
-   - Cron-job.org integration enabled and running every minute
+   - Netlify scheduled functions enabled and running every minute
    - End-to-end tested: First CR successfully sent to Geline Clemente (Brand Manager at Danone - Australia & New Zealand)
 
    **HOW IT WORKS:**
    1. **Queue Creation**: POST `/api/campaigns/direct/send-connection-requests-queued` validates all prospects and creates queue records (returns in <2 seconds)
    2. **Scheduling**: Messages spaced 30 minutes apart (`prospectIndex * 30` minutes from queue time)
    3. **Business Hours**: Messages automatically skip weekends and public holidays, preserving scheduled time
-   4. **Cron Processing**: External cron-job.org calls POST `/api/cron/process-send-queue` every minute, processing exactly 1 message
+   4. **Cron Processing**: Netlify scheduled functions call POST `/api/cron/process-send-queue` every minute, processing exactly 1 message
    5. **Sending**: Successfully sends CRs via Unipile API, updates queue and prospect records
    6. **Rate Limiting**: 1 CR every 30 minutes = 20 CRs per 10 hours (never exceeds LinkedIn's daily limit)
 
@@ -364,12 +364,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - `/docs/QUEUE_TESTING_SETUP.md` - Testing guide
    - `/docs/QUEUE_SYSTEM_COMPLETE.md` - System architecture
 
-   **CRON CONFIGURATION:**
-   - URL: `https://app.meet-sam.com/api/cron/process-send-queue`
-   - Method: POST
-   - Schedule: `* * * * *` (every minute)
-   - Header: `x-cron-secret: 792e0c09eeee1a229b78a6341739613177fad24f401b1c82f2673bbb9ee806a0`
-   - Provider: cron-job.org (enabled, running)
+   **CRON CONFIGURATION (Netlify Scheduled Functions):**
+   - Function: `netlify/functions/process-send-queue.ts`
+   - Schedule: Every minute
+   - Uses internal `x-cron-secret` for auth
 
    **PRODUCTION VERIFICATION:**
    - Tested with real campaign (5 prospects)
@@ -406,7 +404,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    **MONITORING:**
    - Real-time logs: `netlify logs --function process-send-queue --tail`
    - Queue status (Supabase SQL): `SELECT status, COUNT(*) FROM send_queue WHERE campaign_id = '...' GROUP BY status;`
-   - Cron-job.org status: https://cron-job.org/en/members/ → Click job → Execution log
    - LinkedIn verification: LinkedIn → My Network → Invitations sent
 
    **Status:** ✅ DEPLOYED TO PRODUCTION, TESTED & VERIFIED (November 22, 2025)

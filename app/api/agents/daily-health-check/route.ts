@@ -2,7 +2,7 @@
  * Daily System Health Check Agent
  * Runs automated checks and uses Claude to analyze system health
  *
- * Trigger: cron-job.org daily at 6 AM UTC
+ * Trigger: Netlify scheduled functions daily at 6 AM UTC
  * POST /api/agents/daily-health-check
  */
 

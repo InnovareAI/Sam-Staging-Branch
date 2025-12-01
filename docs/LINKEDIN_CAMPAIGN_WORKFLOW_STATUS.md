@@ -115,7 +115,7 @@ https://workflows.innovareai.com/webhook/campaign-execute
 
 ### Flow Diagram
 ```
-Cron-jobs.org (every 5 minutes)
+Netlify scheduled functions (every 5 minutes)
     ↓
 Triggers N8N Schedule Trigger
     ↓
@@ -167,7 +167,7 @@ N8N sends LinkedIn connection requests via Unipile
    }
    ```
 
-**Cron Schedule:** Every 5 minutes (configured on cron-jobs.org)
+**Cron Schedule:** Every 5 minutes (configured on Netlify scheduled functions)
 
 ---
 
@@ -358,7 +358,7 @@ Add new HTTP Request node to N8N workflow after "Send CR" node:
 
 **System 2: Cron Polling**
 - Endpoint: `/api/campaigns/poll-pending`
-- Trigger: Cron-jobs.org every 5 minutes
+- Trigger: Netlify scheduled functions every 5 minutes
 - Use case: Background processing
 - Pro: Automatic execution
 - Con: 5-minute delay, polling overhead

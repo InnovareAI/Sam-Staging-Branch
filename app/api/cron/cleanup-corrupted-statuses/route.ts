@@ -94,7 +94,7 @@ export async function GET() {
     description: 'Automatically fixes prospects marked as sent without contacted_at',
     endpoint: '/api/cron/cleanup-corrupted-statuses',
     method: 'POST',
-    schedule: '0 * * * * (every hour via cron-job.org)',
+    schedule: '0 * * * * (every hour via Netlify scheduled functions)',
     behavior: {
       fixes: 'Prospects with status=connection_request_sent AND contacted_at=NULL',
       action: 'Sets status back to pending',

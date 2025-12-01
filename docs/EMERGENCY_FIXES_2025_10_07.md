@@ -26,7 +26,7 @@ CRON_SECRET=your_random_secure_string
 # Configure Netlify cron (netlify.toml or dashboard):
 # Function: /api/cron/process-outbox
 # Schedule: * * * * * (every minute)
-# Or use external cron (e.g., cron-job.org):
+# Or use external cron (e.g., Netlify scheduled functions):
 # URL: https://app.meet-sam.com/api/cron/process-outbox
 # Header: Authorization: Bearer your_cron_secret
 ```
@@ -241,7 +241,7 @@ Add to `netlify.toml`:
       "process-outbox" = "* * * * *"  # Every minute
 ```
 
-OR use external cron service (cron-job.org, EasyCron, etc):
+OR use external cron service (Netlify scheduled functions, EasyCron, etc):
 - URL: `https://app.meet-sam.com/api/cron/process-outbox`
 - Method: POST
 - Schedule: Every 1 minute

@@ -68,7 +68,7 @@ Content-Type: application/json
 **Size:** 258 lines
 
 **Functionality:**
-- Runs every minute via cron-job.org
+- Runs every minute via Netlify scheduled functions
 - Processes exactly 1 message per execution
 - Checks if message is due (scheduled_for <= NOW)
 - Validates it's not weekend/holiday
@@ -163,10 +163,10 @@ send_queue (
 
 **Verify:** Query should succeed with no errors
 
-### Step 2: Create Cron-Job.org Job (5 minutes)
+### Step 2: Create Netlify scheduled functions Job (5 minutes)
 
 **Option A: Web UI (Recommended)**
-1. Go to: https://cron-job.org/en/members/
+1. Go to: Netlify dashboard
 2. Click "Create Cronjob"
 3. Fill in:
    - Title: `SAM - Process Send Queue`
@@ -180,7 +180,7 @@ send_queue (
 
 **Option B: Curl Command**
 ```bash
-curl -X POST 'https://cron-job.org/api/v1/cronjob' \
+curl -X POST 'https://Netlify scheduled functions/api/v1/cronjob' \
   -H 'Authorization: Bearer XuT71S7zg+G4E7eSb0kjvrrB7AwRw9vSZB9hzOBXTgw=' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -197,7 +197,7 @@ curl -X POST 'https://cron-job.org/api/v1/cronjob' \
 ```
 
 **Verify:**
-1. Go to https://cron-job.org/en/members/
+1. Go to Netlify dashboard
 2. Find "SAM - Process Send Queue"
 3. Check "Execution log" shows recent successful runs
 4. Status should show **ENABLED** (green)
@@ -273,7 +273,7 @@ Return immediately with details
 ### Processing Flow
 
 ```
-Cron-Job.org fires (every minute)
+Netlify scheduled functions fires (every minute)
            ↓
 POST /api/cron/process-send-queue
   Header: x-cron-secret (validated)
@@ -361,15 +361,15 @@ sql/
 ```
 docs/
 ├── QUEUE_SYSTEM_COMPLETE.md (comprehensive overview)
-├── CRON_JOB_ORG_SETUP.md (detailed cron-job.org guide)
+├── CRON_JOB_ORG_SETUP.md (detailed Netlify scheduled functions guide)
 ├── QUEUE_TESTING_SETUP.md (testing & troubleshooting)
 └── IMPLEMENTATION_COMPLETE.md (this file)
 
 scripts/
 ├── js/
-│   └── setup-cron-job-org.mjs (automated setup)
+│   └── setup-cron.mjs (automated setup)
 └── shell/
-    └── create-cron-job.sh (manual instructions)
+    └── setup-cron.sh (manual instructions)
 ```
 
 ---
@@ -382,7 +382,7 @@ scripts/
 | Cron processing endpoint | ✅ Deployed | Production, app.meet-sam.com |
 | Weekend/holiday blocking | ✅ Deployed | 2025-2026 holidays included |
 | Database schema | ⏳ Pending | Execute in Supabase |
-| Cron-job.org job | ⏳ Pending | Create via web UI or curl |
+| Netlify scheduled functions job | ⏳ Pending | Create via web UI or curl |
 | Test campaign | ⏳ Pending | User action |
 
 ---
@@ -412,7 +412,7 @@ scripts/
 
 ### ✅ Reliability
 - Database persistence: Queue survives server restarts
-- Cron persistence: Jobs run continuously via cron-job.org
+- Cron persistence: Jobs run continuously via Netlify scheduled functions
 - Error recovery: Failed messages marked, logged
 - Status tracking: Real-time progress visible in DB
 - Rollback safe: No blocking changes to existing code
@@ -424,7 +424,7 @@ scripts/
 After completing all setup steps, verify:
 
 ✅ send_queue table exists in Supabase
-✅ Cron-job.org job shows ENABLED
+✅ Netlify scheduled functions job shows ENABLED
 ✅ Execution log shows successful runs
 ✅ Netlify logs show "Processing send queue..." messages
 ✅ Test campaign queues successfully
@@ -454,8 +454,8 @@ WHERE created_at > NOW() - INTERVAL '7 days';
 
 ### Troubleshooting
 ```bash
-# Check if cron-job.org job is enabled
-# Visit: https://cron-job.org/en/members/ → Check status
+# Check if Netlify scheduled functions job is enabled
+# Visit: Netlify dashboard → Check status
 
 # Check CRON_SECRET
 netlify env:list | grep CRON_SECRET
@@ -477,7 +477,7 @@ SELECT * FROM send_queue WHERE status = 'failed' ORDER BY created_at DESC LIMIT 
 4. Deploy: `netlify deploy --prod`
 
 **To change frequency:**
-1. Update cron-job.org schedule (not in code)
+1. Update Netlify scheduled functions schedule (not in code)
 2. Options: `* * * * *` (every minute), `*/5 * * * *` (every 5 min), etc.
 
 **To disable weekend skipping:**
@@ -590,7 +590,7 @@ Content-Type: application/json
 ## Next Steps
 
 1. **Execute SQL** - Create send_queue table in Supabase (5 min)
-2. **Create Cron Job** - Set up in cron-job.org (5 min)
+2. **Create Cron Job** - Set up in Netlify scheduled functions (5 min)
 3. **Test Campaign** - Create test campaign with 5-10 prospects (10 min)
 4. **Queue & Monitor** - Queue campaign and watch progress (15 min)
 5. **Validate LinkedIn** - Check that CRs appear in LinkedIn (5 min)
@@ -605,15 +605,15 @@ Content-Type: application/json
 
 | Issue | Solution |
 |-------|----------|
-| "Unauthorized cron request" | CRON_SECRET doesn't match - update cron-job.org header |
+| "Unauthorized cron request" | CRON_SECRET doesn't match - update Netlify scheduled functions header |
 | "Campaign not found" | Campaign ID is incorrect or doesn't exist |
-| Messages not sending | Check if cron-job.org is enabled, check Netlify logs |
+| Messages not sending | Check if Netlify scheduled functions is enabled, check Netlify logs |
 | Weekend messages stuck | Expected - will send Monday. Check if it's a public holiday |
 | Database errors | Create send_queue table, check RLS policies |
 
 ### Monitoring Links
 
-- Cron-Job.org: https://cron-job.org/en/members/
+- Netlify scheduled functions: Netlify dashboard
 - Supabase: https://app.supabase.com/project/latxadqrvrrrcvkktrog/
 - Production App: https://app.meet-sam.com
 - Netlify: https://app.netlify.com/sites/devin-next-gen
