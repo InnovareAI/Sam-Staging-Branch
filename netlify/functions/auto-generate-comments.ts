@@ -4,7 +4,7 @@
  * Generates AI comments for discovered posts that need comments
  * Runs every 30 minutes to keep comment queue flowing
  *
- * Scheduled to run: */30 * * * * (every 30 minutes) via netlify.toml
+ * Scheduled to run: every 30 minutes via netlify.toml
  */
 
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
