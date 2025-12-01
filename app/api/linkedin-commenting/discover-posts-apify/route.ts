@@ -701,11 +701,12 @@ export async function POST(request: NextRequest) {
         console.log(`⏰ Found ${recentPosts.length} posts from last ${maxAgeDays} days (filtered ${posts.length - recentPosts.length})`);
 
         // Check which posts already exist
-        const existingUrls = recentPosts.map((p: any) => p.url || p.postUrl).filter(Boolean);
+        // Note: Apify hashtag actor uses: post_url, full_urn, activity_id
+        const existingUrls = recentPosts.map((p: any) => p.post_url || p.url || p.postUrl).filter(Boolean);
 
         // Extract original social_ids for duplicate checking (preserve format)
         const existingSocialIds = recentPosts
-          .map((p: any) => p.urn || p.postUrn || p.id)
+          .map((p: any) => p.full_urn || p.urn || p.postUrn || p.activity_id || p.id)
           .filter(Boolean);
 
         const { data: existingPosts } = await supabase
@@ -724,11 +725,11 @@ export async function POST(request: NextRequest) {
         );
 
         const newPostsRaw = recentPosts.filter((p: any) => {
-          const url = p.url || p.postUrl;
+          const url = p.post_url || p.url || p.postUrl;
           if (existingUrlSet.has(url)) return false;
 
           // Compare using numeric ID (handles any URN format variation)
-          const socialId = p.urn || p.postUrn || p.id;
+          const socialId = p.full_urn || p.urn || p.postUrn || p.activity_id || p.id;
           if (!socialId) return true; // No social_id, assume new
 
           const numericMatch = String(socialId).match(/(\d{16,20})/);
@@ -777,7 +778,9 @@ export async function POST(request: NextRequest) {
           // Apify returns activity URNs from URLs, but Unipile needs ugcPost URNs to post comments
           // These have DIFFERENT numeric IDs!
           const postsToInsert = await Promise.all(newPosts.map(async (post: any) => {
-            let apifySocialId = post.urn || post.postUrn || post.id;
+            // Hashtag actor returns: full_urn, activity_id
+            // Profile actor returns: urn.activity_urn, full_urn
+            let apifySocialId = post.full_urn || post.urn || post.postUrn || post.activity_id || post.id;
 
             // Normalize to URN format if just a number
             if (apifySocialId && /^\d+$/.test(String(apifySocialId))) {
@@ -803,20 +806,22 @@ export async function POST(request: NextRequest) {
               workspace_id: monitor.workspace_id,
               monitor_id: monitor.id,
               social_id: finalSocialId,
-              share_url: post.url || post.postUrl || `https://www.linkedin.com/feed/update/${apifySocialId}`,
+              // Hashtag actor: post_url, Profile actor: url
+              share_url: post.post_url || post.url || post.postUrl || `https://www.linkedin.com/feed/update/${apifySocialId}`,
               post_content: post.text || post.content || '',
               author_name: resolvedAuthor.authorName || post.authorName || post.author?.name || post.author?.first_name || 'Unknown',
-              author_profile_id: post.authorProfileId || post.author?.username || post.author?.vanityName || null,
+              author_profile_id: post.authorProfileId || post.author?.username || post.author?.vanityName || post.author?.profile_id || null,
               author_title: resolvedAuthor.authorHeadline || post.authorTitle || post.author?.headline || null,
               author_headline: resolvedAuthor.authorHeadline || post.authorHeadline || post.author?.headline || null,
               hashtags: [keyword],
-              post_date: post.postedAt || post.posted_at?.timestamp
-                ? new Date(post.postedAt || post.posted_at?.timestamp).toISOString()
+              post_date: post.postedAt || post.posted_at?.timestamp || post.posted_at?.date
+                ? new Date(post.postedAt || post.posted_at?.timestamp || post.posted_at?.date).toISOString()
                 : new Date().toISOString(),
               engagement_metrics: {
-                comments: post.numComments || post.stats?.comments_count || 0,
+                // Hashtag actor: stats.comments, stats.total_reactions, stats.shares
+                comments: post.numComments || post.stats?.comments || post.stats?.comments_count || 0,
                 reactions: post.numLikes || post.stats?.total_reactions || 0,
-                reposts: post.numReposts || post.stats?.reposts_count || 0
+                reposts: post.numReposts || post.stats?.shares || post.stats?.reposts_count || 0
               },
               status: 'discovered'
             };
