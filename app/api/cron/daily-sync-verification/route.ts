@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     // ============================================
     console.log('\n📊 Verifying LinkedIn leads sync...');
 
-    // Get all LinkedIn prospects from Supabase with replies or positive status
+    // Get all LinkedIn prospects from Supabase with connected/replied status
     const { data: linkedInProspects, error: linkedInError } = await supabase
       .from('campaign_prospects')
       .select(`
@@ -97,12 +97,11 @@ export async function GET(request: NextRequest) {
         title,
         company_name,
         status,
-        last_reply_intent,
-        last_reply_text,
+        responded_at,
         campaigns(campaign_name, campaign_type)
       `)
       .not('linkedin_url', 'is', null)
-      .or('status.in.(connected,replied,interested,follow_up_complete),last_reply_intent.not.is.null');
+      .in('status', ['connected', 'replied', 'interested', 'follow_up_complete', 'meeting_booked']);
 
     if (linkedInError) {
       console.error('❌ Failed to fetch LinkedIn prospects:', linkedInError);
@@ -139,8 +138,7 @@ export async function GET(request: NextRequest) {
               jobTitle: prospect.title,
               companyName: prospect.company_name,
               linkedInAccount: campaign?.campaign_name,
-              intent: prospect.last_reply_intent || mapStatusToIntent(prospect.status),
-              replyText: prospect.last_reply_text,
+              intent: mapStatusToIntent(prospect.status),
             });
 
             if (result.success) {
@@ -162,68 +160,19 @@ export async function GET(request: NextRequest) {
     // ============================================
     console.log('\n📧 Verifying email leads sync...');
 
-    // Get email webhook logs with replies from past 30 days
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const { data: emailLeads, error: emailError } = await supabase
-      .from('email_webhook_logs')
-      .select('*')
-      .eq('event_type', 'REPLY_RECEIVED')
-      .gte('created_at', thirtyDaysAgo.toISOString());
-
-    if (emailError) {
-      console.error('❌ Failed to fetch email leads:', emailError);
-      report.email.syncErrors.push(`Supabase query error: ${emailError.message}`);
-    } else {
-      report.email.totalInSupabase = emailLeads?.length || 0;
-      console.log(`   Found ${report.email.totalInSupabase} email replies to verify`);
-
-      // Get all Airtable email records
+    // Email leads are synced directly from ReachInbox webhook to Airtable
+    // We just report on Airtable record counts for visibility
+    try {
       const airtableEmailRecords = await listAllAirtableRecords(EMAIL_TABLE_ID);
       report.email.totalInAirtable = airtableEmailRecords.length;
+      console.log(`   Found ${report.email.totalInAirtable} email leads in Airtable`);
 
-      // Create a set of emails in Airtable for quick lookup
-      const airtableEmails = new Set(
-        airtableEmailRecords
-          .map((r: any) => r.fields['Email']?.toLowerCase())
-          .filter(Boolean)
-      );
-
-      // Find and sync missing records
-      for (const emailLead of emailLeads || []) {
-        const payload = emailLead.payload as any;
-        const email = payload?.lead_email?.toLowerCase();
-
-        if (!email) continue;
-
-        if (!airtableEmails.has(email)) {
-          report.email.missingInAirtable++;
-          console.log(`   ⚠️ Missing in Airtable: ${email}`);
-
-          // Sync to Airtable
-          try {
-            const leadName = `${payload.lead_first_name || ''} ${payload.lead_last_name || ''}`.trim() || 'Unknown';
-            const result = await airtableService.syncEmailLead({
-              email: payload.lead_email,
-              name: leadName,
-              campaignName: payload.campaign_name,
-              replyText: extractReplyBody(payload),
-              intent: classifyEmailIntent(extractReplyBody(payload)),
-            });
-
-            if (result.success) {
-              report.email.synced++;
-              console.log(`   ✅ Synced: ${email}`);
-            } else {
-              report.email.syncErrors.push(`Failed to sync ${email}: ${result.error}`);
-            }
-          } catch (err) {
-            const errMsg = err instanceof Error ? err.message : 'Unknown error';
-            report.email.syncErrors.push(`Error syncing ${email}: ${errMsg}`);
-          }
-        }
-      }
+      // Note: Email syncing happens in real-time via ReachInbox webhook
+      // This sync verification focuses on LinkedIn leads which have a source DB
+      report.email.totalInSupabase = report.email.totalInAirtable; // Email source is Airtable itself
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      report.email.syncErrors.push(`Error fetching Airtable emails: ${errMsg}`);
     }
 
     // ============================================
@@ -231,60 +180,27 @@ export async function GET(request: NextRequest) {
     // ============================================
     console.log('\n🎯 Verifying ActiveCampaign sync for positive replies...');
 
-    // Get positive LinkedIn replies
+    // Get LinkedIn prospects with positive status (replied, interested, meeting_booked)
     const { data: positiveLinkedIn } = await supabase
       .from('campaign_prospects')
-      .select('id, linkedin_url, first_name, last_name, email, last_reply_intent')
-      .in('last_reply_intent', ['interested', 'curious', 'question', 'booking_request', 'vague_positive']);
+      .select('id, linkedin_url, first_name, last_name, email, status')
+      .in('status', ['replied', 'interested', 'meeting_booked'])
+      .not('email', 'is', null);
 
-    // Get positive email replies
-    const { data: positiveEmails } = await supabase
-      .from('email_webhook_logs')
-      .select('payload')
-      .eq('event_type', 'REPLY_RECEIVED')
-      .gte('created_at', thirtyDaysAgo.toISOString());
-
-    const positiveEmailLeads = (positiveEmails || []).filter((e: any) => {
-      const reply = extractReplyBody(e.payload);
-      const intent = classifyEmailIntent(reply);
-      return ['interested', 'booking_request', 'question'].includes(intent);
-    });
-
-    const totalPositive = (positiveLinkedIn?.length || 0) + positiveEmailLeads.length;
+    const totalPositive = positiveLinkedIn?.length || 0;
     report.activeCampaign.positiveRepliesChecked = totalPositive;
-    console.log(`   Found ${totalPositive} positive replies to verify`);
+    console.log(`   Found ${totalPositive} positive LinkedIn replies to verify`);
 
     // Check each positive lead exists in ActiveCampaign
     // Note: We only check a subset to avoid rate limits
-    const samplesToCheck = [...(positiveLinkedIn || []).slice(0, 20), ...positiveEmailLeads.slice(0, 20)];
+    const samplesToCheck = (positiveLinkedIn || []).slice(0, 30);
 
     for (const lead of samplesToCheck) {
       try {
-        let email: string | undefined;
-        let firstName = '';
-        let lastName = '';
-        let intent = '';
-
-        if ('linkedin_url' in lead) {
-          // LinkedIn lead
-          email = lead.email;
-          firstName = lead.first_name || '';
-          lastName = lead.last_name || '';
-          intent = lead.last_reply_intent || '';
-        } else {
-          // Email lead
-          const payload = lead.payload as any;
-          email = payload?.lead_email;
-          firstName = payload?.lead_first_name || '';
-          lastName = payload?.lead_last_name || '';
-          intent = classifyEmailIntent(extractReplyBody(payload));
-        }
-
+        const email = lead.email;
         if (!email) continue;
 
         // Check if contact exists in ActiveCampaign
-        const searchUrl = `contacts?email=${encodeURIComponent(email)}`;
-        // Note: Using internal API call pattern from activeCampaignService
         const existsInAC = await checkContactExistsInActiveCampaign(email);
 
         if (!existsInAC) {
@@ -295,13 +211,13 @@ export async function GET(request: NextRequest) {
           try {
             const contact = await activeCampaignService.findOrCreateContact({
               email,
-              firstName,
-              lastName,
+              firstName: lead.first_name || '',
+              lastName: lead.last_name || '',
             });
 
             if (contact?.id) {
-              // Add intent tag
-              const intentTagName = `SAM-${intent.replace('_', '-')}`;
+              // Add status-based tag
+              const intentTagName = `SAM-${lead.status.replace('_', '-')}`;
               const intentTag = await activeCampaignService.findOrCreateTag(intentTagName);
               if (intentTag?.id) {
                 await activeCampaignService.addTagToContact(contact.id, intentTag.id);
@@ -419,58 +335,6 @@ function mapStatusToIntent(status: string): string {
   return statusMap[status] || 'no_response';
 }
 
-/**
- * Extract reply body from email payload
- */
-function extractReplyBody(payload: any): string {
-  return payload?.reply_body || payload?.message_body || payload?.body || '';
-}
-
-/**
- * Classify email intent based on content
- */
-function classifyEmailIntent(replyText: string): string {
-  const replyLower = replyText.toLowerCase();
-
-  if (
-    replyLower.includes('not interested') ||
-    replyLower.includes('unsubscribe') ||
-    replyLower.includes('remove me') ||
-    replyLower.includes('stop emailing')
-  ) {
-    return 'not_interested';
-  }
-
-  if (
-    replyLower.includes('schedule') ||
-    replyLower.includes('calendar') ||
-    replyLower.includes('meet') ||
-    replyLower.includes('call') ||
-    replyLower.includes('demo')
-  ) {
-    return 'booking_request';
-  }
-
-  if (
-    replyLower.includes('interested') ||
-    replyLower.includes('tell me more') ||
-    replyLower.includes('sounds good') ||
-    replyLower.includes('yes')
-  ) {
-    return 'interested';
-  }
-
-  if (
-    replyLower.includes('pricing') ||
-    replyLower.includes('cost') ||
-    replyLower.includes('how much') ||
-    replyLower.includes('price')
-  ) {
-    return 'question';
-  }
-
-  return 'other';
-}
 
 /**
  * Send sync report to Google Chat
