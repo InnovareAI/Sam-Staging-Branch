@@ -245,6 +245,13 @@ export async function POST(request: NextRequest) {
 
     console.log(`#️⃣ Processing ${hashtagMonitors.length} hashtag monitors`);
 
+    // Filter for company monitors (COMPANY:company_slug)
+    const companyMonitors = monitors.filter(m =>
+      m.hashtags?.some((h: string) => h.startsWith('COMPANY:'))
+    );
+
+    console.log(`🏢 Processing ${companyMonitors.length} company monitors`);
+
     let totalDiscovered = 0;
     const APIFY_API_TOKEN = process.env.APIFY_API_TOKEN;
 
@@ -258,6 +265,7 @@ export async function POST(request: NextRequest) {
     // Actor URLs - replace with custom actors when ready
     const PROFILE_ACTOR = 'apimaestro~linkedin-profile-posts';
     const HASHTAG_ACTOR = 'apimaestro~linkedin-posts-search-scraper-no-cookies';
+    const COMPANY_ACTOR = 'apimaestro~linkedin-company-posts-scraper';
 
     if (!APIFY_API_TOKEN) {
       console.error('❌ Missing APIFY_API_TOKEN');
@@ -939,16 +947,283 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Process company monitors
+    let companiesScrapedThisRun = 0;
+    const MAX_COMPANIES_PER_RUN = 10; // Lower limit for companies (more expensive)
+
+    for (const monitor of companyMonitors) {
+      try {
+        // Check hard limit per run
+        if (companiesScrapedThisRun >= MAX_COMPANIES_PER_RUN) {
+          console.log(`⏸️ Reached max companies per run (${MAX_COMPANIES_PER_RUN}), stopping`);
+          break;
+        }
+
+        // Get all company entries from this monitor
+        const companyEntries = monitor.hashtags.filter((h: string) => h.startsWith('COMPANY:'));
+
+        for (const companyEntry of companyEntries) {
+          if (companiesScrapedThisRun >= MAX_COMPANIES_PER_RUN) break;
+
+          const companySlug = companyEntry.replace('COMPANY:', '').trim();
+          console.log(`\n🏢 Scraping company: ${companySlug}`);
+
+          // Start Apify actor run for company posts
+          console.log(`📡 Starting Apify company posts actor for ${companySlug}...`);
+
+          const startRunUrl = `https://api.apify.com/v2/acts/${COMPANY_ACTOR}/runs?token=${APIFY_API_TOKEN}&waitForFinish=120`;
+
+          const startResponse = await fetch(startRunUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              companyUrl: `https://www.linkedin.com/company/${companySlug}`,
+              company: companySlug,
+              companyId: companySlug,
+              // Try different parameter names
+              maxPosts: 3,
+              postsLimit: 3,
+              limit: 3
+            })
+          });
+
+          if (!startResponse.ok) {
+            console.error(`❌ Failed to start Apify company actor: ${startResponse.status}`);
+            const errorText = await startResponse.text();
+            console.error(`   Error: ${errorText}`);
+            continue;
+          }
+
+          const runData = await startResponse.json();
+          const runId = runData.data?.id;
+          const defaultDatasetId = runData.data?.defaultDatasetId;
+          const runStatus = runData.data?.status;
+
+          console.log(`📊 Apify company run ${runId}: status=${runStatus}, dataset=${defaultDatasetId}`);
+
+          if (runStatus !== 'SUCCEEDED') {
+            console.error(`❌ Company posts run did not succeed: ${runStatus}`);
+            continue;
+          }
+
+          console.log(`✅ Company posts scrape completed successfully`);
+
+          // Get dataset items
+          const datasetUrl = `https://api.apify.com/v2/datasets/${defaultDatasetId}/items?token=${APIFY_API_TOKEN}`;
+          const dataResponse = await fetch(datasetUrl);
+
+          if (!dataResponse.ok) {
+            console.error(`❌ Failed to get company dataset items: ${dataResponse.status}`);
+            continue;
+          }
+
+          const data = await dataResponse.json();
+
+          // Log the raw response structure for debugging
+          console.log(`📦 Raw Apify company response:`, JSON.stringify(data).substring(0, 500));
+
+          const posts = Array.isArray(data) ? data : [];
+
+          console.log(`📦 Apify returned ${posts.length} company posts`);
+
+          if (!posts || posts.length === 0) {
+            console.log(`⚠️ No posts found for company ${companySlug}`);
+            continue;
+          }
+
+          // Filter posts by age (last 7 days)
+          const maxAgeDays = 7;
+          const cutoffDate = Date.now() - (maxAgeDays * 24 * 60 * 60 * 1000);
+
+          const recentPosts = posts.filter((post: any) => {
+            const postTimestamp = post.postedAt || post.posted_at?.timestamp || post.timestamp || post.date;
+            if (!postTimestamp) return true; // Include if no timestamp
+            const ts = typeof postTimestamp === 'number' ? postTimestamp : new Date(postTimestamp).getTime();
+            return ts >= cutoffDate;
+          });
+
+          console.log(`⏰ Found ${recentPosts.length} company posts from last ${maxAgeDays} days`);
+
+          // Check which posts already exist
+          const existingUrls = recentPosts.map((p: any) => p.post_url || p.url || p.postUrl).filter(Boolean);
+          const existingSocialIds = recentPosts
+            .map((p: any) => p.full_urn || p.urn || p.postUrn || p.activity_id || p.id)
+            .filter(Boolean);
+
+          const { data: existingPosts } = await supabase
+            .from('linkedin_posts_discovered')
+            .select('share_url, social_id')
+            .eq('workspace_id', monitor.workspace_id)
+            .or(`share_url.in.(${existingUrls.join(',')}),social_id.in.(${existingSocialIds.join(',')})`);
+
+          const existingUrlSet = new Set(existingPosts?.map(p => p.share_url) || []);
+          const existingDbNumericIds = new Set(
+            existingPosts?.map(p => {
+              const match = String(p.social_id || '').match(/(\d{16,20})/);
+              return match ? match[1] : null;
+            }).filter(Boolean) || []
+          );
+
+          const newPostsRaw = recentPosts.filter((p: any) => {
+            const url = p.post_url || p.url || p.postUrl;
+            if (existingUrlSet.has(url)) return false;
+
+            const socialId = p.full_urn || p.urn || p.postUrn || p.activity_id || p.id;
+            if (!socialId) return true;
+
+            const numericMatch = String(socialId).match(/(\d{16,20})/);
+            if (numericMatch && existingDbNumericIds.has(numericMatch[1])) {
+              return false;
+            }
+            return true;
+          });
+
+          // Filter out hiring and engagement bait posts
+          let hiringSkipped = 0;
+          let engagementBaitSkipped = 0;
+
+          const newPosts = newPostsRaw.filter((p: any) => {
+            const postContent = p.text || p.content || '';
+
+            const hiringCheck = isHiringPost(postContent);
+            if (hiringCheck.isHiring) {
+              hiringSkipped++;
+              console.log(`💼 Skipping hiring company post: "${hiringCheck.matchedPattern}"`);
+              return false;
+            }
+
+            const baitCheck = isEngagementBait(postContent);
+            if (baitCheck.isBait) {
+              engagementBaitSkipped++;
+              console.log(`🚫 Skipping engagement bait company post: "${baitCheck.matchedPattern}"`);
+              return false;
+            }
+            return true;
+          });
+
+          console.log(`🆕 Found ${newPosts.length} new company posts to store`);
+
+          // Store new posts
+          if (newPosts.length > 0) {
+            // Get Unipile account for this workspace to resolve correct URNs
+            const { data: linkedinAccount } = await supabase
+              .from('workspace_accounts')
+              .select('unipile_account_id')
+              .eq('workspace_id', monitor.workspace_id)
+              .eq('account_type', 'linkedin')
+              .eq('connection_status', 'connected')
+              .limit(1)
+              .single();
+
+            const unipileAccountId = linkedinAccount?.unipile_account_id;
+
+            const postsToInsert = await Promise.all(newPosts.map(async (post: any) => {
+              let apifySocialId = post.full_urn || post.urn || post.postUrn || post.activity_id || post.id;
+
+              if (apifySocialId && /^\d+$/.test(String(apifySocialId))) {
+                apifySocialId = `urn:li:activity:${apifySocialId}`;
+              }
+
+              let finalSocialId = apifySocialId;
+              let resolvedAuthor: { authorName?: string; authorHeadline?: string } = {};
+
+              if (unipileAccountId && apifySocialId) {
+                const resolved = await resolveCorrectUrn(apifySocialId, unipileAccountId);
+                if (resolved) {
+                  finalSocialId = resolved.socialId;
+                  resolvedAuthor = {
+                    authorName: resolved.authorName,
+                    authorHeadline: resolved.authorHeadline
+                  };
+                }
+              }
+
+              return {
+                workspace_id: monitor.workspace_id,
+                monitor_id: monitor.id,
+                social_id: finalSocialId,
+                share_url: post.post_url || post.url || post.postUrl || `https://www.linkedin.com/feed/update/${apifySocialId}`,
+                post_content: post.text || post.content || '',
+                author_name: resolvedAuthor.authorName || post.companyName || post.company?.name || companySlug,
+                author_profile_id: companySlug,
+                author_title: resolvedAuthor.authorHeadline || 'Company Page',
+                author_headline: resolvedAuthor.authorHeadline || 'Company Page',
+                hashtags: [],
+                post_date: post.postedAt || post.posted_at?.timestamp
+                  ? new Date(post.postedAt || post.posted_at?.timestamp).toISOString()
+                  : new Date().toISOString(),
+                engagement_metrics: {
+                  comments: post.numComments || post.stats?.comments || 0,
+                  reactions: post.numLikes || post.stats?.total_reactions || post.stats?.likes || 0,
+                  reposts: post.numReposts || post.stats?.shares || 0
+                },
+                status: 'discovered'
+              };
+            }));
+
+            const { data: insertedPosts, error: insertError } = await supabase
+              .from('linkedin_posts_discovered')
+              .insert(postsToInsert)
+              .select();
+
+            if (insertError) {
+              if (insertError.code === '23505') {
+                console.warn(`⚠️ Some company posts already exist (duplicate prevented)`);
+              } else {
+                console.error(`❌ Error inserting company posts:`, insertError);
+              }
+            } else {
+              totalDiscovered += newPosts.length;
+              console.log(`✅ Stored ${newPosts.length} new company posts`);
+
+              // Auto-generate comments for new posts
+              if (insertedPosts && insertedPosts.length > 0) {
+                console.log(`🤖 Auto-generating comments for ${insertedPosts.length} new company posts...`);
+
+                fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/linkedin-commenting/auto-generate-comments`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    post_ids: insertedPosts.map(p => p.id),
+                    workspace_id: monitor.workspace_id,
+                    monitor_id: monitor.id
+                  })
+                }).catch(err => console.error('❌ Error triggering auto-comment generation:', err));
+              }
+            }
+          }
+
+          companiesScrapedThisRun++;
+        }
+
+        // Update monitor tracking
+        await supabase
+          .from('linkedin_post_monitors')
+          .update({
+            last_scraped_at: new Date().toISOString()
+          })
+          .eq('id', monitor.id);
+
+      } catch (error) {
+        console.error(`❌ Error processing company monitor ${monitor.id}:`, error);
+        continue;
+      }
+    }
+
     console.log(`\n✅ Discovery complete: ${totalDiscovered} new posts discovered`);
 
     return NextResponse.json({
       success: true,
-      monitorsProcessed: profileMonitors.length + hashtagMonitors.length,
+      monitorsProcessed: profileMonitors.length + hashtagMonitors.length + companyMonitors.length,
       profileMonitorsProcessed: profileMonitors.length,
       hashtagMonitorsProcessed: hashtagMonitors.length,
+      companyMonitorsProcessed: companyMonitors.length,
       postsDiscovered: totalDiscovered,
       debug: {
         hashtagsSearched: hashtagsBeingSearched,
+        companiesScraped: companiesScrapedThisRun,
         note: 'Check Netlify logs for detailed Apify response data'
       }
     });
