@@ -674,19 +674,31 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Filter posts by age (last 24 hours)
-        const maxAgeHours = 24;
-        const cutoffDate = Date.now() - (maxAgeHours * 60 * 60 * 1000);
+        // Filter posts by age (last 7 days to get more results)
+        const maxAgeDays = 7;
+        const cutoffDate = Date.now() - (maxAgeDays * 24 * 60 * 60 * 1000);
+
+        // Debug: Log first post structure to understand the data format
+        if (posts.length > 0) {
+          console.log(`🔬 First hashtag post structure:`, JSON.stringify(posts[0], null, 2).substring(0, 1000));
+        }
 
         const recentPosts = posts.filter((post: any) => {
           // Hashtag actor may use different timestamp field
-          const postTimestamp = post.postedAt || post.posted_at?.timestamp || post.timestamp;
-          if (!postTimestamp) return true; // Include if no timestamp (let DB dedup handle it)
+          const postTimestamp = post.postedAt || post.posted_at?.timestamp || post.timestamp || post.date;
+          if (!postTimestamp) {
+            console.log(`⚠️ Post has no timestamp, including anyway`);
+            return true; // Include if no timestamp (let DB dedup handle it)
+          }
           const ts = typeof postTimestamp === 'number' ? postTimestamp : new Date(postTimestamp).getTime();
-          return ts >= cutoffDate;
+          const isRecent = ts >= cutoffDate;
+          if (!isRecent) {
+            console.log(`⏰ Post filtered out - too old: ${new Date(ts).toISOString()}`);
+          }
+          return isRecent;
         });
 
-        console.log(`⏰ Found ${recentPosts.length} posts from last ${maxAgeHours} hours`);
+        console.log(`⏰ Found ${recentPosts.length} posts from last ${maxAgeDays} days (filtered ${posts.length - recentPosts.length})`);
 
         // Check which posts already exist
         const existingUrls = recentPosts.map((p: any) => p.url || p.postUrl).filter(Boolean);
@@ -857,7 +869,8 @@ export async function POST(request: NextRequest) {
       hashtagMonitorsProcessed: hashtagMonitors.length,
       postsDiscovered: totalDiscovered,
       debug: {
-        hashtagsSearched: hashtagsBeingSearched
+        hashtagsSearched: hashtagsBeingSearched,
+        note: 'Check Netlify logs for detailed Apify response data'
       }
     });
 
