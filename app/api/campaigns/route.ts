@@ -129,29 +129,54 @@ export async function GET(req: NextRequest) {
       prospectCountMap[p.campaign_id] = (prospectCountMap[p.campaign_id] || 0) + 1;
     });
 
-    // Get sent counts (prospects with sent statuses) in a single query
-    const { data: sentProspects } = await supabaseAdmin
+    // Get all prospects with their statuses for detailed counts
+    const { data: allProspects } = await supabaseAdmin
       .from('campaign_prospects')
-      .select('campaign_id, status')
-      .in('campaign_id', campaignIds)
-      .in('status', ['processing', 'cr_sent', 'connection_request_sent', 'fu1_sent', 'fu2_sent', 'fu3_sent', 'fu4_sent', 'fu5_sent', 'completed', 'connection_requested', 'contacted', 'connected', 'messaging', 'replied']);
+      .select('campaign_id, status, responded_at')
+      .in('campaign_id', campaignIds);
 
-    sentProspects?.forEach((p: { campaign_id: string }) => {
-      sentCountMap[p.campaign_id] = (sentCountMap[p.campaign_id] || 0) + 1;
+    // Build detailed count maps
+    const connectedCountMap: Record<string, number> = {};
+    const repliedCountMap: Record<string, number> = {};
+
+    allProspects?.forEach((p: { campaign_id: string; status: string; responded_at: string | null }) => {
+      // Count sent (CR sent or beyond)
+      const sentStatuses = ['processing', 'cr_sent', 'connection_request_sent', 'fu1_sent', 'fu2_sent', 'fu3_sent', 'fu4_sent', 'fu5_sent', 'completed', 'connection_requested', 'contacted', 'connected', 'messaging', 'replied', 'follow_up_sent'];
+      if (sentStatuses.includes(p.status)) {
+        sentCountMap[p.campaign_id] = (sentCountMap[p.campaign_id] || 0) + 1;
+      }
+
+      // Count connected
+      if (p.status === 'connected' || p.status === 'messaging' || p.status === 'replied' || p.status === 'follow_up_sent') {
+        connectedCountMap[p.campaign_id] = (connectedCountMap[p.campaign_id] || 0) + 1;
+      }
+
+      // Count replied (has responded_at OR status is 'replied')
+      if (p.responded_at || p.status === 'replied') {
+        repliedCountMap[p.campaign_id] = (repliedCountMap[p.campaign_id] || 0) + 1;
+      }
     });
 
     // Transform campaigns with counts
-    const enrichedCampaigns = campaigns.map((campaign: any) => ({
-      ...campaign,
-      type: campaign.campaign_type || campaign.type,
-      prospects: prospectCountMap[campaign.id] || 0,
-      sent: sentCountMap[campaign.id] || 0,
-      opened: 0,
-      replied: 0,
-      connections: 0,
-      replies: 0,
-      response_rate: 0
-    }));
+    const enrichedCampaigns = campaigns.map((campaign: any) => {
+      const total = prospectCountMap[campaign.id] || 0;
+      const sent = sentCountMap[campaign.id] || 0;
+      const connections = connectedCountMap[campaign.id] || 0;
+      const replied = repliedCountMap[campaign.id] || 0;
+      const responseRate = sent > 0 ? Math.round((replied / sent) * 100) : 0;
+
+      return {
+        ...campaign,
+        type: campaign.campaign_type || campaign.type,
+        prospects: total,
+        sent: sent,
+        opened: 0, // Not tracked for LinkedIn
+        replied: replied,
+        connections: connections,
+        replies: replied,
+        response_rate: responseRate
+      };
+    });
 
     console.log('✅ [CAMPAIGNS API] Returning', enrichedCampaigns.length, 'campaigns');
     return apiSuccess({ campaigns: enrichedCampaigns });
