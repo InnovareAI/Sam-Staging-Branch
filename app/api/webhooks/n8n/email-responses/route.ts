@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { verifyN8NWebhook, getRequestBody } from '@/lib/security/webhook-auth';
+import { airtableService } from '@/lib/airtable';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -198,7 +199,7 @@ async function classifyAndRouteEmailResponse(prospectId: string, payload: any) {
 
 async function routeEmailToSales(prospectId: string, payload: any) {
   console.log('🎯 Routing email lead to sales team:', prospectId);
-  
+
   const { error } = await supabase
     .from('sales_notifications')
     .insert({
@@ -213,6 +214,38 @@ async function routeEmailToSales(prospectId: string, payload: any) {
 
   if (error) {
     console.error('❌ Failed to create email sales notification:', error);
+  }
+
+  // Sync to Airtable Cold Email table
+  try {
+    // Get prospect details for Airtable
+    const { data: prospect } = await supabase
+      .from('campaign_prospects')
+      .select('first_name, last_name, company, campaigns(campaign_name)')
+      .eq('id', prospectId)
+      .single();
+
+    const prospectName = prospect
+      ? `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim()
+      : payload.from_email.split('@')[0];
+
+    console.log(`📊 Syncing positive email lead to Airtable: ${prospectName}`);
+
+    const airtableResult = await airtableService.syncEmailLead({
+      email: payload.from_email,
+      name: prospectName || 'Unknown',
+      campaignName: (prospect?.campaigns as any)?.campaign_name,
+      replyText: payload.response_content,
+      intent: payload.response_classification === 'meeting_request' ? 'booking_request' : 'interested',
+    });
+
+    if (airtableResult.success) {
+      console.log(`✅ Airtable email sync successful - Record ID: ${airtableResult.recordId}`);
+    } else {
+      console.log(`⚠️ Airtable email sync failed: ${airtableResult.error}`);
+    }
+  } catch (airtableError) {
+    console.error('❌ Airtable email sync error:', airtableError);
   }
 }
 

@@ -10,6 +10,7 @@ import { generateReplyDraft, getDefaultSettings } from '@/lib/services/reply-dra
 import { syncInterestedLeadToCRM } from '@/lib/services/crm-sync';
 import { sendCampaignReplyNotification } from '@/lib/notifications/google-chat';
 import { activeCampaignService } from '@/lib/activecampaign';
+import { airtableService } from '@/lib/airtable';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -310,6 +311,32 @@ export async function POST(request: NextRequest) {
         }
       } catch (acError) {
         console.error('❌ ActiveCampaign sync error:', acError);
+      }
+
+      // Sync to Airtable LinkedIn Positive Leads table
+      try {
+        const firstName = prospect?.first_name || senderName.split(' ')[0] || 'Unknown';
+        const lastName = prospect?.last_name || senderName.split(' ').slice(1).join(' ') || '';
+
+        console.log(`📊 Syncing positive lead to Airtable: ${firstName} ${lastName}`);
+
+        const airtableResult = await airtableService.syncLinkedInLead({
+          profileUrl: prospect?.linkedin_url || senderProfileUrl,
+          name: `${firstName} ${lastName}`.trim(),
+          jobTitle: prospect?.title,
+          companyName: prospectCompany,
+          linkedInAccount: account.account_email,
+          intent: intent.intent,
+          replyText: messageText,
+        });
+
+        if (airtableResult.success) {
+          console.log(`✅ Airtable sync successful - Record ID: ${airtableResult.recordId}`);
+        } else {
+          console.log(`⚠️ Airtable sync failed: ${airtableResult.error}`);
+        }
+      } catch (airtableError) {
+        console.error('❌ Airtable sync error:', airtableError);
       }
     }
 
