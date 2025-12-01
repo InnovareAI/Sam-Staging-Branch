@@ -16,14 +16,83 @@ const supabaseAdmin = createClient(
  * Format: email_account → country/region for Airtable sync
  */
 const EMAIL_ACCOUNT_TO_COUNTRY: Record<string, string> = {
-  // Add your ReachInbox sending accounts here:
-  // 'sales@innovareai.de': 'Germany',
-  // 'outreach@innovareai.com': 'USA',
-  // etc.
+  // === DACH (Germany/Austria/Switzerland) ===
+  'jfleming@tryinnovaredigital.com': 'DACH',
+  'jfleming@tryinnovareai.com': 'DACH',
+  'j.fleming@tryinnovareai.com': 'DACH',
+  'jennifer.fleming@tryinnovareai.com': 'DACH',
+  'jfleming@tryinnovaredigi.us': 'DACH',
+
+  // === Asia & Middle East ===
+  'j.fleming@tryinnovaredigi.us': 'Asia & Middle East',
+  'jennifer.fleming@tryinnovaredigi.us': 'Asia & Middle East',
+  'jfleming@meetinnovaredigi.us': 'Asia & Middle East',
+  'j.fleming@meetinnovaredigi.us': 'Asia & Middle East',
+  'jennifer.fleming@meetinnovaredigi.us': 'Asia & Middle East',
+  'j.fleming@meetinnovaredigital.us': 'Asia & Middle East',
+  'jfleming@meetinnovaredigital.us': 'Asia & Middle East',
+  'jennifer.fleming@meetinnovaredigital.us': 'Asia & Middle East',
+  'jfleminng@meetinnovareai.us': 'Asia & Middle East',
+  'j.fleming@meetinnovareai.us': 'Asia & Middle East',
+  'jennifer.fleming@meetinnovareai.us': 'Asia & Middle East',
+  'jennifer.fleming@tryinnovaredigital.us': 'Asia & Middle East',
+  'j.fleming@tryinnovaredigital.us': 'Asia & Middle East',
+  'jfleminng@tryinnovaredigital.us': 'Asia & Middle East',
+  'jennifer.fleming@innovareai.us': 'Asia & Middle East',
+  'j.fleming@innovareai.us': 'Asia & Middle East',
+  'jfleminng@innovareai.us': 'Asia & Middle East',
+  'jfleminng@tryinnovareai.us': 'Asia & Middle East',
+  'j.fleming@tryinnovareai.us': 'Asia & Middle East',
+  'jennifer.fleming@tryinnovareai.us': 'Asia & Middle East',
+
+  // === Canada ===
+  'jfleming@meetinnovareai.com': 'Canada',
+  'j.fleming@meetinnovareai.com': 'Canada',
+  'jennifer.fleming@meetinnovareai.com': 'Canada',
+  'jennifer.fleming@tryinnovaredigital.com': 'Canada',
+  'j.fleming@tryinnovaredigital.com': 'Canada',
+  'j.fleming@meetinnovaredigi.com': 'Canada',
+  'jfleming@meetinnovaredigi.com': 'Canada',
+  'jennifer.fleming@meetinnovaredigi.com': 'Canada',
+  'jfleminng@meetinnovareai.app': 'Canada',
+  'j.fleming@meetinnovareai.app': 'Canada',
+  'jennifer.fleming@meetinnovareai.app': 'Canada',
+  'jennifer.fleming@tryinnovareai.app': 'Canada',
+  'j.fleming@tryinnovareai.app': 'Canada',
+  'jfleminng@tryinnovareai.app': 'Canada',
+  'jfleminng@tryinnovaredigi.com': 'Canada',
+  'j.fleming@tryinnovaredigi.com': 'Canada',
+  'jennifer.fleming@tryinnovaredigi.com': 'Canada',
+  'jennifer.fleming@meetinnovaredigital.com': 'Canada',
+  'j.fleming@meetinnovaredigital.com': 'Canada',
+  'jfleminng@meetinnovaredigital.com': 'Canada',
+  'jfleminng@innovareai.app': 'Canada',
+  'j.fleming@innovareai.app': 'Canada',
+  'jennifer.fleming@innovareai.app': 'Canada',
+  'jennifer.fleming@innovaredigi.com': 'Canada',
+  'j.fleming@innovaredigi.com': 'Canada',
+  'jfleminng@innovaredigi.com': 'Canada',
+
+  // === USA ===
+  'j.fleming@getgptagents.com': 'USA',
+  'jfleming@getgptagents.com': 'USA',
+  'jennifer.fleming@getgptagents.com': 'USA',
+  'j.fleming@gptagents.us': 'USA',
+  'jfleming@gptagents.us': 'USA',
+  'jennifer.fleming@gptagents.us': 'USA',
+  'j.fleming@trygptagents.com': 'USA',
+  'jfleming@trygptagents.com': 'USA',
+  'jennifer.fleming@trygptagents.com': 'USA',
+  'j.fleming@gpt-agents.us': 'USA',
+  'jfleming@gpt-agents.us': 'USA',
+  'jennifer.fleming@gpt-agents.us': 'USA',
+  'j.fleming@gpt-agents.io': 'USA',
+  'jfleming@gpt-agents.io': 'USA',
+  'jennifer.fleming@gpt-agents.io': 'USA',
 };
 
-// Set to true to sync ALL accounts (useful during setup to discover accounts)
-const SYNC_ALL_ACCOUNTS = true;
+// Set to false to only sync configured accounts, true to sync all
+const SYNC_ALL_ACCOUNTS = false;
 
 /**
  * Get country for Airtable sync based on email account
