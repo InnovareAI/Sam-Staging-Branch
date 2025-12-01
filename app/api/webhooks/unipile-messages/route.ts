@@ -9,6 +9,7 @@ import { classifyIntent } from '@/lib/services/intent-classifier';
 import { generateReplyDraft, getDefaultSettings } from '@/lib/services/reply-draft-generator';
 import { syncInterestedLeadToCRM } from '@/lib/services/crm-sync';
 import { sendCampaignReplyNotification } from '@/lib/notifications/google-chat';
+import { activeCampaignService } from '@/lib/activecampaign';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -261,6 +262,51 @@ export async function POST(request: NextRequest) {
         console.log(`✅ CRM sync successful: ${crmResult.crmType} - Contact: ${crmResult.contactId}`);
       } else if (crmResult.error !== 'No active CRM connection') {
         console.log(`⚠️ CRM sync skipped: ${crmResult.error}`);
+      }
+
+      // Sync to ActiveCampaign Newsletter list (ID 4)
+      // Creates contact and adds to newsletter for future nurturing
+      try {
+        const firstName = prospect?.first_name || senderName.split(' ')[0] || 'Unknown';
+        const lastName = prospect?.last_name || senderName.split(' ').slice(1).join(' ') || '';
+
+        // Generate placeholder email from LinkedIn profile if no email available
+        const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@linkedin-lead.placeholder`;
+
+        console.log(`📧 Syncing interested lead to ActiveCampaign Newsletter: ${firstName} ${lastName}`);
+
+        const acResult = await activeCampaignService.addNewMemberToList(
+          email,
+          firstName,
+          lastName,
+          '4', // Newsletter list ID
+          {
+            fieldValues: [
+              { field: 'LINKEDIN_URL', value: prospect?.linkedin_url || senderProfileUrl || '' },
+              { field: 'COMPANY', value: prospectCompany || '' },
+              { field: 'JOB_TITLE', value: prospect?.title || '' },
+              { field: 'SAM_INTENT', value: intent.intent },
+              { field: 'SAM_CAMPAIGN', value: prospect?.campaigns?.campaign_name || 'LinkedIn Campaign' }
+            ]
+          }
+        );
+
+        if (acResult.success) {
+          console.log(`✅ ActiveCampaign Newsletter sync successful - Contact ID: ${acResult.contactId}`);
+
+          // Add "SAM Interested Lead" tag
+          try {
+            const tag = await activeCampaignService.findOrCreateTag('SAM Interested Lead');
+            await activeCampaignService.addTagToContact(acResult.contactId!, tag.id);
+            console.log(`✅ Added "SAM Interested Lead" tag to contact`);
+          } catch (tagError) {
+            console.log(`⚠️ Could not add tag: ${tagError}`);
+          }
+        } else {
+          console.log(`⚠️ ActiveCampaign sync failed: ${acResult.error}`);
+        }
+      } catch (acError) {
+        console.error('❌ ActiveCampaign sync error:', acError);
       }
     }
 
