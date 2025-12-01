@@ -95,6 +95,46 @@ const EMAIL_ACCOUNT_TO_COUNTRY: Record<string, string> = {
 const SYNC_ALL_ACCOUNTS = false;
 
 /**
+ * Campaign Name Whitelist Patterns
+ * Only campaigns matching these patterns will be synced to Airtable.
+ * This filters out client campaigns that use the same email accounts.
+ *
+ * Patterns are case-insensitive and match the START of campaign names.
+ */
+const CAMPAIGN_WHITELIST_PATTERNS = [
+  'AI Sales Automation/',     // Main InnovareAI campaigns
+  '1/24',                     // Date-based campaigns (Jan 2024)
+  '2/24',                     // Feb 2024
+  '3/24',                     // etc.
+  '4/24',
+  '5/24',
+  '6/24',
+  '7/24',
+  '8/24',
+  '9/24',
+  '10/24',
+  '11/24',
+  '12/24',
+  '1/25',                     // 2025 campaigns
+  '2/25',
+  '3/25',
+  'CompuSafe',                // CompuSafe campaigns
+  'InnovareAI',               // InnovareAI campaigns
+];
+
+/**
+ * Check if campaign name matches whitelist patterns
+ * Returns true if campaign should be synced to Airtable
+ */
+function isCampaignWhitelisted(campaignName: string): boolean {
+  if (!campaignName) return false;
+  const nameLower = campaignName.toLowerCase();
+  return CAMPAIGN_WHITELIST_PATTERNS.some(pattern =>
+    nameLower.startsWith(pattern.toLowerCase())
+  );
+}
+
+/**
  * Get country for Airtable sync based on email account
  * Returns country if configured, or 'Unknown' if SYNC_ALL_ACCOUNTS is true
  */
@@ -140,6 +180,18 @@ export async function POST(req: NextRequest) {
       lead_name: `${webhook.lead_first_name || ''} ${webhook.lead_last_name || ''}`.trim(),
       timestamp: webhook.timestamp
     });
+
+    // Check if campaign is whitelisted for Airtable sync
+    const isWhitelisted = isCampaignWhitelisted(webhook.campaign_name);
+    if (!isWhitelisted) {
+      console.log(`⏭️ Skipping non-whitelisted campaign: ${webhook.campaign_name}`);
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        reason: 'Campaign not in whitelist',
+        campaign_name: webhook.campaign_name
+      });
+    }
 
     // Handle different webhook events
     switch (webhook.event) {
