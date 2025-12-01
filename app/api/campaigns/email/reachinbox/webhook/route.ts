@@ -1,134 +1,115 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/app/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { airtableService } from '@/lib/airtable';
 
+// Service role client for webhook processing (no user auth needed)
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
 /**
- * ReachInbox Workspace Configuration
- * Only workspaces listed here will sync to Airtable.
- * To find your workspace IDs:
- * 1. Check ReachInbox dashboard → Settings → Workspace
- * 2. Or check logs when webhooks fire - we log workspace_id with each event
+ * ReachInbox Email Account → Country Mapping
+ * Since ReachInbox doesn't send workspace_id in webhooks,
+ * we filter by email_account to determine country/region.
  *
- * Format: workspace_id → country/region for Airtable sync
+ * Format: email_account → country/region for Airtable sync
  */
-const AIRTABLE_ENABLED_WORKSPACES: Record<string, string> = {
-  // Add your workspace IDs here after discovering them from logs:
-  // 'ws_abc123': 'Germany',
-  // 'ws_def456': 'UK',
-  // 'ws_ghi789': 'US',
+const EMAIL_ACCOUNT_TO_COUNTRY: Record<string, string> = {
+  // Add your ReachInbox sending accounts here:
+  // 'sales@innovareai.de': 'Germany',
+  // 'outreach@innovareai.com': 'USA',
+  // etc.
 };
 
-// Set to true to sync ALL workspaces (useful during setup to discover IDs)
-const SYNC_ALL_WORKSPACES = true;
+// Set to true to sync ALL accounts (useful during setup to discover accounts)
+const SYNC_ALL_ACCOUNTS = true;
 
 /**
- * Check if workspace should sync to Airtable
- * Returns the country/region if enabled, or null if disabled
+ * Get country for Airtable sync based on email account
+ * Returns country if configured, or 'Unknown' if SYNC_ALL_ACCOUNTS is true
  */
-function shouldSyncToAirtable(workspaceId: string): string | null {
-  if (SYNC_ALL_WORKSPACES) {
-    // During setup, sync everything and discover workspace IDs from logs
+function getCountryForAccount(emailAccount: string): string | null {
+  if (SYNC_ALL_ACCOUNTS) {
     return 'Unknown';
   }
-  return AIRTABLE_ENABLED_WORKSPACES[workspaceId] || null;
+  return EMAIL_ACCOUNT_TO_COUNTRY[emailAccount] || null;
 }
 
-// ReachInbox webhook event types
+/**
+ * ReachInbox Webhook Payload
+ * Based on official ReachInbox documentation
+ */
 interface ReachInboxWebhook {
-  event_type: 'email_sent' | 'email_opened' | 'email_clicked' | 'email_replied' | 'email_bounced' | 'unsubscribed';
-  campaign_id: string;
-  workspace_id: string;
+  email_id: number;
+  lead_id: number;
+  lead_email: string;
+  email_account: string;
+  step_number: number;
   message_id: string;
-  prospect_id?: string;
-  account_id: string;
-  account_email: string;
   timestamp: string;
-  data: {
-    // For email_sent
-    recipient_email?: string;
-    subject?: string;
-    sent_at?: string;
-    
-    // For email_opened  
-    opened_at?: string;
-    user_agent?: string;
-    location?: string;
-    
-    // For email_clicked
-    clicked_at?: string;
-    clicked_url?: string;
-    
-    // For email_replied
-    reply_subject?: string;
-    reply_body?: string;
-    reply_from_email?: string;
-    reply_from_name?: string;
-    reply_at?: string;
-    
-    // For email_bounced
-    bounce_type?: 'hard' | 'soft';
-    bounce_reason?: string;
-    bounced_at?: string;
-    
-    // For unsubscribed
-    unsubscribed_at?: string;
-    unsubscribe_method?: 'link' | 'reply';
-  };
+  campaign_id: number;
+  campaign_name: string;
+  event: 'EMAIL_SENT' | 'EMAIL_OPENED' | 'EMAIL_CLICKED' | 'REPLY_RECEIVED' | 'EMAIL_BOUNCED' | 'LEAD_INTERESTED' | 'LEAD_NOT_INTERESTED' | 'CAMPAIGN_COMPLETED';
+  user_webhook_id: string;
+  lead_first_name?: string;
+  lead_last_name?: string;
+  email_sent_body?: string;
+  email_replied_body?: string;
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient();
-    
-    // Verify webhook signature if configured
-    const signature = req.headers.get('x-reachinbox-signature');
-    if (process.env.REACHINBOX_WEBHOOK_SECRET && signature) {
-      // TODO: Implement signature verification
-      console.log('Webhook signature verification not implemented');
-    }
-    
     const webhook: ReachInboxWebhook = await req.json();
-    
-    console.log('ReachInbox webhook received:', {
-      event_type: webhook.event_type,
+
+    console.log('📧 ReachInbox webhook received:', {
+      event: webhook.event,
       campaign_id: webhook.campaign_id,
-      workspace_id: webhook.workspace_id, // Log this to discover workspace IDs
-      account_email: webhook.account_email,
+      campaign_name: webhook.campaign_name,
+      email_account: webhook.email_account,
+      lead_email: webhook.lead_email,
+      lead_name: `${webhook.lead_first_name || ''} ${webhook.lead_last_name || ''}`.trim(),
       timestamp: webhook.timestamp
     });
 
     // Handle different webhook events
-    switch (webhook.event_type) {
-      case 'email_sent':
-        await handleEmailSent(webhook, supabase);
+    switch (webhook.event) {
+      case 'EMAIL_SENT':
+        await handleEmailSent(webhook);
         break;
-      case 'email_opened':
-        await handleEmailOpened(webhook, supabase);
+      case 'EMAIL_OPENED':
+        await handleEmailOpened(webhook);
         break;
-      case 'email_clicked':
-        await handleEmailClicked(webhook, supabase);
+      case 'EMAIL_CLICKED':
+        await handleEmailClicked(webhook);
         break;
-      case 'email_replied':
-        await handleEmailReplied(webhook, supabase);
+      case 'REPLY_RECEIVED':
+        await handleReplyReceived(webhook);
         break;
-      case 'email_bounced':
-        await handleEmailBounced(webhook, supabase);
+      case 'EMAIL_BOUNCED':
+        await handleEmailBounced(webhook);
         break;
-      case 'unsubscribed':
-        await handleUnsubscribed(webhook, supabase);
+      case 'LEAD_INTERESTED':
+        await handleLeadInterested(webhook);
+        break;
+      case 'LEAD_NOT_INTERESTED':
+        await handleLeadNotInterested(webhook);
+        break;
+      case 'CAMPAIGN_COMPLETED':
+        await handleCampaignCompleted(webhook);
         break;
       default:
-        console.log(`Unhandled ReachInbox webhook event: ${webhook.event_type}`);
+        console.log(`⚠️ Unhandled ReachInbox event: ${webhook.event}`);
     }
 
-    return NextResponse.json({ 
-      message: 'Webhook processed successfully',
-      event_type: webhook.event_type,
+    return NextResponse.json({
+      success: true,
+      event: webhook.event,
       campaign_id: webhook.campaign_id
     });
 
   } catch (error: any) {
-    console.error('ReachInbox webhook processing error:', error);
+    console.error('❌ ReachInbox webhook error:', error);
     return NextResponse.json(
       { error: 'Webhook processing failed', details: error.message },
       { status: 500 }
@@ -136,593 +117,335 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Handle email sent confirmation
-async function handleEmailSent(webhook: ReachInboxWebhook, supabase: any) {
+// Handle EMAIL_SENT
+async function handleEmailSent(webhook: ReachInboxWebhook) {
   try {
-    const { data } = webhook;
-    
-    // Find the campaign prospect by email
-    const { data: campaignProspect } = await supabase
-      .from('campaign_prospects')
-      .select(`
-        id,
-        prospect_id,
-        workspace_prospects (
-          id,
-          email_address
-        )
-      `)
-      .eq('campaign_id', webhook.campaign_id.replace('SAM AI Campaign ', ''))
-      .eq('workspace_prospects.email_address', data.recipient_email)
-      .single();
+    const leadName = `${webhook.lead_first_name || ''} ${webhook.lead_last_name || ''}`.trim() || 'Unknown';
 
-    if (campaignProspect) {
-      // Update prospect status
-      await supabase.rpc('update_campaign_prospect_status', {
-        p_campaign_id: webhook.campaign_id.replace('SAM AI Campaign ', ''),
-        p_prospect_id: campaignProspect.prospect_id,
-        p_status: 'email_sent',
-        p_email_message_id: webhook.message_id
-      });
+    console.log(`📤 Email sent: ${webhook.lead_email} (${leadName}) via ${webhook.email_account}`);
 
-      // Track campaign message
-      await supabase
-        .from('campaign_messages')
-        .insert({
-          campaign_id: webhook.campaign_id.replace('SAM AI Campaign ', ''),
-          prospect_id: campaignProspect.prospect_id,
-          platform: 'email',
-          platform_message_id: webhook.message_id,
-          message_content: `Subject: ${data.subject || 'N/A'}`,
-          recipient_email: data.recipient_email,
-          sender_account: webhook.account_email,
-          sent_at: data.sent_at || webhook.timestamp,
-          created_at: new Date().toISOString()
-        });
-
-      // Update campaign stats
-      await supabase.rpc('increment_campaign_stat', {
-        p_campaign_id: webhook.campaign_id.replace('SAM AI Campaign ', ''),
-        p_stat_name: 'emails_sent'
-      });
-
-      console.log(`Email sent tracked: ${data.recipient_email} via ${webhook.account_email}`);
-
-      // Sync to Airtable Cold Email table with "No Response" status
-      const workspaceRegion = shouldSyncToAirtable(webhook.workspace_id);
-      if (workspaceRegion) {
-        try {
-          await airtableService.syncEmailLead({
-            email: data.recipient_email || '',
-            name: 'Unknown', // Will be updated when prospect data is available
-            campaignName: `ReachInbox: ${webhook.campaign_id}`,
-            intent: 'no_response',
-            country: workspaceRegion,
-          });
-          console.log(`📊 Synced to Airtable: ${data.recipient_email} (No Response) [${workspaceRegion}]`);
-        } catch (airtableErr) {
-          console.error('Airtable sync error:', airtableErr);
-        }
-      } else {
-        console.log(`⏭️ Skipping Airtable sync for workspace ${webhook.workspace_id} (not configured)`);
-      }
-    }
-
-  } catch (error) {
-    console.error('Error handling email sent:', error);
-  }
-}
-
-// Handle email opened
-async function handleEmailOpened(webhook: ReachInboxWebhook, supabase: any) {
-  try {
-    // Find campaign message
-    const { data: message } = await supabase
+    // Track in campaign_messages
+    await supabaseAdmin
       .from('campaign_messages')
-      .select('id, campaign_id, prospect_id')
-      .eq('platform_message_id', webhook.message_id)
-      .eq('platform', 'email')
-      .single();
-
-    if (message) {
-      // Update prospect status if still at email_sent
-      const { data: prospect } = await supabase
-        .from('campaign_prospects')
-        .select('status')
-        .eq('campaign_id', message.campaign_id)
-        .eq('prospect_id', message.prospect_id)
-        .single();
-
-      if (prospect?.status === 'email_sent') {
-        await supabase.rpc('update_campaign_prospect_status', {
-          p_campaign_id: message.campaign_id,
-          p_prospect_id: message.prospect_id,
-          p_status: 'email_opened'
-        });
-      }
-
-      // Create interaction record
-      await supabase
-        .from('campaign_interactions')
-        .insert({
-          campaign_id: message.campaign_id,
-          prospect_id: message.prospect_id,
-          interaction_type: 'email_opened',
-          platform: 'email',
-          interaction_data: {
-            opened_at: webhook.data.opened_at || webhook.timestamp,
-            user_agent: webhook.data.user_agent,
-            location: webhook.data.location,
-            message_id: webhook.message_id
-          },
-          created_at: new Date().toISOString()
-        });
-
-      // Update campaign stats
-      await supabase.rpc('increment_campaign_stat', {
-        p_campaign_id: message.campaign_id,
-        p_stat_name: 'emails_opened'
-      });
-
-      console.log(`Email opened tracked for campaign ${message.campaign_id}`);
-    }
-
-  } catch (error) {
-    console.error('Error handling email opened:', error);
-  }
-}
-
-// Handle email clicked
-async function handleEmailClicked(webhook: ReachInboxWebhook, supabase: any) {
-  try {
-    const { data: message } = await supabase
-      .from('campaign_messages')
-      .select('id, campaign_id, prospect_id')
-      .eq('platform_message_id', webhook.message_id)
-      .eq('platform', 'email')
-      .single();
-
-    if (message) {
-      // Update prospect status
-      await supabase.rpc('update_campaign_prospect_status', {
-        p_campaign_id: message.campaign_id,
-        p_prospect_id: message.prospect_id,
-        p_status: 'email_clicked'
-      });
-
-      // Create interaction record
-      await supabase
-        .from('campaign_interactions')
-        .insert({
-          campaign_id: message.campaign_id,
-          prospect_id: message.prospect_id,
-          interaction_type: 'email_clicked',
-          platform: 'email',
-          interaction_data: {
-            clicked_at: webhook.data.clicked_at || webhook.timestamp,
-            clicked_url: webhook.data.clicked_url,
-            message_id: webhook.message_id
-          },
-          created_at: new Date().toISOString()
-        });
-
-      // Update campaign stats
-      await supabase.rpc('increment_campaign_stat', {
-        p_campaign_id: message.campaign_id,
-        p_stat_name: 'emails_clicked'
-      });
-
-      console.log(`Email click tracked for campaign ${message.campaign_id}`);
-    }
-
-  } catch (error) {
-    console.error('Error handling email clicked:', error);
-  }
-}
-
-// Handle email replied - MOST IMPORTANT for campaign success
-async function handleEmailReplied(webhook: ReachInboxWebhook, supabase: any) {
-  try {
-    const { data } = webhook;
-    
-    // Find campaign message
-    const { data: message } = await supabase
-      .from('campaign_messages')
-      .select(`
-        id,
-        campaign_id,
-        prospect_id,
-        recipient_email,
-        campaigns (
-          id,
-          workspace_id,
-          name
-        )
-      `)
-      .eq('platform_message_id', webhook.message_id)
-      .eq('platform', 'email')
-      .single();
-
-    if (message) {
-      // Update prospect status to replied
-      await supabase.rpc('update_campaign_prospect_status', {
-        p_campaign_id: message.campaign_id,
-        p_prospect_id: message.prospect_id,
-        p_status: 'replied',
-        p_reply_content: data.reply_body || 'Email reply received'
-      });
-
-      // Create interaction record
-      await supabase
-        .from('campaign_interactions')
-        .insert({
-          campaign_id: message.campaign_id,
-          prospect_id: message.prospect_id,
-          interaction_type: 'email_reply',
-          platform: 'email',
-          interaction_data: {
-            reply_subject: data.reply_subject,
-            reply_body: data.reply_body,
-            reply_from_email: data.reply_from_email,
-            reply_from_name: data.reply_from_name,
-            reply_at: data.reply_at || webhook.timestamp,
-            original_message_id: webhook.message_id
-          },
-          created_at: new Date().toISOString()
-        });
-
-      // Update campaign stats
-      await supabase.rpc('increment_campaign_stat', {
-        p_campaign_id: message.campaign_id,
-        p_stat_name: 'emails_replied'
-      });
-
-      // Create HITL approval session for SAM response
-      await createHITLApprovalSession({
-        workspaceId: message.campaigns.workspace_id,
-        campaignId: message.campaign_id,
-        prospectId: message.prospect_id,
-        originalMessageId: webhook.message_id,
-        originalMessageContent: data.reply_body || 'Email reply received',
-        originalMessageChannel: 'email',
-        prospectName: data.reply_from_name || data.reply_from_email,
-        prospectEmail: data.reply_from_email,
-        context: {
-          reply_to_campaign: message.campaigns.name,
-          original_subject: data.reply_subject,
-          via_reachinbox: true,
-          account_used: webhook.account_email
-        }
-      }, supabase);
-
-      console.log(`Email reply tracked and HITL session created for campaign ${message.campaign_id}`);
-
-      // Sync to Airtable - classify reply as positive or negative
-      const workspaceRegion = shouldSyncToAirtable(webhook.workspace_id);
-      if (workspaceRegion) {
-        try {
-          const replyLower = (data.reply_body || '').toLowerCase();
-          let intent = 'interested'; // Default for replies
-
-          // Classify reply intent
-          if (replyLower.includes('not interested') || replyLower.includes('no thank') ||
-              replyLower.includes('remove') || replyLower.includes('unsubscribe')) {
-            intent = 'not_interested';
-          } else if (replyLower.includes('wrong person') || replyLower.includes('not the right')) {
-            intent = 'wrong_person';
-          } else if (replyLower.includes('busy') || replyLower.includes('later') ||
-                     replyLower.includes('not now') || replyLower.includes('next quarter')) {
-            intent = 'timing';
-          } else if (replyLower.includes('meeting') || replyLower.includes('call') ||
-                     replyLower.includes('schedule') || replyLower.includes('demo')) {
-            intent = 'booking_request';
-          } else if (replyLower.includes('tell me more') || replyLower.includes('interested') ||
-                     replyLower.includes('learn more') || replyLower.includes('sounds good')) {
-            intent = 'interested';
-          } else if (replyLower.includes('pricing') || replyLower.includes('cost') ||
-                     replyLower.includes('how much') || replyLower.includes('?')) {
-            intent = 'question';
-          }
-
-          await airtableService.syncEmailLead({
-            email: data.reply_from_email || message.recipient_email,
-            name: data.reply_from_name || 'Unknown',
-            campaignName: message.campaigns?.name || `ReachInbox Campaign`,
-            replyText: data.reply_body,
-            intent: intent,
-            country: workspaceRegion,
-          });
-          console.log(`📊 Airtable updated: ${data.reply_from_email} → ${intent} [${workspaceRegion}]`);
-        } catch (airtableErr) {
-          console.error('Airtable sync error:', airtableErr);
-        }
-      } else {
-        console.log(`⏭️ Skipping Airtable sync for workspace ${webhook.workspace_id} (not configured)`);
-      }
-    }
-
-  } catch (error) {
-    console.error('Error handling email replied:', error);
-  }
-}
-
-// Handle email bounced
-async function handleEmailBounced(webhook: ReachInboxWebhook, supabase: any) {
-  try {
-    const { data } = webhook;
-    
-    const { data: message } = await supabase
-      .from('campaign_messages')
-      .select('id, campaign_id, prospect_id')
-      .eq('platform_message_id', webhook.message_id)
-      .eq('platform', 'email')
-      .single();
-
-    if (message) {
-      // Update prospect status
-      await supabase.rpc('update_campaign_prospect_status', {
-        p_campaign_id: message.campaign_id,
-        p_prospect_id: message.prospect_id,
-        p_status: 'email_bounced',
-        p_error_message: `${data.bounce_type} bounce: ${data.bounce_reason}`
-      });
-
-      // Create interaction record
-      await supabase
-        .from('campaign_interactions')
-        .insert({
-          campaign_id: message.campaign_id,
-          prospect_id: message.prospect_id,
-          interaction_type: 'email_bounced',
-          platform: 'email',
-          interaction_data: {
-            bounce_type: data.bounce_type,
-            bounce_reason: data.bounce_reason,
-            bounced_at: data.bounced_at || webhook.timestamp,
-            message_id: webhook.message_id
-          },
-          created_at: new Date().toISOString()
-        });
-
-      // Update campaign stats
-      await supabase.rpc('increment_campaign_stat', {
-        p_campaign_id: message.campaign_id,
-        p_stat_name: 'emails_bounced'
-      });
-
-      console.log(`Email bounce tracked: ${data.bounce_type} - ${data.bounce_reason}`);
-
-      // Sync bounce to Airtable as "Not Interested" (invalid email)
-      const workspaceRegion = shouldSyncToAirtable(webhook.workspace_id);
-      if (workspaceRegion) {
-        try {
-          const { data: messageData } = await supabase
-            .from('campaign_messages')
-            .select('recipient_email')
-            .eq('platform_message_id', webhook.message_id)
-            .single();
-
-          if (messageData?.recipient_email) {
-            await airtableService.syncEmailLead({
-              email: messageData.recipient_email,
-              name: 'Unknown',
-              campaignName: `ReachInbox (Bounced)`,
-              intent: 'not_interested',
-              replyText: `Bounced: ${data.bounce_type} - ${data.bounce_reason}`,
-              country: workspaceRegion,
-            });
-            console.log(`📊 Airtable updated: ${messageData.recipient_email} → Not Interested (bounced) [${workspaceRegion}]`);
-          }
-        } catch (airtableErr) {
-          console.error('Airtable sync error:', airtableErr);
-        }
-      } else {
-        console.log(`⏭️ Skipping Airtable sync for workspace ${webhook.workspace_id} (not configured)`);
-      }
-    }
-
-  } catch (error) {
-    console.error('Error handling email bounced:', error);
-  }
-}
-
-// Handle unsubscribed
-async function handleUnsubscribed(webhook: ReachInboxWebhook, supabase: any) {
-  try {
-    const { data } = webhook;
-    
-    // Find campaign message (may not exist for global unsubscribes)
-    const { data: message } = await supabase
-      .from('campaign_messages')
-      .select('id, campaign_id, prospect_id, recipient_email')
-      .eq('platform_message_id', webhook.message_id)
-      .eq('platform', 'email')
-      .single();
-
-    if (message) {
-      // Update prospect status
-      await supabase.rpc('update_campaign_prospect_status', {
-        p_campaign_id: message.campaign_id,
-        p_prospect_id: message.prospect_id,
-        p_status: 'unsubscribed'
-      });
-
-      // Create interaction record
-      await supabase
-        .from('campaign_interactions')
-        .insert({
-          campaign_id: message.campaign_id,
-          prospect_id: message.prospect_id,
-          interaction_type: 'unsubscribed',
-          platform: 'email',
-          interaction_data: {
-            unsubscribed_at: data.unsubscribed_at || webhook.timestamp,
-            unsubscribe_method: data.unsubscribe_method,
-            message_id: webhook.message_id
-          },
-          created_at: new Date().toISOString()
-        });
-
-      // Add to global suppression list
-      await supabase
-        .from('email_suppressions')
-        .upsert({
-          email: message.recipient_email,
-          reason: 'unsubscribed',
-          source: 'reachinbox',
-          created_at: new Date().toISOString()
-        }, { onConflict: 'email' });
-
-      console.log(`Unsubscribe tracked and added to suppression list: ${message.recipient_email}`);
-
-      // Sync to Airtable as "Not Interested"
-      const workspaceRegion = shouldSyncToAirtable(webhook.workspace_id);
-      if (workspaceRegion) {
-        try {
-          await airtableService.syncEmailLead({
-            email: message.recipient_email,
-            name: 'Unknown',
-            campaignName: `ReachInbox (Unsubscribed)`,
-            intent: 'not_interested',
-            replyText: `Unsubscribed via ${data.unsubscribe_method}`,
-            country: workspaceRegion,
-          });
-          console.log(`📊 Airtable updated: ${message.recipient_email} → Not Interested (unsubscribed) [${workspaceRegion}]`);
-        } catch (airtableErr) {
-          console.error('Airtable sync error:', airtableErr);
-        }
-      } else {
-        console.log(`⏭️ Skipping Airtable sync for workspace ${webhook.workspace_id} (not configured)`);
-      }
-    }
-
-  } catch (error) {
-    console.error('Error handling unsubscribed:', error);
-  }
-}
-
-// Create HITL approval session for SAM to respond to replies
-async function createHITLApprovalSession(params: {
-  workspaceId: string;
-  campaignId: string;
-  prospectId: string;
-  originalMessageId: string;
-  originalMessageContent: string;
-  originalMessageChannel: 'email' | 'linkedin';
-  prospectName: string;
-  prospectEmail?: string;
-  context?: any;
-}, supabase: any) {
-  try {
-    // Generate SAM's suggested reply
-    const samSuggestedReply = await generateSAMReply({
-      originalMessage: params.originalMessageContent,
-      prospectName: params.prospectName,
-      channel: params.originalMessageChannel,
-      context: params.context
-    });
-
-    // Get workspace admin for approval assignment
-    const { data: adminUser } = await supabase
-      .from('workspace_members')
-      .select(`
-        user_id,
-        users (email, full_name)
-      `)
-      .eq('workspace_id', params.workspaceId)
-      .in('role', ['owner', 'admin'])
-      .single();
-
-    const assignedToEmail = adminUser?.users?.email || 'admin@innovareai.com';
-
-    // Create HITL approval session
-    const { error: hitlError } = await supabase
-      .from('hitl_reply_approval_sessions')
       .insert({
-        workspace_id: params.workspaceId,
-        campaign_execution_id: params.campaignId,
-        original_message_id: params.originalMessageId,
-        original_message_content: params.originalMessageContent,
-        original_message_channel: params.originalMessageChannel,
-        prospect_name: params.prospectName,
-        prospect_email: params.prospectEmail,
-        sam_suggested_reply: samSuggestedReply,
-        sam_confidence_score: 0.85,
-        sam_reasoning: `Generated response to ReachInbox ${params.originalMessageChannel} reply from ${params.prospectName}`,
-        assigned_to_email: assignedToEmail,
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+        campaign_id: String(webhook.campaign_id),
+        platform: 'email',
+        platform_message_id: webhook.message_id,
+        message_content: webhook.email_sent_body || `Step ${webhook.step_number}`,
+        recipient_email: webhook.lead_email,
+        sender_account: webhook.email_account,
+        sent_at: webhook.timestamp,
+        created_at: new Date().toISOString(),
+        metadata: {
+          reachinbox_lead_id: webhook.lead_id,
+          campaign_name: webhook.campaign_name,
+          step_number: webhook.step_number
+        }
+      });
+
+    // Sync to Airtable with "No Response" status
+    const country = getCountryForAccount(webhook.email_account);
+    if (country) {
+      try {
+        await airtableService.syncEmailLead({
+          email: webhook.lead_email,
+          name: leadName,
+          campaignName: webhook.campaign_name,
+          intent: 'no_response',
+          country: country,
+        });
+        console.log(`📊 Airtable: ${webhook.lead_email} → No Response [${country}]`);
+      } catch (err) {
+        console.error('Airtable sync error:', err);
+      }
+    }
+  } catch (error) {
+    console.error('Error handling EMAIL_SENT:', error);
+  }
+}
+
+// Handle EMAIL_OPENED
+async function handleEmailOpened(webhook: ReachInboxWebhook) {
+  try {
+    console.log(`👁️ Email opened: ${webhook.lead_email} - Campaign: ${webhook.campaign_name}`);
+
+    // Track interaction
+    await supabaseAdmin
+      .from('campaign_interactions')
+      .insert({
+        campaign_id: String(webhook.campaign_id),
+        interaction_type: 'email_opened',
+        platform: 'email',
+        interaction_data: {
+          lead_email: webhook.lead_email,
+          message_id: webhook.message_id,
+          opened_at: webhook.timestamp,
+          campaign_name: webhook.campaign_name
+        },
+        created_at: new Date().toISOString()
+      });
+  } catch (error) {
+    console.error('Error handling EMAIL_OPENED:', error);
+  }
+}
+
+// Handle EMAIL_CLICKED
+async function handleEmailClicked(webhook: ReachInboxWebhook) {
+  try {
+    console.log(`🔗 Email clicked: ${webhook.lead_email} - Campaign: ${webhook.campaign_name}`);
+
+    // Track interaction
+    await supabaseAdmin
+      .from('campaign_interactions')
+      .insert({
+        campaign_id: String(webhook.campaign_id),
+        interaction_type: 'email_clicked',
+        platform: 'email',
+        interaction_data: {
+          lead_email: webhook.lead_email,
+          message_id: webhook.message_id,
+          clicked_at: webhook.timestamp,
+          campaign_name: webhook.campaign_name
+        },
+        created_at: new Date().toISOString()
+      });
+  } catch (error) {
+    console.error('Error handling EMAIL_CLICKED:', error);
+  }
+}
+
+// Handle REPLY_RECEIVED - Most important for sales
+async function handleReplyReceived(webhook: ReachInboxWebhook) {
+  try {
+    const leadName = `${webhook.lead_first_name || ''} ${webhook.lead_last_name || ''}`.trim() || 'Unknown';
+    const replyBody = webhook.email_replied_body || '';
+
+    console.log(`💬 Reply received from ${leadName} (${webhook.lead_email})`);
+    console.log(`   Campaign: ${webhook.campaign_name}`);
+    console.log(`   Reply preview: ${replyBody.substring(0, 100)}...`);
+
+    // Track interaction
+    await supabaseAdmin
+      .from('campaign_interactions')
+      .insert({
+        campaign_id: String(webhook.campaign_id),
+        interaction_type: 'email_reply',
+        platform: 'email',
+        interaction_data: {
+          lead_email: webhook.lead_email,
+          lead_name: leadName,
+          message_id: webhook.message_id,
+          reply_body: replyBody,
+          replied_at: webhook.timestamp,
+          campaign_name: webhook.campaign_name
+        },
         created_at: new Date().toISOString()
       });
 
-    if (hitlError) {
-      console.error('Failed to create HITL approval session:', hitlError);
-    } else {
-      console.log(`🔔 HITL approval session created for ${params.prospectName} reply via ReachInbox`);
-      console.log(`📧 Assigned to: ${assignedToEmail}`);
-      console.log(`💬 Suggested reply: ${samSuggestedReply.substring(0, 100)}...`);
+    // Classify reply intent
+    const replyLower = replyBody.toLowerCase();
+    let intent = 'interested'; // Default for replies
+
+    if (replyLower.includes('not interested') || replyLower.includes('no thank') ||
+        replyLower.includes('remove') || replyLower.includes('unsubscribe') ||
+        replyLower.includes('stop')) {
+      intent = 'not_interested';
+    } else if (replyLower.includes('wrong person') || replyLower.includes('not the right')) {
+      intent = 'wrong_person';
+    } else if (replyLower.includes('busy') || replyLower.includes('later') ||
+               replyLower.includes('not now') || replyLower.includes('next quarter') ||
+               replyLower.includes('next year')) {
+      intent = 'timing';
+    } else if (replyLower.includes('meeting') || replyLower.includes('call') ||
+               replyLower.includes('schedule') || replyLower.includes('demo') ||
+               replyLower.includes('book') || replyLower.includes('calendar')) {
+      intent = 'booking_request';
+    } else if (replyLower.includes('tell me more') || replyLower.includes('interested') ||
+               replyLower.includes('learn more') || replyLower.includes('sounds good') ||
+               replyLower.includes('yes')) {
+      intent = 'interested';
+    } else if (replyLower.includes('pricing') || replyLower.includes('cost') ||
+               replyLower.includes('how much') || replyLower.includes('price')) {
+      intent = 'question';
     }
 
+    console.log(`   Intent classified: ${intent}`);
+
+    // Sync to Airtable
+    const country = getCountryForAccount(webhook.email_account);
+    if (country) {
+      try {
+        await airtableService.syncEmailLead({
+          email: webhook.lead_email,
+          name: leadName,
+          campaignName: webhook.campaign_name,
+          replyText: replyBody,
+          intent: intent,
+          country: country,
+        });
+        console.log(`📊 Airtable updated: ${webhook.lead_email} → ${intent} [${country}]`);
+      } catch (err) {
+        console.error('Airtable sync error:', err);
+      }
+    }
   } catch (error) {
-    console.error('Error creating HITL approval session:', error);
+    console.error('Error handling REPLY_RECEIVED:', error);
   }
 }
 
-// Generate SAM's suggested reply (enhanced for ReachInbox context)
-async function generateSAMReply(params: {
-  originalMessage: string;
-  prospectName: string;
-  channel: 'email' | 'linkedin';
-  context?: any;
-}): Promise<string> {
-  const message = params.originalMessage.toLowerCase();
-  const isViaReachInbox = params.context?.via_reachinbox;
-  const accountUsed = params.context?.account_used;
-  
-  // Enhanced contextual responses for ReachInbox campaigns
-  if (message.includes('not interested') || message.includes('no thank') || message.includes('remove')) {
-    return `Hi ${params.prospectName},\n\nI completely understand and respect your decision. Thank you for taking the time to let me know.\n\nYou've been removed from our outreach list, and you won't receive any further emails from us.\n\nIf circumstances change in the future, please feel free to reach out.\n\nBest regards`;
+// Handle EMAIL_BOUNCED
+async function handleEmailBounced(webhook: ReachInboxWebhook) {
+  try {
+    console.log(`⚠️ Email bounced: ${webhook.lead_email} - Campaign: ${webhook.campaign_name}`);
+
+    // Track interaction
+    await supabaseAdmin
+      .from('campaign_interactions')
+      .insert({
+        campaign_id: String(webhook.campaign_id),
+        interaction_type: 'email_bounced',
+        platform: 'email',
+        interaction_data: {
+          lead_email: webhook.lead_email,
+          message_id: webhook.message_id,
+          bounced_at: webhook.timestamp,
+          campaign_name: webhook.campaign_name
+        },
+        created_at: new Date().toISOString()
+      });
+
+    // Add to suppression list
+    await supabaseAdmin
+      .from('email_suppressions')
+      .upsert({
+        email: webhook.lead_email,
+        reason: 'bounced',
+        source: 'reachinbox',
+        created_at: new Date().toISOString()
+      }, { onConflict: 'email' });
+
+    // Sync to Airtable as Not Interested (invalid email)
+    const country = getCountryForAccount(webhook.email_account);
+    if (country) {
+      try {
+        const leadName = `${webhook.lead_first_name || ''} ${webhook.lead_last_name || ''}`.trim() || 'Unknown';
+        await airtableService.syncEmailLead({
+          email: webhook.lead_email,
+          name: leadName,
+          campaignName: webhook.campaign_name,
+          intent: 'not_interested',
+          replyText: 'Email bounced - invalid address',
+          country: country,
+        });
+        console.log(`📊 Airtable: ${webhook.lead_email} → Not Interested (bounced)`);
+      } catch (err) {
+        console.error('Airtable sync error:', err);
+      }
+    }
+  } catch (error) {
+    console.error('Error handling EMAIL_BOUNCED:', error);
   }
-  
-  if (message.includes('tell me more') || message.includes('interested') || message.includes('learn more')) {
-    return `Hi ${params.prospectName},\n\nThank you for your interest! I'm excited to share more details about how we can help.\n\nWould you be available for a brief 15-minute call this week to discuss your specific needs and see if there's a good fit?\n\nI have availability on [DAY] at [TIME] or [DAY] at [TIME] - does either work for you?\n\nBest regards`;
+}
+
+// Handle LEAD_INTERESTED (manually marked in ReachInbox)
+async function handleLeadInterested(webhook: ReachInboxWebhook) {
+  try {
+    const leadName = `${webhook.lead_first_name || ''} ${webhook.lead_last_name || ''}`.trim() || 'Unknown';
+    console.log(`🎯 Lead marked INTERESTED: ${leadName} (${webhook.lead_email})`);
+
+    // Sync to Airtable
+    const country = getCountryForAccount(webhook.email_account);
+    if (country) {
+      try {
+        await airtableService.syncEmailLead({
+          email: webhook.lead_email,
+          name: leadName,
+          campaignName: webhook.campaign_name,
+          intent: 'interested',
+          country: country,
+        });
+        console.log(`📊 Airtable: ${webhook.lead_email} → Interested [${country}]`);
+      } catch (err) {
+        console.error('Airtable sync error:', err);
+      }
+    }
+  } catch (error) {
+    console.error('Error handling LEAD_INTERESTED:', error);
   }
-  
-  if (message.includes('pricing') || message.includes('cost') || message.includes('price') || message.includes('budget')) {
-    return `Hi ${params.prospectName},\n\nGreat question! Our pricing is customized based on your specific needs and usage requirements.\n\nI'd love to understand your current challenges and goals better so I can provide you with accurate pricing information that makes sense for your situation.\n\nWould you be open to a quick 15-minute call to discuss your requirements?\n\nBest regards`;
+}
+
+// Handle LEAD_NOT_INTERESTED (manually marked in ReachInbox)
+async function handleLeadNotInterested(webhook: ReachInboxWebhook) {
+  try {
+    const leadName = `${webhook.lead_first_name || ''} ${webhook.lead_last_name || ''}`.trim() || 'Unknown';
+    console.log(`❌ Lead marked NOT INTERESTED: ${leadName} (${webhook.lead_email})`);
+
+    // Sync to Airtable
+    const country = getCountryForAccount(webhook.email_account);
+    if (country) {
+      try {
+        await airtableService.syncEmailLead({
+          email: webhook.lead_email,
+          name: leadName,
+          campaignName: webhook.campaign_name,
+          intent: 'not_interested',
+          country: country,
+        });
+        console.log(`📊 Airtable: ${webhook.lead_email} → Not Interested [${country}]`);
+      } catch (err) {
+        console.error('Airtable sync error:', err);
+      }
+    }
+  } catch (error) {
+    console.error('Error handling LEAD_NOT_INTERESTED:', error);
   }
-  
-  if (message.includes('busy') || message.includes('swamped') || message.includes('later')) {
-    return `Hi ${params.prospectName},\n\nI completely understand - we're all juggling a lot these days!\n\nNo pressure at all. I'll follow up in a few weeks when things might be less hectic.\n\nIn the meantime, if anything changes or if you'd like to chat sooner, just let me know.\n\nBest regards`;
+}
+
+// Handle CAMPAIGN_COMPLETED
+async function handleCampaignCompleted(webhook: ReachInboxWebhook) {
+  try {
+    console.log(`✅ Campaign completed: ${webhook.campaign_name} (ID: ${webhook.campaign_id})`);
+
+    // Log completion for analytics
+    await supabaseAdmin
+      .from('campaign_interactions')
+      .insert({
+        campaign_id: String(webhook.campaign_id),
+        interaction_type: 'campaign_completed',
+        platform: 'email',
+        interaction_data: {
+          campaign_name: webhook.campaign_name,
+          completed_at: webhook.timestamp,
+          email_account: webhook.email_account
+        },
+        created_at: new Date().toISOString()
+      });
+  } catch (error) {
+    console.error('Error handling CAMPAIGN_COMPLETED:', error);
   }
-  
-  if (message.includes('wrong person') || message.includes('not the right') || message.includes('different department')) {
-    return `Hi ${params.prospectName},\n\nThanks for letting me know! I appreciate you taking the time to respond.\n\nWould you mind pointing me in the right direction? Who would be the best person to speak with about [TOPIC]?\n\nAny introduction or contact information would be incredibly helpful.\n\nThanks again!\n\nBest regards`;
-  }
-  
-  // Default professional response for ReachInbox
-  return `Hi ${params.prospectName},\n\nThank you for your response! I appreciate you taking the time to get back to me.\n\nI'd love to continue our conversation and learn more about your current challenges and goals.\n\nWould you be available for a brief 15-minute call this week? I'm happy to work around your schedule.\n\nBest regards`;
 }
 
 // GET endpoint for webhook verification
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const challenge = searchParams.get('challenge');
-  
+
   if (challenge) {
     return NextResponse.json({ challenge });
   }
-  
-  return NextResponse.json({ 
+
+  return NextResponse.json({
     message: 'ReachInbox webhook endpoint is active',
     supported_events: [
-      'email_sent',
-      'email_opened', 
-      'email_clicked',
-      'email_replied',
-      'email_bounced',
-      'unsubscribed'
+      'EMAIL_SENT',
+      'EMAIL_OPENED',
+      'EMAIL_CLICKED',
+      'REPLY_RECEIVED',
+      'EMAIL_BOUNCED',
+      'LEAD_INTERESTED',
+      'LEAD_NOT_INTERESTED',
+      'CAMPAIGN_COMPLETED'
     ],
-    integration: 'SAM AI ReachInbox Integration',
-    tier_requirement: 'SME or Enterprise plan'
+    integration: 'SAM AI ReachInbox Integration'
   });
 }
