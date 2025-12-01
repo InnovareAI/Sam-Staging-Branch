@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { airtableService } from '@/lib/airtable';
+import { activeCampaignService } from '@/lib/activecampaign';
+import { sendEmailReplyNotification } from '@/lib/notifications/google-chat';
 
 // Service role client for webhook processing (no user auth needed)
 const supabaseAdmin = createClient(
@@ -379,8 +381,10 @@ async function handleReplyReceived(webhook: ReachInboxWebhook) {
 
     console.log(`   Intent classified: ${intent}`);
 
-    // Sync to Airtable
+    // Get country for tracking
     const country = getCountryForAccount(webhook.email_account);
+
+    // Sync to Airtable
     if (country) {
       try {
         await airtableService.syncEmailLead({
@@ -394,6 +398,68 @@ async function handleReplyReceived(webhook: ReachInboxWebhook) {
         console.log(`📊 Airtable updated: ${webhook.lead_email} → ${intent} [${country}]`);
       } catch (err) {
         console.error('Airtable sync error:', err);
+      }
+    }
+
+    // Send Google Chat notification for all replies
+    try {
+      await sendEmailReplyNotification({
+        prospectEmail: webhook.lead_email,
+        prospectName: leadName,
+        campaignName: webhook.campaign_name,
+        messageText: replyBody,
+        intent: intent,
+        country: country || undefined,
+        emailAccount: webhook.email_account,
+      });
+      console.log(`💬 Google Chat notification sent for ${webhook.lead_email}`);
+    } catch (err) {
+      console.error('Google Chat notification error:', err);
+    }
+
+    // Sync positive replies to ActiveCampaign
+    const positiveIntents = ['interested', 'booking_request', 'question'];
+    if (positiveIntents.includes(intent)) {
+      try {
+        // Parse name into first/last
+        const nameParts = leadName.split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        // Find or create contact
+        const contact = await activeCampaignService.findOrCreateContact({
+          email: webhook.lead_email,
+          firstName,
+          lastName,
+        });
+
+        if (contact?.id) {
+          // Add intent-based tag
+          const intentTagName = `ReachInbox-${intent.replace('_', '-')}`;
+          const intentTag = await activeCampaignService.findOrCreateTag(intentTagName);
+          if (intentTag?.id) {
+            await activeCampaignService.addTagToContact(contact.id, intentTag.id);
+          }
+
+          // Add campaign tag
+          const campaignTagName = `Campaign-${webhook.campaign_name.replace(/[^a-zA-Z0-9-]/g, '-').substring(0, 50)}`;
+          const campaignTag = await activeCampaignService.findOrCreateTag(campaignTagName);
+          if (campaignTag?.id) {
+            await activeCampaignService.addTagToContact(contact.id, campaignTag.id);
+          }
+
+          // Add region tag if available
+          if (country) {
+            const regionTag = await activeCampaignService.findOrCreateTag(`Region-${country}`);
+            if (regionTag?.id) {
+              await activeCampaignService.addTagToContact(contact.id, regionTag.id);
+            }
+          }
+
+          console.log(`✅ ActiveCampaign: ${webhook.lead_email} synced with tags [${intentTagName}]`);
+        }
+      } catch (err) {
+        console.error('ActiveCampaign sync error:', err);
       }
     }
   } catch (error) {
@@ -461,8 +527,10 @@ async function handleLeadInterested(webhook: ReachInboxWebhook) {
     const leadName = `${webhook.lead_first_name || ''} ${webhook.lead_last_name || ''}`.trim() || 'Unknown';
     console.log(`🎯 Lead marked INTERESTED: ${leadName} (${webhook.lead_email})`);
 
-    // Sync to Airtable
+    // Get country for tracking
     const country = getCountryForAccount(webhook.email_account);
+
+    // Sync to Airtable
     if (country) {
       try {
         await airtableService.syncEmailLead({
@@ -476,6 +544,55 @@ async function handleLeadInterested(webhook: ReachInboxWebhook) {
       } catch (err) {
         console.error('Airtable sync error:', err);
       }
+    }
+
+    // Send Google Chat notification
+    try {
+      await sendEmailReplyNotification({
+        prospectEmail: webhook.lead_email,
+        prospectName: leadName,
+        campaignName: webhook.campaign_name,
+        messageText: '[Manually marked as interested in ReachInbox]',
+        intent: 'interested',
+        country: country || undefined,
+        emailAccount: webhook.email_account,
+      });
+      console.log(`💬 Google Chat notification sent for ${webhook.lead_email}`);
+    } catch (err) {
+      console.error('Google Chat notification error:', err);
+    }
+
+    // Sync to ActiveCampaign
+    try {
+      const nameParts = leadName.split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const contact = await activeCampaignService.findOrCreateContact({
+        email: webhook.lead_email,
+        firstName,
+        lastName,
+      });
+
+      if (contact?.id) {
+        // Add interested tag
+        const intentTag = await activeCampaignService.findOrCreateTag('ReachInbox-interested');
+        if (intentTag?.id) {
+          await activeCampaignService.addTagToContact(contact.id, intentTag.id);
+        }
+
+        // Add region tag if available
+        if (country) {
+          const regionTag = await activeCampaignService.findOrCreateTag(`Region-${country}`);
+          if (regionTag?.id) {
+            await activeCampaignService.addTagToContact(contact.id, regionTag.id);
+          }
+        }
+
+        console.log(`✅ ActiveCampaign: ${webhook.lead_email} synced as interested`);
+      }
+    } catch (err) {
+      console.error('ActiveCampaign sync error:', err);
     }
   } catch (error) {
     console.error('Error handling LEAD_INTERESTED:', error);

@@ -646,3 +646,169 @@ export async function sendDailyCampaignSummary(
 export function getIAWorkspaceIds(): string[] {
   return [...IA_WORKSPACE_IDS];
 }
+
+// ============================================
+// EMAIL CAMPAIGN REPLY NOTIFICATIONS (ReachInbox)
+// ============================================
+
+export interface EmailReplyNotification {
+  prospectEmail: string;
+  prospectName: string;
+  campaignName: string;
+  messageText: string;
+  intent: string;
+  country?: string;
+  emailAccount?: string;
+}
+
+/**
+ * Send an email campaign reply notification to Google Chat
+ * Used for ReachInbox cold email replies
+ */
+export async function sendEmailReplyNotification(
+  notification: EmailReplyNotification
+): Promise<{ success: boolean; error?: string }> {
+  const webhookUrl = process.env.GOOGLE_CHAT_REPLIES_WEBHOOK_URL;
+
+  if (!webhookUrl) {
+    console.warn('⚠️ GOOGLE_CHAT_REPLIES_WEBHOOK_URL not configured - skipping email reply notification');
+    return { success: false, error: 'Replies webhook URL not configured' };
+  }
+
+  // Determine intent emoji and color
+  const intentEmoji = {
+    interested: '🟢',
+    booking_request: '🔥',
+    question: '❓',
+    not_interested: '🔴',
+    timing: '⏰',
+    wrong_person: '👤',
+    other: '💬',
+  }[notification.intent || 'other'] || '💬';
+
+  const intentColor = {
+    interested: '#34a853',
+    booking_request: '#ea4335',
+    question: '#4285f4',
+    not_interested: '#9e9e9e',
+    timing: '#fbbc04',
+    wrong_person: '#ff9800',
+    other: '#5f6368',
+  }[notification.intent || 'other'] || '#5f6368';
+
+  const timestamp = new Date().toLocaleString('en-US', {
+    timeZone: 'Europe/Berlin',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+
+  // Truncate message for display
+  const truncatedMessage = notification.messageText.length > 500
+    ? notification.messageText.substring(0, 500) + '...'
+    : notification.messageText;
+
+  const sections: any[] = [
+    {
+      widgets: [
+        {
+          decoratedText: {
+            topLabel: 'From',
+            text: `<b>${notification.prospectName}</b>`,
+          },
+        },
+        {
+          decoratedText: {
+            topLabel: 'Email',
+            text: notification.prospectEmail,
+          },
+        },
+        {
+          decoratedText: {
+            topLabel: 'Intent',
+            text: `<font color="${intentColor}"><b>${notification.intent.replace('_', ' ').toUpperCase()}</b></font>`,
+          },
+        },
+      ],
+    },
+    {
+      header: '💬 Reply Message',
+      widgets: [
+        {
+          textParagraph: {
+            text: truncatedMessage,
+          },
+        },
+      ],
+    },
+    {
+      widgets: [
+        {
+          decoratedText: {
+            topLabel: 'Campaign',
+            text: notification.campaignName,
+          },
+        },
+        ...(notification.country ? [{
+          decoratedText: {
+            topLabel: 'Region',
+            text: notification.country,
+          },
+        }] : []),
+        {
+          decoratedText: {
+            topLabel: 'Time',
+            text: `${timestamp} CET`,
+          },
+        },
+      ],
+    },
+  ];
+
+  // Determine if this is a positive/hot lead
+  const isPositive = ['interested', 'booking_request', 'question'].includes(notification.intent);
+  const title = isPositive
+    ? `${intentEmoji} Hot Email Lead!`
+    : `${intentEmoji} Email Reply`;
+
+  const message: GoogleChatMessage = {
+    cardsV2: [
+      {
+        cardId: `email-reply-${Date.now()}`,
+        card: {
+          header: {
+            title,
+            subtitle: `${notification.prospectName} - ${notification.campaignName}`,
+            imageUrl: 'https://app.meet-sam.com/sam-icon.png',
+            imageType: 'CIRCLE',
+          },
+          sections,
+        },
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(message),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Google Chat email reply notification failed:', errorText);
+      return { success: false, error: errorText };
+    }
+
+    console.log('✅ Google Chat email reply notification sent for', notification.prospectEmail);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Google Chat email reply notification error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
