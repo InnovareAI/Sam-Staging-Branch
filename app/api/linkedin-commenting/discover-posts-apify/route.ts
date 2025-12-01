@@ -950,7 +950,7 @@ export async function POST(request: NextRequest) {
 
     // Process company monitors
     let companiesScrapedThisRun = 0;
-    const MAX_COMPANIES_PER_RUN = 10; // Lower limit for companies (more expensive)
+    const MAX_COMPANIES_PER_RUN = 3; // Very low limit to avoid timeout
 
     for (const monitor of companyMonitors) {
       try {
