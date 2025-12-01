@@ -8,6 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import { classifyIntent } from '@/lib/services/intent-classifier';
 import { generateReplyDraft, getDefaultSettings } from '@/lib/services/reply-draft-generator';
 import { syncInterestedLeadToCRM } from '@/lib/services/crm-sync';
+import { sendCampaignReplyNotification } from '@/lib/notifications/google-chat';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -317,6 +318,19 @@ export async function POST(request: NextRequest) {
       intentConfidence: intent.confidence,
       draft: draftResult.draft,
       isFromCampaign,  // Flag to indicate organic vs campaign lead
+    });
+
+    // Send Google Chat notification for IA1-IA7 workspaces
+    await sendCampaignReplyNotification({
+      workspaceId: account.workspace_id,
+      prospectName,
+      prospectCompany,
+      messageText,
+      intent: intent.intent,
+      intentConfidence: intent.confidence,
+      draft: draftResult.draft,
+      isFromCampaign,
+      replyId: reply.id,
     });
 
     return NextResponse.json({
