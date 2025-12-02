@@ -31,6 +31,48 @@ function detectSalesNavUrl(url: string): boolean {
   return trimmedUrl.includes('/sales/lead/') || trimmedUrl.includes('/sales/account/');
 }
 
+/**
+ * Detect LinkedIn URLs with Unicode/fancy characters
+ *
+ * These URLs look valid but won't resolve to real profiles because LinkedIn
+ * vanity URLs only support ASCII characters.
+ *
+ * Examples of invalid URLs:
+ * - https://linkedin.com/in/𝗖𝗵𝗮𝗿𝗶𝘀𝘀𝗮-𝗦𝗮𝗻𝗶𝗲𝗹-123 (bold Unicode)
+ * - https://linkedin.com/in/%F0%9D%97%96... (URL-encoded Unicode)
+ */
+function hasUnicodeInLinkedInUrl(url: string): boolean {
+  if (!url || !url.trim()) {
+    return false;
+  }
+
+  const trimmed = url.trim();
+
+  // Check for URL-encoded Unicode characters (fancy fonts like 𝗕𝗼𝗹𝗱 𝗧𝗲𝘅𝘁)
+  // These encode as %F0%9D%XX (Mathematical Bold), %E2%80 (general punctuation), etc.
+  if (/%F0%9D|%E2%80|%C2%A0|%E2%9C/i.test(trimmed)) {
+    return true;
+  }
+
+  // Check for actual Unicode characters (non-ASCII) in the vanity
+  // Extract the vanity slug from the URL
+  const vanityMatch = trimmed.match(/linkedin\.com\/in\/([^\/\?#]+)/);
+  if (vanityMatch) {
+    try {
+      const vanity = decodeURIComponent(vanityMatch[1]);
+      // Check for non-ASCII characters
+      if (/[^\x00-\x7F]/.test(vanity)) {
+        return true;
+      }
+    } catch {
+      // If decodeURIComponent fails, the URL is malformed
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Get user authentication
@@ -332,6 +374,18 @@ export async function POST(request: NextRequest) {
           linkedin_url: linkedinUrl
         });
         console.warn(`⚠️  Row ${i}: Skipping prospect "${rawName}" - Sales Navigator URL detected. Please provide regular LinkedIn profile URL instead.`);
+        continue;  // Skip this prospect
+      }
+
+      // Detect URLs with Unicode/fancy characters (won't resolve to real profiles)
+      if (linkedinUrl && hasUnicodeInLinkedInUrl(linkedinUrl)) {
+        skippedRows.push({
+          row: i,
+          reason: 'unicode_in_url',
+          name: rawName,
+          linkedin_url: linkedinUrl
+        });
+        console.warn(`⚠️  Row ${i}: Skipping prospect "${rawName}" - LinkedIn URL contains fancy/Unicode characters which won't resolve to a real profile.`);
         continue;  // Skip this prospect
       }
 

@@ -151,13 +151,40 @@ function isValidEmail(email: string): boolean {
 
 /**
  * Validate LinkedIn URL format
+ * Checks for:
+ * 1. Must contain linkedin.com/in/ or linkedin.com/company/
+ * 2. Must NOT contain URL-encoded Unicode (fancy characters like 𝗕𝗼𝗹𝗱)
+ * 3. Must use ASCII characters only in the vanity/slug
  */
 function isValidLinkedInUrl(url: string): boolean {
   const trimmed = url.trim();
-  return (
-    trimmed.includes('linkedin.com/in/') ||
-    trimmed.includes('linkedin.com/company/')
-  );
+
+  // Must be a LinkedIn profile or company URL
+  if (!trimmed.includes('linkedin.com/in/') && !trimmed.includes('linkedin.com/company/')) {
+    return false;
+  }
+
+  // Check for URL-encoded Unicode characters (fancy fonts like 𝗕𝗼𝗹𝗱 𝗧𝗲𝘅𝘁)
+  // These encode as %F0%9D%97%XX patterns (Mathematical Bold, etc.)
+  const hasEncodedUnicode = /%F0%9D|%E2%80|%C2%A0|%E2%9C/i.test(trimmed);
+  if (hasEncodedUnicode) {
+    return false;
+  }
+
+  // Check for actual Unicode characters (non-ASCII) in the vanity
+  // Extract the vanity slug from the URL
+  const vanityMatch = trimmed.match(/linkedin\.com\/in\/([^\/\?#]+)/);
+  if (vanityMatch) {
+    const vanity = vanityMatch[1];
+    // Vanity should only contain: letters, numbers, hyphens
+    // LinkedIn vanities are ASCII-only
+    const hasNonAscii = /[^\x00-\x7F]/.test(decodeURIComponent(vanity));
+    if (hasNonAscii) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /**
