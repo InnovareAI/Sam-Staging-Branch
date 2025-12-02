@@ -21,13 +21,13 @@ export async function GET(request: NextRequest) {
   // Handle OAuth errors
   if (error) {
     return NextResponse.redirect(
-      new URL(`/workspace?crm_error=${encodeURIComponent(error)}`, request.url)
+      new URL(`/integrations/crm?crm_error=${encodeURIComponent(error)}`, request.url)
     );
   }
 
   if (!code || !state) {
     return NextResponse.redirect(
-      new URL('/workspace?crm_error=missing_parameters', request.url)
+      new URL('/integrations/crm?crm_error=missing_parameters', request.url)
     );
   }
 
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     if (!user) {
       return NextResponse.redirect(
-        new URL('/login?redirect=/workspace', request.url)
+        new URL('/login?redirect=/integrations/crm', request.url)
       );
     }
 
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     if (!member || !['owner', 'admin'].includes(member.role)) {
       return NextResponse.redirect(
-        new URL('/workspace?crm_error=unauthorized', request.url)
+        new URL('/integrations/crm?crm_error=unauthorized', request.url)
       );
     }
 
@@ -107,15 +107,15 @@ export async function GET(request: NextRequest) {
     // Create default field mappings
     await createDefaultFieldMappings(supabase, workspaceId, crmType);
 
-    // Redirect to workspace with success message
+    // Redirect to CRM integrations page with success message
     return NextResponse.redirect(
-      new URL(`/workspace/${workspaceId}?crm_connected=${crmType}`, request.url)
+      new URL(`/integrations/crm?crm_connected=${crmType}`, request.url)
     );
 
   } catch (err) {
     console.error('OAuth callback error:', err);
     return NextResponse.redirect(
-      new URL(`/workspace?crm_error=${encodeURIComponent(err instanceof Error ? err.message : 'unknown_error')}`, request.url)
+      new URL(`/integrations/crm?crm_error=${encodeURIComponent(err instanceof Error ? err.message : 'unknown_error')}`, request.url)
     );
   }
 }

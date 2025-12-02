@@ -8,7 +8,7 @@ import { createClient } from '@/utils/supabase/server';
 
 interface InitiateOAuthRequest {
   workspace_id: string;
-  crm_type: 'hubspot' | 'salesforce' | 'pipedrive' | 'zoho' | 'activecampaign' | 'keap' | 'close' | 'copper' | 'freshsales';
+  crm_type: 'hubspot' | 'salesforce' | 'pipedrive' | 'zoho' | 'activecampaign' | 'keap' | 'close' | 'copper' | 'freshsales' | 'airtable';
 }
 
 export async function POST(request: NextRequest) {
@@ -123,6 +123,14 @@ function generateOAuthUrl(workspaceId: string, crmType: string): string {
         `redirect_uri=${encodeURIComponent(process.env.FRESHSALES_REDIRECT_URI!)}&` +
         `response_type=code&` +
         `scope=${encodeURIComponent('contacts:read contacts:write accounts:read accounts:write deals:read deals:write')}&` +
+        `state=${encodeURIComponent(state)}`;
+
+    case 'airtable':
+      return `https://airtable.com/oauth2/v1/authorize?` +
+        `client_id=${process.env.AIRTABLE_CLIENT_ID}&` +
+        `redirect_uri=${encodeURIComponent(process.env.AIRTABLE_REDIRECT_URI!)}&` +
+        `response_type=code&` +
+        `scope=${encodeURIComponent('data.records:read data.records:write schema.bases:read')}&` +
         `state=${encodeURIComponent(state)}`;
 
     default:
