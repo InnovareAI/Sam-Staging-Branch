@@ -25,6 +25,15 @@ interface QACheck {
   suggested_fix?: string;
 }
 
+interface AutoFixResult {
+  issue: string;
+  attempted: boolean;
+  success: boolean;
+  count?: number;
+  error?: string;
+  details: string;
+}
+
 interface AnomalyReport {
   workspace_id: string;
   workspace_name: string;
@@ -40,10 +49,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  console.log('🔍 QA Monitor Agent starting comprehensive scan...');
+  console.log('🔍 QA Monitor Agent starting comprehensive scan with auto-fix...');
 
   const supabase = supabaseAdmin();
   const allChecks: QACheck[] = [];
+  const autoFixes: AutoFixResult[] = [];
   const workspaceReports: AnomalyReport[] = [];
 
   try {
@@ -75,6 +85,13 @@ export async function POST(request: NextRequest) {
     const orphanCheck = await checkOrphanedQueueRecords(supabase);
     allChecks.push(orphanCheck);
 
+    // AUTO-FIX: Delete orphaned queue records
+    if (orphanCheck.affected_records && orphanCheck.affected_records > 0) {
+      console.log(`🔧 Auto-fixing ${orphanCheck.affected_records} orphaned queue records...`);
+      const fix = await autoFixOrphanedQueue(supabase);
+      autoFixes.push(fix);
+    }
+
     // 3. Cron Job Execution Gaps
     const cronCheck = await checkCronJobGaps(supabase);
     allChecks.push(cronCheck);
@@ -87,6 +104,13 @@ export async function POST(request: NextRequest) {
     const stuckCheck = await checkStuckProspects(supabase);
     allChecks.push(stuckCheck);
 
+    // AUTO-FIX: Mark stuck prospects as failed
+    if (stuckCheck.affected_records && stuckCheck.affected_records > 0) {
+      console.log(`🔧 Auto-fixing ${stuckCheck.affected_records} stuck prospects...`);
+      const fix = await autoFixStuckProspects(supabase);
+      autoFixes.push(fix);
+    }
+
     // 6. Campaign State Consistency
     const campaignCheck = await checkCampaignStateConsistency(supabase);
     allChecks.push(campaignCheck);
@@ -98,6 +122,13 @@ export async function POST(request: NextRequest) {
     // 7.5. CRITICAL: Same-Day Follow-up Check
     const sameDayCheck = await checkSameDayFollowups(supabase);
     allChecks.push(sameDayCheck);
+
+    // AUTO-FIX: Reschedule same-day followups
+    if (sameDayCheck.affected_records && sameDayCheck.affected_records > 0) {
+      console.log(`🔧 Auto-fixing ${sameDayCheck.affected_records} same-day followups...`);
+      const fix = await autoFixSameDayFollowups(supabase);
+      autoFixes.push(fix);
+    }
 
     // 8. Duplicate Detection
     const duplicateCheck = await checkDuplicateRecords(supabase);
@@ -149,21 +180,28 @@ export async function POST(request: NextRequest) {
         ai_analysis: aiAnalysis?.summary || 'All checks passed',
         recommendations: aiAnalysis?.recommendations || [],
         overall_status: overallStatus,
+        auto_fixes: autoFixes,
         fixes_proposed: aiAnalysis?.proposed_fixes || [],
         duration_ms: Date.now() - startTime
       });
+
+    // Prepare fix summary for notification
+    const fixesSummary = autoFixes.length > 0
+      ? `\n\n🔧 Auto-fixes applied: ${autoFixes.filter(f => f.success).length}/${autoFixes.length} successful`
+      : '';
 
     // Send Google Chat notification
     await sendHealthCheckNotification({
       type: 'qa-monitor',
       status: overallStatus as 'healthy' | 'warning' | 'critical',
-      summary: aiAnalysis?.summary || `QA Monitor: ${allChecks.filter(c => c.status === 'pass').length}/${allChecks.length} checks passed`,
+      summary: (aiAnalysis?.summary || `QA Monitor: ${allChecks.filter(c => c.status === 'pass').length}/${allChecks.length} checks passed`) + fixesSummary,
       checks: allChecks.map(c => ({
         name: c.check_name,
         status: c.status,
         details: c.details,
       })),
       recommendations: aiAnalysis?.recommendations || [],
+      auto_fixes: autoFixes,
       duration_ms: Date.now() - startTime,
       timestamp: new Date().toISOString(),
     });
@@ -173,6 +211,7 @@ export async function POST(request: NextRequest) {
       passed: allChecks.filter(c => c.status === 'pass').length,
       warnings: warningChecks.length,
       failures: failedChecks.length,
+      fixes_applied: autoFixes.filter(f => f.success).length,
       workspaces_with_issues: workspaceReports.length,
       duration_ms: Date.now() - startTime
     });
@@ -183,9 +222,11 @@ export async function POST(request: NextRequest) {
         total_checks: allChecks.length,
         passed: allChecks.filter(c => c.status === 'pass').length,
         warnings: warningChecks.length,
-        failures: failedChecks.length
+        failures: failedChecks.length,
+        fixes_applied: autoFixes.filter(f => f.success).length
       },
       checks: allChecks,
+      auto_fixes: autoFixes,
       workspace_reports: workspaceReports,
       ai_analysis: aiAnalysis,
       duration_ms: Date.now() - startTime
@@ -716,4 +757,219 @@ Return ONLY valid JSON.`;
     recommendations: failedChecks.map(c => c.suggested_fix).filter(Boolean) as string[],
     proposed_fixes: []
   };
+}
+
+/**
+ * AUTO-FIX: Delete orphaned queue records (queue items without valid prospects)
+ */
+async function autoFixOrphanedQueue(supabase: any): Promise<AutoFixResult> {
+  try {
+    // Find queue items where prospect_id doesn't exist in campaign_prospects
+    const { data: queueItems, error: fetchError } = await supabase
+      .from('send_queue')
+      .select('id, prospect_id')
+      .limit(100);
+
+    if (fetchError) throw fetchError;
+
+    if (!queueItems || queueItems.length === 0) {
+      return {
+        issue: 'Orphaned Queue Records',
+        attempted: true,
+        success: true,
+        count: 0,
+        details: 'No queue items found'
+      };
+    }
+
+    // Check each one for orphan status
+    const orphanIds: string[] = [];
+    for (const item of queueItems) {
+      const { data: prospect } = await supabase
+        .from('campaign_prospects')
+        .select('id')
+        .eq('id', item.prospect_id)
+        .single();
+
+      if (!prospect) {
+        orphanIds.push(item.id);
+      }
+
+      if (orphanIds.length >= 50) break; // Limit to 50 per run
+    }
+
+    if (orphanIds.length === 0) {
+      return {
+        issue: 'Orphaned Queue Records',
+        attempted: true,
+        success: true,
+        count: 0,
+        details: 'No orphaned queue records found'
+      };
+    }
+
+    // Delete orphaned records
+    const { error: deleteError } = await supabase
+      .from('send_queue')
+      .delete()
+      .in('id', orphanIds);
+
+    if (deleteError) throw deleteError;
+
+    return {
+      issue: 'Orphaned Queue Records',
+      attempted: true,
+      success: true,
+      count: orphanIds.length,
+      details: `Deleted ${orphanIds.length} orphaned queue records`
+    };
+  } catch (error) {
+    return {
+      issue: 'Orphaned Queue Records',
+      attempted: true,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: 'Failed to delete orphaned queue records'
+    };
+  }
+}
+
+/**
+ * AUTO-FIX: Mark stuck prospects as failed (>3 days in transitional states)
+ */
+async function autoFixStuckProspects(supabase: any): Promise<AutoFixResult> {
+  try {
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: stuckProspects, error: fetchError } = await supabase
+      .from('campaign_prospects')
+      .select('id')
+      .in('status', ['pending', 'queued', 'processing'])
+      .lt('updated_at', threeDaysAgo);
+
+    if (fetchError) throw fetchError;
+
+    if (!stuckProspects || stuckProspects.length === 0) {
+      return {
+        issue: 'Stuck Prospects',
+        attempted: true,
+        success: true,
+        count: 0,
+        details: 'No stuck prospects found'
+      };
+    }
+
+    // Mark as failed
+    const { error: updateError } = await supabase
+      .from('campaign_prospects')
+      .update({
+        status: 'failed',
+        error_message: 'Auto-failed by QA monitor: stuck in transitional state >3 days',
+        updated_at: new Date().toISOString()
+      })
+      .in('id', stuckProspects.map((p: any) => p.id));
+
+    if (updateError) throw updateError;
+
+    return {
+      issue: 'Stuck Prospects',
+      attempted: true,
+      success: true,
+      count: stuckProspects.length,
+      details: `Marked ${stuckProspects.length} stuck prospects as failed`
+    };
+  } catch (error) {
+    return {
+      issue: 'Stuck Prospects',
+      attempted: true,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: 'Failed to fix stuck prospects'
+    };
+  }
+}
+
+/**
+ * AUTO-FIX: Reschedule same-day followups to next day
+ */
+async function autoFixSameDayFollowups(supabase: any): Promise<AutoFixResult> {
+  try {
+    // Find prospects with followups scheduled on same day as contact
+    const { data: violations, error: fetchError } = await supabase
+      .from('send_queue')
+      .select(`
+        id,
+        prospect_id,
+        scheduled_for,
+        campaign_prospects!inner(contacted_at)
+      `)
+      .eq('message_type', 'followup')
+      .limit(100);
+
+    if (fetchError) throw fetchError;
+
+    if (!violations || violations.length === 0) {
+      return {
+        issue: 'Same-Day Followups',
+        attempted: true,
+        success: true,
+        count: 0,
+        details: 'No same-day followups found'
+      };
+    }
+
+    // Find violations (same calendar day)
+    const violationIds: string[] = [];
+    for (const item of violations) {
+      const contactDate = new Date(item.campaign_prospects.contacted_at).toDateString();
+      const followupDate = new Date(item.scheduled_for).toDateString();
+
+      if (contactDate === followupDate) {
+        violationIds.push(item.id);
+      }
+    }
+
+    if (violationIds.length === 0) {
+      return {
+        issue: 'Same-Day Followups',
+        attempted: true,
+        success: true,
+        count: 0,
+        details: 'No same-day followup violations found'
+      };
+    }
+
+    // Reschedule to next day (24 hours later)
+    for (const id of violationIds) {
+      const item = violations.find((v: any) => v.id === id);
+      if (!item) continue;
+
+      const newScheduledTime = new Date(item.scheduled_for);
+      newScheduledTime.setDate(newScheduledTime.getDate() + 1);
+
+      await supabase
+        .from('send_queue')
+        .update({
+          scheduled_for: newScheduledTime.toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+    }
+
+    return {
+      issue: 'Same-Day Followups',
+      attempted: true,
+      success: true,
+      count: violationIds.length,
+      details: `Rescheduled ${violationIds.length} same-day followups to next day`
+    };
+  } catch (error) {
+    return {
+      issue: 'Same-Day Followups',
+      attempted: true,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: 'Failed to reschedule same-day followups'
+    };
+  }
 }

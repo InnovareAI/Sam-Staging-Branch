@@ -21,6 +21,15 @@ interface HealthCheckResult {
   metrics?: Record<string, any>;
 }
 
+interface AutoFixResult {
+  issue: string;
+  attempted: boolean;
+  success: boolean;
+  count?: number;
+  error?: string;
+  details: string;
+}
+
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
@@ -30,10 +39,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  console.log('🔍 Starting daily system health check...');
+  console.log('🔍 Starting daily system health check with auto-fix...');
 
   const supabase = supabaseAdmin();
   const checks: HealthCheckResult[] = [];
+  const autoFixes: AutoFixResult[] = [];
 
   try {
     // 1. Database Connection Check
@@ -48,6 +58,13 @@ export async function POST(request: NextRequest) {
     const queueCheck = await checkQueueHealth(supabase);
     checks.push(queueCheck);
 
+    // AUTO-FIX: Stuck queue items
+    if (queueCheck.metrics?.stuck_count > 0) {
+      console.log(`🔧 Auto-fixing ${queueCheck.metrics.stuck_count} stuck queue items...`);
+      const fix = await autoFixStuckQueue(supabase);
+      autoFixes.push(fix);
+    }
+
     // 4. Unipile Account Health
     const unipileCheck = await checkUnipileHealth(supabase);
     checks.push(unipileCheck);
@@ -59,6 +76,14 @@ export async function POST(request: NextRequest) {
     // 6. Stale Data Check
     const staleCheck = await checkStaleData(supabase);
     checks.push(staleCheck);
+
+    // AUTO-FIX: Stale prospects and campaigns
+    if (staleCheck.metrics?.stale_prospects > 0 || staleCheck.metrics?.stale_campaigns > 0) {
+      console.log(`🔧 Auto-fixing stale data (${staleCheck.metrics.stale_prospects} prospects, ${staleCheck.metrics.stale_campaigns} campaigns)...`);
+      const prospectFix = await autoFixStaleProspects(supabase);
+      const campaignFix = await autoFixStaleCampaigns(supabase);
+      autoFixes.push(prospectFix, campaignFix);
+    }
 
     // Use Claude to analyze findings and generate report
     const analysis = await analyzeWithClaude(checks);
@@ -72,6 +97,7 @@ export async function POST(request: NextRequest) {
         ai_analysis: analysis.summary,
         recommendations: analysis.recommendations,
         overall_status: analysis.overall_status,
+        auto_fixes: autoFixes,
         duration_ms: Date.now() - startTime
       });
 
@@ -84,17 +110,27 @@ export async function POST(request: NextRequest) {
       await sendCriticalAlert(analysis);
     }
 
-    // Send Google Chat notification
+    // Prepare fix summary for notification
+    const fixesSummary = autoFixes.length > 0
+      ? `\n\n🔧 Auto-fixes applied: ${autoFixes.filter(f => f.success).length}/${autoFixes.length} successful`
+      : '';
+
+    const fixDetails = autoFixes.map(f =>
+      `${f.success ? '✅' : '❌'} ${f.issue}: ${f.details}`
+    ).join('\n');
+
+    // Send Google Chat notification with fix results
     await sendHealthCheckNotification({
       type: 'daily-health-check',
       status: analysis.overall_status,
-      summary: analysis.summary,
+      summary: analysis.summary + fixesSummary,
       checks: checks.map(c => ({
         name: c.check_name,
         status: c.status,
         details: c.details,
       })),
       recommendations: analysis.recommendations,
+      auto_fixes: autoFixes,
       duration_ms: Date.now() - startTime,
       timestamp: new Date().toISOString(),
     });
@@ -102,6 +138,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Daily health check complete:', {
       status: analysis.overall_status,
       checks_run: checks.length,
+      fixes_applied: autoFixes.filter(f => f.success).length,
       duration_ms: Date.now() - startTime
     });
 
@@ -109,6 +146,7 @@ export async function POST(request: NextRequest) {
       success: true,
       overall_status: analysis.overall_status,
       checks: checks,
+      auto_fixes: autoFixes,
       ai_analysis: analysis.summary,
       recommendations: analysis.recommendations,
       duration_ms: Date.now() - startTime
@@ -457,6 +495,171 @@ Return ONLY valid JSON.`;
       summary: 'AI analysis unavailable. Manual review recommended.',
       recommendations: ['Review health check results manually'],
       overall_status: hasCtritical ? 'critical' : hasWarning ? 'warning' : 'healthy'
+    };
+  }
+}
+
+/**
+ * AUTO-FIX: Clear stuck queue items (>1 hour overdue)
+ */
+async function autoFixStuckQueue(supabase: any): Promise<AutoFixResult> {
+  try {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+    const { data: stuckItems, error: fetchError } = await supabase
+      .from('send_queue')
+      .select('id, scheduled_for')
+      .eq('status', 'pending')
+      .lt('scheduled_for', oneHourAgo);
+
+    if (fetchError) throw fetchError;
+
+    if (!stuckItems || stuckItems.length === 0) {
+      return {
+        issue: 'Stuck Queue Items',
+        attempted: true,
+        success: true,
+        count: 0,
+        details: 'No stuck items found'
+      };
+    }
+
+    // Mark as failed with explanation
+    const { error: updateError } = await supabase
+      .from('send_queue')
+      .update({
+        status: 'failed',
+        error_message: 'Auto-failed by health check: stuck >1 hour',
+        updated_at: new Date().toISOString()
+      })
+      .in('id', stuckItems.map((i: any) => i.id));
+
+    if (updateError) throw updateError;
+
+    return {
+      issue: 'Stuck Queue Items',
+      attempted: true,
+      success: true,
+      count: stuckItems.length,
+      details: `Cleared ${stuckItems.length} stuck queue items`
+    };
+  } catch (error) {
+    return {
+      issue: 'Stuck Queue Items',
+      attempted: true,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: 'Failed to clear stuck queue items'
+    };
+  }
+}
+
+/**
+ * AUTO-FIX: Mark stale prospects as failed (>3 days pending)
+ */
+async function autoFixStaleProspects(supabase: any): Promise<AutoFixResult> {
+  try {
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: staleProspects, error: fetchError } = await supabase
+      .from('campaign_prospects')
+      .select('id')
+      .eq('status', 'pending')
+      .lt('updated_at', threeDaysAgo);
+
+    if (fetchError) throw fetchError;
+
+    if (!staleProspects || staleProspects.length === 0) {
+      return {
+        issue: 'Stale Prospects',
+        attempted: true,
+        success: true,
+        count: 0,
+        details: 'No stale prospects found'
+      };
+    }
+
+    // Mark as failed
+    const { error: updateError } = await supabase
+      .from('campaign_prospects')
+      .update({
+        status: 'failed',
+        notes: 'Auto-failed by health check: stale >3 days',
+        updated_at: new Date().toISOString()
+      })
+      .in('id', staleProspects.map((p: any) => p.id));
+
+    if (updateError) throw updateError;
+
+    return {
+      issue: 'Stale Prospects',
+      attempted: true,
+      success: true,
+      count: staleProspects.length,
+      details: `Marked ${staleProspects.length} stale prospects as failed`
+    };
+  } catch (error) {
+    return {
+      issue: 'Stale Prospects',
+      attempted: true,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: 'Failed to fix stale prospects'
+    };
+  }
+}
+
+/**
+ * AUTO-FIX: Pause stale campaigns (>3 days in 'running' status)
+ */
+async function autoFixStaleCampaigns(supabase: any): Promise<AutoFixResult> {
+  try {
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: staleCampaigns, error: fetchError } = await supabase
+      .from('campaigns')
+      .select('id, campaign_name')
+      .eq('status', 'running')
+      .lt('updated_at', threeDaysAgo);
+
+    if (fetchError) throw fetchError;
+
+    if (!staleCampaigns || staleCampaigns.length === 0) {
+      return {
+        issue: 'Stale Campaigns',
+        attempted: true,
+        success: true,
+        count: 0,
+        details: 'No stale campaigns found'
+      };
+    }
+
+    // Pause campaigns (safer than marking completed)
+    const { error: updateError } = await supabase
+      .from('campaigns')
+      .update({
+        status: 'paused',
+        notes: 'Auto-paused by health check: stale >3 days. Review and resume if needed.',
+        updated_at: new Date().toISOString()
+      })
+      .in('id', staleCampaigns.map((c: any) => c.id));
+
+    if (updateError) throw updateError;
+
+    return {
+      issue: 'Stale Campaigns',
+      attempted: true,
+      success: true,
+      count: staleCampaigns.length,
+      details: `Paused ${staleCampaigns.length} stale campaigns: ${staleCampaigns.map((c: any) => c.campaign_name).join(', ')}`
+    };
+  } catch (error) {
+    return {
+      issue: 'Stale Campaigns',
+      attempted: true,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: 'Failed to pause stale campaigns'
     };
   }
 }

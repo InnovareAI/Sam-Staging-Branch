@@ -87,6 +87,14 @@ export interface HealthCheckNotification {
     details: string;
   }[];
   recommendations?: string[];
+  auto_fixes?: {
+    issue: string;
+    attempted: boolean;
+    success: boolean;
+    count?: number;
+    error?: string;
+    details: string;
+  }[];
   duration_ms?: number;
   timestamp?: string;
 }
@@ -176,6 +184,24 @@ export async function sendHealthCheckNotification(
     sections.push({
       header: 'Check Results',
       widgets: checkWidgets,
+    });
+  }
+
+  // Add auto-fix results if provided
+  if (notification.auto_fixes && notification.auto_fixes.length > 0) {
+    const fixWidgets = notification.auto_fixes.map((fix) => ({
+      decoratedText: {
+        topLabel: fix.issue,
+        text: fix.details + (fix.count ? ` (${fix.count} items)` : ''),
+        startIcon: {
+          knownIcon: fix.success ? 'STAR' : 'BOOKMARK',
+        },
+      },
+    }));
+
+    sections.push({
+      header: '🔧 Auto-Fixes Applied',
+      widgets: fixWidgets,
     });
   }
 
