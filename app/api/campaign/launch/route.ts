@@ -134,6 +134,8 @@ export async function POST(request: NextRequest) {
 
     // Get prospect data if targetAudience includes prospect IDs
     let prospectData = [];
+    let filteredOutCount = 0;
+
     if (campaignConfig.targetAudience.prospectIds?.length > 0) {
       const { data: prospects } = await supabase
         .from('approved_prospects')
@@ -149,12 +151,61 @@ export async function POST(request: NextRequest) {
           company_size,
           enrichment_data,
           approved_at,
-          icp_analysis
+          icp_analysis,
+          validation_status,
+          validation_errors,
+          has_previous_contact
         `)
         .eq('workspace_id', workspaceId)
         .in('id', campaignConfig.targetAudience.prospectIds);
 
-      prospectData = prospects || [];
+      // CRITICAL: Filter out invalid prospects
+      // Only include prospects that are:
+      // 1. validation_status = 'valid' OR NULL (legacy data)
+      // 2. has_previous_contact = false OR NULL
+      // 3. Have at least email OR LinkedIn URL
+
+      if (prospects) {
+        const validProspects = prospects.filter(prospect => {
+          // Check validation status
+          const validationStatus = prospect.validation_status || 'valid';
+          if (validationStatus === 'error' || validationStatus === 'blocked') {
+            filteredOutCount++;
+            console.warn(`Prospect ${prospect.id} filtered: validation_status = ${validationStatus}`);
+            return false;
+          }
+
+          // Check previous contact
+          if (prospect.has_previous_contact) {
+            filteredOutCount++;
+            console.warn(`Prospect ${prospect.id} filtered: previously contacted`);
+            return false;
+          }
+
+          // Check required contact methods
+          if (!prospect.contact_email && !prospect.contact_linkedin_url) {
+            filteredOutCount++;
+            console.warn(`Prospect ${prospect.id} filtered: no contact method`);
+            return false;
+          }
+
+          return true;
+        });
+
+        prospectData = validProspects;
+
+        if (filteredOutCount > 0) {
+          console.log(`🚫 Filtered out ${filteredOutCount} invalid prospects from campaign`);
+        }
+      }
+    }
+
+    // Validate we have valid prospects
+    if (prospectData.length === 0 && campaignConfig.targetAudience.prospectIds?.length > 0) {
+      throw apiError.validation(
+        'No valid prospects available',
+        `All ${campaignConfig.targetAudience.prospectIds.length} prospects were filtered out due to data quality issues. Check prospect validation status.`
+      );
     }
 
     // Get workspace knowledge base data for personalization
