@@ -7879,196 +7879,142 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                     );
                   }
 
+                  // Merge drafts and pending into one list, prioritizing drafts
+                  // Filter out pending campaigns that have a matching draft (same name)
+                  const draftNames = new Set(draftCampaigns.map((d: any) => d.name?.toLowerCase()));
+                  const filteredPending = pendingCampaigns.filter(
+                    p => !draftNames.has(p.campaignName?.toLowerCase())
+                  );
+
+                  // Build unified list: drafts first, then pending without drafts
+                  const allItems: any[] = [
+                    ...draftCampaigns.map((draft: any) => ({
+                      type: 'draft',
+                      name: draft.name,
+                      prospectCount: draft.draft_data?.csvData?.length || 0,
+                      date: draft.updated_at,
+                      draft,
+                      prospects: null,
+                    })),
+                    ...filteredPending.map((pending: any) => ({
+                      type: 'pending',
+                      name: pending.campaignName,
+                      prospectCount: pending.prospects?.length || 0,
+                      date: pending.createdAt,
+                      draft: null,
+                      prospects: pending.prospects,
+                    })),
+                  ];
+
                   return (
-                    <>
-                      {/* SECTION 1: Draft Campaigns (Continue where you left off) */}
-                      {hasDrafts && (
-                        <div className="mb-6">
-                          <div className="px-6 py-3 bg-gray-800/50 border-b border-gray-700">
-                            <span className="text-sm font-medium text-blue-400">Continue where you left off</span>
-                          </div>
-                          <table className="w-full">
-                            <thead className="bg-gray-750">
-                              <tr className="text-left text-gray-400 text-xs uppercase">
-                                <th className="px-6 py-3 font-medium">Campaign</th>
-                                <th className="px-6 py-3 font-medium">Type</th>
-                                <th className="px-6 py-3 font-medium">Prospects</th>
-                                <th className="px-6 py-3 font-medium">Progress</th>
-                                <th className="px-6 py-3 font-medium">Last Saved</th>
-                                <th className="px-6 py-3 font-medium"></th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {draftCampaigns.map((draft: any) => {
-                                const prospectCount = draft.draft_data?.csvData?.length || 0;
-                                return (
-                                <tr
-                                  key={draft.id}
-                                  onClick={() => {
-                                    setSelectedDraft(draft);
+                    <table className="w-full">
+                      <thead className="bg-gray-750">
+                        <tr className="text-left text-gray-400 text-xs uppercase">
+                          <th className="px-6 py-3 font-medium">Campaign</th>
+                          <th className="px-6 py-3 font-medium">Status</th>
+                          <th className="px-6 py-3 font-medium">Prospects</th>
+                          <th className="px-6 py-3 font-medium">Date</th>
+                          <th className="px-6 py-3 font-medium"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allItems.map((item, idx) => (
+                          <tr
+                            key={`${item.type}-${item.name}-${idx}`}
+                            onClick={() => {
+                              if (item.type === 'draft') {
+                                setSelectedDraft(item.draft);
+                              } else {
+                                setSelectedCampaignProspects(item.prospects);
+                              }
+                              setShowBuilder(true);
+                            }}
+                            className="border-b border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer"
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-2 h-2 rounded-full ${item.type === 'draft' ? 'bg-blue-500' : 'bg-yellow-500'}`}></div>
+                                <span className="text-white font-medium">{item.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              {item.type === 'draft' ? (
+                                <span className="px-2 py-1 bg-blue-600/20 text-blue-400 text-xs rounded-full border border-blue-500/40">
+                                  Draft
+                                </span>
+                              ) : (
+                                <span className="px-2 py-1 bg-yellow-600/20 text-yellow-400 text-xs rounded-full border border-yellow-500/40">
+                                  Ready
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-white">{item.prospectCount}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-gray-400 text-sm">
+                                {item.date ? new Date(item.date).toLocaleDateString() : 'Today'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (item.type === 'draft') {
+                                      setSelectedDraft(item.draft);
+                                    } else {
+                                      setSelectedCampaignProspects(item.prospects);
+                                    }
                                     setShowBuilder(true);
                                   }}
-                                  className="border-b border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer"
+                                  className={`flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm font-medium transition-colors ${
+                                    item.type === 'draft'
+                                      ? 'bg-blue-600 hover:bg-blue-700'
+                                      : 'bg-purple-600 hover:bg-purple-700'
+                                  }`}
                                 >
-                                  <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                      <div>
-                                        <div className="text-white font-medium">{draft.name}</div>
-                                        <div className="text-gray-400 text-sm">Draft - click to continue</div>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-4">
-                                    <span className="text-gray-300">{getCampaignTypeLabel(draft.type)}</span>
-                                  </td>
-                                  <td className="px-6 py-4">
-                                    <div className="text-white">{prospectCount}</div>
-                                    <div className="text-gray-400 text-sm">prospects</div>
-                                  </td>
-                                  <td className="px-6 py-4">
-                                    <div className="flex items-center gap-2">
-                                      <div className="text-white">Step {draft.current_step || 1} of 2</div>
-                                      <div className="w-20 bg-gray-700 rounded-full h-2">
-                                        <div
-                                          className="bg-blue-500 h-2 rounded-full transition-all"
-                                          style={{ width: `${((draft.current_step || 1) / 2) * 100}%` }}
-                                        ></div>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-4">
-                                    <div className="text-gray-400 text-sm">
-                                      {new Date(draft.updated_at).toLocaleDateString()} {new Date(draft.updated_at).toLocaleTimeString()}
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-4">
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setSelectedDraft(draft);
-                                          setShowBuilder(true);
-                                        }}
-                                        className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors"
-                                      >
-                                        Continue
-                                      </button>
-                                      <button
-                                        onClick={async (e) => {
-                                          e.stopPropagation();
-                                          if (confirm(`Delete draft "${draft.name}"?`)) {
-                                            try {
-                                              const response = await fetch(
-                                                `/api/campaigns/draft?draftId=${draft.id}&workspaceId=${workspaceId}`,
-                                                { method: 'DELETE' }
-                                              );
-                                              if (response.ok) {
-                                                if (currentDraftId === draft.id) {
-                                                  setCurrentDraftId(null);
-                                                }
-                                                try {
-                                                  localStorage.removeItem(`campaign-draft-${workspaceId}`);
-                                                } catch (e) {
-                                                  console.warn('Failed to clear localStorage draft:', e);
-                                                }
-                                                queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
-                                                toastSuccess('Draft deleted');
-                                              }
-                                            } catch (error) {
-                                              toastError('Failed to delete draft');
+                                  {item.type === 'draft' ? 'Continue' : 'Create Campaign'}
+                                </button>
+                                {item.type === 'draft' && (
+                                  <button
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (confirm(`Delete draft "${item.name}"?`)) {
+                                        try {
+                                          const response = await fetch(
+                                            `/api/campaigns/draft?draftId=${item.draft.id}&workspaceId=${workspaceId}`,
+                                            { method: 'DELETE' }
+                                          );
+                                          if (response.ok) {
+                                            if (currentDraftId === item.draft.id) {
+                                              setCurrentDraftId(null);
                                             }
+                                            try {
+                                              localStorage.removeItem(`campaign-draft-${workspaceId}`);
+                                            } catch (e) {
+                                              console.warn('Failed to clear localStorage draft:', e);
+                                            }
+                                            queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
+                                            toastSuccess('Draft deleted');
                                           }
-                                        }}
-                                        className="text-red-400 hover:text-red-300 transition-colors"
-                                        title="Delete draft"
-                                      >
-                                        <X size={16} />
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-
-                      {/* SECTION 2: Approved Prospects Ready for Campaign Creation */}
-                      {hasPending && (
-                        <div>
-                          <div className="px-6 py-3 bg-gray-800/50 border-b border-gray-700">
-                            <span className="text-sm font-medium text-yellow-400">Ready to create campaign</span>
-                          </div>
-                          <table className="w-full">
-                            <thead className="bg-gray-750">
-                              <tr className="text-left text-gray-400 text-xs uppercase">
-                                <th className="px-6 py-3 font-medium">Campaign</th>
-                                <th className="px-6 py-3 font-medium">Source</th>
-                                <th className="px-6 py-3 font-medium">Prospects</th>
-                                <th className="px-6 py-3 font-medium">Created</th>
-                                <th className="px-6 py-3 font-medium"></th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {pendingCampaigns.map(({ campaignName, prospects, source, createdAt }) => (
-                                <tr
-                                  key={campaignName}
-                                  className="border-b border-gray-700 hover:bg-gray-750 transition-colors"
-                                >
-                                  <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                                      <div>
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-white font-medium">{campaignName}</span>
-                                          {source === 'database' && (
-                                            <span className="px-2 py-0.5 bg-blue-600/20 text-blue-400 text-xs rounded-full border border-blue-500/40">
-                                              Saved
-                                            </span>
-                                          )}
-                                        </div>
-                                        <div className="text-gray-400 text-sm">Ready for message creation</div>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-4">
-                                    <span className="text-gray-300 text-sm">
-                                      {source === 'database' ? 'Prospect Database' : 'Recent'}
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-4">
-                                    <div className="text-white">{prospects.length}</div>
-                                    <div className="text-gray-400 text-sm">approved</div>
-                                  </td>
-                                  <td className="px-6 py-4">
-                                    <span className="text-gray-400 text-sm">
-                                      {createdAt ? new Date(createdAt).toLocaleDateString() : 'Today'}
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-4">
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setSelectedCampaignProspects(prospects);
-                                          setShowBuilder(true);
-                                        }}
-                                        className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition-colors"
-                                      >
-                                        <MessageSquare size={14} />
-                                        Create Campaign
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </>
+                                        } catch (error) {
+                                          toastError('Failed to delete draft');
+                                        }
+                                      }
+                                    }}
+                                    className="text-red-400 hover:text-red-300 transition-colors"
+                                    title="Delete draft"
+                                  >
+                                    <X size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   );
                 })()}
               </div>
