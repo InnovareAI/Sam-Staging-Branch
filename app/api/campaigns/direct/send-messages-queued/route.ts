@@ -259,14 +259,34 @@ export async function POST(req: NextRequest) {
     const notConnected = connectionChecks.filter(c => !c.connected);
 
     if (notConnected.length > 0) {
-      console.error(`❌ Pre-flight FAILED: ${notConnected.length}/${sampleSize} prospects are NOT 1st degree connections`);
+      // Categorize failures for clearer error message
+      const missingIds = notConnected.filter(c => c.reason === 'No LinkedIn ID');
+      const notFirstDegree = notConnected.filter(c => c.distance && c.distance !== 'FIRST_DEGREE');
+      const apiErrors = notConnected.filter(c => c.reason === 'API error');
+
+      console.error(`❌ Pre-flight FAILED: ${notConnected.length}/${sampleSize} prospects cannot receive messages`);
       notConnected.forEach(nc => console.log(`   - ${nc.name}: ${nc.distance || nc.reason}`));
+
+      // Build a clear error message
+      let errorParts: string[] = [];
+      if (missingIds.length > 0) {
+        errorParts.push(`${missingIds.length} missing LinkedIn user ID (need to resolve URLs first)`);
+      }
+      if (notFirstDegree.length > 0) {
+        errorParts.push(`${notFirstDegree.length} not 1st degree connections (use Connector campaign first)`);
+      }
+      if (apiErrors.length > 0) {
+        errorParts.push(`${apiErrors.length} failed API check`);
+      }
 
       return NextResponse.json({
         success: false,
-        error: `Messenger campaigns require 1st degree connections. ${notConnected.length} of ${sampleSize} checked prospects are not connected.`,
-        suggestion: 'Use a Connector campaign to send connection requests first, or check that prospects are already connected.',
+        error: `Messenger campaigns require 1st degree connections with resolved LinkedIn IDs. Issues found: ${errorParts.join(', ')}.`,
+        suggestion: missingIds.length > 0
+          ? 'Prospects need LinkedIn user IDs. Re-upload with LinkedIn URLs or use the resolve-ids endpoint first.'
+          : 'Use a Connector campaign to send connection requests first.',
         notConnected: notConnected.map(c => ({ name: c.name, reason: c.distance || c.reason })),
+        breakdown: { missingIds: missingIds.length, notFirstDegree: notFirstDegree.length, apiErrors: apiErrors.length },
         checkedCount: sampleSize,
         totalProspects: prospects.length
       }, { status: 400 });
