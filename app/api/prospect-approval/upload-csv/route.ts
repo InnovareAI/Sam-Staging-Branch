@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeFullName, normalizeCompanyName } from '@/lib/enrich-prospect-name';
 
+// Allow up to 60 seconds for CSV uploads (Netlify Pro limit)
+// This is needed for large CSV files with 50+ prospects
+export const maxDuration = 60;
+
 /**
  * Detect Sales Navigator URLs (which are NOT supported)
  *
@@ -371,6 +375,16 @@ export async function POST(request: NextRequest) {
           totalRows: lines.length - 1,
           skippedRows: skippedRows.slice(0, 5)
         }
+      }, { status: 400 });
+    }
+
+    // Quota limit: Max 2,500 prospects per upload to prevent timeouts
+    const MAX_PROSPECTS_PER_UPLOAD = 2500;
+    if (prospects.length > MAX_PROSPECTS_PER_UPLOAD) {
+      return NextResponse.json({
+        success: false,
+        error: `Too many prospects (${prospects.length}). Maximum ${MAX_PROSPECTS_PER_UPLOAD} prospects per upload.`,
+        suggestion: 'Please split your CSV into smaller files.'
       }, { status: 400 });
     }
 
