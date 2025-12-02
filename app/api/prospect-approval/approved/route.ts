@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const workspaceId = searchParams.get('workspace_id')
+    const sessionId = searchParams.get('session_id') // Optional: filter by specific session
 
     if (!workspaceId) {
       return NextResponse.json({
@@ -61,20 +62,42 @@ export async function GET(request: NextRequest) {
     }
 
     // Get approved prospects from prospect_approval_data (join with sessions for workspace_id)
-    const { data: sessions, error: sessionsError } = await supabase
-      .from('prospect_approval_sessions')
-      .select('id')
-      .eq('workspace_id', workspaceId)
+    // If session_id is provided, only get prospects from that specific session
+    let sessionIds: string[] = []
 
-    if (sessionsError) {
-      console.error('Error fetching sessions:', sessionsError)
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to fetch approval sessions'
-      }, { status: 500 })
+    if (sessionId) {
+      // Filter by specific session - verify it belongs to this workspace
+      const { data: session, error: sessionError } = await supabase
+        .from('prospect_approval_sessions')
+        .select('id')
+        .eq('id', sessionId)
+        .eq('workspace_id', workspaceId)
+        .single()
+
+      if (sessionError || !session) {
+        return NextResponse.json({
+          success: true,
+          prospects: [],
+          total: 0
+        })
+      }
+      sessionIds = [session.id]
+    } else {
+      // Get all sessions for workspace
+      const { data: sessions, error: sessionsError } = await supabase
+        .from('prospect_approval_sessions')
+        .select('id')
+        .eq('workspace_id', workspaceId)
+
+      if (sessionsError) {
+        console.error('Error fetching sessions:', sessionsError)
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to fetch approval sessions'
+        }, { status: 500 })
+      }
+      sessionIds = (sessions || []).map(s => s.id)
     }
-
-    const sessionIds = (sessions || []).map(s => s.id)
 
     if (sessionIds.length === 0) {
       return NextResponse.json({
@@ -134,8 +157,11 @@ export async function GET(request: NextRequest) {
       })
     )
 
-    // Only return prospects NOT in campaigns
-    const availableProspects = prospectsWithCampaignStatus.filter(p => !p.in_campaign)
+    // Only return prospects NOT in campaigns AND with valid LinkedIn URLs
+    // Prospects without LinkedIn URLs cannot be used for LinkedIn campaigns
+    const availableProspects = prospectsWithCampaignStatus.filter(p =>
+      !p.in_campaign && p.linkedin_url && p.linkedin_url.trim() !== ''
+    )
 
     return NextResponse.json({
       success: true,

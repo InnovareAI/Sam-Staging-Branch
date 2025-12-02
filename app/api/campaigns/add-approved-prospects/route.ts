@@ -269,6 +269,22 @@ export async function POST(request: NextRequest) {
     console.log(`📊 With LinkedIn URL: ${prospectsWithLinkedIn.length}`);
     console.log(`⚠️  Without LinkedIn URL: ${prospectsWithoutLinkedIn.length}`);
 
+    // CRITICAL: Mark prospects as 'added_to_campaign' in prospect_approval_data
+    // This prevents them from showing up in future "approved prospects" lists
+    if (prospect_ids && prospect_ids.length > 0) {
+      const { error: updateError } = await supabase
+        .from('prospect_approval_data')
+        .update({ approval_status: 'added_to_campaign' })
+        .in('prospect_id', prospect_ids);
+
+      if (updateError) {
+        console.warn('⚠️ Failed to update prospect_approval_data status:', updateError.message);
+        // Non-fatal - prospects are already added to campaign
+      } else {
+        console.log(`✅ Marked ${prospect_ids.length} prospects as 'added_to_campaign'`);
+      }
+    }
+
     if (prospectsWithoutLinkedIn.length > 0) {
       console.warn('❌ Prospects missing LinkedIn URL:', prospectsWithoutLinkedIn.map(p => ({
         id: p.id,

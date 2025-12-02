@@ -1737,11 +1737,13 @@ export default function DataCollectionHub({
           console.log('✅ Prospects saved to database:', result);
 
           // Fetch the saved prospects to get their database IDs
-          const approvedResponse = await fetch(`/api/prospect-approval/approved?workspace_id=${workspaceId}`);
+          // CRITICAL: Pass session_id to get only the prospects from THIS session, not all sessions
+          const sessionIdParam = result.session_id ? `&session_id=${result.session_id}` : '';
+          const approvedResponse = await fetch(`/api/prospect-approval/approved?workspace_id=${workspaceId}${sessionIdParam}`);
           if (approvedResponse.ok) {
             const approvedData = await approvedResponse.json();
             savedProspects = approvedData.prospects || approvedProspects;
-            console.log('✅ Fetched saved prospects with IDs:', savedProspects.length);
+            console.log('✅ Fetched saved prospects with IDs:', savedProspects.length, 'from session:', result.session_id);
           }
         }
       }
