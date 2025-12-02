@@ -7892,13 +7892,16 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                               <tr className="text-left text-gray-400 text-xs uppercase">
                                 <th className="px-6 py-3 font-medium">Campaign</th>
                                 <th className="px-6 py-3 font-medium">Type</th>
+                                <th className="px-6 py-3 font-medium">Prospects</th>
                                 <th className="px-6 py-3 font-medium">Progress</th>
                                 <th className="px-6 py-3 font-medium">Last Saved</th>
                                 <th className="px-6 py-3 font-medium"></th>
                               </tr>
                             </thead>
                             <tbody>
-                              {draftCampaigns.map((draft: any) => (
+                              {draftCampaigns.map((draft: any) => {
+                                const prospectCount = draft.draft_data?.csvData?.length || 0;
+                                return (
                                 <tr
                                   key={draft.id}
                                   onClick={() => {
@@ -7918,6 +7921,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                   </td>
                                   <td className="px-6 py-4">
                                     <span className="text-gray-300">{getCampaignTypeLabel(draft.type)}</span>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <div className="text-white">{prospectCount}</div>
+                                    <div className="text-gray-400 text-sm">prospects</div>
                                   </td>
                                   <td className="px-6 py-4">
                                     <div className="flex items-center gap-2">
@@ -7981,7 +7988,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                     </div>
                                   </td>
                                 </tr>
-                              ))}
+                              );
+                              })}
                             </tbody>
                           </table>
                         </div>
