@@ -123,7 +123,7 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
           processed_data: validatedData.processed,
           data_preview: validatedData.processed.slice(0, 10),
           total_count: prospects.length,
-          quota_limit: 1000,
+          quota_limit: 2500, // LinkedIn Premium allows exporting up to 2,500 connections
           data_quality_score: validatedData.quality_score,
           completeness_score: validatedData.completeness_score,
           duplicate_count: validatedData.duplicates.length
@@ -153,7 +153,11 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
         completeness_score: validatedData.completeness_score
       },
       quota_info: quotaCheck,
-      preview_data: validatedData.processed.slice(0, 5)
+      preview_data: validatedData.processed.slice(0, 5),
+      info: {
+        linkedin_export_limit: 'LinkedIn limits CSV exports to ~1,000 connections (basic accounts) or ~2,500 connections (Premium/Sales Navigator). Our system supports up to 2,500 prospects per upload.',
+        max_upload_size: 2500
+      }
     })
 
   } catch (error) {
@@ -194,7 +198,11 @@ async function validateCSV(file: File) {
         detected_fields: csvData.detected_fields
       },
       preview_data: prospects.slice(0, 5),
-      issues: validation.issues
+      issues: validation.issues,
+      info: {
+        linkedin_export_limit: 'LinkedIn limits CSV exports to ~1,000 connections (basic accounts) or ~2,500 connections (Premium/Sales Navigator). Our system supports up to 2,500 prospects per upload.',
+        max_upload_size: 2500
+      }
     })
 
   } catch (error) {

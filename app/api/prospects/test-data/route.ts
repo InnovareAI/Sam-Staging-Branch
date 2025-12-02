@@ -262,7 +262,7 @@ async function createTestApprovalSession(supabase: any, userId: string, count: n
           processed_data: prospects,
           data_preview: prospects.slice(0, 10),
           total_count: prospects.length,
-          quota_limit: dataType === 'icp' ? 30 : 1000,
+          quota_limit: dataType === 'icp' ? 30 : 2500, // LinkedIn Premium allows exporting up to 2,500 connections
           data_quality_score: testProspectsData.metadata.average_quality,
           completeness_score: 0.85,
           duplicate_count: 0

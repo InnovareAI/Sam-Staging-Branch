@@ -85,7 +85,7 @@ async function createApprovalSession(supabase: any, userId: string, linkedinData
         processed_data: processLinkedInData(linkedinData),
         data_preview: linkedinData.prospects?.slice(0, 10) || [],
         total_count: linkedinData.prospects?.length || 0,
-        quota_limit: 1000,
+        quota_limit: 2500, // LinkedIn Premium allows exporting up to 2,500 connections
         data_quality_score: calculateDataQuality(linkedinData.prospects),
         completeness_score: calculateCompleteness(linkedinData.prospects)
       })
