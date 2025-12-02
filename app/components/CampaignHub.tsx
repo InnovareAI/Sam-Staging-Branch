@@ -6024,8 +6024,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     }
   }, [autoOpenApprovals]);
 
-  // Campaign filter state
-  const [campaignFilter, setCampaignFilter] = useState<'active' | 'paused' | 'archived' | 'completed' | 'pending' | 'draft'>('active');
+  // Campaign filter state ('pending' is now 'In Progress' - merged drafts + approved prospects)
+  const [campaignFilter, setCampaignFilter] = useState<'active' | 'paused' | 'archived' | 'completed' | 'pending'>('active');
 
   // REACT QUERY: Fetch pending campaigns with caching - LAZY LOAD when tab is active
   const { data: pendingCampaignsFromDB = [], isLoading: loadingPendingFromDB } = useQuery({
@@ -6091,7 +6091,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     refetchOnWindowFocus: true,
   });
 
-  // REACT QUERY: Fetch draft campaigns with caching - LAZY LOAD when tab is active
+  // REACT QUERY: Fetch draft campaigns with caching - LAZY LOAD when In Progress tab is active
   const { data: draftCampaigns = [], isLoading: loadingDrafts } = useQuery({
     queryKey: ['draftCampaigns', actualWorkspaceId],
     queryFn: async () => {
@@ -6103,7 +6103,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       const result = await response.json();
       return result.drafts || [];
     },
-    enabled: campaignFilter === 'draft', // Only fetch when Draft tab is active
+    enabled: campaignFilter === 'pending', // Fetch when In Progress tab is active (merged drafts + pending)
     staleTime: 2 * 60 * 1000, // 2 minutes
     refetchOnWindowFocus: true,
   });
@@ -7803,7 +7803,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   </span>
                 )}
               </button>
-              {/* Campaign Creator Tab - Shows campaigns with approved prospects */}
+              {/* In Progress Tab - Merged: Shows both drafts and approved prospects waiting for campaign creation */}
               <button
                 onClick={() => setCampaignFilter('pending')}
                 className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
@@ -7812,144 +7812,28 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                     : 'text-gray-400 hover:text-white'
                 }`}
               >
-                Campaign Creator
-                {/* CRITICAL FIX (Nov 26): Don't count initialProspects if campaign was created from them */}
-                {((!campaignCreatedFromInitial ? (initialProspects?.filter(p => p.approvalStatus === 'approved').length || 0) : 0) + pendingCampaignsFromDB.length) > 0 && (
-                  <span className="px-2 py-0.5 bg-yellow-600 text-white text-xs rounded-full">
-                    {(!campaignCreatedFromInitial ? (initialProspects?.filter(p => p.approvalStatus === 'approved').length || 0) : 0) + pendingCampaignsFromDB.length}
-                  </span>
-                )}
-              </button>
-              {/* Draft Tab - Shows saved draft campaigns */}
-              <button
-                onClick={() => setCampaignFilter('draft')}
-                className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
-                  campaignFilter === 'draft'
-                    ? 'text-white border-b-2 border-blue-500'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
                 <FileText size={16} />
-                Drafts
-                {draftCampaigns.length > 0 && (
-                  <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
-                    {draftCampaigns.length}
-                  </span>
-                )}
+                In Progress
+                {/* Count drafts + pending prospects (without duplicates) */}
+                {(() => {
+                  const pendingCount = (!campaignCreatedFromInitial ? (initialProspects?.filter(p => p.approvalStatus === 'approved').length || 0) : 0) + pendingCampaignsFromDB.length;
+                  const totalCount = draftCampaigns.length + pendingCount;
+                  return totalCount > 0 ? (
+                    <span className="px-2 py-0.5 bg-yellow-600 text-white text-xs rounded-full">
+                      {totalCount}
+                    </span>
+                  ) : null;
+                })()}
               </button>
             </div>
 
-            {/* Conditional Content: Campaign Table OR Pending Campaigns Table OR Draft Campaigns Table */}
-            {campaignFilter === 'draft' ? (
-              /* Draft Campaigns Table - Saved incomplete campaigns */
-              <div className="overflow-x-auto">
-                {loadingDrafts ? (
-                  <div className="text-center py-12">
-                    <div className="text-gray-400">Loading drafts...</div>
-                  </div>
-                ) : draftCampaigns.length === 0 ? (
-                  <div className="text-center py-12">
-                    <FileText className="mx-auto text-gray-400 mb-4" size={48} />
-                    <div className="text-white font-medium mb-2">No draft campaigns</div>
-                    <div className="text-gray-400">Start creating a campaign and it will auto-save as a draft.</div>
-                  </div>
-                ) : (
-                  <table className="w-full">
-                    <thead className="bg-gray-750">
-                      <tr className="text-left text-gray-400 text-xs uppercase">
-                        <th className="px-6 py-3 font-medium">Campaign</th>
-                        <th className="px-6 py-3 font-medium">Type</th>
-                        <th className="px-6 py-3 font-medium">Progress</th>
-                        <th className="px-6 py-3 font-medium">Last Saved</th>
-                        <th className="px-6 py-3 font-medium"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {draftCampaigns.map((draft: any) => (
-                        <tr
-                          key={draft.id}
-                          onClick={() => {
-                            // Load draft into builder
-                            setSelectedDraft(draft);
-                            setShowBuilder(true);
-                          }}
-                          className="border-b border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer"
-                        >
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                              <div>
-                                <div className="text-white font-medium">{draft.name}</div>
-                                <div className="text-gray-400 text-sm">Draft campaign</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="text-gray-300">{getCampaignTypeLabel(draft.type)}</span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <div className="text-white">Step {draft.current_step || 1} of 2</div>
-                              <div className="w-20 bg-gray-700 rounded-full h-2">
-                                <div
-                                  className="bg-blue-500 h-2 rounded-full transition-all"
-                                  style={{ width: `${((draft.current_step || 1) / 2) * 100}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-gray-400 text-sm">
-                              {new Date(draft.updated_at).toLocaleDateString()} {new Date(draft.updated_at).toLocaleTimeString()}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <button
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                if (confirm(`Delete draft "${draft.name}"?`)) {
-                                  try {
-                                    const response = await fetch(
-                                      `/api/campaigns/draft?draftId=${draft.id}&workspaceId=${workspaceId}`,
-                                      { method: 'DELETE' }
-                                    );
-                                    if (response.ok) {
-                                      // Clear currentDraftId if this was the active draft
-                                      if (currentDraftId === draft.id) {
-                                        setCurrentDraftId(null);
-                                      }
-                                      // Clear localStorage draft to prevent restore message
-                                      try {
-                                        localStorage.removeItem(`campaign-draft-${workspaceId}`);
-                                      } catch (e) {
-                                        console.warn('Failed to clear localStorage draft:', e);
-                                      }
-                                      queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
-                                      toastSuccess('Draft deleted');
-                                    }
-                                  } catch (error) {
-                                    toastError('Failed to delete draft');
-                                  }
-                                }
-                              }}
-                              className="text-red-400 hover:text-red-300 transition-colors"
-                              title="Delete draft"
-                            >
-                              <X size={16} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            ) : campaignFilter === 'pending' ? (
-              /* Pending Campaigns Table - Campaigns with approved prospects waiting for messages */
+            {/* Conditional Content: Campaign Table OR In Progress Table (merged drafts + pending) */}
+            {campaignFilter === 'pending' ? (
+              /* In Progress Table - MERGED: Shows both draft campaigns and approved prospects */
               <div className="overflow-x-auto">
                 {(() => {
                   // Merge temp initialProspects and persistent DB campaigns
-                  const allCampaigns: any[] = [];
+                  const pendingCampaigns: any[] = [];
 
                   // Add temp campaigns from initialProspects - ONLY APPROVED ONES
                   // CRITICAL FIX (Nov 26): Skip if campaign was already created from these prospects
@@ -7963,106 +7847,225 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                       acc[campaignName].prospects.push(prospect);
                       return acc;
                     }, {});
-                    allCampaigns.push(...Object.values(campaignGroups));
+                    pendingCampaigns.push(...Object.values(campaignGroups));
                   }
 
                   // Add persistent campaigns from DB (avoid duplicates)
                   pendingCampaignsFromDB.forEach(dbCampaign => {
-                    if (!allCampaigns.find(c => c.campaignName === dbCampaign.campaignName)) {
-                      allCampaigns.push({ ...dbCampaign, source: 'database' });
+                    if (!pendingCampaigns.find(c => c.campaignName === dbCampaign.campaignName)) {
+                      pendingCampaigns.push({ ...dbCampaign, source: 'database' });
                     }
                   });
 
-                  if (loadingPendingFromDB && allCampaigns.length === 0) {
+                  const hasDrafts = draftCampaigns.length > 0;
+                  const hasPending = pendingCampaigns.length > 0;
+                  const isLoading = loadingDrafts || loadingPendingFromDB;
+
+                  if (isLoading && !hasDrafts && !hasPending) {
                     return (
                       <div className="text-center py-12">
-                        <div className="text-gray-400">Loading pending campaigns...</div>
+                        <div className="text-gray-400">Loading...</div>
                       </div>
                     );
                   }
 
-                  if (allCampaigns.length === 0) {
+                  if (!hasDrafts && !hasPending) {
                     return (
                       <div className="text-center py-12">
                         <CheckCircle className="mx-auto text-green-400 mb-4" size={48} />
-                        <div className="text-white font-medium mb-2">No pending campaigns</div>
+                        <div className="text-white font-medium mb-2">Nothing in progress</div>
                         <div className="text-gray-400">Approve prospects in Prospect Database to create campaigns.</div>
                       </div>
                     );
                   }
 
                   return (
-                    <table className="w-full">
-                      <thead className="bg-gray-750">
-                        <tr className="text-left text-gray-400 text-xs uppercase">
-                          <th className="px-6 py-3 font-medium">Campaign</th>
-                          <th className="px-6 py-3 font-medium">Source</th>
-                          <th className="px-6 py-3 font-medium">Prospects</th>
-                          <th className="px-6 py-3 font-medium">Created</th>
-                          <th className="px-6 py-3 font-medium"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {allCampaigns.map(({ campaignName, prospects, source, createdAt }) => (
-                          <tr
-                            key={campaignName}
-                            className="border-b border-gray-700 hover:bg-gray-750 transition-colors"
-                          >
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-white font-medium">{campaignName}</span>
-                                    {source === 'database' && (
-                                      <span className="px-2 py-0.5 bg-blue-600/20 text-blue-400 text-xs rounded-full border border-blue-500/40">
-                                        Saved
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="text-gray-400 text-sm">Ready for message creation</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className="text-gray-300 text-sm">
-                                {source === 'database' ? 'Prospect Database' : 'Recent'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="text-white">{prospects.length}</div>
-                              <div className="text-gray-400 text-sm">approved</div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className="text-gray-400 text-sm">
-                                {createdAt ? new Date(createdAt).toLocaleDateString() : 'Today'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    // Set the campaign-specific prospects before opening builder
-                                    setSelectedCampaignProspects(prospects);
+                    <>
+                      {/* SECTION 1: Draft Campaigns (Continue where you left off) */}
+                      {hasDrafts && (
+                        <div className="mb-6">
+                          <div className="px-6 py-3 bg-gray-800/50 border-b border-gray-700">
+                            <span className="text-sm font-medium text-blue-400">Continue where you left off</span>
+                          </div>
+                          <table className="w-full">
+                            <thead className="bg-gray-750">
+                              <tr className="text-left text-gray-400 text-xs uppercase">
+                                <th className="px-6 py-3 font-medium">Campaign</th>
+                                <th className="px-6 py-3 font-medium">Type</th>
+                                <th className="px-6 py-3 font-medium">Progress</th>
+                                <th className="px-6 py-3 font-medium">Last Saved</th>
+                                <th className="px-6 py-3 font-medium"></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {draftCampaigns.map((draft: any) => (
+                                <tr
+                                  key={draft.id}
+                                  onClick={() => {
+                                    setSelectedDraft(draft);
                                     setShowBuilder(true);
                                   }}
-                                  className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition-colors"
+                                  className="border-b border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer"
                                 >
-                                  <MessageSquare size={14} />
-                                  Create Campaign
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                                  <td className="px-6 py-4">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                      <div>
+                                        <div className="text-white font-medium">{draft.name}</div>
+                                        <div className="text-gray-400 text-sm">Draft - click to continue</div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <span className="text-gray-300">{getCampaignTypeLabel(draft.type)}</span>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <div className="flex items-center gap-2">
+                                      <div className="text-white">Step {draft.current_step || 1} of 2</div>
+                                      <div className="w-20 bg-gray-700 rounded-full h-2">
+                                        <div
+                                          className="bg-blue-500 h-2 rounded-full transition-all"
+                                          style={{ width: `${((draft.current_step || 1) / 2) * 100}%` }}
+                                        ></div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <div className="text-gray-400 text-sm">
+                                      {new Date(draft.updated_at).toLocaleDateString()} {new Date(draft.updated_at).toLocaleTimeString()}
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedDraft(draft);
+                                          setShowBuilder(true);
+                                        }}
+                                        className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors"
+                                      >
+                                        Continue
+                                      </button>
+                                      <button
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          if (confirm(`Delete draft "${draft.name}"?`)) {
+                                            try {
+                                              const response = await fetch(
+                                                `/api/campaigns/draft?draftId=${draft.id}&workspaceId=${workspaceId}`,
+                                                { method: 'DELETE' }
+                                              );
+                                              if (response.ok) {
+                                                if (currentDraftId === draft.id) {
+                                                  setCurrentDraftId(null);
+                                                }
+                                                try {
+                                                  localStorage.removeItem(`campaign-draft-${workspaceId}`);
+                                                } catch (e) {
+                                                  console.warn('Failed to clear localStorage draft:', e);
+                                                }
+                                                queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
+                                                toastSuccess('Draft deleted');
+                                              }
+                                            } catch (error) {
+                                              toastError('Failed to delete draft');
+                                            }
+                                          }
+                                        }}
+                                        className="text-red-400 hover:text-red-300 transition-colors"
+                                        title="Delete draft"
+                                      >
+                                        <X size={16} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      {/* SECTION 2: Approved Prospects Ready for Campaign Creation */}
+                      {hasPending && (
+                        <div>
+                          <div className="px-6 py-3 bg-gray-800/50 border-b border-gray-700">
+                            <span className="text-sm font-medium text-yellow-400">Ready to create campaign</span>
+                          </div>
+                          <table className="w-full">
+                            <thead className="bg-gray-750">
+                              <tr className="text-left text-gray-400 text-xs uppercase">
+                                <th className="px-6 py-3 font-medium">Campaign</th>
+                                <th className="px-6 py-3 font-medium">Source</th>
+                                <th className="px-6 py-3 font-medium">Prospects</th>
+                                <th className="px-6 py-3 font-medium">Created</th>
+                                <th className="px-6 py-3 font-medium"></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {pendingCampaigns.map(({ campaignName, prospects, source, createdAt }) => (
+                                <tr
+                                  key={campaignName}
+                                  className="border-b border-gray-700 hover:bg-gray-750 transition-colors"
+                                >
+                                  <td className="px-6 py-4">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-white font-medium">{campaignName}</span>
+                                          {source === 'database' && (
+                                            <span className="px-2 py-0.5 bg-blue-600/20 text-blue-400 text-xs rounded-full border border-blue-500/40">
+                                              Saved
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="text-gray-400 text-sm">Ready for message creation</div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <span className="text-gray-300 text-sm">
+                                      {source === 'database' ? 'Prospect Database' : 'Recent'}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <div className="text-white">{prospects.length}</div>
+                                    <div className="text-gray-400 text-sm">approved</div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <span className="text-gray-400 text-sm">
+                                      {createdAt ? new Date(createdAt).toLocaleDateString() : 'Today'}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedCampaignProspects(prospects);
+                                          setShowBuilder(true);
+                                        }}
+                                        className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition-colors"
+                                      >
+                                        <MessageSquare size={14} />
+                                        Create Campaign
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </>
                   );
                 })()}
               </div>
             ) : (
-              /* Campaign Table */
+              /* Campaign Table - Active/Paused/Completed campaigns */
               <div className="overflow-x-auto">
                 {/* Bulk Action Bar */}
                 {selectedCampaigns.size > 0 && (
