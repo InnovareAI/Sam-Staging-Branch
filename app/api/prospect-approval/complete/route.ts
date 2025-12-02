@@ -106,6 +106,13 @@ export async function POST(request: NextRequest) {
         const email = prospect.contact?.email || null;
         const linkedinUrl = prospect.contact?.linkedin_url || null;
 
+        // Convert numeric connection_degree to string format for campaign_prospects
+        let connectionDegreeStr: string | null = null;
+        if (prospect.connection_degree === 1) connectionDegreeStr = '1st';
+        else if (prospect.connection_degree === 2) connectionDegreeStr = '2nd';
+        else if (prospect.connection_degree === 3) connectionDegreeStr = '3rd';
+        else if (prospect.connection_degree) connectionDegreeStr = String(prospect.connection_degree);
+
         return {
           campaign_id: targetCampaignId,
           workspace_id: session.workspace_id,
@@ -116,6 +123,8 @@ export async function POST(request: NextRequest) {
           title: prospect.title || '',
           location: prospect.location || null,
           linkedin_url: linkedinUrl,
+          linkedin_user_id: prospect.linkedin_user_id || null,  // Preserve LinkedIn provider_id
+          connection_degree: connectionDegreeStr,  // CRITICAL: Store connection degree for campaign type validation
           status: 'pending',
           personalization_data: {
             source: 'csv_upload_approval',

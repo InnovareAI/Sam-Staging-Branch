@@ -222,6 +222,58 @@ export async function POST(req: NextRequest) {
 
     console.log(`📊 Found ${prospects.length} prospects to queue`);
 
+    // ==========================================
+    // PRE-FLIGHT VALIDATION: Check ALL prospects are connected BEFORE processing any
+    // This prevents silent one-by-one failures - fail fast with clear error
+    // ==========================================
+    console.log(`🔍 Pre-flight check: Validating prospects are 1st degree connections...`);
+
+    // Check up to first 10 prospects (or all if fewer)
+    const sampleSize = Math.min(prospects.length, 10);
+    const sampleProspects = prospects.slice(0, sampleSize);
+
+    const connectionChecks = await Promise.all(
+      sampleProspects.map(async (p) => {
+        try {
+          // Skip if no LinkedIn user ID
+          if (!p.linkedin_user_id) {
+            return { id: p.id, name: `${p.first_name} ${p.last_name}`, connected: false, reason: 'No LinkedIn ID' };
+          }
+
+          const profile = await unipileRequest(
+            `/api/v1/users/profile?account_id=${unipileAccountId}&provider_id=${p.linkedin_user_id}`
+          );
+
+          return {
+            id: p.id,
+            name: `${p.first_name} ${p.last_name}`,
+            connected: profile?.network_distance === 'FIRST_DEGREE',
+            distance: profile?.network_distance || 'UNKNOWN'
+          };
+        } catch (err) {
+          return { id: p.id, name: `${p.first_name} ${p.last_name}`, connected: false, reason: 'API error' };
+        }
+      })
+    );
+
+    const notConnected = connectionChecks.filter(c => !c.connected);
+
+    if (notConnected.length > 0) {
+      console.error(`❌ Pre-flight FAILED: ${notConnected.length}/${sampleSize} prospects are NOT 1st degree connections`);
+      notConnected.forEach(nc => console.log(`   - ${nc.name}: ${nc.distance || nc.reason}`));
+
+      return NextResponse.json({
+        success: false,
+        error: `Messenger campaigns require 1st degree connections. ${notConnected.length} of ${sampleSize} checked prospects are not connected.`,
+        suggestion: 'Use a Connector campaign to send connection requests first, or check that prospects are already connected.',
+        notConnected: notConnected.map(c => ({ name: c.name, reason: c.distance || c.reason })),
+        checkedCount: sampleSize,
+        totalProspects: prospects.length
+      }, { status: 400 });
+    }
+
+    console.log(`✅ Pre-flight PASSED: All ${sampleSize} sampled prospects are 1st degree connections`);
+
     // 3. Extract messages from campaign
     // MESSENGER CAMPAIGNS: Use direct_message_1/2/3 keys (NO connection request)
     // CONNECTOR CAMPAIGNS: Use connection_request + follow_ups (legacy support)
