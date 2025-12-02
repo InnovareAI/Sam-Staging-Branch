@@ -16,6 +16,13 @@ export async function POST(request: NextRequest) {
     const body: InitiateOAuthRequest = await request.json();
     const { workspace_id, crm_type } = body;
 
+    // Block ActiveCampaign - it uses API key auth, not OAuth
+    if (crm_type === 'activecampaign') {
+      return NextResponse.json({
+        error: 'ActiveCampaign uses API key authentication. Please use the Connect dialog instead.'
+      }, { status: 400 });
+    }
+
     // Authenticate user
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -86,13 +93,6 @@ function generateOAuthUrl(workspaceId: string, crmType: string): string {
         `scope=${encodeURIComponent('ZohoCRM.modules.ALL')}&` +
         `redirect_uri=${encodeURIComponent(process.env.ZOHO_REDIRECT_URI!)}&` +
         `access_type=offline&` +
-        `state=${encodeURIComponent(state)}`;
-
-    case 'activecampaign':
-      return `https://${process.env.ACTIVECAMPAIGN_ACCOUNT}.api-us1.com/oauth/authorize?` +
-        `client_id=${process.env.ACTIVECAMPAIGN_CLIENT_ID}&` +
-        `redirect_uri=${encodeURIComponent(process.env.ACTIVECAMPAIGN_REDIRECT_URI!)}&` +
-        `response_type=code&` +
         `state=${encodeURIComponent(state)}`;
 
     case 'keap':

@@ -1,0 +1,107 @@
+/**
+ * Fix Health Issues
+ * Automatically resolves common health check issues
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/app/lib/supabase';
+
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
+export async function POST(request: NextRequest) {
+  const supabase = supabaseAdmin();
+  const fixes: any[] = [];
+
+  try {
+    // Fix 1: Clear stuck queue items (>1 hour overdue)
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+    const { data: stuckItems, error: stuckError } = await supabase
+      .from('send_queue')
+      .select('id, scheduled_for')
+      .eq('status', 'pending')
+      .lt('scheduled_for', oneHourAgo);
+
+    if (!stuckError && stuckItems && stuckItems.length > 0) {
+      // Mark as failed with explanation
+      const { error: updateError } = await supabase
+        .from('send_queue')
+        .update({
+          status: 'failed',
+          error_message: 'Auto-failed by health check: stuck >1 hour',
+          updated_at: new Date().toISOString()
+        })
+        .in('id', stuckItems.map((i: any) => i.id));
+
+      fixes.push({
+        issue: 'Stuck Queue Items',
+        fixed: !updateError,
+        count: stuckItems.length,
+        error: updateError?.message
+      });
+    }
+
+    // Fix 2: Update stale prospects (>3 days pending)
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: staleProspects, error: staleError } = await supabase
+      .from('campaign_prospects')
+      .select('id')
+      .eq('status', 'pending')
+      .lt('updated_at', threeDaysAgo);
+
+    if (!staleError && staleProspects && staleProspects.length > 0) {
+      // Mark as skipped
+      const { error: updateError } = await supabase
+        .from('campaign_prospects')
+        .update({
+          status: 'skipped',
+          notes: 'Auto-skipped by health check: stale >3 days',
+          updated_at: new Date().toISOString()
+        })
+        .in('id', staleProspects.map((p: any) => p.id));
+
+      fixes.push({
+        issue: 'Stale Prospects',
+        fixed: !updateError,
+        count: staleProspects.length,
+        error: updateError?.message
+      });
+    }
+
+    // Fix 3: Check LinkedIn accounts table issue
+    try {
+      const { count, error: accountError } = await supabase
+        .from('linkedin_accounts')
+        .select('*', { count: 'exact', head: true });
+
+      fixes.push({
+        issue: 'LinkedIn Accounts Table',
+        fixed: !accountError,
+        count: count || 0,
+        error: accountError?.message || null
+      });
+    } catch (error) {
+      fixes.push({
+        issue: 'LinkedIn Accounts Table',
+        fixed: false,
+        error: error instanceof Error ? error.message : 'Table may not exist'
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      fixes_applied: fixes,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Fix health issues failed:', error);
+    return NextResponse.json({
+      error: 'Failed to fix health issues',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      fixes_applied: fixes
+    }, { status: 500 });
+  }
+}

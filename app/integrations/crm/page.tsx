@@ -86,6 +86,7 @@ export default function CRMIntegrationsPage() {
   }
 
   const handleConnect = async (crmType: string) => {
+    console.log('🔍 handleConnect called with:', crmType)
     if (!workspaceId) {
       setError('No workspace found. Please refresh the page.')
       return
@@ -93,9 +94,11 @@ export default function CRMIntegrationsPage() {
 
     // For ActiveCampaign, show API key dialog
     if (crmType === 'activecampaign') {
+      console.log('✅ Showing ActiveCampaign dialog')
       setShowACDialog(true)
       return
     }
+    console.log('📡 Initiating OAuth for:', crmType)
 
     // For other CRMs, use OAuth flow
     try {

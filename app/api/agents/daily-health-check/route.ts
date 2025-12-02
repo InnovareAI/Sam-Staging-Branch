@@ -246,6 +246,23 @@ async function checkQueueHealth(supabase: any): Promise<HealthCheckResult> {
 
 async function checkUnipileHealth(supabase: any): Promise<HealthCheckResult> {
   try {
+    // Get total accounts first
+    const { count: totalAccounts, error: countError } = await supabase
+      .from('linkedin_accounts')
+      .select('*', { count: 'exact', head: true });
+
+    if (countError) throw countError;
+
+    // If no accounts, return healthy status
+    if (!totalAccounts || totalAccounts === 0) {
+      return {
+        check_name: 'Unipile/LinkedIn Accounts',
+        status: 'healthy',
+        details: 'No LinkedIn accounts configured yet',
+        metrics: { total_accounts: 0, problem_accounts: 0 }
+      };
+    }
+
     // Check for accounts with recent errors
     const { data: accounts, error } = await supabase
       .from('linkedin_accounts')
@@ -255,11 +272,6 @@ async function checkUnipileHealth(supabase: any): Promise<HealthCheckResult> {
     if (error) throw error;
 
     const problemAccounts = accounts?.length || 0;
-
-    // Get total accounts
-    const { count: totalAccounts } = await supabase
-      .from('linkedin_accounts')
-      .select('*', { count: 'exact', head: true });
 
     let status: 'healthy' | 'warning' | 'critical' = 'healthy';
     if (problemAccounts > 2) status = 'critical';
