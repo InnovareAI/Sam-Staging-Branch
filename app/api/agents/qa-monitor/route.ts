@@ -164,6 +164,17 @@ export async function POST(request: NextRequest) {
       autoFixes.push(fix);
     }
 
+    // 13. Missing Workspace Account Sync (user_unipile_accounts not in workspace_accounts)
+    const missingAccountsCheck = await checkMissingWorkspaceAccounts(supabase);
+    allChecks.push(missingAccountsCheck);
+
+    // AUTO-FIX: Sync missing accounts to workspace_accounts
+    if (missingAccountsCheck.affected_records && missingAccountsCheck.affected_records > 0) {
+      console.log(`🔧 Auto-syncing ${missingAccountsCheck.affected_records} missing workspace accounts...`);
+      const fix = await autoFixMissingWorkspaceAccounts(supabase);
+      autoFixes.push(fix);
+    }
+
     // ============================================
     // PER-WORKSPACE CHECKS
     // ============================================
@@ -1326,6 +1337,156 @@ async function autoFixStuckUploadSessions(supabase: any): Promise<AutoFixResult>
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       details: 'Failed to fix stuck upload sessions'
+    };
+  }
+}
+
+/**
+ * CHECK: Missing Workspace Account Sync
+ * Detects LinkedIn accounts in user_unipile_accounts that are not in workspace_accounts
+ * This causes "No LinkedIn account connected" errors in search
+ */
+async function checkMissingWorkspaceAccounts(supabase: any): Promise<QACheck> {
+  try {
+    // Find users with LinkedIn accounts in user_unipile_accounts
+    // that have a workspace membership but no entry in workspace_accounts
+    const { data: missingAccounts, error } = await supabase.rpc('find_missing_workspace_accounts');
+
+    // If RPC doesn't exist, do manual check
+    if (error) {
+      // Get all LinkedIn accounts from user_unipile_accounts
+      const { data: userAccounts } = await supabase
+        .from('user_unipile_accounts')
+        .select('user_id, unipile_account_id, account_name, platform')
+        .eq('platform', 'LINKEDIN')
+        .in('connection_status', ['active', 'connected']);
+
+      // Get all workspace accounts
+      const { data: workspaceAccounts } = await supabase
+        .from('workspace_accounts')
+        .select('unipile_account_id');
+
+      const existingAccountIds = new Set((workspaceAccounts || []).map((a: any) => a.unipile_account_id));
+
+      // Find accounts not in workspace_accounts
+      const missing = (userAccounts || []).filter((ua: any) =>
+        !existingAccountIds.has(ua.unipile_account_id)
+      );
+
+      if (missing.length === 0) {
+        return {
+          check_name: 'Missing Workspace Account Sync',
+          category: 'consistency',
+          status: 'pass',
+          details: 'All LinkedIn accounts are synced to workspace_accounts',
+          affected_records: 0
+        };
+      }
+
+      return {
+        check_name: 'Missing Workspace Account Sync',
+        category: 'consistency',
+        status: 'fail',
+        details: `Found ${missing.length} LinkedIn accounts not synced to workspace_accounts: ${missing.map((m: any) => m.account_name).join(', ')}`,
+        affected_records: missing.length,
+        sample_ids: missing.slice(0, 5).map((m: any) => m.unipile_account_id),
+        suggested_fix: 'Run autoFixMissingWorkspaceAccounts to sync accounts'
+      };
+    }
+
+    return {
+      check_name: 'Missing Workspace Account Sync',
+      category: 'consistency',
+      status: 'pass',
+      details: 'All LinkedIn accounts are synced',
+      affected_records: 0
+    };
+  } catch (error) {
+    return {
+      check_name: 'Missing Workspace Account Sync',
+      category: 'consistency',
+      status: 'warning',
+      details: `Error checking: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      affected_records: 0
+    };
+  }
+}
+
+/**
+ * AUTO-FIX: Sync missing accounts to workspace_accounts
+ * For each user with a LinkedIn account, ensure it's in workspace_accounts for their workspaces
+ */
+async function autoFixMissingWorkspaceAccounts(supabase: any): Promise<AutoFixResult> {
+  try {
+    let syncedCount = 0;
+
+    // Get all LinkedIn accounts from user_unipile_accounts
+    const { data: userAccounts } = await supabase
+      .from('user_unipile_accounts')
+      .select('user_id, unipile_account_id, account_name, platform')
+      .eq('platform', 'LINKEDIN')
+      .in('connection_status', ['active', 'connected']);
+
+    // Get existing workspace accounts
+    const { data: existingAccounts } = await supabase
+      .from('workspace_accounts')
+      .select('unipile_account_id, workspace_id');
+
+    const existingPairs = new Set(
+      (existingAccounts || []).map((a: any) => `${a.workspace_id}:${a.unipile_account_id}`)
+    );
+
+    for (const userAccount of userAccounts || []) {
+      // Find all workspaces this user is a member of
+      const { data: memberships } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', userAccount.user_id)
+        .eq('status', 'active');
+
+      for (const membership of memberships || []) {
+        const pairKey = `${membership.workspace_id}:${userAccount.unipile_account_id}`;
+
+        // Skip if already exists
+        if (existingPairs.has(pairKey)) continue;
+
+        // Insert into workspace_accounts
+        const { error: insertError } = await supabase
+          .from('workspace_accounts')
+          .insert({
+            workspace_id: membership.workspace_id,
+            user_id: userAccount.user_id,
+            account_type: 'linkedin',
+            account_identifier: userAccount.account_name?.toLowerCase().replace(/\s+/g, '-') || 'linkedin-account',
+            account_name: userAccount.account_name,
+            unipile_account_id: userAccount.unipile_account_id,
+            connection_status: 'connected',
+            is_active: true,
+            connected_at: new Date().toISOString()
+          });
+
+        if (!insertError) {
+          syncedCount++;
+          existingPairs.add(pairKey); // Prevent duplicates in same run
+          console.log(`✅ Synced ${userAccount.account_name} to workspace ${membership.workspace_id}`);
+        }
+      }
+    }
+
+    return {
+      issue: 'Missing Workspace Account Sync',
+      attempted: true,
+      success: true,
+      count: syncedCount,
+      details: `Synced ${syncedCount} LinkedIn accounts to workspace_accounts`
+    };
+  } catch (error) {
+    return {
+      issue: 'Missing Workspace Account Sync',
+      attempted: true,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: 'Failed to sync missing workspace accounts'
     };
   }
 }
