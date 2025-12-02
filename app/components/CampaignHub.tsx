@@ -6136,7 +6136,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       });
       return campaigns;
     },
-    enabled: (campaignFilter === 'active' || campaignFilter === 'inactive' || campaignFilter === 'archived' || campaignFilter === 'completed') && !!actualWorkspaceId,
+    enabled: (campaignFilter === 'active' || campaignFilter === 'paused' || campaignFilter === 'archived' || campaignFilter === 'completed') && !!actualWorkspaceId,
     staleTime: 0, // Always fetch fresh - campaigns change frequently
     gcTime: 0, // Don't cache stale data
     refetchOnWindowFocus: true,
@@ -7891,6 +7891,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                     ...draftCampaigns.map((draft: any) => ({
                       type: 'draft',
                       name: draft.name,
+                      campaignType: draft.type || draft.campaign_type || 'connector',
                       prospectCount: draft.draft_data?.csvData?.length || 0,
                       date: draft.updated_at,
                       draft,
@@ -7899,6 +7900,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                     ...filteredPending.map((pending: any) => ({
                       type: 'pending',
                       name: pending.campaignName,
+                      campaignType: pending.campaignType || 'connector',
                       prospectCount: pending.prospects?.length || 0,
                       date: pending.createdAt,
                       draft: null,
@@ -7911,6 +7913,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                       <thead className="bg-gray-750">
                         <tr className="text-left text-gray-400 text-xs uppercase">
                           <th className="px-6 py-3 font-medium">Campaign</th>
+                          <th className="px-6 py-3 font-medium">Type</th>
                           <th className="px-6 py-3 font-medium">Status</th>
                           <th className="px-6 py-3 font-medium">Prospects</th>
                           <th className="px-6 py-3 font-medium">Date</th>
@@ -7936,6 +7939,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                 <div className={`w-2 h-2 rounded-full ${item.type === 'draft' ? 'bg-blue-500' : 'bg-yellow-500'}`}></div>
                                 <span className="text-white font-medium">{item.name}</span>
                               </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-gray-300">{getCampaignTypeLabel(item.campaignType)}</span>
                             </td>
                             <td className="px-6 py-4">
                               {item.type === 'draft' ? (
