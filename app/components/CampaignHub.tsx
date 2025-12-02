@@ -3697,9 +3697,6 @@ Would you like me to adjust these or create more variations?`
                   ? (connectionDegrees.secondThird / connectionDegrees.total) * 100
                   : 0;
 
-                // STRICT ENFORCEMENT: Disable campaign types that don't match the majority
-                const hasOnly2nd3rdDegree = connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0;
-
                 // Check if prospects have email addresses
                 const prospects = csvData.length > 0 ? csvData : (initialProspects || []);
                 const hasEmailAddresses = prospects.some(p => p.email || p.email_address || p.contact?.email);
@@ -3708,30 +3705,39 @@ Would you like me to adjust these or create more variations?`
                 let disabledReason = '';
                 let needsConnection: 'linkedin' | 'email' | 'both' | null = null;
 
+                // NEW: For mixed connection degrees, show how many will be included
+                // Messenger → only 1st degree, Connector → only 2nd/3rd degree
+                let matchingProspectCount = 0;
+                let prospectBadge = '';
+
+                if (isMessenger && connectionDegrees.total > 0) {
+                  matchingProspectCount = connectionDegrees.firstDegree;
+                  if (connectionDegrees.secondThird > 0) {
+                    prospectBadge = `${matchingProspectCount} of ${connectionDegrees.total} prospects`;
+                  }
+                } else if (isConnector && connectionDegrees.total > 0) {
+                  matchingProspectCount = connectionDegrees.secondThird;
+                  if (connectionDegrees.firstDegree > 0) {
+                    prospectBadge = `${matchingProspectCount} of ${connectionDegrees.total} prospects`;
+                  }
+                }
+
                 // Multi is always disabled (in development)
                 if (isMultichannel) {
                   isDisabled = true;
                   disabledReason = '🚧 In Development - Multi-channel campaigns coming soon';
                 }
-                // Check connection degree restrictions FIRST (highest priority)
+                // Check connection degree restrictions - ONLY disable if 0 matching prospects
                 else if (connectionDegrees.total > 0) {
-                  // Disable Connector if prospects are predominantly 1st degree (70%+)
-                  if (isConnector && (hasOnly1stDegree || firstDegreePercent >= 70)) {
+                  // Disable Connector ONLY if there are NO 2nd/3rd degree prospects
+                  if (isConnector && connectionDegrees.secondThird === 0) {
                     isDisabled = true;
-                    if (hasOnly1stDegree) {
-                      disabledReason = 'All prospects are 1st degree - use Messenger for direct messages';
-                    } else {
-                      disabledReason = `${Math.round(firstDegreePercent)}% are 1st degree - use Messenger instead`;
-                    }
+                    disabledReason = 'All prospects are 1st degree - use Messenger for direct messages';
                   }
-                  // Disable Messenger if prospects are predominantly 2nd/3rd degree (70%+)
-                  if (isMessenger && (hasOnly2nd3rdDegree || secondThirdPercent >= 70)) {
+                  // Disable Messenger ONLY if there are NO 1st degree prospects
+                  if (isMessenger && connectionDegrees.firstDegree === 0) {
                     isDisabled = true;
-                    if (hasOnly2nd3rdDegree) {
-                      disabledReason = 'All prospects are 2nd/3rd degree - use Connector to send connection requests first';
-                    } else {
-                      disabledReason = `${Math.round(secondThirdPercent)}% are 2nd/3rd degree - use Connector instead`;
-                    }
+                    disabledReason = 'All prospects are 2nd/3rd degree - use Connector to send connection requests first';
                   }
                   // Check email availability for Email campaigns
                   if (isEmail && !hasEmailAddresses && prospects.length > 0) {
@@ -3792,6 +3798,12 @@ Would you like me to adjust these or create more variations?`
                       <h4 className="text-white font-semibold text-base">{type.label}</h4>
                     </div>
                     <p className="text-gray-300 text-sm leading-relaxed">{type.description}</p>
+                    {/* Show prospect count badge for mixed connection degrees */}
+                    {!isDisabled && prospectBadge && (
+                      <div className="mt-2 inline-flex items-center px-2 py-1 bg-purple-900/40 border border-purple-500/30 rounded text-xs text-purple-300">
+                        📊 {prospectBadge}
+                      </div>
+                    )}
                     {isDisabled && needsConnection && (
                       <div className="mt-3">
                         <p className="text-yellow-400 text-xs mb-2">
@@ -6746,6 +6758,35 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         return mapped;
       });
 
+      // CRITICAL: Filter prospects based on campaign type for mixed connection degrees
+      // Messenger → only 1st degree (already connected)
+      // Connector → only 2nd/3rd degree (need connection request first)
+      let filteredProspects = mappedProspects;
+      const beforeFilterCount = mappedProspects.length;
+
+      if (approvedCampaignType === 'messenger') {
+        filteredProspects = mappedProspects.filter((p: any) => {
+          const degree = (p.connection_degree || '').toLowerCase();
+          // Include if 1st degree OR if degree is unknown (for backwards compatibility)
+          return degree.includes('1st') || degree === '' || !p.connection_degree;
+        });
+        console.log(`🔍 Messenger campaign: Filtered ${beforeFilterCount} → ${filteredProspects.length} (1st degree only)`);
+      } else if (approvedCampaignType === 'connector') {
+        filteredProspects = mappedProspects.filter((p: any) => {
+          const degree = (p.connection_degree || '').toLowerCase();
+          // Include if 2nd/3rd degree, OUT_OF_NETWORK, or unknown (for backwards compatibility)
+          return degree.includes('2nd') || degree.includes('3rd') || degree.includes('out') || degree === '' || !p.connection_degree;
+        });
+        console.log(`🔍 Connector campaign: Filtered ${beforeFilterCount} → ${filteredProspects.length} (2nd/3rd degree only)`);
+      }
+
+      // Update mappedProspects with filtered list
+      const mappedProspectsFiltered = filteredProspects;
+
+      if (mappedProspectsFiltered.length === 0) {
+        throw new Error(`No matching prospects for ${approvedCampaignType} campaign. ${approvedCampaignType === 'messenger' ? 'Messenger requires 1st degree connections.' : 'Connector requires 2nd/3rd degree connections.'}`);
+      }
+
       // CRITICAL: Verify campaign.id exists before uploading prospects
       if (!campaign.id) {
         console.error('❌ CRITICAL: campaign.id is undefined!', {
@@ -6758,11 +6799,14 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
       console.log('🔍 DEBUG: About to send to /api/campaigns/upload-prospects:', {
         campaign_id: campaign.id,
-        prospect_count: mappedProspects.length,
-        first_two_prospects: mappedProspects.slice(0, 2).map(p => ({
+        prospect_count: mappedProspectsFiltered.length,
+        filtered_from: beforeFilterCount,
+        campaign_type: approvedCampaignType,
+        first_two_prospects: mappedProspectsFiltered.slice(0, 2).map((p: any) => ({
           name: p.name,
           linkedin_url: p.linkedin_url,
-          company: p.company
+          company: p.company,
+          connection_degree: p.connection_degree
         }))
       });
 
@@ -6771,7 +6815,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaign_id: campaign.id,
-          prospects: mappedProspects
+          prospects: mappedProspectsFiltered
         })
       });
 
@@ -6789,8 +6833,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
       const uploadResult = await uploadResponse.json();
 
-      // Calculate connection degrees for these prospects
-      const prospectDegrees = mappedProspects.map((p: any) => {
+      // Calculate connection degrees for these prospects (using filtered list)
+      const prospectDegrees = mappedProspectsFiltered.map((p: any) => {
         const degree = p.connection_degree || p.degree || 'unknown';
         return degree.toLowerCase().includes('1st') ? '1st' :
                (degree.toLowerCase().includes('2nd') || degree.toLowerCase().includes('3rd')) ? '2nd/3rd' : 'unknown';
@@ -6839,7 +6883,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
       console.log(`🚀 Executing ${approvedCampaignType} campaign via ${executeEndpoint}`);
 
-      if (mappedProspects.length > 0) {
+      if (mappedProspectsFiltered.length > 0) {
         try {
           const executeResponse = await fetch(executeEndpoint, {
             method: 'POST',
@@ -6863,7 +6907,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               toastWarning(`✅ Campaign "${finalCampaignData.name}" launched with warnings!\n\n✅ ${executeResult.queued} prospects queued\n⚠️ ${executeResult.skipped} prospects skipped (duplicates)${syncMessage}\n\n💡 Check campaign dashboard for details`);
             } else {
               // All prospects queued successfully
-              toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${mappedProspects.length} prospects uploaded${syncMessage}\n🚀 Your campaign is now live and messages will be sent according to your schedule`);
+              toastSuccess(`✅ Campaign "${finalCampaignData.name}" approved and launched successfully!\n\n📊 ${mappedProspectsFiltered.length} prospects uploaded${beforeFilterCount !== mappedProspectsFiltered.length ? ` (filtered from ${beforeFilterCount})` : ''}${syncMessage}\n🚀 Your campaign is now live and messages will be sent according to your schedule`);
             }
           } else {
             const errorData = await executeResponse.json();
@@ -6893,7 +6937,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       }
 
       // Mark approval session as completed if prospects came from approval flow
-      const approvalSessionId = mappedProspects[0]?.sessionId || initialProspects?.[0]?.sessionId;
+      const approvalSessionId = mappedProspectsFiltered[0]?.sessionId || initialProspects?.[0]?.sessionId;
       if (approvalSessionId) {
         try {
           await fetch('/api/prospect-approval/complete', {
