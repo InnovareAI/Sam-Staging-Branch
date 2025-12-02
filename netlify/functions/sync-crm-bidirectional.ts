@@ -7,7 +7,7 @@
  * - Detects and resolves conflicts
  * - Uses N8N MCP workflows for actual API calls
  *
- * Schedule: */15 * * * * (every 15 minutes)
+ * Schedule: every 15 minutes (cron: 0,15,30,45 * * * *)
  */
 
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
