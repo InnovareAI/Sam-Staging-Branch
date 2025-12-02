@@ -162,9 +162,9 @@ async function fetchAllPendingInvitations(accountId: string): Promise<Set<string
     cursor = response.cursor || null;
     pageCount++;
 
-    // Small delay between pagination requests
+    // Minimal delay between pagination requests
     if (cursor) {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   } while (cursor && pageCount < maxPages);
 
@@ -202,9 +202,9 @@ async function fetchAllRelations(accountId: string): Promise<Set<string>> {
     cursor = response.cursor || null;
     pageCount++;
 
-    // Small delay between pagination requests
+    // Minimal delay between pagination requests
     if (cursor) {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   } while (cursor && pageCount < maxPages);
 
@@ -221,16 +221,6 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('🔍 Polling for accepted LinkedIn connections...');
-
-    // Add random delay (0-5 minutes) to avoid fixed timing - skip for manual triggers
-    const skipDelay = req.headers.get('x-skip-delay') === 'true';
-    if (!skipDelay) {
-      const randomDelay = Math.floor(Math.random() * 5 * 60 * 1000);
-      console.log(`⏱️  Adding ${Math.floor(randomDelay / 1000)}s random delay...`);
-      await new Promise(resolve => setTimeout(resolve, randomDelay));
-    } else {
-      console.log('⏭️  Skipping random delay (manual trigger)');
-    }
 
     // Find prospects with pending connection requests
     const { data: prospects, error: prospectsError } = await supabase
@@ -249,7 +239,8 @@ export async function POST(req: NextRequest) {
       `)
       .eq('status', 'connection_request_sent')
       .is('connection_accepted_at', null)
-      .order('contacted_at', { ascending: true });
+      .order('contacted_at', { ascending: true })
+      .limit(50); // Process 50 at a time to avoid timeout
 
     if (prospectsError) {
       console.error('Error fetching prospects:', prospectsError);
