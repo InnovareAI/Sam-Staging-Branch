@@ -136,15 +136,16 @@ export async function POST(req: NextRequest) {
 
     // Step 3: Check rate limit status based on campaign type
     // - Connector: 20/day, 100/week (LinkedIn CR limits)
+    // - Messenger: 100/day, 700/week (LinkedIn message limits)
     // - Email: 40/day per account
-    // - Messenger: No limit (messages to 1st degree connections)
     let rateLimitStatus = null;
     if (campaignType === 'connector') {
       rateLimitStatus = await checkConnectorRateLimitStatus(supabase, workspaceId);
+    } else if (campaignType === 'messenger') {
+      rateLimitStatus = await checkMessengerRateLimitStatus(supabase, workspaceId);
     } else if (campaignType === 'email') {
       rateLimitStatus = await checkEmailRateLimitStatus(supabase, workspaceId);
     }
-    // Messenger has no limit
 
     // Step 4: Process each prospect
     const results: ProspectCheck[] = [];
@@ -480,6 +481,68 @@ async function checkEmailRateLimitStatus(supabase: any, workspaceId: string): Pr
     weeklyUsed: 0, // Email doesn't have weekly limit
     weeklyLimit: 0,
     canSend: dailyUsed < dailyLimit,
+    warning
+  };
+}
+
+// Helper: Check Messenger (LinkedIn DM) rate limit status - 100/day, 700/week
+async function checkMessengerRateLimitStatus(supabase: any, workspaceId: string): Promise<{
+  dailyUsed: number;
+  dailyLimit: number;
+  weeklyUsed: number;
+  weeklyLimit: number;
+  canSend: boolean;
+  warning?: string;
+}> {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+
+  // Calculate week start (Monday)
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+  weekStart.setHours(0, 0, 0, 0);
+  const weekStartISO = weekStart.toISOString();
+
+  // Count messages sent today from messenger campaigns
+  const { count: dailyCount } = await supabase
+    .from('campaign_prospects')
+    .select('*, campaigns!inner(campaign_type)', { count: 'exact', head: true })
+    .eq('workspace_id', workspaceId)
+    .eq('campaigns.campaign_type', 'messenger')
+    .in('status', ['contacted', 'messaging', 'replied', 'completed'])
+    .gte('contacted_at', todayStart);
+
+  // Count messages sent this week from messenger campaigns
+  const { count: weeklyCount } = await supabase
+    .from('campaign_prospects')
+    .select('*, campaigns!inner(campaign_type)', { count: 'exact', head: true })
+    .eq('workspace_id', workspaceId)
+    .eq('campaigns.campaign_type', 'messenger')
+    .in('status', ['contacted', 'messaging', 'replied', 'completed'])
+    .gte('contacted_at', weekStartISO);
+
+  const dailyLimit = 100;
+  const weeklyLimit = 700;
+  const dailyUsed = dailyCount || 0;
+  const weeklyUsed = weeklyCount || 0;
+
+  let warning: string | undefined;
+  if (dailyUsed >= dailyLimit) {
+    warning = 'Daily message limit reached! Wait until tomorrow.';
+  } else if (weeklyUsed >= weeklyLimit) {
+    warning = 'Weekly message limit reached! Wait until next week.';
+  } else if (dailyUsed >= dailyLimit * 0.8) {
+    warning = `Approaching daily limit (${dailyUsed}/${dailyLimit})`;
+  } else if (weeklyUsed >= weeklyLimit * 0.8) {
+    warning = `Approaching weekly limit (${weeklyUsed}/${weeklyLimit})`;
+  }
+
+  return {
+    dailyUsed,
+    dailyLimit,
+    weeklyUsed,
+    weeklyLimit,
+    canSend: dailyUsed < dailyLimit && weeklyUsed < weeklyLimit,
     warning
   };
 }
