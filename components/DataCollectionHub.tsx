@@ -2424,11 +2424,11 @@ export default function DataCollectionHub({
                             <span className="text-gray-500 text-xs ml-2">(Ready for messaging)</span>
                           </div>
                         )}
-                        {!prospect.linkedinUserId && prospect.connectionDegree === '1st' && (
+                        {!prospect.linkedinUserId && prospect.connectionDegree === '1st' && prospect.linkedinUrl && (
                           <div className="col-span-2">
                             <span className="text-gray-400">LinkedIn ID:</span>
-                            <span className="text-yellow-400 ml-2 text-xs">
-                              ⚠️ Not found - will auto-sync on campaign creation
+                            <span className="text-gray-500 ml-2 text-xs">
+                              Will resolve on campaign launch
                             </span>
                           </div>
                         )}
