@@ -113,12 +113,15 @@ export async function GET(request: NextRequest) {
         // CRITICAL FIX: Extract LinkedIn URL from contact JSONB object
         const linkedinUrl = prospect.contact?.linkedin_url || prospect.linkedin_url || null;
 
-        // Check if this prospect is already in a campaign
-        const { data: campaignProspect } = await supabase
+        // Check if this prospect is already in ANY campaign
+        // CRITICAL FIX: Use .limit(1) instead of .single() to avoid errors when prospect is in multiple campaigns
+        const { data: campaignProspects } = await supabase
           .from('campaign_prospects')
           .select('campaign_id, campaigns(name, status)')
           .eq('linkedin_url', linkedinUrl)
-          .single()
+          .limit(1)
+
+        const campaignProspect = campaignProspects?.[0] || null;
 
         return {
           ...prospect,
