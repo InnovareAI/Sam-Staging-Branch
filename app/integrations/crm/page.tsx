@@ -4,6 +4,9 @@ import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   CheckCircle,
   AlertCircle,
@@ -33,19 +36,22 @@ export default function CRMIntegrationsPage() {
   const [connecting, setConnecting] = useState<string | null>(null)
   const [workspaceId, setWorkspaceId] = useState<string | null>(null)
 
+  // ActiveCampaign dialog state
+  const [showACDialog, setShowACDialog] = useState(false)
+  const [acAccountUrl, setAcAccountUrl] = useState('')
+  const [acApiKey, setAcApiKey] = useState('')
+
   const supabase = createClient()
 
   const fetchWorkspaceAndConnections = async () => {
     try {
       setError(null)
 
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         throw new Error('Please sign in to manage CRM integrations')
       }
 
-      // Get user's workspace
       const { data: memberData, error: memberError } = await supabase
         .from('workspace_members')
         .select('workspace_id')
@@ -59,7 +65,6 @@ export default function CRMIntegrationsPage() {
 
       setWorkspaceId(memberData.workspace_id)
 
-      // Fetch CRM connections for this workspace
       const { data: connectionsData, error: connectionsError } = await supabase
         .from('crm_connections')
         .select('*')
@@ -86,11 +91,17 @@ export default function CRMIntegrationsPage() {
       return
     }
 
+    // For ActiveCampaign, show API key dialog
+    if (crmType === 'activecampaign') {
+      setShowACDialog(true)
+      return
+    }
+
+    // For other CRMs, use OAuth flow
     try {
       setConnecting(crmType)
       setError(null)
 
-      // Call OAuth initiation endpoint
       const response = await fetch('/api/crm/oauth/initiate', {
         method: 'POST',
         headers: {
@@ -113,12 +124,52 @@ export default function CRMIntegrationsPage() {
         throw new Error('Invalid response from server')
       }
 
-      // Redirect to OAuth authorization page
       window.location.href = data.auth_url
 
     } catch (err) {
       console.error('Error connecting CRM:', err)
       setError(err instanceof Error ? err.message : 'Failed to connect CRM')
+      setConnecting(null)
+    }
+  }
+
+  const handleACConnect = async () => {
+    if (!workspaceId) {
+      setError('No workspace found. Please refresh the page.')
+      return
+    }
+
+    try {
+      setConnecting('activecampaign')
+      setError(null)
+
+      const response = await fetch('/api/crm/connect/activecampaign', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          workspace_id: workspaceId,
+          account_url: acAccountUrl,
+          api_key: acApiKey
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to connect ActiveCampaign')
+      }
+
+      // Success
+      setShowACDialog(false)
+      setAcAccountUrl('')
+      setAcApiKey('')
+      await fetchWorkspaceAndConnections()
+
+    } catch (err) {
+      console.error('Error connecting ActiveCampaign:', err)
+      setError(err instanceof Error ? err.message : 'Failed to connect ActiveCampaign')
+    } finally {
       setConnecting(null)
     }
   }
@@ -131,15 +182,14 @@ export default function CRMIntegrationsPage() {
   useEffect(() => {
     fetchWorkspaceAndConnections()
 
-    // Check for connection status in URL
     const urlParams = new URLSearchParams(window.location.search)
     const connected = urlParams.get('crm_connected')
     const crmError = urlParams.get('crm_error')
 
     if (connected) {
-      // Clear URL parameter
       const newUrl = window.location.pathname
       window.history.replaceState({}, '', newUrl)
+      fetchWorkspaceAndConnections()
     } else if (crmError) {
       setError(`Connection failed: ${crmError}`)
       const newUrl = window.location.pathname
@@ -152,19 +202,22 @@ export default function CRMIntegrationsPage() {
       type: 'hubspot',
       name: 'HubSpot',
       description: 'Powerful CRM for sales and marketing',
-      color: 'bg-orange-500'
+      color: 'bg-orange-500',
+      authType: 'oauth'
     },
     {
       type: 'activecampaign',
       name: 'ActiveCampaign',
       description: 'Email marketing and CRM automation',
-      color: 'bg-blue-500'
+      color: 'bg-blue-500',
+      authType: 'api_key'
     },
     {
       type: 'airtable',
       name: 'Airtable',
       description: 'Flexible database and CRM platform',
-      color: 'bg-yellow-500'
+      color: 'bg-yellow-500',
+      authType: 'oauth'
     }
   ]
 
@@ -172,6 +225,70 @@ export default function CRMIntegrationsPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-4xl space-y-6">
+      {/* ActiveCampaign API Key Dialog */}
+      <Dialog open={showACDialog} onOpenChange={setShowACDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Connect ActiveCampaign</DialogTitle>
+            <DialogDescription>
+              Enter your ActiveCampaign account URL and API key to connect
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="ac-url">Account URL</Label>
+              <Input
+                id="ac-url"
+                placeholder="https://youraccountname.api-us1.com"
+                value={acAccountUrl}
+                onChange={(e) => setAcAccountUrl(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Find this in Settings → Developer → API Access
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ac-key">API Key</Label>
+              <Input
+                id="ac-key"
+                type="password"
+                placeholder="Your ActiveCampaign API key"
+                value={acApiKey}
+                onChange={(e) => setAcApiKey(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Generate one in Settings → Developer → API Access
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowACDialog(false)
+                setAcAccountUrl('')
+                setAcApiKey('')
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleACConnect}
+              disabled={!acAccountUrl || !acApiKey || connecting === 'activecampaign'}
+            >
+              {connecting === 'activecampaign' ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                'Connect'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
