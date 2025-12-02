@@ -246,54 +246,76 @@ async function checkQueueHealth(supabase: any): Promise<HealthCheckResult> {
 
 async function checkUnipileHealth(supabase: any): Promise<HealthCheckResult> {
   try {
-    // Get total accounts first
-    const { count: totalAccounts, error: countError } = await supabase
-      .from('linkedin_accounts')
-      .select('*', { count: 'exact', head: true });
+    // Call Unipile API directly (source of truth for LinkedIn accounts)
+    const unipileDsn = process.env.UNIPILE_DSN;
+    const unipileApiKey = process.env.UNIPILE_API_KEY;
 
-    if (countError) throw countError;
-
-    // If no accounts, return healthy status
-    if (!totalAccounts || totalAccounts === 0) {
+    if (!unipileDsn || !unipileApiKey) {
       return {
         check_name: 'Unipile/LinkedIn Accounts',
-        status: 'healthy',
-        details: 'No LinkedIn accounts configured yet',
+        status: 'warning',
+        details: 'Unipile API credentials not configured',
         metrics: { total_accounts: 0, problem_accounts: 0 }
       };
     }
 
-    // Check for accounts with recent errors
-    const { data: accounts, error } = await supabase
-      .from('linkedin_accounts')
-      .select('id, name, connection_status, last_error, updated_at')
-      .in('connection_status', ['error', 'disconnected', 'rate_limited']);
+    const response = await fetch(`https://${unipileDsn}/api/v1/accounts`, {
+      headers: {
+        'X-API-KEY': unipileApiKey,
+        'Accept': 'application/json'
+      }
+    });
 
-    if (error) throw error;
+    if (!response.ok) {
+      throw new Error(`Unipile API error: ${response.status}`);
+    }
 
-    const problemAccounts = accounts?.length || 0;
+    const data = await response.json();
+    const allAccounts = Array.isArray(data) ? data : (data.items || data.accounts || []);
+    const linkedInAccounts = allAccounts.filter((acc: any) => acc.type === 'LINKEDIN');
+
+    const totalAccounts = linkedInAccounts.length;
+
+    if (totalAccounts === 0) {
+      return {
+        check_name: 'Unipile/LinkedIn Accounts',
+        status: 'healthy',
+        details: 'No LinkedIn accounts connected yet',
+        metrics: { total_accounts: 0, problem_accounts: 0 }
+      };
+    }
+
+    // Check for accounts with errors
+    const problemAccounts = linkedInAccounts.filter((acc: any) =>
+      acc.sources?.some((s: any) => s.status !== 'OK')
+    );
+
+    const problemCount = problemAccounts.length;
 
     let status: 'healthy' | 'warning' | 'critical' = 'healthy';
-    if (problemAccounts > 2) status = 'critical';
-    else if (problemAccounts > 0) status = 'warning';
+    if (problemCount > 2) status = 'critical';
+    else if (problemCount > 0) status = 'warning';
 
     return {
       check_name: 'Unipile/LinkedIn Accounts',
       status,
-      details: problemAccounts > 0
-        ? `${problemAccounts}/${totalAccounts} accounts have issues`
-        : `All ${totalAccounts} accounts healthy`,
+      details: problemCount > 0
+        ? `${problemCount}/${totalAccounts} LinkedIn accounts have connection issues`
+        : `All ${totalAccounts} LinkedIn accounts connected`,
       metrics: {
         total_accounts: totalAccounts,
-        problem_accounts: problemAccounts,
-        problem_list: accounts?.map((a: any) => ({ name: a.name, status: a.connection_status }))
+        problem_accounts: problemCount,
+        problem_list: problemAccounts.map((a: any) => ({
+          name: a.name,
+          status: a.sources?.[0]?.status || 'Unknown'
+        }))
       }
     };
   } catch (error) {
     return {
       check_name: 'Unipile/LinkedIn Accounts',
       status: 'warning',
-      details: `Could not check accounts: ${error instanceof Error ? error.message : 'Unknown'}`
+      details: `Could not check Unipile accounts: ${error instanceof Error ? error.message : 'Unknown'}`
     };
   }
 }
