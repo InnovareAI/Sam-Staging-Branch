@@ -153,6 +153,17 @@ export async function POST(request: NextRequest) {
       autoFixes.push(fix);
     }
 
+    // 12. Stuck Upload Sessions (session counters don't match reality, prospects not transferred)
+    const stuckSessionCheck = await checkStuckUploadSessions(supabase);
+    allChecks.push(stuckSessionCheck);
+
+    // AUTO-FIX: Fix session counters and transfer missing prospects
+    if (stuckSessionCheck.affected_records && stuckSessionCheck.affected_records > 0) {
+      console.log(`🔧 Auto-fixing ${stuckSessionCheck.affected_records} stuck upload sessions...`);
+      const fix = await autoFixStuckUploadSessions(supabase);
+      autoFixes.push(fix);
+    }
+
     // ============================================
     // PER-WORKSPACE CHECKS
     // ============================================
@@ -1088,6 +1099,233 @@ async function autoFixSameDayFollowups(supabase: any): Promise<AutoFixResult> {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       details: 'Failed to reschedule same-day followups'
+    };
+  }
+}
+
+/**
+ * CHECK: Stuck Upload Sessions
+ * Detects sessions where:
+ * 1. Session counters don't match actual decision counts (RLS bug)
+ * 2. Approved prospects exist but weren't transferred to campaign_prospects
+ */
+async function checkStuckUploadSessions(supabase: any): Promise<QACheck> {
+  try {
+    // Find sessions with counter mismatches or missing transfers
+    const { data: sessions, error } = await supabase
+      .from('prospect_approval_sessions')
+      .select(`
+        id,
+        campaign_id,
+        workspace_id,
+        status,
+        approved_count,
+        pending_count,
+        total_prospects
+      `)
+      .in('status', ['active', 'pending'])
+      .gt('total_prospects', 0);
+
+    if (error) throw error;
+
+    const stuckSessions: any[] = [];
+
+    for (const session of sessions || []) {
+      // Get actual decision counts
+      const { count: actualApproved } = await supabase
+        .from('prospect_approval_decisions')
+        .select('*', { count: 'exact', head: true })
+        .eq('session_id', session.id)
+        .eq('decision', 'approved');
+
+      const { count: actualRejected } = await supabase
+        .from('prospect_approval_decisions')
+        .select('*', { count: 'exact', head: true })
+        .eq('session_id', session.id)
+        .eq('decision', 'rejected');
+
+      const actualPending = session.total_prospects - (actualApproved || 0) - (actualRejected || 0);
+
+      // Check for counter mismatch
+      const hasMismatch = session.approved_count !== (actualApproved || 0) ||
+                          session.pending_count !== actualPending;
+
+      // Check if approved prospects were transferred
+      let missingTransfers = 0;
+      if ((actualApproved || 0) > 0 && session.campaign_id) {
+        const { count: inCampaign } = await supabase
+          .from('campaign_prospects')
+          .select('*', { count: 'exact', head: true })
+          .eq('campaign_id', session.campaign_id);
+
+        // If we have approved but none in campaign, they're missing
+        if ((inCampaign || 0) < (actualApproved || 0)) {
+          missingTransfers = (actualApproved || 0) - (inCampaign || 0);
+        }
+      }
+
+      if (hasMismatch || missingTransfers > 0) {
+        stuckSessions.push({
+          session_id: session.id,
+          campaign_id: session.campaign_id,
+          counter_mismatch: hasMismatch,
+          missing_transfers: missingTransfers,
+          stored_approved: session.approved_count,
+          actual_approved: actualApproved || 0,
+          stored_pending: session.pending_count,
+          actual_pending: actualPending
+        });
+      }
+    }
+
+    if (stuckSessions.length === 0) {
+      return {
+        check_name: 'Stuck Upload Sessions',
+        category: 'consistency',
+        status: 'pass',
+        details: 'All upload sessions have correct counters and transfers',
+        affected_records: 0
+      };
+    }
+
+    return {
+      check_name: 'Stuck Upload Sessions',
+      category: 'consistency',
+      status: 'fail',
+      details: `Found ${stuckSessions.length} stuck sessions: ${stuckSessions.map(s =>
+        `Session ${s.session_id.slice(0,8)}... (mismatch: ${s.counter_mismatch}, missing: ${s.missing_transfers})`
+      ).join(', ')}`,
+      affected_records: stuckSessions.length,
+      sample_ids: stuckSessions.slice(0, 5).map(s => s.session_id),
+      suggested_fix: 'Run autoFixStuckUploadSessions to correct counters and transfer prospects'
+    };
+  } catch (error) {
+    return {
+      check_name: 'Stuck Upload Sessions',
+      category: 'consistency',
+      status: 'warning',
+      details: `Error checking: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      affected_records: 0
+    };
+  }
+}
+
+/**
+ * AUTO-FIX: Fix stuck upload sessions
+ * 1. Correct session counters to match actual decisions
+ * 2. Transfer approved prospects to campaign_prospects if missing
+ * 3. Mark session as completed if all decisions made
+ */
+async function autoFixStuckUploadSessions(supabase: any): Promise<AutoFixResult> {
+  try {
+    let fixedCount = 0;
+    let transferredCount = 0;
+
+    // Find active/pending sessions
+    const { data: sessions } = await supabase
+      .from('prospect_approval_sessions')
+      .select('id, campaign_id, workspace_id, total_prospects')
+      .in('status', ['active', 'pending'])
+      .gt('total_prospects', 0);
+
+    for (const session of sessions || []) {
+      // Get actual counts
+      const { count: actualApproved } = await supabase
+        .from('prospect_approval_decisions')
+        .select('*', { count: 'exact', head: true })
+        .eq('session_id', session.id)
+        .eq('decision', 'approved');
+
+      const { count: actualRejected } = await supabase
+        .from('prospect_approval_decisions')
+        .select('*', { count: 'exact', head: true })
+        .eq('session_id', session.id)
+        .eq('decision', 'rejected');
+
+      const actualPending = session.total_prospects - (actualApproved || 0) - (actualRejected || 0);
+
+      // Fix counters
+      await supabase
+        .from('prospect_approval_sessions')
+        .update({
+          approved_count: actualApproved || 0,
+          rejected_count: actualRejected || 0,
+          pending_count: actualPending,
+          status: actualPending === 0 ? 'completed' : 'active',
+          completed_at: actualPending === 0 ? new Date().toISOString() : null
+        })
+        .eq('id', session.id);
+
+      fixedCount++;
+
+      // Transfer approved prospects if campaign exists and they're missing
+      if (session.campaign_id && (actualApproved || 0) > 0) {
+        // Get approved prospects not yet in campaign
+        const { data: approvedProspects } = await supabase
+          .from('prospect_approval_data')
+          .select('*')
+          .eq('session_id', session.id)
+          .eq('approval_status', 'approved');
+
+        // Check which are already in campaign
+        const { data: existingInCampaign } = await supabase
+          .from('campaign_prospects')
+          .select('linkedin_url')
+          .eq('campaign_id', session.campaign_id);
+
+        const existingUrls = new Set((existingInCampaign || []).map((p: any) => p.linkedin_url));
+
+        // Filter to only those not already transferred
+        const toTransfer = (approvedProspects || []).filter((p: any) =>
+          !existingUrls.has(p.contact?.linkedin_url)
+        );
+
+        if (toTransfer.length > 0) {
+          const campaignProspects = toTransfer.map((p: any) => {
+            const nameParts = p.name?.split(' ') || ['Unknown'];
+            return {
+              campaign_id: session.campaign_id,
+              workspace_id: session.workspace_id,
+              first_name: nameParts[0] || 'Unknown',
+              last_name: nameParts.slice(1).join(' ') || '',
+              email: p.contact?.email || null,
+              company_name: p.company?.name || '',
+              title: p.title || '',
+              location: p.location || null,
+              linkedin_url: p.contact?.linkedin_url || null,
+              status: 'pending',
+              personalization_data: {
+                source: 'qa_monitor_recovery',
+                session_id: session.id,
+                recovered_at: new Date().toISOString()
+              }
+            };
+          });
+
+          const { data: inserted } = await supabase
+            .from('campaign_prospects')
+            .insert(campaignProspects)
+            .select('id');
+
+          transferredCount += inserted?.length || 0;
+        }
+      }
+    }
+
+    return {
+      issue: 'Stuck Upload Sessions',
+      attempted: true,
+      success: true,
+      count: fixedCount,
+      details: `Fixed ${fixedCount} session counters, transferred ${transferredCount} prospects to campaigns`
+    };
+  } catch (error) {
+    return {
+      issue: 'Stuck Upload Sessions',
+      attempted: true,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: 'Failed to fix stuck upload sessions'
     };
   }
 }
