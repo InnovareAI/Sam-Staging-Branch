@@ -480,6 +480,56 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ CSV Upload - Successfully inserted ${verifyCount} prospects`);
 
+    // AUTO-TRANSFER: Directly insert into campaign_prospects
+    // CSV uploads are user-curated data and don't need approval workflow
+    const campaignProspects = prospects.map(p => {
+      const nameParts = p.name?.split(' ') || ['Unknown'];
+      const firstName = nameParts[0] || 'Unknown';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      return {
+        campaign_id: campaignId,
+        workspace_id: workspaceId,
+        first_name: firstName,
+        last_name: lastName,
+        email: p.contact?.email || null,
+        company_name: p.company?.name || '',
+        title: p.title || '',
+        location: p.location || null,
+        linkedin_url: p.contact?.linkedin_url || null,
+        status: 'pending',
+        personalization_data: {
+          source: 'csv_upload',
+          session_id: session.id,
+          uploaded_at: new Date().toISOString(),
+          connection_degree: p.connectionDegree
+        }
+      };
+    });
+
+    const { data: insertedProspects, error: campaignInsertError } = await supabase
+      .from('campaign_prospects')
+      .insert(campaignProspects)
+      .select('id');
+
+    if (campaignInsertError) {
+      console.error('CSV Upload - Error inserting into campaign_prospects:', campaignInsertError);
+      // Don't fail - prospects are still in approval_data for manual transfer
+    } else {
+      console.log(`✅ CSV Upload - Auto-transferred ${insertedProspects?.length || 0} prospects to campaign_prospects`);
+
+      // Update session to completed since prospects are now in campaign
+      await supabase
+        .from('prospect_approval_sessions')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          approved_count: prospects.length,
+          pending_count: 0
+        })
+        .eq('id', session.id);
+    }
+
     // Build user-friendly message
     let message = `Successfully uploaded ${prospects.length} prospects.`;
     let warning = null;
