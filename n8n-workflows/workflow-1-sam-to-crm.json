@@ -16,9 +16,7 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/crm_connections",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "url": "=https://latxadqrvrrrcvkktrog.supabase.co/rest/v1/crm_connections",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -45,11 +43,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              "value": "=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdHhhZHFydnJycmN2a2t0cm9nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MjY5OTk4NiwiZXhwIjoyMDY4Mjc1OTg2fQ.nCcqwHSwGtqatcMmb1uanGxsL4DbD8woPwezMAE41OQ"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              "value": "=Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdHhhZHFydnJycmN2a2t0cm9nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MjY5OTk4NiwiZXhwIjoyMDY4Mjc1OTg2fQ.nCcqwHSwGtqatcMmb1uanGxsL4DbD8woPwezMAE41OQ"
             }
           ]
         },
@@ -228,13 +226,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SAM_API_URL }}/api/crm/webhook/sync-complete",
+        "url": "=https://app.meet-sam.com/api/crm/webhook/sync-complete",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "x-n8n-webhook-secret",
-              "value": "={{ $env.N8N_WEBHOOK_SECRET }}"
+              "value": "=45015cc55ac036e78cc7489417c30c364326c690dcf3eea8a7c8849b7276a17b"
             },
             {
               "name": "Content-Type",
