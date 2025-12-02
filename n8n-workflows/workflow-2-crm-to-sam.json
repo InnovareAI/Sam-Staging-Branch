@@ -1,0 +1,366 @@
+{
+  "name": "CRM Sync: CRM → SAM",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "crm-sync-from-crm",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-2",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "crm-sync-from-crm"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/crm_connections",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "workspace_id",
+              "value": "=eq.{{ $json.body.workspace_id }}"
+            },
+            {
+              "name": "crm_type",
+              "value": "=eq.{{ $json.body.crm_type }}"
+            },
+            {
+              "name": "status",
+              "value": "=eq.active"
+            },
+            {
+              "name": "select",
+              "value": "*"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-connection-2",
+      "name": "Get CRM Connection",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json[0].crm_type }}",
+                    "rightValue": "hubspot",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "hubspot"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json[0].crm_type }}",
+                    "rightValue": "activecampaign",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "activecampaign"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json[0].crm_type }}",
+                    "rightValue": "airtable",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "airtable"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch-crm-2",
+      "name": "Switch CRM Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.hubapi.com/crm/v3/objects/contacts/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Get CRM Connection').item.json[0].access_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"filterGroups\": [{\n    \"filters\": [{\n      \"propertyName\": \"lastmodifieddate\",\n      \"operator\": \"GT\",\n      \"value\": $('Webhook').item.json.body.since_timestamp || new Date(Date.now() - 3600000).toISOString()\n    }]\n  }],\n  \"properties\": [\"firstname\", \"lastname\", \"email\", \"phone\", \"company\", \"jobtitle\", \"lastmodifieddate\"]\n} }}",
+        "options": {}
+      },
+      "id": "hubspot-fetch",
+      "name": "HubSpot Fetch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Get CRM Connection').item.json[0].crm_account_id }}/api/3/contacts",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filters[updated_after]",
+              "value": "={{ $('Webhook').item.json.body.since_timestamp || new Date(Date.now() - 3600000).toISOString() }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Api-Token",
+              "value": "={{ $('Get CRM Connection').item.json[0].access_token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ac-fetch",
+      "name": "ActiveCampaign Fetch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.airtable.com/v0/{{ $('Get CRM Connection').item.json[0].crm_account_id }}/Contacts",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filterByFormula",
+              "value": "=IS_AFTER({Last Modified}, '{{ $('Webhook').item.json.body.since_timestamp || new Date(Date.now() - 3600000).toISOString() }}')"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Get CRM Connection').item.json[0].access_token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "airtable-fetch",
+      "name": "Airtable Fetch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SAM_API_URL }}/api/crm/webhook/sync-from-crm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-webhook-secret",
+              "value": "={{ $env.N8N_WEBHOOK_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"workspace_id\": $('Webhook').item.json.body.workspace_id,\n  \"crm_type\": $('Get CRM Connection').item.json[0].crm_type,\n  \"contacts\": $json.results || $json.contacts || $json.records || [],\n  \"sync_type\": \"scheduled\"\n} }}",
+        "options": {}
+      },
+      "id": "call-sam",
+      "name": "Call SAM Webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"success\": true,\n  \"message\": \"Contacts synced from CRM to SAM\",\n  \"contacts_synced\": $json.records_succeeded || 0\n} }}"
+      },
+      "id": "respond-2",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get CRM Connection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get CRM Connection": {
+      "main": [
+        [
+          {
+            "node": "Switch CRM Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch CRM Type": {
+      "main": [
+        [
+          {
+            "node": "HubSpot Fetch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ActiveCampaign Fetch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Airtable Fetch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HubSpot Fetch": {
+      "main": [
+        [
+          {
+            "node": "Call SAM Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ActiveCampaign Fetch": {
+      "main": [
+        [
+          {
+            "node": "Call SAM Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable Fetch": {
+      "main": [
+        [
+          {
+            "node": "Call SAM Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call SAM Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

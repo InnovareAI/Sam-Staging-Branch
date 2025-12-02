@@ -120,3 +120,13 @@
 # Generates thoughtful comments for discovered posts (pending approval)
 [functions."auto-generate-comments"]
   schedule = "*/30 * * * *"
+
+# ============================================
+# CRM BI-DIRECTIONAL SYNC (Dec 2, 2025)
+# ============================================
+
+# CRM Bi-directional Sync: Sync data between SAM and connected CRMs every 15 minutes
+# Fetches updates from HubSpot, ActiveCampaign, Airtable and syncs to SAM
+# Uses N8N MCP workflows for API routing (supports 400+ CRMs via HTTP Request + Switch)
+[functions."sync-crm-bidirectional"]
+  schedule = "*/15 * * * *"

@@ -205,6 +205,13 @@ export interface DatabaseMCPConfig {
   queryTimeout?: number
 }
 
+// CRM specific types
+export interface CRMMCPConfig {
+  workspaceId: string
+  organizationId: string
+  userId: string
+}
+
 export interface DatabaseQueryRequest {
   query: string
   parameters?: Record<string, unknown>

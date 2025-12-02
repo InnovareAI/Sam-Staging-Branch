@@ -1,10 +1,11 @@
 /**
  * CRM Sync Service
- * Syncs interested leads to connected CRM systems via MCP adapters
- * Supports: HubSpot, Salesforce, Pipedrive, Zoho, etc.
+ * Syncs interested leads to connected CRM systems via MCP tools
+ * Supports: HubSpot, ActiveCampaign, Airtable, Salesforce, and more
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { mcpRegistry } from '@/lib/mcp/mcp-registry';
 
 interface InterestedLead {
   prospectId?: string;
@@ -76,45 +77,43 @@ export async function syncInterestedLeadToCRM(
       .eq('workspace_id', workspaceId)
       .eq('crm_type', connection.crm_type);
 
-    // Route to appropriate CRM handler
+    // Use MCP CRM tools for supported CRMs
+    const supportedCRMs = ['hubspot', 'activecampaign', 'airtable'];
     let result: SyncResult;
-    switch (connection.crm_type) {
-      case 'hubspot':
-        result = await syncToHubSpot(connection, lead, mappings || []);
-        break;
-      case 'salesforce':
-        result = await syncToSalesforce(connection, lead, mappings || []);
-        break;
-      case 'pipedrive':
-        result = await syncToPipedrive(connection, lead, mappings || []);
-        break;
-      case 'zoho':
-        result = await syncToZoho(connection, lead, mappings || []);
-        break;
-      case 'airtable':
-        result = await syncToAirtable(connection, lead, mappings || []);
-        break;
-      case 'activecampaign':
-        result = await syncToActiveCampaign(connection, lead, mappings || []);
-        break;
-      case 'keap':
-        result = await syncToKeap(connection, lead, mappings || []);
-        break;
-      case 'close':
-        result = await syncToClose(connection, lead, mappings || []);
-        break;
-      case 'copper':
-        result = await syncToCopper(connection, lead, mappings || []);
-        break;
-      case 'freshsales':
-        result = await syncToFreshsales(connection, lead, mappings || []);
-        break;
-      case 'google_sheets':
-        result = await syncToGoogleSheets(connection, lead, mappings || []);
-        break;
-      default:
-        console.log(`⚠️ CRM type ${connection.crm_type} not yet implemented`);
-        return { success: false, crmType: connection.crm_type, error: `CRM type ${connection.crm_type} not supported yet` };
+
+    if (supportedCRMs.includes(connection.crm_type)) {
+      result = await syncViaMCP(workspaceId, connection.crm_type, lead);
+    } else {
+      // Fallback to direct API calls for CRMs not yet in MCP
+      switch (connection.crm_type) {
+        case 'salesforce':
+          result = await syncToSalesforce(connection, lead, mappings || []);
+          break;
+        case 'pipedrive':
+          result = await syncToPipedrive(connection, lead, mappings || []);
+          break;
+        case 'zoho':
+          result = await syncToZoho(connection, lead, mappings || []);
+          break;
+        case 'keap':
+          result = await syncToKeap(connection, lead, mappings || []);
+          break;
+        case 'close':
+          result = await syncToClose(connection, lead, mappings || []);
+          break;
+        case 'copper':
+          result = await syncToCopper(connection, lead, mappings || []);
+          break;
+        case 'freshsales':
+          result = await syncToFreshsales(connection, lead, mappings || []);
+          break;
+        case 'google_sheets':
+          result = await syncToGoogleSheets(connection, lead, mappings || []);
+          break;
+        default:
+          console.log(`⚠️ CRM type ${connection.crm_type} not yet implemented`);
+          return { success: false, crmType: connection.crm_type, error: `CRM type ${connection.crm_type} not supported yet` };
+      }
     }
 
     // Log sync activity
@@ -195,6 +194,97 @@ function applyFieldMappings(
 
   return mapped;
 }
+
+/**
+ * Sync lead to CRM via MCP tools (for HubSpot, ActiveCampaign, Airtable)
+ */
+async function syncViaMCP(
+  workspaceId: string,
+  crmType: string,
+  lead: InterestedLead
+): Promise<SyncResult> {
+  try {
+    // Create contact via MCP
+    const contactResult = await mcpRegistry.callTool({
+      method: 'tools/call',
+      params: {
+        name: 'crm_create_contact',
+        arguments: {
+          workspace_id: workspaceId,
+          crm_type: crmType,
+          firstName: lead.firstName,
+          lastName: lead.lastName,
+          email: lead.email,
+          phone: lead.phone,
+          company: lead.company,
+          jobTitle: lead.jobTitle,
+          customFields: {
+            sam_intent: lead.intent,
+            sam_intent_confidence: String(Math.round(lead.intentConfidence * 100)),
+            sam_reply_text: lead.replyText.substring(0, 500),
+            sam_campaign: lead.campaignName || '',
+            linkedin_url: lead.linkedInUrl || ''
+          }
+        }
+      }
+    });
+
+    if (contactResult.isError) {
+      const errorText = contactResult.content[0]?.text || 'Unknown error';
+      return { success: false, crmType, error: errorText };
+    }
+
+    // Parse contact response
+    const contactData = JSON.parse(contactResult.content[0]?.text || '{}');
+    const contactId = contactData.id || contactData.contact?.id;
+
+    // Create deal via MCP if contact was created
+    let dealId: string | undefined;
+    if (contactId) {
+      const dealResult = await mcpRegistry.callTool({
+        method: 'tools/call',
+        params: {
+          name: 'crm_create_deal',
+          arguments: {
+            workspace_id: workspaceId,
+            crm_type: crmType,
+            name: `${lead.firstName} ${lead.lastName} - LinkedIn Interest`,
+            amount: 0,
+            currency: 'USD',
+            stage: 'new',
+            contactId,
+            customFields: {
+              sam_source: 'linkedin_reply',
+              sam_intent: lead.intent,
+              description: lead.campaignName
+                ? `SAM Campaign: ${lead.campaignName}\n\nReply: "${lead.replyText}"`
+                : `LinkedIn reply: "${lead.replyText}"`
+            }
+          }
+        }
+      });
+
+      if (!dealResult.isError) {
+        const dealData = JSON.parse(dealResult.content[0]?.text || '{}');
+        dealId = dealData.id || dealData.deal?.id;
+      }
+    }
+
+    console.log(`✅ MCP CRM sync complete - Contact: ${contactId}, Deal: ${dealId}`);
+    return { success: true, crmType, contactId, dealId };
+
+  } catch (error) {
+    console.error('❌ MCP CRM sync error:', error);
+    return {
+      success: false,
+      crmType,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+// ============ LEGACY DIRECT API IMPLEMENTATIONS ============
+// These are used for CRMs not yet integrated with MCP
 
 // ============ HUBSPOT ============
 

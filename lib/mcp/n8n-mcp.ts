@@ -235,6 +235,99 @@ export class N8NMCPServer {
             properties: {},
             required: []
           }
+        },
+        {
+          name: 'n8n_crm_sync_to_crm',
+          description: 'Sync a contact from SAM to connected CRM (HubSpot, ActiveCampaign, Airtable)',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              workspace_id: {
+                type: 'string',
+                description: 'Workspace ID with active CRM connection'
+              },
+              crm_type: {
+                type: 'string',
+                enum: ['hubspot', 'activecampaign', 'airtable'],
+                description: 'CRM type to sync to'
+              },
+              action: {
+                type: 'string',
+                enum: ['create', 'update'],
+                description: 'Action to perform (create new or update existing)'
+              },
+              contact_data: {
+                type: 'object',
+                description: 'Contact information to sync',
+                properties: {
+                  firstName: { type: 'string' },
+                  lastName: { type: 'string' },
+                  email: { type: 'string' },
+                  phone: { type: 'string' },
+                  company: { type: 'string' },
+                  jobTitle: { type: 'string' }
+                }
+              }
+            },
+            required: ['workspace_id', 'crm_type', 'action', 'contact_data']
+          }
+        },
+        {
+          name: 'n8n_crm_sync_from_crm',
+          description: 'Fetch updated contacts from CRM and sync to SAM',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              workspace_id: {
+                type: 'string',
+                description: 'Workspace ID to sync contacts for'
+              },
+              since_timestamp: {
+                type: 'string',
+                description: 'ISO timestamp to fetch contacts updated since (optional)'
+              }
+            },
+            required: ['workspace_id']
+          }
+        },
+        {
+          name: 'n8n_crm_resolve_conflict',
+          description: 'Resolve sync conflict when contact updated in both SAM and CRM',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              workspace_id: {
+                type: 'string',
+                description: 'Workspace ID'
+              },
+              crm_type: {
+                type: 'string',
+                description: 'CRM type'
+              },
+              entity_type: {
+                type: 'string',
+                enum: ['contact', 'company', 'deal'],
+                description: 'Type of entity in conflict'
+              },
+              sam_record_id: {
+                type: 'string',
+                description: 'SAM record ID'
+              },
+              crm_record_id: {
+                type: 'string',
+                description: 'CRM record ID'
+              },
+              sam_data: {
+                type: 'object',
+                description: 'SAM record data'
+              },
+              crm_data: {
+                type: 'object',
+                description: 'CRM record data'
+              }
+            },
+            required: ['workspace_id', 'crm_type', 'entity_type', 'sam_record_id', 'crm_record_id', 'sam_data', 'crm_data']
+          }
         }
       ]
     }
@@ -288,7 +381,16 @@ export class N8NMCPServer {
         
         case 'n8n_health_check':
           return await this.healthCheck()
-        
+
+        case 'n8n_crm_sync_to_crm':
+          return await this.crmSyncToCRM(request.params.arguments)
+
+        case 'n8n_crm_sync_from_crm':
+          return await this.crmSyncFromCRM(request.params.arguments)
+
+        case 'n8n_crm_resolve_conflict':
+          return await this.crmResolveConflict(request.params.arguments)
+
         default:
           return {
             content: [{
@@ -757,6 +859,159 @@ export class N8NMCPServer {
         }],
         isError: true
       }
+    }
+  }
+
+  /**
+   * CRM Sync to CRM - Calls N8N MCP Server workflow
+   * This method calls an N8N workflow exposed via MCP Server Trigger
+   */
+  private async crmSyncToCRM(args: any): Promise<MCPCallToolResult> {
+    try {
+      // Call N8N MCP Server endpoint for CRM sync workflow
+      // This would be configured in N8N with MCP Server Trigger node
+      const response = await fetch(`${this.config.baseUrl}/webhook/mcp/crm-sync-to-crm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-N8N-API-KEY': this.config.apiKey
+        },
+        body: JSON.stringify({
+          workspace_id: args?.workspace_id,
+          crm_type: args?.crm_type,
+          action: args?.action,
+          contact_data: args?.contact_data
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`N8N CRM sync failed: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            success: true,
+            message: 'Contact synced to CRM successfully',
+            workspace_id: args?.workspace_id,
+            crm_type: args?.crm_type,
+            action: args?.action,
+            crm_record_id: result.crm_record_id,
+            synced_at: result.synced_at || new Date().toISOString()
+          }, null, 2)
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Failed to sync to CRM: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  }
+
+  /**
+   * CRM Sync from CRM - Calls N8N MCP Server workflow
+   * Fetches updated contacts from CRM and syncs to SAM
+   */
+  private async crmSyncFromCRM(args: any): Promise<MCPCallToolResult> {
+    try {
+      const response = await fetch(`${this.config.baseUrl}/webhook/mcp/crm-sync-from-crm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-N8N-API-KEY': this.config.apiKey
+        },
+        body: JSON.stringify({
+          workspace_id: args?.workspace_id,
+          since_timestamp: args?.since_timestamp || new Date(Date.now() - 60 * 60 * 1000).toISOString()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`N8N CRM sync from CRM failed: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            success: true,
+            message: 'Contacts synced from CRM successfully',
+            workspace_id: args?.workspace_id,
+            contacts_synced: result.contacts_synced || 0,
+            synced_at: result.synced_at || new Date().toISOString()
+          }, null, 2)
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Failed to sync from CRM: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  }
+
+  /**
+   * Resolve CRM Conflict - Calls N8N MCP Server workflow
+   * Handles conflicts when contact updated in both SAM and CRM
+   */
+  private async crmResolveConflict(args: any): Promise<MCPCallToolResult> {
+    try {
+      const response = await fetch(`${this.config.baseUrl}/webhook/mcp/crm-resolve-conflict`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-N8N-API-KEY': this.config.apiKey
+        },
+        body: JSON.stringify({
+          workspace_id: args?.workspace_id,
+          crm_type: args?.crm_type,
+          entity_type: args?.entity_type,
+          sam_record_id: args?.sam_record_id,
+          crm_record_id: args?.crm_record_id,
+          sam_data: args?.sam_data,
+          crm_data: args?.crm_data
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`N8N conflict resolution failed: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            success: true,
+            message: 'Conflict resolved successfully',
+            workspace_id: args?.workspace_id,
+            strategy: result.strategy || 'crm_wins',
+            winner_source: result.winner_source,
+            resolved_at: result.resolved_at || new Date().toISOString()
+          }, null, 2)
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Failed to resolve conflict: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
     }
   }
 }

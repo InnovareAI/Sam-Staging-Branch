@@ -66,6 +66,12 @@ export async function GET(request: NextRequest) {
       case 'hubspot':
         tokenData = await exchangeHubSpotCode(code);
         break;
+      case 'activecampaign':
+        tokenData = await exchangeActiveCampaignCode(code);
+        break;
+      case 'airtable':
+        tokenData = await exchangeAirtableCode(code);
+        break;
       case 'salesforce':
         tokenData = await exchangeSalesforceCode(code);
         break;
@@ -183,6 +189,77 @@ async function exchangeSalesforceCode(code: string) {
 }
 
 /**
+ * Exchange ActiveCampaign authorization code for tokens
+ */
+async function exchangeActiveCampaignCode(code: string) {
+  const accountName = process.env.ACTIVECAMPAIGN_ACCOUNT!;
+  const response = await fetch(`https://${accountName}.api-us1.com/oauth/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: process.env.ACTIVECAMPAIGN_CLIENT_ID!,
+      client_secret: process.env.ACTIVECAMPAIGN_CLIENT_SECRET!,
+      redirect_uri: process.env.ACTIVECAMPAIGN_REDIRECT_URI!,
+      code
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error('ActiveCampaign token exchange failed');
+  }
+
+  const data = await response.json();
+
+  return {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token || null,
+    expires_at: data.expires_in ? new Date(Date.now() + data.expires_in * 1000).toISOString() : null,
+    scope: data.scope?.split(' ') || [],
+    account_id: `https://${accountName}.api-us1.com`, // Base URL for API calls
+    account_name: accountName
+  };
+}
+
+/**
+ * Exchange Airtable authorization code for tokens
+ */
+async function exchangeAirtableCode(code: string) {
+  const response = await fetch('https://airtable.com/oauth2/v1/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${Buffer.from(`${process.env.AIRTABLE_CLIENT_ID}:${process.env.AIRTABLE_CLIENT_SECRET}`).toString('base64')}`
+    },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      redirect_uri: process.env.AIRTABLE_REDIRECT_URI!,
+      code
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Airtable token exchange failed: ${errorText}`);
+  }
+
+  const data = await response.json();
+
+  // Note: For Airtable, the user needs to specify the base ID in the UI after connection
+  // We'll store it in account_id field
+  return {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+    expires_at: data.expires_in ? new Date(Date.now() + data.expires_in * 1000).toISOString() : null,
+    scope: data.scope?.split(' ') || [],
+    account_id: null, // Will be set by user in settings
+    account_name: 'Airtable'
+  };
+}
+
+/**
  * Create default field mappings for a new CRM connection
  */
 async function createDefaultFieldMappings(
@@ -201,6 +278,22 @@ async function createDefaultFieldMappings(
       { sam_field: 'companyName', crm_field: 'name', field_type: 'company', data_type: 'string' },
       { sam_field: 'companyDomain', crm_field: 'domain', field_type: 'company', data_type: 'string' },
       { sam_field: 'companyIndustry', crm_field: 'industry', field_type: 'company', data_type: 'string' }
+    ],
+    activecampaign: [
+      { sam_field: 'firstName', crm_field: 'firstName', field_type: 'contact', data_type: 'string' },
+      { sam_field: 'lastName', crm_field: 'lastName', field_type: 'contact', data_type: 'string' },
+      { sam_field: 'email', crm_field: 'email', field_type: 'contact', data_type: 'string' },
+      { sam_field: 'phone', crm_field: 'phone', field_type: 'contact', data_type: 'string' },
+      { sam_field: 'companyName', crm_field: 'name', field_type: 'company', data_type: 'string' }
+    ],
+    airtable: [
+      { sam_field: 'firstName', crm_field: 'First Name', field_type: 'contact', data_type: 'string' },
+      { sam_field: 'lastName', crm_field: 'Last Name', field_type: 'contact', data_type: 'string' },
+      { sam_field: 'email', crm_field: 'Email', field_type: 'contact', data_type: 'string' },
+      { sam_field: 'phone', crm_field: 'Phone', field_type: 'contact', data_type: 'string' },
+      { sam_field: 'company', crm_field: 'Company', field_type: 'contact', data_type: 'string' },
+      { sam_field: 'companyName', crm_field: 'Name', field_type: 'company', data_type: 'string' },
+      { sam_field: 'companyWebsite', crm_field: 'Website', field_type: 'company', data_type: 'string' }
     ],
     salesforce: [
       { sam_field: 'firstName', crm_field: 'FirstName', field_type: 'contact', data_type: 'string' },

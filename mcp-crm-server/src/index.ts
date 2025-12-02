@@ -8,7 +8,9 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { createClient } from '@supabase/supabase-js';
 import { CRMAdapter } from './types/crm.js';
 import { HubSpotAdapter } from './adapters/hubspot.js';
-import { registerCRMTools, CRM_TOOLS } from './tools/index.js';
+import { ActiveCampaignAdapter } from './adapters/activecampaign.js';
+import { AirtableAdapter } from './adapters/airtable.js';
+import { registerCRMTools } from './tools/index.js';
 
 // Initialize Supabase client
 const supabase = createClient(
@@ -47,6 +49,12 @@ async function getAdapter(workspaceId: string): Promise<CRMAdapter> {
     case 'hubspot':
       adapter = new HubSpotAdapter();
       break;
+    case 'activecampaign':
+      adapter = new ActiveCampaignAdapter();
+      break;
+    case 'airtable':
+      adapter = new AirtableAdapter();
+      break;
     case 'salesforce':
       // TODO: Implement Salesforce adapter
       throw new Error('Salesforce adapter not yet implemented');
@@ -56,9 +64,6 @@ async function getAdapter(workspaceId: string): Promise<CRMAdapter> {
     case 'zoho':
       // TODO: Implement Zoho adapter
       throw new Error('Zoho adapter not yet implemented');
-    case 'activecampaign':
-      // TODO: Implement ActiveCampaign adapter
-      throw new Error('ActiveCampaign adapter not yet implemented');
     case 'keap':
       // TODO: Implement Keap adapter
       throw new Error('Keap adapter not yet implemented');
@@ -123,13 +128,6 @@ async function main() {
 
   // Register all CRM tools
   registerCRMTools(server, getAdapter);
-
-  // List available tools
-  server.setRequestHandler('tools/list', async () => {
-    return {
-      tools: CRM_TOOLS
-    };
-  });
 
   // Setup transport and start server
   const transport = new StdioServerTransport();

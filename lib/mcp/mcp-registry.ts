@@ -12,6 +12,7 @@ import { N8NMCPServer } from './n8n-mcp'
 import { ReplyAgentMCPServer } from './reply-agent-mcp'
 import { DatabaseMCPServer } from './database-mcp'
 import { ReachInboxMCPServer } from './reachinbox-mcp'
+import { CRMMCPServer } from './crm-mcp'
 import * as TemplateMCP from './template-mcp'
 import * as GPT5MCP from './gpt5-mcp'
 import { GPT5MCPServer } from './gpt5-mcp'
@@ -26,7 +27,8 @@ import {
   N8NMCPConfig,
   ReachInboxMCPConfig,
   ReplyAgentMCPConfig,
-  DatabaseMCPConfig
+  DatabaseMCPConfig,
+  CRMMCPConfig
 } from './types'
 import { GPT5MCPConfig } from './gpt5-mcp'
 
@@ -39,6 +41,7 @@ export interface MCPServerConfig {
   reachInbox?: ReachInboxMCPConfig
   replyAgent?: ReplyAgentMCPConfig
   database?: DatabaseMCPConfig
+  crm?: CRMMCPConfig
   gpt5?: GPT5MCPConfig
 }
 
@@ -51,6 +54,7 @@ export class MCPRegistry {
   private reachInboxServer?: ReachInboxMCPServer
   private replyAgentServer?: ReplyAgentMCPServer
   private databaseServer?: DatabaseMCPServer
+  private crmServer?: CRMMCPServer
   private gpt5Server?: GPT5MCPServer
   private isInitialized = false
 
@@ -98,6 +102,12 @@ export class MCPRegistry {
       if (config.replyAgent) {
         this.replyAgentServer = new ReplyAgentMCPServer(config.replyAgent)
         initializedServers.push('Reply Agent MCP')
+      }
+
+      // Initialize CRM MCP Server
+      if (config.crm) {
+        this.crmServer = new CRMMCPServer(config.crm)
+        initializedServers.push('CRM MCP')
       }
 
       // Initialize GPT5 MCP Server
@@ -171,6 +181,13 @@ export class MCPRegistry {
       const replyTools = await this.replyAgentServer.listTools()
       replyTools.tools.forEach(tool => {
         allTools.push({ ...tool, server: 'reply-agent' })
+      })
+    }
+
+    if (this.crmServer) {
+      const crmTools = await this.crmServer.listTools()
+      crmTools.tools.forEach(tool => {
+        allTools.push({ ...tool, server: 'crm' })
       })
     }
 
@@ -310,6 +327,15 @@ export class MCPRegistry {
         }
         return await this.replyAgentServer.callTool(effectiveRequest)
 
+      case 'crm':
+        if (!this.crmServer) {
+          return {
+            content: [{ type: 'text', text: 'CRM MCP server not available' }],
+            isError: true
+          }
+        }
+        return await this.crmServer.callTool(effectiveRequest)
+
       case 'sam-ai':
         return await this.callSamAITool(effectiveRequest)
 
@@ -360,6 +386,9 @@ export class MCPRegistry {
 
     // ReachInbox tools prefix
     const isReachInbox = toolName.startsWith('reachinbox_')
+
+    // CRM tools prefix
+    const isCRM = toolName.startsWith('crm_')
 
     // Sam AI tools (template, GPT-5, campaign orchestration)
     const samTemplateTools = [
@@ -417,6 +446,10 @@ export class MCPRegistry {
 
     if (isReachInbox) {
       return 'reachinbox'
+    }
+
+    if (isCRM) {
+      return 'crm'
     }
 
     if (samTemplateTools.includes(toolName) || samGPT5Tools.includes(toolName) || samCampaignTools.includes(toolName)) {
@@ -637,10 +670,13 @@ export class MCPRegistry {
     if (this.replyAgentServer) {
       servers.push('reply-agent')
     }
+    if (this.crmServer) {
+      servers.push('crm')
+    }
 
     // Sam AI tools are always available (built-in)
     servers.push('sam-ai')
-    
+
     return servers
   }
 
@@ -652,6 +688,7 @@ export class MCPRegistry {
     n8n: { available: boolean; tools: number }
     reachInbox: { available: boolean; tools: number }
     replyAgent: { available: boolean; tools: number }
+    crm: { available: boolean; tools: number }
     samAI: { available: boolean; tools: number }
     total: { servers: number; tools: number }
   }> {
@@ -662,6 +699,7 @@ export class MCPRegistry {
     const n8nTools = this.n8nServer ? (await this.n8nServer.listTools()).tools.length : 0
     const reachInboxTools = this.reachInboxServer ? (await this.reachInboxServer.listTools()).tools.length : 0
     const replyTools = this.replyAgentServer ? (await this.replyAgentServer.listTools()).tools.length : 0
+    const crmTools = this.crmServer ? (await this.crmServer.listTools()).tools.length : 0
     const samAITools = 16 // 9 template + 4 mistral + 3 campaign tools
 
     return {
@@ -672,10 +710,11 @@ export class MCPRegistry {
       n8n: { available: !!this.n8nServer, tools: n8nTools },
       reachInbox: { available: !!this.reachInboxServer, tools: reachInboxTools },
       replyAgent: { available: !!this.replyAgentServer, tools: replyTools },
+      crm: { available: !!this.crmServer, tools: crmTools },
       samAI: { available: true, tools: samAITools },
       total: {
         servers: this.getAvailableServers().length,
-        tools: brightDataTools + apifyTools + webSearchTools + unipileTools + n8nTools + reachInboxTools + replyTools + samAITools
+        tools: brightDataTools + apifyTools + webSearchTools + unipileTools + n8nTools + reachInboxTools + replyTools + crmTools + samAITools
       }
     }
   }
@@ -856,6 +895,13 @@ export function createMCPConfig(): MCPServerConfig {
       baseUrl: process.env.REACHINBOX_API_URL,
       organizationId: process.env.ORGANIZATION_ID || 'default-org',
       userId: process.env.USER_ID || 'default-user'
-    } : undefined
+    } : undefined,
+
+    // CRM is always available - uses workspace-specific connections from database
+    crm: {
+      workspaceId: process.env.WORKSPACE_ID || 'default-workspace',
+      organizationId: process.env.ORGANIZATION_ID || 'default-org',
+      userId: process.env.USER_ID || 'default-user'
+    }
   }
 }
