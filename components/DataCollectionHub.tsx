@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, ChevronDown, ChevronUp, ChevronRight, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star, Plus, CheckSquare, Trash2 } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, ChevronRight, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star, Plus, CheckSquare, Trash2, UserPlus, MessageSquare } from 'lucide-react';
 import { toastError, toastSuccess } from '@/lib/toast';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -2684,19 +2684,47 @@ export default function DataCollectionHub({
         isOpen={showCampaignTypeModal}
         onClose={() => setShowCampaignTypeModal(false)}
         onSelectType={(type) => {
-          setSelectedCampaignType(type);
+          setSelectedCampaignType(type === 'connector' || type === 'messenger' ? 'linkedin' : type);
           setShowCampaignTypeModal(false);
 
           // Get prospects to send (selected or all approved)
           const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved');
-          const prospectsToSend = selectedProspectIds.size > 0
+          let prospectsToSend = selectedProspectIds.size > 0
             ? approvedProspects.filter(p => selectedProspectIds.has(p.id))
             : approvedProspects;
 
-          // Forward to Campaign Hub with campaign type
-          handleProceedToCampaignHub(prospectsToSend, type);
+          // Filter prospects based on campaign type selection
+          if (type === 'email') {
+            prospectsToSend = prospectsToSend.filter(p =>
+              p.contact?.email || p.email || p.email_address
+            );
+          } else if (type === 'connector') {
+            prospectsToSend = prospectsToSend.filter(p => {
+              const hasLinkedIn = p.contact?.linkedin_url || p.linkedin_url || p.linkedinUrl;
+              if (!hasLinkedIn) return false;
+              const degree = String(p.connection_degree || p.connectionDegree || '').toLowerCase();
+              return !degree.includes('1st') && degree !== '1';
+            });
+          } else if (type === 'messenger') {
+            prospectsToSend = prospectsToSend.filter(p => {
+              const hasLinkedIn = p.contact?.linkedin_url || p.linkedin_url || p.linkedinUrl;
+              if (!hasLinkedIn) return false;
+              const degree = String(p.connection_degree || p.connectionDegree || '').toLowerCase();
+              return degree.includes('1st') || degree === '1';
+            });
+          }
+
+          console.log(`📊 Campaign type "${type}" selected: ${prospectsToSend.length} prospects (filtered from ${approvedProspects.length})`);
+
+          // Forward to Campaign Hub with campaign type (map to linkedin for connector/messenger)
+          const campaignType = type === 'connector' || type === 'messenger' ? type : type;
+          handleProceedToCampaignHub(prospectsToSend, campaignType);
         }}
         prospectCount={selectedProspectIds.size > 0 ? selectedProspectIds.size : prospectData.filter(p => p.approvalStatus === 'approved').length}
+        prospects={selectedProspectIds.size > 0
+          ? prospectData.filter(p => p.approvalStatus === 'approved' && selectedProspectIds.has(p.id))
+          : prospectData.filter(p => p.approvalStatus === 'approved')
+        }
       />
     </div>
   )
@@ -2797,14 +2825,38 @@ function CampaignTypeModal({
   isOpen,
   onClose,
   onSelectType,
-  prospectCount
+  prospectCount,
+  prospects = []
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onSelectType: (type: 'email' | 'linkedin') => void;
+  onSelectType: (type: 'email' | 'linkedin' | 'connector' | 'messenger') => void;
   prospectCount: number;
+  prospects?: any[];
 }) {
   if (!isOpen) return null;
+
+  // Count prospects by campaign type eligibility
+  const emailCount = prospects.filter(p =>
+    p.contact?.email || p.email || p.email_address
+  ).length;
+
+  const hasLinkedIn = (p: any) =>
+    p.contact?.linkedin_url || p.linkedin_url || p.linkedinUrl;
+
+  // 1st degree = Messenger eligible, 2nd/3rd/OUT_OF_NETWORK = Connector eligible
+  const messengerCount = prospects.filter(p => {
+    if (!hasLinkedIn(p)) return false;
+    const degree = String(p.connection_degree || p.connectionDegree || '').toLowerCase();
+    return degree.includes('1st') || degree === '1';
+  }).length;
+
+  const connectorCount = prospects.filter(p => {
+    if (!hasLinkedIn(p)) return false;
+    const degree = String(p.connection_degree || p.connectionDegree || '').toLowerCase();
+    // 2nd, 3rd, OUT_OF_NETWORK, or unknown (default to connector)
+    return !degree.includes('1st') && degree !== '1';
+  }).length;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -2826,32 +2878,78 @@ function CampaignTypeModal({
         <div className="space-y-3">
           {/* Email Campaign Option */}
           <button
-            onClick={() => onSelectType('email')}
-            className="w-full p-4 rounded-lg border-2 border-gray-700 hover:border-blue-500 hover:bg-gray-750 transition-all group text-left"
+            onClick={() => emailCount > 0 && onSelectType('email')}
+            disabled={emailCount === 0}
+            className={`w-full p-4 rounded-lg border-2 transition-all group text-left ${
+              emailCount === 0
+                ? 'border-gray-700 bg-gray-800/50 opacity-50 cursor-not-allowed'
+                : 'border-gray-700 hover:border-blue-500 hover:bg-gray-750'
+            }`}
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-600/20 text-blue-400 group-hover:bg-blue-600/30">
+              <div className={`p-2 rounded-lg ${emailCount > 0 ? 'bg-blue-600/20 text-blue-400 group-hover:bg-blue-600/30' : 'bg-gray-600/20 text-gray-500'}`}>
                 <Mail className="w-5 h-5" />
               </div>
-              <div>
-                <div className="text-white font-semibold">Email Campaign</div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <div className="text-white font-semibold">Email Campaign</div>
+                  <div className={`text-xs px-2 py-0.5 rounded ${emailCount > 0 ? 'bg-blue-600/30 text-blue-300' : 'bg-gray-600/30 text-gray-500'}`}>
+                    {emailCount} prospect{emailCount !== 1 ? 's' : ''}
+                  </div>
+                </div>
                 <div className="text-gray-400 text-sm">Send emails to prospects with email addresses</div>
               </div>
             </div>
           </button>
 
-          {/* LinkedIn Campaign Option */}
+          {/* LinkedIn Connector Option */}
           <button
-            onClick={() => onSelectType('linkedin')}
-            className="w-full p-4 rounded-lg border-2 border-gray-700 hover:border-purple-500 hover:bg-gray-750 transition-all group text-left"
+            onClick={() => connectorCount > 0 && onSelectType('connector')}
+            disabled={connectorCount === 0}
+            className={`w-full p-4 rounded-lg border-2 transition-all group text-left ${
+              connectorCount === 0
+                ? 'border-gray-700 bg-gray-800/50 opacity-50 cursor-not-allowed'
+                : 'border-gray-700 hover:border-purple-500 hover:bg-gray-750'
+            }`}
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-purple-600/20 text-purple-400 group-hover:bg-purple-600/30">
-                <Linkedin className="w-5 h-5" />
+              <div className={`p-2 rounded-lg ${connectorCount > 0 ? 'bg-purple-600/20 text-purple-400 group-hover:bg-purple-600/30' : 'bg-gray-600/20 text-gray-500'}`}>
+                <UserPlus className="w-5 h-5" />
               </div>
-              <div>
-                <div className="text-white font-semibold">LinkedIn Campaign</div>
-                <div className="text-gray-400 text-sm">Send connection requests and messages on LinkedIn</div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <div className="text-white font-semibold">LinkedIn Connector</div>
+                  <div className={`text-xs px-2 py-0.5 rounded ${connectorCount > 0 ? 'bg-purple-600/30 text-purple-300' : 'bg-gray-600/30 text-gray-500'}`}>
+                    {connectorCount} prospect{connectorCount !== 1 ? 's' : ''}
+                  </div>
+                </div>
+                <div className="text-gray-400 text-sm">Send connection requests to 2nd/3rd degree</div>
+              </div>
+            </div>
+          </button>
+
+          {/* LinkedIn Messenger Option */}
+          <button
+            onClick={() => messengerCount > 0 && onSelectType('messenger')}
+            disabled={messengerCount === 0}
+            className={`w-full p-4 rounded-lg border-2 transition-all group text-left ${
+              messengerCount === 0
+                ? 'border-gray-700 bg-gray-800/50 opacity-50 cursor-not-allowed'
+                : 'border-gray-700 hover:border-green-500 hover:bg-gray-750'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${messengerCount > 0 ? 'bg-green-600/20 text-green-400 group-hover:bg-green-600/30' : 'bg-gray-600/20 text-gray-500'}`}>
+                <MessageSquare className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <div className="text-white font-semibold">LinkedIn Messenger</div>
+                  <div className={`text-xs px-2 py-0.5 rounded ${messengerCount > 0 ? 'bg-green-600/30 text-green-300' : 'bg-gray-600/30 text-gray-500'}`}>
+                    {messengerCount} prospect{messengerCount !== 1 ? 's' : ''}
+                  </div>
+                </div>
+                <div className="text-gray-400 text-sm">Send direct messages to 1st degree connections</div>
               </div>
             </div>
           </button>
