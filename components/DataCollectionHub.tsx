@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, ChevronDown, ChevronUp, ChevronRight, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star, Plus, CheckSquare, Trash2, UserPlus, MessageSquare } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, ChevronRight, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star, Plus, CheckSquare, Trash2, UserPlus, MessageSquare, Loader2, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { toastError, toastSuccess } from '@/lib/toast';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -383,6 +383,13 @@ export default function DataCollectionHub({
   // Campaign type selection modal
   const [showCampaignTypeModal, setShowCampaignTypeModal] = useState(false)
   const [selectedCampaignType, setSelectedCampaignType] = useState<'email' | 'linkedin' | null>(null)
+
+  // Pre-flight verification state
+  const [isRunningPreflight, setIsRunningPreflight] = useState(false)
+  const [preflightResults, setPreflightResults] = useState<any>(null)
+  const [showPreflightModal, setShowPreflightModal] = useState(false)
+  const [pendingCampaignType, setPendingCampaignType] = useState<'email' | 'linkedin' | 'connector' | 'messenger' | null>(null)
+  const [pendingProspects, setPendingProspects] = useState<any[]>([])
 
   // Available prospects (approved but not in campaigns)
   const [availableProspects, setAvailableProspects] = useState<any[]>([])
@@ -2683,9 +2690,9 @@ export default function DataCollectionHub({
       <CampaignTypeModal
         isOpen={showCampaignTypeModal}
         onClose={() => setShowCampaignTypeModal(false)}
-        onSelectType={(type) => {
-          setSelectedCampaignType(type === 'connector' || type === 'messenger' ? 'linkedin' : type);
+        onSelectType={async (type) => {
           setShowCampaignTypeModal(false);
+          setSelectedCampaignType(type === 'connector' || type === 'messenger' ? 'linkedin' : type);
 
           // Get prospects to send (selected or all approved)
           const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved');
@@ -2714,17 +2721,69 @@ export default function DataCollectionHub({
             });
           }
 
-          console.log(`📊 Campaign type "${type}" selected: ${prospectsToSend.length} prospects (filtered from ${approvedProspects.length})`);
+          console.log(`📊 Campaign type "${type}" selected: ${prospectsToSend.length} prospects`);
 
-          // Forward to Campaign Hub with campaign type (map to linkedin for connector/messenger)
-          const campaignType = type === 'connector' || type === 'messenger' ? type : type;
-          handleProceedToCampaignHub(prospectsToSend, campaignType);
+          if (prospectsToSend.length === 0) {
+            toastError('No eligible prospects for this campaign type');
+            return;
+          }
+
+          // Run pre-flight check
+          setPendingCampaignType(type);
+          setPendingProspects(prospectsToSend);
+          setIsRunningPreflight(true);
+          setShowPreflightModal(true);
+
+          try {
+            const response = await fetch('/api/linkedin/preflight-check', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                prospects: prospectsToSend,
+                workspaceId: actualWorkspaceId,
+                campaignType: type
+              })
+            });
+
+            const data = await response.json();
+            console.log('📊 Pre-flight results:', data.summary);
+            setPreflightResults(data);
+          } catch (error) {
+            console.error('Pre-flight check failed:', error);
+            toastError('Failed to verify prospects');
+            setShowPreflightModal(false);
+          } finally {
+            setIsRunningPreflight(false);
+          }
         }}
         prospectCount={selectedProspectIds.size > 0 ? selectedProspectIds.size : prospectData.filter(p => p.approvalStatus === 'approved').length}
         prospects={selectedProspectIds.size > 0
           ? prospectData.filter(p => p.approvalStatus === 'approved' && selectedProspectIds.has(p.id))
           : prospectData.filter(p => p.approvalStatus === 'approved')
         }
+      />
+
+      {/* Pre-flight Results Modal */}
+      <PreflightResultsModal
+        isOpen={showPreflightModal}
+        isLoading={isRunningPreflight}
+        results={preflightResults}
+        campaignType={pendingCampaignType}
+        onClose={() => {
+          setShowPreflightModal(false);
+          setPreflightResults(null);
+          setPendingCampaignType(null);
+          setPendingProspects([]);
+        }}
+        onProceed={() => {
+          setShowPreflightModal(false);
+          if (preflightResults?.validProspects?.length > 0 && pendingCampaignType) {
+            handleProceedToCampaignHub(preflightResults.validProspects, pendingCampaignType);
+          }
+          setPreflightResults(null);
+          setPendingCampaignType(null);
+          setPendingProspects([]);
+        }}
       />
     </div>
   )
@@ -2961,6 +3020,173 @@ function CampaignTypeModal({
         >
           Cancel
         </button>
+      </div>
+    </div>
+  );
+}
+
+// Pre-flight Results Modal Component
+function PreflightResultsModal({
+  isOpen,
+  isLoading,
+  results,
+  campaignType,
+  onClose,
+  onProceed
+}: {
+  isOpen: boolean;
+  isLoading: boolean;
+  results: any;
+  campaignType: 'email' | 'linkedin' | 'connector' | 'messenger' | null;
+  onClose: () => void;
+  onProceed: () => void;
+}) {
+  if (!isOpen) return null;
+
+  const summary = results?.summary;
+  const validCount = summary?.canProceed || 0;
+  const blockedCount = summary?.blocked || 0;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-gray-800 rounded-xl p-6 max-w-lg w-full mx-4 border border-gray-700 max-h-[80vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">
+            {isLoading ? 'Verifying Prospects...' : 'Pre-flight Check Results'}
+          </h3>
+          {!isLoading && (
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+
+        {isLoading ? (
+          <div className="flex flex-col items-center py-8">
+            <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
+            <p className="text-gray-400">Checking prospects against existing campaigns...</p>
+            <p className="text-gray-500 text-sm mt-2">This may take a few seconds</p>
+          </div>
+        ) : summary ? (
+          <>
+            {/* Summary Stats */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="bg-green-600/20 rounded-lg p-3 border border-green-600/30">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-400" />
+                  <span className="text-green-400 font-semibold text-lg">{validCount}</span>
+                </div>
+                <div className="text-green-300 text-sm">Ready to proceed</div>
+              </div>
+              <div className="bg-red-600/20 rounded-lg p-3 border border-red-600/30">
+                <div className="flex items-center gap-2">
+                  <XCircle className="w-5 h-5 text-red-400" />
+                  <span className="text-red-400 font-semibold text-lg">{blockedCount}</span>
+                </div>
+                <div className="text-red-300 text-sm">Cannot proceed</div>
+              </div>
+            </div>
+
+            {/* Rate Limit Status */}
+            {summary.rateLimitStatus && (
+              <div className={`mb-4 p-3 rounded-lg border ${
+                summary.rateLimitStatus.canSend
+                  ? 'bg-gray-700/50 border-gray-600'
+                  : 'bg-yellow-600/20 border-yellow-600/30'
+              }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className={`w-4 h-4 ${summary.rateLimitStatus.canSend ? 'text-gray-400' : 'text-yellow-400'}`} />
+                  <span className="text-white text-sm font-medium">Rate Limits</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Today: {summary.rateLimitStatus.dailyUsed}/{summary.rateLimitStatus.dailyLimit}</span>
+                  <span className="text-gray-400">This week: {summary.rateLimitStatus.weeklyUsed}/{summary.rateLimitStatus.weeklyLimit}</span>
+                </div>
+                {summary.rateLimitStatus.warning && (
+                  <p className="text-yellow-400 text-xs mt-2">{summary.rateLimitStatus.warning}</p>
+                )}
+              </div>
+            )}
+
+            {/* Blocked Reasons Breakdown */}
+            {blockedCount > 0 && (
+              <div className="mb-4 space-y-2">
+                <h4 className="text-white text-sm font-medium mb-2">Blocked Reasons:</h4>
+
+                {summary.alreadyContacted > 0 && (
+                  <div className="flex items-center justify-between text-sm bg-gray-700/50 rounded-lg px-3 py-2">
+                    <span className="text-gray-300">Already contacted</span>
+                    <span className="text-red-400 font-medium">{summary.alreadyContacted}</span>
+                  </div>
+                )}
+
+                {summary.pendingInvitation > 0 && (
+                  <div className="flex items-center justify-between text-sm bg-gray-700/50 rounded-lg px-3 py-2">
+                    <span className="text-gray-300">Pending invitation</span>
+                    <span className="text-yellow-400 font-medium">{summary.pendingInvitation}</span>
+                  </div>
+                )}
+
+                {summary.duplicates > 0 && (
+                  <div className="flex items-center justify-between text-sm bg-gray-700/50 rounded-lg px-3 py-2">
+                    <span className="text-gray-300">Duplicates in batch</span>
+                    <span className="text-orange-400 font-medium">{summary.duplicates}</span>
+                  </div>
+                )}
+
+                {summary.wrongDegree > 0 && (
+                  <div className="flex items-center justify-between text-sm bg-gray-700/50 rounded-lg px-3 py-2">
+                    <span className="text-gray-300">Wrong connection degree</span>
+                    <span className="text-purple-400 font-medium">{summary.wrongDegree}</span>
+                  </div>
+                )}
+
+                {summary.previouslyFailed > 0 && (
+                  <div className="flex items-center justify-between text-sm bg-gray-700/50 rounded-lg px-3 py-2">
+                    <span className="text-gray-300">Previously failed</span>
+                    <span className="text-gray-400 font-medium">{summary.previouslyFailed}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Verified Profiles */}
+            {summary.verified > 0 && (
+              <div className="mb-4 text-sm text-gray-400">
+                ✓ {summary.verified} profiles verified with LinkedIn
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={onClose}
+                className="flex-1 px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={onProceed}
+                disabled={validCount === 0}
+                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  validCount > 0
+                    ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                    : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {validCount > 0 ? `Proceed with ${validCount}` : 'No valid prospects'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-8">
+            <XCircle className="w-10 h-10 text-red-400 mx-auto mb-4" />
+            <p className="text-gray-400">Failed to verify prospects</p>
+          </div>
+        )}
       </div>
     </div>
   );
