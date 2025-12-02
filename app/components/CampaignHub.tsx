@@ -1795,10 +1795,10 @@ function CampaignBuilder({
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  // Skip to Step 3 if campaign type is pre-selected from approval screen
+  // Skip to Step 2 (Message Templates) if campaign type is pre-selected from approval screen
   const getInitialStep = () => {
     if (isTypePreSelected && initialProspects && initialProspects.length > 0) {
-      return 3; // Skip directly to Message Templates
+      return 2; // Skip directly to Message Templates
     }
     return 1;
   };
@@ -3560,13 +3560,8 @@ Would you like me to adjust these or create more variations?`
           <button
             onClick={() => {
               if (currentStep > 1) {
-                // If on Step 3 and we have initialProspects (meaning we skipped Step 2), go back to Step 1
-                if (currentStep === 3 && initialProspects && initialProspects.length > 0) {
-                  setCurrentStep(1);
-                } else {
-                  // Otherwise, go back one step
-                  setCurrentStep(currentStep - 1);
-                }
+                // Go back to Step 1
+                setCurrentStep(1);
               } else {
                 // On step 1, close the modal
                 onClose();
@@ -3580,16 +3575,16 @@ Would you like me to adjust these or create more variations?`
         )}
       </div>
 
-      {/* Step Indicator */}
+      {/* Step Indicator - 2 steps: Campaign Setup → Message Templates */}
       <div className="flex items-center mb-8">
-        {[1, 2, 3].map((step) => (
+        {[1, 2].map((step) => (
           <div key={step} className="flex items-center">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
               step <= currentStep ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-400'
             }`}>
               {step}
             </div>
-            {step < 3 && (
+            {step < 2 && (
               <div className={`w-16 h-1 mx-2 ${
                 step < currentStep ? 'bg-purple-600' : 'bg-gray-600'
               }`} />
@@ -3597,10 +3592,8 @@ Would you like me to adjust these or create more variations?`
           </div>
         ))}
         <div className="ml-4 text-sm text-gray-400">
-          Step {currentStep} of 3: {
-            currentStep === 1 ? 'Campaign Setup' :
-            currentStep === 2 ? 'Campaign Summary' :
-            'Message Templates'
+          Step {currentStep} of 2: {
+            currentStep === 1 ? 'Campaign Setup' : 'Message Templates'
           }
         </div>
       </div>
@@ -3919,387 +3912,8 @@ Would you like me to adjust these or create more variations?`
         </div>
       )}
 
-      {/* Step 2: Campaign Summary - LIST BASED VIEW */}
-      {currentStep === 2 && (
-        <div className="space-y-6">
-          {/* Show list-based selection */}
-          <div>
-            <h4 className="text-white font-medium mb-4">Select Prospect Lists</h4>
-
-            {/* Auto-selected list from Data Approval */}
-            {initialProspects && initialProspects.length > 0 && initialProspects[0].sessionId && (() => {
-              const autoSelectedSession = approvalSessions.find(s => s.id === initialProspects[0].sessionId);
-              return autoSelectedSession ? (
-                <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="text-green-400" size={20} />
-                      <div>
-                        <p className="text-white font-medium">{autoSelectedSession.campaign_name || autoSelectedSession.name || 'Unnamed List'}</p>
-                        <p className="text-gray-400 text-sm">{initialProspects.length} prospects • Auto-selected from Data Approval</p>
-                      </div>
-                    </div>
-                    <span className="text-green-400 text-sm">✓ Assigned</span>
-                  </div>
-                </div>
-              ) : null;
-            })()}
-
-            {/* Show other available lists */}
-            <div className="bg-gray-700 rounded-lg p-4">
-              <div className="flex justify-between items-center mb-3">
-                <label className="text-sm font-medium text-gray-400">
-                  Additional Lists (Optional)
-                </label>
-                <span className="text-xs text-gray-500">
-                  {approvalSessions.filter(s => !selectedSessions.includes(s.id)).length} available
-                </span>
-              </div>
-
-              {loadingApprovedProspects ? (
-                <div className="text-center py-8 text-gray-400">Loading lists...</div>
-              ) : approvalSessions.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
-                  No additional lists available
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {approvalSessions
-                    .filter(session => !initialProspects || session.id !== initialProspects[0]?.sessionId)
-                    .map(session => {
-                      const sessionProspects = approvedProspects.filter(p => p.sessionId === session.id);
-                      const isSelected = selectedSessions.includes(session.id);
-                      const hasActiveSession = session.campaign_id && session.campaign_id !== name;
-
-                      return (
-                        <div
-                          key={session.id}
-                          className={`p-3 rounded border ${
-                            hasActiveSession ? 'border-gray-600 bg-gray-800/50 opacity-50' :
-                            isSelected ? 'border-purple-500/50 bg-purple-900/20' : 'border-gray-600 hover:border-gray-500'
-                          } cursor-pointer transition-colors`}
-                          onClick={() => {
-                            if (hasActiveSession) return;
-                            if (isSelected) {
-                              setSelectedSessions(selectedSessions.filter(id => id !== session.id));
-                              setSelectedProspects(selectedProspects.filter(p => p.sessionId !== session.id));
-                            } else {
-                              setSelectedSessions([...selectedSessions, session.id]);
-                              setSelectedProspects([...selectedProspects, ...sessionProspects]);
-                            }
-                          }}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              {isSelected ? (
-                                <CheckCircle className="text-purple-400" size={18} />
-                              ) : (
-                                <Circle className="text-gray-500" size={18} />
-                              )}
-                              <div>
-                                <p className="text-white text-sm font-medium">{session.name || 'Unnamed List'}</p>
-                                <p className="text-gray-400 text-xs">{sessionProspects.length} prospects</p>
-                              </div>
-                            </div>
-                            {hasActiveSession && (
-                              <span className="text-xs text-gray-500">In use by another campaign</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-            </div>
-
-            {/* Summary */}
-            <div className="mt-4 bg-gray-800 rounded-lg p-4">
-              <div className="text-sm text-gray-400">
-                <span className="text-white font-medium">
-                  {(initialProspects?.length || 0) + selectedProspects.length}
-                </span> total prospects selected
-              </div>
-            </div>
-          </div>
-
-          {/* Data Source Selection - Hide when prospects are from approval */}
-          {!(initialProspects && initialProspects.length > 0) && (
-          <div className="bg-gray-700 rounded-lg p-4 mb-6">
-            <h4 className="text-white font-medium mb-3">Choose Prospect Data Source</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => setDataSource('approved')}
-                className={`h-auto p-4 flex flex-col items-start border rounded-lg transition-colors ${
-                  dataSource === 'approved'
-                    ? 'border-purple-500 bg-purple-600/20 text-purple-300'
-                    : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500'
-                }`}
-              >
-                <Users className="mb-2" size={24} />
-                <div className="font-medium">Use Approved Prospects</div>
-                <div className="text-xs text-gray-400 mt-1">Select from previously approved prospect data</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setDataSource('quick-add')}
-                className={`h-auto p-4 flex flex-col items-start border rounded-lg transition-colors ${
-                  dataSource === 'quick-add'
-                    ? 'border-purple-500 bg-purple-600/20 text-purple-300'
-                    : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500'
-                }`}
-              >
-                <Link className="mb-2" size={24} />
-                <div className="font-medium">Quick Add LinkedIn URL</div>
-                <div className="text-xs text-gray-400 mt-1">Paste a LinkedIn profile URL to add instantly</div>
-              </button>
-            </div>
-          </div>
-          )}
-
-          {/* Approved Prospects Selection - only show if prospects not already loaded */}
-          {dataSource === 'approved' && !initialProspects?.length && (
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">
-                Select Approval Lists (Optional - add more)
-              </label>
-              <div className="bg-gray-700 rounded-lg p-4">
-                {loadingApprovedProspects ? (
-                  <div className="text-center py-8 text-gray-400">Loading approval sessions...</div>
-                ) : approvalSessions.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400">
-                    No approval sessions found. Use the Prospect Database section to approve some prospects first.
-                  </div>
-                ) : (
-                  <div>
-                    <div className="flex justify-between items-center mb-4">
-                      <span className="text-white font-medium">{approvalSessions.length} Approval List{approvalSessions.length !== 1 ? 's' : ''} Available</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const allSelected = selectedSessions.length === approvalSessions.length;
-                          if (allSelected) {
-                            setSelectedSessions([]);
-                            setSelectedProspects([]);
-                            setName(generateDefaultCampaignName());
-                          } else {
-                            setSelectedSessions(approvalSessions.map(s => s.id));
-                            setSelectedProspects([...approvedProspects]);
-                            // Use first session's name when selecting all
-                            if (approvalSessions.length > 0 && approvalSessions[0].name) {
-                              setName(approvalSessions[0].name);
-                            }
-                          }
-                        }}
-                        className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
-                      >
-                        {selectedSessions.length === approvalSessions.length ? 'Deselect All' : 'Select All'}
-                      </button>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto space-y-2">
-                      {approvalSessions.map((session) => {
-                        const isSelected = selectedSessions.includes(session.id);
-                        return (
-                          <div
-                            key={session.id}
-                            className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                              isSelected
-                                ? 'border-purple-500 bg-purple-600/20'
-                                : 'border-gray-600 bg-gray-800 hover:border-gray-500'
-                            }`}
-                            onClick={() => {
-                              if (isSelected) {
-                                // Deselect session and remove its prospects
-                                const newSelectedSessions = selectedSessions.filter(id => id !== session.id);
-                                setSelectedSessions(newSelectedSessions);
-                                setSelectedProspects(selectedProspects.filter(p => p.sessionId !== session.id));
-
-                                // Update campaign name to first remaining selected session's name
-                                if (newSelectedSessions.length > 0) {
-                                  const firstSession = approvalSessions.find(s => s.id === newSelectedSessions[0]);
-                                  if (firstSession?.name) {
-                                    setName(firstSession.name);
-                                  }
-                                } else {
-                                  // No sessions selected, reset to default
-                                  setName(generateDefaultCampaignName());
-                                }
-                              } else {
-                                // Select session and add its prospects
-                                const newSelectedSessions = [...selectedSessions, session.id];
-                                setSelectedSessions(newSelectedSessions);
-                                setSelectedProspects([...selectedProspects, ...session.prospects]);
-
-                                // If this is the first session selected, use its name for the campaign
-                                if (selectedSessions.length === 0 && session.name) {
-                                  setName(session.name);
-                                }
-                              }
-                            }}
-                          >
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <div className="text-white font-medium">{session.name}</div>
-                                <div className="text-gray-300 text-sm mt-1">
-                                  {session.prospectsCount} approved prospect{session.prospectsCount !== 1 ? 's' : ''}
-                                </div>
-                                <div className="text-gray-400 text-xs mt-1">
-                                  Created: {new Date(session.createdAt).toLocaleDateString()}
-                                </div>
-                              </div>
-                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                                isSelected
-                                  ? 'border-purple-500 bg-purple-500'
-                                  : 'border-gray-500'
-                              }`}>
-                                {isSelected && (
-                                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {selectedProspects.length > 0 && (
-                      <>
-                        <div className="mt-4 p-3 bg-purple-600/20 rounded-lg">
-                          <span className="text-purple-300">
-                            {selectedSessions.length} list{selectedSessions.length !== 1 ? 's' : ''} selected • {selectedProspects.length} prospect{selectedProspects.length !== 1 ? 's' : ''} for campaign
-                          </span>
-                        </div>
-                        <div className="mt-4 bg-gray-800 rounded-lg p-6">
-                          <h4 className="text-white font-medium mb-4">Campaign Summary</h4>
-                          <div className="grid grid-cols-2 gap-6">
-                            <div>
-                              <div className="text-gray-400 text-sm mb-1">List Name</div>
-                              <div className="text-white font-medium">{name}</div>
-                            </div>
-                            <div>
-                              <div className="text-gray-400 text-sm mb-1">List Date</div>
-                              <div className="text-white font-medium">{new Date().toLocaleDateString()}</div>
-                            </div>
-                            <div>
-                              <div className="text-gray-400 text-sm mb-1">Number of Prospects</div>
-                              <div className="text-white font-medium">{selectedProspects.length}</div>
-                            </div>
-                            <div>
-                              <div className="text-gray-400 text-sm mb-1">Campaign Type</div>
-                              <div className="text-white font-medium">{campaignType === 'linkedin' ? 'LinkedIn' : campaignType === 'email' ? 'Email' : 'Combined'}</div>
-                            </div>
-                            <div>
-                              <div className="text-gray-400 text-sm mb-1">Industry</div>
-                              <div className="text-white font-medium">-</div>
-                            </div>
-                            <div>
-                              <div className="text-gray-400 text-sm mb-1">Connection Grade</div>
-                              <div className="text-white font-medium">-</div>
-                            </div>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Quick Add URL Input - show when quick-add is selected */}
-          {dataSource === 'quick-add' && (
-            <div className="bg-gray-700 rounded-lg p-4 mb-6">
-              <h4 className="text-white font-medium mb-3">Add LinkedIn Profile</h4>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="https://linkedin.com/in/username"
-                  value={quickAddUrl}
-                  onChange={(e) => setQuickAddUrl(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !isAddingQuickProspect) {
-                      handleQuickAddProspect();
-                    }
-                  }}
-                  className="flex-1 px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 disabled:opacity-50"
-                  disabled={isAddingQuickProspect}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (quickAddUrl && quickAddUrl.trim()) {
-                      handleQuickAddProspect();
-                    }
-                  }}
-                  disabled={typeof quickAddUrl !== 'string' || quickAddUrl.trim().length === 0 || isAddingQuickProspect}
-                  className="flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-                >
-                  {isAddingQuickProspect ? (
-                    <>
-                      <Loader2 className="mr-2 animate-spin" size={16} />
-                      Adding...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="mr-2" size={16} />
-                      Add
-                    </>
-                  )}
-                </button>
-              </div>
-              <p className="text-gray-400 text-xs mt-2">
-                Paste a LinkedIn profile URL and we'll automatically detect if they're a 1st degree connection
-              </p>
-
-              {/* Show added prospects */}
-              {csvData.length > 0 && (
-                <div className="mt-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-gray-400 text-sm">Added Prospects ({csvData.length})</span>
-                    <button
-                      type="button"
-                      onClick={() => setCsvData([])}
-                      className="text-sm text-red-400 hover:text-red-300 transition-colors"
-                    >
-                      Clear All
-                    </button>
-                  </div>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {csvData.map((prospect, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between bg-gray-800 p-3 rounded-lg border border-gray-600"
-                      >
-                        <div className="flex-1">
-                          <div className="text-white font-medium">{prospect.name}</div>
-                          <div className="text-gray-400 text-xs mt-1">{prospect.linkedin_url}</div>
-                          <div className="text-gray-500 text-xs mt-1">
-                            {prospect.connection_degree} degree connection
-                            {prospect.linkedin_user_id && ' • Ready for Messenger'}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCsvData(csvData.filter((_, i) => i !== index));
-                          }}
-                          className="p-1 text-gray-400 hover:text-red-400 transition-colors"
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-        </div>
-      )}
-
-      {/* Step 3: Message Templates (Connector Campaign) */}
-      {currentStep === 3 && campaignType === 'connector' && (
+      {/* Step 2: Message Templates (Connector Campaign) */}
+      {currentStep === 2 && campaignType === 'connector' && (
         <div className="space-y-6">
           {/* SAM Messaging Generation */}
           <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
@@ -4815,8 +4429,8 @@ Would you like me to adjust these or create more variations?`
         </div>
       )}
 
-      {/* Step 3: Message Templates (Messenger Campaign - 1st degree connections) */}
-      {currentStep === 3 && campaignType === 'messenger' && (
+      {/* Step 2: Message Templates (Messenger Campaign - 1st degree connections) */}
+      {currentStep === 2 && campaignType === 'messenger' && (
         <div className="space-y-6">
           {/* SAM Messaging Generation */}
           <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
@@ -5186,8 +4800,8 @@ Would you like me to adjust these or create more variations?`
         </div>
       )}
 
-      {/* Step 3: Message Templates (Email Campaign) */}
-      {currentStep === 3 && campaignType === 'email' && (
+      {/* Step 2: Message Templates (Email Campaign) */}
+      {currentStep === 2 && campaignType === 'email' && (
         <div className="space-y-6">
           {/* SAM Messaging Generation */}
           <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
@@ -5458,12 +5072,8 @@ Would you like me to adjust these or create more variations?`
         <button
           type="button"
           onClick={() => {
-            // If on Step 3 and we have initialProspects (meaning we skipped Step 2), go back to Step 1
-            if (currentStep === 3 && initialProspects && initialProspects.length > 0) {
-              setCurrentStep(1);
-            } else {
-              setCurrentStep(Math.max(1, currentStep - 1));
-            }
+            // Go back to Step 1
+            setCurrentStep(1);
           }}
           disabled={currentStep === 1}
           className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 disabled:cursor-not-allowed text-gray-300 rounded-lg transition-colors"
@@ -5472,7 +5082,7 @@ Would you like me to adjust these or create more variations?`
         </button>
 
         <div className="flex gap-3">
-          {currentStep < 3 ? (
+          {currentStep < 2 ? (
             <>
               <button
                 type="button"
@@ -5486,37 +5096,15 @@ Would you like me to adjust these or create more variations?`
                     }
                   }
 
-                  // Skip Step 2 if prospects are already loaded from Data Approval
-                  if (currentStep === 1 && initialProspects && initialProspects.length > 0) {
-                    setCurrentStep(3); // Jump directly to messages
-                  } else {
-                    setCurrentStep(currentStep + 1);
-                  }
+                  // Go to Step 2 (Message Templates)
+                  setCurrentStep(2);
                 }}
-                disabled={currentStep === 2 && !csvData.length && !selectedProspects.length && !initialProspects?.length}
                 className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
               >
-                {currentStep === 1 && initialProspects && initialProspects.length > 0
+                {initialProspects && initialProspects.length > 0
                   ? 'Continue to Messages'
                   : 'Next Step'}
               </button>
-              {currentStep === 2 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Validate connection degree for LinkedIn campaigns
-                    if ((campaignType === 'connector' || campaignType === 'messenger') && !hasConnectionDegreeData) {
-                      toastError('LinkedIn campaigns require connection degree data. Cannot proceed without uploading prospects with connection degrees.');
-                      return;
-                    }
-                    setCurrentStep(3);
-                  }}
-                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
-                  title="Skip prospect data - you can add prospects later"
-                >
-                  Skip for Now
-                </button>
-              )}
             </>
           ) : (
             <>
@@ -8301,11 +7889,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
-                              <div className="text-white">Step {draft.current_step || 1} of 3</div>
+                              <div className="text-white">Step {draft.current_step || 1} of 2</div>
                               <div className="w-20 bg-gray-700 rounded-full h-2">
                                 <div
                                   className="bg-blue-500 h-2 rounded-full transition-all"
-                                  style={{ width: `${((draft.current_step || 1) / 3) * 100}%` }}
+                                  style={{ width: `${((draft.current_step || 1) / 2) * 100}%` }}
                                 ></div>
                               </div>
                             </div>
