@@ -47,11 +47,21 @@ export async function POST(request: NextRequest) {
   const workspaceReports: AnomalyReport[] = [];
 
   try {
-    // Get all active workspaces
+    // Get ALL active workspaces (not just InnovareAI)
     const { data: workspaces } = await supabase
       .from('workspaces')
       .select('id, name')
       .eq('is_active', true);
+
+    if (!workspaces || workspaces.length === 0) {
+      console.log('No active workspaces found for QA monitoring');
+      return NextResponse.json({
+        success: true,
+        message: 'No active workspaces to monitor'
+      });
+    }
+
+    console.log(`🔍 QA Monitor scanning ${workspaces.length} active workspaces:`, workspaces.map(w => w.name));
 
     // ============================================
     // GLOBAL CHECKS (across all workspaces)

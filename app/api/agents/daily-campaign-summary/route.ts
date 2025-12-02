@@ -38,23 +38,33 @@ export async function POST(request: NextRequest) {
   console.log('📊 Starting daily campaign summary...');
 
   const supabase = supabaseAdmin();
-  const iaWorkspaceIds = getIAWorkspaceIds();
 
   try {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-    // Get workspace names
+    // Get ALL active workspaces (not just InnovareAI)
     const { data: workspaces } = await supabase
       .from('workspaces')
       .select('id, name')
-      .in('id', iaWorkspaceIds);
+      .eq('is_active', true);
 
+    if (!workspaces || workspaces.length === 0) {
+      console.log('No active workspaces found');
+      return NextResponse.json({
+        success: true,
+        message: 'No active workspaces to monitor'
+      });
+    }
+
+    const allWorkspaceIds = workspaces.map(ws => ws.id);
     const workspaceNameMap: Record<string, string> = {};
-    workspaces?.forEach((ws: any) => {
+    workspaces.forEach((ws: any) => {
       workspaceNameMap[ws.id] = ws.name;
     });
 
-    // Get campaign prospects activity for last 24h from IA workspaces
+    console.log(`📊 Monitoring ${allWorkspaceIds.length} active workspaces:`, workspaces.map(w => w.name));
+
+    // Get campaign prospects activity for last 24h from ALL workspaces
     const { data: prospects } = await supabase
       .from('campaign_prospects')
       .select(`
@@ -63,7 +73,7 @@ export async function POST(request: NextRequest) {
         contacted_at,
         campaigns!inner(workspace_id)
       `)
-      .in('campaigns.workspace_id', iaWorkspaceIds)
+      .in('campaigns.workspace_id', allWorkspaceIds)
       .gte('contacted_at', yesterday);
 
     // Get send queue stats for messages sent
@@ -75,7 +85,7 @@ export async function POST(request: NextRequest) {
         message_type,
         campaigns!inner(workspace_id)
       `)
-      .in('campaigns.workspace_id', iaWorkspaceIds)
+      .in('campaigns.workspace_id', allWorkspaceIds)
       .eq('status', 'sent')
       .gte('created_at', yesterday);
 
@@ -89,7 +99,7 @@ export async function POST(request: NextRequest) {
           campaigns!inner(workspace_id)
         )
       `)
-      .in('campaign_prospects.campaigns.workspace_id', iaWorkspaceIds)
+      .in('campaign_prospects.campaigns.workspace_id', allWorkspaceIds)
       .gte('created_at', yesterday);
 
     // Calculate totals
@@ -101,8 +111,8 @@ export async function POST(request: NextRequest) {
     // Group by workspace
     const workspaceStats: Record<string, WorkspaceStats> = {};
 
-    // Initialize stats for all IA workspaces
-    iaWorkspaceIds.forEach((wsId) => {
+    // Initialize stats for all workspaces
+    allWorkspaceIds.forEach((wsId) => {
       workspaceStats[wsId] = {
         workspaceId: wsId,
         workspaceName: workspaceNameMap[wsId] || wsId.substring(0, 8),
