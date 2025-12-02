@@ -280,37 +280,34 @@ export async function DELETE(request: NextRequest) {
 }
 
 // Helper function to update session counts
-async function updateSessionCounts(supabase: any, sessionId: string) {
+// CRITICAL: Uses admin client to bypass RLS - user client was causing count mismatches
+async function updateSessionCounts(_supabase: any, sessionId: string) {
+  // Use admin client to bypass RLS and get accurate counts
+  const adminClient = supabaseAdmin()
+
   // Count decisions by type
-  const { count: approvedCount } = await supabase
+  const { count: approvedCount } = await adminClient
     .from('prospect_approval_decisions')
     .select('*', { count: 'exact', head: true })
     .eq('session_id', sessionId)
     .eq('decision', 'approved')
 
-  const { count: rejectedCount } = await supabase
+  const { count: rejectedCount } = await adminClient
     .from('prospect_approval_decisions')
     .select('*', { count: 'exact', head: true })
     .eq('session_id', sessionId)
     .eq('decision', 'rejected')
 
-  const { count: pendingDecisionCount } = await supabase
-    .from('prospect_approval_decisions')
-    .select('*', { count: 'exact', head: true })
-    .eq('session_id', sessionId)
-    .eq('decision', 'pending')
-
-  const { count: totalCount } = await supabase
+  const { count: totalCount } = await adminClient
     .from('prospect_approval_data')
     .select('*', { count: 'exact', head: true })
     .eq('session_id', sessionId)
 
-  // Pending count includes: explicit pending decisions + prospects with no decision
-  const totalDecisions = (approvedCount || 0) + (rejectedCount || 0) + (pendingDecisionCount || 0)
+  // Pending count = total prospects that don't have an approved/rejected decision
   const pendingCount = (totalCount || 0) - (approvedCount || 0) - (rejectedCount || 0)
 
-  // Update session
-  await supabase
+  // Update session with admin client
+  const { error } = await adminClient
     .from('prospect_approval_sessions')
     .update({
       approved_count: approvedCount || 0,
@@ -318,4 +315,8 @@ async function updateSessionCounts(supabase: any, sessionId: string) {
       pending_count: pendingCount
     })
     .eq('id', sessionId)
+
+  if (error) {
+    console.error('Failed to update session counts:', error)
+  }
 }

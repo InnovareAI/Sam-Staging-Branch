@@ -103,8 +103,92 @@ Follow-ups send during:
 | QA Monitor | `/app/api/agents/qa-monitor/route.ts` |
 | Scheduling config | `/lib/scheduling-config.ts` |
 
+---
+
+## Session 2: CSV Upload Prospect Transfer Bug
+
+### 5. Prospect Approval Session Counter Bug (CRITICAL)
+
+**Problem**: Michelle uploaded 50 prospects via CSV, approved all 50, but they never transferred to `campaign_prospects`. Campaign showed 0 prospects.
+
+**Root Cause**: `updateSessionCounts()` in `/app/api/prospect-approval/decisions/route.ts` was using **user client with RLS** instead of admin client. RLS blocked accurate counts, causing:
+- `prospect_approval_decisions`: 50 approved ✓
+- `prospect_approval_data`: 50 approved ✓
+- `prospect_approval_sessions`: 29 approved, 21 pending ✗ (WRONG)
+
+The `/api/prospect-approval/complete` endpoint checks `pending_count > 0` and refused to transfer prospects because it thought 21 were still pending.
+
+**Fix Applied**:
+```typescript
+// Before: Used RLS-restricted user client
+async function updateSessionCounts(supabase: any, sessionId: string) {
+  const { count } = await supabase.from('prospect_approval_decisions')...
+
+// After: Uses admin client to bypass RLS
+async function updateSessionCounts(_supabase: any, sessionId: string) {
+  const adminClient = supabaseAdmin()
+  const { count } = await adminClient.from('prospect_approval_decisions')...
+```
+
+**File**: `/app/api/prospect-approval/decisions/route.ts` (lines 282-322)
+
+### 6. Manual Data Fix for Michelle's Campaign
+
+**Session ID**: `b9a1edd9-331e-464b-b63a-6e0a9fde66fb`
+**Campaign ID**: `8422f78a-d653-480d-8a6d-8f0b3e57c2b4` (12/2 Mich Campaign 3)
+
+**Fixes Applied**:
+```sql
+-- 1. Fixed session counters
+UPDATE prospect_approval_sessions
+SET approved_count = 50, pending_count = 0
+WHERE id = 'b9a1edd9-331e-464b-b63a-6e0a9fde66fb';
+
+-- 2. Transferred 50 prospects to campaign_prospects
+INSERT INTO campaign_prospects (campaign_id, workspace_id, first_name, ...)
+SELECT '8422f78a-d653-480d-8a6d-8f0b3e57c2b4', ...
+FROM prospect_approval_data
+WHERE session_id = 'b9a1edd9-331e-464b-b63a-6e0a9fde66fb';
+
+-- 3. Deleted orphaned draft campaign
+DELETE FROM campaigns WHERE id = 'b12b36a6-3703-4d70-af3a-4ba5d79077c9';
+```
+
+### 7. CSV Upload Missing LinkedIn URLs
+
+**Problem**: Michelle's 50 prospects have **NO LinkedIn URLs** - the CSV was missing the LinkedIn column.
+
+| Campaign | Prospects | With LinkedIn |
+|----------|-----------|---------------|
+| 12/2 Mich Campaign 3 | 50 | **0** ❌ |
+| 12/1 Mich Campaign 2 | 33 | 33 ✅ |
+
+**Impact**: Connector (LinkedIn) campaigns require LinkedIn URLs. These prospects cannot receive connection requests.
+
+**CSV Header Requirements**: LinkedIn column must be named one of:
+- `linkedin`
+- `linkedin url`
+- `linkedin profile`
+- `profile url`
+
+**Action Required**: Michelle needs to re-upload CSV with LinkedIn URLs included.
+
+## Files Modified (Session 2)
+
+1. **Modified**:
+   - `app/api/prospect-approval/decisions/route.ts` - Fixed `updateSessionCounts()` to use admin client
+
+## Current Campaign Status
+
+| User | Campaign | Prospects | LinkedIn URLs | Status |
+|------|----------|-----------|---------------|--------|
+| Michelle | 12/2 Mich Campaign 3 | 50 | 0 | ⚠️ Needs LinkedIn URLs |
+| Michelle | 12/1 Mich Campaign 2 | 33 | 33 | ✅ Active |
+| Charissa | 12/2 Cha Campaign 5 | 35 | 35 | ✅ Active |
+
 ## Next Steps
 
 1. Monitor follow-ups starting at 5 AM PT to verify they send
 2. QA Monitor will run at 6 AM UTC - check Google Chat for report
-3. Consider adding monitoring dashboard for cron job health
+3. **Michelle**: Re-upload CSV with LinkedIn URL column for "12/2 Mich Campaign 3"
+4. Consider adding monitoring dashboard for cron job health
