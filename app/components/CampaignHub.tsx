@@ -3699,14 +3699,16 @@ Would you like me to adjust these or create more variations?`
 
                 // Check if prospects have email addresses
                 const prospects = csvData.length > 0 ? csvData : (initialProspects || []);
-                const hasEmailAddresses = prospects.some(p => p.email || p.email_address || p.contact?.email);
+                const prospectsWithEmail = prospects.filter(p => p.email || p.email_address || p.contact?.email);
+                const hasEmailAddresses = prospectsWithEmail.length > 0;
+                const emailProspectCount = prospectsWithEmail.length;
 
                 let isDisabled = false;
                 let disabledReason = '';
                 let needsConnection: 'linkedin' | 'email' | 'both' | null = null;
 
-                // NEW: For mixed connection degrees, show how many will be included
-                // Messenger → only 1st degree, Connector → only 2nd/3rd degree
+                // NEW: For mixed connection degrees/email, show how many will be included
+                // Messenger → only 1st degree, Connector → only 2nd/3rd degree, Email → only with email
                 let matchingProspectCount = 0;
                 let prospectBadge = '';
 
@@ -3719,6 +3721,12 @@ Would you like me to adjust these or create more variations?`
                   matchingProspectCount = connectionDegrees.secondThird;
                   if (connectionDegrees.firstDegree > 0) {
                     prospectBadge = `${matchingProspectCount} of ${connectionDegrees.total} prospects`;
+                  }
+                } else if (isEmail && prospects.length > 0) {
+                  matchingProspectCount = emailProspectCount;
+                  const prospectsWithoutEmail = prospects.length - emailProspectCount;
+                  if (prospectsWithoutEmail > 0) {
+                    prospectBadge = `${matchingProspectCount} of ${prospects.length} prospects (have email)`;
                   }
                 }
 
@@ -6758,9 +6766,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         return mapped;
       });
 
-      // CRITICAL: Filter prospects based on campaign type for mixed connection degrees
+      // CRITICAL: Filter prospects based on campaign type for mixed connection degrees/email
       // Messenger → only 1st degree (already connected)
       // Connector → only 2nd/3rd degree (need connection request first)
+      // Email → only prospects with email addresses
       let filteredProspects = mappedProspects;
       const beforeFilterCount = mappedProspects.length;
 
@@ -6778,13 +6787,28 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           return degree.includes('2nd') || degree.includes('3rd') || degree.includes('out') || degree === '' || !p.connection_degree;
         });
         console.log(`🔍 Connector campaign: Filtered ${beforeFilterCount} → ${filteredProspects.length} (2nd/3rd degree only)`);
+      } else if (approvedCampaignType === 'email') {
+        filteredProspects = mappedProspects.filter((p: any) => {
+          // Include only prospects with valid email addresses
+          const email = p.email || '';
+          return email.trim().length > 0 && email.includes('@');
+        });
+        console.log(`📧 Email campaign: Filtered ${beforeFilterCount} → ${filteredProspects.length} (with email only)`);
       }
 
       // Update mappedProspects with filtered list
       const mappedProspectsFiltered = filteredProspects;
 
       if (mappedProspectsFiltered.length === 0) {
-        throw new Error(`No matching prospects for ${approvedCampaignType} campaign. ${approvedCampaignType === 'messenger' ? 'Messenger requires 1st degree connections.' : 'Connector requires 2nd/3rd degree connections.'}`);
+        let errorMsg = `No matching prospects for ${approvedCampaignType} campaign.`;
+        if (approvedCampaignType === 'messenger') {
+          errorMsg += ' Messenger requires 1st degree connections.';
+        } else if (approvedCampaignType === 'connector') {
+          errorMsg += ' Connector requires 2nd/3rd degree connections.';
+        } else if (approvedCampaignType === 'email') {
+          errorMsg += ' Email campaigns require prospects with email addresses.';
+        }
+        throw new Error(errorMsg);
       }
 
       // CRITICAL: Verify campaign.id exists before uploading prospects
