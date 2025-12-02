@@ -130,3 +130,13 @@
 # Uses N8N MCP workflows for API routing (supports 400+ CRMs via HTTP Request + Switch)
 [functions."sync-crm-bidirectional"]
   schedule = "*/15 * * * *"
+
+# ============================================
+# REAL-TIME ERROR MONITOR (Dec 3, 2025)
+# ============================================
+
+# Real-time Error Monitor: Check for critical campaign errors every 5 minutes
+# Detects: failed sends, stuck queue, stuck prospects, cron gaps, queue anomalies
+# Alerts to Google Chat immediately on critical issues
+[functions."realtime-error-monitor"]
+  schedule = "*/5 * * * *"
