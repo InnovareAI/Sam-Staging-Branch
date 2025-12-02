@@ -445,5 +445,69 @@ Existing tables used:
 
 ---
 
+## Session Update: December 2, 2025 (Part 2)
+
+### Critical Fix: Remove linkedin_accounts Table
+
+**Problem Discovered:**
+- Health check was failing with "UnknownError" for LinkedIn accounts
+- Root cause: Code was querying `linkedin_accounts` table in Supabase
+- **Reality**: LinkedIn accounts are NOT stored in Supabase - they're in Unipile external service
+
+**What Was Fixed:**
+
+1. **Dropped linkedin_accounts Table**
+   - Created migration: `/supabase/migrations/20251202_drop_linkedin_accounts_table.sql`
+   - Table was unused/obsolete - all LinkedIn data lives in Unipile
+
+2. **Updated 3 API Routes to Use Unipile API**
+   - [app/api/prospects/linkedin-search/route.ts:55-86](app/api/prospects/linkedin-search/route.ts#L55-L86) - Get accounts from Unipile API
+   - [app/api/agents/qa-monitor/route.ts:543-614](app/api/agents/qa-monitor/route.ts#L543-L614) - Check LinkedIn health via Unipile API
+   - [app/api/agents/rate-limit-monitor/route.ts:46-86](app/api/agents/rate-limit-monitor/route.ts#L46-L86) - Fetch accounts from Unipile API
+
+3. **Fixed daily-campaign-summary Route**
+   - Changed from joining `send_queue` → `linkedin_accounts` → `workspace_id`
+   - Now joins `send_queue` → `campaigns` → `workspace_id`
+   - [app/api/agents/daily-campaign-summary/route.ts:70-80](app/api/agents/daily-campaign-summary/route.ts#L70-L80)
+
+4. **Fixed 27 Stale Prospects**
+   - Created SQL script: [scripts/sql/fix-stale-prospects.sql](scripts/sql/fix-stale-prospects.sql)
+   - Updated prospects stuck >3 days in `pending` status to `failed`
+   - All 27 prospects successfully updated
+
+5. **Fixed fix-health-issues Endpoint**
+   - Changed status from `skipped` (invalid) to `failed` (valid)
+   - [app/api/agents/fix-health-issues/route.ts:61-70](app/api/agents/fix-health-issues/route.ts#L61-L70)
+
+**Architecture Clarification:**
+```
+LinkedIn Accounts Storage:
+✅ Unipile External Service (GET https://{UNIPILE_DSN}/api/v1/accounts)
+❌ Supabase linkedin_accounts table (DROPPED)
+
+Access Pattern:
+1. Call Unipile API
+2. Filter: accounts.filter(acc => acc.type === 'LINKEDIN')
+3. Check status: acc.sources?.some(s => s.status !== 'OK')
+```
+
+**Valid campaign_prospects Statuses:**
+- pending, approved, ready_to_message, queued, queued_in_n8n
+- contacted, connection_requested, connection_request_sent
+- not_connected, invitation_withdrawn, connected, messaging
+- replied, not_interested, failed, error
+- already_invited, invitation_declined, rate_limited, email_sent
+
+**Implementation Status Updates:**
+
+| Component | Status Before | Status After |
+|-----------|--------------|--------------|
+| Health Check LinkedIn Accounts | ❌ Querying wrong table | ✅ Uses Unipile API |
+| LinkedIn Account Retrieval | ❌ Database queries | ✅ Unipile API calls |
+| Stale Prospects | ⚠️ 27 stuck >3 days | ✅ All fixed (marked failed) |
+| daily-campaign-summary | ❌ Broken table join | ✅ Fixed via campaigns |
+
+---
+
 **Last Updated:** December 2, 2025
 **Author:** Claude Code
