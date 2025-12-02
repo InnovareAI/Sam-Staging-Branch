@@ -186,9 +186,52 @@ DELETE FROM campaigns WHERE id = 'b12b36a6-3703-4d70-af3a-4ba5d79077c9';
 | Michelle | 12/1 Mich Campaign 2 | 33 | 33 | ✅ Active |
 | Charissa | 12/2 Cha Campaign 5 | 35 | 35 | ✅ Active |
 
+---
+
+## Session 3: CSV Upload 504 Timeout Fix
+
+### 8. CSV Upload 504 Gateway Timeout (CRITICAL)
+
+**Problem**: Michelle getting 504 timeout errors when uploading CSV files with 50 prospects.
+
+**Root Cause**: Next.js API route had no `maxDuration` configured. Default Netlify timeout is 10 seconds, which isn't enough for database operations on 50+ prospects (9+ sequential DB queries).
+
+**Fix Applied**:
+```typescript
+// app/api/prospect-approval/upload-csv/route.ts
+
+// Added at top of file:
+export const maxDuration = 60;  // Allow 60 seconds for large uploads
+
+// Added quota limit after prospect parsing:
+const MAX_PROSPECTS_PER_UPLOAD = 2500;
+if (prospects.length > MAX_PROSPECTS_PER_UPLOAD) {
+  return NextResponse.json({
+    success: false,
+    error: `Too many prospects (${prospects.length}). Maximum 2500 per upload.`
+  }, { status: 400 });
+}
+```
+
+**File**: `/app/api/prospect-approval/upload-csv/route.ts`
+
+**Changes**:
+1. Added `export const maxDuration = 60` - extends timeout from 10s to 60s
+2. Added quota limit of 2,500 prospects per upload to prevent abuse
+
+**Commit**: `3c8d6764` - Fix 504 timeout on CSV upload - add maxDuration and quota limit
+
+**Deployed**: December 2, 2025 (https://app.meet-sam.com)
+
+## Files Modified (Session 3)
+
+1. **Modified**:
+   - `app/api/prospect-approval/upload-csv/route.ts` - Added maxDuration and quota limit
+
 ## Next Steps
 
 1. Monitor follow-ups starting at 5 AM PT to verify they send
 2. QA Monitor will run at 6 AM UTC - check Google Chat for report
 3. **Michelle**: Re-upload CSV with LinkedIn URL column for "12/2 Mich Campaign 3"
 4. Consider adding monitoring dashboard for cron job health
+5. **Verify**: Have Michelle test CSV upload again to confirm 504 fix works
