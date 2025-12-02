@@ -134,10 +134,17 @@ export async function POST(req: NextRequest) {
     // Query existing prospects
     const existingProspects = await fetchExistingProspects(supabase, workspaceId, linkedinUrls, emails);
 
-    // Step 3: Check rate limit status (only for Connector campaigns - Messenger has no limit)
-    const rateLimitStatus = campaignType === 'connector'
-      ? await checkRateLimitStatus(supabase, workspaceId)
-      : null;
+    // Step 3: Check rate limit status based on campaign type
+    // - Connector: 20/day, 100/week (LinkedIn CR limits)
+    // - Email: 40/day per account
+    // - Messenger: No limit (messages to 1st degree connections)
+    let rateLimitStatus = null;
+    if (campaignType === 'connector') {
+      rateLimitStatus = await checkConnectorRateLimitStatus(supabase, workspaceId);
+    } else if (campaignType === 'email') {
+      rateLimitStatus = await checkEmailRateLimitStatus(supabase, workspaceId);
+    }
+    // Messenger has no limit
 
     // Step 4: Process each prospect
     const results: ProspectCheck[] = [];
@@ -380,8 +387,8 @@ function findPreviousContact(
   return null;
 }
 
-// Helper: Check rate limit status
-async function checkRateLimitStatus(supabase: any, workspaceId: string): Promise<{
+// Helper: Check Connector (LinkedIn CR) rate limit status
+async function checkConnectorRateLimitStatus(supabase: any, workspaceId: string): Promise<{
   dailyUsed: number;
   dailyLimit: number;
   weeklyUsed: number;
@@ -432,6 +439,47 @@ async function checkRateLimitStatus(supabase: any, workspaceId: string): Promise
     weeklyUsed,
     weeklyLimit,
     canSend: dailyUsed < dailyLimit && weeklyUsed < weeklyLimit,
+    warning
+  };
+}
+
+// Helper: Check Email rate limit status (40 emails/day per account)
+async function checkEmailRateLimitStatus(supabase: any, workspaceId: string): Promise<{
+  dailyUsed: number;
+  dailyLimit: number;
+  weeklyUsed: number;
+  weeklyLimit: number;
+  canSend: boolean;
+  warning?: string;
+}> {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+
+  // Count emails sent today from email campaigns
+  const { count: dailyCount } = await supabase
+    .from('campaign_prospects')
+    .select('*, campaigns!inner(campaign_type)', { count: 'exact', head: true })
+    .eq('workspace_id', workspaceId)
+    .eq('campaigns.campaign_type', 'email')
+    .in('status', ['contacted', 'messaging', 'replied', 'completed'])
+    .gte('contacted_at', todayStart);
+
+  const dailyLimit = 40; // Email daily limit per account
+  const dailyUsed = dailyCount || 0;
+
+  let warning: string | undefined;
+  if (dailyUsed >= dailyLimit) {
+    warning = 'Daily email limit reached! Wait until tomorrow.';
+  } else if (dailyUsed >= dailyLimit * 0.8) {
+    warning = `Approaching daily limit (${dailyUsed}/${dailyLimit})`;
+  }
+
+  return {
+    dailyUsed,
+    dailyLimit,
+    weeklyUsed: 0, // Email doesn't have weekly limit
+    weeklyLimit: 0,
+    canSend: dailyUsed < dailyLimit,
     warning
   };
 }
