@@ -306,5 +306,144 @@ crm_sync_logs (
 
 ---
 
-**Last Updated:** December 1, 2025
+## Session Update: December 2, 2025
+
+### What Was Built Today
+
+**CRM Integrations UI Page**
+- Created `/app/integrations/crm/page.tsx` - User-facing CRM connections page
+- Features:
+  - Lists all available CRM platforms (HubSpot, ActiveCampaign, Airtable)
+  - Shows connection status (connected/not connected)
+  - Displays connected account details (name, connected date, sync status)
+  - Real-time refresh capability
+  - Error handling with user-friendly messages
+
+**ActiveCampaign API Key Authentication**
+- Created `/app/api/crm/connect/activecampaign/route.ts`
+- Uses API key authentication instead of OAuth (simpler user flow)
+- Dialog-based connection:
+  - User enters account URL (e.g., `https://accountname.api-us1.com`)
+  - User enters API key from ActiveCampaign settings
+  - Validates credentials with test API call before saving
+  - Stores in `crm_connections` table with `access_token = api_key`
+- Creates default field mappings automatically on connection
+
+**OAuth Flow Updates**
+- Updated `/app/api/crm/oauth/initiate/route.ts`:
+  - Added backend block for ActiveCampaign (returns error if called)
+  - Removed ActiveCampaign OAuth case (uses API key instead)
+- Updated `/app/api/crm/oauth/callback/route.ts`:
+  - Fixed redirects to use `/integrations/crm` instead of `/workspace`
+  - Added Airtable OAuth support
+  - Improved error handling and user feedback
+
+**N8N Workflows (Already Deployed)**
+- Workflow 1 (SAM → CRM): ID `O73jiEhOqK90Lm1m`
+- Workflow 2 (CRM → SAM): ID `BDunCkeki5EdQs5L`
+- Webhook URLs:
+  - `/webhook/crm-sync-to-crm` - Push contacts from SAM to CRM
+  - `/webhook/crm-sync-from-crm` - Pull contacts from CRM to SAM
+- Uses HTTP Request + Switch nodes (scalable to all CRMs)
+
+### Updated File Structure
+
+```
+app/
+├── integrations/
+│   └── crm/
+│       └── page.tsx          ← NEW: User-facing CRM connections page
+├── api/
+│   └── crm/
+│       ├── oauth/
+│       │   ├── initiate/
+│       │   │   └── route.ts  ← UPDATED: Block ActiveCampaign OAuth
+│       │   └── callback/
+│       │       └── route.ts  ← UPDATED: Fixed redirects, added Airtable
+│       └── connect/
+│           └── activecampaign/
+│               └── route.ts  ← NEW: API key authentication
+
+n8n-workflows/
+├── workflow-1-sam-to-crm.json    ← DEPLOYED
+└── workflow-2-crm-to-sam.json    ← DEPLOYED
+
+scripts/shell/
+└── deploy-n8n-workflows.sh       ← NEW: N8N deployment script
+```
+
+### Database Schema (No Changes)
+
+Existing tables used:
+- `crm_connections` - Stores ActiveCampaign API key in `access_token` field
+- `crm_field_mappings` - Default mappings created on connection
+- `workspace_members` - Verifies user has owner/admin role
+
+### User Flow: Connect ActiveCampaign
+
+1. User navigates to `/integrations/crm`
+2. Clicks "Connect" button on ActiveCampaign card
+3. Dialog opens requesting:
+   - Account URL: `https://[account].api-us1.com`
+   - API Key: from Settings → Developer → API Access
+4. Backend validates credentials with test call to `/api/3/users/me`
+5. If valid:
+   - Saves connection to `crm_connections` table
+   - Creates default field mappings
+   - Shows success message
+6. Page displays connected account with:
+   - Account name
+   - Connected date
+   - Active status badge
+
+### Current Blocker
+
+**Browser Cache Issue:**
+- Frontend check `if (crmType === 'activecampaign')` exists in code
+- Browser may have cached old version
+- Solution: Hard refresh (Cmd+Shift+R) or incognito mode
+- Backend now blocks ActiveCampaign OAuth as safety measure
+
+### Implementation Status Updates
+
+| Component | Status Before | Status After |
+|-----------|--------------|--------------|
+| ActiveCampaign Connection | ❌ Not built | ✅ Built - API key auth |
+| CRM Integrations UI | ❌ Not built | ✅ Built - Full page |
+| N8N Bi-directional Sync | ⚠️ Planned | ✅ Deployed - 2 workflows |
+| OAuth Callback Redirects | ⚠️ Wrong page | ✅ Fixed - `/integrations/crm` |
+| Airtable OAuth | ❌ Not built | ✅ Built - OAuth ready |
+
+### Known Issues
+
+1. **Browser Cache:**
+   - ActiveCampaign may still trigger OAuth in cached browser
+   - Solution: Clear cache or use incognito
+   - Backend blocks it as safety measure
+
+2. **OAuth Apps Not Configured:**
+   - HubSpot and Airtable will show "undefined" env vars if clicked
+   - Only ActiveCampaign works immediately (API key auth)
+   - Other CRMs require OAuth app setup
+
+### Next Steps
+
+1. **Immediate:**
+   - User should test ActiveCampaign connection with real credentials
+   - Verify data flows through N8N webhooks
+   - Test bi-directional sync works end-to-end
+
+2. **Short Term:**
+   - Configure HubSpot OAuth app (CLIENT_ID, CLIENT_SECRET)
+   - Configure Airtable OAuth app
+   - Test OAuth flow for these platforms
+
+3. **Medium Term:**
+   - Add sync status indicators to UI
+   - Build sync logs viewer
+   - Add manual sync trigger button
+
+---
+
+**Last Updated:** December 2, 2025
 **Author:** Claude Code
