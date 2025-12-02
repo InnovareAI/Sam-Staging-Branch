@@ -43,15 +43,47 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const supabase = supabaseAdmin();
 
-    // Get all LinkedIn accounts
-    const { data: accounts } = await supabase
-      .from('linkedin_accounts')
-      .select('id, name, unipile_account_id, connection_status, workspace_id')
-      .eq('connection_status', 'connected');
+    // Get all LinkedIn accounts from Unipile API (source of truth)
+    const unipileDsn = process.env.UNIPILE_DSN;
+    const unipileApiKey = process.env.UNIPILE_API_KEY;
 
-    if (!accounts?.length) {
-      return NextResponse.json({ success: true, message: 'No connected accounts' });
+    if (!unipileDsn || !unipileApiKey) {
+      return NextResponse.json({
+        success: false,
+        error: 'Unipile API credentials not configured'
+      }, { status: 503 });
     }
+
+    const unipileResponse = await fetch(`https://${unipileDsn}/api/v1/accounts`, {
+      headers: {
+        'X-API-KEY': unipileApiKey,
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!unipileResponse.ok) {
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to retrieve LinkedIn accounts from Unipile'
+      }, { status: 503 });
+    }
+
+    const unipileData = await unipileResponse.json();
+    const allAccounts = Array.isArray(unipileData) ? unipileData : (unipileData.items || unipileData.accounts || []);
+    const linkedInAccounts = allAccounts.filter((acc: any) => acc.type === 'LINKEDIN');
+
+    if (linkedInAccounts.length === 0) {
+      return NextResponse.json({ success: true, message: 'No connected LinkedIn accounts' });
+    }
+
+    // Map Unipile accounts to our format
+    const accounts = linkedInAccounts.map((acc: any) => ({
+      id: acc.id,
+      name: acc.name || acc.account_id,
+      unipile_account_id: acc.id,
+      connection_status: 'connected',
+      workspace_id: null // We'll need to map this if needed
+    }));
 
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();

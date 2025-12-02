@@ -541,33 +541,76 @@ async function checkTimestampAnomalies(supabase: any): Promise<QACheck> {
 }
 
 async function checkLinkedInAccountHealth(supabase: any): Promise<QACheck> {
-  const { data: accounts } = await supabase
-    .from('linkedin_accounts')
-    .select('id, name, connection_status, daily_limit, messages_sent_today');
+  try {
+    // Call Unipile API to get LinkedIn accounts (source of truth)
+    const unipileDsn = process.env.UNIPILE_DSN;
+    const unipileApiKey = process.env.UNIPILE_API_KEY;
 
-  let issues = 0;
-  const details: string[] = [];
+    if (!unipileDsn || !unipileApiKey) {
+      return {
+        check_name: 'LinkedIn Account Health',
+        category: 'messaging',
+        status: 'warning',
+        details: 'Unipile API credentials not configured',
+        affected_records: 0
+      };
+    }
 
-  for (const account of accounts || []) {
-    if (account.connection_status !== 'connected') {
-      issues++;
-      details.push(`${account.name}: ${account.connection_status}`);
+    const response = await fetch(`https://${unipileDsn}/api/v1/accounts`, {
+      headers: {
+        'X-API-KEY': unipileApiKey,
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Unipile API error: ${response.status}`);
     }
-    if (account.messages_sent_today >= account.daily_limit * 0.9) {
-      issues++;
-      details.push(`${account.name}: near daily limit (${account.messages_sent_today}/${account.daily_limit})`);
+
+    const data = await response.json();
+    const allAccounts = Array.isArray(data) ? data : (data.items || data.accounts || []);
+    const linkedInAccounts = allAccounts.filter((acc: any) => acc.type === 'LINKEDIN');
+
+    if (linkedInAccounts.length === 0) {
+      return {
+        check_name: 'LinkedIn Account Health',
+        category: 'messaging',
+        status: 'pass',
+        details: 'No LinkedIn accounts connected yet',
+        affected_records: 0
+      };
     }
+
+    let issues = 0;
+    const details: string[] = [];
+
+    for (const account of linkedInAccounts) {
+      // Check for connection issues
+      const hasIssue = account.sources?.some((s: any) => s.status !== 'OK');
+      if (hasIssue) {
+        issues++;
+        details.push(`${account.name}: connection issue`);
+      }
+    }
+
+    return {
+      check_name: 'LinkedIn Account Health',
+      category: 'messaging',
+      status: issues > 2 ? 'fail' : issues > 0 ? 'warning' : 'pass',
+      details: issues > 0
+        ? `${issues} account issues: ${details.slice(0, 3).join('; ')}`
+        : `All ${linkedInAccounts.length} accounts healthy`,
+      affected_records: issues
+    };
+  } catch (error) {
+    return {
+      check_name: 'LinkedIn Account Health',
+      category: 'messaging',
+      status: 'warning',
+      details: `Could not check account health: ${error instanceof Error ? error.message : 'Unknown'}`,
+      affected_records: 0
+    };
   }
-
-  return {
-    check_name: 'LinkedIn Account Health',
-    category: 'messaging',
-    status: issues > 2 ? 'fail' : issues > 0 ? 'warning' : 'pass',
-    details: issues > 0
-      ? `${issues} account issues: ${details.slice(0, 3).join('; ')}`
-      : `All ${accounts?.length || 0} accounts healthy`,
-    affected_records: issues
-  };
 }
 
 async function runWorkspaceChecks(supabase: any, workspaceId: string): Promise<QACheck[]> {

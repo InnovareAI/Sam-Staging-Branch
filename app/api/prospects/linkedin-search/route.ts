@@ -52,24 +52,37 @@ export async function POST(request: NextRequest) {
       }, { status: 503 });
     }
 
-    // Get user's LinkedIn account from database
+    // Get user's LinkedIn account from Unipile API
     let linkedinAccountId = accountId;
     if (!linkedinAccountId) {
-      const { data: linkedinAccount } = await supabase
-        .from('linkedin_accounts')
-        .select('unipile_account_id')
-        .eq('user_id', session.user.id)
-        .eq('status', 'active')
-        .single();
-      
-      if (!linkedinAccount?.unipile_account_id) {
+      // Call Unipile API to get LinkedIn accounts (source of truth)
+      const unipileResponse = await fetch(`${UNIPILE_BASE_URL}/api/v1/accounts`, {
+        headers: {
+          'X-API-KEY': UNIPILE_API_KEY!,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!unipileResponse.ok) {
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to retrieve LinkedIn accounts from Unipile'
+        }, { status: 503 });
+      }
+
+      const unipileData = await unipileResponse.json();
+      const allAccounts = Array.isArray(unipileData) ? unipileData : (unipileData.items || unipileData.accounts || []);
+      const linkedInAccounts = allAccounts.filter((acc: any) => acc.type === 'LINKEDIN');
+
+      if (linkedInAccounts.length === 0) {
         return NextResponse.json({
           success: false,
           error: 'No active LinkedIn account found. Please connect your LinkedIn account first.'
         }, { status: 400 });
       }
-      
-      linkedinAccountId = linkedinAccount.unipile_account_id;
+
+      // Use first active LinkedIn account
+      linkedinAccountId = linkedInAccounts[0].id;
     }
 
     // Build Apify actor input

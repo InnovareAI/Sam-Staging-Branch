@@ -51,13 +51,20 @@ export async function POST(request: NextRequest) {
       .eq('status', 'pending')
       .lt('updated_at', threeDaysAgo);
 
-    if (!staleError && staleProspects && staleProspects.length > 0) {
-      // Mark as skipped
+    if (staleError) {
+      fixes.push({
+        issue: 'Stale Prospects',
+        fixed: false,
+        count: 0,
+        error: staleError.message
+      });
+    } else if (staleProspects && staleProspects.length > 0) {
+      // Mark as failed
       const { error: updateError } = await supabase
         .from('campaign_prospects')
         .update({
-          status: 'skipped',
-          notes: 'Auto-skipped by health check: stale >3 days',
+          status: 'failed',
+          notes: 'Auto-failed by health check: stale >3 days',
           updated_at: new Date().toISOString()
         })
         .in('id', staleProspects.map((p: any) => p.id));
@@ -68,27 +75,16 @@ export async function POST(request: NextRequest) {
         count: staleProspects.length,
         error: updateError?.message
       });
-    }
-
-    // Fix 3: Check LinkedIn accounts table issue
-    try {
-      const { count, error: accountError } = await supabase
-        .from('linkedin_accounts')
-        .select('*', { count: 'exact', head: true });
-
+    } else {
       fixes.push({
-        issue: 'LinkedIn Accounts Table',
-        fixed: !accountError,
-        count: count || 0,
-        error: accountError?.message || null
-      });
-    } catch (error) {
-      fixes.push({
-        issue: 'LinkedIn Accounts Table',
-        fixed: false,
-        error: error instanceof Error ? error.message : 'Table may not exist'
+        issue: 'Stale Prospects',
+        fixed: true,
+        count: 0,
+        error: null
       });
     }
+
+    // Note: LinkedIn accounts are managed via Unipile API, not local database
 
     return NextResponse.json({
       success: true,

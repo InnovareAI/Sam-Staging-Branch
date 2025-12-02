@@ -73,9 +73,9 @@ export async function POST(request: NextRequest) {
         id,
         status,
         message_type,
-        linkedin_accounts!inner(workspace_id)
+        campaigns!inner(workspace_id)
       `)
-      .in('linkedin_accounts.workspace_id', iaWorkspaceIds)
+      .in('campaigns.workspace_id', iaWorkspaceIds)
       .eq('status', 'sent')
       .gte('created_at', yesterday);
 
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
 
     // Count messages sent
     sendQueue?.forEach((sq: any) => {
-      const wsId = sq.linkedin_accounts?.workspace_id;
+      const wsId = sq.campaigns?.workspace_id;
       if (!wsId || !workspaceStats[wsId]) return;
 
       if (sq.message_type === 'connection_request') {
