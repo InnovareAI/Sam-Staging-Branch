@@ -134,8 +134,10 @@ export async function POST(req: NextRequest) {
     // Query existing prospects
     const existingProspects = await fetchExistingProspects(supabase, workspaceId, linkedinUrls, emails);
 
-    // Step 3: Check rate limit status
-    const rateLimitStatus = await checkRateLimitStatus(supabase, workspaceId);
+    // Step 3: Check rate limit status (only for Connector campaigns - Messenger has no limit)
+    const rateLimitStatus = campaignType === 'connector'
+      ? await checkRateLimitStatus(supabase, workspaceId)
+      : null;
 
     // Step 4: Process each prospect
     const results: ProspectCheck[] = [];
