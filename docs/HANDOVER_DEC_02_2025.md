@@ -309,11 +309,106 @@ autoFixMissingWorkspaceAccounts() - Syncs to workspace_accounts
 | 12 | Stuck Upload Sessions | ✅ |
 | 13 | Missing Workspace Account Sync | ✅ |
 
+---
+
+## Session 5: Campaign Hub UI Fixes
+
+### 11. Paused Tab Not Loading Campaigns (BUG)
+
+**Problem**: Clicking "Paused" tab showed empty table - campaigns weren't loading.
+
+**Root Cause**: React Query `enabled` condition missing `'paused'` filter:
+```typescript
+// BEFORE (broken):
+enabled: (campaignFilter === 'active' || campaignFilter === 'inactive' || campaignFilter === 'archived' || campaignFilter === 'completed') && !!actualWorkspaceId,
+
+// AFTER (fixed):
+enabled: (campaignFilter === 'active' || campaignFilter === 'paused' || campaignFilter === 'archived' || campaignFilter === 'completed') && !!actualWorkspaceId,
+```
+
+**File**: `/app/components/CampaignHub.tsx` (line 6139)
+
+### 12. Type Column Added to In Progress Table
+
+**Problem**: User requested campaign Type column in the "In Progress" (drafts + pending) table.
+
+**Fix Applied**:
+1. Added `campaignType` field to unified `allItems` array
+2. Added "Type" column header
+3. Added Type cell using `getCampaignTypeLabel()`
+
+**Table Now Shows**:
+| Column | Data |
+|--------|------|
+| Campaign | Name with status dot |
+| **Type** | Connector/Messenger/Email |
+| Status | Draft/Ready badge |
+| Prospects | Count |
+| Date | Created/Updated date |
+
+**File**: `/app/components/CampaignHub.tsx` (lines 7890-7944)
+
+### 13. Campaign Workspace Plan Progress
+
+**Plan File**: `/Users/tvonlinz/.claude/plans/sprightly-coalescing-fox.md`
+
+**Completed Items**:
+- ✅ Fixed `.single()` bug in approved endpoint
+- ✅ Add session_id filter to approved endpoint
+- ✅ Filter out prospects without LinkedIn URLs
+- ✅ Mark prospects as 'added_to_campaign' after adding
+
+**Files Already Fixed** (from system reminders):
+1. `/app/api/prospect-approval/approved/route.ts`:
+   - Supports `session_id` query param for session isolation
+   - Filters out prospects without LinkedIn URLs
+   - Uses `.limit(1)` instead of `.single()` for campaign check
+
+2. `/app/api/campaigns/add-approved-prospects/route.ts`:
+   - Marks prospects as `added_to_campaign` after insert
+   - Prevents reappearance in approved lists
+
+3. `/app/api/linkedin/preflight-check/route.ts`:
+   - Added rate limit checks for all campaign types
+   - Connector: 20/day, 100/week
+   - Messenger: 100/day, 700/week
+   - Email: 40/day
+
+## Commits (Session 5)
+
+- `e5f0db38` - Fix campaign data display: add paused filter + Type column
+
+## Current Campaign Status
+
+| Campaign | Type | Prospects | Status | Next Action |
+|----------|------|-----------|--------|-------------|
+| Test 2 | Connector | 3 | Scheduled Dec 3 8:00 AM UTC | Waiting |
+| IA1-Nov30 | Messenger | 1 | Pending | Needs launch |
+| IA1-Nov25 | Email | 10 | Pending | Needs launch |
+| IA1-Canada | Connector | 25 | 19 sent, 6 failed | Waiting for acceptance |
+
+**Test 2 Queue**:
+```
+Prospect 1: Dec 3 08:00 UTC (pending)
+Prospect 2: Dec 3 08:24 UTC (pending)
+Prospect 3: Dec 3 08:48 UTC (pending)
+```
+
+## Files Modified (Session 5)
+
+1. **Modified**:
+   - `app/components/CampaignHub.tsx` - Added paused to enabled, added Type column
+
+## Deployed
+
+- **Site**: https://app.meet-sam.com
+- **Deploy**: `692f75cadb9c36e6b52a6148`
+- **Time**: December 2, 2025 ~11:25 PM UTC
+
 ## Next Steps
 
-1. Monitor follow-ups starting at 5 AM PT to verify they send
-2. QA Monitor will run at 6 AM UTC - check Google Chat for report
-3. **Michelle**: Re-upload CSV with LinkedIn URL column for "12/2 Mich Campaign 3"
-4. Consider adding monitoring dashboard for cron job health
-5. **Verify**: Have Michelle test CSV upload again to confirm 504 fix works
-6. **Asphericon**: LinkedIn search should now work - Sebastian's account synced
+1. Monitor "Test 2" campaign - first CR sends at 8:00 AM UTC (Dec 3)
+2. Verify paused tab now loads campaigns correctly
+3. Verify Type column displays in In Progress table
+4. QA Monitor will run at 6 AM UTC - check Google Chat for report
+5. **Michelle**: Re-upload CSV with LinkedIn URL column for "12/2 Mich Campaign 3"
