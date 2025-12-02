@@ -1742,7 +1742,7 @@ function CampaignBuilder({
 }: {
   onClose?: () => void;
   initialProspects?: any[] | null;
-  initialCampaignType?: 'email' | 'linkedin';
+  initialCampaignType?: 'email' | 'linkedin' | 'connector' | 'messenger';
   draftToLoad?: any;
   onPrepareForApproval?: (campaignData: any) => void;
   workspaceId?: string | null;
@@ -1773,10 +1773,12 @@ function CampaignBuilder({
   // 1. initialCampaignType (from prospect approval modal)
   // 2. Connected accounts (if only email -> 'email', else 'connector')
   const getDefaultCampaignType = () => {
-    // Priority 1: Use initialCampaignType if provided
+    // Priority 1: Use initialCampaignType if provided (from approval screen pre-flight check)
     if (initialCampaignType) {
-      // Map 'linkedin' to 'connector' (LinkedIn campaigns use connector type)
-      return initialCampaignType === 'linkedin' ? 'connector' : initialCampaignType;
+      // Map 'linkedin' to 'connector' for legacy support
+      if (initialCampaignType === 'linkedin') return 'connector';
+      // Return connector/messenger/email directly
+      return initialCampaignType;
     }
     // Priority 2: Auto-detect from connected accounts
     if (!connectedAccounts.linkedin && connectedAccounts.email) {
@@ -1785,13 +1787,22 @@ function CampaignBuilder({
     return 'connector';
   };
   const [campaignType, setCampaignType] = useState(getDefaultCampaignType());
-  const [userSelectedCampaignType, setUserSelectedCampaignType] = useState(false); // Track manual selection
+  // Track if type was pre-selected from approval screen (skips type selection UI)
+  const isTypePreSelected = initialCampaignType && ['connector', 'messenger', 'email'].includes(initialCampaignType);
+  const [userSelectedCampaignType, setUserSelectedCampaignType] = useState(!!isTypePreSelected); // Pre-selected counts as selected
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvData, setCsvData] = useState<any[]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
+  // Skip to Step 3 if campaign type is pre-selected from approval screen
+  const getInitialStep = () => {
+    if (isTypePreSelected && initialProspects && initialProspects.length > 0) {
+      return 3; // Skip directly to Message Templates
+    }
+    return 1;
+  };
+  const [currentStep, setCurrentStep] = useState(getInitialStep());
   const [uploadedSessionId, setUploadedSessionId] = useState<string | null>(null); // CRITICAL FIX: Track session_id from CSV uploads
 
   // Auto-populate CSV data when initialProspects are provided
@@ -3649,8 +3660,30 @@ Would you like me to adjust these or create more variations?`
             <label className="block text-sm font-medium text-gray-400 mb-3">
               Campaign Type
             </label>
-            {/* Connection Degree Detection Info */}
-            {connectionDegrees.total > 0 && (
+
+            {/* PRE-SELECTED: Show simple confirmation when type was chosen in approval screen */}
+            {isTypePreSelected && (
+              <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
+                    {campaignType === 'connector' && <UserPlus className="text-green-400" size={20} />}
+                    {campaignType === 'messenger' && <MessageSquare className="text-green-400" size={20} />}
+                    {campaignType === 'email' && <Mail className="text-green-400" size={20} />}
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">
+                      {campaignType === 'connector' && 'LinkedIn Connector Campaign'}
+                      {campaignType === 'messenger' && 'LinkedIn Messenger Campaign'}
+                      {campaignType === 'email' && 'Email Campaign'}
+                    </p>
+                    <p className="text-green-400 text-sm">✓ Pre-verified from approval screen</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* MANUAL SELECTION: Show full type picker when not pre-selected */}
+            {!isTypePreSelected && connectionDegrees.total > 0 && (
               <div className={`border rounded-lg p-3 mb-4 ${
                 !hasConnectionDegreeData
                   ? 'bg-yellow-900/20 border-yellow-500/30'
@@ -3681,6 +3714,7 @@ Would you like me to adjust these or create more variations?`
                 </p>
               </div>
             )}
+            {!isTypePreSelected && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {campaignTypes.map((type) => {
                 const IconComponent = type.icon;
@@ -3847,7 +3881,8 @@ Would you like me to adjust these or create more variations?`
                 );
               })}
             </div>
-            {connectionDegrees.total > 0 && (campaignType === 'messenger' || campaignType === 'connector') && (
+            )}
+            {!isTypePreSelected && connectionDegrees.total > 0 && (campaignType === 'messenger' || campaignType === 'connector') && (
               <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mt-3">
                 <p className="text-blue-300 text-sm">
                   <strong>{userSelectedCampaignType ? 'Selected:' : 'Auto-selected:'}</strong> {campaignType === 'messenger' ? 'Messenger' : 'Connector'} campaign
@@ -3858,21 +3893,21 @@ Would you like me to adjust these or create more variations?`
                 </p>
               </div>
             )}
-            {campaignType === 'email' && (
+            {!isTypePreSelected && campaignType === 'email' && (
               <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mt-3">
                 <p className="text-blue-300 text-sm">
                   <strong>Selected:</strong> Email campaign - Direct email outreach without LinkedIn connection requests
                 </p>
               </div>
             )}
-            {campaignType === 'multichannel' && (
+            {!isTypePreSelected && campaignType === 'multichannel' && (
               <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-3 mt-3">
                 <p className="text-purple-300 text-sm">
                   <strong>Selected:</strong> Multichannel campaign - Combine LinkedIn and email outreach
                 </p>
               </div>
             )}
-            {has1stDegree && !hasOnly1stDegree && campaignType === 'connector' && (
+            {!isTypePreSelected && has1stDegree && !hasOnly1stDegree && campaignType === 'connector' && (
               <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-3 mt-3">
                 <p className="text-yellow-300 text-sm">
                   ⚠️ <strong>Warning:</strong> {connectionDegrees.firstDegree} of your prospects are 1st degree connections and will be skipped in Connector campaigns. Consider using <strong>Builder</strong> instead.
