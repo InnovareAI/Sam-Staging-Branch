@@ -142,6 +142,17 @@ export async function POST(request: NextRequest) {
     const accountCheck = await checkLinkedInAccountHealth(supabase);
     allChecks.push(accountCheck);
 
+    // 11. Status Mismatch Detection (connection_accepted_at set but wrong status)
+    const statusMismatchCheck = await checkStatusMismatch(supabase);
+    allChecks.push(statusMismatchCheck);
+
+    // AUTO-FIX: Fix status mismatches
+    if (statusMismatchCheck.affected_records && statusMismatchCheck.affected_records > 0) {
+      console.log(`🔧 Auto-fixing ${statusMismatchCheck.affected_records} status mismatches...`);
+      const fix = await autoFixStatusMismatch(supabase);
+      autoFixes.push(fix);
+    }
+
     // ============================================
     // PER-WORKSPACE CHECKS
     // ============================================
@@ -885,6 +896,113 @@ async function autoFixStuckProspects(supabase: any): Promise<AutoFixResult> {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       details: 'Failed to fix stuck prospects'
+    };
+  }
+}
+
+/**
+ * CHECK: Status Mismatch Detection
+ * Finds prospects where connection_accepted_at is set but status is wrong
+ * This bug was discovered Dec 2, 2025 - caused follow-ups to never send
+ */
+async function checkStatusMismatch(supabase: any): Promise<QACheck> {
+  // Find prospects with connection_accepted_at but wrong status
+  const { data: mismatched, error } = await supabase
+    .from('campaign_prospects')
+    .select('id, first_name, last_name, status, connection_accepted_at')
+    .not('connection_accepted_at', 'is', null)
+    .eq('status', 'connection_request_sent')
+    .limit(50);
+
+  if (error) {
+    return {
+      check_name: 'Status Mismatch Detection',
+      category: 'consistency',
+      status: 'warning',
+      details: `Error checking: ${error.message}`,
+      affected_records: 0
+    };
+  }
+
+  const count = mismatched?.length || 0;
+
+  // Also check for responded_at set but status not 'replied'
+  const { data: replyMismatch } = await supabase
+    .from('campaign_prospects')
+    .select('id')
+    .not('responded_at', 'is', null)
+    .neq('status', 'replied')
+    .limit(50);
+
+  const replyCount = replyMismatch?.length || 0;
+  const totalCount = count + replyCount;
+
+  return {
+    check_name: 'Status Mismatch Detection',
+    category: 'consistency',
+    status: totalCount > 5 ? 'fail' : totalCount > 0 ? 'warning' : 'pass',
+    details: totalCount > 0
+      ? `${count} prospects with connection_accepted_at but wrong status, ${replyCount} with responded_at but not replied`
+      : 'All prospect statuses consistent with timestamps',
+    affected_records: totalCount,
+    sample_ids: mismatched?.slice(0, 5).map((p: any) => p.id),
+    suggested_fix: totalCount > 0 ? 'Run status reconciliation to fix mismatched records' : undefined
+  };
+}
+
+/**
+ * AUTO-FIX: Fix status mismatches
+ * Updates prospects where timestamps indicate a state but status is wrong
+ */
+async function autoFixStatusMismatch(supabase: any): Promise<AutoFixResult> {
+  try {
+    let fixedCount = 0;
+
+    // Fix 1: connection_accepted_at set but status is still connection_request_sent
+    const { data: connectionMismatch, error: err1 } = await supabase
+      .from('campaign_prospects')
+      .update({
+        status: 'connected',
+        updated_at: new Date().toISOString()
+      })
+      .not('connection_accepted_at', 'is', null)
+      .eq('status', 'connection_request_sent')
+      .select('id');
+
+    if (!err1 && connectionMismatch) {
+      fixedCount += connectionMismatch.length;
+    }
+
+    // Fix 2: responded_at set but status is not replied
+    const { data: replyMismatch, error: err2 } = await supabase
+      .from('campaign_prospects')
+      .update({
+        status: 'replied',
+        follow_up_due_at: null, // Stop follow-ups for replied prospects
+        updated_at: new Date().toISOString()
+      })
+      .not('responded_at', 'is', null)
+      .neq('status', 'replied')
+      .select('id');
+
+    if (!err2 && replyMismatch) {
+      fixedCount += replyMismatch.length;
+    }
+
+    return {
+      issue: 'Status Mismatch',
+      attempted: true,
+      success: true,
+      count: fixedCount,
+      details: `Fixed ${fixedCount} prospects with mismatched status/timestamps`
+    };
+  } catch (error) {
+    return {
+      issue: 'Status Mismatch',
+      attempted: true,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: 'Failed to fix status mismatches'
     };
   }
 }

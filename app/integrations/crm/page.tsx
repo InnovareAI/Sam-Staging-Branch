@@ -17,7 +17,7 @@ import {
   Link as LinkIcon,
   Shield
 } from 'lucide-react'
-import { createClient } from '@/utils/supabase/client'
+import { createClient } from '@/app/lib/supabase'
 
 interface CRMConnection {
   id: string
