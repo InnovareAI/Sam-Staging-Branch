@@ -228,6 +228,87 @@ if (prospects.length > MAX_PROSPECTS_PER_UPLOAD) {
 1. **Modified**:
    - `app/api/prospect-approval/upload-csv/route.ts` - Added maxDuration and quota limit
 
+---
+
+## Session 4: Asphericon LinkedIn Account Sync Issue
+
+### 9. "No LinkedIn account connected" Error (CRITICAL)
+
+**Problem**: Asphericon workspace showing "No LinkedIn account connected" when trying to search LinkedIn, despite having connected Sebastian Henkel's account.
+
+**Root Cause**: LinkedIn accounts stored in TWO separate tables:
+- `user_unipile_accounts` - Where Unipile callback stores accounts ✅ Had Sebastian's account
+- `workspace_accounts` - Where search API looks for accounts ❌ Missing Sebastian's account
+
+The LinkedIn search API only checks `workspace_accounts`, so it couldn't find the connected account.
+
+**Manual Fix Applied**:
+```sql
+INSERT INTO workspace_accounts (
+  workspace_id, user_id, account_type, account_identifier, account_name,
+  unipile_account_id, connection_status, is_active, connected_at
+) VALUES (
+  'c3100bea-82a6-4365-b159-6581f1be9be3',  -- Asphericon workspace
+  '51a05157-0aa7-42b5-a6e5-acf43d436a4b',  -- admin+as1@innovareai.com
+  'linkedin', 'sebastian-henkel', 'Sebastian Henkel',
+  'gW6mCsj7RK-vp89UcDUC2w', 'connected', true, NOW()
+);
+```
+
+### 10. QA Monitor Enhanced with Two New Checks
+
+**File**: `/app/api/agents/qa-monitor/route.ts`
+
+**Check #12: Stuck Upload Sessions**
+- Detects sessions where `approved_count` doesn't match actual approved decisions
+- Finds approved prospects that never transferred to `campaign_prospects`
+- Auto-fixes by correcting counters and transferring missing prospects
+
+**Check #13: Missing Workspace Account Sync**
+- Detects LinkedIn accounts in `user_unipile_accounts` NOT in `workspace_accounts`
+- Prevents "No LinkedIn account connected" errors like Asphericon
+- Auto-fixes by syncing accounts to `workspace_accounts` for user's workspaces
+
+**New Functions Added**:
+```typescript
+// Check #12
+checkStuckUploadSessions() - Detects session counter mismatches
+autoFixStuckUploadSessions() - Fixes counters, transfers missing prospects
+
+// Check #13
+checkMissingWorkspaceAccounts() - Detects unsynced LinkedIn accounts
+autoFixMissingWorkspaceAccounts() - Syncs to workspace_accounts
+```
+
+**Schedule**: Runs daily at 6 AM UTC with all other QA checks.
+
+## Files Modified (Session 4)
+
+1. **Modified**:
+   - `app/api/agents/qa-monitor/route.ts` - Added checks #12 and #13
+
+## Commits (Session 4)
+
+- `7a05272e` - Add workspace account sync check to QA monitor (#13)
+
+## QA Monitor Full Check List (13 Checks)
+
+| # | Check | Auto-Fix |
+|---|-------|----------|
+| 1 | Queue vs Prospect Status Mismatch | ❌ |
+| 2 | Orphaned Queue Records | ❌ |
+| 3 | Cron Gaps (>2 hours) | ❌ |
+| 4 | Stuck Prospects (>24h in "sending") | ❌ |
+| 5 | Unipile Account Health | ❌ |
+| 6 | Campaign Progress | ❌ |
+| 7 | Follow-up Queue | ❌ |
+| 8 | Error Rate | ❌ |
+| 9 | Rate Limit Usage | ❌ |
+| 10 | Duplicate Prospects | ❌ |
+| 11 | Status Mismatch (timestamp vs status) | ✅ |
+| 12 | Stuck Upload Sessions | ✅ |
+| 13 | Missing Workspace Account Sync | ✅ |
+
 ## Next Steps
 
 1. Monitor follow-ups starting at 5 AM PT to verify they send
@@ -235,3 +316,4 @@ if (prospects.length > MAX_PROSPECTS_PER_UPLOAD) {
 3. **Michelle**: Re-upload CSV with LinkedIn URL column for "12/2 Mich Campaign 3"
 4. Consider adding monitoring dashboard for cron job health
 5. **Verify**: Have Michelle test CSV upload again to confirm 504 fix works
+6. **Asphericon**: LinkedIn search should now work - Sebastian's account synced
