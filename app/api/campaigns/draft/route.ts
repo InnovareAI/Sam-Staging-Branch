@@ -4,6 +4,16 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// Helper to normalize LinkedIn URL to hash (vanity name only)
+function normalizeLinkedInUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const match = url.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
+  if (match) {
+    return match[1].toLowerCase().trim();
+  }
+  return url.replace(/^\/+|\/+$/g, '').toLowerCase().trim();
+}
+
 /**
  * POST /api/campaigns/draft
  * Save or update a campaign draft
@@ -83,23 +93,70 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Insert prospects into campaign_prospects if provided
+      // DATABASE-FIRST: Upsert to workspace_prospects then campaign_prospects
       if (csvData && csvData.length > 0) {
-        const prospectsToInsert = csvData.map((p: any) => ({
-          campaign_id: draftId,
-          workspace_id: workspaceId,
-          first_name: p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown',
-          last_name: p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
-          linkedin_url: p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url,
-          provider_id: p.provider_id || p.providerId || null,
-          company: p.company || p.organization || null,
-          title: p.title || p.job_title || null,
-          status: 'pending',
-          created_at: new Date().toISOString()
-        })).filter((p: any) => p.linkedin_url);
+        // Map to track linkedin_url_hash -> master_prospect_id
+        const masterProspectIds: Map<string, string> = new Map();
+
+        // STEP 1: Upsert to workspace_prospects (master table)
+        for (const p of csvData) {
+          const linkedinUrl = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
+          if (!linkedinUrl) continue;
+
+          const linkedinUrlHash = normalizeLinkedInUrl(linkedinUrl);
+          const firstName = p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown';
+          const lastName = p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '';
+
+          const workspaceProspectData = {
+            workspace_id: workspaceId,
+            linkedin_url: linkedinUrl,
+            linkedin_url_hash: linkedinUrlHash,
+            first_name: firstName,
+            last_name: lastName,
+            company: p.company || p.organization || null,
+            title: p.title || p.job_title || null,
+            source: 'csv_upload',
+            approval_status: 'pending',
+            active_campaign_id: draftId,
+            linkedin_provider_id: p.provider_id || p.providerId || null
+          };
+
+          const { data: upsertedProspect, error: upsertError } = await supabase
+            .from('workspace_prospects')
+            .upsert(workspaceProspectData, {
+              onConflict: 'workspace_id,linkedin_url_hash',
+              ignoreDuplicates: false
+            })
+            .select('id')
+            .single();
+
+          if (!upsertError && upsertedProspect && linkedinUrlHash) {
+            masterProspectIds.set(linkedinUrlHash, upsertedProspect.id);
+          }
+        }
+
+        // STEP 2: Insert to campaign_prospects WITH master_prospect_id
+        const prospectsToInsert = csvData
+          .filter((p: any) => p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url)
+          .map((p: any) => {
+            const linkedinUrl = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
+            const linkedinUrlHash = normalizeLinkedInUrl(linkedinUrl);
+            return {
+              campaign_id: draftId,
+              workspace_id: workspaceId,
+              master_prospect_id: linkedinUrlHash ? masterProspectIds.get(linkedinUrlHash) : null,
+              first_name: p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown',
+              last_name: p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
+              linkedin_url: linkedinUrl,
+              provider_id: p.provider_id || p.providerId || null,
+              company: p.company || p.organization || null,
+              title: p.title || p.job_title || null,
+              status: 'pending',
+              created_at: new Date().toISOString()
+            };
+          });
 
         if (prospectsToInsert.length > 0) {
-          // Use upsert to handle duplicates gracefully
           const { error: insertError } = await supabase
             .from('campaign_prospects')
             .upsert(prospectsToInsert, {
@@ -109,7 +166,6 @@ export async function POST(request: NextRequest) {
 
           if (insertError) {
             console.error('Error inserting prospects:', insertError);
-            // Don't fail the entire operation - draft is saved
           }
         }
       }
@@ -146,20 +202,68 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Insert prospects into campaign_prospects if provided
+      // DATABASE-FIRST: Upsert to workspace_prospects then campaign_prospects
       if (csvData && csvData.length > 0) {
-        const prospectsToInsert = csvData.map((p: any) => ({
-          campaign_id: campaign.id,
-          workspace_id: workspaceId,
-          first_name: p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown',
-          last_name: p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
-          linkedin_url: p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url,
-          provider_id: p.provider_id || p.providerId || null,
-          company: p.company || p.organization || null,
-          title: p.title || p.job_title || null,
-          status: 'pending',
-          created_at: new Date().toISOString()
-        })).filter((p: any) => p.linkedin_url);
+        // Map to track linkedin_url_hash -> master_prospect_id
+        const masterProspectIds: Map<string, string> = new Map();
+
+        // STEP 1: Upsert to workspace_prospects (master table)
+        for (const p of csvData) {
+          const linkedinUrl = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
+          if (!linkedinUrl) continue;
+
+          const linkedinUrlHash = normalizeLinkedInUrl(linkedinUrl);
+          const firstName = p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown';
+          const lastName = p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '';
+
+          const workspaceProspectData = {
+            workspace_id: workspaceId,
+            linkedin_url: linkedinUrl,
+            linkedin_url_hash: linkedinUrlHash,
+            first_name: firstName,
+            last_name: lastName,
+            company: p.company || p.organization || null,
+            title: p.title || p.job_title || null,
+            source: 'csv_upload',
+            approval_status: 'pending',
+            active_campaign_id: campaign.id,
+            linkedin_provider_id: p.provider_id || p.providerId || null
+          };
+
+          const { data: upsertedProspect, error: upsertError } = await supabase
+            .from('workspace_prospects')
+            .upsert(workspaceProspectData, {
+              onConflict: 'workspace_id,linkedin_url_hash',
+              ignoreDuplicates: false
+            })
+            .select('id')
+            .single();
+
+          if (!upsertError && upsertedProspect && linkedinUrlHash) {
+            masterProspectIds.set(linkedinUrlHash, upsertedProspect.id);
+          }
+        }
+
+        // STEP 2: Insert to campaign_prospects WITH master_prospect_id
+        const prospectsToInsert = csvData
+          .filter((p: any) => p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url)
+          .map((p: any) => {
+            const linkedinUrl = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
+            const linkedinUrlHash = normalizeLinkedInUrl(linkedinUrl);
+            return {
+              campaign_id: campaign.id,
+              workspace_id: workspaceId,
+              master_prospect_id: linkedinUrlHash ? masterProspectIds.get(linkedinUrlHash) : null,
+              first_name: p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown',
+              last_name: p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
+              linkedin_url: linkedinUrl,
+              provider_id: p.provider_id || p.providerId || null,
+              company: p.company || p.organization || null,
+              title: p.title || p.job_title || null,
+              status: 'pending',
+              created_at: new Date().toISOString()
+            };
+          });
 
         if (prospectsToInsert.length > 0) {
           const { error: insertError } = await supabase
@@ -168,7 +272,6 @@ export async function POST(request: NextRequest) {
 
           if (insertError) {
             console.error('Error inserting prospects:', insertError);
-            // Don't fail the entire operation - draft is saved
           }
         }
       }

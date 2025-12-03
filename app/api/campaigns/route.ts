@@ -4,6 +4,18 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler';
 
+// Helper to normalize LinkedIn URL to hash (vanity name only)
+function normalizeLinkedInUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  // Extract vanity name from LinkedIn URL
+  const match = url.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
+  if (match) {
+    return match[1].toLowerCase().trim();
+  }
+  // If no match, assume it's already a vanity name - just clean it up
+  return url.replace(/^\/+|\/+$/g, '').toLowerCase().trim();
+}
+
 export async function GET(req: NextRequest) {
   console.log('🚀 [CAMPAIGNS API] ===== REQUEST START =====');
   try {
@@ -421,21 +433,93 @@ export async function POST(req: NextRequest) {
 
         const unipileAccountId = linkedInAccount?.unipile_account_id || null;
 
-        // Transform and insert prospects
+        // ============================================================
+        // DATABASE-FIRST: Upsert to workspace_prospects (master table)
+        // ============================================================
+        console.log(`📦 STEP 1: Upserting ${approvedProspects.length} prospects to workspace_prospects (master table)...`);
+
+        // Map to track linkedin_url_hash -> master_prospect_id
+        const masterProspectIds: Map<string, string> = new Map();
+
+        for (const prospect of approvedProspects) {
+          const contact = prospect.contact || {};
+          const linkedinUrl = contact.linkedin_url || contact.linkedinUrl || prospect.linkedin_url || null;
+          const linkedinUrlHash = normalizeLinkedInUrl(linkedinUrl);
+
+          // Parse name
+          const fullName = prospect.name || `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
+          let firstName = 'Unknown';
+          let lastName = 'User';
+          if (fullName && fullName.trim() !== '') {
+            const nameParts = fullName.trim().split(/\s+/);
+            if (nameParts.length >= 2) {
+              firstName = nameParts[0];
+              lastName = nameParts.slice(1).join(' ');
+            } else if (nameParts.length === 1) {
+              firstName = nameParts[0];
+              lastName = '';
+            }
+          }
+
+          // Prepare workspace_prospects record
+          const workspaceProspectData = {
+            workspace_id,
+            linkedin_url: linkedinUrl,
+            linkedin_url_hash: linkedinUrlHash,
+            email: contact.email || null,
+            first_name: firstName,
+            last_name: lastName,
+            company: prospect.company?.name || contact.company || contact.companyName || '',
+            title: prospect.title || contact.title || contact.headline || '',
+            location: prospect.location || contact.location || null,
+            source: 'approval_session',
+            approval_status: 'approved',
+            approved_by: user.id,
+            approved_at: new Date().toISOString(),
+            active_campaign_id: campaignId,
+            linkedin_provider_id: prospect.provider_id || contact.provider_id || null,
+            connection_degree: prospect.connectionDegree || contact.connectionDegree || null,
+            enrichment_data: {
+              industry: prospect.company?.industry?.[0] || 'Not specified',
+              session_id: session_id,
+              approval_data_id: prospect.id
+            }
+          };
+
+          // Upsert to workspace_prospects
+          const { data: upsertedProspect, error: upsertError } = await supabase
+            .from('workspace_prospects')
+            .upsert(workspaceProspectData, {
+              onConflict: 'workspace_id,linkedin_url_hash',
+              ignoreDuplicates: false
+            })
+            .select('id')
+            .single();
+
+          if (upsertError) {
+            console.error(`❌ Failed to upsert prospect ${linkedinUrl}:`, upsertError.message);
+          } else if (upsertedProspect && linkedinUrlHash) {
+            masterProspectIds.set(linkedinUrlHash, upsertedProspect.id);
+          }
+        }
+
+        console.log(`✅ Upserted ${masterProspectIds.size} prospects to workspace_prospects`);
+
+        // ============================================================
+        // STEP 2: Insert to campaign_prospects WITH master_prospect_id
+        // ============================================================
+        console.log(`📤 STEP 2: Inserting prospects into campaign_prospects with master_prospect_id FK...`);
+
         const campaignProspects = approvedProspects.map(prospect => {
           const contact = prospect.contact || {};
           const linkedinUrl = contact.linkedin_url || contact.linkedinUrl || prospect.linkedin_url || null;
+          const linkedinUrlHash = normalizeLinkedInUrl(linkedinUrl);
 
-          // FIXED: Use prospect.name field and parse it properly
-          // prospect_approval_data has "name" field, NOT contact.firstName/lastName
+          // Parse name
           const fullName = prospect.name || `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
-
-          // Parse the full name properly (remove titles, credentials, etc.)
           let firstName = 'Unknown';
           let lastName = 'User';
-
           if (fullName && fullName.trim() !== '') {
-            // Split on first space: "Hyelim Kim" -> firstName: "Hyelim", lastName: "Kim"
             const nameParts = fullName.trim().split(/\s+/);
             if (nameParts.length >= 2) {
               firstName = nameParts[0];
@@ -449,6 +533,7 @@ export async function POST(req: NextRequest) {
           return {
             campaign_id: campaignId,
             workspace_id,
+            master_prospect_id: linkedinUrlHash ? masterProspectIds.get(linkedinUrlHash) : null,
             first_name: firstName,
             last_name: lastName,
             email: contact.email || null,
@@ -470,8 +555,6 @@ export async function POST(req: NextRequest) {
           };
         });
 
-        console.log(`📤 Inserting ${campaignProspects.length} prospects into campaign_prospects table...`);
-
         const { data: inserted, error: insertError } = await supabase
           .from('campaign_prospects')
           .insert(campaignProspects)
@@ -489,6 +572,7 @@ export async function POST(req: NextRequest) {
           console.log(`✅ ✅ ✅ AUTO-TRANSFERRED ${prospectsTransferred} PROSPECTS TO CAMPAIGN`);
           console.log(`   Campaign ID: ${campaignId}`);
           console.log(`   Session ID: ${session_id}`);
+          console.log(`   Master prospect IDs linked: ${masterProspectIds.size}`);
 
           // Mark prospects as transferred to campaign in approval database
           const prospectIds = approvedProspects.map((p: any) => p.prospect_id);

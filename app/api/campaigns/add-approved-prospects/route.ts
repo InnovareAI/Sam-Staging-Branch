@@ -2,10 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { enrichProspectName, normalizeFullName } from '@/lib/enrich-prospect-name'
 
+// Helper to normalize LinkedIn URL to vanity name (for deduplication)
+function normalizeLinkedInUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const match = url.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
+  if (match) {
+    return match[1].toLowerCase().trim();
+  }
+  return url.replace(/^\/+|\/+$/g, '').toLowerCase().trim();
+}
+
 /**
  * POST /api/campaigns/add-approved-prospects
  * Add approved prospects to a campaign
  * IMPORTANT: Automatically enriches missing names from LinkedIn via Unipile
+ *
+ * DATABASE-FIRST ARCHITECTURE (Dec 2025):
+ * 1. Upsert prospects to workspace_prospects (master table)
+ * 2. Insert to campaign_prospects WITH master_prospect_id FK
  */
 export async function POST(request: NextRequest) {
   try {
@@ -159,17 +173,22 @@ export async function POST(request: NextRequest) {
 
     const unipileAccountId = linkedInAccount?.unipile_account_id || null
 
-    // Transform prospects to campaign_prospects format with automatic name enrichment
-    const campaignProspects = await Promise.all(validProspects.map(async prospect => {
+    // =========================================================================
+    // DATABASE-FIRST ARCHITECTURE (Dec 2025)
+    // Step 1: Upsert to workspace_prospects (master table)
+    // Step 2: Insert to campaign_prospects WITH master_prospect_id FK
+    // =========================================================================
+
+    // Transform and enrich prospects, then upsert to workspace_prospects
+    const processedProspects = await Promise.all(validProspects.map(async prospect => {
       // Normalize and extract name parts from SAM data
-      // This removes titles, credentials, and descriptions (e.g., "John Doe CEO, Startups..." → "John Doe")
       const normalized = normalizeFullName(prospect.name || '')
       let firstName = normalized.firstName
       let lastName = normalized.lastName
 
       // AUTOMATIC ENRICHMENT: If names are missing, fetch from LinkedIn
       if (!firstName || !lastName) {
-        console.log('⚠️ Missing name for prospect, attempting enrichment:', {
+        console.log('Missing name for prospect, attempting enrichment:', {
           prospect_id: prospect.prospect_id,
           linkedin_url: prospect.contact?.linkedin_url
         });
@@ -185,66 +204,161 @@ export async function POST(request: NextRequest) {
         lastName = enriched.lastName;
 
         if (enriched.enriched) {
-          console.log('✅ Successfully enriched name:', {
+          console.log('Successfully enriched name:', {
             prospect_id: prospect.prospect_id,
             name: `${firstName} ${lastName}`
           });
         }
       }
 
-      // CRITICAL: Extract LinkedIn URL and provider_id from multiple possible locations
+      // Extract LinkedIn URL and provider_id
       let linkedinUrl = prospect.contact?.linkedin_url || prospect.linkedin_url || null;
       const linkedinUserId = prospect.contact?.linkedin_provider_id || null;
 
-      // Clean LinkedIn URL: Remove miniProfileUrn and other query parameters
-      // The miniProfileUrn encodes a provider_id that may differ from the vanity URL
+      // Clean LinkedIn URL: Remove query parameters
       if (linkedinUrl) {
         try {
           const match = linkedinUrl.match(/linkedin\.com\/in\/([^/?#]+)/);
           if (match) {
-            const username = match[1];
-            linkedinUrl = `https://www.linkedin.com/in/${username}`;
+            linkedinUrl = `https://www.linkedin.com/in/${match[1]}`;
           }
         } catch (error) {
           console.error('Error cleaning LinkedIn URL:', linkedinUrl, error);
         }
       }
 
-      console.log('📊 Prospect data:', {
-        prospect_id: prospect.prospect_id,
-        name: `${firstName} ${lastName}`,
-        linkedin_url: linkedinUrl,
-        linkedin_user_id: linkedinUserId,
-        has_contact: !!prospect.contact,
-        contact_linkedin: prospect.contact?.linkedin_url,
-        contact_provider_id: prospect.contact?.linkedin_provider_id,
-        direct_linkedin: prospect.linkedin_url
-      });
+      const linkedinUrlHash = normalizeLinkedInUrl(linkedinUrl);
+      const email = prospect.contact?.email || null;
+      const emailHash = email ? email.toLowerCase().trim() : null;
 
       return {
-        campaign_id,
+        // Data for workspace_prospects
         workspace_id,
         first_name: firstName,
         last_name: lastName,
-        email: prospect.contact?.email || null,
-        company_name: prospect.company?.name || '',
-        linkedin_url: linkedinUrl, // CLEANED: Vanity URL only, no miniProfileUrn or query parameters
-        linkedin_user_id: linkedinUserId, // Authoritative LinkedIn provider_id (doesn't change)
+        linkedin_url: linkedinUrl,
+        linkedin_url_hash: linkedinUrlHash,
+        linkedin_profile_url: linkedinUrl, // Keep old column in sync
+        email,
+        email_hash: emailHash,
+        company: prospect.company?.name || '',
+        company_name: prospect.company?.name || '', // Keep old column in sync
         title: prospect.title || '',
+        job_title: prospect.title || '', // Keep old column in sync
         location: prospect.location || null,
-        industry: prospect.company?.industry?.[0] || 'Not specified',
-        status: 'approved',
-        notes: null,
-        added_by_unipile_account: unipileAccountId, // LinkedIn TOS: track which account found this prospect
-        personalization_data: {
-          source: 'approved_prospects',
+        linkedin_provider_id: linkedinUserId,
+        connection_degree: prospect.connection_degree,
+        source: 'approval_workflow',
+        approval_status: 'approved',
+        approved_at: new Date().toISOString(),
+        active_campaign_id: campaign_id,
+        enrichment_data: {
           campaign_name: prospect.prospect_approval_sessions?.campaign_name,
           campaign_tag: prospect.prospect_approval_sessions?.campaign_tag,
-          approved_at: new Date().toISOString(),
-          connection_degree: prospect.connection_degree
+          industry: prospect.company?.industry?.[0] || null
+        },
+        // Extra data needed for campaign_prospects
+        _campaign_data: {
+          linkedin_user_id: linkedinUserId,
+          industry: prospect.company?.industry?.[0] || 'Not specified',
+          unipile_account_id: unipileAccountId,
+          personalization_data: {
+            source: 'approved_prospects',
+            campaign_name: prospect.prospect_approval_sessions?.campaign_name,
+            campaign_tag: prospect.prospect_approval_sessions?.campaign_tag,
+            approved_at: new Date().toISOString(),
+            connection_degree: prospect.connection_degree
+          }
         }
+      };
+    }));
+
+    // STEP 1: Upsert to workspace_prospects (master table)
+    console.log('DATABASE-FIRST: Upserting', processedProspects.length, 'prospects to workspace_prospects');
+    const masterProspectIds: Map<string, string> = new Map(); // linkedinUrlHash -> workspace_prospect.id
+
+    for (const prospect of processedProspects) {
+      if (!prospect.linkedin_url_hash) continue;
+
+      const workspaceProspectData = {
+        workspace_id: prospect.workspace_id,
+        first_name: prospect.first_name,
+        last_name: prospect.last_name,
+        linkedin_url: prospect.linkedin_url,
+        linkedin_url_hash: prospect.linkedin_url_hash,
+        linkedin_profile_url: prospect.linkedin_profile_url,
+        email: prospect.email,
+        email_hash: prospect.email_hash,
+        company: prospect.company,
+        company_name: prospect.company_name,
+        title: prospect.title,
+        job_title: prospect.job_title,
+        location: prospect.location,
+        linkedin_provider_id: prospect.linkedin_provider_id,
+        connection_degree: prospect.connection_degree,
+        source: prospect.source,
+        approval_status: prospect.approval_status,
+        approved_at: prospect.approved_at,
+        active_campaign_id: prospect.active_campaign_id,
+        enrichment_data: prospect.enrichment_data
+      };
+
+      const { data: upsertedProspect, error: upsertError } = await supabase
+        .from('workspace_prospects')
+        .upsert(workspaceProspectData, {
+          onConflict: 'workspace_id,linkedin_url_hash',
+          ignoreDuplicates: false
+        })
+        .select('id')
+        .single();
+
+      if (upsertError) {
+        // If upsert failed, try to fetch existing
+        if (upsertError.code === '23505') {
+          const { data: existing } = await supabase
+            .from('workspace_prospects')
+            .select('id')
+            .eq('workspace_id', workspace_id)
+            .eq('linkedin_url_hash', prospect.linkedin_url_hash)
+            .single();
+          if (existing) {
+            masterProspectIds.set(prospect.linkedin_url_hash, existing.id);
+            // Update active_campaign_id
+            await supabase
+              .from('workspace_prospects')
+              .update({ active_campaign_id: campaign_id, approval_status: 'approved' })
+              .eq('id', existing.id);
+          }
+        } else {
+          console.error('Error upserting workspace_prospect:', upsertError);
+        }
+      } else if (upsertedProspect) {
+        masterProspectIds.set(prospect.linkedin_url_hash, upsertedProspect.id);
       }
-    }))
+    }
+
+    console.log('DATABASE-FIRST: Created/found', masterProspectIds.size, 'workspace_prospects records');
+
+    // STEP 2: Transform for campaign_prospects WITH master_prospect_id
+    const campaignProspects = processedProspects.map(prospect => ({
+      campaign_id,
+      workspace_id,
+      master_prospect_id: prospect.linkedin_url_hash ? masterProspectIds.get(prospect.linkedin_url_hash) : null,
+      first_name: prospect.first_name,
+      last_name: prospect.last_name,
+      email: prospect.email,
+      company_name: prospect.company_name,
+      linkedin_url: prospect.linkedin_url,
+      linkedin_url_hash: prospect.linkedin_url_hash,
+      linkedin_user_id: prospect._campaign_data.linkedin_user_id,
+      title: prospect.title,
+      location: prospect.location,
+      industry: prospect._campaign_data.industry,
+      status: 'approved',
+      notes: null,
+      added_by_unipile_account: prospect._campaign_data.unipile_account_id,
+      personalization_data: prospect._campaign_data.personalization_data
+    }));
 
     // Insert into campaign_prospects
     const { data: insertedProspects, error: insertError } = await supabase
@@ -260,6 +374,8 @@ export async function POST(request: NextRequest) {
         details: insertError.message
       }, { status: 500 })
     }
+
+    console.log('DATABASE-FIRST: Inserted', insertedProspects.length, 'campaign_prospects with master_prospect_id');
 
     // Log what was inserted
     const prospectsWithLinkedIn = insertedProspects.filter(p => p.linkedin_url);
