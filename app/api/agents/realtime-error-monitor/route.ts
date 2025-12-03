@@ -60,18 +60,20 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // CHECK 2: Stuck queue items (past due by 10+ minutes)
-    const tenMinAgo = new Date(now.getTime() - 10 * 60 * 1000);
+    // CHECK 2: Stuck queue items (past due by 2+ hours)
+    // Note: With 2-min spacing per account and rate limiting, items legitimately wait hours
+    // Only flag as stuck if they're REALLY old (2+ hours past scheduled time)
+    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
     const { data: stuckQueue, error: stuckError } = await supabase
       .from('send_queue')
       .select('id, scheduled_for, campaign_id')
       .eq('status', 'pending')
-      .lt('scheduled_for', tenMinAgo.toISOString());
+      .lt('scheduled_for', twoHoursAgo.toISOString());
 
     if (!stuckError && stuckQueue && stuckQueue.length > 0) {
       errors.push({
         name: 'Stuck Queue Items',
-        critical: stuckQueue.length >= 5,
+        critical: stuckQueue.length >= 10, // Higher threshold since rate limiting is normal
         count: stuckQueue.length,
         details: `Oldest: ${stuckQueue[0]?.scheduled_for}`
       });
@@ -94,32 +96,14 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // CHECK 4: Cron execution gaps (check cron_execution_log if exists)
-    const { data: recentCrons } = await supabase
-      .from('cron_execution_log')
-      .select('cron_name, executed_at, success')
-      .gte('executed_at', fifteenMinAgo.toISOString())
-      .order('executed_at', { ascending: false });
-
-    // If process-send-queue hasn't run in 5+ min, that's a problem
-    const sendQueueRuns = recentCrons?.filter(c => c.cron_name === 'process-send-queue') || [];
-    if (sendQueueRuns.length === 0) {
-      // Check if there are pending items that should have been processed
-      const { count: pendingCount } = await supabase
-        .from('send_queue')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'pending')
-        .lte('scheduled_for', now.toISOString());
-
-      if (pendingCount && pendingCount > 0) {
-        errors.push({
-          name: 'Cron Not Running',
-          critical: true,
-          count: pendingCount,
-          details: 'process-send-queue has not run in 15 min with pending items'
-        });
-      }
-    }
+    // CHECK 4: Cron execution gaps - DISABLED
+    // The cron_execution_log table isn't reliably populated, and with rate limiting
+    // items legitimately wait for spacing. Instead of checking cron execution,
+    // we rely on CHECK 2 (stuck items 2+ hours old) to detect actual problems.
+    //
+    // If you want to re-enable this check, ensure:
+    // 1. cron_execution_log table exists and is populated by all cron jobs
+    // 2. Threshold accounts for rate limiting (items can wait hours normally)
 
     // CHECK 5: Active connector campaigns with PENDING prospects but NO queue items
     // This catches campaigns that failed to queue during launch
