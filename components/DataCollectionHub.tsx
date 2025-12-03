@@ -1,7 +1,7 @@
 'use client'
 
 import { Check, ChevronDown, ChevronUp, ChevronRight, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star, Plus, CheckSquare, Trash2, UserPlus, MessageSquare, Loader2, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
-import { toastError, toastSuccess } from '@/lib/toast';
+import { toastError, toastSuccess, toastInfo } from '@/lib/toast';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import ProspectSearchChat from '@/components/ProspectSearchChat';
