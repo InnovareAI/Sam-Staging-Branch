@@ -3763,6 +3763,38 @@ Would you like me to adjust these or create more variations?`
             />
           </div>
 
+          {/* Timezone Override */}
+          <div className="space-y-2">
+            <label htmlFor="campaign-timezone" className="block text-sm font-medium text-gray-400">
+              Prospect Timezone
+            </label>
+            <p className="text-xs text-gray-500 mb-2">
+              Messages will be sent during business hours (9 AM - 6 PM) in this timezone
+            </p>
+            <select
+              id="campaign-timezone"
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+              value={campaignSettings.timezone}
+              onChange={e => setCampaignSettings({...campaignSettings, timezone: e.target.value})}
+            >
+              <option value="America/New_York">US Eastern (New York)</option>
+              <option value="America/Chicago">US Central (Chicago)</option>
+              <option value="America/Denver">US Mountain (Denver)</option>
+              <option value="America/Los_Angeles">US Pacific (Los Angeles)</option>
+              <option value="Europe/London">UK (London)</option>
+              <option value="Europe/Paris">Central Europe (Paris)</option>
+              <option value="Europe/Berlin">Germany (Berlin)</option>
+              <option value="Europe/Amsterdam">Netherlands (Amsterdam)</option>
+              <option value="Europe/Zurich">Switzerland (Zurich)</option>
+              <option value="Asia/Singapore">Singapore</option>
+              <option value="Asia/Tokyo">Japan (Tokyo)</option>
+              <option value="Asia/Shanghai">China (Shanghai)</option>
+              <option value="Asia/Dubai">UAE (Dubai)</option>
+              <option value="Australia/Sydney">Australia (Sydney)</option>
+              <option value="Pacific/Auckland">New Zealand (Auckland)</option>
+            </select>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-3">
               Campaign Type
@@ -4477,84 +4509,6 @@ Would you like me to adjust these or create more variations?`
             </div>
           </div>
 
-          {/* Message Timing & Cadence */}
-          <div className="p-5 bg-gradient-to-br from-purple-900/20 to-blue-900/20 rounded-lg border border-purple-700/30">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-                <Clock size={16} className="text-white" />
-              </div>
-              <h4 className="text-white font-semibold">Message Timing & Cadence</h4>
-            </div>
-            <p className="text-gray-300 text-sm mb-5">
-              Configure delays between messages to optimize engagement
-            </p>
-            <div className="space-y-6">
-              {/* Connection Request Delay */}
-              <div>
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-white">
-                      Connection Request Delay
-                    </label>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Time to wait between sending connection requests
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min="0"
-                      className="w-16 bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
-                      defaultValue="2"
-                      placeholder="2"
-                    />
-                    <select
-                      className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                      value={campaignSettings.connection_request_delay || '1-3 hours'}
-                      onChange={(e) => setCampaignSettings({...campaignSettings, connection_request_delay: e.target.value})}
-                    >
-                      <option value="minutes">Minutes</option>
-                      <option value="hours">Hours ⭐</option>
-                      <option value="days">Days</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Follow-up Message Delay */}
-              <div>
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-white">
-                      Follow-up Message Delay
-                    </label>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Time to wait between follow-up messages after connection is accepted
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min="1"
-                      className="w-16 bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
-                      value={parseDelay(campaignSettings.follow_up_delay).value}
-                      onChange={(e) => updateFollowUpDelay('value', parseInt(e.target.value) || 1)}
-                    />
-                    <select
-                      className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                      value={parseDelay(campaignSettings.follow_up_delay).unit}
-                      onChange={(e) => updateFollowUpDelay('unit', e.target.value)}
-                    >
-                      <option value="hours">Hours</option>
-                      <option value="days">Days</option>
-                      <option value="weeks">Weeks</option>
-                      <option value="months">Months</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -4888,65 +4842,6 @@ Would you like me to adjust these or create more variations?`
             </div>
           </div>
 
-          {/* Message Timing & Cadence */}
-          <div className="bg-gray-700 rounded-lg p-4">
-            <h4 className="text-white font-medium mb-3">Message Timing & Cadence</h4>
-            <p className="text-xs text-gray-500 mb-4">
-              Configure delays between messages to optimize engagement
-            </p>
-            <div className="space-y-4">
-              {/* Initial Message Delay (for Messenger campaigns) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Initial Message Delay
-                </label>
-                <select
-                  className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                  value={campaignSettings.connection_request_delay || '1-3 hours'}
-                  onChange={(e) => setCampaignSettings({...campaignSettings, connection_request_delay: e.target.value})}
-                >
-                  <option value="immediate">Immediate</option>
-                  <option value="15-30 minutes">15-30 minutes</option>
-                  <option value="1-3 hours">1-3 hours (recommended)</option>
-                  <option value="3-6 hours">3-6 hours</option>
-                  <option value="6-12 hours">6-12 hours</option>
-                  <option value="12-24 hours">12-24 hours</option>
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Time to wait between sending initial messages
-                </p>
-              </div>
-
-              {/* Follow-up Message Delay */}
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Follow-up Message Delay
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min="1"
-                    className="w-16 bg-gray-600 border border-gray-500 rounded px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
-                    value={parseDelay(campaignSettings.follow_up_delay).value}
-                    onChange={(e) => updateFollowUpDelay('value', parseInt(e.target.value) || 1)}
-                  />
-                  <select
-                    className="bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                    value={parseDelay(campaignSettings.follow_up_delay).unit}
-                    onChange={(e) => updateFollowUpDelay('unit', e.target.value)}
-                  >
-                    <option value="hours">Hours</option>
-                    <option value="days">Days</option>
-                    <option value="weeks">Weeks</option>
-                    <option value="months">Months</option>
-                  </select>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Time to wait between follow-up messages
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -6445,7 +6340,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     max_messages_per_day: 20,
     preferred_send_times: ['9-11 AM', '1-3 PM'],
     active_days: ['Monday-Friday'],
-    timezone: 'ET (Eastern Time)',
+    timezone: 'America/New_York',
     auto_insert_company_name: true,
     use_job_title: true,
     include_industry_insights: false,
@@ -6512,13 +6407,26 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           },
           // Include message timing/cadence for dynamic N8N scheduling
           message_delays: finalCampaignData.message_delays || _executionData?.message_delays || ['2-3 days', '3-5 days', '5-7 days', '1 week', '2 weeks'],
-          // Timing preferences - use user-selected values from approval modal
-          timezone: finalCampaignData.timezone || 'America/New_York',
+          // Timing preferences - use user-selected timezone from campaign modal
+          timezone: campaignSettings.timezone || finalCampaignData.timezone || 'America/New_York',
           working_hours_start: finalCampaignData.working_hours_start ?? 7,
           working_hours_end: finalCampaignData.working_hours_end ?? 18,
           skip_weekends: finalCampaignData.skip_weekends ?? true,
           skip_holidays: finalCampaignData.skip_holidays ?? true,
-          country_code: 'US'       // For holiday calendar
+          // Derive country_code from timezone for holiday calendar
+          country_code: (() => {
+            const tz = campaignSettings.timezone || finalCampaignData.timezone || 'America/New_York';
+            if (tz.startsWith('America/')) return 'US';
+            if (tz.startsWith('Europe/London')) return 'GB';
+            if (tz.startsWith('Europe/Berlin') || tz.startsWith('Europe/')) return 'DE';
+            if (tz.startsWith('Asia/Singapore')) return 'SG';
+            if (tz.startsWith('Asia/Tokyo')) return 'JP';
+            if (tz.startsWith('Asia/Shanghai')) return 'CN';
+            if (tz.startsWith('Asia/Dubai')) return 'AE';
+            if (tz.startsWith('Australia/')) return 'AU';
+            if (tz.startsWith('Pacific/Auckland')) return 'NZ';
+            return 'US';
+          })()
         })
       });
 
