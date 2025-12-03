@@ -121,6 +121,12 @@
 [functions."auto-generate-comments"]
   schedule = "*/30 * * * *"
 
+# Process Comment Queue: Post scheduled comments every 30 minutes
+# Comments approved by user are queued and spread throughout the day (6 AM - 6 PM PT)
+# Also auto-likes posts when commenting
+[functions."process-comment-queue"]
+  schedule = "*/30 * * * *"
+
 # ============================================
 # CRM BI-DIRECTIONAL SYNC (Dec 2, 2025)
 # ============================================
