@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         .update({
           name,
           campaign_type: campaignType || 'linkedin', // Use campaign_type (primary field)
-          type: campaignType, // Keep type for backward compatibility
+          // NOTE: Do NOT set 'type' column - it has a CHECK constraint that rejects 'connector'/'messenger'
           current_step: currentStep,
           connection_message: connectionMessage,
           alternative_message: alternativeMessage,
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
           workspace_id: workspaceId,
           name,
           campaign_type: campaignType || 'linkedin', // Use campaign_type (primary field)
-          type: campaignType, // Keep type for backward compatibility
+          // NOTE: Do NOT set 'type' column - it has a CHECK constraint that rejects 'connector'/'messenger'
           status: 'draft',
           current_step: currentStep || 1,
           connection_message: connectionMessage,
