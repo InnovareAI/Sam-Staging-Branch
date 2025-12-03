@@ -526,6 +526,26 @@ Replies include human touches based on date/time:
 - `/scripts/js/test-reply-agent.mjs` - Test mode toggle (STARTUP/CONSULTANT)
 - `/app/api/cron/reply-agent-process/route.ts` - `getContextualGreeting()` function
 
+### Google Chat Notifications (Dec 3, 2025)
+
+Reply Agent now sends HITL notifications to **both email AND Google Chat**:
+
+| Channel | Purpose |
+|---------|---------|
+| **Email** (Postmark) | Primary notification to workspace owner |
+| **Google Chat** | Team visibility with clickable approve/reject buttons |
+
+**Google Chat Card includes:**
+- Prospect name, title, company
+- Intent detection (🔥 INTERESTED, ❓ QUESTION, etc.)
+- Their message
+- SAM's draft reply
+- Approve/Reject/Edit buttons
+
+**Configuration:** Uses existing `GOOGLE_CHAT_WEBHOOK_URL` environment variable.
+
+**File:** `/lib/notifications/google-chat.ts` → `sendReplyAgentHITLNotification()`
+
 ---
 
 ## TODO: Prospect Scoring Agent (Future Feature)
