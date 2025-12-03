@@ -221,6 +221,9 @@ export async function POST(req: NextRequest) {
               location: prospectData.location,
               linkedin_provider_id: prospectData.linkedin_user_id,
               source: 'campaign_upload',
+              // CRITICAL FIX: Set active_campaign_id so prospect doesn't show in "In Progress" tab
+              active_campaign_id: campaign_id,
+              approval_status: 'approved',
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             }, {
