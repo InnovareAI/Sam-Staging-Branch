@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
       if (createError) {
         console.error('Error creating draft:', createError);
         return NextResponse.json(
-          { error: 'Failed to create draft' },
+          { error: `Failed to create draft: ${createError.message || createError.code || JSON.stringify(createError)}` },
           { status: 500 }
         );
       }
