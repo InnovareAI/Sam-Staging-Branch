@@ -299,8 +299,8 @@ export async function POST(req: NextRequest) {
         .in('campaign_id', accountCampaignIds)
         .gte('sent_at', todayStart.toISOString());
 
-      if ((sentToday?.length || 0) >= 20) {
-        console.log(`⏸️  Account ${accountId} blocked by daily cap (20/day)`);
+      if ((sentToday?.length || 0) >= 40) {
+        console.log(`⏸️  Account ${accountId} blocked by daily cap (40/day - Sales Nav)`);
         skippedAccounts.push(accountId);
         continue;
       }
