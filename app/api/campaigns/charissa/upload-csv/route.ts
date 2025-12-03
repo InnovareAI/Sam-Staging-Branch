@@ -1,11 +1,20 @@
 /**
  * Charissa Campaign CSV Upload API
  * Dedicated endpoint for uploading Charissa's LinkedIn campaign prospects
+ * DATABASE-FIRST: Upserts to workspace_prospects first, then campaign_prospects with master_prospect_id FK
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/app/lib/supabase'
 import { parse } from 'csv-parse/sync'
+
+// Helper to normalize LinkedIn URL to hash (vanity name only)
+function normalizeLinkedInUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const match = url.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
+  if (match) return match[1].toLowerCase().trim();
+  return url.replace(/^\/+|\/+$/g, '').toLowerCase().trim();
+}
 
 interface CSVProspect {
   first_name: string
@@ -139,10 +148,71 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Valid prospects: ${validProspects.length} out of ${csvData.length}`)
 
+    // DATABASE-FIRST: Prepare workspace_prospects data
+    console.log('💾 Step 1: Upserting to workspace_prospects master table...')
+
+    const masterProspectsData = validProspects.map((row) => ({
+      workspace_id: charissaConfig.workspace_id,
+      linkedin_url: row.linkedin_url.trim(),
+      linkedin_url_hash: normalizeLinkedInUrl(row.linkedin_url.trim()),
+      first_name: row.first_name.trim(),
+      last_name: row.last_name.trim(),
+      company: row.company_name.trim(),
+      source: 'charissa_csv_upload',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })).filter(p => p.linkedin_url_hash)
+
+    // Batch upsert to workspace_prospects
+    const batchSize = 100
+    let masterIdMap: Record<string, string> = {}
+
+    for (let i = 0; i < masterProspectsData.length; i += batchSize) {
+      const batch = masterProspectsData.slice(i, i + batchSize)
+
+      const { error: masterError } = await supabase
+        .from('workspace_prospects')
+        .upsert(batch, {
+          onConflict: 'workspace_id,linkedin_url_hash',
+          ignoreDuplicates: false
+        })
+
+      if (masterError) {
+        console.warn(`⚠️ Master batch ${Math.floor(i/batchSize) + 1} upsert warning:`, masterError.message)
+      } else {
+        console.log(`✅ Master batch ${Math.floor(i/batchSize) + 1} upserted`)
+      }
+    }
+
+    // Get all master_prospect_ids for linking
+    const linkedinHashes = masterProspectsData.map(p => p.linkedin_url_hash).filter(Boolean)
+    if (linkedinHashes.length > 0) {
+      const { data: masterRecords } = await supabase
+        .from('workspace_prospects')
+        .select('id, linkedin_url_hash')
+        .eq('workspace_id', charissaConfig.workspace_id)
+        .in('linkedin_url_hash', linkedinHashes)
+
+      if (masterRecords) {
+        masterIdMap = masterRecords.reduce((acc: Record<string, string>, r: any) => {
+          acc[r.linkedin_url_hash] = r.id
+          return acc
+        }, {})
+      }
+    }
+
+    console.log(`✅ Linked ${Object.keys(masterIdMap).length} master prospect IDs`)
+
+    // Now prepare campaign_prospects with master_prospect_id FK
+    console.log('💾 Step 2: Inserting to campaign_prospects...')
+
     const prospectsToInsert = validProspects.map((row, index) => {
-      // Clean and validate prospect data - only 4 essential fields
-      const prospect = {
+      const linkedinHash = normalizeLinkedInUrl(row.linkedin_url.trim())
+
+      return {
         campaign_id: campaignId,
+        workspace_id: charissaConfig.workspace_id,
+        master_prospect_id: linkedinHash ? masterIdMap[linkedinHash] || null : null,
         first_name: row.first_name.trim(),
         last_name: row.last_name.trim(),
         email: '', // Optional - can be empty for LinkedIn-only campaigns
@@ -161,19 +231,16 @@ export async function POST(request: NextRequest) {
           required_fields_only: true
         }
       }
-
-      return prospect
     })
 
     // Insert prospects in batches
-    const batchSize = 100
     let insertedCount = 0
     let errorCount = 0
     const errors: string[] = []
 
     for (let i = 0; i < prospectsToInsert.length; i += batchSize) {
       const batch = prospectsToInsert.slice(i, i + batchSize)
-      
+
       const { data: insertedBatch, error: insertError } = await supabase
         .from('campaign_prospects')
         .insert(batch)

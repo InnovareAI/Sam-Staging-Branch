@@ -2002,12 +2002,42 @@ function CampaignBuilder({
   const [selectedKBTemplate, setSelectedKBTemplate] = useState<any>(null);
 
   // Campaign Settings state (timing/cadence)
+  // NEW: Exact timing with {value, unit} objects instead of string ranges
   const [campaignSettings, setCampaignSettings] = useState<any>({
-    connection_request_delay: '1-3 hours',
-    follow_up_delay: '2-3 days',
+    connection_request_delay: { value: 2, unit: 'hours' },
+    follow_up_delay: { value: 3, unit: 'days' },
     // Per-message delays: array matching followUpMessages length
-    message_delays: ['2-3 days', '3-5 days', '5-7 days', '1 week', '2 weeks']
+    message_delays: [
+      { value: 3, unit: 'days' },
+      { value: 5, unit: 'days' },
+      { value: 1, unit: 'weeks' },
+      { value: 2, unit: 'weeks' },
+      { value: 1, unit: 'months' }
+    ]
   });
+
+  // Helper to parse legacy string delays into structured format
+  const parseDelay = (delay: any): { value: number; unit: string } => {
+    if (typeof delay === 'object' && delay?.value !== undefined) return delay;
+    if (typeof delay !== 'string') return { value: 3, unit: 'days' };
+
+    // Parse legacy formats like "2-3 days", "1 week", "12-24 hours"
+    const match = delay.match(/(\d+)(?:-\d+)?\s*(hour|day|week|month)/i);
+    if (match) {
+      const value = parseInt(match[1]);
+      let unit = match[2].toLowerCase();
+      if (!unit.endsWith('s')) unit += 's'; // Normalize to plural
+      return { value, unit };
+    }
+    return { value: 3, unit: 'days' };
+  };
+
+  // Format delay for display
+  const formatDelay = (delay: any): string => {
+    const parsed = parseDelay(delay);
+    const unit = parsed.value === 1 ? parsed.unit.replace(/s$/, '') : parsed.unit;
+    return `${parsed.value} ${unit}`;
+  };
 
   // React Query + localStorage for KB templates (persistent across sessions)
   const {
@@ -2532,7 +2562,7 @@ function CampaignBuilder({
     // Also add empty subject for the new follow-up
     setFollowUpSubjects([...followUpSubjects, '']);
     // Add default delay for new message
-    const newDelays = [...(campaignSettings.message_delays || []), '2-3 days'];
+    const newDelays = [...(campaignSettings.message_delays || []), { value: 3, unit: 'days' }];
     setCampaignSettings({...campaignSettings, message_delays: newDelays});
   };
 
@@ -2558,10 +2588,28 @@ function CampaignBuilder({
     }
   };
 
-  const updateMessageDelay = (index: number, delay: string) => {
+  // Update message delay - now handles structured {value, unit} objects
+  const updateMessageDelay = (index: number, field: 'value' | 'unit', newValue: number | string) => {
     const newDelays = [...(campaignSettings.message_delays || [])];
-    newDelays[index] = delay;
+    const current = parseDelay(newDelays[index]);
+    if (field === 'value') {
+      current.value = typeof newValue === 'number' ? newValue : parseInt(newValue as string) || 1;
+    } else {
+      current.unit = newValue as string;
+    }
+    newDelays[index] = current;
     setCampaignSettings({...campaignSettings, message_delays: newDelays});
+  };
+
+  // Update follow-up delay (single value, not array)
+  const updateFollowUpDelay = (field: 'value' | 'unit', newValue: number | string) => {
+    const current = parseDelay(campaignSettings.follow_up_delay);
+    if (field === 'value') {
+      current.value = typeof newValue === 'number' ? newValue : parseInt(newValue as string) || 1;
+    } else {
+      current.unit = newValue as string;
+    }
+    setCampaignSettings({...campaignSettings, follow_up_delay: current});
   };
 
   const insertPlaceholder = (placeholder: string, messageType?: 'connection' | 'alternative' | 'followup', index?: number) => {
@@ -3258,7 +3306,7 @@ Would you like me to adjust these or create more variations?`
         follow_up_5: followUpMessages[4] || ''
       },
       // Include message timing/cadence settings
-      message_delays: campaignSettings.message_delays || ['2-3 days', '3-5 days', '5-7 days', '1 week', '2 weeks'],
+      message_delays: campaignSettings.message_delays || [{ value: 3, unit: 'days' }, { value: 5, unit: 'days' }, { value: 1, unit: 'weeks' }, { value: 2, unit: 'weeks' }, { value: 1, unit: 'months' }],
       // Store additional data needed for execution
       _executionData: {
         campaignType,
@@ -4206,18 +4254,26 @@ Would you like me to adjust these or create more variations?`
                       </label>
                       <span className="text-xs text-gray-500">• Wait:</span>
                     </div>
-                    <select
-                      className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                      value={(campaignSettings.message_delays || [])[index] || '2-3 days'}
-                      onChange={(e) => updateMessageDelay(index, e.target.value)}
-                    >
-                      <option value="1 day">1 day</option>
-                      <option value="2-3 days">2-3 days</option>
-                      <option value="3-5 days">3-5 days</option>
-                      <option value="5-7 days">5-7 days</option>
-                      <option value="1 week">1 week</option>
-                      <option value="2 weeks">2 weeks</option>
-                    </select>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max="99"
+                        className="w-16 bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
+                        value={parseDelay((campaignSettings.message_delays || [])[index]).value}
+                        onChange={(e) => updateMessageDelay(index, 'value', parseInt(e.target.value) || 1)}
+                      />
+                      <select
+                        className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                        value={parseDelay((campaignSettings.message_delays || [])[index]).unit}
+                        onChange={(e) => updateMessageDelay(index, 'unit', e.target.value)}
+                      >
+                        <option value="hours">Hours</option>
+                        <option value="days">Days</option>
+                        <option value="weeks">Weeks</option>
+                        <option value="months">Months</option>
+                      </select>
+                    </div>
                   </div>
                   <textarea
                     className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
@@ -4407,19 +4463,20 @@ Would you like me to adjust these or create more variations?`
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
-                      min="0"
+                      min="1"
                       className="w-16 bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
-                      defaultValue="3"
-                      placeholder="3"
+                      value={parseDelay(campaignSettings.follow_up_delay).value}
+                      onChange={(e) => updateFollowUpDelay('value', parseInt(e.target.value) || 1)}
                     />
                     <select
                       className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                      value={campaignSettings.follow_up_delay || '2-3 days'}
-                      onChange={(e) => setCampaignSettings({...campaignSettings, follow_up_delay: e.target.value})}
+                      value={parseDelay(campaignSettings.follow_up_delay).unit}
+                      onChange={(e) => updateFollowUpDelay('unit', e.target.value)}
                     >
                       <option value="hours">Hours</option>
-                      <option value="days">Days ⭐</option>
+                      <option value="days">Days</option>
                       <option value="weeks">Weeks</option>
+                      <option value="months">Months</option>
                     </select>
                   </div>
                 </div>
@@ -4602,18 +4659,26 @@ Would you like me to adjust these or create more variations?`
                       </label>
                       <span className="text-xs text-gray-500">• Wait:</span>
                     </div>
-                    <select
-                      className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                      value={(campaignSettings.message_delays || [])[index] || '2-3 days'}
-                      onChange={(e) => updateMessageDelay(index, e.target.value)}
-                    >
-                      <option value="1 day">1 day</option>
-                      <option value="2-3 days">2-3 days</option>
-                      <option value="3-5 days">3-5 days</option>
-                      <option value="5-7 days">5-7 days</option>
-                      <option value="1 week">1 week</option>
-                      <option value="2 weeks">2 weeks</option>
-                    </select>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max="99"
+                        className="w-16 bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
+                        value={parseDelay((campaignSettings.message_delays || [])[index]).value}
+                        onChange={(e) => updateMessageDelay(index, 'value', parseInt(e.target.value) || 1)}
+                      />
+                      <select
+                        className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                        value={parseDelay((campaignSettings.message_delays || [])[index]).unit}
+                        onChange={(e) => updateMessageDelay(index, 'unit', e.target.value)}
+                      >
+                        <option value="hours">Hours</option>
+                        <option value="days">Days</option>
+                        <option value="weeks">Weeks</option>
+                        <option value="months">Months</option>
+                      </select>
+                    </div>
                   </div>
                   <textarea
                     className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
@@ -4779,18 +4844,25 @@ Would you like me to adjust these or create more variations?`
                 <label className="block text-sm font-medium text-gray-400 mb-2">
                   Follow-up Message Delay
                 </label>
-                <select
-                  className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                  value={campaignSettings.follow_up_delay || '2-3 days'}
-                  onChange={(e) => setCampaignSettings({...campaignSettings, follow_up_delay: e.target.value})}
-                >
-                  <option value="1 day">1 day</option>
-                  <option value="2-3 days">2-3 days (recommended)</option>
-                  <option value="3-5 days">3-5 days</option>
-                  <option value="5-7 days">5-7 days</option>
-                  <option value="1 week">1 week</option>
-                  <option value="2 weeks">2 weeks</option>
-                </select>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    className="w-16 bg-gray-600 border border-gray-500 rounded px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
+                    value={parseDelay(campaignSettings.follow_up_delay).value}
+                    onChange={(e) => updateFollowUpDelay('value', parseInt(e.target.value) || 1)}
+                  />
+                  <select
+                    className="bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                    value={parseDelay(campaignSettings.follow_up_delay).unit}
+                    onChange={(e) => updateFollowUpDelay('unit', e.target.value)}
+                  >
+                    <option value="hours">Hours</option>
+                    <option value="days">Days</option>
+                    <option value="weeks">Weeks</option>
+                    <option value="months">Months</option>
+                  </select>
+                </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Time to wait between follow-up messages
                 </p>
@@ -4992,19 +5064,20 @@ Would you like me to adjust these or create more variations?`
                     <span className="text-xs text-gray-400 text-center">Send after</span>
                     <input
                       type="number"
-                      min="0"
+                      min="1"
                       className="w-16 bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
-                      defaultValue="3"
-                      placeholder="3"
+                      value={parseDelay((campaignSettings.message_delays || [])[index]).value}
+                      onChange={(e) => updateMessageDelay(index, 'value', parseInt(e.target.value) || 1)}
                     />
                     <select
                       className="bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-xs font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                      value={(campaignSettings.message_delays || [])[index] || '2-3 days'}
-                      onChange={(e) => updateMessageDelay(index, e.target.value)}
+                      value={parseDelay((campaignSettings.message_delays || [])[index]).unit}
+                      onChange={(e) => updateMessageDelay(index, 'unit', e.target.value)}
                     >
                       <option value="hours">Hours</option>
                       <option value="days">Days</option>
                       <option value="weeks">Weeks</option>
+                      <option value="months">Months</option>
                     </select>
                   </div>
                 </div>
@@ -6261,8 +6334,15 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
   // Campaign Settings state
   const [campaignSettings, setCampaignSettings] = useState<any>({
-    connection_request_delay: '1-3 hours',
-    follow_up_delay: '2-3 days',
+    connection_request_delay: { value: 2, unit: 'hours' },
+    follow_up_delay: { value: 3, unit: 'days' },
+    message_delays: [
+      { value: 3, unit: 'days' },
+      { value: 5, unit: 'days' },
+      { value: 1, unit: 'weeks' },
+      { value: 2, unit: 'weeks' },
+      { value: 1, unit: 'months' }
+    ],
     max_messages_per_day: 20,
     preferred_send_times: ['9-11 AM', '1-3 PM'],
     active_days: ['Monday-Friday'],

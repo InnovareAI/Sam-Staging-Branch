@@ -4,6 +4,14 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { normalizeCompanyName } from '@/lib/enrich-prospect-name';
 
+// Helper to normalize LinkedIn URL to hash (vanity name only)
+function normalizeLinkedInUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const match = url.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
+  if (match) return match[1].toLowerCase().trim();
+  return url.replace(/^\/+|\/+$/g, '').toLowerCase().trim();
+}
+
 // GET - Check endpoint status
 export async function GET() {
   return NextResponse.json({
@@ -264,11 +272,79 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    console.log(`💾 Inserting ${approvalData.length} prospects into prospect_approval_data`);
+    // DATABASE-FIRST: Upsert all prospects to workspace_prospects master table
+    console.log(`💾 Step 1: Upserting ${approvalData.length} prospects to workspace_prospects (master table)`);
+
+    const masterProspects = approvalData.map((p: any) => ({
+      workspace_id: workspace_id,
+      linkedin_url: p.contact?.linkedin_url || null,
+      linkedin_url_hash: normalizeLinkedInUrl(p.contact?.linkedin_url),
+      first_name: p.contact?.first_name || p.name?.split(' ')[0] || 'Unknown',
+      last_name: p.contact?.last_name || p.name?.split(' ').slice(1).join(' ') || '',
+      email: p.contact?.email || null,
+      company: p.company?.name || '',
+      title: p.title || '',
+      location: p.location || '',
+      linkedin_provider_id: p.contact?.linkedin_provider_id || null,
+      connection_status: p.connection_degree === '1st' ? 'connected' : 'unknown',
+      source: p.source || 'manual-upload',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })).filter((p: any) => p.linkedin_url_hash); // Only upsert those with valid LinkedIn URLs
+
+    // Batch upsert to workspace_prospects
+    if (masterProspects.length > 0) {
+      const { error: masterError } = await supabase
+        .from('workspace_prospects')
+        .upsert(masterProspects, {
+          onConflict: 'workspace_id,linkedin_url_hash',
+          ignoreDuplicates: false
+        });
+
+      if (masterError) {
+        console.error('❌ Master prospect upsert error:', masterError);
+        // Don't fail - continue with approval data insert
+        console.warn('⚠️ Continuing despite master table error');
+      } else {
+        console.log(`✅ Upserted ${masterProspects.length} prospects to workspace_prospects`);
+      }
+    }
+
+    // Get master_prospect_ids for linking
+    const linkedinHashes = approvalData
+      .map((p: any) => normalizeLinkedInUrl(p.contact?.linkedin_url))
+      .filter(Boolean);
+
+    let masterIdMap: Record<string, string> = {};
+    if (linkedinHashes.length > 0) {
+      const { data: masterRecords } = await supabase
+        .from('workspace_prospects')
+        .select('id, linkedin_url_hash')
+        .eq('workspace_id', workspace_id)
+        .in('linkedin_url_hash', linkedinHashes);
+
+      if (masterRecords) {
+        masterIdMap = masterRecords.reduce((acc: Record<string, string>, r: any) => {
+          acc[r.linkedin_url_hash] = r.id;
+          return acc;
+        }, {});
+      }
+    }
+
+    // Add master_prospect_id to approval data
+    const approvalDataWithMasterId = approvalData.map((p: any) => {
+      const hash = normalizeLinkedInUrl(p.contact?.linkedin_url);
+      return {
+        ...p,
+        master_prospect_id: hash ? masterIdMap[hash] || null : null
+      };
+    });
+
+    console.log(`💾 Step 2: Inserting ${approvalDataWithMasterId.length} prospects into prospect_approval_data`);
 
     const { data: insertedData, error: dataError } = await supabase
       .from('prospect_approval_data')
-      .insert(approvalData);
+      .insert(approvalDataWithMasterId);
 
     if (dataError) {
       console.error('❌ Error saving prospects:', dataError);

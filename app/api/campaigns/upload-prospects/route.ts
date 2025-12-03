@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { enrichProspectName } from '@/lib/enrich-prospect-name';
 
+// Helper to normalize LinkedIn URL to hash (vanity name only)
+function normalizeLinkedInUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const match = url.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
+  if (match) return match[1].toLowerCase().trim();
+  return url.replace(/^\/+|\/+$/g, '').toLowerCase().trim();
+}
+
 // Simple JSON-based prospect upload for campaigns
 // Used by CampaignHub when prospects are already in memory (not from CSV upload)
 // IMPORTANT: Automatically enriches missing names from LinkedIn via Unipile
+// DATABASE-FIRST: Upserts to workspace_prospects first, then campaign_prospects with master_prospect_id FK
 
 export async function POST(req: NextRequest) {
   try {
@@ -193,20 +202,83 @@ export async function POST(req: NextRequest) {
         console.log('  - company_name:', prospectData.company_name);
         console.log('  - email:', prospectData.email);
 
-        // Check if prospect already exists for this campaign
-        const { data: existing } = await supabase
-          .from('campaign_prospects')
-          .select('id')
-          .eq('campaign_id', campaign_id)
-          .eq('email', prospectData.email)
-          .maybeSingle();
+        // DATABASE-FIRST: Upsert to workspace_prospects master table
+        const linkedinHash = normalizeLinkedInUrl(prospectData.linkedin_url);
+        let masterProspectId: string | null = null;
+
+        if (linkedinHash) {
+          const { data: masterProspect, error: masterError } = await supabase
+            .from('workspace_prospects')
+            .upsert({
+              workspace_id: campaign.workspace_id,
+              linkedin_url: prospectData.linkedin_url,
+              linkedin_url_hash: linkedinHash,
+              first_name: prospectData.first_name,
+              last_name: prospectData.last_name,
+              email: prospectData.email,
+              company: prospectData.company_name,
+              title: prospectData.title,
+              location: prospectData.location,
+              linkedin_provider_id: prospectData.linkedin_user_id,
+              source: 'campaign_upload',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'workspace_id,linkedin_url_hash',
+              ignoreDuplicates: false
+            })
+            .select('id')
+            .single();
+
+          if (masterError) {
+            console.warn(`⚠️ Master prospect upsert warning for ${linkedinHash}:`, masterError.message);
+            // Try to get existing record
+            const { data: existingMaster } = await supabase
+              .from('workspace_prospects')
+              .select('id')
+              .eq('workspace_id', campaign.workspace_id)
+              .eq('linkedin_url_hash', linkedinHash)
+              .single();
+            masterProspectId = existingMaster?.id || null;
+          } else {
+            masterProspectId = masterProspect?.id || null;
+            console.log(`✅ Upserted to workspace_prospects: ${masterProspectId}`);
+          }
+        }
+
+        // Check if prospect already exists for this campaign (by email OR linkedin_url)
+        // FIX: Previously only checked email, causing duplicates for LinkedIn-only prospects
+        let existing = null;
+
+        // Check by email first (if not empty)
+        if (prospectData.email && prospectData.email.trim() !== '') {
+          const { data: byEmail } = await supabase
+            .from('campaign_prospects')
+            .select('id')
+            .eq('campaign_id', campaign_id)
+            .eq('email', prospectData.email)
+            .maybeSingle();
+          existing = byEmail;
+        }
+
+        // Check by linkedin_url if not found by email
+        if (!existing && prospectData.linkedin_url && prospectData.linkedin_url.trim() !== '') {
+          const { data: byLinkedin } = await supabase
+            .from('campaign_prospects')
+            .select('id')
+            .eq('campaign_id', campaign_id)
+            .eq('linkedin_url', prospectData.linkedin_url)
+            .maybeSingle();
+          existing = byLinkedin;
+        }
 
         if (existing) {
-          // Update existing prospect
+          // Update existing prospect with master_prospect_id
           const { error: updateError } = await supabase
             .from('campaign_prospects')
             .update({
               ...prospectData,
+              master_prospect_id: masterProspectId,
               updated_at: new Date().toISOString()
             })
             .eq('id', existing.id);
@@ -218,10 +290,13 @@ export async function POST(req: NextRequest) {
             updated_count++;
           }
         } else {
-          // Insert new prospect
+          // Insert new prospect with master_prospect_id FK
           const { data: newProspect, error: insertError } = await supabase
             .from('campaign_prospects')
-            .insert(prospectData)
+            .insert({
+              ...prospectData,
+              master_prospect_id: masterProspectId
+            })
             .select('id')
             .single();
 

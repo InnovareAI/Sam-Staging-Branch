@@ -1,9 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { cookies } from 'next/headers';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+
+// Helper to normalize LinkedIn URL to hash (vanity name only)
+function normalizeLinkedInUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const match = url.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
+  if (match) return match[1].toLowerCase().trim();
+  return url.replace(/^\/+|\/+$/g, '').toLowerCase().trim();
+}
 
 /**
  * Quick Add Single Prospect API
  * Just paste LinkedIn URL - system handles everything automatically
+ * DATABASE-FIRST: Upserts to workspace_prospects first
  */
 export async function POST(request: NextRequest) {
   try {
@@ -85,7 +96,37 @@ export async function POST(request: NextRequest) {
       // Continue - we'll treat as 2nd/3rd degree connection
     }
 
-    // Step 3: Create approval session
+    // Step 3: DATABASE-FIRST - Upsert to workspace_prospects master table
+    const linkedinHash = normalizeLinkedInUrl(linkedin_url);
+
+    const { data: masterProspect, error: masterError } = await supabase
+      .from('workspace_prospects')
+      .upsert({
+        workspace_id: workspace_id,
+        linkedin_url: linkedin_url,
+        linkedin_url_hash: linkedinHash,
+        first_name: fullName.split(' ')[0] || 'Unknown',
+        last_name: fullName.split(' ').slice(1).join(' ') || '',
+        linkedin_provider_id: linkedinUserId,
+        connection_status: connectionDegree === '1st' ? 'connected' : 'not_connected',
+        source: 'quick_add',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'workspace_id,linkedin_url_hash',
+        ignoreDuplicates: false
+      })
+      .select('id')
+      .single();
+
+    if (masterError) {
+      console.error('Master prospect upsert error:', masterError);
+      throw new Error('Failed to save to master prospect table');
+    }
+
+    console.log('✅ Upserted to workspace_prospects:', masterProspect.id);
+
+    // Step 4: Create approval session
     const sessionId = `quick_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const { error: sessionError } = await supabase
       .from('prospect_approval_sessions')
@@ -104,10 +145,11 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to create approval session');
     }
 
-    // Step 4: Save prospect to approval database
+    // Step 5: Save prospect to approval database with master_prospect_id reference
     const prospectData = {
       session_id: sessionId,
       workspace_id: workspace_id,
+      master_prospect_id: masterProspect.id,  // FK to workspace_prospects
       contact: {
         name: fullName,
         linkedin_url: linkedin_url,

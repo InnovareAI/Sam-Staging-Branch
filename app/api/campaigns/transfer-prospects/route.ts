@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
+// Helper to normalize LinkedIn URL to hash (vanity name only)
+function normalizeLinkedInUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const match = url.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
+  if (match) return match[1].toLowerCase().trim();
+  return url.replace(/^\/+|\/+$/g, '').toLowerCase().trim();
+}
+
 /**
  * Transfer approved prospects from prospect_approval_data to campaign_prospects
  * POST /api/campaigns/transfer-prospects
  * Body: { campaign_id: string, session_id?: string, campaign_name?: string }
+ *
+ * DATABASE-FIRST: Upserts to workspace_prospects first, then campaign_prospects with master_prospect_id FK
  */
 export async function POST(req: NextRequest) {
   try {
@@ -109,10 +119,83 @@ export async function POST(req: NextRequest) {
 
     const unipileAccountId = linkedInAccount?.unipile_account_id || null;
 
-    // Transform and insert prospects
+    // DATABASE-FIRST: Upsert all prospects to workspace_prospects master table first
+    console.log(`💾 Step 1: Upserting ${approvedProspects.length} prospects to workspace_prospects`);
+
+    // Prepare master prospects data
+    const masterProspectsData = approvedProspects.map(prospect => {
+      const contact = prospect.contact || {};
+      const linkedinUrl = contact.linkedin_url || contact.linkedinUrl || prospect.linkedin_url || null;
+      const fullName = prospect.name || `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
+
+      let firstName = 'Unknown';
+      let lastName = '';
+      if (fullName && fullName.trim() !== '') {
+        const nameParts = fullName.trim().split(/\s+/);
+        if (nameParts.length >= 2) {
+          firstName = nameParts[0];
+          lastName = nameParts.slice(1).join(' ');
+        } else if (nameParts.length === 1) {
+          firstName = nameParts[0];
+        }
+      }
+
+      return {
+        workspace_id: workspaceId,
+        linkedin_url: linkedinUrl,
+        linkedin_url_hash: normalizeLinkedInUrl(linkedinUrl),
+        first_name: firstName,
+        last_name: lastName,
+        email: contact.email || null,
+        company: prospect.company?.name || contact.company || contact.companyName || '',
+        title: prospect.title || contact.title || contact.headline || '',
+        location: prospect.location || contact.location || null,
+        linkedin_provider_id: contact.linkedin_provider_id || null,
+        source: 'transfer',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    }).filter(p => p.linkedin_url_hash); // Only upsert those with valid LinkedIn URLs
+
+    // Batch upsert to workspace_prospects
+    let masterIdMap: Record<string, string> = {};
+    if (masterProspectsData.length > 0) {
+      const { error: masterError } = await supabase
+        .from('workspace_prospects')
+        .upsert(masterProspectsData, {
+          onConflict: 'workspace_id,linkedin_url_hash',
+          ignoreDuplicates: false
+        });
+
+      if (masterError) {
+        console.error('⚠️ Master prospect upsert warning:', masterError.message);
+      } else {
+        console.log(`✅ Upserted ${masterProspectsData.length} prospects to workspace_prospects`);
+      }
+
+      // Get master_prospect_ids for linking
+      const linkedinHashes = masterProspectsData.map(p => p.linkedin_url_hash).filter(Boolean);
+      const { data: masterRecords } = await supabase
+        .from('workspace_prospects')
+        .select('id, linkedin_url_hash')
+        .eq('workspace_id', workspaceId)
+        .in('linkedin_url_hash', linkedinHashes);
+
+      if (masterRecords) {
+        masterIdMap = masterRecords.reduce((acc: Record<string, string>, r: any) => {
+          acc[r.linkedin_url_hash] = r.id;
+          return acc;
+        }, {});
+      }
+    }
+
+    // Transform and insert prospects with master_prospect_id
+    console.log(`💾 Step 2: Inserting ${approvedProspects.length} prospects to campaign_prospects`);
+
     const campaignProspects = approvedProspects.map(prospect => {
       const contact = prospect.contact || {};
       const linkedinUrl = contact.linkedin_url || contact.linkedinUrl || prospect.linkedin_url || null;
+      const linkedinHash = normalizeLinkedInUrl(linkedinUrl);
 
       // FIXED: Use prospect.name field and parse it properly
       // prospect_approval_data has "name" field, NOT contact.firstName/lastName
@@ -137,6 +220,7 @@ export async function POST(req: NextRequest) {
       return {
         campaign_id: campaign.id,
         workspace_id: workspaceId,
+        master_prospect_id: linkedinHash ? masterIdMap[linkedinHash] || null : null,  // FK to workspace_prospects
         first_name: firstName,
         last_name: lastName,
         email: contact.email || null,
