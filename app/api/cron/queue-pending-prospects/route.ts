@@ -30,12 +30,12 @@ export async function POST(req: NextRequest) {
   console.log('🔍 Checking for unqueued pending prospects...');
 
   try {
-    // 1. Get all active linkedin campaigns
+    // 1. Get all active connector campaigns (connection request campaigns)
     const { data: activeCampaigns, error: campError } = await supabase
       .from('campaigns')
       .select('id, campaign_name, linkedin_account_id, message_templates')
       .eq('status', 'active')
-      .eq('campaign_type', 'linkedin');
+      .eq('campaign_type', 'connector');
 
     if (campError) {
       console.error('Error fetching campaigns:', campError);
