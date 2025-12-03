@@ -19,6 +19,7 @@ import LLMConfigModal from '@/components/LLMConfigModal';
 import { ChannelSelectionModal } from '@/components/campaign/ChannelSelectionModal';
 import EmailProvidersModal from '@/app/components/EmailProvidersModal';
 import ReachInboxModal from '@/app/components/ReachInboxModal';
+import BlacklistModal from '@/app/components/BlacklistModal';
 import { WorkspaceSettingsModal } from '@/app/components/WorkspaceSettingsModal';
 import { CRMIntegrationModal } from '@/app/components/CRMIntegrationModal';
 import KnowledgeBase from '@/app/components/KnowledgeBase';
@@ -34,6 +35,7 @@ import { ManageSubscriptionModal } from '@/app/components/ManageSubscriptionModa
 import {
   Activity,
   Archive,
+  Ban,
   BarChart3,
   Bell,
   Brain,
@@ -321,6 +323,7 @@ export default function Page() {
   // Detail modal states
   const [showEmailIntegrationModal, setShowEmailIntegrationModal] = useState(false);
   const [showReachInboxModal, setShowReachInboxModal] = useState(false);
+  const [showBlacklistModal, setShowBlacklistModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [showApiKeysModal, setShowApiKeysModal] = useState(false);
   const [showDataPreferencesModal, setShowDataPreferencesModal] = useState(false);
@@ -3560,6 +3563,15 @@ export default function Page() {
                   onClick={() => setShowProxyCountryModal(true)}
                 />
 
+                {/* Blacklists */}
+                <SimpleTileCard
+                  title="Blacklists"
+                  description="Block companies, people, or profiles from outreach. Upload CSV or manage individual entries."
+                  icon={Ban}
+                  color="red"
+                  onClick={() => setShowBlacklistModal(true)}
+                />
+
               </div>
             </div>
           </div>
@@ -4971,6 +4983,12 @@ export default function Page() {
       <ReachInboxModal
         isOpen={showReachInboxModal}
         onClose={() => setShowReachInboxModal(false)}
+        workspaceId={selectedWorkspaceId || ''}
+      />
+
+      <BlacklistModal
+        isOpen={showBlacklistModal}
+        onClose={() => setShowBlacklistModal(false)}
         workspaceId={selectedWorkspaceId || ''}
       />
 

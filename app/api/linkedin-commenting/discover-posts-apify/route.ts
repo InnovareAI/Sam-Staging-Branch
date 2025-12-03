@@ -23,9 +23,10 @@ const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
  * comments would be inappropriate and spammy.
  */
 const HIRING_POST_PATTERNS = [
-  // Direct hiring announcements
+  // Direct hiring announcements - STRONG PATTERNS
+  /\bis\s+hiring\b/i,                                    // "Company is hiring"
   /\b(we['']?re|we are|i['']?m|i am)\s+hiring\b/i,
-  /\bhiring\s+(now|immediately|urgently|asap)\b/i,
+  /\bhiring\s+(now|immediately|urgently|asap|for|to)\b/i,
   /\b(job|position|role)\s+(opening|available|vacancy|opportunity)\b/i,
   /\bnow\s+hiring\b/i,
   /\bcurrently\s+hiring\b/i,
@@ -35,24 +36,38 @@ const HIRING_POST_PATTERNS = [
   /\bsend\s+(your\s+)?(cv|resume|application)\b/i,
   /\b(dm|message)\s+(me|us)\s+(for|if|to)\s+(apply|application|details|info)\b/i,
 
-  // Job postings with specific roles
-  /\blooking\s+for\s+(a|an)\s+[\w\s]*(developer|engineer|designer|manager|analyst|specialist|coordinator|assistant|intern)\b/i,
-  /\bseeking\s+(a|an)?\s*[\w\s]*(developer|engineer|designer|manager|analyst|specialist|coordinator|assistant|intern)\b/i,
+  // Job postings with specific roles - EXPANDED LIST
+  /\blooking\s+for\s+(a|an)?\s*[\w\s]*(developer|engineer|designer|manager|analyst|specialist|coordinator|assistant|intern|professional|expert|lead|consultant)\b/i,
+  /\bseeking\s+(a|an)?\s*[\w\s]*(developer|engineer|designer|manager|analyst|specialist|coordinator|assistant|intern|professional|expert|lead|consultant)\b/i,
 
   // Generic recruitment language
   /\bjoin\s+(our|my|the)\s+team\b/i,
   /\b(come|want\s+to)\s+work\s+(with|for)\s+(us|me)\b/i,
   /\bopen\s+(position|role)s?\b/i,
   /\bcareer\s+opportunit(y|ies)\b/i,
-  /\b#hiring\b/i,
-  /\b#job(s|opening|alert)?\b/i,
-  /\b#careers?\b/i,
-  /\b#nowhiring\b/i,
-  /\b#opentowork\b/i,
+
+  // Hashtag patterns - EXPANDED
+  /#hiring\b/i,                                          // Removed \b at start for hashtags
+  /#job(s|opening|alert|search)?\b/i,
+  /#\w*jobs\b/i,                                         // Catches #AIJobs, #TechJobs, etc.
+  /#careers?\b/i,
+  /#nowhiring\b/i,
+  /#opentowork\b/i,
+  /#techjobs?\b/i,
+  /#werehiring\b/i,
 
   // Remote/location-based job posts
   /\b(remote|hybrid|onsite)\s+(position|role|job|opportunity)\b/i,
-  /\b(full[-\s]?time|part[-\s]?time|contract|freelance)\s+(position|role|opportunity|opening)\b/i
+  /\b(full[-\s]?time|part[-\s]?time|contract|freelance)\s+(position|role|opportunity|opening)\b/i,
+
+  // Job description patterns - NEW
+  /\bwhat\s+(we['']?re|you['']?ll)\s+(looking\s+for|do)\b/i,       // "What we're looking for", "What you'll do"
+  /\b\d+[-–]\d+\s+years?\s+(of\s+)?experience\b/i,                  // "5-12 years of experience"
+  /\byears?\s+(of\s+)?experience\s+(in|with)\b/i,                   // "years of experience in"
+  /\brequirements?\s*:/i,                                           // "Requirements:"
+  /\bqualifications?\s*:/i,                                         // "Qualifications:"
+  /\bresponsibilities?\s*:/i,                                       // "Responsibilities:"
+  /\blocation\s*:\s*(india|usa|uk|remote|hybrid)/i                  // "Location: India"
 ];
 
 /**
