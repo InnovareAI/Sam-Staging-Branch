@@ -4,16 +4,68 @@
  *
  * Called by Netlify scheduled function every 30 minutes
  * Posts comments where scheduled_post_time <= now
+ * Respects workspace timezone and business hours
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import moment from 'moment-timezone';
+import { getHolidaysForCountry, BUSINESS_HOURS } from '@/lib/scheduling-config';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
 const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
+
+// Countries with Friday-Saturday weekends (Middle East)
+const FRIDAY_SATURDAY_WEEKEND_COUNTRIES = ['AE', 'SA', 'KW', 'QA', 'BH', 'OM', 'JO', 'EG'];
+
+// Timezone presets by country
+const COUNTRY_TIMEZONES: Record<string, string> = {
+  US: 'America/Los_Angeles',
+  DE: 'Europe/Berlin',
+  FR: 'Europe/Paris',
+  GB: 'Europe/London',
+  ZA: 'Africa/Johannesburg',
+  AE: 'Asia/Dubai',
+};
+
+/**
+ * Check if we can post a comment now based on workspace settings
+ */
+function canPostCommentNow(timezone: string, countryCode: string): { canPost: boolean; reason?: string } {
+  const localTime = moment().tz(timezone);
+  const day = localTime.day();
+  const hour = localTime.hour();
+  const dateStr = localTime.format('YYYY-MM-DD');
+
+  // Check weekend (country-specific)
+  if (FRIDAY_SATURDAY_WEEKEND_COUNTRIES.includes(countryCode)) {
+    if (day === 5 || day === 6) { // Friday or Saturday
+      return { canPost: false, reason: `Weekend (Fri-Sat) in ${countryCode}` };
+    }
+  } else {
+    if (day === 0 || day === 6) { // Sunday or Saturday
+      return { canPost: false, reason: 'Weekend' };
+    }
+  }
+
+  // Check business hours (6 AM - 6 PM)
+  const startHour = BUSINESS_HOURS.start;
+  const endHour = 18; // 6 PM
+  if (hour < startHour || hour >= endHour) {
+    return { canPost: false, reason: `Outside business hours (${hour}:00 in ${timezone})` };
+  }
+
+  // Check holidays
+  const holidays = getHolidaysForCountry(countryCode);
+  if (holidays.includes(dateStr)) {
+    return { canPost: false, reason: `Holiday in ${countryCode} (${dateStr})` };
+  }
+
+  return { canPost: true };
+}
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
@@ -73,10 +125,36 @@ export async function POST(req: NextRequest) {
 
     console.log(`📋 Found ${dueComments.length} scheduled comments to post`);
 
+    // Group comments by workspace for timezone check
+    const workspaceIds = [...new Set(dueComments.map(c => c.workspace_id))];
+
+    // Fetch workspace brand guidelines for timezone/country settings
+    const { data: brandGuidelines } = await supabase
+      .from('linkedin_brand_guidelines')
+      .select('workspace_id, timezone, country_code')
+      .in('workspace_id', workspaceIds);
+
+    const workspaceSettings: Record<string, { timezone: string; country_code: string }> = {};
+    for (const bg of brandGuidelines || []) {
+      workspaceSettings[bg.workspace_id] = {
+        timezone: bg.timezone || 'America/Los_Angeles',
+        country_code: bg.country_code || 'US'
+      };
+    }
+
     // Process each comment
     for (const comment of dueComments) {
       try {
         console.log(`\n📤 Posting comment ${comment.id}...`);
+
+        // Check workspace timezone/business hours
+        const settings = workspaceSettings[comment.workspace_id] || { timezone: 'America/Los_Angeles', country_code: 'US' };
+        const { canPost, reason } = canPostCommentNow(settings.timezone, settings.country_code);
+
+        if (!canPost) {
+          console.log(`   ⏸️ Skipping - ${reason}`);
+          continue; // Will be picked up next time when business hours are active
+        }
 
         // Get LinkedIn account for this workspace
         const { data: linkedinAccount } = await supabase

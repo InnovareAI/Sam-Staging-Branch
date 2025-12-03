@@ -284,9 +284,68 @@ pending → connection_request_sent → connected → messaged → replied | no_
 
 ---
 
+## Multi-Timezone & Country Support (Dec 3, 2025)
+
+### Campaign-Level Timezone
+
+Campaigns can target different countries with their own:
+- **Timezone** - Business hours calculated in target country's time
+- **Holidays** - 30+ countries supported with country-specific holidays
+- **Weekend days** - Standard (Sat-Sun) or Middle East (Fri-Sat)
+
+### Supported Countries
+
+| Region | Countries |
+|--------|-----------|
+| Americas | US, CA, MX, BR |
+| Europe | DE, FR, GB, NL, BE, AT, CH, IT, ES, PT, IE, SE, NO, DK, FI, PL, GR, IS |
+| Asia-Pacific | JP, KR, CN, SG, IN, AU, NZ |
+| Middle East/Africa | ZA, AE, SA, IL, KW, QA, BH, OM, JO, EG |
+
+### Friday-Saturday Weekends
+
+These countries use Fri-Sat weekends (not Sat-Sun):
+- AE (UAE), SA (Saudi Arabia), KW (Kuwait), QA (Qatar)
+- BH (Bahrain), OM (Oman), JO (Jordan), EG (Egypt)
+
+### Setting Campaign Target Country
+
+**Option 1: Database (campaigns table)**
+```sql
+UPDATE campaigns
+SET country_code = 'DE',
+    timezone = 'Europe/Berlin'
+WHERE id = 'campaign-uuid';
+```
+
+**Option 2: schedule_settings JSON**
+```json
+{
+  "country_code": "ZA",
+  "timezone": "Africa/Johannesburg",
+  "working_hours_start": 8,
+  "working_hours_end": 17,
+  "skip_weekends": true,
+  "skip_holidays": true
+}
+```
+
+### LinkedIn Commenting Agent Timezone
+
+Set via `linkedin_brand_guidelines` table:
+```sql
+UPDATE linkedin_brand_guidelines
+SET timezone = 'Europe/Berlin',
+    country_code = 'DE'
+WHERE workspace_id = 'workspace-uuid';
+```
+
+---
+
 ## Commit History
 
 ```
+[latest] - Add multi-timezone/country support for campaigns and comments
 a46628fe - Add Dec 3 handover
 067ecf99 - Add 10-day per-author comment cooldown
 [previous] - Add daily repost feature

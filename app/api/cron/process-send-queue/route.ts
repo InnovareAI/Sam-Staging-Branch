@@ -2,11 +2,48 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import moment from 'moment-timezone';
 import {
-  PUBLIC_HOLIDAYS,
+  getHolidaysForCountry,
   DEFAULT_TIMEZONE,
   BUSINESS_HOURS,
   type ScheduleSettings
 } from '@/lib/scheduling-config';
+
+// Countries with Friday-Saturday weekends (Middle East)
+const FRIDAY_SATURDAY_WEEKEND_COUNTRIES = ['AE', 'SA', 'KW', 'QA', 'BH', 'OM', 'JO', 'EG'];
+
+// Timezone presets by country (for quick lookup)
+const COUNTRY_TIMEZONES: Record<string, string> = {
+  US: 'America/New_York',
+  CA: 'America/Toronto',
+  GB: 'Europe/London',
+  DE: 'Europe/Berlin',
+  FR: 'Europe/Paris',
+  NL: 'Europe/Amsterdam',
+  BE: 'Europe/Brussels',
+  CH: 'Europe/Zurich',
+  AT: 'Europe/Vienna',
+  IT: 'Europe/Rome',
+  ES: 'Europe/Madrid',
+  PT: 'Europe/Lisbon',
+  IE: 'Europe/Dublin',
+  SE: 'Europe/Stockholm',
+  NO: 'Europe/Oslo',
+  DK: 'Europe/Copenhagen',
+  FI: 'Europe/Helsinki',
+  PL: 'Europe/Warsaw',
+  GR: 'Europe/Athens',
+  ZA: 'Africa/Johannesburg',
+  AU: 'Australia/Sydney',
+  NZ: 'Pacific/Auckland',
+  JP: 'Asia/Tokyo',
+  KR: 'Asia/Seoul',
+  CN: 'Asia/Shanghai',
+  SG: 'Asia/Singapore',
+  IN: 'Asia/Kolkata',
+  AE: 'Asia/Dubai',
+  SA: 'Asia/Riyadh',
+  IL: 'Asia/Jerusalem',
+};
 
 /**
  * Cron Job: Process Send Queue
@@ -28,11 +65,15 @@ export const maxDuration = 60; // 60 seconds
 const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
 
-// Uses centralized PUBLIC_HOLIDAYS from scheduling-config.ts
+// Extended ScheduleSettings with country support
+interface ExtendedScheduleSettings extends ScheduleSettings {
+  country_code?: string;
+}
 
-function canSendMessage(date: Date, settings?: ScheduleSettings): boolean {
+function canSendMessage(date: Date, settings?: ExtendedScheduleSettings): boolean {
   // Default settings from centralized config
-  const timezone = settings?.timezone || DEFAULT_TIMEZONE;
+  const countryCode = settings?.country_code || 'US';
+  const timezone = settings?.timezone || COUNTRY_TIMEZONES[countryCode] || DEFAULT_TIMEZONE;
   const startHour = settings?.working_hours_start ?? BUSINESS_HOURS.start;
   const endHour = settings?.working_hours_end ?? BUSINESS_HOURS.end;
   const skipWeekends = settings?.skip_weekends ?? true;
@@ -41,27 +82,38 @@ function canSendMessage(date: Date, settings?: ScheduleSettings): boolean {
   // Convert to target timezone
   const localTime = moment(date).tz(timezone);
 
-  // 1. Check Weekend
+  // 1. Check Weekend (country-specific)
   if (skipWeekends) {
     const day = localTime.day(); // 0=Sun, 6=Sat
-    if (day === 0 || day === 6) {
-      console.log(`⏸️  Skipping weekend (${localTime.format('llll')})`);
-      return false;
+
+    // Middle East countries: Friday-Saturday weekend
+    if (FRIDAY_SATURDAY_WEEKEND_COUNTRIES.includes(countryCode)) {
+      if (day === 5 || day === 6) { // Friday or Saturday
+        console.log(`⏸️  Skipping weekend (Fri-Sat) in ${countryCode} (${localTime.format('llll')})`);
+        return false;
+      }
+    } else {
+      // Standard Saturday-Sunday weekend
+      if (day === 0 || day === 6) {
+        console.log(`⏸️  Skipping weekend (${localTime.format('llll')})`);
+        return false;
+      }
     }
   }
 
   // 2. Check Business Hours
   const currentHour = localTime.hour();
   if (currentHour < startHour || currentHour >= endHour) {
-    console.log(`⏸️  Outside business hours (${currentHour}:00 in ${timezone})`);
+    console.log(`⏸️  Outside business hours (${currentHour}:00 in ${timezone}, ${countryCode})`);
     return false;
   }
 
-  // 3. Check Holidays (US Only for now)
+  // 3. Check Holidays (country-specific)
   if (skipHolidays) {
     const dateStr = localTime.format('YYYY-MM-DD');
-    if (PUBLIC_HOLIDAYS.includes(dateStr)) {
-      console.log(`🎉 Skipping public holiday (${dateStr})`);
+    const holidays = getHolidaysForCountry(countryCode);
+    if (holidays.includes(dateStr)) {
+      console.log(`🎉 Skipping ${countryCode} holiday (${dateStr})`);
       return false;
     }
   }
@@ -179,10 +231,10 @@ export async function POST(req: NextRequest) {
       // Quick check: have we already skipped this campaign's account?
       const candidateCampaignId = candidate.campaign_id;
 
-      // Get campaign to check LinkedIn account
+      // Get campaign to check LinkedIn account and schedule settings
       const { data: candidateCampaign } = await supabase
         .from('campaigns')
-        .select('linkedin_account_id, schedule_settings')
+        .select('linkedin_account_id, schedule_settings, country_code, timezone, working_hours_start, working_hours_end, skip_weekends, skip_holidays')
         .eq('id', candidateCampaignId)
         .single();
 
@@ -193,8 +245,18 @@ export async function POST(req: NextRequest) {
       // Skip if we already know this account is blocked
       if (skippedAccounts.includes(accountId)) continue;
 
-      // Check business hours/weekends/holidays for this campaign
-      if (!canSendMessage(new Date(), candidateCampaign.schedule_settings)) {
+      // Build schedule settings from campaign fields or schedule_settings JSON
+      const scheduleSettings: ExtendedScheduleSettings = {
+        country_code: candidateCampaign.country_code || candidateCampaign.schedule_settings?.country_code || 'US',
+        timezone: candidateCampaign.timezone || candidateCampaign.schedule_settings?.timezone,
+        working_hours_start: candidateCampaign.working_hours_start ?? candidateCampaign.schedule_settings?.working_hours_start,
+        working_hours_end: candidateCampaign.working_hours_end ?? candidateCampaign.schedule_settings?.working_hours_end,
+        skip_weekends: candidateCampaign.skip_weekends ?? candidateCampaign.schedule_settings?.skip_weekends ?? true,
+        skip_holidays: candidateCampaign.skip_holidays ?? candidateCampaign.schedule_settings?.skip_holidays ?? true,
+      };
+
+      // Check business hours/weekends/holidays for this campaign's target country
+      if (!canSendMessage(new Date(), scheduleSettings)) {
         console.log(`⏸️  Campaign ${candidateCampaignId} blocked by schedule`);
         skippedAccounts.push(accountId);
         continue;
@@ -599,21 +661,29 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     name: 'Process Send Queue',
-    description: 'Processes queued CRs for ALL workspaces with per-account limits',
+    description: 'Processes queued CRs for ALL workspaces with per-account limits and country-specific scheduling',
     endpoint: '/api/cron/process-send-queue',
     method: 'POST',
     schedule: '* * * * * (every minute via Netlify scheduled function)',
     limits_per_linkedin_account: {
       daily_max: '20 CRs per day',
-      min_spacing: '30 minutes between CRs',
-      business_hours: '7 AM - 6 PM (configurable per campaign)',
-      weekends: 'Skipped by default (configurable)',
-      holidays: 'US holidays skipped by default (configurable)'
+      min_spacing: '5 minutes between CRs',
+      business_hours: '5 AM - 5 PM (configurable per campaign)',
+      weekends: 'Skipped by default - Sat/Sun for most countries, Fri/Sat for Middle East',
+      holidays: 'Country-specific holidays (30+ countries supported)'
+    },
+    country_support: {
+      europe: ['DE', 'FR', 'GB', 'NL', 'BE', 'AT', 'CH', 'IT', 'ES', 'PT', 'IE', 'SE', 'NO', 'DK', 'FI', 'PL', 'GR', 'IS'],
+      americas: ['US', 'CA', 'MX', 'BR'],
+      asia_pacific: ['JP', 'KR', 'CN', 'SG', 'IN', 'AU', 'NZ'],
+      middle_east_africa: ['ZA', 'AE', 'SA', 'IL'],
+      friday_saturday_weekends: ['AE', 'SA', 'KW', 'QA', 'BH', 'OM', 'JO', 'EG']
     },
     behavior: {
       per_execution: '1 message (picks oldest due across all accounts)',
       multi_tenant: 'Processes ALL workspaces in single run',
-      spacing_enforced: 'Checks last sent time per LinkedIn account'
+      spacing_enforced: 'Checks last sent time per LinkedIn account',
+      timezone_aware: 'Uses target country timezone for business hours check'
     },
     requirements: {
       cron_secret: 'x-cron-secret header (matches CRON_SECRET env var)',
