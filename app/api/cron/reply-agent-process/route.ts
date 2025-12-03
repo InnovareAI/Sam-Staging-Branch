@@ -498,18 +498,21 @@ async function sendHITLEmail(
       console.error('Postmark error:', error);
     }
 
-    // Also send to Google Chat for team visibility
-    await sendReplyAgentHITLNotification({
-      draftId: draft.id,
-      approvalToken: draft.approval_token,
-      prospectName: draft.prospect_name || 'Unknown',
-      prospectTitle: prospect.title,
-      prospectCompany: draft.prospect_company,
-      inboundMessage: inboundText,
-      draftReply: draft.draft_text,
-      intent: draft.intent_detected || 'UNCLEAR',
-      appUrl: APP_URL,
-    });
+    // Only send to Google Chat if workspace has chat channel enabled (enterprise feature)
+    const notificationChannels = config.notification_channels || ['email'];
+    if (notificationChannels.includes('chat')) {
+      await sendReplyAgentHITLNotification({
+        draftId: draft.id,
+        approvalToken: draft.approval_token,
+        prospectName: draft.prospect_name || 'Unknown',
+        prospectTitle: prospect.title,
+        prospectCompany: draft.prospect_company,
+        inboundMessage: inboundText,
+        draftReply: draft.draft_text,
+        intent: draft.intent_detected || 'UNCLEAR',
+        appUrl: APP_URL,
+      });
+    }
 
   } catch (error) {
     console.error('Error sending HITL email:', error);
