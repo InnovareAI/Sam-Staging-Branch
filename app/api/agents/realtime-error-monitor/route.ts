@@ -60,24 +60,11 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // CHECK 2: Stuck queue items (past due by 2+ hours)
-    // Note: With 2-min spacing per account and rate limiting, items legitimately wait hours
-    // Only flag as stuck if they're REALLY old (2+ hours past scheduled time)
-    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
-    const { data: stuckQueue, error: stuckError } = await supabase
-      .from('send_queue')
-      .select('id, scheduled_for, campaign_id')
-      .eq('status', 'pending')
-      .lt('scheduled_for', twoHoursAgo.toISOString());
-
-    if (!stuckError && stuckQueue && stuckQueue.length > 0) {
-      errors.push({
-        name: 'Stuck Queue Items',
-        critical: stuckQueue.length >= 10, // Higher threshold since rate limiting is normal
-        count: stuckQueue.length,
-        details: `Oldest: ${stuckQueue[0]?.scheduled_for}`
-      });
-    }
+    // CHECK 2: Stuck queue items - DISABLED
+    // With 2-min spacing per account and rate limiting, items legitimately wait many hours.
+    // Example: 50 prospects × 2-min spacing = 100 minutes minimum, plus account scheduling.
+    // The daily health check (which runs at 6 AM) will catch truly stuck items.
+    // This real-time check caused too many false alarms and has been disabled.
 
     // CHECK 3: Prospects stuck in "sending" status (>30 min)
     const thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000);
