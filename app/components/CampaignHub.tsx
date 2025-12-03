@@ -5161,11 +5161,49 @@ Would you like me to adjust these or create more variations?`
               <button
                 type="button"
                 onClick={async () => {
-                  await saveDraft(true);
-                  toastSuccess('Campaign draft saved! You can add prospects later from the "In Progress" tab.');
-                  queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
+                  if (!workspaceId) {
+                    toastError('No workspace selected');
+                    return;
+                  }
+                  if (!name.trim()) {
+                    toastError('Please enter a campaign name');
+                    return;
+                  }
+                  setIsSavingDraft(true);
+                  try {
+                    const response = await fetch('/api/campaigns/draft', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        draftId: currentDraftId,
+                        workspaceId,
+                        name,
+                        campaignType,
+                        currentStep,
+                        connectionMessage,
+                        alternativeMessage,
+                        followUpMessages,
+                        csvData,
+                      }),
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                      if (!currentDraftId) {
+                        setCurrentDraftId(result.draftId);
+                      }
+                      toastSuccess('Campaign draft saved! Find it in "In Progress" tab.');
+                      queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
+                    } else {
+                      toastError(result.error || 'Failed to save draft');
+                    }
+                  } catch (error) {
+                    console.error('Error saving draft:', error);
+                    toastError('Failed to save draft');
+                  } finally {
+                    setIsSavingDraft(false);
+                  }
                 }}
-                disabled={isSavingDraft || !name.trim()}
+                disabled={isSavingDraft || !name.trim() || !workspaceId}
                 className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
               >
                 {isSavingDraft ? 'Saving...' : 'Save Draft'}
@@ -5183,11 +5221,49 @@ Would you like me to adjust these or create more variations?`
               <button
                 type="button"
                 onClick={async () => {
-                  await saveDraft(true);
-                  toastSuccess('Campaign draft saved! Find it in the "In Progress" tab.');
-                  queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
+                  if (!workspaceId) {
+                    toastError('No workspace selected');
+                    return;
+                  }
+                  if (!name.trim()) {
+                    toastError('Please enter a campaign name');
+                    return;
+                  }
+                  setIsSavingDraft(true);
+                  try {
+                    const response = await fetch('/api/campaigns/draft', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        draftId: currentDraftId,
+                        workspaceId,
+                        name,
+                        campaignType,
+                        currentStep,
+                        connectionMessage,
+                        alternativeMessage,
+                        followUpMessages,
+                        csvData,
+                      }),
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                      if (!currentDraftId) {
+                        setCurrentDraftId(result.draftId);
+                      }
+                      toastSuccess('Campaign draft saved! Find it in "In Progress" tab.');
+                      queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
+                    } else {
+                      toastError(result.error || 'Failed to save draft');
+                    }
+                  } catch (error) {
+                    console.error('Error saving draft:', error);
+                    toastError('Failed to save draft');
+                  } finally {
+                    setIsSavingDraft(false);
+                  }
                 }}
-                disabled={isSavingDraft || !name.trim()}
+                disabled={isSavingDraft || !name.trim() || !workspaceId}
                 className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
               >
                 {isSavingDraft ? 'Saving...' : 'Save Draft'}
