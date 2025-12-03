@@ -271,7 +271,8 @@ export async function sendReplyAgentHITLNotification(
 
   const approveUrl = `${notification.appUrl}/api/reply-agent/approve?token=${notification.approvalToken}&action=approve`;
   const rejectUrl = `${notification.appUrl}/api/reply-agent/approve?token=${notification.approvalToken}&action=reject`;
-  const editUrl = `${notification.appUrl}/reply-agent-result?action=edit&id=${notification.draftId}`;
+  const editUrl = `${notification.appUrl}/reply-agent/edit?id=${notification.draftId}&token=${notification.approvalToken}`;
+  const instructionsUrl = `${notification.appUrl}/reply-agent/instructions?id=${notification.draftId}&token=${notification.approvalToken}`;
 
   const intentEmoji: Record<string, string> = {
     'INTERESTED': '🔥',
@@ -347,12 +348,38 @@ export async function sendReplyAgentHITLNotification(
                           alpha: 1,
                         },
                       },
+                    ],
+                  },
+                },
+                {
+                  buttonList: {
+                    buttons: [
                       {
-                        text: '✏️ Edit First',
+                        text: '✏️ Edit Reply',
                         onClick: {
                           openLink: {
                             url: editUrl,
                           },
+                        },
+                        color: {
+                          red: 0.42,
+                          green: 0.48,
+                          blue: 0.54,
+                          alpha: 1,
+                        },
+                      },
+                      {
+                        text: '💬 Add Instructions',
+                        onClick: {
+                          openLink: {
+                            url: instructionsUrl,
+                          },
+                        },
+                        color: {
+                          red: 0.4,
+                          green: 0.31,
+                          blue: 0.64,
+                          alpha: 1,
                         },
                       },
                     ],

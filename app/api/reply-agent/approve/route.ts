@@ -147,19 +147,32 @@ function redirectWithMessage(type: 'success' | 'error' | 'info', message: string
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { draft_id, action, edited_text } = body;
+    // Support both token-based (from edit pages) and draft_id-based (from UI) auth
+    const { draft_id, token, action, edited_text, editedText } = body;
+    const textToUse = editedText || edited_text;
 
-    if (!draft_id || !action) {
-      return NextResponse.json({ error: 'Missing draft_id or action' }, { status: 400 });
+    if (!action) {
+      return NextResponse.json({ error: 'Missing action' }, { status: 400 });
+    }
+
+    if (!draft_id && !token) {
+      return NextResponse.json({ error: 'Missing draft_id or token' }, { status: 400 });
     }
 
     const supabase = supabaseAdmin();
 
-    const { data: draft, error } = await supabase
+    // Fetch draft by either draft_id or token
+    let query = supabase
       .from('reply_agent_drafts')
-      .select('*, campaign_prospects(linkedin_user_id)')
-      .eq('id', draft_id)
-      .single();
+      .select('*, campaign_prospects(linkedin_user_id)');
+
+    if (token) {
+      query = query.eq('approval_token', token);
+    } else {
+      query = query.eq('id', draft_id);
+    }
+
+    const { data: draft, error } = await query.single();
 
     if (error || !draft) {
       return NextResponse.json({ error: 'Draft not found' }, { status: 404 });
@@ -169,14 +182,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Draft already ${draft.status}` }, { status: 400 });
     }
 
+    const draftId = draft.id;
+
     if (action === 'approve') {
       // Update edited text if provided
-      if (edited_text) {
+      if (textToUse) {
         await supabase
           .from('reply_agent_drafts')
-          .update({ edited_text })
-          .eq('id', draft_id);
-        draft.edited_text = edited_text;
+          .update({ edited_text: textToUse })
+          .eq('id', draftId);
+        draft.edited_text = textToUse;
       }
 
       const sendResult = await sendMessage(draft, supabase);
@@ -190,7 +205,7 @@ export async function POST(request: NextRequest) {
             sent_at: new Date().toISOString(),
             outbound_message_id: sendResult.messageId
           })
-          .eq('id', draft_id);
+          .eq('id', draftId);
 
         return NextResponse.json({ success: true, status: 'sent' });
       } else {
@@ -201,7 +216,7 @@ export async function POST(request: NextRequest) {
             approved_at: new Date().toISOString(),
             send_error: sendResult.error
           })
-          .eq('id', draft_id);
+          .eq('id', draftId);
 
         return NextResponse.json({ success: false, error: sendResult.error });
       }
@@ -213,7 +228,7 @@ export async function POST(request: NextRequest) {
           status: 'rejected',
           rejection_reason: body.reason || 'Rejected via UI'
         })
-        .eq('id', draft_id);
+        .eq('id', draftId);
 
       return NextResponse.json({ success: true, status: 'rejected' });
 
