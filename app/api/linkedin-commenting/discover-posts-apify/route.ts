@@ -428,9 +428,10 @@ export async function POST(request: NextRequest) {
 
         if (posts.length === 0) continue;
 
-        // Filter posts by age (last 24 hours)
-        const maxAgeHours = 24;
-        const cutoffDate = Date.now() - (maxAgeHours * 60 * 60 * 1000);
+        // Filter posts by age (last 30 minutes for maximum engagement)
+        // Fresh posts get more visibility when commented on quickly
+        const maxAgeMinutes = 30;
+        const cutoffDate = Date.now() - (maxAgeMinutes * 60 * 1000);
 
         const recentPosts = posts.filter((post: any) => {
           // Apify returns timestamp in milliseconds
@@ -439,7 +440,7 @@ export async function POST(request: NextRequest) {
           return postTimestamp >= cutoffDate;
         });
 
-        console.log(`⏰ Found ${recentPosts.length} posts from last ${maxAgeHours} hours`);
+        console.log(`⏰ Found ${recentPosts.length} posts from last ${maxAgeMinutes} minutes`);
 
         // Check which posts already exist (check both URL and social_id)
         const existingUrls = recentPosts.map((p: any) => p.url).filter(Boolean);
@@ -742,9 +743,9 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Filter posts by age (last 7 days to get more results)
-        const maxAgeDays = 7;
-        const cutoffDate = Date.now() - (maxAgeDays * 24 * 60 * 60 * 1000);
+        // Filter posts by age (last 30 minutes for maximum engagement)
+        const maxAgeMinutes = 30;
+        const cutoffDate = Date.now() - (maxAgeMinutes * 60 * 1000);
 
         // Debug: Log first post structure to understand the data format
         if (posts.length > 0) {
@@ -755,8 +756,8 @@ export async function POST(request: NextRequest) {
           // Hashtag actor may use different timestamp field
           const postTimestamp = post.postedAt || post.posted_at?.timestamp || post.timestamp || post.date;
           if (!postTimestamp) {
-            console.log(`⚠️ Post has no timestamp, including anyway`);
-            return true; // Include if no timestamp (let DB dedup handle it)
+            console.log(`⚠️ Post has no timestamp, skipping (too risky)`);
+            return false; // Skip if no timestamp - can't verify freshness
           }
           const ts = typeof postTimestamp === 'number' ? postTimestamp : new Date(postTimestamp).getTime();
           const isRecent = ts >= cutoffDate;
@@ -766,7 +767,7 @@ export async function POST(request: NextRequest) {
           return isRecent;
         });
 
-        console.log(`⏰ Found ${recentPosts.length} posts from last ${maxAgeDays} days (filtered ${posts.length - recentPosts.length})`);
+        console.log(`⏰ Found ${recentPosts.length} posts from last ${maxAgeMinutes} minutes (filtered ${posts.length - recentPosts.length})`);
 
         // Check which posts already exist
         // Note: Apify hashtag actor uses: post_url, full_urn, activity_id
@@ -1031,18 +1032,18 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
-          // Filter posts by age (last 7 days)
-          const maxAgeDays = 7;
-          const cutoffDate = Date.now() - (maxAgeDays * 24 * 60 * 60 * 1000);
+          // Filter posts by age (last 30 minutes for maximum engagement)
+          const maxAgeMinutes = 30;
+          const cutoffDate = Date.now() - (maxAgeMinutes * 60 * 1000);
 
           const recentPosts = posts.filter((post: any) => {
             const postTimestamp = post.postedAt || post.posted_at?.timestamp || post.timestamp || post.date;
-            if (!postTimestamp) return true; // Include if no timestamp
+            if (!postTimestamp) return false; // Skip if no timestamp - can't verify freshness
             const ts = typeof postTimestamp === 'number' ? postTimestamp : new Date(postTimestamp).getTime();
             return ts >= cutoffDate;
           });
 
-          console.log(`⏰ Found ${recentPosts.length} company posts from last ${maxAgeDays} days`);
+          console.log(`⏰ Found ${recentPosts.length} company posts from last ${maxAgeMinutes} minutes`);
 
           // Check which posts already exist
           const existingUrls = recentPosts.map((p: any) => p.post_url || p.url || p.postUrl).filter(Boolean);
