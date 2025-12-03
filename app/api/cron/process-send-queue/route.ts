@@ -263,8 +263,8 @@ export async function POST(req: NextRequest) {
       }
 
       // Check spacing for this account
-      // Reduced to 5 minutes - LinkedIn rate limits are daily (100/week), not per-hour
-      const MIN_SPACING_MINUTES = 5;
+      // Reduced to 2 minutes for faster sending - still safe for LinkedIn
+      const MIN_SPACING_MINUTES = 2;
       const spacingCutoff = new Date(Date.now() - MIN_SPACING_MINUTES * 60 * 1000);
 
       const { data: accountCampaigns } = await supabase
@@ -283,7 +283,7 @@ export async function POST(req: NextRequest) {
         .limit(1);
 
       if (recentlySent && recentlySent.length > 0) {
-        console.log(`⏸️  Account ${accountId} blocked by 30-min spacing`);
+        console.log(`⏸️  Account ${accountId} blocked by 2-min spacing`);
         skippedAccounts.push(accountId);
         continue;
       }
