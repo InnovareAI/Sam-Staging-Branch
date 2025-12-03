@@ -62,6 +62,7 @@ interface Settings {
 
   // Section 9: Scheduling & Limits
   timezone: string;
+  country_code: string;
   posting_start_time: string;
   posting_end_time: string;
   post_on_weekends: boolean;
@@ -122,6 +123,7 @@ const defaultSettings: Settings = {
   end_with_cta: 'never',
   cta_style: 'question_only',
   timezone: 'America/New_York',
+  country_code: 'US',
   posting_start_time: '09:00',
   posting_end_time: '17:00',
   post_on_weekends: false,
@@ -228,6 +230,7 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
           end_with_cta: data.end_with_cta || defaultSettings.end_with_cta,
           cta_style: data.cta_style || defaultSettings.cta_style,
           timezone: data.timezone || defaultSettings.timezone,
+          country_code: data.country_code || defaultSettings.country_code,
           posting_start_time: data.posting_start_time || defaultSettings.posting_start_time,
           posting_end_time: data.posting_end_time || defaultSettings.posting_end_time,
           post_on_weekends: data.post_on_weekends ?? defaultSettings.post_on_weekends,
@@ -305,6 +308,7 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
         end_with_cta: settings.end_with_cta,
         cta_style: settings.cta_style,
         timezone: settings.timezone,
+        country_code: settings.country_code,
         posting_start_time: settings.posting_start_time,
         posting_end_time: settings.posting_end_time,
         post_on_weekends: settings.post_on_weekends,
@@ -1076,28 +1080,119 @@ DON'T: Use "Great post!", emojis, exclamation points, or buzzwords like "leverag
               </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Time Zone</label>
-              <select
-                value={settings.timezone}
-                onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
-              >
-                <option value="America/New_York">Eastern Time (ET)</option>
-                <option value="America/Chicago">Central Time (CT)</option>
-                <option value="America/Denver">Mountain Time (MT)</option>
-                <option value="America/Los_Angeles">Pacific Time (PT)</option>
-                <option value="America/Phoenix">Arizona (No DST)</option>
-                <option value="America/Anchorage">Alaska Time</option>
-                <option value="Pacific/Honolulu">Hawaii Time</option>
-                <option value="Europe/London">London (GMT/BST)</option>
-                <option value="Europe/Paris">Central European (CET)</option>
-                <option value="Europe/Berlin">Berlin (CET)</option>
-                <option value="Asia/Dubai">Dubai (GST)</option>
-                <option value="Asia/Singapore">Singapore (SGT)</option>
-                <option value="Asia/Tokyo">Tokyo (JST)</option>
-                <option value="Australia/Sydney">Sydney (AEST)</option>
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Target Country</label>
+                <select
+                  value={settings.country_code}
+                  onChange={(e) => {
+                    const country = e.target.value;
+                    // Auto-set timezone based on country
+                    const timezones: Record<string, string> = {
+                      US: 'America/New_York',
+                      CA: 'America/Toronto',
+                      GB: 'Europe/London',
+                      DE: 'Europe/Berlin',
+                      FR: 'Europe/Paris',
+                      NL: 'Europe/Amsterdam',
+                      BE: 'Europe/Brussels',
+                      CH: 'Europe/Zurich',
+                      AT: 'Europe/Vienna',
+                      IT: 'Europe/Rome',
+                      ES: 'Europe/Madrid',
+                      PT: 'Europe/Lisbon',
+                      IE: 'Europe/Dublin',
+                      ZA: 'Africa/Johannesburg',
+                      AU: 'Australia/Sydney',
+                      NZ: 'Pacific/Auckland',
+                      JP: 'Asia/Tokyo',
+                      SG: 'Asia/Singapore',
+                      AE: 'Asia/Dubai',
+                      SA: 'Asia/Riyadh',
+                    };
+                    setSettings({
+                      ...settings,
+                      country_code: country,
+                      timezone: timezones[country] || settings.timezone
+                    });
+                  }}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                >
+                  <optgroup label="Americas">
+                    <option value="US">🇺🇸 United States</option>
+                    <option value="CA">🇨🇦 Canada</option>
+                  </optgroup>
+                  <optgroup label="Europe">
+                    <option value="GB">🇬🇧 United Kingdom</option>
+                    <option value="DE">🇩🇪 Germany</option>
+                    <option value="FR">🇫🇷 France</option>
+                    <option value="NL">🇳🇱 Netherlands</option>
+                    <option value="BE">🇧🇪 Belgium</option>
+                    <option value="CH">🇨🇭 Switzerland</option>
+                    <option value="AT">🇦🇹 Austria</option>
+                    <option value="IT">🇮🇹 Italy</option>
+                    <option value="ES">🇪🇸 Spain</option>
+                    <option value="PT">🇵🇹 Portugal</option>
+                    <option value="IE">🇮🇪 Ireland</option>
+                  </optgroup>
+                  <optgroup label="Africa">
+                    <option value="ZA">🇿🇦 South Africa</option>
+                  </optgroup>
+                  <optgroup label="Asia-Pacific">
+                    <option value="AU">🇦🇺 Australia</option>
+                    <option value="NZ">🇳🇿 New Zealand</option>
+                    <option value="JP">🇯🇵 Japan</option>
+                    <option value="SG">🇸🇬 Singapore</option>
+                  </optgroup>
+                  <optgroup label="Middle East">
+                    <option value="AE">🇦🇪 UAE</option>
+                    <option value="SA">🇸🇦 Saudi Arabia</option>
+                  </optgroup>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Used for holidays & weekend schedules</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Time Zone</label>
+                <select
+                  value={settings.timezone}
+                  onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                >
+                  <optgroup label="Americas">
+                    <option value="America/New_York">Eastern Time (ET)</option>
+                    <option value="America/Chicago">Central Time (CT)</option>
+                    <option value="America/Denver">Mountain Time (MT)</option>
+                    <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                    <option value="America/Toronto">Toronto (ET)</option>
+                  </optgroup>
+                  <optgroup label="Europe">
+                    <option value="Europe/London">London (GMT/BST)</option>
+                    <option value="Europe/Berlin">Berlin (CET)</option>
+                    <option value="Europe/Paris">Paris (CET)</option>
+                    <option value="Europe/Amsterdam">Amsterdam (CET)</option>
+                    <option value="Europe/Brussels">Brussels (CET)</option>
+                    <option value="Europe/Zurich">Zurich (CET)</option>
+                    <option value="Europe/Vienna">Vienna (CET)</option>
+                    <option value="Europe/Rome">Rome (CET)</option>
+                    <option value="Europe/Madrid">Madrid (CET)</option>
+                    <option value="Europe/Lisbon">Lisbon (WET)</option>
+                    <option value="Europe/Dublin">Dublin (GMT/IST)</option>
+                  </optgroup>
+                  <optgroup label="Africa">
+                    <option value="Africa/Johannesburg">Johannesburg (SAST)</option>
+                  </optgroup>
+                  <optgroup label="Asia-Pacific">
+                    <option value="Australia/Sydney">Sydney (AEST)</option>
+                    <option value="Pacific/Auckland">Auckland (NZST)</option>
+                    <option value="Asia/Tokyo">Tokyo (JST)</option>
+                    <option value="Asia/Singapore">Singapore (SGT)</option>
+                  </optgroup>
+                  <optgroup label="Middle East">
+                    <option value="Asia/Dubai">Dubai (GST)</option>
+                    <option value="Asia/Riyadh">Riyadh (AST)</option>
+                  </optgroup>
+                </select>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -1131,7 +1226,7 @@ DON'T: Use "Great post!", emojis, exclamation points, or buzzwords like "leverag
               checked={settings.post_on_holidays}
               onChange={(v) => setSettings({ ...settings, post_on_holidays: v })}
               label="Post on Holidays"
-              description="Allow comments on US public holidays"
+              description={`Allow comments on ${settings.country_code === 'US' ? 'US' : settings.country_code} public holidays`}
             />
           </div>
         )}
