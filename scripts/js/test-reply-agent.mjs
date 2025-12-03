@@ -12,6 +12,7 @@ const SUPABASE_URL = 'https://latxadqrvrrrcvkktrog.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdHhhZHFydnJycmN2a2t0cm9nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyNjQxODQ1NywiZXhwIjoyMDQxOTk0NDU3fQ.p3JfhRUypABG6zhBAf_LnVGN0PBSNYzM7l8KpvVTFq0';
 const POSTMARK_API_KEY = process.env.POSTMARK_SERVER_TOKEN || '0fb0b25b-17a6-4e38-926d-d34f5b76f3f4';
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const GOOGLE_CHAT_REPLIES_WEBHOOK_URL = process.env.GOOGLE_CHAT_REPLIES_WEBHOOK_URL;
 const APP_URL = 'https://app.meet-sam.com';
 const WORKSPACE_ID = 'babdcab8-1a78-4b2f-913e-6e9fd9821009';
 
@@ -458,6 +459,117 @@ async function sendHITLEmail(draft, prospect, inboundText) {
   return result;
 }
 
+async function sendGoogleChatNotification(draft, prospect, inboundText) {
+  if (!GOOGLE_CHAT_REPLIES_WEBHOOK_URL) {
+    console.log('   ⚠️ GOOGLE_CHAT_REPLIES_WEBHOOK_URL not set - skipping Chat notification');
+    return null;
+  }
+
+  console.log('Sending Google Chat notification...');
+
+  const approveUrl = `${APP_URL}/api/reply-agent/approve?token=${draft.approval_token}&action=approve`;
+  const rejectUrl = `${APP_URL}/api/reply-agent/approve?token=${draft.approval_token}&action=reject`;
+  const editUrl = `${APP_URL}/reply-agent/edit?id=${draft.id}&token=${draft.approval_token}`;
+  const instructionsUrl = `${APP_URL}/reply-agent/instructions?id=${draft.id}&token=${draft.approval_token}`;
+
+  const intentEmoji = {
+    'INTERESTED': '🔥',
+    'QUESTION': '❓',
+    'OBJECTION': '⚡',
+    'TIMING': '⏰',
+    'VAGUE_POSITIVE': '👍',
+    'UNCLEAR': '🤔',
+    'NOT_INTERESTED': '❌',
+  };
+
+  const message = {
+    cardsV2: [{
+      cardId: `reply-agent-${draft.id}`,
+      card: {
+        header: {
+          title: `📬 New Reply from ${draft.prospect_name}`,
+          subtitle: `${prospect.title || ''} at ${draft.prospect_company || 'Unknown'}`,
+          imageType: 'CIRCLE',
+        },
+        sections: [
+          {
+            header: `Intent: ${intentEmoji[draft.intent_detected] || '💬'} ${draft.intent_detected}`,
+            widgets: [{
+              textParagraph: {
+                text: `<b>Their Message:</b>\n"${inboundText}"`,
+              },
+            }],
+          },
+          {
+            header: "💡 SAM's Draft Reply",
+            widgets: [{
+              textParagraph: {
+                text: draft.draft_text,
+              },
+            }],
+          },
+          {
+            widgets: [
+              {
+                buttonList: {
+                  buttons: [
+                    {
+                      text: '✓ Approve & Send',
+                      onClick: { openLink: { url: approveUrl } },
+                      color: { red: 0.063, green: 0.722, blue: 0.506, alpha: 1 },
+                    },
+                    {
+                      text: '✗ Reject',
+                      onClick: { openLink: { url: rejectUrl } },
+                      color: { red: 0.937, green: 0.267, blue: 0.267, alpha: 1 },
+                    },
+                  ],
+                },
+              },
+              {
+                buttonList: {
+                  buttons: [
+                    {
+                      text: '✏️ Edit Reply',
+                      onClick: { openLink: { url: editUrl } },
+                      color: { red: 0.42, green: 0.48, blue: 0.54, alpha: 1 },
+                    },
+                    {
+                      text: '💬 Add Instructions',
+                      onClick: { openLink: { url: instructionsUrl } },
+                      color: { red: 0.4, green: 0.31, blue: 0.64, alpha: 1 },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    }],
+  };
+
+  try {
+    const response = await fetch(GOOGLE_CHAT_REPLIES_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('   ❌ Google Chat error:', errorText);
+      return null;
+    }
+
+    console.log('   ✅ Google Chat notification sent!');
+    return true;
+  } catch (error) {
+    console.error('   ❌ Google Chat error:', error.message);
+    return null;
+  }
+}
+
 async function main() {
   console.log('============================================================');
   console.log('Reply Agent Test - HITL Email Demo');
@@ -500,6 +612,7 @@ async function main() {
 
     const savedDraft = await saveDraft(draftData);
     await sendHITLEmail(savedDraft, mockProspect, mockInboundMessage.text);
+    await sendGoogleChatNotification(savedDraft, mockProspect, mockInboundMessage.text);
 
     console.log('');
     console.log('============================================================');
