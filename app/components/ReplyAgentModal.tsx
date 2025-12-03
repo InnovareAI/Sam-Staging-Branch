@@ -30,7 +30,33 @@ export default function ReplyAgentModal({ isOpen, onClose, workspaceId }: ReplyA
     response_tone: 'professional',
     reply_delay_hours: 2,
     ai_model: 'claude-opus-4-5-20251101',
-    reply_guidelines: 'Always be professional and helpful. Reference our product benefits when relevant. Ask qualifying questions to understand prospect needs.',
+    reply_guidelines: `## BEFORE RESPONDING - RESEARCH FIRST
+
+1. **LinkedIn Profile**: Review their role, experience, recent posts
+2. **Company LinkedIn**: Check company size, industry, recent updates
+3. **Website**: Understand their product/service offering
+4. **Product Match**: Identify which SAM features solve their specific pain points
+
+## RESPONSE APPROACH
+
+- Reference something specific from your research (shows you did homework)
+- Match SAM benefits to their industry/role challenges
+- Keep it short (2-4 sentences max)
+- One clear CTA
+
+## INTENT HANDLING
+
+| Intent | Strategy |
+|--------|----------|
+| INTERESTED | Book the call, don't oversell |
+| QUESTION | Answer directly, then pivot to call |
+| OBJECTION | Acknowledge, reframe with research insight |
+| TIMING | Respect it, offer follow-up |
+| NOT INTERESTED | Exit gracefully |
+
+## TONE: {{tone_setting}}
+
+Sound human, not templated. No "just checking in" or "thanks so much for getting back!"`,
     connected_email: null,
   });
 
@@ -284,7 +310,7 @@ export default function ReplyAgentModal({ isOpen, onClose, workspaceId }: ReplyA
                 <textarea
                   value={config.reply_guidelines}
                   onChange={(e) => setConfig({ ...config, reply_guidelines: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[120px]"
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[300px] font-mono text-sm"
                   placeholder="Enter guidelines for AI responses..."
                 />
                 <p className="mt-1 text-xs text-gray-400">
