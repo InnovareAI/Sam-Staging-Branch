@@ -270,6 +270,27 @@ export async function POST(request: NextRequest) {
     let totalDiscovered = 0;
     const APIFY_API_TOKEN = process.env.APIFY_API_TOKEN;
 
+    // DAILY LIMIT: Max 25 Apify requests per workspace per day (across ALL monitor types)
+    const MAX_APIFY_REQUESTS_PER_DAY = 25;
+    const today = new Date().toISOString().split('T')[0];
+
+    // Get today's discovery count per workspace
+    const workspaceIdsAll = [...new Set(monitors.map(m => m.workspace_id))];
+    const { data: todaysCounts } = await supabase
+      .from('linkedin_posts_discovered')
+      .select('workspace_id')
+      .in('workspace_id', workspaceIdsAll)
+      .gte('created_at', `${today}T00:00:00Z`);
+
+    // Count posts discovered today per workspace
+    const workspacePostsToday = new Map<string, number>();
+    (todaysCounts || []).forEach((row: any) => {
+      const count = workspacePostsToday.get(row.workspace_id) || 0;
+      workspacePostsToday.set(row.workspace_id, count + 1);
+    });
+
+    console.log(`📊 Posts discovered today per workspace:`, Object.fromEntries(workspacePostsToday));
+
     // Debug: Log hashtag monitors configuration
     const hashtagsBeingSearched = hashtagMonitors.map(m => ({
       id: m.id,
@@ -303,7 +324,7 @@ export async function POST(request: NextRequest) {
 
     // Track scrapes per workspace today
     const scrapesPerWorkspace = new Map<string, number>();
-    const today = new Date().toISOString().split('T')[0];
+    // Note: 'today' is already declared above for daily limit tracking
 
     // Process each profile monitor with rate limiting
     let profilesScrapedThisRun = 0;
@@ -317,17 +338,16 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        const settings = settingsMap.get(monitor.workspace_id) || {
-          profile_scrape_interval_days: 1,
-          max_profile_scrapes_per_day: 25  // 25 results per user per day as requested
-        };
-
-        // Check if we've hit the daily limit for this workspace
-        const workspaceScrapes = scrapesPerWorkspace.get(monitor.workspace_id) || 0;
-        if (workspaceScrapes >= settings.max_profile_scrapes_per_day) {
-          console.log(`⏸️ Workspace ${monitor.workspace_id} hit daily limit (${settings.max_profile_scrapes_per_day})`);
+        // UNIFIED DAILY LIMIT: 25 posts per workspace per day (across all monitor types)
+        const currentDailyCount = workspacePostsToday.get(monitor.workspace_id) || 0;
+        if (currentDailyCount >= MAX_APIFY_REQUESTS_PER_DAY) {
+          console.log(`⏸️ Workspace ${monitor.workspace_id} hit daily Apify limit (${currentDailyCount}/${MAX_APIFY_REQUESTS_PER_DAY})`);
           continue;
         }
+
+        const settings = settingsMap.get(monitor.workspace_id) || {
+          profile_scrape_interval_days: 1
+        };
 
         // Check if this monitor was scraped recently
         const lastScrapedAt = monitor.last_scraped_at ? new Date(monitor.last_scraped_at) : null;
@@ -464,16 +484,6 @@ export async function POST(request: NextRequest) {
         // We preserve the original URN format but also extract numeric IDs for robust matching
         const existingSocialIds = recentPosts
           .map((p: any) => p.urn?.activity_urn || p.full_urn)
-          .filter(Boolean);
-
-        // Also extract numeric IDs for comparison (handles format variations)
-        const existingNumericIds = recentPosts
-          .map((p: any) => {
-            const socialId = p.urn?.activity_urn || p.full_urn;
-            if (!socialId) return null;
-            const numericMatch = String(socialId).match(/(\d{16,20})/);
-            return numericMatch ? numericMatch[1] : null;
-          })
           .filter(Boolean);
 
         // Query existing posts - check by URL or by original social_id
@@ -657,7 +667,9 @@ export async function POST(request: NextRequest) {
             }
           } else {
             totalDiscovered += newPosts.length;
-            console.log(`✅ Stored ${newPosts.length} new posts`);
+            // Update daily counter for this workspace
+            workspacePostsToday.set(monitor.workspace_id, (workspacePostsToday.get(monitor.workspace_id) || 0) + newPosts.length);
+            console.log(`✅ Stored ${newPosts.length} new posts (workspace daily total: ${workspacePostsToday.get(monitor.workspace_id)}/${MAX_APIFY_REQUESTS_PER_DAY})`);
 
             // 🤖 AUTO-GENERATE COMMENTS FOR NEW POSTS
             if (insertedPosts && insertedPosts.length > 0) {
@@ -706,11 +718,18 @@ export async function POST(request: NextRequest) {
     // Process hashtag monitors
     for (const monitor of hashtagMonitors) {
       try {
+        // UNIFIED DAILY LIMIT: 25 posts per workspace per day (across all monitor types)
+        const currentDailyCount = workspacePostsToday.get(monitor.workspace_id) || 0;
+        if (currentDailyCount >= MAX_APIFY_REQUESTS_PER_DAY) {
+          console.log(`⏸️ Workspace ${monitor.workspace_id} hit daily Apify limit (${currentDailyCount}/${MAX_APIFY_REQUESTS_PER_DAY}), skipping hashtag monitors`);
+          continue;
+        }
+
         const hashtagEntry = monitor.hashtags.find((h: string) => h.startsWith('HASHTAG:'));
         if (!hashtagEntry) continue;
 
         const keyword = hashtagEntry.replace('HASHTAG:', '').trim();
-        console.log(`\n#️⃣ Searching hashtag: ${keyword}`);
+        console.log(`\n#️⃣ Searching hashtag: ${keyword} (workspace daily: ${currentDailyCount}/${MAX_APIFY_REQUESTS_PER_DAY})`);
 
         // Start Apify actor run for hashtag search
         console.log(`📡 Starting Apify hashtag search actor for #${keyword}...`);
@@ -996,7 +1015,9 @@ export async function POST(request: NextRequest) {
             }
           } else {
             totalDiscovered += newPosts.length;
-            console.log(`✅ Stored ${newPosts.length} new hashtag posts`);
+            // Update daily counter for this workspace
+            workspacePostsToday.set(monitor.workspace_id, (workspacePostsToday.get(monitor.workspace_id) || 0) + newPosts.length);
+            console.log(`✅ Stored ${newPosts.length} new hashtag posts (workspace daily total: ${workspacePostsToday.get(monitor.workspace_id)}/${MAX_APIFY_REQUESTS_PER_DAY})`);
 
             // Auto-generate comments for new posts
             if (insertedPosts && insertedPosts.length > 0) {
@@ -1033,14 +1054,28 @@ export async function POST(request: NextRequest) {
           break;
         }
 
+        // UNIFIED DAILY LIMIT: 25 posts per workspace per day (across all monitor types)
+        const currentDailyCount = workspacePostsToday.get(monitor.workspace_id) || 0;
+        if (currentDailyCount >= MAX_APIFY_REQUESTS_PER_DAY) {
+          console.log(`⏸️ Workspace ${monitor.workspace_id} hit daily Apify limit (${currentDailyCount}/${MAX_APIFY_REQUESTS_PER_DAY}), skipping company monitors`);
+          continue;
+        }
+
         // Get all company entries from this monitor
         const companyEntries = monitor.hashtags.filter((h: string) => h.startsWith('COMPANY:'));
 
         for (const companyEntry of companyEntries) {
           if (companiesScrapedThisRun >= MAX_COMPANIES_PER_RUN) break;
 
+          // Re-check daily limit inside inner loop
+          const innerDailyCount = workspacePostsToday.get(monitor.workspace_id) || 0;
+          if (innerDailyCount >= MAX_APIFY_REQUESTS_PER_DAY) {
+            console.log(`⏸️ Workspace daily limit reached during company scraping`);
+            break;
+          }
+
           const companySlug = companyEntry.replace('COMPANY:', '').trim();
-          console.log(`\n🏢 Scraping company: ${companySlug}`);
+          console.log(`\n🏢 Scraping company: ${companySlug} (workspace daily: ${innerDailyCount}/${MAX_APIFY_REQUESTS_PER_DAY})`);
 
           // Start Apify actor run for company posts
           console.log(`📡 Starting Apify company posts actor for ${companySlug}...`);
@@ -1270,7 +1305,9 @@ export async function POST(request: NextRequest) {
               }
             } else {
               totalDiscovered += newPosts.length;
-              console.log(`✅ Stored ${newPosts.length} new company posts`);
+              // Update daily counter for this workspace
+              workspacePostsToday.set(monitor.workspace_id, (workspacePostsToday.get(monitor.workspace_id) || 0) + newPosts.length);
+              console.log(`✅ Stored ${newPosts.length} new company posts (workspace daily total: ${workspacePostsToday.get(monitor.workspace_id)}/${MAX_APIFY_REQUESTS_PER_DAY})`);
 
               // Auto-generate comments for new posts
               if (insertedPosts && insertedPosts.length > 0) {
