@@ -121,42 +121,52 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // CHECK 5: Campaign status anomalies (active campaigns with no queue activity)
-    // NOTE: Skip this check if campaign launch failed (validation errors) - those are expected
-    const campaignAgeThreshold = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
-    const { data: activeCampaigns } = await supabase
+    // CHECK 5: Active connector campaigns with PENDING prospects but NO queue items
+    // This catches campaigns that failed to queue during launch
+    const campaignAgeThreshold = new Date(now.getTime() - 10 * 60 * 1000).toISOString(); // 10 min old
+    const { data: connectorCampaigns } = await supabase
       .from('campaigns')
-      .select('id, name, status, created_at')
+      .select('id, campaign_name, status, created_at, campaign_type')
       .eq('status', 'active')
-      .lt('created_at', campaignAgeThreshold); // Only check campaigns older than 30 min (allow launch time)
+      .eq('campaign_type', 'connector')
+      .lt('created_at', campaignAgeThreshold); // Only check campaigns older than 10 min
 
-    for (const campaign of activeCampaigns || []) {
-      const { count: queueCount } = await supabase
+    for (const campaign of connectorCampaigns || []) {
+      // Count pending prospects with LinkedIn URLs
+      const { count: pendingCount } = await supabase
+        .from('campaign_prospects')
+        .select('id', { count: 'exact', head: true })
+        .eq('campaign_id', campaign.id)
+        .eq('status', 'pending')
+        .not('linkedin_url', 'is', null);
+
+      if (!pendingCount || pendingCount === 0) continue;
+
+      // Check if these pending prospects are in the queue
+      const { data: pendingProspects } = await supabase
+        .from('campaign_prospects')
+        .select('id')
+        .eq('campaign_id', campaign.id)
+        .eq('status', 'pending')
+        .not('linkedin_url', 'is', null)
+        .limit(50);
+
+      const prospectIds = pendingProspects?.map(p => p.id) || [];
+
+      const { count: queuedCount } = await supabase
         .from('send_queue')
         .select('id', { count: 'exact', head: true })
-        .eq('campaign_id', campaign.id);
-
-      // Check if campaign has ANY sent prospects (not just approved)
-      const { count: sentCount } = await supabase
-        .from('campaign_prospects')
-        .select('id', { count: 'exact', head: true })
         .eq('campaign_id', campaign.id)
-        .not('cr_sent_at', 'is', null);
+        .in('prospect_id', prospectIds);
 
-      const { count: prospectCount } = await supabase
-        .from('campaign_prospects')
-        .select('id', { count: 'exact', head: true })
-        .eq('campaign_id', campaign.id)
-        .eq('status', 'approved');
-
-      // Only alert if: has approved prospects, no queue, AND has previously sent (means queue should exist)
-      // If sentCount = 0, campaign likely failed to launch - not a queue error
-      if (prospectCount && prospectCount > 0 && (!queueCount || queueCount === 0) && sentCount && sentCount > 0) {
+      // Alert if there are pending prospects NOT in queue
+      const unqueuedCount = pendingCount - (queuedCount || 0);
+      if (unqueuedCount > 0) {
         errors.push({
-          name: 'Campaign Queue Missing',
+          name: 'Unqueued Prospects',
           critical: true,
-          count: prospectCount,
-          details: `${campaign.name}: ${prospectCount} approved but no queue`
+          count: unqueuedCount,
+          details: `${campaign.campaign_name || campaign.id.slice(0,8)}: ${unqueuedCount} pending prospects not in queue`
         });
       }
     }
