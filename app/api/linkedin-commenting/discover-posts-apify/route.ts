@@ -319,7 +319,7 @@ export async function POST(request: NextRequest) {
 
         const settings = settingsMap.get(monitor.workspace_id) || {
           profile_scrape_interval_days: 1,
-          max_profile_scrapes_per_day: 20
+          max_profile_scrapes_per_day: 25  // 25 results per user per day as requested
         };
 
         // Check if we've hit the daily limit for this workspace

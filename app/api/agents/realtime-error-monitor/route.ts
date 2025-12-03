@@ -122,10 +122,13 @@ export async function POST(req: NextRequest) {
     }
 
     // CHECK 5: Campaign status anomalies (active campaigns with no queue activity)
+    // NOTE: Skip this check if campaign launch failed (validation errors) - those are expected
+    const thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
     const { data: activeCampaigns } = await supabase
       .from('campaigns')
-      .select('id, name, status')
-      .eq('status', 'active');
+      .select('id, name, status, created_at')
+      .eq('status', 'active')
+      .lt('created_at', thirtyMinAgo); // Only check campaigns older than 30 min (allow launch time)
 
     for (const campaign of activeCampaigns || []) {
       const { count: queueCount } = await supabase
@@ -133,14 +136,22 @@ export async function POST(req: NextRequest) {
         .select('id', { count: 'exact', head: true })
         .eq('campaign_id', campaign.id);
 
+      // Check if campaign has ANY sent prospects (not just approved)
+      const { count: sentCount } = await supabase
+        .from('campaign_prospects')
+        .select('id', { count: 'exact', head: true })
+        .eq('campaign_id', campaign.id)
+        .not('cr_sent_at', 'is', null);
+
       const { count: prospectCount } = await supabase
         .from('campaign_prospects')
         .select('id', { count: 'exact', head: true })
         .eq('campaign_id', campaign.id)
         .eq('status', 'approved');
 
-      // Active campaign with approved prospects but no queue = problem
-      if (prospectCount && prospectCount > 0 && (!queueCount || queueCount === 0)) {
+      // Only alert if: has approved prospects, no queue, AND has previously sent (means queue should exist)
+      // If sentCount = 0, campaign likely failed to launch - not a queue error
+      if (prospectCount && prospectCount > 0 && (!queueCount || queueCount === 0) && sentCount && sentCount > 0) {
         errors.push({
           name: 'Campaign Queue Missing',
           critical: true,

@@ -76,7 +76,7 @@ function getQualityBadge(score: number): { variant: 'default' | 'secondary' | 'd
 
 interface DataCollectionHubProps {
   onDataCollected: (data: ProspectData[], source: string) => void
-  onApprovalComplete?: (approvedData: ProspectData[], campaignType?: 'email' | 'linkedin') => void
+  onApprovalComplete?: (approvedData: ProspectData[], campaignType?: 'email' | 'linkedin' | 'connector' | 'messenger') => void
   className?: string
   initialUploadedData?: ProspectData[]
   userSession?: any  // Pass session from parent to avoid auth issues
@@ -382,7 +382,7 @@ export default function DataCollectionHub({
 
   // Campaign type selection modal
   const [showCampaignTypeModal, setShowCampaignTypeModal] = useState(false)
-  const [selectedCampaignType, setSelectedCampaignType] = useState<'email' | 'linkedin' | null>(null)
+  const [selectedCampaignType, setSelectedCampaignType] = useState<'email' | 'linkedin' | 'connector' | 'messenger' | null>(null)
 
   // Pre-flight verification state
   const [isRunningPreflight, setIsRunningPreflight] = useState(false)
@@ -1696,7 +1696,7 @@ export default function DataCollectionHub({
   }
 
   // Helper function to perform the actual navigation to Campaign Hub
-  const performCampaignHubNavigation = async (approvedProspects: ProspectData[], campaignType?: 'email' | 'linkedin') => {
+  const performCampaignHubNavigation = async (approvedProspects: ProspectData[], campaignType?: 'email' | 'linkedin' | 'connector' | 'messenger') => {
     // CRITICAL FIX: Save approved prospects to database FIRST to get prospect_ids
     setLoading(true)
     setLoadingMessage(`Saving ${approvedProspects.length} approved prospects...`)
@@ -1774,7 +1774,7 @@ export default function DataCollectionHub({
   }
 
   // Proceed to Campaign Hub with approved prospects ONLY (disregard rejected and pending)
-  const handleProceedToCampaignHub = async (prospectsOverride?: ProspectData[], campaignType?: 'email' | 'linkedin') => {
+  const handleProceedToCampaignHub = async (prospectsOverride?: ProspectData[], campaignType?: 'email' | 'linkedin' | 'connector' | 'messenger') => {
     // ALWAYS filter for approved prospects only, even if override is provided
     // This ensures rejected and pending prospects are never sent to Campaign Hub
     const approvedProspects = prospectsOverride && prospectsOverride.length > 0
@@ -1802,6 +1802,89 @@ export default function DataCollectionHub({
 
     // All prospects have tags, proceed directly
     await performCampaignHubNavigation(approvedProspects, campaignType)
+  }
+
+  // Auto-detect campaign type and go directly to preflight (NO manual selection)
+  const autoDetectAndCreateCampaign = async () => {
+    const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved')
+    let prospectsToSend = selectedProspectIds.size > 0
+      ? approvedProspects.filter(p => selectedProspectIds.has(p.id))
+      : approvedProspects
+
+    if (prospectsToSend.length === 0) {
+      toastError('No approved prospects to create campaign')
+      return
+    }
+
+    // Helper to check LinkedIn URL
+    const hasLinkedIn = (p: any) => p.contact?.linkedin_url || p.linkedin_url || p.linkedinUrl
+
+    // Count eligible prospects for each type
+    const messengerProspects = prospectsToSend.filter(p => {
+      if (!hasLinkedIn(p)) return false
+      const degree = String(p.connection_degree || p.connectionDegree || '').toLowerCase()
+      return degree.includes('1st') || degree === '1'
+    })
+
+    const connectorProspects = prospectsToSend.filter(p => {
+      if (!hasLinkedIn(p)) return false
+      const degree = String(p.connection_degree || p.connectionDegree || '').toLowerCase()
+      return !degree.includes('1st') && degree !== '1'
+    })
+
+    const emailProspects = prospectsToSend.filter(p =>
+      p.contact?.email || p.email || p.email_address
+    )
+
+    // Auto-detect: use the type with the most eligible prospects
+    let detectedType: 'connector' | 'messenger' | 'email'
+    let eligibleProspects: any[]
+
+    if (messengerProspects.length > 0 && messengerProspects.length >= connectorProspects.length) {
+      detectedType = 'messenger'
+      eligibleProspects = messengerProspects
+    } else if (connectorProspects.length > 0) {
+      detectedType = 'connector'
+      eligibleProspects = connectorProspects
+    } else if (emailProspects.length > 0) {
+      detectedType = 'email'
+      eligibleProspects = emailProspects
+    } else {
+      toastError('No eligible prospects found. Prospects need LinkedIn URLs with connection degree or email addresses.')
+      return
+    }
+
+    console.log(`📊 Auto-detected campaign type: ${detectedType} (${eligibleProspects.length} eligible prospects)`)
+    toastInfo(`Creating ${detectedType === 'messenger' ? 'Messenger' : detectedType === 'connector' ? 'Connector' : 'Email'} campaign with ${eligibleProspects.length} prospects`)
+
+    // Set state and run preflight
+    setSelectedCampaignType(detectedType)
+    setPendingCampaignType(detectedType)
+    setPendingProspects(eligibleProspects)
+    setIsRunningPreflight(true)
+    setShowPreflightModal(true)
+
+    try {
+      const response = await fetch('/api/linkedin/preflight-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prospects: eligibleProspects,
+          workspaceId: actualWorkspaceId,
+          campaignType: detectedType
+        })
+      })
+
+      const data = await response.json()
+      console.log('📊 Pre-flight results:', data.summary)
+      setPreflightResults(data)
+    } catch (error) {
+      console.error('Pre-flight check failed:', error)
+      toastError('Failed to verify prospects')
+      setShowPreflightModal(false)
+    } finally {
+      setIsRunningPreflight(false)
+    }
   }
 
   // Download only approved prospects
@@ -2023,10 +2106,10 @@ export default function DataCollectionHub({
             {prospectData.filter(p => p.approvalStatus === 'approved').length > 0 && (
               <div className="flex items-center justify-between bg-gray-800/50 rounded-xl p-4 border border-gray-700">
                 <div className="flex items-center gap-4">
-                  {/* Create New Campaign */}
+                  {/* Create New Campaign - Auto-detects type based on prospects */}
                   <button
                     type="button"
-                    onClick={() => setShowCampaignTypeModal(true)}
+                    onClick={autoDetectAndCreateCampaign}
                     className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-colors font-medium"
                   >
                     <Plus className="w-4 h-4" />
@@ -2694,7 +2777,7 @@ export default function DataCollectionHub({
         onClose={() => setShowCampaignTypeModal(false)}
         onSelectType={async (type) => {
           setShowCampaignTypeModal(false);
-          setSelectedCampaignType(type === 'connector' || type === 'messenger' ? 'linkedin' : type);
+          setSelectedCampaignType(type); // Keep exact type (connector/messenger/email)
 
           // Get prospects to send (selected or all approved)
           const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved');

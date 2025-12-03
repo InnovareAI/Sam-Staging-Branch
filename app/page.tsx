@@ -170,7 +170,7 @@ export default function Page() {
 
   // Campaign state - for auto-proceed from approval to campaign
   const [pendingCampaignProspects, setPendingCampaignProspects] = useState<any[] | null>(null);
-  const [pendingCampaignType, setPendingCampaignType] = useState<'email' | 'linkedin' | undefined>(undefined);
+  const [pendingCampaignType, setPendingCampaignType] = useState<'email' | 'linkedin' | 'connector' | 'messenger' | undefined>(undefined);
   const [showCampaignApprovalView, setShowCampaignApprovalView] = useState(false);
 
   // Workspace state

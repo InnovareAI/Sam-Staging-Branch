@@ -5903,7 +5903,7 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
 interface CampaignHubProps {
   workspaceId?: string | null;
   initialProspects?: any[] | null;
-  initialCampaignType?: 'email' | 'linkedin';
+  initialCampaignType?: 'email' | 'linkedin' | 'connector' | 'messenger';
   onCampaignCreated?: () => void;
 }
 
