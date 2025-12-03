@@ -181,6 +181,17 @@ export async function POST(request: NextRequest) {
               })
               .eq('id', prospect.id);
 
+            // Also cancel any pending send_queue items for this prospect
+            await supabase
+              .from('send_queue')
+              .update({
+                status: 'cancelled',
+                error_message: 'Prospect replied - sequence stopped',
+                updated_at: new Date().toISOString()
+              })
+              .eq('prospect_id', prospect.id)
+              .eq('status', 'pending');
+
             // Also cancel any pending emails for this prospect
             await supabase
               .from('email_send_queue')
@@ -191,6 +202,15 @@ export async function POST(request: NextRequest) {
               })
               .eq('prospect_id', prospect.id)
               .eq('status', 'pending');
+
+            // TRIGGER SAM REPLY AGENT - Create draft for approval
+            console.log(`🤖 Triggering SAM Reply Agent for ${prospect.first_name}...`);
+            await triggerReplyAgent(
+              supabase,
+              prospect,
+              prospectReply,
+              (prospect.campaigns as any)?.workspace_id
+            );
           }
         }
 
@@ -233,4 +253,79 @@ function extractVanity(linkedinId: string): string | null {
 
   // If it's already a vanity or provider_id, return as-is
   return linkedinId;
+}
+
+/**
+ * Trigger SAM Reply Agent when a prospect replies
+ * Creates a draft for human approval via email/chat
+ */
+async function triggerReplyAgent(
+  supabase: any,
+  prospect: any,
+  inboundMessage: any,
+  workspaceId: string
+) {
+  try {
+    // Check if workspace has Reply Agent enabled
+    const { data: config } = await supabase
+      .from('workspace_reply_agent_config')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .eq('enabled', true)
+      .single();
+
+    if (!config) {
+      console.log(`   ℹ️ Reply Agent not enabled for workspace ${workspaceId}`);
+      return;
+    }
+
+    // Check if we already have a draft for this message
+    const { data: existingDraft } = await supabase
+      .from('reply_agent_drafts')
+      .select('id')
+      .eq('inbound_message_id', inboundMessage.id)
+      .single();
+
+    if (existingDraft) {
+      console.log(`   ℹ️ Draft already exists for message ${inboundMessage.id}`);
+      return;
+    }
+
+    // Generate approval token
+    const approvalToken = crypto.randomUUID();
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 48); // 48 hour expiry
+
+    // Create draft record (Reply Agent cron will pick this up and generate AI reply)
+    const { data: draft, error: draftError } = await supabase
+      .from('reply_agent_drafts')
+      .insert({
+        workspace_id: workspaceId,
+        campaign_id: prospect.campaign_id,
+        prospect_id: prospect.id,
+        inbound_message_id: inboundMessage.id,
+        inbound_message_text: inboundMessage.text || inboundMessage.body,
+        inbound_message_at: inboundMessage.created_at || new Date().toISOString(),
+        channel: 'linkedin',
+        prospect_name: `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
+        prospect_linkedin_url: prospect.linkedin_url,
+        prospect_company: prospect.company,
+        prospect_title: prospect.title,
+        approval_token: approvalToken,
+        expires_at: expiresAt.toISOString(),
+        status: 'pending_generation', // Will be processed by reply-agent-process cron
+      })
+      .select()
+      .single();
+
+    if (draftError) {
+      console.error(`   ❌ Error creating draft:`, draftError);
+      return;
+    }
+
+    console.log(`   ✅ Draft created: ${draft.id} - SAM will generate reply`);
+
+  } catch (error) {
+    console.error(`   ❌ Error triggering Reply Agent:`, error);
+  }
 }

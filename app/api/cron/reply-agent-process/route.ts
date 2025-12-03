@@ -79,7 +79,12 @@ export async function POST(request: NextRequest) {
   const results: any[] = [];
 
   try {
-    // 1. Get all workspaces with Reply Agent enabled
+    // PHASE 1: Process existing pending_generation drafts (created by poll-message-replies)
+    // These drafts already have the inbound message - we just need to generate AI reply
+    const pendingGenerationResults = await processPendingGenerationDrafts(supabase);
+    results.push(...pendingGenerationResults);
+
+    // PHASE 2: Get all workspaces with Reply Agent enabled
     const { data: enabledConfigs, error: configError } = await supabase
       .from('workspace_reply_agent_config')
       .select('*, workspaces(id, name)')
@@ -533,4 +538,145 @@ async function autoSendReply(
       approved_at: new Date().toISOString()
     })
     .eq('id', draft.id);
+}
+
+/**
+ * Process drafts created by poll-message-replies with status 'pending_generation'
+ * These drafts already have the inbound message but need AI reply generation
+ */
+async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
+  const results: any[] = [];
+
+  try {
+    // Get all drafts awaiting AI generation
+    const { data: pendingDrafts, error: draftsError } = await supabase
+      .from('reply_agent_drafts')
+      .select('*, campaigns(campaign_name)')
+      .eq('status', 'pending_generation')
+      .limit(20); // Process max 20 per run
+
+    if (draftsError || !pendingDrafts?.length) {
+      return results;
+    }
+
+    console.log(`📝 Processing ${pendingDrafts.length} pending_generation drafts...`);
+
+    for (const draft of pendingDrafts) {
+      try {
+        // Get workspace config
+        const { data: config } = await supabase
+          .from('workspace_reply_agent_config')
+          .select('*')
+          .eq('workspace_id', draft.workspace_id)
+          .eq('enabled', true)
+          .single();
+
+        if (!config) {
+          // Reply Agent disabled - mark draft as skipped
+          await supabase
+            .from('reply_agent_drafts')
+            .update({ status: 'skipped', updated_at: new Date().toISOString() })
+            .eq('id', draft.id);
+          continue;
+        }
+
+        // Get prospect details
+        const { data: prospect } = await supabase
+          .from('campaign_prospects')
+          .select('*')
+          .eq('id', draft.prospect_id)
+          .single();
+
+        if (!prospect) {
+          await supabase
+            .from('reply_agent_drafts')
+            .update({ status: 'error', error_message: 'Prospect not found', updated_at: new Date().toISOString() })
+            .eq('id', draft.id);
+          continue;
+        }
+
+        // Generate AI reply using the inbound message stored in draft
+        const inboundMessage: UnipileMessage = {
+          id: draft.inbound_message_id,
+          text: draft.inbound_message_text,
+          timestamp: draft.inbound_message_at,
+          sender_id: prospect.linkedin_user_id || '',
+          sender_name: draft.prospect_name,
+          is_inbound: true
+        };
+
+        const aiReply = await generateAIReply(inboundMessage, prospect, config, supabase);
+
+        if (!aiReply) {
+          await supabase
+            .from('reply_agent_drafts')
+            .update({ status: 'error', error_message: 'AI generation failed', updated_at: new Date().toISOString() })
+            .eq('id', draft.id);
+          continue;
+        }
+
+        // Update draft with AI reply
+        const { error: updateError } = await supabase
+          .from('reply_agent_drafts')
+          .update({
+            draft_text: aiReply.text,
+            intent_detected: aiReply.intent,
+            ai_model: config.ai_model || 'claude-opus-4-5-20251101',
+            status: 'pending_approval',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', draft.id);
+
+        if (updateError) {
+          console.error(`Error updating draft ${draft.id}:`, updateError);
+          continue;
+        }
+
+        // Get updated draft with all fields
+        const { data: updatedDraft } = await supabase
+          .from('reply_agent_drafts')
+          .select('*')
+          .eq('id', draft.id)
+          .single();
+
+        // Send HITL notification
+        if (config.approval_mode === 'manual') {
+          await sendHITLEmail(updatedDraft, config, prospect, draft.inbound_message_text, supabase);
+          console.log(`✅ Draft ${draft.id} processed - HITL notification sent`);
+        } else {
+          // Get LinkedIn account for auto-send
+          const { data: linkedinAccount } = await supabase
+            .from('campaign_linkedin_accounts')
+            .select('unipile_account_id')
+            .eq('campaign_id', draft.campaign_id)
+            .single();
+
+          if (linkedinAccount?.unipile_account_id) {
+            await autoSendReply(updatedDraft, linkedinAccount.unipile_account_id, supabase);
+            console.log(`✅ Draft ${draft.id} auto-approved`);
+          }
+        }
+
+        results.push({
+          source: 'pending_generation',
+          draft_id: draft.id,
+          prospect: draft.prospect_name,
+          intent: aiReply.intent,
+          mode: config.approval_mode
+        });
+
+      } catch (draftError) {
+        console.error(`Error processing draft ${draft.id}:`, draftError);
+        await supabase
+          .from('reply_agent_drafts')
+          .update({ status: 'error', error_message: String(draftError), updated_at: new Date().toISOString() })
+          .eq('id', draft.id);
+      }
+    }
+
+  } catch (error) {
+    console.error('Error in processPendingGenerationDrafts:', error);
+  }
+
+  return results;
 }

@@ -608,3 +608,160 @@ UI shows badge: 🔥 Hot / ⭐ Good / 🤔 Low
 ### Priority
 
 **Medium** - Nice to have for prioritizing outreach, not blocking core functionality
+
+---
+
+## Session 2: System Health Check & Reply Agent Integration (Dec 3, 2025)
+
+### Overview
+
+Completed system health audit and integrated Reply Agent with the outbound automation pipeline to automatically stop follow-ups when prospects reply.
+
+---
+
+### 1. LinkedIn Search Fix ✅
+
+**Problem:** Endpoint was completely broken with multiple errors:
+- `cookies is not defined` (line 13 used `cookies` without importing)
+- `createRouteHandlerClient` undefined
+- Dead code mixing Unipile with Apify/BrightData
+
+**Solution:** Complete rewrite with clean Unipile-only implementation.
+
+**File:** [app/api/prospects/linkedin-search/route.ts](app/api/prospects/linkedin-search/route.ts)
+
+**Changes:**
+- Removed ~240 lines of dead Apify/BrightData code
+- Clean Unipile search implementation
+- Proper error handling
+- Returns formatted prospects with metadata
+
+---
+
+### 2. Reply Detection → Stop Automation → Trigger SAM ✅
+
+**Problem:** When a prospect replies, the system needed to:
+1. Stop all pending follow-ups
+2. Trigger SAM Reply Agent to generate draft response
+
+**Solution:** Updated `poll-message-replies` cron job.
+
+**File:** [app/api/cron/poll-message-replies/route.ts](app/api/cron/poll-message-replies/route.ts)
+
+**Flow:**
+```
+poll-message-replies (every 15 min)
+        ↓
+Detects inbound message from prospect
+        ↓
+1. Update prospect status to 'replied'
+2. Clear follow_up_due_at (stops follow-ups)
+3. Cancel pending send_queue items
+4. Cancel pending email_send_queue items
+5. Create draft with status='pending_generation'
+        ↓
+reply-agent-process (every 5 min)
+        ↓
+Picks up pending_generation drafts
+        ↓
+1. Generate AI reply using Claude
+2. Detect intent (INTERESTED, QUESTION, etc.)
+3. Update draft to 'pending_approval'
+4. Send HITL notification (email + chat)
+```
+
+**New Function Added:** `triggerReplyAgent()`
+- Checks if workspace has Reply Agent enabled
+- Creates draft with `status: 'pending_generation'`
+- Includes all prospect context for AI generation
+
+---
+
+### 3. Process Pending Generation Drafts ✅
+
+**Problem:** `reply-agent-process` only polled Unipile directly. It didn't process drafts created by `poll-message-replies`.
+
+**Solution:** Added new function `processPendingGenerationDrafts()`.
+
+**File:** [app/api/cron/reply-agent-process/route.ts](app/api/cron/reply-agent-process/route.ts)
+
+**What it does:**
+1. Queries drafts with `status = 'pending_generation'`
+2. For each draft:
+   - Gets workspace config (enabled, approval_mode)
+   - Gets prospect details
+   - Generates AI reply using existing `generateAIReply()`
+   - Updates draft to `pending_approval`
+   - Sends HITL notification
+
+---
+
+### System State Verified
+
+| Component | Status |
+|-----------|--------|
+| send_queue | 192 sent, 25 pending, 10 failed ✅ |
+| Reply Agent drafts | 13 in pending_approval ✅ |
+| Replied prospects | 2 (Chetas, Victor) - no pending queue ✅ |
+| Workspaces enabled | 13 with Reply Agent ✅ |
+| LinkedIn accounts | 9 connected ✅ |
+| Email accounts | 2 connected ✅ |
+| Active campaigns | 10 ✅ |
+
+---
+
+### Cron Schedule Summary
+
+| Function | Schedule | Purpose |
+|----------|----------|---------|
+| `poll-message-replies` | Every 15 min | Detect replies, stop automation, create draft |
+| `reply-agent-process` | Every 5 min | Generate AI reply, send HITL notification |
+| `process-send-queue` | Every 1 min | Send queued CRs/messages |
+| `poll-accepted-connections` | Every 15 min | Detect CR acceptances |
+
+---
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `app/api/prospects/linkedin-search/route.ts` | Complete rewrite - Unipile only |
+| `app/api/cron/poll-message-replies/route.ts` | Added send_queue cancellation + triggerReplyAgent() |
+| `app/api/cron/reply-agent-process/route.ts` | Added processPendingGenerationDrafts() |
+
+---
+
+### Testing
+
+**Check replied prospects have no pending queue:**
+```sql
+SELECT
+  first_name,
+  status,
+  responded_at,
+  follow_up_due_at,
+  EXISTS(SELECT 1 FROM send_queue sq WHERE sq.prospect_id = cp.id AND sq.status = 'pending') as has_pending_queue
+FROM campaign_prospects cp
+WHERE status = 'replied';
+```
+
+**Check Reply Agent draft statuses:**
+```sql
+SELECT status, COUNT(*) as count
+FROM reply_agent_drafts
+GROUP BY status;
+```
+
+**Monitor cron logs:**
+```bash
+netlify logs --function poll-message-replies --tail
+netlify logs --function reply-agent-process --tail
+```
+
+---
+
+### Deployment
+
+Deployed to production: https://app.meet-sam.com
+- Deploy ID: `6930017d6b7b572da5a52104`
+- Message: "Reply Agent: Add pending_generation processing"
