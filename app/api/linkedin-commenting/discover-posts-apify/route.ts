@@ -497,9 +497,34 @@ export async function POST(request: NextRequest) {
         // Skip hiring posts and engagement bait posts
         let hiringSkipped = 0;
         let engagementBaitSkipped = 0;
+        let authorCooldownSkipped = 0;
+
+        // Get authors we've commented on in the last 10 days (author cooldown)
+        const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: recentComments } = await supabase
+          .from('linkedin_post_comments')
+          .select('post:linkedin_posts_discovered!inner(author_profile_id)')
+          .eq('workspace_id', monitor.workspace_id)
+          .in('status', ['posted', 'scheduled'])
+          .gte('created_at', tenDaysAgo);
+
+        const recentlyCommentedAuthors = new Set(
+          (recentComments || [])
+            .map((c: any) => c.post?.author_profile_id)
+            .filter(Boolean)
+        );
+        console.log(`🔄 Authors with recent comments (10d cooldown): ${recentlyCommentedAuthors.size}`);
 
         const newPosts = newPostsRaw.filter((p: any) => {
           const postContent = p.text || '';
+          const authorProfileId = p.author?.username || vanityName;
+
+          // Check author 10-day cooldown
+          if (recentlyCommentedAuthors.has(authorProfileId)) {
+            authorCooldownSkipped++;
+            console.log(`⏳ Skipping post - author ${authorProfileId} commented on within 10 days`);
+            return false;
+          }
 
           // Check for hiring posts first
           const hiringCheck = isHiringPost(postContent);
@@ -519,6 +544,9 @@ export async function POST(request: NextRequest) {
           return true;
         });
 
+        if (authorCooldownSkipped > 0) {
+          console.log(`⏳ Filtered out ${authorCooldownSkipped} posts (10-day author cooldown)`);
+        }
         if (hiringSkipped > 0) {
           console.log(`💼 Filtered out ${hiringSkipped} hiring posts`);
         }
@@ -526,7 +554,7 @@ export async function POST(request: NextRequest) {
           console.log(`🚫 Filtered out ${engagementBaitSkipped} engagement bait posts`);
         }
 
-        console.log(`🆕 Found ${newPosts.length} new posts to store (${recentPosts.length - newPostsRaw.length} already exist, ${hiringSkipped} hiring skipped, ${engagementBaitSkipped} engagement bait skipped)`);
+        console.log(`🆕 Found ${newPosts.length} new posts to store (${recentPosts.length - newPostsRaw.length} already exist, ${authorCooldownSkipped} author cooldown, ${hiringSkipped} hiring, ${engagementBaitSkipped} bait)`);
 
         // Store new posts
         if (newPosts.length > 0) {
@@ -811,12 +839,37 @@ export async function POST(request: NextRequest) {
         });
 
         // FILTER OUT UNWANTED POSTS
-        // Skip hiring posts and engagement bait posts
+        // Skip hiring posts, engagement bait, and authors on 10-day cooldown
         let hiringSkipped = 0;
         let engagementBaitSkipped = 0;
+        let authorCooldownSkipped = 0;
+
+        // Get authors we've commented on in the last 10 days (author cooldown)
+        const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: recentComments } = await supabase
+          .from('linkedin_post_comments')
+          .select('post:linkedin_posts_discovered!inner(author_profile_id)')
+          .eq('workspace_id', monitor.workspace_id)
+          .in('status', ['posted', 'scheduled'])
+          .gte('created_at', tenDaysAgo);
+
+        const recentlyCommentedAuthors = new Set(
+          (recentComments || [])
+            .map((c: any) => c.post?.author_profile_id)
+            .filter(Boolean)
+        );
+        console.log(`🔄 Hashtag: Authors with recent comments (10d cooldown): ${recentlyCommentedAuthors.size}`);
 
         const newPosts = newPostsRaw.filter((p: any) => {
           const postContent = p.text || p.content || '';
+          const authorProfileId = p.authorProfileId || p.author?.username || p.author?.vanityName || p.author?.profile_id;
+
+          // Check author 10-day cooldown
+          if (authorProfileId && recentlyCommentedAuthors.has(authorProfileId)) {
+            authorCooldownSkipped++;
+            console.log(`⏳ Skipping hashtag post - author ${authorProfileId} commented on within 10 days`);
+            return false;
+          }
 
           // Check for hiring posts first
           const hiringCheck = isHiringPost(postContent);
@@ -836,6 +889,9 @@ export async function POST(request: NextRequest) {
           return true;
         });
 
+        if (authorCooldownSkipped > 0) {
+          console.log(`⏳ Filtered out ${authorCooldownSkipped} hashtag posts (10-day author cooldown)`);
+        }
         if (hiringSkipped > 0) {
           console.log(`💼 Filtered out ${hiringSkipped} hiring hashtag posts`);
         }
@@ -843,7 +899,7 @@ export async function POST(request: NextRequest) {
           console.log(`🚫 Filtered out ${engagementBaitSkipped} engagement bait hashtag posts`);
         }
 
-        console.log(`🆕 Found ${newPosts.length} new hashtag posts to store (${recentPosts.length - newPostsRaw.length} already exist, ${hiringSkipped} hiring skipped, ${engagementBaitSkipped} engagement bait skipped)`);
+        console.log(`🆕 Found ${newPosts.length} new hashtag posts to store (${recentPosts.length - newPostsRaw.length} exist, ${authorCooldownSkipped} cooldown, ${hiringSkipped} hiring, ${engagementBaitSkipped} bait)`);
 
         // Store new posts
         if (newPosts.length > 0) {
@@ -1080,12 +1136,35 @@ export async function POST(request: NextRequest) {
             return true;
           });
 
-          // Filter out hiring and engagement bait posts
+          // Filter out hiring, engagement bait, and authors on 10-day cooldown
           let hiringSkipped = 0;
           let engagementBaitSkipped = 0;
+          let authorCooldownSkipped = 0;
+
+          // Get authors we've commented on in the last 10 days (author cooldown)
+          const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+          const { data: recentComments } = await supabase
+            .from('linkedin_post_comments')
+            .select('post:linkedin_posts_discovered!inner(author_profile_id)')
+            .eq('workspace_id', monitor.workspace_id)
+            .in('status', ['posted', 'scheduled'])
+            .gte('created_at', tenDaysAgo);
+
+          const recentlyCommentedAuthors = new Set(
+            (recentComments || [])
+              .map((c: any) => c.post?.author_profile_id)
+              .filter(Boolean)
+          );
 
           const newPosts = newPostsRaw.filter((p: any) => {
             const postContent = p.text || p.content || '';
+
+            // Check author 10-day cooldown (company slug is the author_profile_id)
+            if (recentlyCommentedAuthors.has(companySlug)) {
+              authorCooldownSkipped++;
+              console.log(`⏳ Skipping company post - ${companySlug} commented on within 10 days`);
+              return false;
+            }
 
             const hiringCheck = isHiringPost(postContent);
             if (hiringCheck.isHiring) {
@@ -1103,7 +1182,7 @@ export async function POST(request: NextRequest) {
             return true;
           });
 
-          console.log(`🆕 Found ${newPosts.length} new company posts to store`);
+          console.log(`🆕 Found ${newPosts.length} new company posts (${authorCooldownSkipped} cooldown, ${hiringSkipped} hiring, ${engagementBaitSkipped} bait)`);
 
           // Store new posts
           if (newPosts.length > 0) {
