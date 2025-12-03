@@ -905,3 +905,254 @@ Position SAM as GTM orchestration agent, not just automation
 1. **Load into RAG** - Add SAM_BENEFITS_AND_FEATURES.md to knowledge base
 2. **Train Reply Agent** - Reference benefits doc in AI generation prompts
 3. **Execute win-back** - Send emails to previous clients/prospects
+
+---
+
+## Session 4: CRITICAL - Campaign Queue Emergency Fix (Dec 3, 2025)
+
+### Overview
+
+Michelle's and Charissa's LinkedIn campaigns were NOT sending. 94 prospects were stuck with `status='pending'` but NEVER added to `send_queue`. Emergency fix deployed with safeguards to prevent recurrence.
+
+---
+
+### Root Causes Identified
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| **Prospects never queued** | Campaign launch failed to add prospects to `send_queue` | Manual script + auto-queue cron |
+| **Invalid account IDs** | Campaigns had `linkedin_account_id` values that didn't match `workspace_accounts` | Fixed manually in DB |
+| **Wrong campaign_type filter** | Code was filtering by `campaign_type='linkedin'` but actual value is `'connector'` | Fixed in code |
+| **5-minute spacing too slow** | Rate limiting blocked rapid sends | Reduced to 2-minute spacing |
+
+---
+
+### What Was Broken
+
+```
+Campaign Created → Prospects Added → Queue? → NOTHING
+                                       ↓
+                   Queue was EMPTY - prospects never queued
+```
+
+**Affected Campaigns:**
+- Mich Campaign 4 (~30 prospects)
+- Mich Campaign 3 (~30 prospects)
+- 12/2 Cha Campaign 5 (~34 prospects)
+
+**All prospects had:**
+- `status = 'pending'` in `campaign_prospects`
+- `0 records` in `send_queue`
+
+---
+
+### Fixes Deployed
+
+#### 1. Manual Queue Script (Immediate)
+
+Ran script to manually queue all 94 prospects:
+
+**File:** [temp/queue-campaigns.cjs](temp/queue-campaigns.cjs)
+
+```javascript
+// Queue prospects for specific campaigns
+const campaigns = [
+  "Mich Campaign 4",
+  "Mich Campaign 3",
+  "12/2 Cha Campaign 5"
+];
+// Queued with 30-minute spacing
+```
+
+**Result:** 94 prospects queued immediately.
+
+---
+
+#### 2. Auto-Queue Cron (Safeguard)
+
+Created new cron job that runs every 5 minutes to catch any campaigns that failed to queue.
+
+**Files:**
+- [app/api/cron/queue-pending-prospects/route.ts](app/api/cron/queue-pending-prospects/route.ts) - API endpoint
+- [netlify/functions/queue-pending-prospects.ts](netlify/functions/queue-pending-prospects.ts) - Netlify trigger
+
+**Logic:**
+```
+Every 5 minutes:
+1. Get all active connector campaigns
+2. For each campaign:
+   - Get prospects with status='pending'
+   - Check if they're in send_queue
+   - Queue any that aren't (2-minute spacing)
+```
+
+**Why it's needed:**
+- Campaign launch sometimes fails silently
+- Network issues during upload
+- RLS policy edge cases
+- This catches anything that slips through
+
+---
+
+#### 3. Error Monitor Check (Detection)
+
+Added "Unqueued Prospects" check to the realtime error monitor.
+
+**File:** [app/api/agents/realtime-error-monitor/route.ts](app/api/agents/realtime-error-monitor/route.ts)
+
+**New Check:**
+```javascript
+// CHECK 5: Active connector campaigns with PENDING prospects but NO queue items
+const { data: connectorCampaigns } = await supabase
+  .from('campaigns')
+  .select('id, campaign_name, status, created_at, campaign_type')
+  .eq('status', 'active')
+  .eq('campaign_type', 'connector')
+  .lt('created_at', campaignAgeThreshold);
+```
+
+**Triggers alert if:**
+- Campaign is `active` and type `connector`
+- Has prospects with `status='pending'`
+- Those prospects have NO records in `send_queue`
+
+---
+
+#### 4. Reduced Rate Limiting
+
+Changed spacing from 5 minutes to 2 minutes per account.
+
+**File:** [app/api/cron/process-send-queue/route.ts](app/api/cron/process-send-queue/route.ts)
+
+```typescript
+// Changed from 5 to 2 minutes
+const MIN_SPACING_MINUTES = 2;
+```
+
+**Impact:**
+- ~30 CRs/day per account (was ~12/day)
+- Still safe for LinkedIn limits
+- Faster campaign execution
+
+---
+
+### Fixed Campaign Account Assignments
+
+Campaigns had invalid `linkedin_account_id` values. Fixed manually:
+
+```sql
+-- Michelle's campaigns
+UPDATE campaigns
+SET linkedin_account_id = '50aca023-...'
+WHERE campaign_name LIKE 'Mich%';
+
+-- Charissa's campaigns
+UPDATE campaigns
+SET linkedin_account_id = '19aa583c-...'
+WHERE campaign_name LIKE '%Cha%';
+```
+
+---
+
+### Results
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Pending in queue | 0 | 94 |
+| CRs sent today | 0 | 65+ |
+| Campaigns sending | 0 | 3 |
+| System health | BROKEN | OPERATIONAL |
+
+---
+
+### Safeguards Now in Place
+
+| Safeguard | Frequency | Purpose |
+|-----------|-----------|---------|
+| `queue-pending-prospects` cron | Every 5 min | Auto-queues any missed prospects |
+| Error monitor "Unqueued Prospects" | On-demand | Alerts if campaigns have unqueued prospects |
+| `process-send-queue` cron | Every 1 min | Sends queued messages |
+| 2-minute spacing | Per account | Faster sending while staying safe |
+
+---
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `app/api/cron/queue-pending-prospects/route.ts` | **NEW** - Auto-queue cron |
+| `netlify/functions/queue-pending-prospects.ts` | **NEW** - Netlify trigger |
+| `app/api/cron/process-send-queue/route.ts` | Reduced spacing 5→2 min |
+| `app/api/agents/realtime-error-monitor/route.ts` | Added unqueued prospects check |
+| `temp/queue-campaigns.cjs` | Manual queue script |
+| `temp/skip-tim.cjs` | Skip specific prospects |
+| `temp/reset-and-send.cjs` | Reschedule all pending to NOW |
+
+---
+
+### Monitoring
+
+**Check queue status:**
+```sql
+SELECT
+  status,
+  COUNT(*)
+FROM send_queue
+GROUP BY status;
+```
+
+**Check for unqueued prospects:**
+```sql
+SELECT
+  c.campaign_name,
+  COUNT(cp.id) as pending_prospects,
+  (SELECT COUNT(*) FROM send_queue sq
+   WHERE sq.campaign_id = c.id) as queue_count
+FROM campaigns c
+JOIN campaign_prospects cp ON cp.campaign_id = c.id
+WHERE c.status = 'active'
+  AND c.campaign_type = 'connector'
+  AND cp.status = 'pending'
+GROUP BY c.id, c.campaign_name
+HAVING COUNT(cp.id) > 0;
+```
+
+**Check Netlify cron logs:**
+```bash
+netlify logs --function queue-pending-prospects --tail
+netlify logs --function process-send-queue --tail
+```
+
+---
+
+### Architecture Discussion: pg_cron Alternative
+
+**User asked:** "Would Supabase Edge Functions be better?"
+
+**Answer:** For this use case, **pg_cron** would be the cleanest solution:
+
+```sql
+-- Run entirely in database, no HTTP hop
+SELECT cron.schedule(
+  'queue-pending-prospects',
+  '*/5 * * * *',
+  $$
+  INSERT INTO send_queue (...)
+  SELECT ... FROM campaigns c
+  JOIN campaign_prospects p ON ...
+  WHERE c.status = 'active'
+    AND p.status = 'pending'
+    AND NOT EXISTS (SELECT 1 FROM send_queue sq WHERE sq.prospect_id = p.id)
+  $$
+);
+```
+
+**Current approach (Netlify) works fine.** Migration to pg_cron is a future optimization, not urgent.
+
+---
+
+### Deployment
+
+- **Deployed:** December 3, 2025
+- **Commit:** "Add auto-queue cron and error monitor for unqueued prospects"
+- **Status:** Production verified, 65+ CRs sent today
