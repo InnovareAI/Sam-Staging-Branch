@@ -2284,10 +2284,22 @@ export default function DataCollectionHub({
             {prospectData.filter(p => p.approvalStatus === 'approved').length > 0 && (
               <div className="flex items-center justify-between bg-gray-800/50 rounded-xl p-4 border border-gray-700">
                 <div className="flex items-center gap-4">
-                  {/* Create New Campaign - Auto-detects type based on prospects */}
+                  {/* Create New Campaign - Shows campaign type selection modal */}
                   <button
                     type="button"
-                    onClick={autoDetectAndCreateCampaign}
+                    onClick={() => {
+                      // Validate before showing modal
+                      if (!actualWorkspaceId) {
+                        toastError('No workspace selected. Please select a workspace from the sidebar.')
+                        return
+                      }
+                      const approvedCount = prospectData.filter(p => p.approvalStatus === 'approved').length
+                      if (approvedCount === 0) {
+                        toastError('No approved prospects. Please approve some prospects first.')
+                        return
+                      }
+                      setShowCampaignTypeModal(true)
+                    }}
                     className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-colors font-medium"
                   >
                     <Plus className="w-4 h-4" />
